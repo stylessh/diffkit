@@ -1,4 +1,4 @@
-import { Slot } from "@radix-ui/react-slot";
+import { Slot, Slottable } from "@radix-ui/react-slot";
 import { cva, type VariantProps } from "class-variance-authority";
 import type * as React from "react";
 
@@ -21,11 +21,11 @@ const buttonVariants = cva(
 				link: "text-primary underline-offset-4 hover:underline",
 			},
 			size: {
-				default: "h-9 px-4 py-2 has-[>svg]:px-3",
-				xxs: "h-6 rounded-md gap-1.5 px-2.5 has-[>svg]:px-2",
-				xs: "h-7 rounded-md gap-1.5 px-2.5 has-[>svg]:px-2",
-				sm: "h-8 rounded-md gap-1.5 px-3 has-[>svg]:px-2.5",
-				lg: "h-10 rounded-md px-6 has-[>svg]:px-4",
+				default: "h-9 px-4 py-2",
+				xxs: "h-6 rounded-md gap-1.5 px-2.5",
+				xs: "h-7 rounded-md gap-1.5 px-2.5",
+				sm: "h-8 rounded-md gap-1.5 px-3",
+				lg: "h-10 rounded-md px-6",
 				icon: "size-9",
 			},
 		},
@@ -36,15 +36,22 @@ const buttonVariants = cva(
 	},
 );
 
+type ButtonIcon = React.ReactNode;
+
 function Button({
+	children,
 	className,
 	variant,
 	size,
 	asChild = false,
+	iconLeft,
+	iconRight,
 	...props
 }: React.ComponentProps<"button"> &
 	VariantProps<typeof buttonVariants> & {
 		asChild?: boolean;
+		iconLeft?: ButtonIcon;
+		iconRight?: ButtonIcon;
 	}) {
 	const Comp = asChild ? Slot : "button";
 
@@ -53,7 +60,29 @@ function Button({
 			data-slot="button"
 			className={cn(buttonVariants({ variant, size, className }))}
 			{...props}
-		/>
+		>
+			{iconLeft ? (
+				<span
+					data-slot="button-icon"
+					data-side="left"
+					aria-hidden="true"
+					className="shrink-0"
+				>
+					{iconLeft}
+				</span>
+			) : null}
+			<Slottable>{children}</Slottable>
+			{iconRight ? (
+				<span
+					data-slot="button-icon"
+					data-side="right"
+					aria-hidden="true"
+					className="shrink-0"
+				>
+					{iconRight}
+				</span>
+			) : null}
+		</Comp>
 	);
 }
 

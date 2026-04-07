@@ -19,3 +19,4 @@ export {
   Settings01Icon as SettingsIcon,
   Sun01Icon as SunIcon,
 } from "@hugeicons/react";
+export { GitHubLogo, GitHubWordmarkLogo } from "./brand-logos";

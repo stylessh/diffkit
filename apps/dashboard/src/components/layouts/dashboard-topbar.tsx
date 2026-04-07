@@ -128,6 +128,7 @@ export function DashboardTopbar({ user }: DashboardTopbarProps) {
 						variant="ghost"
 						size="sm"
 						asChild
+						iconLeft={<item.icon size={15} strokeWidth={2} />}
 						className="text-muted-foreground [&.active]:bg-surface-1 [&.active]:text-foreground"
 					>
 						<Link
@@ -135,7 +136,6 @@ export function DashboardTopbar({ user }: DashboardTopbarProps) {
 							activeOptions={{ exact: true }}
 							activeProps={{ className: "active" }}
 						>
-							<item.icon size={15} strokeWidth={2} />
 							<span>{item.label}</span>
 						</Link>
 					</Button>
@@ -146,10 +146,10 @@ export function DashboardTopbar({ user }: DashboardTopbarProps) {
 				<Button
 					variant="ghost"
 					size="icon"
+					iconLeft={<MoreHorizontalIcon className="size-5" strokeWidth={2} />}
 					className="size-8 text-muted-foreground hover:bg-surface-1"
-				>
-					<MoreHorizontalIcon className="size-5" strokeWidth={2} />
-				</Button>
+					aria-label="More actions"
+				/>
 			</div>
 		</nav>
 	);
