@@ -15,6 +15,7 @@
 		"lint": "biome lint",
 		"check": "biome check",
 		"check-types": "tsc --noEmit",
+		"migrate": "wrangler d1 migrations apply quickhub-db --local",
 		"deploy": "pnpm run build && wrangler deploy"
 	},
 	"dependencies": {
