@@ -1,0 +1,14 @@
+# GitHub OAuth App credentials
+# 1. Go to https://github.com/settings/developers
+# 2. Click "New OAuth App"
+# 3. Set "Authorization callback URL" to http://localhost:3000/api/auth/callback/github
+# 4. Copy the Client ID and generate a Client Secret
+GITHUB_CLIENT_ID=
+GITHUB_CLIENT_SECRET=
+
+# Random secret for encrypting sessions (at least 32 characters)
+# Generate one with: openssl rand -base64 32
+BETTER_AUTH_SECRET=
+
+# Base URL for the auth server
+BETTER_AUTH_URL=http://localhost:3000
