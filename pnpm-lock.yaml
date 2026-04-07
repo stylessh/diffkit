@@ -40,7 +40,7 @@ importers:
         version: 4.2.2(vite@7.3.2(@types/node@22.19.17)(jiti@2.6.1)(lightningcss@1.32.0)(tsx@4.21.0)(yaml@2.8.3))
       '@tanstack/react-devtools':
         specifier: latest
-        version: 0.10.1(@types/react-dom@19.2.3(@types/react@19.2.14))(@types/react@19.2.14)(csstype@3.2.3)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(solid-js@1.9.12)
+        version: 0.10.2(@types/react-dom@19.2.3(@types/react@19.2.14))(@types/react@19.2.14)(csstype@3.2.3)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(solid-js@1.9.12)
       '@tanstack/react-router':
         specifier: latest
         version: 1.168.10(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
@@ -56,6 +56,9 @@ importers:
       '@tanstack/router-plugin':
         specifier: ^1.132.0
         version: 1.167.12(@tanstack/react-router@1.168.10(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(vite@7.3.2(@types/node@22.19.17)(jiti@2.6.1)(lightningcss@1.32.0)(tsx@4.21.0)(yaml@2.8.3))
+      agentation:
+        specifier: ^3.0.2
+        version: 3.0.2(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
       better-auth:
         specifier: ^1.6.0
         version: 1.6.0(@cloudflare/workers-types@4.20260405.1)(@opentelemetry/api@1.9.1)(@tanstack/react-start@1.167.16(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(vite@7.3.2(@types/node@22.19.17)(jiti@2.6.1)(lightningcss@1.32.0)(tsx@4.21.0)(yaml@2.8.3)))(drizzle-kit@0.31.10)(drizzle-orm@0.45.2(@cloudflare/workers-types@4.20260405.1)(@opentelemetry/api@1.9.1)(kysely@0.28.15))(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(solid-js@1.9.12)(vitest@3.2.4(@types/node@22.19.17)(jiti@2.6.1)(jsdom@28.1.0(@noble/hashes@2.0.1))(lightningcss@1.32.0)(tsx@4.21.0)(yaml@2.8.3))
@@ -2523,8 +2526,8 @@ packages:
     peerDependencies:
       vite: ^6.0.0 || ^7.0.0 || ^8.0.0
 
-  '@tanstack/devtools@0.11.1':
-    resolution: {integrity: sha512-g3nHgVP76kT9190d6O32AjANoEnujLEB+51PDtBzlah8hvKeEygK53cunN+HXhjlfhM4PoOCi8/B96cdJVSnLg==}
+  '@tanstack/devtools@0.11.2':
+    resolution: {integrity: sha512-K8+tsBx+ptTLqqd4dOF10B6laj1g+XYImqYZL9n0jBINGaT+sOf17PKV9pbBt8kdbZeIGsHaJ5OZWCyZoHqN4A==}
     engines: {node: '>=18'}
     hasBin: true
     peerDependencies:
@@ -2537,8 +2540,8 @@ packages:
   '@tanstack/query-core@5.96.2':
     resolution: {integrity: sha512-hzI6cTVh4KNRk8UtoIBS7Lv9g6BnJPXvBKsvYH1aGWvv0347jT3BnSvztOE+kD76XGvZnRC/t6qdW1CaIfwCeA==}
 
-  '@tanstack/react-devtools@0.10.1':
-    resolution: {integrity: sha512-cvcd0EqN7Q2LYatQXxFhOkEa9RUQXZlhXnM1mwuibxmyRX+CMyohUZcgjodtIfgh+RT0Pmvt49liTdZby5ovZw==}
+  '@tanstack/react-devtools@0.10.2':
+    resolution: {integrity: sha512-1BmZyxOrI5SqmRJ5MgkYZNNdnlLsJxQRI2YgorrAvcF2MxK6x5RcuStvD8+YlXoMw3JtNukPxoITirKAnKYDQA==}
     engines: {node: '>=18'}
     peerDependencies:
       '@types/react': '>=16.8'
@@ -2823,6 +2826,17 @@ packages:
   agent-base@7.1.4:
     resolution: {integrity: sha512-MnA+YT8fwfJPgBx3m60MNqakm30XOkyIoH1y6huTQvC0PwZG7ki8NacLBcrPbNoo8vEZy7Jpuk7+jMO+CUovTQ==}
     engines: {node: '>= 14'}
+
+  agentation@3.0.2:
+    resolution: {integrity: sha512-iGzBxFVTuZEIKzLY6AExSLAQH6i6SwxV4pAu7v7m3X6bInZ7qlZXAwrEqyc4+EfP4gM7z2RXBF6SF4DeH0f2lA==}
+    peerDependencies:
+      react: '>=18.0.0'
+      react-dom: '>=18.0.0'
+    peerDependenciesMeta:
+      react:
+        optional: true
+      react-dom:
+        optional: true
 
   ansi-escapes@7.3.0:
     resolution: {integrity: sha512-BvU8nYgGQBxcmMuEeUEmNTvrMVjJNSH7RgW24vXexN4Ven6qCvy4TntnvlnwnMLTVlcRQQdbRY8NKnaIoeWDNg==}
@@ -6190,7 +6204,7 @@ snapshots:
       - supports-color
       - utf-8-validate
 
-  '@tanstack/devtools@0.11.1(csstype@3.2.3)(solid-js@1.9.12)':
+  '@tanstack/devtools@0.11.2(csstype@3.2.3)(solid-js@1.9.12)':
     dependencies:
       '@solid-primitives/event-listener': 2.4.5(solid-js@1.9.12)
       '@solid-primitives/keyboard': 1.3.5(solid-js@1.9.12)
@@ -6210,9 +6224,9 @@ snapshots:
 
   '@tanstack/query-core@5.96.2': {}
 
-  '@tanstack/react-devtools@0.10.1(@types/react-dom@19.2.3(@types/react@19.2.14))(@types/react@19.2.14)(csstype@3.2.3)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(solid-js@1.9.12)':
+  '@tanstack/react-devtools@0.10.2(@types/react-dom@19.2.3(@types/react@19.2.14))(@types/react@19.2.14)(csstype@3.2.3)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(solid-js@1.9.12)':
     dependencies:
-      '@tanstack/devtools': 0.11.1(csstype@3.2.3)(solid-js@1.9.12)
+      '@tanstack/devtools': 0.11.2(csstype@3.2.3)(solid-js@1.9.12)
       '@types/react': 19.2.14
       '@types/react-dom': 19.2.3(@types/react@19.2.14)
       react: 19.2.4
@@ -6576,6 +6590,11 @@ snapshots:
   acorn@8.16.0: {}
 
   agent-base@7.1.4: {}
+
+  agentation@3.0.2(react-dom@19.2.4(react@19.2.4))(react@19.2.4):
+    optionalDependencies:
+      react: 19.2.4
+      react-dom: 19.2.4(react@19.2.4)
 
   ansi-escapes@7.3.0:
     dependencies:

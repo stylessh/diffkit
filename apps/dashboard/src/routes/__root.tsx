@@ -6,6 +6,7 @@ import {
 	Scripts,
 } from "@tanstack/react-router";
 import { TanStackRouterDevtoolsPanel } from "@tanstack/react-router-devtools";
+import { Agentation } from "agentation";
 
 import appCss from "../styles.css?url";
 
@@ -30,6 +31,7 @@ function RootDocument({ children }: { children: React.ReactNode }) {
 			</head>
 			<body className="min-h-screen bg-background font-sans antialiased">
 				{children}
+				{import.meta.env.DEV ? <Agentation /> : null}
 				<TanStackDevtools
 					config={{ position: "bottom-right" }}
 					plugins={[
