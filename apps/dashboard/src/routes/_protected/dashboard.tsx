@@ -11,6 +11,7 @@ import {
 	CardHeader,
 	CardTitle,
 } from "@quickhub/ui/components/card";
+import { Logo } from "@quickhub/ui/components/logo";
 import { createFileRoute } from "@tanstack/react-router";
 import { signOut } from "#/lib/auth.client";
 
@@ -29,8 +30,18 @@ function DashboardPage() {
 		.toUpperCase();
 
 	return (
-		<main className="min-h-screen bg-[linear-gradient(180deg,_color-mix(in_oklch,_var(--color-secondary)_55%,_transparent)_0%,_transparent_38%)] p-4 sm:p-8">
+		<main className="min-h-dvh bg-[linear-gradient(180deg,_color-mix(in_oklch,_var(--color-secondary)_55%,_transparent)_0%,_transparent_38%)] p-4 sm:p-8">
 			<div className="mx-auto grid max-w-5xl gap-6">
+				<div className="flex items-center gap-3 px-1">
+					<Logo className="size-8" />
+					<div>
+						<p className="text-xs font-medium tracking-[0.28em] text-muted-foreground uppercase">
+							QuickHub
+						</p>
+						<p className="text-sm text-muted-foreground">Workspace</p>
+					</div>
+				</div>
+
 				<Card className="border-border/70 bg-background/95 shadow-sm">
 					<CardHeader className="flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
 						<div className="flex items-center gap-4">
