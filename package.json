@@ -1,0 +1,25 @@
+{
+  "name": "quickhub",
+  "private": true,
+  "scripts": {
+    "build": "turbo run build",
+    "dev": "turbo run dev",
+    "lint": "turbo run lint",
+    "check": "turbo run check",
+    "check-types": "turbo run check-types",
+    "format": "turbo run format"
+  },
+  "devDependencies": {
+    "turbo": "^2.8.0",
+    "typescript": "^5.7.2"
+  },
+  "packageManager": "pnpm@10.15.0",
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "esbuild",
+      "lightningcss",
+      "sharp",
+      "workerd"
+    ]
+  }
+}
