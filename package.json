@@ -7,11 +7,16 @@
     "lint": "turbo run lint",
     "check": "turbo run check",
     "check-types": "turbo run check-types",
-    "format": "turbo run format"
+    "format": "turbo run format",
+    "prepare": "husky"
   },
   "devDependencies": {
+    "@biomejs/biome": "2.4.5",
+    "husky": "^9.1.7",
+    "lint-staged": "^16.4.0",
     "turbo": "^2.8.0",
-    "typescript": "^5.7.2"
+    "typescript": "^5.7.2",
+    "ultracite": "^7.4.3"
   },
   "packageManager": "pnpm@10.15.0",
   "pnpm": {
