@@ -7,6 +7,7 @@ import {
 	CardHeader,
 	CardTitle,
 } from "@quickhub/ui/components/card";
+import { Logo } from "@quickhub/ui/components/logo";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { getSession } from "#/lib/auth.functions";
 import { getUserRepos } from "#/lib/github.functions";
@@ -31,14 +32,27 @@ function Home() {
 	const ctaLink = session ? "/dashboard" : "/login";
 
 	return (
-		<main className="min-h-screen bg-[radial-gradient(circle_at_top,_color-mix(in_oklch,_var(--color-primary)_6%,_transparent),_transparent_48%),linear-gradient(180deg,_color-mix(in_oklch,_var(--color-secondary)_65%,_white)_0%,_transparent_45%)]">
+		<main className="min-h-dvh bg-[radial-gradient(circle_at_top,_color-mix(in_oklch,_var(--color-primary)_6%,_transparent),_transparent_48%),linear-gradient(180deg,_color-mix(in_oklch,_var(--color-secondary)_65%,_white)_0%,_transparent_45%)]">
 			<div className="mx-auto flex w-full max-w-6xl flex-col gap-10 px-4 py-10 sm:px-6 lg:px-8">
 				<section className="grid gap-6 lg:grid-cols-[minmax(0,1.2fr)_minmax(320px,420px)]">
 					<Card className="border-border/70 bg-background/90 shadow-sm backdrop-blur">
 						<CardHeader className="gap-5">
-							<Badge variant="outline" className="w-fit">
-								Circle base imported
-							</Badge>
+							<div className="flex flex-wrap items-center justify-between gap-3">
+								<div className="flex items-center gap-3">
+									<Logo />
+									<div>
+										<p className="text-xs font-medium tracking-[0.28em] text-muted-foreground uppercase">
+											QuickHub
+										</p>
+										<p className="text-sm text-muted-foreground">
+											Placeholder logo
+										</p>
+									</div>
+								</div>
+								<Badge variant="outline" className="w-fit">
+									Shared UI baseline
+								</Badge>
+							</div>
 							<div className="space-y-3">
 								<CardTitle className="text-3xl tracking-tight sm:text-4xl">
 									QuickHub, now on a shared UI foundation.
