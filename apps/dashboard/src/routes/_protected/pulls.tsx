@@ -1,19 +1,19 @@
 import { useQuery } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
 import { DashboardContentLoading } from "#/components/layouts/dashboard-content-loading";
-import { githubMyIssuesQueryOptions } from "#/lib/github.query";
-import type { IssueSummary } from "#/lib/github.types";
+import { githubMyPullsQueryOptions } from "#/lib/github.query";
+import type { PullSummary } from "#/lib/github.types";
 import { useHasMounted } from "#/lib/use-has-mounted";
 
-export const Route = createFileRoute("/_protected/issues")({
-	component: IssuesPage,
+export const Route = createFileRoute("/_protected/pulls")({
+	component: PullRequestsPage,
 });
 
-function IssuesPage() {
+function PullRequestsPage() {
 	const { user } = Route.useRouteContext();
 	const hasMounted = useHasMounted();
 	const query = useQuery({
-		...githubMyIssuesQueryOptions({ userId: user.id }),
+		...githubMyPullsQueryOptions({ userId: user.id }),
 		enabled: hasMounted,
 	});
 
@@ -25,15 +25,19 @@ function IssuesPage() {
 			<div className="flex h-full flex-col gap-6 overflow-auto p-6">
 				<header className="space-y-1">
 					<p className="text-sm font-medium text-muted-foreground">
-						Cached issue groups
+						Cached pull request groups
 					</p>
-					<h1 className="text-2xl font-semibold tracking-tight">Issues</h1>
+					<h1 className="text-2xl font-semibold tracking-tight">
+						Pull Requests
+					</h1>
 				</header>
 
-				<div className="grid gap-4 xl:grid-cols-3">
-					<IssueGroup title="Assigned" issues={data.assigned} />
-					<IssueGroup title="Authored" issues={data.authored} />
-					<IssueGroup title="Mentioned" issues={data.mentioned} />
+				<div className="grid gap-4 xl:grid-cols-2">
+					<PullGroup title="Review requested" pulls={data.reviewRequested} />
+					<PullGroup title="Assigned" pulls={data.assigned} />
+					<PullGroup title="Authored" pulls={data.authored} />
+					<PullGroup title="Mentioned" pulls={data.mentioned} />
+					<PullGroup title="Involved" pulls={data.involved} />
 				</div>
 			</div>
 		);
@@ -45,32 +49,26 @@ function IssuesPage() {
 	return null;
 }
 
-function IssueGroup({
-	title,
-	issues,
-}: {
-	title: string;
-	issues: IssueSummary[];
-}) {
+function PullGroup({ title, pulls }: { title: string; pulls: PullSummary[] }) {
 	return (
 		<section className="rounded-2xl border bg-background/70 p-4">
 			<div className="mb-3 flex items-center justify-between">
 				<h2 className="font-medium">{title}</h2>
-				<span className="text-sm text-muted-foreground">{issues.length}</span>
+				<span className="text-sm text-muted-foreground">{pulls.length}</span>
 			</div>
-			{issues.length === 0 ? (
+			{pulls.length === 0 ? (
 				<p className="text-sm text-muted-foreground">
-					No issues in this slice.
+					No pull requests in this slice.
 				</p>
 			) : (
 				<div className="space-y-3">
-					{issues.map((issue) => (
-						<div key={issue.id} className="rounded-xl border px-3 py-2">
+					{pulls.map((pull) => (
+						<div key={pull.id} className="rounded-xl border px-3 py-2">
 							<p className="text-sm font-medium">
-								#{issue.number} {issue.title}
+								#{pull.number} {pull.title}
 							</p>
 							<p className="text-sm text-muted-foreground">
-								{issue.repository.fullName}
+								{pull.repository.fullName}
 							</p>
 						</div>
 					))}

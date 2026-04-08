@@ -1,118 +1,152 @@
-import { useSuspenseQuery } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
+import { DashboardContentLoading } from "#/components/layouts/dashboard-content-loading";
 import {
 	githubMyIssuesQueryOptions,
 	githubMyPullsQueryOptions,
 	githubUserReposQueryOptions,
 	githubViewerQueryOptions,
 } from "#/lib/github.query";
+import { useHasMounted } from "#/lib/use-has-mounted";
 
 export const Route = createFileRoute("/_protected/")({
-	loader: async ({ context }) => {
-		const scope = { userId: context.user.id };
-
-		await Promise.all([
-			context.queryClient.ensureQueryData(githubViewerQueryOptions(scope)),
-			context.queryClient.ensureQueryData(githubUserReposQueryOptions(scope)),
-			context.queryClient.ensureQueryData(githubMyPullsQueryOptions(scope)),
-			context.queryClient.ensureQueryData(githubMyIssuesQueryOptions(scope)),
-		]);
-	},
 	component: OverviewPage,
 });
 
 function OverviewPage() {
 	const { user } = Route.useRouteContext();
 	const scope = { userId: user.id };
-	const { data: viewer } = useSuspenseQuery(githubViewerQueryOptions(scope));
-	const { data: repos } = useSuspenseQuery(githubUserReposQueryOptions(scope));
-	const { data: pulls } = useSuspenseQuery(githubMyPullsQueryOptions(scope));
-	const { data: issues } = useSuspenseQuery(githubMyIssuesQueryOptions(scope));
+	const hasMounted = useHasMounted();
+	const viewerQuery = useQuery({
+		...githubViewerQueryOptions(scope),
+		enabled: hasMounted,
+	});
+	const reposQuery = useQuery({
+		...githubUserReposQueryOptions(scope),
+		enabled: hasMounted,
+	});
+	const pullsQuery = useQuery({
+		...githubMyPullsQueryOptions(scope),
+		enabled: hasMounted,
+	});
+	const issuesQuery = useQuery({
+		...githubMyIssuesQueryOptions(scope),
+		enabled: hasMounted,
+	});
 
-	const pullCount =
-		pulls.reviewRequested.length +
-		pulls.assigned.length +
-		pulls.authored.length +
-		pulls.mentioned.length +
-		pulls.involved.length;
-	const issueCount =
-		issues.assigned.length + issues.authored.length + issues.mentioned.length;
+	if (viewerQuery.error) throw viewerQuery.error;
+	if (reposQuery.error) throw reposQuery.error;
+	if (pullsQuery.error) throw pullsQuery.error;
+	if (issuesQuery.error) throw issuesQuery.error;
 
-	return (
-		<div className="flex h-full flex-col gap-6 overflow-auto p-6">
-			<div className="space-y-1">
-				<p className="text-sm font-medium text-muted-foreground">
-					GitHub cache primed
-				</p>
-				<h1 className="text-2xl font-semibold tracking-tight">
-					{viewer?.name ?? viewer?.login ?? user.name ?? user.email}
-				</h1>
-				<p className="text-sm text-muted-foreground">
-					Overview is preloading your viewer, repo, pull request, and issue
-					queries so the next tabs feel instant.
-				</p>
+	if (
+		viewerQuery.data &&
+		reposQuery.data &&
+		pullsQuery.data &&
+		issuesQuery.data
+	) {
+		const viewer = viewerQuery.data;
+		const repos = reposQuery.data;
+		const pulls = pullsQuery.data;
+		const issues = issuesQuery.data;
+
+		const pullCount =
+			pulls.reviewRequested.length +
+			pulls.assigned.length +
+			pulls.authored.length +
+			pulls.mentioned.length +
+			pulls.involved.length;
+		const issueCount =
+			issues.assigned.length + issues.authored.length + issues.mentioned.length;
+
+		return (
+			<div className="flex h-full flex-col gap-6 overflow-auto p-6">
+				<div className="space-y-1">
+					<p className="text-sm font-medium text-muted-foreground">
+						GitHub cache primed
+					</p>
+					<h1 className="text-2xl font-semibold tracking-tight">
+						{viewer?.name ?? viewer?.login ?? user.name ?? user.email}
+					</h1>
+					<p className="text-sm text-muted-foreground">
+						Overview loads your viewer, repository, pull request, and issue data
+						on demand and keeps it warm in the client cache.
+					</p>
+				</div>
+
+				<div className="grid gap-4 md:grid-cols-3">
+					<SummaryCard
+						label="Tracked repositories"
+						value={repos.length}
+						description="Loaded from the authenticated repo list."
+					/>
+					<SummaryCard
+						label="Open pull request slices"
+						value={pullCount}
+						description="Review, assigned, authored, mentioned, and involved."
+					/>
+					<SummaryCard
+						label="Open issue slices"
+						value={issueCount}
+						description="Assigned, authored, and mentioned issue groups."
+					/>
+				</div>
+
+				<div className="grid gap-4 xl:grid-cols-2">
+					<PreviewList
+						title="Recently active repositories"
+						emptyLabel="No repositories cached yet."
+						items={repos.slice(0, 5).map((repo) => ({
+							id: repo.id,
+							title: repo.fullName,
+							description:
+								repo.description ??
+								`${repo.stars} stars${repo.language ? ` • ${repo.language}` : ""}`,
+						}))}
+					/>
+					<PreviewList
+						title="Review requests"
+						emptyLabel="No review requests found."
+						items={pulls.reviewRequested.slice(0, 5).map((pull) => ({
+							id: pull.id,
+							title: `#${pull.number} ${pull.title}`,
+							description: pull.repository.fullName,
+						}))}
+					/>
+					<PreviewList
+						title="Assigned issues"
+						emptyLabel="No assigned issues found."
+						items={issues.assigned.slice(0, 5).map((issue) => ({
+							id: issue.id,
+							title: `#${issue.number} ${issue.title}`,
+							description: issue.repository.fullName,
+						}))}
+					/>
+					<PreviewList
+						title="Authored pull requests"
+						emptyLabel="No authored pull requests found."
+						items={pulls.authored.slice(0, 5).map((pull) => ({
+							id: pull.id,
+							title: `#${pull.number} ${pull.title}`,
+							description: pull.repository.fullName,
+						}))}
+					/>
+				</div>
 			</div>
+		);
+	}
 
-			<div className="grid gap-4 md:grid-cols-3">
-				<SummaryCard
-					label="Tracked repositories"
-					value={repos.length}
-					description="Loaded from the authenticated repo list."
-				/>
-				<SummaryCard
-					label="Open pull request slices"
-					value={pullCount}
-					description="Review, assigned, authored, mentioned, and involved."
-				/>
-				<SummaryCard
-					label="Open issue slices"
-					value={issueCount}
-					description="Assigned, authored, and mentioned issue groups."
-				/>
-			</div>
+	if (
+		hasMounted &&
+		(viewerQuery.isPending ||
+			reposQuery.isPending ||
+			pullsQuery.isPending ||
+			issuesQuery.isPending)
+	) {
+		return <DashboardContentLoading />;
+	}
 
-			<div className="grid gap-4 xl:grid-cols-2">
-				<PreviewList
-					title="Recently active repositories"
-					emptyLabel="No repositories cached yet."
-					items={repos.slice(0, 5).map((repo) => ({
-						id: repo.id,
-						title: repo.fullName,
-						description:
-							repo.description ??
-							`${repo.stars} stars${repo.language ? ` • ${repo.language}` : ""}`,
-					}))}
-				/>
-				<PreviewList
-					title="Review requests"
-					emptyLabel="No review requests found."
-					items={pulls.reviewRequested.slice(0, 5).map((pull) => ({
-						id: pull.id,
-						title: `#${pull.number} ${pull.title}`,
-						description: pull.repository.fullName,
-					}))}
-				/>
-				<PreviewList
-					title="Assigned issues"
-					emptyLabel="No assigned issues found."
-					items={issues.assigned.slice(0, 5).map((issue) => ({
-						id: issue.id,
-						title: `#${issue.number} ${issue.title}`,
-						description: issue.repository.fullName,
-					}))}
-				/>
-				<PreviewList
-					title="Authored pull requests"
-					emptyLabel="No authored pull requests found."
-					items={pulls.authored.slice(0, 5).map((pull) => ({
-						id: pull.id,
-						title: `#${pull.number} ${pull.title}`,
-						description: pull.repository.fullName,
-					}))}
-				/>
-			</div>
-		</div>
-	);
+	return null;
 }
 
 function SummaryCard({

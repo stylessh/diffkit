@@ -13,7 +13,7 @@ import { Route as LoginRouteImport } from './routes/login'
 import { Route as ProtectedRouteImport } from './routes/_protected'
 import { Route as ProtectedIndexRouteImport } from './routes/_protected/index'
 import { Route as ProtectedReviewsRouteImport } from './routes/_protected/reviews'
-import { Route as ProtectedPullRequestsRouteImport } from './routes/_protected/pull-requests'
+import { Route as ProtectedPullsRouteImport } from './routes/_protected/pulls'
 import { Route as ProtectedIssuesRouteImport } from './routes/_protected/issues'
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
 
@@ -36,9 +36,9 @@ const ProtectedReviewsRoute = ProtectedReviewsRouteImport.update({
   path: '/reviews',
   getParentRoute: () => ProtectedRoute,
 } as any)
-const ProtectedPullRequestsRoute = ProtectedPullRequestsRouteImport.update({
-  id: '/pull-requests',
-  path: '/pull-requests',
+const ProtectedPullsRoute = ProtectedPullsRouteImport.update({
+  id: '/pulls',
+  path: '/pulls',
   getParentRoute: () => ProtectedRoute,
 } as any)
 const ProtectedIssuesRoute = ProtectedIssuesRouteImport.update({
@@ -56,14 +56,14 @@ export interface FileRoutesByFullPath {
   '/': typeof ProtectedIndexRoute
   '/login': typeof LoginRoute
   '/issues': typeof ProtectedIssuesRoute
-  '/pull-requests': typeof ProtectedPullRequestsRoute
+  '/pulls': typeof ProtectedPullsRoute
   '/reviews': typeof ProtectedReviewsRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
 }
 export interface FileRoutesByTo {
   '/login': typeof LoginRoute
   '/issues': typeof ProtectedIssuesRoute
-  '/pull-requests': typeof ProtectedPullRequestsRoute
+  '/pulls': typeof ProtectedPullsRoute
   '/reviews': typeof ProtectedReviewsRoute
   '/': typeof ProtectedIndexRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
@@ -73,28 +73,22 @@ export interface FileRoutesById {
   '/_protected': typeof ProtectedRouteWithChildren
   '/login': typeof LoginRoute
   '/_protected/issues': typeof ProtectedIssuesRoute
-  '/_protected/pull-requests': typeof ProtectedPullRequestsRoute
+  '/_protected/pulls': typeof ProtectedPullsRoute
   '/_protected/reviews': typeof ProtectedReviewsRoute
   '/_protected/': typeof ProtectedIndexRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths:
-    | '/'
-    | '/login'
-    | '/issues'
-    | '/pull-requests'
-    | '/reviews'
-    | '/api/auth/$'
+  fullPaths: '/' | '/login' | '/issues' | '/pulls' | '/reviews' | '/api/auth/$'
   fileRoutesByTo: FileRoutesByTo
-  to: '/login' | '/issues' | '/pull-requests' | '/reviews' | '/' | '/api/auth/$'
+  to: '/login' | '/issues' | '/pulls' | '/reviews' | '/' | '/api/auth/$'
   id:
     | '__root__'
     | '/_protected'
     | '/login'
     | '/_protected/issues'
-    | '/_protected/pull-requests'
+    | '/_protected/pulls'
     | '/_protected/reviews'
     | '/_protected/'
     | '/api/auth/$'
@@ -136,11 +130,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ProtectedReviewsRouteImport
       parentRoute: typeof ProtectedRoute
     }
-    '/_protected/pull-requests': {
-      id: '/_protected/pull-requests'
-      path: '/pull-requests'
-      fullPath: '/pull-requests'
-      preLoaderRoute: typeof ProtectedPullRequestsRouteImport
+    '/_protected/pulls': {
+      id: '/_protected/pulls'
+      path: '/pulls'
+      fullPath: '/pulls'
+      preLoaderRoute: typeof ProtectedPullsRouteImport
       parentRoute: typeof ProtectedRoute
     }
     '/_protected/issues': {
@@ -162,14 +156,14 @@ declare module '@tanstack/react-router' {
 
 interface ProtectedRouteChildren {
   ProtectedIssuesRoute: typeof ProtectedIssuesRoute
-  ProtectedPullRequestsRoute: typeof ProtectedPullRequestsRoute
+  ProtectedPullsRoute: typeof ProtectedPullsRoute
   ProtectedReviewsRoute: typeof ProtectedReviewsRoute
   ProtectedIndexRoute: typeof ProtectedIndexRoute
 }
 
 const ProtectedRouteChildren: ProtectedRouteChildren = {
   ProtectedIssuesRoute: ProtectedIssuesRoute,
-  ProtectedPullRequestsRoute: ProtectedPullRequestsRoute,
+  ProtectedPullsRoute: ProtectedPullsRoute,
   ProtectedReviewsRoute: ProtectedReviewsRoute,
   ProtectedIndexRoute: ProtectedIndexRoute,
 }

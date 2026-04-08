@@ -8,11 +8,7 @@ import {
 	SunIcon,
 	SystemIcon,
 } from "@quickhub/icons";
-import {
-	Avatar,
-	AvatarFallback,
-	AvatarImage,
-} from "@quickhub/ui/components/avatar";
+import { Avatar, AvatarFallback } from "@quickhub/ui/components/avatar";
 import { Button } from "@quickhub/ui/components/button";
 import {
 	DropdownMenu,
@@ -26,6 +22,7 @@ import {
 } from "@quickhub/ui/components/dropdown-menu";
 import { Link } from "@tanstack/react-router";
 import { useTheme } from "next-themes";
+import { useState } from "react";
 import { signOutToLogin } from "#/lib/auth-actions";
 
 interface DashboardTopbarProps {
@@ -34,14 +31,20 @@ interface DashboardTopbarProps {
 		email: string;
 		image?: string | null;
 	};
+	tabsReady: boolean;
+	counts: {
+		pulls?: number;
+		issues?: number;
+		reviews?: number;
+	};
 }
 
-const navItems = [
-	{ to: "/", label: "Overview", icon: HomeIcon },
-	{ to: "/pull-requests", label: "Pull Requests", icon: GitPullRequestIcon },
-	{ to: "/issues", label: "Issues", icon: IssuesIcon },
-	{ to: "/reviews", label: "Reviews", icon: ReviewsIcon },
-] as const;
+type NavItem = {
+	to: string;
+	label: string;
+	icon: typeof HomeIcon;
+	count?: number;
+};
 
 const themeOptions = [
 	{ value: "light", icon: SunIcon, label: "Light" },
@@ -49,8 +52,13 @@ const themeOptions = [
 	{ value: "system", icon: SystemIcon, label: "System" },
 ] as const;
 
-export function DashboardTopbar({ user }: DashboardTopbarProps) {
+export function DashboardTopbar({
+	user,
+	tabsReady,
+	counts,
+}: DashboardTopbarProps) {
 	const { theme, setTheme } = useTheme();
+	const [avatarLoadFailed, setAvatarLoadFailed] = useState(false);
 	const displayName = user.name ?? user.email;
 	const initials = displayName
 		.split(" ")
@@ -58,6 +66,28 @@ export function DashboardTopbar({ user }: DashboardTopbarProps) {
 		.join("")
 		.slice(0, 2)
 		.toUpperCase();
+
+	const navItems: NavItem[] = [
+		{ to: "/", label: "Overview", icon: HomeIcon },
+		{
+			to: "/pulls",
+			label: "Pull Requests",
+			icon: GitPullRequestIcon,
+			count: counts.pulls,
+		},
+		{
+			to: "/issues",
+			label: "Issues",
+			icon: IssuesIcon,
+			count: counts.issues,
+		},
+		{
+			to: "/reviews",
+			label: "Reviews",
+			icon: ReviewsIcon,
+			count: counts.reviews,
+		},
+	];
 
 	return (
 		<nav className="flex items-center gap-3 px-3 py-2">
@@ -68,8 +98,18 @@ export function DashboardTopbar({ user }: DashboardTopbarProps) {
 						className="flex size-8 items-center justify-center rounded-full"
 					>
 						<Avatar className="size-7">
-							<AvatarImage src={user.image ?? undefined} alt={displayName} />
-							<AvatarFallback className="text-xs">{initials}</AvatarFallback>
+							{user.image && !avatarLoadFailed ? (
+								<img
+									src={user.image}
+									alt={displayName}
+									className="size-full object-cover"
+									onError={() => {
+										setAvatarLoadFailed(true);
+									}}
+								/>
+							) : (
+								<AvatarFallback className="text-xs">{initials}</AvatarFallback>
+							)}
 						</Avatar>
 					</button>
 				</DropdownMenuTrigger>
@@ -119,7 +159,14 @@ export function DashboardTopbar({ user }: DashboardTopbarProps) {
 				</DropdownMenuContent>
 			</DropdownMenu>
 
-			<div className="flex items-center gap-0.5">
+			<div
+				aria-hidden={!tabsReady}
+				className={`flex items-center gap-0.5 transition-[opacity,transform] duration-300 ease-out ${
+					tabsReady
+						? "translate-y-0 opacity-100"
+						: "pointer-events-none -translate-y-0.5 opacity-0"
+				}`}
+			>
 				{navItems.map((item) => (
 					<Button
 						key={item.label}
@@ -134,7 +181,17 @@ export function DashboardTopbar({ user }: DashboardTopbarProps) {
 							activeOptions={{ exact: true }}
 							activeProps={{ className: "active" }}
 						>
-							<span>{item.label}</span>
+							<span className="flex items-center gap-2">
+								<span>{item.label}</span>
+								{typeof item.count === "number" ? (
+									<span
+										data-slot="tab-count"
+										className="tabular-nums text-muted-foreground"
+									>
+										{item.count}
+									</span>
+								) : null}
+							</span>
 						</Link>
 					</Button>
 				))}
