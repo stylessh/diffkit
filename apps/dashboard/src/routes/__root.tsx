@@ -9,6 +9,7 @@ import {
 import { TanStackRouterDevtoolsPanel } from "@tanstack/react-router-devtools";
 import { Agentation } from "agentation";
 import { ThemeProvider } from "next-themes";
+import { ErrorScreen } from "#/components/layouts/error-screen";
 
 import appCss from "../styles.css?url";
 
@@ -24,6 +25,7 @@ export const Route = createRootRouteWithContext<{
 		links: [{ rel: "stylesheet", href: appCss }],
 	}),
 	component: RootComponent,
+	errorComponent: ErrorScreen,
 	shellComponent: RootDocument,
 });
 
