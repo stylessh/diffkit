@@ -284,6 +284,11 @@ input[type="search"] {
 	font-size: 16px;
 }
 
+/* @pierre/diffs — use our monospace font */
+[data-diffs] {
+	--diffs-font-family: var(--font-mono);
+}
+
 /* Shiki syntax highlighting — dual theme support */
 .shiki,
 .shiki span {

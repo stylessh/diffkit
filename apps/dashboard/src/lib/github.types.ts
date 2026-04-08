@@ -156,3 +156,61 @@ export type PullPageData = {
 	detail: PullDetail | null;
 	comments: PullComment[];
 };
+
+export type PullFile = {
+	sha: string | null;
+	filename: string;
+	status:
+		| "added"
+		| "removed"
+		| "modified"
+		| "renamed"
+		| "copied"
+		| "changed"
+		| "unchanged";
+	additions: number;
+	deletions: number;
+	changes: number;
+	patch: string | null;
+	previousFilename: string | null;
+};
+
+export type PullReviewComment = {
+	id: number;
+	body: string;
+	path: string;
+	line: number | null;
+	side: "LEFT" | "RIGHT";
+	createdAt: string;
+	updatedAt: string;
+	author: GitHubActor | null;
+	inReplyToId: number | null;
+	diffHunk: string;
+};
+
+export type SubmitReviewInput = {
+	owner: string;
+	repo: string;
+	pullNumber: number;
+	body: string;
+	event: "APPROVE" | "REQUEST_CHANGES" | "COMMENT";
+	comments?: Array<{
+		path: string;
+		line: number;
+		side: "LEFT" | "RIGHT";
+		body: string;
+		startLine?: number;
+		startSide?: "LEFT" | "RIGHT";
+	}>;
+};
+
+export type CreateReviewCommentInput = {
+	owner: string;
+	repo: string;
+	pullNumber: number;
+	body: string;
+	commitId: string;
+	path: string;
+	line: number;
+	side: "LEFT" | "RIGHT";
+};

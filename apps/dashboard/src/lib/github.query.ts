@@ -9,8 +9,10 @@ import {
 	getMyIssues,
 	getMyPulls,
 	getPullComments,
+	getPullFiles,
 	getPullFromRepo,
 	getPullPageData,
+	getPullReviewComments,
 	getPullStatus,
 	getPullsFromRepo,
 	getPullsFromUser,
@@ -117,6 +119,10 @@ export const githubQueryKeys = {
 			["github", scope.userId, "pulls", "comments", input] as const,
 		status: (scope: GitHubQueryScope, input: PullFromRepoQueryInput) =>
 			["github", scope.userId, "pulls", "status", input] as const,
+		files: (scope: GitHubQueryScope, input: PullFromRepoQueryInput) =>
+			["github", scope.userId, "pulls", "files", input] as const,
+		reviewComments: (scope: GitHubQueryScope, input: PullFromRepoQueryInput) =>
+			["github", scope.userId, "pulls", "reviewComments", input] as const,
 	},
 	issues: {
 		mine: (scope: GitHubQueryScope) =>
@@ -242,6 +248,34 @@ export function githubPullStatusQueryOptions(
 		queryFn: () => getPullStatus({ data: input }),
 		staleTime: githubCachePolicy.status.staleTimeMs,
 		gcTime: githubCachePolicy.status.gcTimeMs,
+		refetchOnMount: "always",
+		meta: tabPersistedMeta,
+	});
+}
+
+export function githubPullFilesQueryOptions(
+	scope: GitHubQueryScope,
+	input: PullFromRepoQueryInput,
+) {
+	return queryOptions({
+		queryKey: githubQueryKeys.pulls.files(scope, input),
+		queryFn: () => getPullFiles({ data: input }),
+		staleTime: githubCachePolicy.detail.staleTimeMs,
+		gcTime: githubCachePolicy.detail.gcTimeMs,
+		refetchOnMount: "always",
+		meta: tabPersistedMeta,
+	});
+}
+
+export function githubPullReviewCommentsQueryOptions(
+	scope: GitHubQueryScope,
+	input: PullFromRepoQueryInput,
+) {
+	return queryOptions({
+		queryKey: githubQueryKeys.pulls.reviewComments(scope, input),
+		queryFn: () => getPullReviewComments({ data: input }),
+		staleTime: githubCachePolicy.activity.staleTimeMs,
+		gcTime: githubCachePolicy.activity.gcTimeMs,
 		refetchOnMount: "always",
 		meta: tabPersistedMeta,
 	});

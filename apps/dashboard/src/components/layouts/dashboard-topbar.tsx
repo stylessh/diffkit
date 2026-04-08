@@ -58,6 +58,7 @@ const themeOptions = [
 const tabIconMap = {
 	pull: GitPullRequestIcon,
 	issue: IssuesIcon,
+	review: ReviewsIcon,
 } as const;
 
 const primaryNavRoutes = ["/", "/pulls", "/issues", "/reviews"] as const;
@@ -341,7 +342,20 @@ function DetailTab({
 		>
 			<Icon size={13} strokeWidth={2} className={`shrink-0 ${tab.iconColor}`} />
 			<span className="max-w-32 truncate">{tab.title}</span>
-			<span className="tabular-nums opacity-60">#{tab.number}</span>
+			{tab.type === "review" ? (
+				<span className="flex items-center gap-1 font-mono text-[11px] font-medium tabular-nums">
+					{tab.additions != null && (
+						<span className="text-green-500">+{tab.additions}</span>
+					)}
+					{tab.deletions != null && (
+						<span className="text-red-500">-{tab.deletions}</span>
+					)}
+				</span>
+			) : (
+				<span className="tabular-nums text-muted-foreground text-[11px]">
+					#{tab.number}
+				</span>
+			)}
 			<button
 				type="button"
 				onClick={(e) => {

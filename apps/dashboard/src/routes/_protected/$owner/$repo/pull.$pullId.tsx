@@ -208,14 +208,23 @@ function PullDetailPage() {
 							</span>{" "}
 							{pr.changedFiles === 1 ? "file" : "files"} changed
 						</span>
-						<span className="ml-auto flex items-center gap-1.5 text-xs">
-							<span className="tabular-nums font-medium text-green-500">
-								+{pr.additions}
+						<span className="ml-auto flex items-center gap-3 text-xs">
+							<span className="flex items-center gap-1.5">
+								<span className="tabular-nums font-medium text-green-500">
+									+{pr.additions}
+								</span>
+								<span className="tabular-nums font-medium text-red-500">
+									-{pr.deletions}
+								</span>
+								<DiffBoxes additions={pr.additions} deletions={pr.deletions} />
 							</span>
-							<span className="tabular-nums font-medium text-red-500">
-								-{pr.deletions}
-							</span>
-							<DiffBoxes additions={pr.additions} deletions={pr.deletions} />
+							<Link
+								to="/$owner/$repo/review/$pullId"
+								params={{ owner, repo, pullId }}
+								className="rounded-lg bg-foreground px-3 py-1 text-xs font-medium text-background transition-opacity hover:opacity-90"
+							>
+								Review changes
+							</Link>
 						</span>
 					</div>
 

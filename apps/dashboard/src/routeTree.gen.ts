@@ -16,6 +16,7 @@ import { Route as ProtectedReviewsRouteImport } from './routes/_protected/review
 import { Route as ProtectedPullsRouteImport } from './routes/_protected/pulls'
 import { Route as ProtectedIssuesRouteImport } from './routes/_protected/issues'
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
+import { Route as ProtectedOwnerRepoReviewPullIdRouteImport } from './routes/_protected/$owner/$repo/review.$pullId'
 import { Route as ProtectedOwnerRepoPullPullIdRouteImport } from './routes/_protected/$owner/$repo/pull.$pullId'
 import { Route as ProtectedOwnerRepoIssuesIssueIdRouteImport } from './routes/_protected/$owner/$repo/issues.$issueId'
 
@@ -53,6 +54,12 @@ const ApiAuthSplatRoute = ApiAuthSplatRouteImport.update({
   path: '/api/auth/$',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ProtectedOwnerRepoReviewPullIdRoute =
+  ProtectedOwnerRepoReviewPullIdRouteImport.update({
+    id: '/$owner/$repo/review/$pullId',
+    path: '/$owner/$repo/review/$pullId',
+    getParentRoute: () => ProtectedRoute,
+  } as any)
 const ProtectedOwnerRepoPullPullIdRoute =
   ProtectedOwnerRepoPullPullIdRouteImport.update({
     id: '/$owner/$repo/pull/$pullId',
@@ -75,6 +82,7 @@ export interface FileRoutesByFullPath {
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/$owner/$repo/issues/$issueId': typeof ProtectedOwnerRepoIssuesIssueIdRoute
   '/$owner/$repo/pull/$pullId': typeof ProtectedOwnerRepoPullPullIdRoute
+  '/$owner/$repo/review/$pullId': typeof ProtectedOwnerRepoReviewPullIdRoute
 }
 export interface FileRoutesByTo {
   '/login': typeof LoginRoute
@@ -85,6 +93,7 @@ export interface FileRoutesByTo {
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/$owner/$repo/issues/$issueId': typeof ProtectedOwnerRepoIssuesIssueIdRoute
   '/$owner/$repo/pull/$pullId': typeof ProtectedOwnerRepoPullPullIdRoute
+  '/$owner/$repo/review/$pullId': typeof ProtectedOwnerRepoReviewPullIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -97,6 +106,7 @@ export interface FileRoutesById {
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/_protected/$owner/$repo/issues/$issueId': typeof ProtectedOwnerRepoIssuesIssueIdRoute
   '/_protected/$owner/$repo/pull/$pullId': typeof ProtectedOwnerRepoPullPullIdRoute
+  '/_protected/$owner/$repo/review/$pullId': typeof ProtectedOwnerRepoReviewPullIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -109,6 +119,7 @@ export interface FileRouteTypes {
     | '/api/auth/$'
     | '/$owner/$repo/issues/$issueId'
     | '/$owner/$repo/pull/$pullId'
+    | '/$owner/$repo/review/$pullId'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/login'
@@ -119,6 +130,7 @@ export interface FileRouteTypes {
     | '/api/auth/$'
     | '/$owner/$repo/issues/$issueId'
     | '/$owner/$repo/pull/$pullId'
+    | '/$owner/$repo/review/$pullId'
   id:
     | '__root__'
     | '/_protected'
@@ -130,6 +142,7 @@ export interface FileRouteTypes {
     | '/api/auth/$'
     | '/_protected/$owner/$repo/issues/$issueId'
     | '/_protected/$owner/$repo/pull/$pullId'
+    | '/_protected/$owner/$repo/review/$pullId'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -189,6 +202,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiAuthSplatRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/_protected/$owner/$repo/review/$pullId': {
+      id: '/_protected/$owner/$repo/review/$pullId'
+      path: '/$owner/$repo/review/$pullId'
+      fullPath: '/$owner/$repo/review/$pullId'
+      preLoaderRoute: typeof ProtectedOwnerRepoReviewPullIdRouteImport
+      parentRoute: typeof ProtectedRoute
+    }
     '/_protected/$owner/$repo/pull/$pullId': {
       id: '/_protected/$owner/$repo/pull/$pullId'
       path: '/$owner/$repo/pull/$pullId'
@@ -213,6 +233,7 @@ interface ProtectedRouteChildren {
   ProtectedIndexRoute: typeof ProtectedIndexRoute
   ProtectedOwnerRepoIssuesIssueIdRoute: typeof ProtectedOwnerRepoIssuesIssueIdRoute
   ProtectedOwnerRepoPullPullIdRoute: typeof ProtectedOwnerRepoPullPullIdRoute
+  ProtectedOwnerRepoReviewPullIdRoute: typeof ProtectedOwnerRepoReviewPullIdRoute
 }
 
 const ProtectedRouteChildren: ProtectedRouteChildren = {
@@ -222,6 +243,7 @@ const ProtectedRouteChildren: ProtectedRouteChildren = {
   ProtectedIndexRoute: ProtectedIndexRoute,
   ProtectedOwnerRepoIssuesIssueIdRoute: ProtectedOwnerRepoIssuesIssueIdRoute,
   ProtectedOwnerRepoPullPullIdRoute: ProtectedOwnerRepoPullPullIdRoute,
+  ProtectedOwnerRepoReviewPullIdRoute: ProtectedOwnerRepoReviewPullIdRoute,
 }
 
 const ProtectedRouteWithChildren = ProtectedRoute._addFileChildren(

@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { type Octokit as OctokitType, RequestError } from "octokit";
 import type {
+	CreateReviewCommentInput,
 	GitHubActor,
 	GitHubLabel,
 	IssueComment,
@@ -11,10 +12,13 @@ import type {
 	MyPullsResult,
 	PullComment,
 	PullDetail,
+	PullFile,
 	PullPageData,
+	PullReviewComment,
 	PullStatus,
 	PullSummary,
 	RepositoryRef,
+	SubmitReviewInput,
 	UserRepoSummary,
 } from "./github.types";
 import {
@@ -60,6 +64,12 @@ type RepoIssueDetail = Awaited<
 type AuthenticatedUser = Awaited<
 	ReturnType<GitHubClient["rest"]["users"]["getAuthenticated"]>
 >["data"];
+type RepoPullFile = Awaited<
+	ReturnType<GitHubClient["rest"]["pulls"]["listFiles"]>
+>["data"][number];
+type RepoPullReviewComment = Awaited<
+	ReturnType<GitHubClient["rest"]["pulls"]["listReviewComments"]>
+>["data"][number];
 
 type RepoState = "all" | "closed" | "open";
 type PullSort = "created" | "long-running" | "popularity" | "updated";
@@ -1362,5 +1372,174 @@ export const updatePullBranch = createServerFn({ method: "POST" })
 			return true;
 		} catch {
 			return false;
+		}
+	});
+
+async function getPullFilesResult(
+	context: GitHubContext,
+	data: PullFromRepoInput,
+): Promise<PullFile[]> {
+	return getCachedGitHubRequest<RepoPullFile[], PullFile[]>({
+		context,
+		resource: "pulls.files",
+		params: data,
+		freshForMs: githubCachePolicy.detail.staleTimeMs,
+		request: (headers) =>
+			context.octokit.rest.pulls.listFiles({
+				owner: data.owner,
+				repo: data.repo,
+				pull_number: data.pullNumber,
+				per_page: 300,
+				headers,
+			}),
+		mapData: (files) =>
+			files.map((file) => ({
+				sha: file.sha,
+				filename: file.filename,
+				status: file.status as PullFile["status"],
+				additions: file.additions,
+				deletions: file.deletions,
+				changes: file.changes,
+				patch: file.patch ?? null,
+				previousFilename: file.previous_filename ?? null,
+			})),
+	});
+}
+
+export const getPullFiles = createServerFn({ method: "GET" })
+	.inputValidator(identityValidator<PullFromRepoInput>)
+	.handler(async ({ data }): Promise<PullFile[]> => {
+		const context = await getGitHubContext();
+		if (!context) {
+			return [];
+		}
+
+		return getPullFilesResult(context, data);
+	});
+
+async function getPullReviewCommentsResult(
+	context: GitHubContext,
+	data: PullFromRepoInput,
+): Promise<PullReviewComment[]> {
+	return getCachedGitHubRequest<RepoPullReviewComment[], PullReviewComment[]>({
+		context,
+		resource: "pulls.reviewComments",
+		params: data,
+		freshForMs: githubCachePolicy.activity.staleTimeMs,
+		request: (headers) =>
+			context.octokit.rest.pulls.listReviewComments({
+				owner: data.owner,
+				repo: data.repo,
+				pull_number: data.pullNumber,
+				per_page: 100,
+				headers,
+			}),
+		mapData: (comments) =>
+			comments.map((comment) => ({
+				id: comment.id,
+				body: comment.body,
+				path: comment.path,
+				line: comment.line ?? null,
+				side: (comment.side?.toUpperCase() as "LEFT" | "RIGHT") ?? "RIGHT",
+				createdAt: comment.created_at,
+				updatedAt: comment.updated_at,
+				author: comment.user
+					? {
+							login: comment.user.login,
+							avatarUrl: comment.user.avatar_url,
+							url: comment.user.html_url,
+							type: comment.user.type ?? "User",
+						}
+					: null,
+				inReplyToId: comment.in_reply_to_id ?? null,
+				diffHunk: comment.diff_hunk,
+			})),
+	});
+}
+
+export const getPullReviewComments = createServerFn({ method: "GET" })
+	.inputValidator(identityValidator<PullFromRepoInput>)
+	.handler(async ({ data }): Promise<PullReviewComment[]> => {
+		const context = await getGitHubContext();
+		if (!context) {
+			return [];
+		}
+
+		return getPullReviewCommentsResult(context, data);
+	});
+
+export const submitPullReview = createServerFn({ method: "POST" })
+	.inputValidator(identityValidator<SubmitReviewInput>)
+	.handler(async ({ data }): Promise<boolean> => {
+		const context = await getGitHubContext();
+		if (!context) {
+			return false;
+		}
+
+		try {
+			await context.octokit.rest.pulls.createReview({
+				owner: data.owner,
+				repo: data.repo,
+				pull_number: data.pullNumber,
+				body: data.body,
+				event: data.event,
+				comments: data.comments?.map((c) => ({
+					path: c.path,
+					line: c.line,
+					side: c.side,
+					body: c.body,
+					...(c.startLine != null && c.startLine !== c.line
+						? { start_line: c.startLine, start_side: c.startSide ?? c.side }
+						: {}),
+				})),
+			});
+			return true;
+		} catch {
+			return false;
+		}
+	});
+
+export const createReviewComment = createServerFn({ method: "POST" })
+	.inputValidator(identityValidator<CreateReviewCommentInput>)
+	.handler(async ({ data }): Promise<PullReviewComment | null> => {
+		const context = await getGitHubContext();
+		if (!context) {
+			return null;
+		}
+
+		try {
+			const response = await context.octokit.rest.pulls.createReviewComment({
+				owner: data.owner,
+				repo: data.repo,
+				pull_number: data.pullNumber,
+				body: data.body,
+				commit_id: data.commitId,
+				path: data.path,
+				line: data.line,
+				side: data.side,
+			});
+
+			const comment = response.data;
+			return {
+				id: comment.id,
+				body: comment.body,
+				path: comment.path,
+				line: comment.line ?? null,
+				side: (comment.side?.toUpperCase() as "LEFT" | "RIGHT") ?? "RIGHT",
+				createdAt: comment.created_at,
+				updatedAt: comment.updated_at,
+				author: comment.user
+					? {
+							login: comment.user.login,
+							avatarUrl: comment.user.avatar_url,
+							url: comment.user.html_url,
+							type: comment.user.type ?? "User",
+						}
+					: null,
+				inReplyToId: comment.in_reply_to_id ?? null,
+				diffHunk: comment.diff_hunk,
+			};
+		} catch {
+			return null;
 		}
 	});

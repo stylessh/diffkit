@@ -22,6 +22,7 @@
 	},
 	"dependencies": {
 		"@cloudflare/vite-plugin": "^1.26.0",
+		"@pierre/diffs": "^1.1.12",
 		"@quickhub/icons": "workspace:*",
 		"@quickhub/ui": "workspace:*",
 		"@tailwindcss/vite": "^4.1.18",

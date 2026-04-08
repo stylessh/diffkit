@@ -17,9 +17,47 @@ const worktreePersistState = isWorktreeCheckout(dashboardRoot)
 	? { persistState: { path: getSharedWranglerStatePath(dashboardRoot) } }
 	: {};
 
+// Stub out shiki in the SSR (Cloudflare Worker) environment to prevent all
+// language grammars (~1.5 MB) from being bundled. Shiki is only used
+// client-side so the server never needs the real implementation.
+function shikiSSRStub(): import("vite").Plugin {
+	const SHIKI_RE = /^(shiki|@shikijs\/)/;
+	const STUB = `
+export const bundledLanguages = {};
+export const bundledThemes = {};
+export const createHighlighter = () => Promise.resolve({});
+export const createJavaScriptRegexEngine = () => ({});
+export const createOnigurumaEngine = () => Promise.resolve({});
+export const createCssVariablesTheme = () => ({});
+export const codeToHtml = () => "";
+export const normalizeTheme = (t) => t;
+export const getTokenStyleObject = () => ({});
+export const stringifyTokenStyle = () => "";
+export const transformerStyleToClass = () => ({});
+export default {};`;
+
+	return {
+		name: "shiki-ssr-stub",
+		enforce: "pre",
+		resolveId: {
+			handler(source) {
+				if (this.environment?.name === "ssr" && SHIKI_RE.test(source)) {
+					return `\0shiki-stub:${source}`;
+				}
+			},
+		},
+		load(id) {
+			if (id.startsWith("\0shiki-stub:")) {
+				return STUB;
+			}
+		},
+	};
+}
+
 const config = defineConfig({
 	plugins: [
 		devtools(),
+		shikiSSRStub(),
 		cloudflare({
 			viteEnvironment: { name: "ssr" },
 			...worktreePersistState,

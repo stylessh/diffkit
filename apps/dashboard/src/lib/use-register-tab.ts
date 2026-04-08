@@ -9,6 +9,8 @@ export function useRegisterTab(
 		url: string;
 		repo: string;
 		iconColor: string;
+		additions?: number;
+		deletions?: number;
 	} | null,
 ) {
 	useEffect(() => {
@@ -21,6 +23,17 @@ export function useRegisterTab(
 			url: tab.url,
 			repo: tab.repo,
 			iconColor: tab.iconColor,
+			additions: tab.additions,
+			deletions: tab.deletions,
 		});
-	}, [tab?.type, tab?.title, tab?.number, tab?.url, tab?.repo, tab?.iconColor]);
+	}, [
+		tab?.type,
+		tab?.title,
+		tab?.number,
+		tab?.url,
+		tab?.repo,
+		tab?.iconColor,
+		tab?.additions,
+		tab?.deletions,
+	]);
 }

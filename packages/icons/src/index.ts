@@ -15,6 +15,7 @@ export {
   Copy01Icon as CopyIcon,
   DashboardSquare01Icon as DashboardIcon,
   File02Icon as FileIcon,
+  Folder01Icon as FolderIcon,
   FolderLibraryIcon,
   GitBranchIcon,
   GitCommitIcon,

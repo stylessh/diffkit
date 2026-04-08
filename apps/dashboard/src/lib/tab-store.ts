@@ -1,6 +1,6 @@
 import { useSyncExternalStore } from "react";
 
-export type TabType = "pull" | "issue";
+export type TabType = "pull" | "issue" | "review";
 
 export interface Tab {
 	id: string;
@@ -10,6 +10,8 @@ export interface Tab {
 	url: string;
 	repo: string;
 	iconColor: string;
+	additions?: number;
+	deletions?: number;
 }
 
 export const TABS_STORAGE_KEY = "quickhub:tabs";
@@ -50,7 +52,21 @@ function getSnapshot() {
 }
 
 export function addTab(tab: Tab) {
-	if (tabs.some((t) => t.id === tab.id)) return;
+	const existing = tabs.find((t) => t.id === tab.id);
+	if (existing) {
+		// Update if any field changed (e.g. URL when navigating between PR detail and review)
+		if (
+			existing.url === tab.url &&
+			existing.title === tab.title &&
+			existing.iconColor === tab.iconColor &&
+			existing.additions === tab.additions &&
+			existing.deletions === tab.deletions
+		)
+			return;
+		tabs = tabs.map((t) => (t.id === tab.id ? tab : t));
+		emitChange();
+		return;
+	}
 	tabs = [...tabs, tab];
 	emitChange();
 }
