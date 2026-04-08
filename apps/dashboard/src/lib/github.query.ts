@@ -1,6 +1,7 @@
 import { queryOptions } from "@tanstack/react-query";
 import {
 	getGitHubViewer,
+	getIssueComments,
 	getIssueFromRepo,
 	getIssuesFromRepo,
 	getIssuesFromUser,
@@ -8,6 +9,7 @@ import {
 	getMyPulls,
 	getPullComments,
 	getPullFromRepo,
+	getPullStatus,
 	getPullsFromRepo,
 	getPullsFromUser,
 	getUserRepos,
@@ -105,6 +107,8 @@ export const githubQueryKeys = {
 			["github", scope.userId, "pulls", "detail", input] as const,
 		comments: (scope: GitHubQueryScope, input: PullFromRepoQueryInput) =>
 			["github", scope.userId, "pulls", "comments", input] as const,
+		status: (scope: GitHubQueryScope, input: PullFromRepoQueryInput) =>
+			["github", scope.userId, "pulls", "status", input] as const,
 	},
 	issues: {
 		mine: (scope: GitHubQueryScope) =>
@@ -115,6 +119,8 @@ export const githubQueryKeys = {
 			["github", scope.userId, "issues", "repo", input] as const,
 		detail: (scope: GitHubQueryScope, input: IssueFromRepoQueryInput) =>
 			["github", scope.userId, "issues", "detail", input] as const,
+		comments: (scope: GitHubQueryScope, input: IssueFromRepoQueryInput) =>
+			["github", scope.userId, "issues", "comments", input] as const,
 	},
 };
 
@@ -200,6 +206,19 @@ export function githubPullCommentsQueryOptions(
 	});
 }
 
+export function githubPullStatusQueryOptions(
+	scope: GitHubQueryScope,
+	input: PullFromRepoQueryInput,
+) {
+	return queryOptions({
+		queryKey: githubQueryKeys.pulls.status(scope, input),
+		queryFn: () => getPullStatus({ data: input }),
+		staleTime: githubCachePolicy.detail.staleTimeMs,
+		gcTime: githubCachePolicy.detail.gcTimeMs,
+		meta: persistedMeta,
+	});
+}
+
 export function githubMyIssuesQueryOptions(scope: GitHubQueryScope) {
 	return queryOptions({
 		queryKey: githubQueryKeys.issues.mine(scope),
@@ -243,6 +262,19 @@ export function githubIssueDetailQueryOptions(
 	return queryOptions({
 		queryKey: githubQueryKeys.issues.detail(scope, input),
 		queryFn: () => getIssueFromRepo({ data: input }),
+		staleTime: githubCachePolicy.detail.staleTimeMs,
+		gcTime: githubCachePolicy.detail.gcTimeMs,
+		meta: persistedMeta,
+	});
+}
+
+export function githubIssueCommentsQueryOptions(
+	scope: GitHubQueryScope,
+	input: IssueFromRepoQueryInput,
+) {
+	return queryOptions({
+		queryKey: githubQueryKeys.issues.comments(scope, input),
+		queryFn: () => getIssueComments({ data: input }),
 		staleTime: githubCachePolicy.detail.staleTimeMs,
 		gcTime: githubCachePolicy.detail.gcTimeMs,
 		meta: persistedMeta,

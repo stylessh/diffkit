@@ -1,5 +1,6 @@
 import { CommentIcon, IssuesIcon } from "@quickhub/icons";
 import { cn } from "@quickhub/ui/lib/utils";
+import { Link } from "@tanstack/react-router";
 import { formatRelativeTime } from "#/components/pulls/pull-request-row";
 import type { IssueSummary } from "#/lib/github.types";
 
@@ -15,12 +16,11 @@ function getIssueStateProps(issue: IssueSummary) {
 
 export function IssueRow({ issue }: { issue: IssueSummary }) {
 	const { color } = getIssueStateProps(issue);
+	const href = `/${issue.repository.owner}/${issue.repository.name}/issues/${issue.number}`;
 
 	return (
-		<a
-			href={issue.url}
-			target="_blank"
-			rel="noopener noreferrer"
+		<Link
+			to={href}
 			className="group flex items-start gap-3 rounded-lg px-3 py-2.5 transition-colors hover:bg-surface-1"
 		>
 			<div className={cn("mt-[3px] shrink-0", color)}>
@@ -53,6 +53,6 @@ export function IssueRow({ issue }: { issue: IssueSummary }) {
 					</span>
 				</div>
 			)}
-		</a>
+		</Link>
 	);
 }

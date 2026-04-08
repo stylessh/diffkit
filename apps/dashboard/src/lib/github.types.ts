@@ -110,3 +110,39 @@ export type PullComment = {
 	createdAt: string;
 	author: GitHubActor | null;
 };
+
+export type IssueComment = {
+	id: number;
+	body: string;
+	createdAt: string;
+	author: GitHubActor | null;
+};
+
+export type PullCheckRun = {
+	id: number;
+	name: string;
+	status: string;
+	conclusion: string | null;
+};
+
+export type PullReview = {
+	id: number;
+	state: string;
+	author: GitHubActor | null;
+};
+
+export type PullStatus = {
+	reviews: PullReview[];
+	checks: {
+		total: number;
+		passed: number;
+		failed: number;
+		pending: number;
+		skipped: number;
+	};
+	mergeable: boolean | null;
+	mergeableState: string | null;
+	behindBy: number | null;
+	baseRefName: string;
+	canUpdateBranch: boolean;
+};

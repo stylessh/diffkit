@@ -3,12 +3,14 @@ import { type Octokit as OctokitType, RequestError } from "octokit";
 import type {
 	GitHubActor,
 	GitHubLabel,
+	IssueComment,
 	IssueDetail,
 	IssueSummary,
 	MyIssuesResult,
 	MyPullsResult,
 	PullComment,
 	PullDetail,
+	PullStatus,
 	PullSummary,
 	RepositoryRef,
 	UserRepoSummary,
@@ -1065,4 +1067,169 @@ export const getIssueFromRepo = createServerFn({ method: "GET" })
 				return mapIssueDetail(issue, buildRepositoryRef(data.owner, data.repo));
 			},
 		});
+	});
+
+export const getIssueComments = createServerFn({ method: "GET" })
+	.inputValidator(identityValidator<IssueFromRepoInput>)
+	.handler(async ({ data }): Promise<IssueComment[]> => {
+		const context = await getGitHubContext();
+		if (!context) {
+			return [];
+		}
+
+		type RawIssueComment = Awaited<
+			ReturnType<GitHubClient["rest"]["issues"]["listComments"]>
+		>["data"][number];
+
+		return getCachedGitHubRequest<RawIssueComment[], IssueComment[]>({
+			context,
+			resource: "issues.comments",
+			params: data,
+			freshForMs: githubCachePolicy.detail.staleTimeMs,
+			request: (headers) =>
+				context.octokit.rest.issues.listComments({
+					owner: data.owner,
+					repo: data.repo,
+					issue_number: data.issueNumber,
+					per_page: 30,
+					headers,
+				}),
+			mapData: (comments) =>
+				comments.map((c) => ({
+					id: c.id,
+					body: c.body ?? "",
+					createdAt: c.created_at,
+					author: c.user
+						? {
+								login: c.user.login,
+								avatarUrl: c.user.avatar_url,
+								url: c.user.html_url,
+								type: c.user.type ?? "User",
+							}
+						: null,
+				})),
+		});
+	});
+
+export const getPullStatus = createServerFn({ method: "GET" })
+	.inputValidator(identityValidator<PullFromRepoInput>)
+	.handler(async ({ data }): Promise<PullStatus | null> => {
+		const context = await getGitHubContext();
+		if (!context) {
+			return null;
+		}
+
+		const pullResponse = await context.octokit.rest.pulls.get({
+			owner: data.owner,
+			repo: data.repo,
+			pull_number: data.pullNumber,
+		});
+		const pull = pullResponse.data;
+
+		const [reviewsResponse, checksResponse] = await Promise.all([
+			context.octokit.rest.pulls.listReviews({
+				owner: data.owner,
+				repo: data.repo,
+				pull_number: data.pullNumber,
+				per_page: 100,
+			}),
+			context.octokit.rest.checks
+				.listForRef({
+					owner: data.owner,
+					repo: data.repo,
+					ref: pull.head.sha,
+					per_page: 100,
+				})
+				.catch(() => null),
+		]);
+
+		const reviews = reviewsResponse.data;
+
+		const latestReviews = new Map<
+			string,
+			{ id: number; state: string; author: GitHubActor | null }
+		>();
+		for (const review of reviews) {
+			if (!review.user?.login) continue;
+			if (review.state === "COMMENTED") continue;
+			latestReviews.set(review.user.login, {
+				id: review.id,
+				state: review.state,
+				author: mapActor(review.user),
+			});
+		}
+
+		const checkRuns = checksResponse?.data.check_runs ?? [];
+		let passed = 0;
+		let failed = 0;
+		let pending = 0;
+		let skipped = 0;
+		for (const check of checkRuns) {
+			if (check.status !== "completed") {
+				pending += 1;
+			} else if (
+				check.conclusion === "success" ||
+				check.conclusion === "neutral"
+			) {
+				passed += 1;
+			} else if (check.conclusion === "skipped") {
+				skipped += 1;
+			} else {
+				failed += 1;
+			}
+		}
+
+		let behindBy: number | null = null;
+		try {
+			const comparison = await context.octokit.rest.repos.compareCommits({
+				owner: data.owner,
+				repo: data.repo,
+				base: pull.head.sha,
+				head: pull.base.ref,
+			});
+			behindBy = comparison.data.ahead_by;
+		} catch {
+			behindBy = null;
+		}
+
+		const permissions = pull.base.repo.permissions;
+		const canUpdateBranch =
+			permissions?.push === true || permissions?.admin === true;
+
+		return {
+			reviews: Array.from(latestReviews.values()),
+			checks: {
+				total: checkRuns.length,
+				passed,
+				failed,
+				pending,
+				skipped,
+			},
+			mergeable: pull.mergeable,
+			mergeableState:
+				typeof pull.mergeable_state === "string" ? pull.mergeable_state : null,
+			behindBy,
+			baseRefName: pull.base.ref,
+			canUpdateBranch,
+		};
+	});
+
+export const updatePullBranch = createServerFn({ method: "POST" })
+	.inputValidator(identityValidator<PullFromRepoInput>)
+	.handler(async ({ data }): Promise<boolean> => {
+		const context = await getGitHubContext();
+		if (!context) {
+			return false;
+		}
+
+		try {
+			await context.octokit.rest.pulls.updateBranch({
+				owner: data.owner,
+				repo: data.repo,
+				pull_number: data.pullNumber,
+			});
+			return true;
+		} catch {
+			return false;
+		}
 	});
