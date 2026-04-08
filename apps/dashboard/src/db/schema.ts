@@ -1,4 +1,4 @@
-import { integer, sqliteTable, text } from "drizzle-orm/sqlite-core";
+import { index, integer, sqliteTable, text } from "drizzle-orm/sqlite-core";
 
 export const user = sqliteTable("user", {
 	id: text("id").primaryKey(),
@@ -53,3 +53,29 @@ export const verification = sqliteTable("verification", {
 	createdAt: integer("created_at", { mode: "timestamp" }),
 	updatedAt: integer("updated_at", { mode: "timestamp" }),
 });
+
+export const githubResponseCache = sqliteTable(
+	"github_response_cache",
+	{
+		cacheKey: text("cache_key").primaryKey(),
+		userId: text("user_id")
+			.notNull()
+			.references(() => user.id, { onDelete: "cascade" }),
+		resource: text("resource").notNull(),
+		paramsJson: text("params_json").notNull(),
+		etag: text("etag"),
+		lastModified: text("last_modified"),
+		payloadJson: text("payload_json").notNull(),
+		fetchedAt: integer("fetched_at").notNull(),
+		freshUntil: integer("fresh_until").notNull(),
+		rateLimitRemaining: integer("rate_limit_remaining"),
+		rateLimitReset: integer("rate_limit_reset"),
+		statusCode: integer("status_code").notNull(),
+	},
+	(table) => ({
+		userResourceIdx: index("github_response_cache_user_resource_idx").on(
+			table.userId,
+			table.resource,
+		),
+	}),
+);

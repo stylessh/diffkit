@@ -1,3 +1,4 @@
+import "@tanstack/react-start/server-only";
 import { env } from "cloudflare:workers";
 import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";

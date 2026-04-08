@@ -12,6 +12,9 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as ProtectedRouteImport } from './routes/_protected'
 import { Route as ProtectedIndexRouteImport } from './routes/_protected/index'
+import { Route as ProtectedReviewsRouteImport } from './routes/_protected/reviews'
+import { Route as ProtectedPullRequestsRouteImport } from './routes/_protected/pull-requests'
+import { Route as ProtectedIssuesRouteImport } from './routes/_protected/issues'
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
 
 const LoginRoute = LoginRouteImport.update({
@@ -28,6 +31,21 @@ const ProtectedIndexRoute = ProtectedIndexRouteImport.update({
   path: '/',
   getParentRoute: () => ProtectedRoute,
 } as any)
+const ProtectedReviewsRoute = ProtectedReviewsRouteImport.update({
+  id: '/reviews',
+  path: '/reviews',
+  getParentRoute: () => ProtectedRoute,
+} as any)
+const ProtectedPullRequestsRoute = ProtectedPullRequestsRouteImport.update({
+  id: '/pull-requests',
+  path: '/pull-requests',
+  getParentRoute: () => ProtectedRoute,
+} as any)
+const ProtectedIssuesRoute = ProtectedIssuesRouteImport.update({
+  id: '/issues',
+  path: '/issues',
+  getParentRoute: () => ProtectedRoute,
+} as any)
 const ApiAuthSplatRoute = ApiAuthSplatRouteImport.update({
   id: '/api/auth/$',
   path: '/api/auth/$',
@@ -37,10 +55,16 @@ const ApiAuthSplatRoute = ApiAuthSplatRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof ProtectedIndexRoute
   '/login': typeof LoginRoute
+  '/issues': typeof ProtectedIssuesRoute
+  '/pull-requests': typeof ProtectedPullRequestsRoute
+  '/reviews': typeof ProtectedReviewsRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
 }
 export interface FileRoutesByTo {
   '/login': typeof LoginRoute
+  '/issues': typeof ProtectedIssuesRoute
+  '/pull-requests': typeof ProtectedPullRequestsRoute
+  '/reviews': typeof ProtectedReviewsRoute
   '/': typeof ProtectedIndexRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
 }
@@ -48,15 +72,32 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/_protected': typeof ProtectedRouteWithChildren
   '/login': typeof LoginRoute
+  '/_protected/issues': typeof ProtectedIssuesRoute
+  '/_protected/pull-requests': typeof ProtectedPullRequestsRoute
+  '/_protected/reviews': typeof ProtectedReviewsRoute
   '/_protected/': typeof ProtectedIndexRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/login' | '/api/auth/$'
+  fullPaths:
+    | '/'
+    | '/login'
+    | '/issues'
+    | '/pull-requests'
+    | '/reviews'
+    | '/api/auth/$'
   fileRoutesByTo: FileRoutesByTo
-  to: '/login' | '/' | '/api/auth/$'
-  id: '__root__' | '/_protected' | '/login' | '/_protected/' | '/api/auth/$'
+  to: '/login' | '/issues' | '/pull-requests' | '/reviews' | '/' | '/api/auth/$'
+  id:
+    | '__root__'
+    | '/_protected'
+    | '/login'
+    | '/_protected/issues'
+    | '/_protected/pull-requests'
+    | '/_protected/reviews'
+    | '/_protected/'
+    | '/api/auth/$'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -88,6 +129,27 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ProtectedIndexRouteImport
       parentRoute: typeof ProtectedRoute
     }
+    '/_protected/reviews': {
+      id: '/_protected/reviews'
+      path: '/reviews'
+      fullPath: '/reviews'
+      preLoaderRoute: typeof ProtectedReviewsRouteImport
+      parentRoute: typeof ProtectedRoute
+    }
+    '/_protected/pull-requests': {
+      id: '/_protected/pull-requests'
+      path: '/pull-requests'
+      fullPath: '/pull-requests'
+      preLoaderRoute: typeof ProtectedPullRequestsRouteImport
+      parentRoute: typeof ProtectedRoute
+    }
+    '/_protected/issues': {
+      id: '/_protected/issues'
+      path: '/issues'
+      fullPath: '/issues'
+      preLoaderRoute: typeof ProtectedIssuesRouteImport
+      parentRoute: typeof ProtectedRoute
+    }
     '/api/auth/$': {
       id: '/api/auth/$'
       path: '/api/auth/$'
@@ -99,10 +161,16 @@ declare module '@tanstack/react-router' {
 }
 
 interface ProtectedRouteChildren {
+  ProtectedIssuesRoute: typeof ProtectedIssuesRoute
+  ProtectedPullRequestsRoute: typeof ProtectedPullRequestsRoute
+  ProtectedReviewsRoute: typeof ProtectedReviewsRoute
   ProtectedIndexRoute: typeof ProtectedIndexRoute
 }
 
 const ProtectedRouteChildren: ProtectedRouteChildren = {
+  ProtectedIssuesRoute: ProtectedIssuesRoute,
+  ProtectedPullRequestsRoute: ProtectedPullRequestsRoute,
+  ProtectedReviewsRoute: ProtectedReviewsRoute,
   ProtectedIndexRoute: ProtectedIndexRoute,
 }
 

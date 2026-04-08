@@ -2,8 +2,8 @@ import { GitHubLogo } from "@quickhub/icons";
 import { Button } from "@quickhub/ui/components/button";
 import { Logo } from "@quickhub/ui/components/logo";
 import { createFileRoute, redirect } from "@tanstack/react-router";
-import { signIn } from "#/lib/auth.client";
 import { getSession } from "#/lib/auth.functions";
+import { signInWithGitHub } from "#/lib/auth-actions";
 
 export const Route = createFileRoute("/login")({
 	beforeLoad: async () => {
@@ -42,7 +42,7 @@ function LoginPage() {
 								className="space-y-3"
 								onSubmit={(event) => {
 									event.preventDefault();
-									void signIn.social({ provider: "github" });
+									void signInWithGitHub();
 								}}
 							>
 								<Button

@@ -1,6 +1,6 @@
+import "@tanstack/react-start/server-only";
 import { and, eq } from "drizzle-orm";
-import type { Octokit as OctokitType } from "octokit";
-import { Octokit } from "octokit";
+import { Octokit, type Octokit as OctokitType } from "octokit";
 import { getDb } from "../db";
 import { account } from "../db/schema";
 

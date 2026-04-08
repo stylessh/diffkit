@@ -1,7 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
-import { getRequest } from "@tanstack/react-start/server";
-import { getAuth } from "./auth";
-import { getGitHubClient } from "./github";
+import { type Octokit as OctokitType, RequestError } from "octokit";
 import type {
 	GitHubActor,
 	GitHubLabel,
@@ -14,11 +12,33 @@ import type {
 	RepositoryRef,
 	UserRepoSummary,
 } from "./github.types";
+import {
+	createGitHubResponseMetadata,
+	type GitHubConditionalHeaders,
+	type GitHubFetchResult,
+	getOrRevalidateGitHubResource,
+} from "./github-cache";
+import { githubCachePolicy } from "./github-cache-policy";
 
-type GitHubClient = Awaited<ReturnType<typeof getGitHubClient>>;
+type GitHubClient = OctokitType;
+type AuthSession = NonNullable<Awaited<ReturnType<typeof getSession>>>;
+type GitHubContext = {
+	session: AuthSession;
+	octokit: GitHubClient;
+};
+
+type GitHubRestResponse<TData> = {
+	data: TData;
+	headers: Record<string, unknown>;
+	status: number;
+};
+
 type SearchItem = Awaited<
 	ReturnType<GitHubClient["rest"]["search"]["issuesAndPullRequests"]>
 >["data"]["items"][number];
+type SearchResult = Awaited<
+	ReturnType<GitHubClient["rest"]["search"]["issuesAndPullRequests"]>
+>["data"];
 type AuthenticatedUserRepo = Awaited<
 	ReturnType<GitHubClient["rest"]["repos"]["listForAuthenticatedUser"]>
 >["data"][number];
@@ -59,7 +79,7 @@ type PullSearchRole =
 
 type IssueSearchRole = "all" | "assigned" | "author" | "mentioned";
 
-type PullsFromUserInput = {
+export type PullsFromUserInput = {
 	username?: string;
 	state?: RepoState;
 	page?: number;
@@ -69,7 +89,7 @@ type PullsFromUserInput = {
 	repo?: string;
 };
 
-type IssuesFromUserInput = {
+export type IssuesFromUserInput = {
 	username?: string;
 	state?: RepoState;
 	page?: number;
@@ -79,7 +99,7 @@ type IssuesFromUserInput = {
 	repo?: string;
 };
 
-type PullsFromRepoInput = {
+export type PullsFromRepoInput = {
 	owner: string;
 	repo: string;
 	state?: RepoState;
@@ -89,13 +109,13 @@ type PullsFromRepoInput = {
 	direction?: "asc" | "desc";
 };
 
-type PullFromRepoInput = {
+export type PullFromRepoInput = {
 	owner: string;
 	repo: string;
 	pullNumber: number;
 };
 
-type IssuesFromRepoInput = {
+export type IssuesFromRepoInput = {
 	owner: string;
 	repo: string;
 	state?: RepoState;
@@ -105,11 +125,31 @@ type IssuesFromRepoInput = {
 	direction?: "asc" | "desc";
 };
 
-type IssueFromRepoInput = {
+export type IssueFromRepoInput = {
 	owner: string;
 	repo: string;
 	issueNumber: number;
 };
+
+const myPullRoleDefinitions = [
+	{ key: "reviewRequested", role: "review-requested" },
+	{ key: "assigned", role: "assigned" },
+	{ key: "authored", role: "author" },
+	{ key: "mentioned", role: "mentioned" },
+	{ key: "involved", role: "involved" },
+] as const satisfies Array<{
+	key: keyof MyPullsResult;
+	role: PullSearchRole;
+}>;
+
+const myIssueRoleDefinitions = [
+	{ key: "assigned", role: "assigned" },
+	{ key: "authored", role: "author" },
+	{ key: "mentioned", role: "mentioned" },
+] as const satisfies Array<{
+	key: keyof MyIssuesResult;
+	role: IssueSearchRole;
+}>;
 
 function clampPerPage(value: number | undefined, fallback = 30) {
 	if (!Number.isFinite(value)) {
@@ -313,13 +353,43 @@ function mapIssueDetail(
 	};
 }
 
+function mapPullSearchItems(items: SearchItem[]) {
+	return items
+		.map((item) => {
+			const repository = parseRepositoryRef(item.repository_url);
+			if (!repository) {
+				return null;
+			}
+
+			return mapPullSummary(item, repository);
+		})
+		.filter((item): item is PullSummary => Boolean(item));
+}
+
+function mapIssueSearchItems(items: SearchItem[]) {
+	return items
+		.map((item) => {
+			const repository = parseRepositoryRef(item.repository_url);
+			if (!repository) {
+				return null;
+			}
+
+			return mapIssueSummary(item, repository);
+		})
+		.filter((item): item is IssueSummary => Boolean(item));
+}
+
 async function getSession() {
+	const [{ getRequest }, { getAuth }] = await Promise.all([
+		import("@tanstack/react-start/server"),
+		import("./auth.server"),
+	]);
 	const request = getRequest();
 	const auth = getAuth();
 	return auth.api.getSession({ headers: request.headers });
 }
 
-async function getGitHubContext() {
+async function getGitHubContext(): Promise<GitHubContext | null> {
 	const session = await getSession();
 	if (!session) {
 		return null;
@@ -327,22 +397,10 @@ async function getGitHubContext() {
 
 	return {
 		session,
-		octokit: await getGitHubClient(session.user.id),
+		octokit: await (await import("./github.server")).getGitHubClient(
+			session.user.id,
+		),
 	};
-}
-
-async function getViewer(octokit: GitHubClient): Promise<AuthenticatedUser> {
-	const { data } = await octokit.rest.users.getAuthenticated();
-	return data;
-}
-
-async function resolveUsername(octokit: GitHubClient, username?: string) {
-	if (username) {
-		return username;
-	}
-
-	const viewer = await getViewer(octokit);
-	return viewer.login;
 }
 
 function buildUserSearchQuery({
@@ -378,6 +436,223 @@ function buildUserSearchQuery({
 	return `is:${itemType}${stateFilter}${scopeFilter}${roleFilter} archived:false`;
 }
 
+function buildConditionalHeaders(conditionals: GitHubConditionalHeaders) {
+	const headers: Record<string, string> = {};
+
+	if (conditionals.etag) {
+		headers["if-none-match"] = conditionals.etag;
+	}
+
+	if (conditionals.lastModified) {
+		headers["if-modified-since"] = conditionals.lastModified;
+	}
+
+	return headers;
+}
+
+function normalizeResponseHeaders(headers: Record<string, unknown>) {
+	return Object.entries(headers).reduce<Record<string, string | null>>(
+		(accumulator, [key, value]) => {
+			if (typeof value === "string") {
+				accumulator[key.toLowerCase()] = value;
+			} else if (typeof value === "number") {
+				accumulator[key.toLowerCase()] = String(value);
+			} else if (Array.isArray(value) && typeof value[0] === "string") {
+				accumulator[key.toLowerCase()] = value[0];
+			}
+
+			return accumulator;
+		},
+		{},
+	);
+}
+
+async function executeGitHubRequest<TData>(
+	request: (
+		headers: Record<string, string>,
+	) => Promise<GitHubRestResponse<TData>>,
+	conditionals: GitHubConditionalHeaders,
+): Promise<GitHubFetchResult<TData>> {
+	try {
+		const response = await request(buildConditionalHeaders(conditionals));
+
+		return {
+			kind: "success",
+			data: response.data,
+			metadata: createGitHubResponseMetadata(
+				response.status,
+				normalizeResponseHeaders(response.headers),
+			),
+		};
+	} catch (error) {
+		if (
+			error instanceof RequestError &&
+			error.status === 304 &&
+			error.response?.headers
+		) {
+			return {
+				kind: "not-modified",
+				metadata: createGitHubResponseMetadata(
+					304,
+					normalizeResponseHeaders(
+						error.response.headers as Record<string, unknown>,
+					),
+				),
+			};
+		}
+
+		throw error;
+	}
+}
+
+async function getCachedGitHubRequest<TGitHubData, TResult>({
+	context,
+	resource,
+	params,
+	freshForMs,
+	request,
+	mapData,
+}: {
+	context: GitHubContext;
+	resource: string;
+	params: unknown;
+	freshForMs: number;
+	request: (
+		headers: Record<string, string>,
+	) => Promise<GitHubRestResponse<TGitHubData>>;
+	mapData: (data: TGitHubData) => TResult;
+}) {
+	return getOrRevalidateGitHubResource<TResult>({
+		userId: context.session.user.id,
+		resource,
+		params,
+		freshForMs,
+		fetcher: async (conditionals) => {
+			const result = await executeGitHubRequest(request, conditionals);
+
+			if (result.kind === "not-modified") {
+				return result;
+			}
+
+			return {
+				...result,
+				data: mapData(result.data),
+			};
+		},
+	});
+}
+
+async function runWithConcurrency<TValue>(
+	tasks: Array<() => Promise<TValue>>,
+	concurrency = 2,
+) {
+	const results = new Array<TValue>(tasks.length);
+	let nextIndex = 0;
+
+	const workers = Array.from(
+		{ length: Math.min(Math.max(concurrency, 1), tasks.length) },
+		() =>
+			(async () => {
+				while (nextIndex < tasks.length) {
+					const taskIndex = nextIndex;
+					nextIndex += 1;
+					results[taskIndex] = await tasks[taskIndex]();
+				}
+			})(),
+	);
+
+	await Promise.all(workers);
+
+	return results;
+}
+
+async function getViewer(context: GitHubContext): Promise<AuthenticatedUser> {
+	return getCachedGitHubRequest<AuthenticatedUser, AuthenticatedUser>({
+		context,
+		resource: "viewer",
+		params: null,
+		freshForMs: githubCachePolicy.viewer.staleTimeMs,
+		request: (headers) =>
+			context.octokit.rest.users.getAuthenticated({ headers }),
+		mapData: (viewer) => viewer,
+	});
+}
+
+async function resolveUsername(context: GitHubContext, username?: string) {
+	if (username) {
+		return username;
+	}
+
+	const viewer = await getViewer(context);
+	return viewer.login;
+}
+
+async function getMyPullSlice({
+	context,
+	username,
+	roleKey,
+	role,
+}: {
+	context: GitHubContext;
+	username: string;
+	roleKey: keyof MyPullsResult;
+	role: PullSearchRole;
+}) {
+	return getCachedGitHubRequest<SearchResult, PullSummary[]>({
+		context,
+		resource: `pulls.mine.${roleKey}`,
+		params: { username, role },
+		freshForMs: githubCachePolicy.list.staleTimeMs,
+		request: (headers) =>
+			context.octokit.rest.search.issuesAndPullRequests({
+				q: buildUserSearchQuery({
+					itemType: "pr",
+					role,
+					state: "open",
+					username,
+				}),
+				per_page: 30,
+				sort: "updated",
+				order: "desc",
+				headers,
+			}),
+		mapData: (result) => mapPullSearchItems(result.items),
+	});
+}
+
+async function getMyIssueSlice({
+	context,
+	username,
+	roleKey,
+	role,
+}: {
+	context: GitHubContext;
+	username: string;
+	roleKey: keyof MyIssuesResult;
+	role: IssueSearchRole;
+}) {
+	return getCachedGitHubRequest<SearchResult, IssueSummary[]>({
+		context,
+		resource: `issues.mine.${roleKey}`,
+		params: { username, role },
+		freshForMs: githubCachePolicy.list.staleTimeMs,
+		request: (headers) =>
+			context.octokit.rest.search.issuesAndPullRequests({
+				q: buildUserSearchQuery({
+					itemType: "issue",
+					role,
+					state: "open",
+					username,
+				}),
+				per_page: 30,
+				sort: "updated",
+				order: "desc",
+				headers,
+			}),
+		mapData: (result) => mapIssueSearchItems(result.items),
+	});
+}
+
 function identityValidator<TInput>(data: TInput) {
 	return data;
 }
@@ -389,7 +664,7 @@ export const getGitHubViewer = createServerFn({ method: "GET" }).handler(
 			return null;
 		}
 
-		const viewer = await getViewer(context.octokit);
+		const viewer = await getViewer(context);
 
 		return {
 			id: viewer.id,
@@ -408,25 +683,33 @@ export const getUserRepos = createServerFn({ method: "GET" }).handler(
 			return [];
 		}
 
-		const { data } = await context.octokit.rest.repos.listForAuthenticatedUser({
-			sort: "updated",
-			per_page: 10,
+		return getCachedGitHubRequest<AuthenticatedUserRepo[], UserRepoSummary[]>({
+			context,
+			resource: "repos.list",
+			params: { sort: "updated", perPage: 10 },
+			freshForMs: githubCachePolicy.reposList.staleTimeMs,
+			request: (headers) =>
+				context.octokit.rest.repos.listForAuthenticatedUser({
+					sort: "updated",
+					per_page: 10,
+					headers,
+				}),
+			mapData: (repos) =>
+				repos.map(
+					(repo: AuthenticatedUserRepo): UserRepoSummary => ({
+						id: repo.id,
+						name: repo.name,
+						fullName: repo.full_name,
+						description: repo.description,
+						stars: repo.stargazers_count,
+						language: repo.language,
+						updatedAt: repo.updated_at,
+						isPrivate: repo.private,
+						url: repo.html_url,
+						owner: repo.owner.login,
+					}),
+				),
 		});
-
-		return data.map(
-			(repo: AuthenticatedUserRepo): UserRepoSummary => ({
-				id: repo.id,
-				name: repo.name,
-				fullName: repo.full_name,
-				description: repo.description,
-				stars: repo.stargazers_count,
-				language: repo.language,
-				updatedAt: repo.updated_at,
-				isPrivate: repo.private,
-				url: repo.html_url,
-				owner: repo.owner.login,
-			}),
-		);
 	},
 );
 
@@ -443,87 +726,33 @@ export const getMyPulls = createServerFn({ method: "GET" }).handler(
 			};
 		}
 
-		const viewer = await getViewer(context.octokit);
-		const perPage = 30;
+		const viewer = await getViewer(context);
+		const slices = await runWithConcurrency(
+			myPullRoleDefinitions.map((definition) => async () => ({
+				key: definition.key,
+				data: await getMyPullSlice({
+					context,
+					username: viewer.login,
+					roleKey: definition.key,
+					role: definition.role,
+				}),
+			})),
+			2,
+		);
 
-		const [reviewRequested, assigned, authored, mentioned, involved] =
-			await Promise.all([
-				context.octokit.rest.search.issuesAndPullRequests({
-					q: buildUserSearchQuery({
-						itemType: "pr",
-						role: "review-requested",
-						state: "open",
-						username: viewer.login,
-					}),
-					per_page: perPage,
-					sort: "updated",
-					order: "desc",
-				}),
-				context.octokit.rest.search.issuesAndPullRequests({
-					q: buildUserSearchQuery({
-						itemType: "pr",
-						role: "assigned",
-						state: "open",
-						username: viewer.login,
-					}),
-					per_page: perPage,
-					sort: "updated",
-					order: "desc",
-				}),
-				context.octokit.rest.search.issuesAndPullRequests({
-					q: buildUserSearchQuery({
-						itemType: "pr",
-						role: "author",
-						state: "open",
-						username: viewer.login,
-					}),
-					per_page: perPage,
-					sort: "updated",
-					order: "desc",
-				}),
-				context.octokit.rest.search.issuesAndPullRequests({
-					q: buildUserSearchQuery({
-						itemType: "pr",
-						role: "mentioned",
-						state: "open",
-						username: viewer.login,
-					}),
-					per_page: perPage,
-					sort: "updated",
-					order: "desc",
-				}),
-				context.octokit.rest.search.issuesAndPullRequests({
-					q: buildUserSearchQuery({
-						itemType: "pr",
-						role: "involved",
-						state: "open",
-						username: viewer.login,
-					}),
-					per_page: perPage,
-					sort: "updated",
-					order: "desc",
-				}),
-			]);
-
-		const mapItems = (items: SearchItem[]) =>
-			items
-				.map((item) => {
-					const repository = parseRepositoryRef(item.repository_url);
-					if (!repository) {
-						return null;
-					}
-
-					return mapPullSummary(item, repository);
-				})
-				.filter((item): item is PullSummary => Boolean(item));
-
-		return {
-			reviewRequested: mapItems(reviewRequested.data.items),
-			assigned: mapItems(assigned.data.items),
-			authored: mapItems(authored.data.items),
-			mentioned: mapItems(mentioned.data.items),
-			involved: mapItems(involved.data.items),
-		};
+		return slices.reduce<MyPullsResult>(
+			(accumulator, slice) => {
+				accumulator[slice.key] = slice.data;
+				return accumulator;
+			},
+			{
+				reviewRequested: [],
+				assigned: [],
+				authored: [],
+				mentioned: [],
+				involved: [],
+			},
+		);
 	},
 );
 
@@ -535,34 +764,39 @@ export const getPullsFromUser = createServerFn({ method: "GET" })
 			return [];
 		}
 
-		const username = await resolveUsername(context.octokit, data.username);
-		const { items } = (
-			await context.octokit.rest.search.issuesAndPullRequests({
-				q: buildUserSearchQuery({
-					itemType: "pr",
-					role: data.role ?? "author",
-					state: data.state ?? "open",
-					username,
-					owner: data.owner,
-					repo: data.repo,
-				}),
+		const username = await resolveUsername(context, data.username);
+
+		return getCachedGitHubRequest<SearchResult, PullSummary[]>({
+			context,
+			resource: "pulls.user",
+			params: {
+				username,
+				state: data.state ?? "open",
 				page: clampPage(data.page),
-				per_page: clampPerPage(data.perPage),
-				sort: "updated",
-				order: "desc",
-			})
-		).data;
-
-		return items
-			.map((item) => {
-				const repository = parseRepositoryRef(item.repository_url);
-				if (!repository) {
-					return null;
-				}
-
-				return mapPullSummary(item, repository);
-			})
-			.filter((item): item is PullSummary => Boolean(item));
+				perPage: clampPerPage(data.perPage),
+				role: data.role ?? "author",
+				owner: data.owner,
+				repo: data.repo,
+			},
+			freshForMs: githubCachePolicy.list.staleTimeMs,
+			request: (headers) =>
+				context.octokit.rest.search.issuesAndPullRequests({
+					q: buildUserSearchQuery({
+						itemType: "pr",
+						role: data.role ?? "author",
+						state: data.state ?? "open",
+						username,
+						owner: data.owner,
+						repo: data.repo,
+					}),
+					page: clampPage(data.page),
+					per_page: clampPerPage(data.perPage),
+					sort: "updated",
+					order: "desc",
+					headers,
+				}),
+			mapData: (result) => mapPullSearchItems(result.items),
+		});
 	});
 
 export const getPullsFromRepo = createServerFn({ method: "GET" })
@@ -573,18 +807,38 @@ export const getPullsFromRepo = createServerFn({ method: "GET" })
 			return [];
 		}
 
-		const repository = buildRepositoryRef(data.owner, data.repo);
-		const { data: pulls } = await context.octokit.rest.pulls.list({
-			owner: data.owner,
-			repo: data.repo,
-			state: data.state ?? "open",
-			page: clampPage(data.page),
-			per_page: clampPerPage(data.perPage),
-			sort: data.sort ?? "updated",
-			direction: data.direction ?? "desc",
+		return getCachedGitHubRequest<
+			Awaited<ReturnType<GitHubClient["rest"]["pulls"]["list"]>>["data"],
+			PullSummary[]
+		>({
+			context,
+			resource: "pulls.repo",
+			params: {
+				owner: data.owner,
+				repo: data.repo,
+				state: data.state ?? "open",
+				page: clampPage(data.page),
+				perPage: clampPerPage(data.perPage),
+				sort: data.sort ?? "updated",
+				direction: data.direction ?? "desc",
+			},
+			freshForMs: githubCachePolicy.list.staleTimeMs,
+			request: (headers) =>
+				context.octokit.rest.pulls.list({
+					owner: data.owner,
+					repo: data.repo,
+					state: data.state ?? "open",
+					page: clampPage(data.page),
+					per_page: clampPerPage(data.perPage),
+					sort: data.sort ?? "updated",
+					direction: data.direction ?? "desc",
+					headers,
+				}),
+			mapData: (pulls) =>
+				pulls.map((pull) =>
+					mapPullSummary(pull, buildRepositoryRef(data.owner, data.repo)),
+				),
 		});
-
-		return pulls.map((pull) => mapPullSummary(pull, repository));
 	});
 
 export const getPullFromRepo = createServerFn({ method: "GET" })
@@ -595,13 +849,21 @@ export const getPullFromRepo = createServerFn({ method: "GET" })
 			return null;
 		}
 
-		const { data: pull } = await context.octokit.rest.pulls.get({
-			owner: data.owner,
-			repo: data.repo,
-			pull_number: data.pullNumber,
+		return getCachedGitHubRequest<RepoPullDetail, PullDetail | null>({
+			context,
+			resource: "pulls.detail",
+			params: data,
+			freshForMs: githubCachePolicy.detail.staleTimeMs,
+			request: (headers) =>
+				context.octokit.rest.pulls.get({
+					owner: data.owner,
+					repo: data.repo,
+					pull_number: data.pullNumber,
+					headers,
+				}),
+			mapData: (pull) =>
+				mapPullDetail(pull, buildRepositoryRef(data.owner, data.repo)),
 		});
-
-		return mapPullDetail(pull, buildRepositoryRef(data.owner, data.repo));
 	});
 
 export const getMyIssues = createServerFn({ method: "GET" }).handler(
@@ -615,62 +877,31 @@ export const getMyIssues = createServerFn({ method: "GET" }).handler(
 			};
 		}
 
-		const viewer = await getViewer(context.octokit);
-		const perPage = 30;
-
-		const [assigned, authored, mentioned] = await Promise.all([
-			context.octokit.rest.search.issuesAndPullRequests({
-				q: buildUserSearchQuery({
-					itemType: "issue",
-					role: "assigned",
-					state: "open",
+		const viewer = await getViewer(context);
+		const slices = await runWithConcurrency(
+			myIssueRoleDefinitions.map((definition) => async () => ({
+				key: definition.key,
+				data: await getMyIssueSlice({
+					context,
 					username: viewer.login,
+					roleKey: definition.key,
+					role: definition.role,
 				}),
-				per_page: perPage,
-				sort: "updated",
-				order: "desc",
-			}),
-			context.octokit.rest.search.issuesAndPullRequests({
-				q: buildUserSearchQuery({
-					itemType: "issue",
-					role: "author",
-					state: "open",
-					username: viewer.login,
-				}),
-				per_page: perPage,
-				sort: "updated",
-				order: "desc",
-			}),
-			context.octokit.rest.search.issuesAndPullRequests({
-				q: buildUserSearchQuery({
-					itemType: "issue",
-					role: "mentioned",
-					state: "open",
-					username: viewer.login,
-				}),
-				per_page: perPage,
-				sort: "updated",
-				order: "desc",
-			}),
-		]);
+			})),
+			2,
+		);
 
-		const mapItems = (items: SearchItem[]) =>
-			items
-				.map((item) => {
-					const repository = parseRepositoryRef(item.repository_url);
-					if (!repository) {
-						return null;
-					}
-
-					return mapIssueSummary(item, repository);
-				})
-				.filter((item): item is IssueSummary => Boolean(item));
-
-		return {
-			assigned: mapItems(assigned.data.items),
-			authored: mapItems(authored.data.items),
-			mentioned: mapItems(mentioned.data.items),
-		};
+		return slices.reduce<MyIssuesResult>(
+			(accumulator, slice) => {
+				accumulator[slice.key] = slice.data;
+				return accumulator;
+			},
+			{
+				assigned: [],
+				authored: [],
+				mentioned: [],
+			},
+		);
 	},
 );
 
@@ -682,34 +913,39 @@ export const getIssuesFromUser = createServerFn({ method: "GET" })
 			return [];
 		}
 
-		const username = await resolveUsername(context.octokit, data.username);
-		const { items } = (
-			await context.octokit.rest.search.issuesAndPullRequests({
-				q: buildUserSearchQuery({
-					itemType: "issue",
-					role: data.role ?? "author",
-					state: data.state ?? "open",
-					username,
-					owner: data.owner,
-					repo: data.repo,
-				}),
+		const username = await resolveUsername(context, data.username);
+
+		return getCachedGitHubRequest<SearchResult, IssueSummary[]>({
+			context,
+			resource: "issues.user",
+			params: {
+				username,
+				state: data.state ?? "open",
 				page: clampPage(data.page),
-				per_page: clampPerPage(data.perPage),
-				sort: "updated",
-				order: "desc",
-			})
-		).data;
-
-		return items
-			.map((item) => {
-				const repository = parseRepositoryRef(item.repository_url);
-				if (!repository) {
-					return null;
-				}
-
-				return mapIssueSummary(item, repository);
-			})
-			.filter((item): item is IssueSummary => Boolean(item));
+				perPage: clampPerPage(data.perPage),
+				role: data.role ?? "author",
+				owner: data.owner,
+				repo: data.repo,
+			},
+			freshForMs: githubCachePolicy.list.staleTimeMs,
+			request: (headers) =>
+				context.octokit.rest.search.issuesAndPullRequests({
+					q: buildUserSearchQuery({
+						itemType: "issue",
+						role: data.role ?? "author",
+						state: data.state ?? "open",
+						username,
+						owner: data.owner,
+						repo: data.repo,
+					}),
+					page: clampPage(data.page),
+					per_page: clampPerPage(data.perPage),
+					sort: "updated",
+					order: "desc",
+					headers,
+				}),
+			mapData: (result) => mapIssueSearchItems(result.items),
+		});
 	});
 
 export const getIssuesFromRepo = createServerFn({ method: "GET" })
@@ -720,20 +956,42 @@ export const getIssuesFromRepo = createServerFn({ method: "GET" })
 			return [];
 		}
 
-		const repository = buildRepositoryRef(data.owner, data.repo);
-		const { data: issues } = await context.octokit.rest.issues.listForRepo({
-			owner: data.owner,
-			repo: data.repo,
-			state: data.state ?? "open",
-			page: clampPage(data.page),
-			per_page: clampPerPage(data.perPage),
-			sort: data.sort ?? "updated",
-			direction: data.direction ?? "desc",
+		return getCachedGitHubRequest<
+			Awaited<
+				ReturnType<GitHubClient["rest"]["issues"]["listForRepo"]>
+			>["data"],
+			IssueSummary[]
+		>({
+			context,
+			resource: "issues.repo",
+			params: {
+				owner: data.owner,
+				repo: data.repo,
+				state: data.state ?? "open",
+				page: clampPage(data.page),
+				perPage: clampPerPage(data.perPage),
+				sort: data.sort ?? "updated",
+				direction: data.direction ?? "desc",
+			},
+			freshForMs: githubCachePolicy.list.staleTimeMs,
+			request: (headers) =>
+				context.octokit.rest.issues.listForRepo({
+					owner: data.owner,
+					repo: data.repo,
+					state: data.state ?? "open",
+					page: clampPage(data.page),
+					per_page: clampPerPage(data.perPage),
+					sort: data.sort ?? "updated",
+					direction: data.direction ?? "desc",
+					headers,
+				}),
+			mapData: (issues) =>
+				issues
+					.filter((issue) => !issue.pull_request)
+					.map((issue) =>
+						mapIssueSummary(issue, buildRepositoryRef(data.owner, data.repo)),
+					),
 		});
-
-		return issues
-			.filter((issue) => !issue.pull_request)
-			.map((issue) => mapIssueSummary(issue, repository));
 	});
 
 export const getIssueFromRepo = createServerFn({ method: "GET" })
@@ -744,15 +1002,24 @@ export const getIssueFromRepo = createServerFn({ method: "GET" })
 			return null;
 		}
 
-		const { data: issue } = await context.octokit.rest.issues.get({
-			owner: data.owner,
-			repo: data.repo,
-			issue_number: data.issueNumber,
+		return getCachedGitHubRequest<RepoIssueDetail, IssueDetail | null>({
+			context,
+			resource: "issues.detail",
+			params: data,
+			freshForMs: githubCachePolicy.detail.staleTimeMs,
+			request: (headers) =>
+				context.octokit.rest.issues.get({
+					owner: data.owner,
+					repo: data.repo,
+					issue_number: data.issueNumber,
+					headers,
+				}),
+			mapData: (issue) => {
+				if (issue.pull_request) {
+					return null;
+				}
+
+				return mapIssueDetail(issue, buildRepositoryRef(data.owner, data.repo));
+			},
 		});
-
-		if (issue.pull_request) {
-			return null;
-		}
-
-		return mapIssueDetail(issue, buildRepositoryRef(data.owner, data.repo));
 	});

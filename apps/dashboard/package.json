@@ -24,6 +24,7 @@
 		"@quickhub/ui": "workspace:*",
 		"@tailwindcss/vite": "^4.1.18",
 		"@tanstack/react-devtools": "latest",
+		"@tanstack/react-query": "latest",
 		"@tanstack/react-router": "latest",
 		"@tanstack/react-router-devtools": "latest",
 		"@tanstack/react-router-ssr-query": "latest",

@@ -3,6 +3,11 @@
 	"root": false,
 	"extends": ["ultracite/biome/react", "ultracite/biome/vitest"],
 	"files": {
-		"includes": ["**", "!**/src/routeTree.gen.ts", "!**/src/styles.css"]
+		"includes": [
+			"**",
+			"!**/src/routeTree.gen.ts",
+			"!**/src/styles.css",
+			"!**/worker-configuration.d.ts"
+		]
 	}
 }

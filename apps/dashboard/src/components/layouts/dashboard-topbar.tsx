@@ -26,7 +26,7 @@ import {
 } from "@quickhub/ui/components/dropdown-menu";
 import { Link } from "@tanstack/react-router";
 import { useTheme } from "next-themes";
-import { signOut } from "#/lib/auth.client";
+import { signOutToLogin } from "#/lib/auth-actions";
 
 interface DashboardTopbarProps {
 	user: {
@@ -110,11 +110,9 @@ export function DashboardTopbar({ user }: DashboardTopbarProps) {
 					</DropdownMenuGroup>
 					<DropdownMenuSeparator />
 					<DropdownMenuItem
-						onSelect={() =>
-							signOut().then(() => {
-								window.location.href = "/login";
-							})
-						}
+						onSelect={() => {
+							void signOutToLogin();
+						}}
 					>
 						Sign out
 					</DropdownMenuItem>
