@@ -22,7 +22,9 @@ if (mode === "--local" && isWorktreeCheckout()) {
 	args.push("--persist-to", getSharedWranglerStatePath());
 }
 
-const result = spawnSync("pnpm", args, {
+const pnpmCommand = process.platform === "win32" ? "pnpm.cmd" : "pnpm";
+
+const result = spawnSync(pnpmCommand, args, {
 	stdio: "inherit",
 });
 
