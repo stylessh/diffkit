@@ -14,7 +14,7 @@
 		"components": "@/components",
 		"hooks": "@/hooks",
 		"lib": "@/lib",
-		"utils": "@quickhub/ui/lib/utils",
-		"ui": "@quickhub/ui/components"
+		"utils": "@diffkit/ui/lib/utils",
+		"ui": "@diffkit/ui/components"
 	}
 }

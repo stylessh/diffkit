@@ -5,9 +5,9 @@ import {
 	GitPullRequestDraftIcon,
 	GitPullRequestIcon,
 	ViewIcon,
-} from "@quickhub/icons";
-import { Markdown } from "@quickhub/ui/components/markdown";
-import { cn } from "@quickhub/ui/lib/utils";
+} from "@diffkit/icons";
+import { Markdown } from "@diffkit/ui/components/markdown";
+import { cn } from "@diffkit/ui/lib/utils";
 import { useQuery } from "@tanstack/react-query";
 import { Link, useRouter } from "@tanstack/react-router";
 import { useState } from "react";

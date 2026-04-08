@@ -1,5 +1,5 @@
-import { CommentIcon, IssuesIcon } from "@quickhub/icons";
-import { cn } from "@quickhub/ui/lib/utils";
+import { CommentIcon, IssuesIcon } from "@diffkit/icons";
+import { cn } from "@diffkit/ui/lib/utils";
 import { Link } from "@tanstack/react-router";
 import { formatRelativeTime } from "#/components/pulls/pull-request-row";
 import type { IssueSummary } from "#/lib/github.types";

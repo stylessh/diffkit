@@ -1,5 +1,5 @@
 {
-	"extends": "@quickhub/typescript-config/start-app.json",
+	"extends": "@diffkit/typescript-config/start-app.json",
 	"include": ["**/*.ts", "**/*.tsx"],
 	"compilerOptions": {
 		"baseUrl": ".",

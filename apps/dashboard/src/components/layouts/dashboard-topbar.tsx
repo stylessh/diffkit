@@ -8,9 +8,9 @@ import {
 	ReviewsIcon,
 	SunIcon,
 	SystemIcon,
-} from "@quickhub/icons";
-import { Avatar, AvatarFallback } from "@quickhub/ui/components/avatar";
-import { Button } from "@quickhub/ui/components/button";
+} from "@diffkit/icons";
+import { Avatar, AvatarFallback } from "@diffkit/ui/components/avatar";
+import { Button } from "@diffkit/ui/components/button";
 import {
 	DropdownMenu,
 	DropdownMenuContent,
@@ -20,7 +20,7 @@ import {
 	DropdownMenuSeparator,
 	DropdownMenuShortcut,
 	DropdownMenuTrigger,
-} from "@quickhub/ui/components/dropdown-menu";
+} from "@diffkit/ui/components/dropdown-menu";
 import { Link, useRouter } from "@tanstack/react-router";
 import { useTheme } from "next-themes";
 import { useCallback, useEffect, useRef, useState } from "react";

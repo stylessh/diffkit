@@ -14,7 +14,7 @@ export interface Tab {
 	deletions?: number;
 }
 
-export const TABS_STORAGE_KEY = "quickhub:tabs";
+export const TABS_STORAGE_KEY = "diffkit:tabs";
 
 export function readStoredTabs(): Tab[] {
 	if (typeof window === "undefined") return [];

@@ -1,4 +1,4 @@
 {
-  "extends": "@quickhub/typescript-config/react-library.json",
+  "extends": "@diffkit/typescript-config/react-library.json",
   "include": ["src"]
 }
