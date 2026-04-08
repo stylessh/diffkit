@@ -1,12 +1,3 @@
-import type { SelectedLineRange } from "@pierre/diffs";
-import type { DiffLineAnnotation } from "@pierre/diffs/react";
-
-// Lazy-load PatchDiff so @pierre/diffs (which bundles all shiki language grammars)
-// is excluded from the server bundle, keeping it under the CF Workers 3 MiB limit.
-const PatchDiff = lazy(() =>
-	import("@pierre/diffs/react").then((mod) => ({ default: mod.PatchDiff })),
-);
-
 import {
 	CloseIcon,
 	CommentIcon,
@@ -33,6 +24,8 @@ import {
 } from "@diffkit/ui/components/resizable";
 import { vercelDark, vercelLight } from "@diffkit/ui/lib/shiki-themes";
 import { cn } from "@diffkit/ui/lib/utils";
+import type { SelectedLineRange } from "@pierre/diffs";
+import type { DiffLineAnnotation } from "@pierre/diffs/react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useTheme } from "next-themes";
@@ -60,6 +53,20 @@ import type {
 } from "#/lib/github.types";
 import { useHasMounted } from "#/lib/use-has-mounted";
 import { useRegisterTab } from "#/lib/use-register-tab";
+
+// Lazy-load PatchDiff so @pierre/diffs (which bundles all shiki language grammars)
+// is excluded from the server bundle, keeping it under the CF Workers 3 MiB limit.
+// During SSR, return a no-op component to avoid stubbed-shiki runtime errors.
+const PatchDiff = lazy(() =>
+	import.meta.env.SSR
+		? Promise.resolve({
+				// biome-ignore lint: SSR placeholder for the lazy-loaded PatchDiff
+				default: (() => null) as any,
+			})
+		: import("@pierre/diffs/react").then((mod) => ({
+				default: mod.PatchDiff,
+			})),
+);
 
 // Register custom themes lazily on the client to avoid pulling shiki into the server bundle.
 // import.meta.env.SSR is statically replaced by Vite so the import is fully tree-shaken from SSR.
