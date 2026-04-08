@@ -7,6 +7,7 @@ import type {
 	IssueSummary,
 	MyIssuesResult,
 	MyPullsResult,
+	PullComment,
 	PullDetail,
 	PullSummary,
 	RepositoryRef,
@@ -863,6 +864,48 @@ export const getPullFromRepo = createServerFn({ method: "GET" })
 				}),
 			mapData: (pull) =>
 				mapPullDetail(pull, buildRepositoryRef(data.owner, data.repo)),
+		});
+	});
+
+export const getPullComments = createServerFn({ method: "GET" })
+	.inputValidator(identityValidator<PullFromRepoInput>)
+	.handler(async ({ data }): Promise<PullComment[]> => {
+		const context = await getGitHubContext();
+		if (!context) {
+			return [];
+		}
+
+		type IssueComment = Awaited<
+			ReturnType<GitHubClient["rest"]["issues"]["listComments"]>
+		>["data"][number];
+
+		return getCachedGitHubRequest<IssueComment[], PullComment[]>({
+			context,
+			resource: "pulls.comments",
+			params: data,
+			freshForMs: githubCachePolicy.detail.staleTimeMs,
+			request: (headers) =>
+				context.octokit.rest.issues.listComments({
+					owner: data.owner,
+					repo: data.repo,
+					issue_number: data.pullNumber,
+					per_page: 10,
+					headers,
+				}),
+			mapData: (comments) =>
+				comments.map((c) => ({
+					id: c.id,
+					body: c.body ?? "",
+					createdAt: c.created_at,
+					author: c.user
+						? {
+								login: c.user.login,
+								avatarUrl: c.user.avatar_url,
+								url: c.user.html_url,
+								type: c.user.type ?? "User",
+							}
+						: null,
+				})),
 		});
 	});
 

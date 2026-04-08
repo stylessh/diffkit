@@ -6,6 +6,7 @@ import {
 	getIssuesFromUser,
 	getMyIssues,
 	getMyPulls,
+	getPullComments,
 	getPullFromRepo,
 	getPullsFromRepo,
 	getPullsFromUser,
@@ -102,6 +103,8 @@ export const githubQueryKeys = {
 			["github", scope.userId, "pulls", "repo", input] as const,
 		detail: (scope: GitHubQueryScope, input: PullFromRepoQueryInput) =>
 			["github", scope.userId, "pulls", "detail", input] as const,
+		comments: (scope: GitHubQueryScope, input: PullFromRepoQueryInput) =>
+			["github", scope.userId, "pulls", "comments", input] as const,
 	},
 	issues: {
 		mine: (scope: GitHubQueryScope) =>
@@ -178,6 +181,19 @@ export function githubPullDetailQueryOptions(
 	return queryOptions({
 		queryKey: githubQueryKeys.pulls.detail(scope, input),
 		queryFn: () => getPullFromRepo({ data: input }),
+		staleTime: githubCachePolicy.detail.staleTimeMs,
+		gcTime: githubCachePolicy.detail.gcTimeMs,
+		meta: persistedMeta,
+	});
+}
+
+export function githubPullCommentsQueryOptions(
+	scope: GitHubQueryScope,
+	input: PullFromRepoQueryInput,
+) {
+	return queryOptions({
+		queryKey: githubQueryKeys.pulls.comments(scope, input),
+		queryFn: () => getPullComments({ data: input }),
 		staleTime: githubCachePolicy.detail.staleTimeMs,
 		gcTime: githubCachePolicy.detail.gcTimeMs,
 		meta: persistedMeta,

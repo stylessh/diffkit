@@ -97,7 +97,7 @@ export function DashboardTopbar({
 						type="button"
 						className="flex size-8 items-center justify-center rounded-full"
 					>
-						<Avatar className="size-7">
+						<Avatar className="size-7 border border-border">
 							{user.image && !avatarLoadFailed ? (
 								<img
 									src={user.image}

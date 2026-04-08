@@ -103,3 +103,10 @@ export type MyIssuesResult = {
 	authored: IssueSummary[];
 	mentioned: IssueSummary[];
 };
+
+export type PullComment = {
+	id: number;
+	body: string;
+	createdAt: string;
+	author: GitHubActor | null;
+};

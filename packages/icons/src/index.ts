@@ -3,12 +3,18 @@
 
 export {
   AddCircleHalfDotIcon as IssuesIcon,
+  BookOpen01Icon as BookOpenIcon,
   Bug01Icon as BugIcon,
   CheckListIcon as ReviewsIcon,
   CodeIcon,
+  Comment01Icon as CommentIcon,
   ComputerIcon as SystemIcon,
   DashboardSquare01Icon as DashboardIcon,
+  FolderLibraryIcon,
   GitBranchIcon,
+  GitMergeIcon,
+  GitPullRequestClosedIcon,
+  GitPullRequestDraftIcon,
   GitPullRequestIcon,
   Home01Icon as HomeIcon,
   InboxIcon,
@@ -17,6 +23,8 @@ export {
   Notification01Icon as NotificationIcon,
   Search01Icon as SearchIcon,
   Settings01Icon as SettingsIcon,
+  StarIcon,
   Sun01Icon as SunIcon,
+  ViewIcon,
 } from "@hugeicons/react";
 export { GitHubLogo, GitHubWordmarkLogo } from "./brand-logos";
