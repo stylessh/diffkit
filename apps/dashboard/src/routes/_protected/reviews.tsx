@@ -1,6 +1,9 @@
+import { ReviewsIcon } from "@quickhub/icons";
 import { useQuery } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
+import { useRef } from "react";
 import { DashboardContentLoading } from "#/components/layouts/dashboard-content-loading";
+import { PullRequestRow } from "#/components/pulls/pull-request-row";
 import { githubMyPullsQueryOptions } from "#/lib/github.query";
 import { useHasMounted } from "#/lib/use-has-mounted";
 
@@ -10,51 +13,57 @@ export const Route = createFileRoute("/_protected/reviews")({
 
 function ReviewsPage() {
 	const { user } = Route.useRouteContext();
+	const scope = { userId: user.id };
 	const hasMounted = useHasMounted();
+	const scrollContainerRef = useRef<HTMLDivElement>(null);
 	const query = useQuery({
-		...githubMyPullsQueryOptions({ userId: user.id }),
+		...githubMyPullsQueryOptions(scope),
 		enabled: hasMounted,
 	});
 
 	if (query.error) throw query.error;
 	if (query.data) {
-		const data = query.data;
+		const reviews = query.data.reviewRequested;
 
 		return (
-			<div className="flex h-full flex-col gap-6 overflow-auto p-6">
-				<header className="space-y-1">
-					<p className="text-sm font-medium text-muted-foreground">
-						Review requests stay warm in the shared pull request cache.
-					</p>
-					<h1 className="text-2xl font-semibold tracking-tight">Reviews</h1>
-				</header>
-
-				<section className="rounded-2xl border bg-background/70 p-4">
-					<div className="mb-3 flex items-center justify-between">
-						<h2 className="font-medium">Requested reviews</h2>
-						<span className="text-sm text-muted-foreground">
-							{data.reviewRequested.length}
-						</span>
-					</div>
-					{data.reviewRequested.length === 0 ? (
-						<p className="text-sm text-muted-foreground">
-							No review requests found.
-						</p>
-					) : (
-						<div className="space-y-3">
-							{data.reviewRequested.map((pull) => (
-								<div key={pull.id} className="rounded-xl border px-3 py-2">
-									<p className="text-sm font-medium">
-										#{pull.number} {pull.title}
-									</p>
-									<p className="text-sm text-muted-foreground">
-										{pull.repository.fullName}
-									</p>
-								</div>
-							))}
+			<div ref={scrollContainerRef} className="h-full overflow-auto py-10">
+				<div className="mx-auto grid max-w-7xl gap-14 px-6 xl:grid-cols-[minmax(15rem,18rem)_minmax(0,1fr)]">
+					<aside className="flex h-fit flex-col gap-5 xl:sticky xl:top-0">
+						<div className="flex flex-col gap-2">
+							<h1 className="text-2xl font-semibold tracking-tight">Reviews</h1>
+							<p className="text-sm text-muted-foreground">
+								<span className="tabular-nums">{reviews.length}</span> open
+								pulls requesting your review
+							</p>
 						</div>
-					)}
-				</section>
+
+						<div className="flex items-center justify-between gap-4 rounded-xl bg-surface-1 px-3.5 py-3">
+							<div className="flex min-w-0 items-center gap-2">
+								<div className="shrink-0 text-muted-foreground">
+									<ReviewsIcon size={15} strokeWidth={1.9} />
+								</div>
+								<p className="truncate text-sm font-medium">Review requested</p>
+							</div>
+							<p className="font-semibold tabular-nums leading-tight">
+								{reviews.length}
+							</p>
+						</div>
+					</aside>
+
+					<div className="flex flex-col gap-2">
+						{reviews.length === 0 ? (
+							<p className="px-3 py-6 text-center text-sm text-muted-foreground">
+								No review requests right now — you're all caught up.
+							</p>
+						) : (
+							<div className="flex flex-col gap-1">
+								{reviews.map((pr) => (
+									<PullRequestRow key={pr.id} pr={pr} scope={scope} />
+								))}
+							</div>
+						)}
+					</div>
+				</div>
 			</div>
 		);
 	}
