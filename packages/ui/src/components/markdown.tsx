@@ -35,13 +35,17 @@ const PRELOADED_LANGS: BundledLanguage[] = [
 	"toml",
 ];
 
-// Eagerly start loading the highlighter at module level
-const highlighterPromise: Promise<Highlighter> = import("shiki").then((shiki) =>
-	shiki.createHighlighter({
-		themes: [vercelLight, vercelDark],
-		langs: PRELOADED_LANGS,
-	}),
-);
+// Eagerly start loading the highlighter at module level (client-only to avoid
+// bundling all shiki language grammars into the server bundle for CF Workers).
+const highlighterPromise: Promise<Highlighter> =
+	typeof window !== "undefined"
+		? import("shiki").then((shiki) =>
+				shiki.createHighlighter({
+					themes: [vercelLight, vercelDark],
+					langs: PRELOADED_LANGS,
+				}),
+			)
+		: new Promise<Highlighter>(() => {}); // Never resolves on server → Suspense fallback
 
 const htmlCache = new Map<string, Promise<string>>();
 

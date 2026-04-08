@@ -1,8 +1,12 @@
 import type { SelectedLineRange } from "@pierre/diffs";
-// @pierre/diffs imports
-import { registerCustomTheme } from "@pierre/diffs";
 import type { DiffLineAnnotation } from "@pierre/diffs/react";
-import { PatchDiff } from "@pierre/diffs/react";
+
+// Lazy-load PatchDiff so @pierre/diffs (which bundles all shiki language grammars)
+// is excluded from the server bundle, keeping it under the CF Workers 3 MiB limit.
+const PatchDiff = lazy(() =>
+	import("@pierre/diffs/react").then((mod) => ({ default: mod.PatchDiff })),
+);
+
 import {
 	CloseIcon,
 	CommentIcon,
@@ -32,7 +36,15 @@ import { cn } from "@quickhub/ui/lib/utils";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useTheme } from "next-themes";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+	lazy,
+	Suspense,
+	useCallback,
+	useEffect,
+	useMemo,
+	useRef,
+	useState,
+} from "react";
 import { formatRelativeTime } from "#/components/pulls/pull-request-row";
 import { submitPullReview } from "#/lib/github.functions";
 import {
@@ -49,9 +61,14 @@ import type {
 import { useHasMounted } from "#/lib/use-has-mounted";
 import { useRegisterTab } from "#/lib/use-register-tab";
 
-// Register our custom themes with the diffs highlighter
-registerCustomTheme("vercel-light", () => Promise.resolve(vercelLight));
-registerCustomTheme("vercel-dark", () => Promise.resolve(vercelDark));
+// Register custom themes lazily on the client to avoid pulling shiki into the server bundle.
+// import.meta.env.SSR is statically replaced by Vite so the import is fully tree-shaken from SSR.
+if (!import.meta.env.SSR) {
+	import("@pierre/diffs").then(({ registerCustomTheme }) => {
+		registerCustomTheme("vercel-light", () => Promise.resolve(vercelLight));
+		registerCustomTheme("vercel-dark", () => Promise.resolve(vercelDark));
+	});
+}
 
 export const Route = createFileRoute("/_protected/$owner/$repo/review/$pullId")(
 	{
@@ -847,58 +864,63 @@ function FileDiffBlock({
 			/>
 			{!isCollapsed && (
 				<div className="px-2 pb-2">
-					<PatchDiff
-						patch={patchString}
-						options={diffOptions}
-						selectedLines={selectedLines}
-						lineAnnotations={allAnnotations}
-						renderAnnotation={(annotation) => {
-							const data = annotation.metadata;
-							if (!data) return null;
+					<Suspense>
+						<PatchDiff
+							patch={patchString}
+							options={diffOptions}
+							selectedLines={selectedLines}
+							lineAnnotations={allAnnotations}
+							renderAnnotation={(annotation) => {
+								const data = annotation.metadata as
+									| PendingComment
+									| PullReviewComment
+									| null;
+								if (!data) return null;
 
-							// Pending comment form
-							if ("body" in data && data.body === "__FORM__") {
-								const formData = data as PendingComment;
-								return (
-									<InlineCommentForm
-										isMultiLine={
-											formData.startLine != null &&
-											formData.startLine !== formData.line
-										}
-										startLine={formData.startLine}
-										endLine={formData.line}
-										onSubmit={(body) =>
-											onAddComment({
-												path: file.filename,
-												line: formData.line,
-												startLine: formData.startLine,
-												side: formData.side,
-												startSide: formData.startSide,
-												body,
-											})
-										}
-										onCancel={onCancelComment}
-									/>
-								);
-							}
+								// Pending comment form
+								if ("body" in data && data.body === "__FORM__") {
+									const formData = data as PendingComment;
+									return (
+										<InlineCommentForm
+											isMultiLine={
+												formData.startLine != null &&
+												formData.startLine !== formData.line
+											}
+											startLine={formData.startLine}
+											endLine={formData.line}
+											onSubmit={(body) =>
+												onAddComment({
+													path: file.filename,
+													line: formData.line,
+													startLine: formData.startLine,
+													side: formData.side,
+													startSide: formData.startSide,
+													body,
+												})
+											}
+											onCancel={onCancelComment}
+										/>
+									);
+								}
 
-							// Pending comment display
-							if ("body" in data && !("id" in data)) {
-								return (
-									<PendingCommentBubble comment={data as PendingComment} />
-								);
-							}
+								// Pending comment display
+								if ("body" in data && !("id" in data)) {
+									return (
+										<PendingCommentBubble comment={data as PendingComment} />
+									);
+								}
 
-							// Existing review comment
-							if ("id" in data) {
-								return (
-									<ReviewCommentBubble comment={data as PullReviewComment} />
-								);
-							}
+								// Existing review comment
+								if ("id" in data) {
+									return (
+										<ReviewCommentBubble comment={data as PullReviewComment} />
+									);
+								}
 
-							return null;
-						}}
-					/>
+								return null;
+							}}
+						/>
+					</Suspense>
 				</div>
 			)}
 		</div>
