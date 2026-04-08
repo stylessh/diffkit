@@ -15,7 +15,9 @@
 		"lint": "biome lint",
 		"check": "biome check",
 		"check-types": "tsc --noEmit",
-		"migrate": "node ../../scripts/run-d1-migrations.mjs quickhub-db",
+		"migrate": "pnpm run migrate:local",
+		"migrate:local": "node ../../scripts/run-d1-migrations.mjs quickhub-db --local",
+		"migrate:remote": "node ../../scripts/run-d1-migrations.mjs quickhub-db --remote",
 		"deploy": "pnpm run build && wrangler deploy"
 	},
 	"dependencies": {

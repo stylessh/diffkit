@@ -2,15 +2,23 @@ import { spawnSync } from "node:child_process";
 import { getSharedWranglerStatePath, isWorktreeCheckout } from "./shared-worktree-paths.mjs";
 
 const databaseName = process.argv[2];
+const mode = process.argv[3] ?? "--local";
 
 if (!databaseName) {
-	console.error("Usage: node scripts/run-d1-migrations.mjs <database-name>");
+	console.error(
+		"Usage: node scripts/run-d1-migrations.mjs <database-name> [--local|--remote]",
+	);
 	process.exit(1);
 }
 
-const args = ["exec", "wrangler", "d1", "migrations", "apply", databaseName, "--local"];
+if (mode !== "--local" && mode !== "--remote") {
+	console.error(`Unsupported mode "${mode}". Use --local or --remote.`);
+	process.exit(1);
+}
 
-if (isWorktreeCheckout()) {
+const args = ["exec", "wrangler", "d1", "migrations", "apply", databaseName, mode];
+
+if (mode === "--local" && isWorktreeCheckout()) {
 	args.push("--persist-to", getSharedWranglerStatePath());
 }
 
