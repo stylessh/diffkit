@@ -1,5 +1,5 @@
 @import "@fontsource-variable/inter";
-@import "@fontsource/geist-mono";
+@import "@fontsource-variable/geist-mono";
 @import "tailwindcss";
 
 @plugin "tailwindcss-animate";
@@ -14,7 +14,7 @@
 		"Inter Variable", "Inter", "Avenir Next", ui-sans-serif, system-ui,
 		sans-serif;
 	--font-mono:
-		"Geist Mono", "SF Mono", ui-monospace, "Cascadia Code", monospace;
+		"Geist Mono Variable", "SF Mono", ui-monospace, "Cascadia Code", monospace;
 	--text-sm: 0.875rem;
 	--text-sm--line-height: 1.45;
 	--text-base: 1rem;
@@ -71,6 +71,7 @@
 	--surface-0: oklch(0.967 0.001 286.375);
 	--surface-1: oklch(0.945 0.002 286.375);
 	--surface-2: oklch(0.925 0.003 286.375);
+	--color-green-500: oklch(0.62 0.194 149.214);
 }
 
 .dark {
@@ -163,6 +164,12 @@
 	body {
 		@apply bg-background text-foreground;
 		font-size: 13px;
+		font-weight: 450;
+	}
+
+	code,
+	.font-mono {
+		letter-spacing: -0.02em;
 		font-weight: 450;
 	}
 }
@@ -275,4 +282,34 @@ input::-webkit-search-cancel-button {
 
 input[type="search"] {
 	font-size: 16px;
+}
+
+/* Shiki syntax highlighting — dual theme support */
+.shiki,
+.shiki span {
+	color: var(--shiki-light);
+}
+
+.shiki {
+	background-color: var(--background);
+}
+
+.dark .shiki.shiki,
+.dark .shiki .line span {
+	color: var(--shiki-dark);
+}
+
+.dark .shiki.shiki {
+	background-color: var(--surface-1);
+}
+
+/* Label pills: darker in light mode, vibrant in dark mode */
+.label-pill {
+	background-color: color-mix(in srgb, var(--label-color) 30%, transparent);
+	color: color-mix(in srgb, var(--label-color) 50%, black);
+}
+
+.dark .label-pill {
+	background-color: color-mix(in srgb, var(--label-color) 20%, transparent);
+	color: var(--label-color);
 }

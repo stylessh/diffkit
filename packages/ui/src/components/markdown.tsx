@@ -1,8 +1,329 @@
+import { Suspense, use, useCallback, useRef, useState } from "react";
 import type { Components } from "react-markdown";
 import ReactMarkdown from "react-markdown";
 import rehypeRaw from "rehype-raw";
 import remarkGfm from "remark-gfm";
+import type { BundledLanguage, Highlighter, ThemeRegistrationRaw } from "shiki";
 import { cn } from "../lib/utils";
+
+const PRELOADED_LANGS: BundledLanguage[] = [
+	"javascript",
+	"typescript",
+	"jsx",
+	"tsx",
+	"json",
+	"html",
+	"css",
+	"bash",
+	"shell",
+	"python",
+	"go",
+	"rust",
+	"yaml",
+	"markdown",
+	"diff",
+	"sql",
+	"graphql",
+	"ruby",
+	"java",
+	"c",
+	"cpp",
+	"swift",
+	"kotlin",
+	"dockerfile",
+	"toml",
+];
+
+const vercelLightTokens: ThemeRegistrationRaw["tokenColors"] = [
+	{
+		scope: ["comment", "punctuation.definition.comment"],
+		settings: { foreground: "#666666", fontStyle: "italic" },
+	},
+	{
+		scope: ["keyword", "storage", "storage.type", "storage.modifier"],
+		settings: { foreground: "#c41562" },
+	},
+	{
+		scope: ["string", "string.quoted", "string.template", "string.regexp"],
+		settings: { foreground: "#107d32" },
+	},
+	{
+		scope: [
+			"constant",
+			"constant.numeric",
+			"constant.language",
+			"constant.character",
+		],
+		settings: { foreground: "#005ff2" },
+	},
+	{
+		scope: ["entity.name.function", "support.function", "meta.function-call"],
+		settings: { foreground: "#7d00cc" },
+	},
+	{
+		scope: [
+			"variable.parameter",
+			"meta.parameter",
+			"entity.name.variable.parameter",
+		],
+		settings: { foreground: "#aa4d00" },
+	},
+	{
+		scope: [
+			"variable.other.property",
+			"support.type.property-name",
+			"entity.name.tag",
+			"meta.object-literal.key",
+		],
+		settings: { foreground: "#005ff2" },
+	},
+	{
+		scope: [
+			"entity.name.type",
+			"entity.name.class",
+			"support.type",
+			"support.class",
+		],
+		settings: { foreground: "#005ff2" },
+	},
+	{
+		scope: ["punctuation", "meta.brace", "meta.bracket"],
+		settings: { foreground: "#171717" },
+	},
+	{
+		scope: ["variable", "variable.other"],
+		settings: { foreground: "#171717" },
+	},
+	{
+		scope: [
+			"entity.other.attribute-name",
+			"entity.other.attribute-name.jsx",
+			"entity.other.attribute-name.tsx",
+		],
+		settings: { foreground: "#aa4d00" },
+	},
+	{
+		scope: ["markup.deleted", "punctuation.definition.deleted"],
+		settings: { foreground: "#c41562" },
+	},
+	{
+		scope: ["markup.inserted", "punctuation.definition.inserted"],
+		settings: { foreground: "#107d32" },
+	},
+];
+
+const vercelDarkTokens: ThemeRegistrationRaw["tokenColors"] = [
+	{
+		scope: ["comment", "punctuation.definition.comment"],
+		settings: { foreground: "#a1a1a1", fontStyle: "italic" },
+	},
+	{
+		scope: ["keyword", "storage", "storage.type", "storage.modifier"],
+		settings: { foreground: "#ff4d8d" },
+	},
+	{
+		scope: ["string", "string.quoted", "string.template", "string.regexp"],
+		settings: { foreground: "#00ca50" },
+	},
+	{
+		scope: [
+			"constant",
+			"constant.numeric",
+			"constant.language",
+			"constant.character",
+		],
+		settings: { foreground: "#47a8ff" },
+	},
+	{
+		scope: ["entity.name.function", "support.function", "meta.function-call"],
+		settings: { foreground: "#c472fb" },
+	},
+	{
+		scope: [
+			"variable.parameter",
+			"meta.parameter",
+			"entity.name.variable.parameter",
+		],
+		settings: { foreground: "#ff9300" },
+	},
+	{
+		scope: [
+			"variable.other.property",
+			"support.type.property-name",
+			"entity.name.tag",
+			"meta.object-literal.key",
+		],
+		settings: { foreground: "#47a8ff" },
+	},
+	{
+		scope: [
+			"entity.name.type",
+			"entity.name.class",
+			"support.type",
+			"support.class",
+		],
+		settings: { foreground: "#47a8ff" },
+	},
+	{
+		scope: ["punctuation", "meta.brace", "meta.bracket"],
+		settings: { foreground: "#ededed" },
+	},
+	{
+		scope: ["variable", "variable.other"],
+		settings: { foreground: "#ededed" },
+	},
+	{
+		scope: [
+			"entity.other.attribute-name",
+			"entity.other.attribute-name.jsx",
+			"entity.other.attribute-name.tsx",
+		],
+		settings: { foreground: "#ff9300" },
+	},
+	{
+		scope: ["markup.deleted", "punctuation.definition.deleted"],
+		settings: { foreground: "#ff4d8d" },
+	},
+	{
+		scope: ["markup.inserted", "punctuation.definition.inserted"],
+		settings: { foreground: "#00ca50" },
+	},
+];
+
+const vercelLight: ThemeRegistrationRaw = {
+	name: "vercel-light",
+	type: "light",
+	settings: vercelLightTokens as ThemeRegistrationRaw["settings"],
+	colors: {
+		"editor.background": "#ffffff",
+		"editor.foreground": "#171717",
+	},
+	tokenColors: vercelLightTokens,
+};
+
+const vercelDark: ThemeRegistrationRaw = {
+	name: "vercel-dark",
+	type: "dark",
+	settings: vercelDarkTokens as ThemeRegistrationRaw["settings"],
+	colors: {
+		"editor.background": "#1a1a1a",
+		"editor.foreground": "#ededed",
+	},
+	tokenColors: vercelDarkTokens,
+};
+
+// Eagerly start loading the highlighter at module level
+const highlighterPromise: Promise<Highlighter> = import("shiki").then((shiki) =>
+	shiki.createHighlighter({
+		themes: [vercelLight, vercelDark],
+		langs: PRELOADED_LANGS,
+	}),
+);
+
+const htmlCache = new Map<string, Promise<string>>();
+
+function highlightCode(code: string, lang: string): Promise<string> {
+	const key = `${lang}:${code}`;
+	const cached = htmlCache.get(key);
+	if (cached) return cached;
+
+	const promise = highlighterPromise.then(async (highlighter) => {
+		let effectiveLang = lang;
+		if (!highlighter.getLoadedLanguages().includes(lang)) {
+			try {
+				await highlighter.loadLanguage(lang as BundledLanguage);
+			} catch {
+				effectiveLang = "text";
+			}
+		}
+		return highlighter.codeToHtml(code, {
+			lang: effectiveLang,
+			themes: { light: "vercel-light", dark: "vercel-dark" },
+			defaultColor: false,
+		});
+	});
+	htmlCache.set(key, promise);
+	return promise;
+}
+
+function CopyButton({ code }: { code: string }) {
+	const [copied, setCopied] = useState(false);
+	const timeoutRef = useRef<ReturnType<typeof setTimeout>>(undefined);
+
+	const handleClick = useCallback(() => {
+		navigator.clipboard.writeText(code);
+		setCopied(true);
+		clearTimeout(timeoutRef.current);
+		timeoutRef.current = setTimeout(() => setCopied(false), 1500);
+	}, [code]);
+
+	return (
+		<button
+			type="button"
+			onClick={handleClick}
+			className="absolute right-2 top-2 flex size-7 items-center justify-center rounded-md bg-surface-1 text-muted-foreground opacity-0 transition-all hover:bg-surface-2 hover:text-foreground group-hover/code:opacity-100"
+		>
+			{copied ? (
+				<svg
+					width={14}
+					height={14}
+					viewBox="0 0 24 24"
+					fill="none"
+					stroke="currentColor"
+					strokeWidth={2}
+					strokeLinecap="round"
+					strokeLinejoin="round"
+					aria-hidden="true"
+				>
+					<polyline points="20 6 9 17 4 12" />
+				</svg>
+			) : (
+				<svg
+					width={14}
+					height={14}
+					viewBox="0 0 24 24"
+					fill="none"
+					stroke="currentColor"
+					strokeWidth={2}
+					strokeLinecap="round"
+					strokeLinejoin="round"
+					aria-hidden="true"
+				>
+					<rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
+					<path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+				</svg>
+			)}
+		</button>
+	);
+}
+
+function ShikiCodeInner({ code, lang }: { code: string; lang: string }) {
+	const html = use(highlightCode(code, lang));
+
+	return (
+		<div className="group/code relative mb-2 [&_pre]:overflow-x-auto [&_pre]:rounded-lg [&_pre]:p-3 [&_pre]:text-xs">
+			{/* biome-ignore lint/security/noDangerouslySetInnerHtml: shiki output is trusted */}
+			<div dangerouslySetInnerHTML={{ __html: html }} />
+			<CopyButton code={code} />
+		</div>
+	);
+}
+
+function ShikiCode({ code, lang }: { code: string; lang: string }) {
+	return (
+		<Suspense
+			fallback={
+				<div className="group/code relative mb-2">
+					<pre className="overflow-x-auto rounded-lg bg-surface-1 p-3 text-xs">
+						<code>{code}</code>
+					</pre>
+				</div>
+			}
+		>
+			<ShikiCodeInner code={code} lang={lang} />
+		</Suspense>
+	);
+}
 
 const components: Components = {
 	h1: ({ children, ...props }) => (
@@ -80,13 +401,10 @@ const components: Components = {
 		</blockquote>
 	),
 	code: ({ children, className, ...props }) => {
-		const isBlock = className?.includes("language-");
-		if (isBlock) {
-			return (
-				<code className={cn("text-xs", className)} {...props}>
-					{children}
-				</code>
-			);
+		const langMatch = className?.match(/language-(\w+)/);
+		if (langMatch) {
+			const code = String(children).replace(/\n$/, "");
+			return <ShikiCode code={code} lang={langMatch[1]} />;
 		}
 		return (
 			<code
@@ -97,14 +415,27 @@ const components: Components = {
 			</code>
 		);
 	},
-	pre: ({ children, ...props }) => (
-		<pre
-			className="overflow-x-auto rounded-lg bg-surface-1 p-3 text-xs mb-2"
-			{...props}
-		>
-			{children}
-		</pre>
-	),
+	pre: ({ children, node, ...props }) => {
+		const codeChild = node?.children?.[0];
+		if (
+			codeChild?.type === "element" &&
+			codeChild.tagName === "code" &&
+			Array.isArray(codeChild.properties?.className) &&
+			(codeChild.properties.className as string[]).some((c) =>
+				String(c).startsWith("language-"),
+			)
+		) {
+			return <>{children}</>;
+		}
+		return (
+			<pre
+				className="overflow-x-auto rounded-lg bg-surface-1 p-3 text-xs mb-2"
+				{...props}
+			>
+				{children}
+			</pre>
+		);
+	},
 	hr: (props) => <hr className="my-4 border-border" {...props} />,
 	img: ({ alt, ...props }) => (
 		<img

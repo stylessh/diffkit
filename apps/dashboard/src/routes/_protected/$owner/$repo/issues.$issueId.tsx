@@ -153,25 +153,6 @@ function IssueDetailPage() {
 						</div>
 					</div>
 
-					{/* Labels */}
-					{issue.labels.length > 0 && (
-						<div className="flex flex-wrap items-center gap-1.5">
-							{issue.labels.map((label) => (
-								<span
-									key={label.name}
-									className="rounded-full border px-2.5 py-0.5 text-xs font-medium"
-									style={{
-										borderColor: `#${label.color}40`,
-										backgroundColor: `#${label.color}15`,
-										color: `#${label.color}`,
-									}}
-								>
-									{label.name}
-								</span>
-							))}
-						</div>
-					)}
-
 					{/* Body */}
 					{issue.body ? (
 						<div className="rounded-lg border bg-surface-0 p-5">
@@ -289,6 +270,29 @@ function IssueDetailPage() {
 							</div>
 						) : (
 							<p className="text-xs text-muted-foreground">No one assigned</p>
+						)}
+					</SidebarSection>
+
+					{/* Labels */}
+					<SidebarSection title="Labels">
+						{issue.labels.length > 0 ? (
+							<div className="flex flex-wrap gap-1.5">
+								{issue.labels.map((label) => (
+									<span
+										key={label.name}
+										className="label-pill rounded-full px-2.5 py-0.5 text-xs font-medium"
+										style={
+											{
+												"--label-color": `#${label.color}`,
+											} as React.CSSProperties
+										}
+									>
+										{label.name}
+									</span>
+								))}
+							</div>
+						) : (
+							<p className="text-xs text-muted-foreground">No labels</p>
 						)}
 					</SidebarSection>
 

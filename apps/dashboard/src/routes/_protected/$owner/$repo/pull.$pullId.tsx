@@ -1,9 +1,15 @@
 import {
-	GitBranchIcon,
+	CalendarIcon,
+	ClockIcon,
+	CloseIcon,
+	CommentIcon,
+	FileIcon,
+	GitCommitIcon,
 	GitMergeIcon,
 	GitPullRequestClosedIcon,
 	GitPullRequestDraftIcon,
 	GitPullRequestIcon,
+	MessageIcon,
 } from "@quickhub/icons";
 import { Markdown } from "@quickhub/ui/components/markdown";
 import { Skeleton } from "@quickhub/ui/components/skeleton";
@@ -15,7 +21,7 @@ import {
 import { cn } from "@quickhub/ui/lib/utils";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import { formatRelativeTime } from "#/components/pulls/pull-request-row";
 import { updatePullBranch } from "#/lib/github.functions";
 import {
@@ -155,36 +161,30 @@ function PullDetailPage() {
 								<h1 className="text-xl font-semibold tracking-tight">
 									{pr.title}
 								</h1>
-								<div className="flex flex-wrap items-center gap-2">
+								<div className="flex min-w-0 items-center gap-1.5 text-sm text-muted-foreground">
 									<span
 										className={cn(
-											"inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium",
+											"shrink-0 inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium",
 											stateConfig.badgeClass,
 										)}
 									>
 										{stateConfig.label}
 									</span>
 									{pr.author && (
-										<span className="flex items-center gap-1.5 text-sm text-muted-foreground">
+										<>
 											<img
 												src={pr.author.avatarUrl}
 												alt={pr.author.login}
-												className="size-4 rounded-full border border-border"
+												className="size-4 shrink-0 rounded-full border border-border"
 											/>
-											<span className="font-medium text-foreground">
+											<span className="shrink-0 font-medium text-foreground">
 												{pr.author.login}
 											</span>
-											<span>
-												wants to merge into{" "}
-												<code className="rounded bg-surface-1 px-1.5 py-0.5 font-mono text-xs">
-													{pr.baseRefName}
-												</code>{" "}
-												from{" "}
-												<code className="rounded bg-surface-1 px-1.5 py-0.5 font-mono text-xs">
-													{pr.headRefName}
-												</code>
-											</span>
-										</span>
+											<span className="shrink-0">wants to merge into</span>
+											<CopyBadge value={pr.baseRefName} />
+											<span className="shrink-0">from</span>
+											<CopyBadge value={pr.headRefName} canTruncate />
+										</>
 									)}
 								</div>
 							</div>
@@ -192,29 +192,30 @@ function PullDetailPage() {
 					</div>
 
 					{/* Stats bar */}
-					<div className="flex items-center gap-3 rounded-lg bg-surface-1 px-4 py-2.5 text-xs text-muted-foreground">
+					<div className="flex items-center gap-3 rounded-lg bg-surface-1 px-4 py-2.5 text-sm text-muted-foreground">
 						<span className="flex items-center gap-1.5">
-							<GitBranchIcon size={13} strokeWidth={2} />
+							<GitCommitIcon size={15} strokeWidth={2} />
 							<span className="tabular-nums font-medium text-foreground">
 								{pr.commits}
 							</span>{" "}
 							{pr.commits === 1 ? "commit" : "commits"}
 						</span>
 						<span className="text-border">·</span>
-						<span>
+						<span className="flex items-center gap-1.5">
+							<FileIcon size={15} strokeWidth={2} />
 							<span className="tabular-nums font-medium text-foreground">
 								{pr.changedFiles}
 							</span>{" "}
 							{pr.changedFiles === 1 ? "file" : "files"} changed
 						</span>
-						<span className="text-border">·</span>
-						<span className="flex items-center gap-1.5 rounded-md bg-surface-2 px-2 py-0.5">
+						<span className="ml-auto flex items-center gap-1.5 text-xs">
 							<span className="tabular-nums font-medium text-green-500">
 								+{pr.additions}
 							</span>
 							<span className="tabular-nums font-medium text-red-500">
 								-{pr.deletions}
 							</span>
+							<DiffBoxes additions={pr.additions} deletions={pr.deletions} />
 						</span>
 					</div>
 
@@ -376,26 +377,26 @@ function PullDetailPage() {
 					{/* Details */}
 					<SidebarSection title="Details">
 						<div className="flex flex-col gap-2 text-xs">
-							<DetailRow label="Created">
+							<DetailRow icon={CalendarIcon} label="Created">
 								{formatRelativeTime(pr.createdAt)}
 							</DetailRow>
-							<DetailRow label="Updated">
+							<DetailRow icon={ClockIcon} label="Updated">
 								{formatRelativeTime(pr.updatedAt)}
 							</DetailRow>
 							{pr.mergedAt && (
-								<DetailRow label="Merged">
+								<DetailRow icon={GitMergeIcon} label="Merged">
 									{formatRelativeTime(pr.mergedAt)}
 								</DetailRow>
 							)}
 							{pr.closedAt && !pr.mergedAt && (
-								<DetailRow label="Closed">
+								<DetailRow icon={CloseIcon} label="Closed">
 									{formatRelativeTime(pr.closedAt)}
 								</DetailRow>
 							)}
-							<DetailRow label="Comments">
+							<DetailRow icon={CommentIcon} label="Comments">
 								<span className="tabular-nums">{pr.comments}</span>
 							</DetailRow>
-							<DetailRow label="Review comments">
+							<DetailRow icon={MessageIcon} label="Review comments">
 								<span className="tabular-nums">{pr.reviewComments}</span>
 							</DetailRow>
 						</div>
@@ -437,15 +438,20 @@ function ActorRow({ actor }: { actor: GitHubActor }) {
 }
 
 function DetailRow({
+	icon: Icon,
 	label,
 	children,
 }: {
+	icon: React.FC<{ size?: number; strokeWidth?: number }>;
 	label: string;
 	children: React.ReactNode;
 }) {
 	return (
 		<div className="flex items-center justify-between gap-4">
-			<span className="text-muted-foreground">{label}</span>
+			<span className="flex items-center gap-1.5 text-muted-foreground">
+				<Icon size={13} strokeWidth={2} />
+				{label}
+			</span>
 			<span className="text-foreground">{children}</span>
 		</div>
 	);
@@ -658,6 +664,71 @@ function StatusRow({
 			</div>
 			{action && <div className="shrink-0">{action}</div>}
 		</div>
+	);
+}
+
+const DIFF_BOX_COUNT = 5;
+
+function CopyBadge({
+	value,
+	canTruncate,
+}: {
+	value: string;
+	canTruncate?: boolean;
+}) {
+	const [copied, setCopied] = useState(false);
+	const timeoutRef = useRef<ReturnType<typeof setTimeout>>(undefined);
+
+	const handleClick = useCallback(() => {
+		navigator.clipboard.writeText(value);
+		setCopied(true);
+		clearTimeout(timeoutRef.current);
+		timeoutRef.current = setTimeout(() => setCopied(false), 1500);
+	}, [value]);
+
+	return (
+		<Tooltip open={copied}>
+			<TooltipTrigger asChild>
+				<button
+					type="button"
+					onClick={handleClick}
+					className={cn(
+						"shrink-0 cursor-pointer rounded bg-surface-1 px-1.5 py-0.5 font-mono text-xs font-[550] transition-colors hover:bg-surface-2",
+						canTruncate && "min-w-0 shrink truncate",
+					)}
+				>
+					{value}
+				</button>
+			</TooltipTrigger>
+			<TooltipContent>Copied!</TooltipContent>
+		</Tooltip>
+	);
+}
+
+function DiffBoxes({
+	additions,
+	deletions,
+}: {
+	additions: number;
+	deletions: number;
+}) {
+	const total = additions + deletions;
+	const greenCount =
+		total === 0 ? 0 : Math.round((additions / total) * DIFF_BOX_COUNT);
+	const redCount = total === 0 ? 0 : DIFF_BOX_COUNT - greenCount;
+
+	const boxes: string[] = [];
+	for (let i = 0; i < greenCount; i++) boxes.push("bg-green-500");
+	for (let i = 0; i < redCount; i++) boxes.push("bg-red-500");
+	while (boxes.length < DIFF_BOX_COUNT) boxes.push("bg-muted-foreground/30");
+
+	return (
+		<span className="flex items-center gap-px">
+			{boxes.map((color, i) => (
+				// biome-ignore lint/suspicious/noArrayIndexKey: static decorative boxes, order never changes
+				<span key={i} className={cn("size-2 rounded-[2px]", color)} />
+			))}
+		</span>
 	);
 }
 
