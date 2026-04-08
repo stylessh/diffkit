@@ -1,13 +1,13 @@
 {
 	"$schema": "node_modules/wrangler/config-schema.json",
-	"name": "quickhub",
+	"name": "diffkit",
 	"compatibility_date": "2025-09-02",
 	"compatibility_flags": ["nodejs_compat"],
 	"main": "@tanstack/react-start/server-entry",
 	"d1_databases": [
 		{
 			"binding": "DB",
-			"database_name": "quickhub-db",
+			"database_name": "diffkit-db",
 			"database_id": "7a94a843-0906-416c-9908-4c9fe5339db7",
 			"migrations_dir": "drizzle"
 		}

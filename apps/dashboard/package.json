@@ -1,5 +1,5 @@
 {
-	"name": "@quickhub/dashboard",
+	"name": "@diffkit/dashboard",
 	"private": true,
 	"type": "module",
 	"imports": {
@@ -16,15 +16,15 @@
 		"check": "biome check",
 		"check-types": "tsc --noEmit",
 		"migrate": "pnpm run migrate:local",
-		"migrate:local": "node ../../scripts/run-d1-migrations.mjs quickhub-db --local",
-		"migrate:remote": "node ../../scripts/run-d1-migrations.mjs quickhub-db --remote",
+		"migrate:local": "node ../../scripts/run-d1-migrations.mjs DB --local",
+		"migrate:remote": "node ../../scripts/run-d1-migrations.mjs DB --remote",
 		"deploy": "pnpm run build && wrangler deploy"
 	},
 	"dependencies": {
 		"@cloudflare/vite-plugin": "^1.26.0",
 		"@pierre/diffs": "^1.1.12",
-		"@quickhub/icons": "workspace:*",
-		"@quickhub/ui": "workspace:*",
+		"@diffkit/icons": "workspace:*",
+		"@diffkit/ui": "workspace:*",
 		"@tailwindcss/vite": "^4.1.18",
 		"@tanstack/react-devtools": "latest",
 		"@tanstack/react-query": "latest",
@@ -46,7 +46,7 @@
 	"devDependencies": {
 		"@biomejs/biome": "2.4.5",
 		"@cloudflare/workers-types": "^4.20260405.1",
-		"@quickhub/typescript-config": "workspace:*",
+		"@diffkit/typescript-config": "workspace:*",
 		"@tanstack/devtools-vite": "latest",
 		"@testing-library/dom": "^10.4.1",
 		"@testing-library/react": "^16.3.0",

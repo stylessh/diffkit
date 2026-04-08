@@ -1,4 +1,4 @@
-import { ReviewsIcon } from "@quickhub/icons";
+import { ReviewsIcon } from "@diffkit/icons";
 import { useQuery } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
 import { useRef } from "react";

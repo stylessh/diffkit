@@ -1,5 +1,5 @@
 {
-  "name": "quickhub",
+  "name": "diffkit",
   "private": true,
   "scripts": {
     "predev": "node scripts/link-worktree-dev-vars.mjs",

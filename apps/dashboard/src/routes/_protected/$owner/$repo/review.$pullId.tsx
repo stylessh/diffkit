@@ -19,20 +19,20 @@ import {
 	GitPullRequestIcon,
 	SearchIcon,
 	TickIcon,
-} from "@quickhub/icons";
-import { Markdown } from "@quickhub/ui/components/markdown";
+} from "@diffkit/icons";
+import { Markdown } from "@diffkit/ui/components/markdown";
 import {
 	Popover,
 	PopoverContent,
 	PopoverTrigger,
-} from "@quickhub/ui/components/popover";
+} from "@diffkit/ui/components/popover";
 import {
 	ResizableHandle,
 	ResizablePanel,
 	ResizablePanelGroup,
-} from "@quickhub/ui/components/resizable";
-import { vercelDark, vercelLight } from "@quickhub/ui/lib/shiki-themes";
-import { cn } from "@quickhub/ui/lib/utils";
+} from "@diffkit/ui/components/resizable";
+import { vercelDark, vercelLight } from "@diffkit/ui/lib/shiki-themes";
+import { cn } from "@diffkit/ui/lib/utils";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useTheme } from "next-themes";

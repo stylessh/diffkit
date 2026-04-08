@@ -1,5 +1,5 @@
-import { CommentIcon, InboxIcon, IssuesIcon } from "@quickhub/icons";
-import { cn } from "@quickhub/ui/lib/utils";
+import { CommentIcon, InboxIcon, IssuesIcon } from "@diffkit/icons";
+import { cn } from "@diffkit/ui/lib/utils";
 import { useQuery } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
 import {

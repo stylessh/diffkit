@@ -1,6 +1,6 @@
-import { GitHubLogo } from "@quickhub/icons";
-import { Button } from "@quickhub/ui/components/button";
-import { Logo } from "@quickhub/ui/components/logo";
+import { GitHubLogo } from "@diffkit/icons";
+import { Button } from "@diffkit/ui/components/button";
+import { Logo } from "@diffkit/ui/components/logo";
 import { createFileRoute, redirect } from "@tanstack/react-router";
 import { getSession } from "#/lib/auth.functions";
 import { signInWithGitHub } from "#/lib/auth-actions";
@@ -23,7 +23,7 @@ function LoginPage() {
 							<Logo className="size-9 text-foreground" />
 							<div>
 								<p className="text-base font-medium text-foreground sm:text-sm">
-									QuickHub
+									DiffKit
 								</p>
 								<p className="text-base text-muted-foreground sm:text-sm">
 									Review workspace

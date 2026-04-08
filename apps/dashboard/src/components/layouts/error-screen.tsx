@@ -1,4 +1,4 @@
-import { Button } from "@quickhub/ui/components/button";
+import { Button } from "@diffkit/ui/components/button";
 import { type ErrorComponentProps, useRouter } from "@tanstack/react-router";
 import { AlertCircleIcon, RefreshCwIcon } from "lucide-react";
 

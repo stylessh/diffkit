@@ -35,10 +35,10 @@ importers:
       '@pierre/diffs':
         specifier: ^1.1.12
         version: 1.1.12(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
-      '@quickhub/icons':
+      '@diffkit/icons':
         specifier: workspace:*
         version: link:../../packages/icons
-      '@quickhub/ui':
+      '@diffkit/ui':
         specifier: workspace:*
         version: link:../../packages/ui
       '@tailwindcss/vite':
@@ -99,7 +99,7 @@ importers:
       '@cloudflare/workers-types':
         specifier: ^4.20260405.1
         version: 4.20260405.1
-      '@quickhub/typescript-config':
+      '@diffkit/typescript-config':
         specifier: workspace:*
         version: link:../../packages/typescript-config
       '@tanstack/devtools-vite':
@@ -157,7 +157,7 @@ importers:
       '@biomejs/biome':
         specifier: 2.4.5
         version: 2.4.5
-      '@quickhub/typescript-config':
+      '@diffkit/typescript-config':
         specifier: workspace:*
         version: link:../typescript-config
       '@types/react':
@@ -286,7 +286,7 @@ importers:
       '@biomejs/biome':
         specifier: 2.4.5
         version: 2.4.5
-      '@quickhub/typescript-config':
+      '@diffkit/typescript-config':
         specifier: workspace:*
         version: link:../typescript-config
       '@types/react':

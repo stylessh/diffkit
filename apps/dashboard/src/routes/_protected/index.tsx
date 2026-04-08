@@ -1,4 +1,4 @@
-import { GitPullRequestIcon, IssuesIcon, ReviewsIcon } from "@quickhub/icons";
+import { GitPullRequestIcon, IssuesIcon, ReviewsIcon } from "@diffkit/icons";
 import { useQuery } from "@tanstack/react-query";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import type { ComponentType } from "react";

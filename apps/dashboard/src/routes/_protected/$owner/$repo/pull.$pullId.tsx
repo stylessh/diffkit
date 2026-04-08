@@ -10,15 +10,15 @@ import {
 	GitPullRequestDraftIcon,
 	GitPullRequestIcon,
 	MessageIcon,
-} from "@quickhub/icons";
-import { Markdown } from "@quickhub/ui/components/markdown";
-import { Skeleton } from "@quickhub/ui/components/skeleton";
+} from "@diffkit/icons";
+import { Markdown } from "@diffkit/ui/components/markdown";
+import { Skeleton } from "@diffkit/ui/components/skeleton";
 import {
 	Tooltip,
 	TooltipContent,
 	TooltipTrigger,
-} from "@quickhub/ui/components/tooltip";
-import { cn } from "@quickhub/ui/lib/utils";
+} from "@diffkit/ui/components/tooltip";
+import { cn } from "@diffkit/ui/lib/utils";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useCallback, useRef, useState } from "react";

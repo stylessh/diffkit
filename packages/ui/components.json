@@ -11,10 +11,10 @@
 	},
 	"iconLibrary": "lucide",
 	"aliases": {
-		"components": "@quickhub/ui/components",
-		"utils": "@quickhub/ui/lib/utils",
-		"hooks": "@quickhub/ui/hooks",
-		"lib": "@quickhub/ui/lib",
-		"ui": "@quickhub/ui/components"
+		"components": "@diffkit/ui/components",
+		"utils": "@diffkit/ui/lib/utils",
+		"hooks": "@diffkit/ui/hooks",
+		"lib": "@diffkit/ui/lib",
+		"ui": "@diffkit/ui/components"
 	}
 }
