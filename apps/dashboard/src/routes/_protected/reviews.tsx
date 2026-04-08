@@ -8,6 +8,10 @@ import { githubMyPullsQueryOptions } from "#/lib/github.query";
 import { useHasMounted } from "#/lib/use-has-mounted";
 
 export const Route = createFileRoute("/_protected/reviews")({
+	loader: async ({ context }) => {
+		const scope = { userId: context.user.id };
+		await context.queryClient.ensureQueryData(githubMyPullsQueryOptions(scope));
+	},
 	component: ReviewsPage,
 });
 

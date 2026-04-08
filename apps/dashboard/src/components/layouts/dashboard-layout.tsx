@@ -1,6 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
 import { getRouteApi, Outlet } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
 import {
 	githubMyIssuesQueryOptions,
 	githubMyPullsQueryOptions,
@@ -14,17 +13,6 @@ export function DashboardLayout() {
 	const { user } = routeApi.useRouteContext();
 	const scope = { userId: user.id };
 	const hasMounted = useHasMounted();
-	const [isContentVisible, setIsContentVisible] = useState(false);
-
-	useEffect(() => {
-		const frameId = window.requestAnimationFrame(() => {
-			setIsContentVisible(true);
-		});
-
-		return () => {
-			window.cancelAnimationFrame(frameId);
-		};
-	}, []);
 
 	const pullsQuery = useQuery({
 		...githubMyPullsQueryOptions(scope),
@@ -61,11 +49,7 @@ export function DashboardLayout() {
 			/>
 			<div className="flex flex-1 flex-col overflow-hidden p-2 pt-0">
 				<div className="flex-1 overflow-hidden rounded-xl border bg-card shadow-[0_1px_4px_0_rgba(0,0,0,0.03)]">
-					<div
-						className={`h-full transition-opacity duration-300 ease-out ${
-							isContentVisible ? "opacity-100" : "opacity-0"
-						}`}
-					>
+					<div className="h-full">
 						<Outlet />
 					</div>
 				</div>

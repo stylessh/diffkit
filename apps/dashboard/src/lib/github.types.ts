@@ -118,6 +118,11 @@ export type IssueComment = {
 	author: GitHubActor | null;
 };
 
+export type IssuePageData = {
+	detail: IssueDetail | null;
+	comments: IssueComment[];
+};
+
 export type PullCheckRun = {
 	id: number;
 	name: string;
@@ -145,4 +150,9 @@ export type PullStatus = {
 	behindBy: number | null;
 	baseRefName: string;
 	canUpdateBranch: boolean;
+};
+
+export type PullPageData = {
+	detail: PullDetail | null;
+	comments: PullComment[];
 };

@@ -16,6 +16,12 @@ import type { IssueSummary, MyIssuesResult } from "#/lib/github.types";
 import { useHasMounted } from "#/lib/use-has-mounted";
 
 export const Route = createFileRoute("/_protected/issues")({
+	loader: async ({ context }) => {
+		const scope = { userId: context.user.id };
+		await context.queryClient.ensureQueryData(
+			githubMyIssuesQueryOptions(scope),
+		);
+	},
 	component: IssuesPage,
 });
 

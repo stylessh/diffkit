@@ -5,11 +5,13 @@ import type {
 	GitHubLabel,
 	IssueComment,
 	IssueDetail,
+	IssuePageData,
 	IssueSummary,
 	MyIssuesResult,
 	MyPullsResult,
 	PullComment,
 	PullDetail,
+	PullPageData,
 	PullStatus,
 	PullSummary,
 	RepositoryRef,
@@ -24,7 +26,11 @@ import {
 import { githubCachePolicy } from "./github-cache-policy";
 
 type GitHubClient = OctokitType;
-type AuthSession = NonNullable<Awaited<ReturnType<typeof getSession>>>;
+type AuthSession = {
+	user: {
+		id: string;
+	};
+};
 type GitHubContext = {
 	session: AuthSession;
 	octokit: GitHubClient;
@@ -382,27 +388,18 @@ function mapIssueSearchItems(items: SearchItem[]) {
 		.filter((item): item is IssueSummary => Boolean(item));
 }
 
-async function getSession() {
-	const [{ getRequest }, { getAuth }] = await Promise.all([
-		import("@tanstack/react-start/server"),
-		import("./auth.server"),
-	]);
-	const request = getRequest();
-	const auth = getAuth();
-	return auth.api.getSession({ headers: request.headers });
-}
-
 async function getGitHubContext(): Promise<GitHubContext | null> {
-	const session = await getSession();
+	const { getGitHubClientByUserId, getRequestSession } = await import(
+		"./auth-runtime"
+	);
+	const session = await getRequestSession();
 	if (!session) {
 		return null;
 	}
 
 	return {
 		session,
-		octokit: await (await import("./github.server")).getGitHubClient(
-			session.user.id,
-		),
+		octokit: await getGitHubClientByUserId(session.user.id),
 	};
 }
 
@@ -543,6 +540,305 @@ async function getCachedGitHubRequest<TGitHubData, TResult>({
 			};
 		},
 	});
+}
+
+async function getCachedPullResponse({
+	context,
+	data,
+	resource,
+	freshForMs,
+}: {
+	context: GitHubContext;
+	data: PullFromRepoInput;
+	resource: string;
+	freshForMs: number;
+}) {
+	return getCachedGitHubRequest<RepoPullDetail, RepoPullDetail>({
+		context,
+		resource,
+		params: data,
+		freshForMs,
+		request: (headers) =>
+			context.octokit.rest.pulls.get({
+				owner: data.owner,
+				repo: data.repo,
+				pull_number: data.pullNumber,
+				headers,
+			}),
+		mapData: (pull) => pull,
+	});
+}
+
+async function getPullDetailResult(
+	context: GitHubContext,
+	data: PullFromRepoInput,
+): Promise<PullDetail> {
+	const pull = await getCachedPullResponse({
+		context,
+		data,
+		resource: "pulls.detail.raw",
+		freshForMs: githubCachePolicy.detail.staleTimeMs,
+	});
+
+	return mapPullDetail(pull, buildRepositoryRef(data.owner, data.repo));
+}
+
+async function getPullCommentsResult(
+	context: GitHubContext,
+	data: PullFromRepoInput,
+): Promise<PullComment[]> {
+	type IssueComment = Awaited<
+		ReturnType<GitHubClient["rest"]["issues"]["listComments"]>
+	>["data"][number];
+
+	return getCachedGitHubRequest<IssueComment[], PullComment[]>({
+		context,
+		resource: "pulls.comments",
+		params: data,
+		freshForMs: githubCachePolicy.activity.staleTimeMs,
+		request: (headers) =>
+			context.octokit.rest.issues.listComments({
+				owner: data.owner,
+				repo: data.repo,
+				issue_number: data.pullNumber,
+				per_page: 10,
+				headers,
+			}),
+		mapData: (comments) =>
+			comments.map((comment) => ({
+				id: comment.id,
+				body: comment.body ?? "",
+				createdAt: comment.created_at,
+				author: comment.user
+					? {
+							login: comment.user.login,
+							avatarUrl: comment.user.avatar_url,
+							url: comment.user.html_url,
+							type: comment.user.type ?? "User",
+						}
+					: null,
+			})),
+	});
+}
+
+async function computePullStatus(
+	context: GitHubContext,
+	data: PullFromRepoInput,
+	pull: RepoPullDetail,
+): Promise<PullStatus> {
+	const [reviewsResponse, checksResponse] = await Promise.all([
+		context.octokit.rest.pulls.listReviews({
+			owner: data.owner,
+			repo: data.repo,
+			pull_number: data.pullNumber,
+			per_page: 100,
+		}),
+		context.octokit.rest.checks
+			.listForRef({
+				owner: data.owner,
+				repo: data.repo,
+				ref: pull.head.sha,
+				per_page: 100,
+			})
+			.catch(() => null),
+	]);
+
+	const latestReviews = new Map<
+		string,
+		{ id: number; state: string; author: GitHubActor | null }
+	>();
+	for (const review of reviewsResponse.data) {
+		if (!review.user?.login || review.state === "COMMENTED") {
+			continue;
+		}
+
+		latestReviews.set(review.user.login, {
+			id: review.id,
+			state: review.state,
+			author: mapActor(review.user),
+		});
+	}
+
+	const checkRuns = checksResponse?.data.check_runs ?? [];
+	let passed = 0;
+	let failed = 0;
+	let pending = 0;
+	let skipped = 0;
+	for (const check of checkRuns) {
+		if (check.status !== "completed") {
+			pending += 1;
+		} else if (
+			check.conclusion === "success" ||
+			check.conclusion === "neutral"
+		) {
+			passed += 1;
+		} else if (check.conclusion === "skipped") {
+			skipped += 1;
+		} else {
+			failed += 1;
+		}
+	}
+
+	let behindBy: number | null = null;
+	try {
+		const comparison = await context.octokit.rest.repos.compareCommits({
+			owner: data.owner,
+			repo: data.repo,
+			base: pull.head.sha,
+			head: pull.base.ref,
+		});
+		behindBy = comparison.data.ahead_by;
+	} catch {
+		behindBy = null;
+	}
+
+	const permissions = pull.base.repo.permissions;
+	const canUpdateBranch =
+		permissions?.push === true || permissions?.admin === true;
+
+	return {
+		reviews: Array.from(latestReviews.values()),
+		checks: {
+			total: checkRuns.length,
+			passed,
+			failed,
+			pending,
+			skipped,
+		},
+		mergeable: pull.mergeable,
+		mergeableState:
+			typeof pull.mergeable_state === "string" ? pull.mergeable_state : null,
+		behindBy,
+		baseRefName: pull.base.ref,
+		canUpdateBranch,
+	};
+}
+
+async function getPullStatusResult(
+	context: GitHubContext,
+	data: PullFromRepoInput,
+	pull?: RepoPullDetail,
+): Promise<PullStatus> {
+	return getOrRevalidateGitHubResource<PullStatus>({
+		userId: context.session.user.id,
+		resource: "pulls.status.v1",
+		params: data,
+		freshForMs: githubCachePolicy.status.staleTimeMs,
+		fetcher: async () => {
+			const pullForStatus =
+				pull ??
+				(await getCachedPullResponse({
+					context,
+					data,
+					resource: "pulls.status.raw",
+					freshForMs: githubCachePolicy.status.staleTimeMs,
+				}));
+
+			return {
+				kind: "success",
+				data: await computePullStatus(context, data, pullForStatus),
+				metadata: createGitHubResponseMetadata(200, {}),
+			};
+		},
+	});
+}
+
+async function getPullPageDataResult(
+	context: GitHubContext,
+	data: PullFromRepoInput,
+): Promise<PullPageData> {
+	const pull = await getCachedPullResponse({
+		context,
+		data,
+		resource: "pulls.detail.raw",
+		freshForMs: githubCachePolicy.detail.staleTimeMs,
+	});
+
+	const comments = await getPullCommentsResult(context, data);
+
+	return {
+		detail: mapPullDetail(pull, buildRepositoryRef(data.owner, data.repo)),
+		comments,
+	};
+}
+
+async function getIssueDetailResult(
+	context: GitHubContext,
+	data: IssueFromRepoInput,
+): Promise<IssueDetail | null> {
+	return getCachedGitHubRequest<RepoIssueDetail, IssueDetail | null>({
+		context,
+		resource: "issues.detail",
+		params: data,
+		freshForMs: githubCachePolicy.detail.staleTimeMs,
+		request: (headers) =>
+			context.octokit.rest.issues.get({
+				owner: data.owner,
+				repo: data.repo,
+				issue_number: data.issueNumber,
+				headers,
+			}),
+		mapData: (issue) => {
+			if (issue.pull_request) {
+				return null;
+			}
+
+			return mapIssueDetail(issue, buildRepositoryRef(data.owner, data.repo));
+		},
+	});
+}
+
+async function getIssueCommentsResult(
+	context: GitHubContext,
+	data: IssueFromRepoInput,
+): Promise<IssueComment[]> {
+	type RawIssueComment = Awaited<
+		ReturnType<GitHubClient["rest"]["issues"]["listComments"]>
+	>["data"][number];
+
+	return getCachedGitHubRequest<RawIssueComment[], IssueComment[]>({
+		context,
+		resource: "issues.comments",
+		params: data,
+		freshForMs: githubCachePolicy.activity.staleTimeMs,
+		request: (headers) =>
+			context.octokit.rest.issues.listComments({
+				owner: data.owner,
+				repo: data.repo,
+				issue_number: data.issueNumber,
+				per_page: 30,
+				headers,
+			}),
+		mapData: (comments) =>
+			comments.map((comment) => ({
+				id: comment.id,
+				body: comment.body ?? "",
+				createdAt: comment.created_at,
+				author: comment.user
+					? {
+							login: comment.user.login,
+							avatarUrl: comment.user.avatar_url,
+							url: comment.user.html_url,
+							type: comment.user.type ?? "User",
+						}
+					: null,
+			})),
+	});
+}
+
+async function getIssuePageDataResult(
+	context: GitHubContext,
+	data: IssueFromRepoInput,
+): Promise<IssuePageData> {
+	const [detail, comments] = await Promise.all([
+		getIssueDetailResult(context, data),
+		getIssueCommentsResult(context, data),
+	]);
+
+	return {
+		detail,
+		comments,
+	};
 }
 
 async function runWithConcurrency<TValue>(
@@ -852,21 +1148,7 @@ export const getPullFromRepo = createServerFn({ method: "GET" })
 			return null;
 		}
 
-		return getCachedGitHubRequest<RepoPullDetail, PullDetail | null>({
-			context,
-			resource: "pulls.detail",
-			params: data,
-			freshForMs: githubCachePolicy.detail.staleTimeMs,
-			request: (headers) =>
-				context.octokit.rest.pulls.get({
-					owner: data.owner,
-					repo: data.repo,
-					pull_number: data.pullNumber,
-					headers,
-				}),
-			mapData: (pull) =>
-				mapPullDetail(pull, buildRepositoryRef(data.owner, data.repo)),
-		});
+		return getPullDetailResult(context, data);
 	});
 
 export const getPullComments = createServerFn({ method: "GET" })
@@ -877,38 +1159,7 @@ export const getPullComments = createServerFn({ method: "GET" })
 			return [];
 		}
 
-		type IssueComment = Awaited<
-			ReturnType<GitHubClient["rest"]["issues"]["listComments"]>
-		>["data"][number];
-
-		return getCachedGitHubRequest<IssueComment[], PullComment[]>({
-			context,
-			resource: "pulls.comments",
-			params: data,
-			freshForMs: githubCachePolicy.detail.staleTimeMs,
-			request: (headers) =>
-				context.octokit.rest.issues.listComments({
-					owner: data.owner,
-					repo: data.repo,
-					issue_number: data.pullNumber,
-					per_page: 10,
-					headers,
-				}),
-			mapData: (comments) =>
-				comments.map((c) => ({
-					id: c.id,
-					body: c.body ?? "",
-					createdAt: c.created_at,
-					author: c.user
-						? {
-								login: c.user.login,
-								avatarUrl: c.user.avatar_url,
-								url: c.user.html_url,
-								type: c.user.type ?? "User",
-							}
-						: null,
-				})),
-		});
+		return getPullCommentsResult(context, data);
 	});
 
 export const getMyIssues = createServerFn({ method: "GET" }).handler(
@@ -1047,26 +1298,7 @@ export const getIssueFromRepo = createServerFn({ method: "GET" })
 			return null;
 		}
 
-		return getCachedGitHubRequest<RepoIssueDetail, IssueDetail | null>({
-			context,
-			resource: "issues.detail",
-			params: data,
-			freshForMs: githubCachePolicy.detail.staleTimeMs,
-			request: (headers) =>
-				context.octokit.rest.issues.get({
-					owner: data.owner,
-					repo: data.repo,
-					issue_number: data.issueNumber,
-					headers,
-				}),
-			mapData: (issue) => {
-				if (issue.pull_request) {
-					return null;
-				}
-
-				return mapIssueDetail(issue, buildRepositoryRef(data.owner, data.repo));
-			},
-		});
+		return getIssueDetailResult(context, data);
 	});
 
 export const getIssueComments = createServerFn({ method: "GET" })
@@ -1077,38 +1309,18 @@ export const getIssueComments = createServerFn({ method: "GET" })
 			return [];
 		}
 
-		type RawIssueComment = Awaited<
-			ReturnType<GitHubClient["rest"]["issues"]["listComments"]>
-		>["data"][number];
+		return getIssueCommentsResult(context, data);
+	});
 
-		return getCachedGitHubRequest<RawIssueComment[], IssueComment[]>({
-			context,
-			resource: "issues.comments",
-			params: data,
-			freshForMs: githubCachePolicy.detail.staleTimeMs,
-			request: (headers) =>
-				context.octokit.rest.issues.listComments({
-					owner: data.owner,
-					repo: data.repo,
-					issue_number: data.issueNumber,
-					per_page: 30,
-					headers,
-				}),
-			mapData: (comments) =>
-				comments.map((c) => ({
-					id: c.id,
-					body: c.body ?? "",
-					createdAt: c.created_at,
-					author: c.user
-						? {
-								login: c.user.login,
-								avatarUrl: c.user.avatar_url,
-								url: c.user.html_url,
-								type: c.user.type ?? "User",
-							}
-						: null,
-				})),
-		});
+export const getIssuePageData = createServerFn({ method: "GET" })
+	.inputValidator(identityValidator<IssueFromRepoInput>)
+	.handler(async ({ data }): Promise<IssuePageData | null> => {
+		const context = await getGitHubContext();
+		if (!context) {
+			return null;
+		}
+
+		return getIssuePageDataResult(context, data);
 	});
 
 export const getPullStatus = createServerFn({ method: "GET" })
@@ -1119,99 +1331,18 @@ export const getPullStatus = createServerFn({ method: "GET" })
 			return null;
 		}
 
-		const pullResponse = await context.octokit.rest.pulls.get({
-			owner: data.owner,
-			repo: data.repo,
-			pull_number: data.pullNumber,
-		});
-		const pull = pullResponse.data;
+		return getPullStatusResult(context, data);
+	});
 
-		const [reviewsResponse, checksResponse] = await Promise.all([
-			context.octokit.rest.pulls.listReviews({
-				owner: data.owner,
-				repo: data.repo,
-				pull_number: data.pullNumber,
-				per_page: 100,
-			}),
-			context.octokit.rest.checks
-				.listForRef({
-					owner: data.owner,
-					repo: data.repo,
-					ref: pull.head.sha,
-					per_page: 100,
-				})
-				.catch(() => null),
-		]);
-
-		const reviews = reviewsResponse.data;
-
-		const latestReviews = new Map<
-			string,
-			{ id: number; state: string; author: GitHubActor | null }
-		>();
-		for (const review of reviews) {
-			if (!review.user?.login) continue;
-			if (review.state === "COMMENTED") continue;
-			latestReviews.set(review.user.login, {
-				id: review.id,
-				state: review.state,
-				author: mapActor(review.user),
-			});
+export const getPullPageData = createServerFn({ method: "GET" })
+	.inputValidator(identityValidator<PullFromRepoInput>)
+	.handler(async ({ data }): Promise<PullPageData | null> => {
+		const context = await getGitHubContext();
+		if (!context) {
+			return null;
 		}
 
-		const checkRuns = checksResponse?.data.check_runs ?? [];
-		let passed = 0;
-		let failed = 0;
-		let pending = 0;
-		let skipped = 0;
-		for (const check of checkRuns) {
-			if (check.status !== "completed") {
-				pending += 1;
-			} else if (
-				check.conclusion === "success" ||
-				check.conclusion === "neutral"
-			) {
-				passed += 1;
-			} else if (check.conclusion === "skipped") {
-				skipped += 1;
-			} else {
-				failed += 1;
-			}
-		}
-
-		let behindBy: number | null = null;
-		try {
-			const comparison = await context.octokit.rest.repos.compareCommits({
-				owner: data.owner,
-				repo: data.repo,
-				base: pull.head.sha,
-				head: pull.base.ref,
-			});
-			behindBy = comparison.data.ahead_by;
-		} catch {
-			behindBy = null;
-		}
-
-		const permissions = pull.base.repo.permissions;
-		const canUpdateBranch =
-			permissions?.push === true || permissions?.admin === true;
-
-		return {
-			reviews: Array.from(latestReviews.values()),
-			checks: {
-				total: checkRuns.length,
-				passed,
-				failed,
-				pending,
-				skipped,
-			},
-			mergeable: pull.mergeable,
-			mergeableState:
-				typeof pull.mergeable_state === "string" ? pull.mergeable_state : null,
-			behindBy,
-			baseRefName: pull.base.ref,
-			canUpdateBranch,
-		};
+		return getPullPageDataResult(context, data);
 	});
 
 export const updatePullBranch = createServerFn({ method: "POST" })

@@ -115,6 +115,7 @@ describe("getOrRevalidateGitHubResource", () => {
 	});
 
 	it("deduplicates concurrent stale refreshes for the same cache key", async () => {
+		const inFlightCache = new Map<string, Promise<unknown>>();
 		const store = createMemoryStore([
 			buildEntry({
 				resource: "pulls.mine.reviewRequested",
@@ -136,6 +137,7 @@ describe("getOrRevalidateGitHubResource", () => {
 		);
 
 		const promiseA = getOrRevalidateGitHubResource({
+			inFlightCache,
 			userId: "user-1",
 			resource: "pulls.mine.reviewRequested",
 			params: { role: "review-requested" },
@@ -145,6 +147,7 @@ describe("getOrRevalidateGitHubResource", () => {
 			fetcher,
 		});
 		const promiseB = getOrRevalidateGitHubResource({
+			inFlightCache,
 			userId: "user-1",
 			resource: "pulls.mine.reviewRequested",
 			params: { role: "review-requested" },

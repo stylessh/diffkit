@@ -12,12 +12,12 @@ export interface Tab {
 	iconColor: string;
 }
 
-const STORAGE_KEY = "quickhub:tabs";
+export const TABS_STORAGE_KEY = "quickhub:tabs";
 
-function loadTabs(): Tab[] {
+export function readStoredTabs(): Tab[] {
 	if (typeof window === "undefined") return [];
 	try {
-		const raw = localStorage.getItem(STORAGE_KEY);
+		const raw = localStorage.getItem(TABS_STORAGE_KEY);
 		return raw ? JSON.parse(raw) : [];
 	} catch {
 		return [];
@@ -26,11 +26,11 @@ function loadTabs(): Tab[] {
 
 function persistTabs() {
 	try {
-		localStorage.setItem(STORAGE_KEY, JSON.stringify(tabs));
+		localStorage.setItem(TABS_STORAGE_KEY, JSON.stringify(tabs));
 	} catch {}
 }
 
-let tabs: Tab[] = loadTabs();
+let tabs: Tab[] = readStoredTabs();
 const listeners = new Set<() => void>();
 
 function emitChange() {

@@ -16,19 +16,37 @@ import { cn } from "@quickhub/ui/lib/utils";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState } from "react";
-import { DashboardContentLoading } from "#/components/layouts/dashboard-content-loading";
 import { formatRelativeTime } from "#/components/pulls/pull-request-row";
 import { updatePullBranch } from "#/lib/github.functions";
 import {
-	githubPullCommentsQueryOptions,
-	githubPullDetailQueryOptions,
+	githubPullPageQueryOptions,
 	githubPullStatusQueryOptions,
 } from "#/lib/github.query";
 import type { GitHubActor, PullDetail, PullStatus } from "#/lib/github.types";
+import { githubCachePolicy } from "#/lib/github-cache-policy";
 import { useHasMounted } from "#/lib/use-has-mounted";
 import { useRegisterTab } from "#/lib/use-register-tab";
 
 export const Route = createFileRoute("/_protected/$owner/$repo/pull/$pullId")({
+	loader: async ({ context, params }) => {
+		const pullNumber = Number(params.pullId);
+		const scope = { userId: context.user.id };
+		const pageOptions = githubPullPageQueryOptions(scope, {
+			owner: params.owner,
+			repo: params.repo,
+			pullNumber,
+		});
+
+		const primeQuery = (options: { queryKey: readonly unknown[] }) => {
+			if (context.queryClient.getQueryData(options.queryKey) !== undefined) {
+				return Promise.resolve();
+			}
+
+			return context.queryClient.ensureQueryData(options);
+		};
+
+		await Promise.all([primeQuery(pageOptions)]);
+	},
 	component: PullDetailPage,
 });
 
@@ -72,22 +90,21 @@ function PullDetailPage() {
 	const scope = { userId: user.id };
 	const hasMounted = useHasMounted();
 
-	const detailQuery = useQuery({
-		...githubPullDetailQueryOptions(scope, { owner, repo, pullNumber }),
+	const pageQuery = useQuery({
+		...githubPullPageQueryOptions(scope, { owner, repo, pullNumber }),
 		enabled: hasMounted,
-	});
-
-	const commentsQuery = useQuery({
-		...githubPullCommentsQueryOptions(scope, { owner, repo, pullNumber }),
-		enabled: hasMounted && detailQuery.data != null,
 	});
 
 	const statusQuery = useQuery({
 		...githubPullStatusQueryOptions(scope, { owner, repo, pullNumber }),
-		enabled: hasMounted && detailQuery.data != null,
+		enabled: hasMounted && pageQuery.data?.detail != null,
+		refetchOnWindowFocus: "always",
+		refetchInterval: githubCachePolicy.status.staleTimeMs,
 	});
 
-	const pr = detailQuery.data;
+	const pr = pageQuery.data?.detail;
+	const comments = pageQuery.data?.comments;
+	const status = statusQuery.data ?? null;
 
 	useRegisterTab(
 		pr
@@ -102,13 +119,8 @@ function PullDetailPage() {
 			: null,
 	);
 
-	if (detailQuery.error) throw detailQuery.error;
-
-	if (hasMounted && detailQuery.isPending) {
-		return <DashboardContentLoading />;
-	}
-
-	if (!pr) return null;
+	if (pageQuery.error) throw pageQuery.error;
+	if (!pr) return <PullDetailPageSkeleton />;
 
 	const stateConfig = getPrStateConfig(pr);
 	const StateIcon = stateConfig.icon;
@@ -242,14 +254,14 @@ function PullDetailPage() {
 					<div className="flex flex-col">
 						<div className="flex items-center justify-between gap-2 rounded-lg bg-surface-1 px-4 py-2.5">
 							<h2 className="text-xs font-medium">Activity</h2>
-							{commentsQuery.data && (
+							{comments && (
 								<span className="text-xs tabular-nums text-muted-foreground">
-									{commentsQuery.data.length}
+									{comments.length}
 								</span>
 							)}
 						</div>
 
-						{commentsQuery.isFetching && !commentsQuery.data && (
+						{pageQuery.isFetching && !comments && (
 							<div className="flex items-center justify-center py-8">
 								<svg
 									className="size-4 animate-spin text-muted-foreground"
@@ -275,15 +287,15 @@ function PullDetailPage() {
 							</div>
 						)}
 
-						{commentsQuery.data && commentsQuery.data.length === 0 && (
+						{comments && comments.length === 0 && (
 							<p className="py-4 text-sm text-muted-foreground">
 								No comments yet.
 							</p>
 						)}
 
-						{commentsQuery.data && commentsQuery.data.length > 0 && (
+						{comments && comments.length > 0 && (
 							<div className="relative flex flex-col pl-8 before:absolute before:left-4 before:top-0 before:h-full before:w-px before:bg-[linear-gradient(to_bottom,var(--color-border)_80%,transparent)]">
-								{commentsQuery.data.map((comment, i) => (
+								{comments.map((comment, i) => (
 									<div
 										key={comment.id}
 										className={cn(
@@ -319,9 +331,9 @@ function PullDetailPage() {
 						{/* Status card */}
 						{!pr.isMerged && pr.state !== "closed" && (
 							<div className="mt-6">
-								{statusQuery.data ? (
+								{status ? (
 									<MergeStatusCard
-										status={statusQuery.data}
+										status={status}
 										owner={owner}
 										repo={repo}
 										pullNumber={pullNumber}
@@ -358,7 +370,7 @@ function PullDetailPage() {
 
 					{/* Participants */}
 					<SidebarSection title="Participants">
-						<ParticipantsList pr={pr} comments={commentsQuery.data ?? []} />
+						<ParticipantsList pr={pr} comments={comments ?? []} />
 					</SidebarSection>
 
 					{/* Details */}
@@ -675,6 +687,79 @@ function MergeStatusSkeleton() {
 					</div>
 				</div>
 			))}
+		</div>
+	);
+}
+
+function PullDetailPageSkeleton() {
+	return (
+		<div className="h-full overflow-auto">
+			<div className="mx-auto grid max-w-7xl gap-16 px-6 py-10 xl:grid-cols-[minmax(0,1fr)_minmax(16rem,20rem)]">
+				<div className="flex min-w-0 flex-col gap-8">
+					<div className="flex flex-col gap-3">
+						<Skeleton className="h-3 w-32" />
+						<div className="flex items-start gap-3">
+							<Skeleton className="mt-1 size-5 rounded-full" />
+							<div className="flex min-w-0 flex-1 flex-col gap-2">
+								<Skeleton className="h-7 w-3/5" />
+								<div className="flex flex-wrap items-center gap-2">
+									<Skeleton className="h-5 w-14 rounded-full" />
+									<Skeleton className="h-4 w-64" />
+								</div>
+							</div>
+						</div>
+					</div>
+
+					<div className="flex items-center gap-3 rounded-lg bg-surface-1 px-4 py-2.5">
+						<Skeleton className="h-4 w-20" />
+						<Skeleton className="h-4 w-16" />
+						<Skeleton className="h-4 w-24" />
+					</div>
+
+					<div className="rounded-lg border bg-surface-0 p-5">
+						<div className="flex flex-col gap-3">
+							<Skeleton className="h-4 w-full" />
+							<Skeleton className="h-4 w-5/6" />
+							<Skeleton className="h-4 w-2/3" />
+							<Skeleton className="h-4 w-3/4" />
+						</div>
+					</div>
+
+					<div className="flex flex-col gap-6">
+						<div className="flex items-center justify-between gap-2 rounded-lg bg-surface-1 px-4 py-2.5">
+							<Skeleton className="h-4 w-16" />
+							<Skeleton className="h-4 w-6" />
+						</div>
+						<div className="flex flex-col gap-4 pl-8">
+							{[0, 1, 2].map((item) => (
+								<div key={item} className="flex flex-col gap-2">
+									<div className="flex items-center gap-2">
+										<Skeleton className="size-4 rounded-full" />
+										<Skeleton className="h-3.5 w-24" />
+										<Skeleton className="h-3.5 w-16" />
+									</div>
+									<Skeleton className="h-4 w-5/6" />
+									<Skeleton className="h-4 w-2/3" />
+								</div>
+							))}
+						</div>
+						<MergeStatusSkeleton />
+					</div>
+				</div>
+
+				<aside className="flex h-fit flex-col gap-6 xl:sticky xl:top-10">
+					{[0, 1, 2].map((section) => (
+						<div key={section} className="flex flex-col gap-2.5">
+							<Skeleton className="h-3 w-20" />
+							<div className="flex flex-col gap-2">
+								<Skeleton className="h-4 w-full" />
+								<Skeleton className="h-4 w-5/6" />
+								<Skeleton className="h-4 w-2/3" />
+							</div>
+						</div>
+					))}
+				</aside>
+			</div>
 		</div>
 	);
 }

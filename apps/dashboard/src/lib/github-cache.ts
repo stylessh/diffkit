@@ -52,10 +52,31 @@ type GetOrRevalidateGitHubResourceOptions<TData> = {
 		conditionals: GitHubConditionalHeaders,
 	) => Promise<GitHubFetchResult<TData>>;
 	store?: GitHubCacheStore;
+	inFlightCache?: Map<string, Promise<unknown>>;
 	now?: () => number;
 };
 
-const inFlightGitHubCacheReads = new Map<string, Promise<unknown>>();
+const requestScopedInFlightGitHubCacheReads = new WeakMap<
+	Request,
+	Map<string, Promise<unknown>>
+>();
+
+async function getRequestScopedInFlightCache() {
+	try {
+		const { getRequest } = await import("@tanstack/react-start/server");
+		const request = getRequest();
+		let inFlightCache = requestScopedInFlightGitHubCacheReads.get(request);
+
+		if (!inFlightCache) {
+			inFlightCache = new Map<string, Promise<unknown>>();
+			requestScopedInFlightGitHubCacheReads.set(request, inFlightCache);
+		}
+
+		return inFlightCache;
+	} catch {
+		return null;
+	}
+}
 
 function parseNullableInt(value: string | null | undefined) {
 	if (!value) {
@@ -184,12 +205,15 @@ export async function getOrRevalidateGitHubResource<TData>({
 	fetcher,
 	now = Date.now,
 	store,
+	inFlightCache,
 }: GetOrRevalidateGitHubResourceOptions<TData>): Promise<TData> {
 	const resolvedStore = store ?? (await getGitHubCacheStore());
 	const paramsJson = stableSerialize(params);
 	const cacheKey = buildGitHubCacheKey({ userId, resource, paramsJson });
+	const resolvedInFlightCache =
+		inFlightCache ?? (await getRequestScopedInFlightCache());
 
-	const existingInFlight = inFlightGitHubCacheReads.get(cacheKey);
+	const existingInFlight = resolvedInFlightCache?.get(cacheKey);
 	if (existingInFlight) {
 		return existingInFlight as Promise<TData>;
 	}
@@ -247,11 +271,11 @@ export async function getOrRevalidateGitHubResource<TData>({
 		return result.data;
 	})();
 
-	inFlightGitHubCacheReads.set(cacheKey, task);
+	resolvedInFlightCache?.set(cacheKey, task);
 
 	try {
 		return await task;
 	} finally {
-		inFlightGitHubCacheReads.delete(cacheKey);
+		resolvedInFlightCache?.delete(cacheKey);
 	}
 }

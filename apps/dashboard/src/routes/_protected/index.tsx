@@ -11,6 +11,14 @@ import {
 import { useHasMounted } from "#/lib/use-has-mounted";
 
 export const Route = createFileRoute("/_protected/")({
+	loader: async ({ context }) => {
+		const scope = { userId: context.user.id };
+
+		await Promise.all([
+			context.queryClient.ensureQueryData(githubMyPullsQueryOptions(scope)),
+			context.queryClient.ensureQueryData(githubMyIssuesQueryOptions(scope)),
+		]);
+	},
 	component: OverviewPage,
 });
 

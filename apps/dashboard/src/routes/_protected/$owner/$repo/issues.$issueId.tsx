@@ -1,5 +1,6 @@
 import { IssuesIcon } from "@quickhub/icons";
 import { Markdown } from "@quickhub/ui/components/markdown";
+import { Skeleton } from "@quickhub/ui/components/skeleton";
 import {
 	Tooltip,
 	TooltipContent,
@@ -9,12 +10,8 @@ import { cn } from "@quickhub/ui/lib/utils";
 import { useQuery } from "@tanstack/react-query";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState } from "react";
-import { DashboardContentLoading } from "#/components/layouts/dashboard-content-loading";
 import { formatRelativeTime } from "#/components/pulls/pull-request-row";
-import {
-	githubIssueCommentsQueryOptions,
-	githubIssueDetailQueryOptions,
-} from "#/lib/github.query";
+import { githubIssuePageQueryOptions } from "#/lib/github.query";
 import type { GitHubActor, IssueDetail } from "#/lib/github.types";
 import { useHasMounted } from "#/lib/use-has-mounted";
 import { useRegisterTab } from "#/lib/use-register-tab";
@@ -22,6 +19,25 @@ import { useRegisterTab } from "#/lib/use-register-tab";
 export const Route = createFileRoute(
 	"/_protected/$owner/$repo/issues/$issueId",
 )({
+	loader: async ({ context, params }) => {
+		const issueNumber = Number(params.issueId);
+		const scope = { userId: context.user.id };
+		const pageOptions = githubIssuePageQueryOptions(scope, {
+			owner: params.owner,
+			repo: params.repo,
+			issueNumber,
+		});
+
+		const primeQuery = (options: { queryKey: readonly unknown[] }) => {
+			if (context.queryClient.getQueryData(options.queryKey) !== undefined) {
+				return Promise.resolve();
+			}
+
+			return context.queryClient.ensureQueryData(options);
+		};
+
+		await Promise.all([primeQuery(pageOptions)]);
+	},
 	component: IssueDetailPage,
 });
 
@@ -54,17 +70,13 @@ function IssueDetailPage() {
 	const scope = { userId: user.id };
 	const hasMounted = useHasMounted();
 
-	const detailQuery = useQuery({
-		...githubIssueDetailQueryOptions(scope, { owner, repo, issueNumber }),
+	const pageQuery = useQuery({
+		...githubIssuePageQueryOptions(scope, { owner, repo, issueNumber }),
 		enabled: hasMounted,
 	});
 
-	const commentsQuery = useQuery({
-		...githubIssueCommentsQueryOptions(scope, { owner, repo, issueNumber }),
-		enabled: hasMounted && detailQuery.data != null,
-	});
-
-	const issue = detailQuery.data;
+	const issue = pageQuery.data?.detail;
+	const comments = pageQuery.data?.comments;
 
 	useRegisterTab(
 		issue
@@ -79,13 +91,8 @@ function IssueDetailPage() {
 			: null,
 	);
 
-	if (detailQuery.error) throw detailQuery.error;
-
-	if (hasMounted && detailQuery.isPending) {
-		return <DashboardContentLoading />;
-	}
-
-	if (!issue) return null;
+	if (pageQuery.error) throw pageQuery.error;
+	if (!issue) return <IssueDetailPageSkeleton />;
 
 	const stateConfig = getIssueStateConfig(issue);
 
@@ -182,14 +189,14 @@ function IssueDetailPage() {
 					<div className="flex flex-col">
 						<div className="flex items-center justify-between gap-2 rounded-lg bg-surface-1 px-4 py-2.5">
 							<h2 className="text-xs font-medium">Activity</h2>
-							{commentsQuery.data && (
+							{comments && (
 								<span className="text-xs tabular-nums text-muted-foreground">
-									{commentsQuery.data.length}
+									{comments.length}
 								</span>
 							)}
 						</div>
 
-						{commentsQuery.isFetching && !commentsQuery.data && (
+						{pageQuery.isFetching && !comments && (
 							<div className="flex items-center justify-center py-8">
 								<svg
 									className="size-4 animate-spin text-muted-foreground"
@@ -215,15 +222,15 @@ function IssueDetailPage() {
 							</div>
 						)}
 
-						{commentsQuery.data && commentsQuery.data.length === 0 && (
+						{comments && comments.length === 0 && (
 							<p className="py-4 text-sm text-muted-foreground">
 								No comments yet.
 							</p>
 						)}
 
-						{commentsQuery.data && commentsQuery.data.length > 0 && (
+						{comments && comments.length > 0 && (
 							<div className="relative flex flex-col pl-8 before:absolute before:left-4 before:top-0 before:h-full before:w-px before:bg-[linear-gradient(to_bottom,var(--color-border)_80%,transparent)]">
-								{commentsQuery.data.map((comment, i) => (
+								{comments.map((comment, i) => (
 									<div
 										key={comment.id}
 										className={cn(
@@ -287,10 +294,7 @@ function IssueDetailPage() {
 
 					{/* Participants */}
 					<SidebarSection title="Participants">
-						<ParticipantsList
-							issue={issue}
-							comments={commentsQuery.data ?? []}
-						/>
+						<ParticipantsList issue={issue} comments={comments ?? []} />
 					</SidebarSection>
 
 					{/* Milestone */}
@@ -434,6 +438,76 @@ function CommentBox() {
 				>
 					Send
 				</button>
+			</div>
+		</div>
+	);
+}
+
+function IssueDetailPageSkeleton() {
+	return (
+		<div className="h-full overflow-auto">
+			<div className="mx-auto grid max-w-7xl gap-16 px-6 py-10 xl:grid-cols-[minmax(0,1fr)_minmax(16rem,20rem)]">
+				<div className="flex min-w-0 flex-col gap-8">
+					<div className="flex flex-col gap-3">
+						<Skeleton className="h-4 w-48 rounded-md" />
+						<div className="flex items-start gap-3">
+							<Skeleton className="mt-1 size-5 rounded-full" />
+							<div className="flex min-w-0 flex-1 flex-col gap-2">
+								<Skeleton className="h-8 w-3/4 rounded-md" />
+								<div className="flex gap-2">
+									<Skeleton className="h-6 w-16 rounded-full" />
+									<Skeleton className="h-6 w-48 rounded-full" />
+								</div>
+							</div>
+						</div>
+					</div>
+
+					<div className="flex flex-wrap gap-1.5">
+						<Skeleton className="h-6 w-20 rounded-full" />
+						<Skeleton className="h-6 w-24 rounded-full" />
+					</div>
+
+					<div className="rounded-lg border bg-surface-0 p-5">
+						<div className="flex flex-col gap-2">
+							<Skeleton className="h-4 w-full rounded-md" />
+							<Skeleton className="h-4 w-[92%] rounded-md" />
+							<Skeleton className="h-4 w-[78%] rounded-md" />
+							<Skeleton className="h-4 w-[66%] rounded-md" />
+						</div>
+					</div>
+
+					<div className="flex flex-col">
+						<div className="flex items-center justify-between gap-2 rounded-lg bg-surface-1 px-4 py-2.5">
+							<Skeleton className="h-4 w-14 rounded-md" />
+							<Skeleton className="h-4 w-6 rounded-md" />
+						</div>
+						<div className="relative flex flex-col gap-5 py-5 pl-8 before:absolute before:left-4 before:top-0 before:h-full before:w-px before:bg-[linear-gradient(to_bottom,var(--color-border)_80%,transparent)]">
+							{["activity-1", "activity-2", "activity-3"].map((key) => (
+								<div key={key} className="flex flex-col gap-2">
+									<div className="flex items-center gap-2">
+										<Skeleton className="size-4 rounded-full" />
+										<Skeleton className="h-4 w-24 rounded-md" />
+										<Skeleton className="h-4 w-16 rounded-md" />
+									</div>
+									<Skeleton className="h-4 w-[88%] rounded-md" />
+									<Skeleton className="h-4 w-[72%] rounded-md" />
+								</div>
+							))}
+						</div>
+					</div>
+				</div>
+
+				<aside className="flex h-fit flex-col gap-6 xl:sticky xl:top-10">
+					{["meta-1", "meta-2", "meta-3", "meta-4"].map((key) => (
+						<div key={key} className="flex flex-col gap-2.5">
+							<Skeleton className="h-4 w-24 rounded-md" />
+							<div className="flex flex-col gap-2">
+								<Skeleton className="h-4 w-full rounded-md" />
+								<Skeleton className="h-4 w-[85%] rounded-md" />
+							</div>
+						</div>
+					))}
+				</aside>
 			</div>
 		</div>
 	);

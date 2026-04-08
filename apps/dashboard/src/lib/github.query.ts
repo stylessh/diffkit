@@ -3,12 +3,14 @@ import {
 	getGitHubViewer,
 	getIssueComments,
 	getIssueFromRepo,
+	getIssuePageData,
 	getIssuesFromRepo,
 	getIssuesFromUser,
 	getMyIssues,
 	getMyPulls,
 	getPullComments,
 	getPullFromRepo,
+	getPullPageData,
 	getPullStatus,
 	getPullsFromRepo,
 	getPullsFromUser,
@@ -88,6 +90,10 @@ const persistedMeta = {
 	persist: true,
 } as const;
 
+const tabPersistedMeta = {
+	persist: "tab",
+} as const;
+
 export const githubQueryKeys = {
 	all: ["github"] as const,
 	viewer: (scope: GitHubQueryScope) =>
@@ -103,6 +109,8 @@ export const githubQueryKeys = {
 			["github", scope.userId, "pulls", "user", input] as const,
 		repo: (scope: GitHubQueryScope, input: PullsFromRepoQueryInput) =>
 			["github", scope.userId, "pulls", "repo", input] as const,
+		page: (scope: GitHubQueryScope, input: PullFromRepoQueryInput) =>
+			["github", scope.userId, "pulls", "page", input] as const,
 		detail: (scope: GitHubQueryScope, input: PullFromRepoQueryInput) =>
 			["github", scope.userId, "pulls", "detail", input] as const,
 		comments: (scope: GitHubQueryScope, input: PullFromRepoQueryInput) =>
@@ -117,6 +125,8 @@ export const githubQueryKeys = {
 			["github", scope.userId, "issues", "user", input] as const,
 		repo: (scope: GitHubQueryScope, input: IssuesFromRepoQueryInput) =>
 			["github", scope.userId, "issues", "repo", input] as const,
+		page: (scope: GitHubQueryScope, input: IssueFromRepoQueryInput) =>
+			["github", scope.userId, "issues", "page", input] as const,
 		detail: (scope: GitHubQueryScope, input: IssueFromRepoQueryInput) =>
 			["github", scope.userId, "issues", "detail", input] as const,
 		comments: (scope: GitHubQueryScope, input: IssueFromRepoQueryInput) =>
@@ -189,7 +199,23 @@ export function githubPullDetailQueryOptions(
 		queryFn: () => getPullFromRepo({ data: input }),
 		staleTime: githubCachePolicy.detail.staleTimeMs,
 		gcTime: githubCachePolicy.detail.gcTimeMs,
-		meta: persistedMeta,
+		refetchOnMount: "always",
+		meta: tabPersistedMeta,
+	});
+}
+
+export function githubPullPageQueryOptions(
+	scope: GitHubQueryScope,
+	input: PullFromRepoQueryInput,
+) {
+	return queryOptions({
+		queryKey: githubQueryKeys.pulls.page(scope, input),
+		queryFn: () => getPullPageData({ data: input }),
+		staleTime: githubCachePolicy.activity.staleTimeMs,
+		gcTime: githubCachePolicy.detail.gcTimeMs,
+		refetchOnMount: "always",
+		refetchOnWindowFocus: "always",
+		meta: tabPersistedMeta,
 	});
 }
 
@@ -200,9 +226,10 @@ export function githubPullCommentsQueryOptions(
 	return queryOptions({
 		queryKey: githubQueryKeys.pulls.comments(scope, input),
 		queryFn: () => getPullComments({ data: input }),
-		staleTime: githubCachePolicy.detail.staleTimeMs,
-		gcTime: githubCachePolicy.detail.gcTimeMs,
-		meta: persistedMeta,
+		staleTime: githubCachePolicy.activity.staleTimeMs,
+		gcTime: githubCachePolicy.activity.gcTimeMs,
+		refetchOnMount: "always",
+		meta: tabPersistedMeta,
 	});
 }
 
@@ -213,9 +240,10 @@ export function githubPullStatusQueryOptions(
 	return queryOptions({
 		queryKey: githubQueryKeys.pulls.status(scope, input),
 		queryFn: () => getPullStatus({ data: input }),
-		staleTime: githubCachePolicy.detail.staleTimeMs,
-		gcTime: githubCachePolicy.detail.gcTimeMs,
-		meta: persistedMeta,
+		staleTime: githubCachePolicy.status.staleTimeMs,
+		gcTime: githubCachePolicy.status.gcTimeMs,
+		refetchOnMount: "always",
+		meta: tabPersistedMeta,
 	});
 }
 
@@ -264,7 +292,23 @@ export function githubIssueDetailQueryOptions(
 		queryFn: () => getIssueFromRepo({ data: input }),
 		staleTime: githubCachePolicy.detail.staleTimeMs,
 		gcTime: githubCachePolicy.detail.gcTimeMs,
-		meta: persistedMeta,
+		refetchOnMount: "always",
+		meta: tabPersistedMeta,
+	});
+}
+
+export function githubIssuePageQueryOptions(
+	scope: GitHubQueryScope,
+	input: IssueFromRepoQueryInput,
+) {
+	return queryOptions({
+		queryKey: githubQueryKeys.issues.page(scope, input),
+		queryFn: () => getIssuePageData({ data: input }),
+		staleTime: githubCachePolicy.activity.staleTimeMs,
+		gcTime: githubCachePolicy.detail.gcTimeMs,
+		refetchOnMount: "always",
+		refetchOnWindowFocus: "always",
+		meta: tabPersistedMeta,
 	});
 }
 
@@ -275,8 +319,9 @@ export function githubIssueCommentsQueryOptions(
 	return queryOptions({
 		queryKey: githubQueryKeys.issues.comments(scope, input),
 		queryFn: () => getIssueComments({ data: input }),
-		staleTime: githubCachePolicy.detail.staleTimeMs,
-		gcTime: githubCachePolicy.detail.gcTimeMs,
-		meta: persistedMeta,
+		staleTime: githubCachePolicy.activity.staleTimeMs,
+		gcTime: githubCachePolicy.activity.gcTimeMs,
+		refetchOnMount: "always",
+		meta: tabPersistedMeta,
 	});
 }

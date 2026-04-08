@@ -17,5 +17,9 @@ export async function getGitHubClient(userId: string): Promise<OctokitType> {
 		throw new Error("No GitHub account linked");
 	}
 
-	return new Octokit({ auth: githubAccount.accessToken });
+	return new Octokit({
+		auth: githubAccount.accessToken,
+		retry: { enabled: false },
+		throttle: { enabled: false },
+	});
 }

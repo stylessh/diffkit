@@ -25,6 +25,7 @@ import { Link, useRouter } from "@tanstack/react-router";
 import { useTheme } from "next-themes";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { signOutToLogin } from "#/lib/auth-actions";
+import { preloadRouteOnce } from "#/lib/route-preload";
 import { removeTab, type Tab, useTabs } from "#/lib/tab-store";
 
 interface DashboardTopbarProps {
@@ -58,6 +59,8 @@ const tabIconMap = {
 	pull: GitPullRequestIcon,
 	issue: IssuesIcon,
 } as const;
+
+const primaryNavRoutes = ["/", "/pulls", "/issues", "/reviews"] as const;
 
 export function DashboardTopbar({
 	user,
@@ -124,8 +127,24 @@ export function DashboardTopbar({
 		},
 	];
 
+	useEffect(() => {
+		if (!tabsReady) return;
+
+		void Promise.allSettled(
+			primaryNavRoutes.map((to) => router.preloadRoute({ to })),
+		);
+	}, [router, tabsReady]);
+
+	useEffect(() => {
+		if (!tabsReady || openTabs.length === 0) return;
+
+		void Promise.allSettled(
+			openTabs.map((tab) => preloadRouteOnce(router, tab.url)),
+		);
+	}, [router, tabsReady, openTabs]);
+
 	return (
-		<nav className="flex items-center gap-3 px-3 py-2">
+		<nav className="flex min-w-0 items-center gap-3 overflow-hidden px-3 py-2">
 			<DropdownMenu>
 				<DropdownMenuTrigger asChild>
 					<button
@@ -196,9 +215,9 @@ export function DashboardTopbar({
 
 			<div
 				aria-hidden={!tabsReady}
-				className={`flex items-center gap-0.5 transition-[opacity,transform] duration-300 ease-out ${
+				className={`shrink-0 items-center gap-0.5 transition-[opacity,transform] duration-300 ease-out ${
 					tabsReady
-						? "translate-y-0 opacity-100"
+						? "flex translate-y-0 opacity-100"
 						: "pointer-events-none -translate-y-0.5 opacity-0"
 				}`}
 			>
@@ -213,6 +232,7 @@ export function DashboardTopbar({
 					>
 						<Link
 							to={item.to as string}
+							preload={false}
 							activeOptions={{ exact: true }}
 							activeProps={{ className: "active" }}
 						>
@@ -232,54 +252,56 @@ export function DashboardTopbar({
 				))}
 			</div>
 
-			{openTabs.length > 0 && (
-				<div
-					aria-hidden={!tabsReady}
-					className={`flex items-center gap-3 transition-[opacity,transform] duration-300 ease-out ${
-						tabsReady
-							? "translate-y-0 opacity-100"
-							: "pointer-events-none -translate-y-0.5 opacity-0"
-					}`}
-				>
-					<div className="h-4 border-l border-border/50" />
-					<div className="relative min-w-0">
-						<div
-							className={`pointer-events-none absolute inset-y-0 left-0 z-10 w-6 bg-gradient-to-r from-muted to-transparent transition-opacity ${canScrollLeft ? "opacity-100" : "opacity-0"}`}
-						/>
-						<div
-							className={`pointer-events-none absolute inset-y-0 right-0 z-10 w-6 bg-gradient-to-l from-muted to-transparent transition-opacity ${canScrollRight ? "opacity-100" : "opacity-0"}`}
-						/>
-						{/* biome-ignore lint/a11y/noStaticElementInteractions: scroll container needs onScroll for gradient visibility */}
-						<div
-							ref={scrollRef}
-							onScroll={updateScrollState}
-							onMouseEnter={updateScrollState}
-							className="no-scrollbar flex items-center gap-0.5 overflow-x-auto"
-						>
-							{openTabs.map((tab) => {
-								const Icon = tabIconMap[tab.type];
-								return (
-									<DetailTab
-										key={tab.id}
-										tab={tab}
-										icon={Icon}
-										onClose={(id) => {
-											const isActive =
-												router.state.location.pathname === tab.url;
-											removeTab(id);
-											if (isActive) {
-												void router.navigate({ to: "/" });
-											}
-										}}
-									/>
-								);
-							})}
+			<div className="min-w-0 flex-1 overflow-hidden">
+				{openTabs.length > 0 && (
+					<div
+						aria-hidden={!tabsReady}
+						className={`flex min-w-0 items-center gap-3 overflow-hidden transition-[opacity,transform] duration-300 ease-out ${
+							tabsReady
+								? "translate-y-0 opacity-100"
+								: "pointer-events-none -translate-y-0.5 opacity-0"
+						}`}
+					>
+						<div className="h-4 shrink-0 border-l border-border/50" />
+						<div className="relative min-w-0 flex-1 overflow-hidden">
+							<div
+								className={`pointer-events-none absolute inset-y-0 left-0 z-10 w-6 bg-gradient-to-r from-muted to-transparent transition-opacity ${canScrollLeft ? "opacity-100" : "opacity-0"}`}
+							/>
+							<div
+								className={`pointer-events-none absolute inset-y-0 right-0 z-10 w-6 bg-gradient-to-l from-muted to-transparent transition-opacity ${canScrollRight ? "opacity-100" : "opacity-0"}`}
+							/>
+							{/* biome-ignore lint/a11y/noStaticElementInteractions: scroll container needs onScroll for gradient visibility */}
+							<div
+								ref={scrollRef}
+								onScroll={updateScrollState}
+								onMouseEnter={updateScrollState}
+								className="no-scrollbar flex w-0 min-w-full items-center gap-0.5 overflow-x-auto"
+							>
+								{openTabs.map((tab) => {
+									const Icon = tabIconMap[tab.type];
+									return (
+										<DetailTab
+											key={tab.id}
+											tab={tab}
+											icon={Icon}
+											onClose={(id) => {
+												const isActive =
+													router.state.location.pathname === tab.url;
+												removeTab(id);
+												if (isActive) {
+													void router.navigate({ to: "/" });
+												}
+											}}
+										/>
+									);
+								})}
+							</div>
 						</div>
 					</div>
-				</div>
-			)}
+				)}
+			</div>
 
-			<div className="ml-auto">
+			<div className="shrink-0">
 				<Button
 					variant="ghost"
 					size="icon"
@@ -301,9 +323,18 @@ function DetailTab({
 	icon: typeof GitPullRequestIcon;
 	onClose: (id: string) => void;
 }) {
+	const router = useRouter();
+	const preloadTab = () => {
+		void preloadRouteOnce(router, tab.url);
+	};
+
 	return (
 		<Link
 			to={tab.url}
+			preload={false}
+			onMouseEnter={preloadTab}
+			onFocus={preloadTab}
+			onTouchStart={preloadTab}
 			activeOptions={{ exact: true }}
 			activeProps={{ className: "active" }}
 			className="group relative flex h-8 shrink-0 items-center gap-1.5 rounded-md px-3 text-[13px] font-medium text-muted-foreground transition-colors hover:bg-surface-1 hover:text-foreground [&.active]:bg-surface-1 [&.active]:text-foreground"

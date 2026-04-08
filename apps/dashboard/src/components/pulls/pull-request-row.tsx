@@ -9,13 +9,14 @@ import {
 import { Markdown } from "@quickhub/ui/components/markdown";
 import { cn } from "@quickhub/ui/lib/utils";
 import { useQuery } from "@tanstack/react-query";
-import { Link } from "@tanstack/react-router";
+import { Link, useRouter } from "@tanstack/react-router";
 import { useState } from "react";
 import {
 	type GitHubQueryScope,
 	githubPullCommentsQueryOptions,
 } from "#/lib/github.query";
 import type { PullSummary } from "#/lib/github.types";
+import { preloadRouteOnce } from "#/lib/route-preload";
 
 export function formatRelativeTime(dateStr: string): string {
 	const seconds = Math.floor((Date.now() - new Date(dateStr).getTime()) / 1000);
@@ -55,6 +56,10 @@ export function PullRequestRow({
 	const { icon: Icon, color } = getPrStateProps(pr);
 	const href = `/${pr.repository.owner}/${pr.repository.name}/pull/${pr.number}`;
 	const [expanded, setExpanded] = useState(false);
+	const router = useRouter();
+	const preloadDetail = () => {
+		void preloadRouteOnce(router, href);
+	};
 
 	const commentsQuery = useQuery({
 		...githubPullCommentsQueryOptions(scope, {
@@ -69,6 +74,10 @@ export function PullRequestRow({
 		<div className="rounded-lg">
 			<Link
 				to={href}
+				preload={false}
+				onMouseEnter={preloadDetail}
+				onFocus={preloadDetail}
+				onTouchStart={preloadDetail}
 				className={cn(
 					"group flex items-start gap-3 rounded-lg px-3 py-2.5 transition-colors hover:[&:not(:has([data-action]:hover))]:bg-surface-1",
 					expanded && "bg-surface-1",
