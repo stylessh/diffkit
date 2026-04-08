@@ -17,6 +17,7 @@ import {
 } from "#/lib/github.query";
 import type { GitHubActor, IssueDetail } from "#/lib/github.types";
 import { useHasMounted } from "#/lib/use-has-mounted";
+import { useRegisterTab } from "#/lib/use-register-tab";
 
 export const Route = createFileRoute(
 	"/_protected/$owner/$repo/issues/$issueId",
@@ -63,13 +64,27 @@ function IssueDetailPage() {
 		enabled: hasMounted && detailQuery.data != null,
 	});
 
+	const issue = detailQuery.data;
+
+	useRegisterTab(
+		issue
+			? {
+					type: "issue",
+					title: issue.title,
+					number: issue.number,
+					url: `/${owner}/${repo}/issues/${issueId}`,
+					repo: `${owner}/${repo}`,
+					iconColor: getIssueStateConfig(issue).color,
+				}
+			: null,
+	);
+
 	if (detailQuery.error) throw detailQuery.error;
 
 	if (hasMounted && detailQuery.isPending) {
 		return <DashboardContentLoading />;
 	}
 
-	const issue = detailQuery.data;
 	if (!issue) return null;
 
 	const stateConfig = getIssueStateConfig(issue);

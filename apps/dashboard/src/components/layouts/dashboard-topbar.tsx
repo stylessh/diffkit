@@ -1,4 +1,5 @@
 import {
+	CloseIcon,
 	GitPullRequestIcon,
 	HomeIcon,
 	IssuesIcon,
@@ -20,10 +21,11 @@ import {
 	DropdownMenuShortcut,
 	DropdownMenuTrigger,
 } from "@quickhub/ui/components/dropdown-menu";
-import { Link } from "@tanstack/react-router";
+import { Link, useRouter } from "@tanstack/react-router";
 import { useTheme } from "next-themes";
-import { useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { signOutToLogin } from "#/lib/auth-actions";
+import { removeTab, type Tab, useTabs } from "#/lib/tab-store";
 
 interface DashboardTopbarProps {
 	user: {
@@ -52,6 +54,11 @@ const themeOptions = [
 	{ value: "system", icon: SystemIcon, label: "System" },
 ] as const;
 
+const tabIconMap = {
+	pull: GitPullRequestIcon,
+	issue: IssuesIcon,
+} as const;
+
 export function DashboardTopbar({
 	user,
 	tabsReady,
@@ -59,6 +66,34 @@ export function DashboardTopbar({
 }: DashboardTopbarProps) {
 	const { theme, setTheme } = useTheme();
 	const [avatarLoadFailed, setAvatarLoadFailed] = useState(false);
+	const openTabs = useTabs();
+	const router = useRouter();
+	const scrollRef = useRef<HTMLDivElement>(null);
+	const [canScrollLeft, setCanScrollLeft] = useState(false);
+	const [canScrollRight, setCanScrollRight] = useState(false);
+
+	const updateScrollState = useCallback(() => {
+		const el = scrollRef.current;
+		if (!el) return;
+		setCanScrollLeft(el.scrollLeft > 0);
+		setCanScrollRight(el.scrollLeft + el.clientWidth < el.scrollWidth - 1);
+	}, []);
+
+	useEffect(() => {
+		const el = scrollRef.current;
+		if (!el) return;
+		const ro = new ResizeObserver(updateScrollState);
+		ro.observe(el);
+		return () => ro.disconnect();
+	}, [updateScrollState]);
+
+	useEffect(() => {
+		const el = scrollRef.current;
+		if (!el || openTabs.length === 0) return;
+		el.scrollLeft = el.scrollWidth;
+		updateScrollState();
+	}, [openTabs.length, updateScrollState]);
+
 	const displayName = user.name ?? user.email;
 	const initials = displayName
 		.split(" ")
@@ -197,6 +232,53 @@ export function DashboardTopbar({
 				))}
 			</div>
 
+			{openTabs.length > 0 && (
+				<div
+					aria-hidden={!tabsReady}
+					className={`flex items-center gap-3 transition-[opacity,transform] duration-300 ease-out ${
+						tabsReady
+							? "translate-y-0 opacity-100"
+							: "pointer-events-none -translate-y-0.5 opacity-0"
+					}`}
+				>
+					<div className="h-4 border-l border-border/50" />
+					<div className="relative min-w-0">
+						<div
+							className={`pointer-events-none absolute inset-y-0 left-0 z-10 w-6 bg-gradient-to-r from-muted to-transparent transition-opacity ${canScrollLeft ? "opacity-100" : "opacity-0"}`}
+						/>
+						<div
+							className={`pointer-events-none absolute inset-y-0 right-0 z-10 w-6 bg-gradient-to-l from-muted to-transparent transition-opacity ${canScrollRight ? "opacity-100" : "opacity-0"}`}
+						/>
+						{/* biome-ignore lint/a11y/noStaticElementInteractions: scroll container needs onScroll for gradient visibility */}
+						<div
+							ref={scrollRef}
+							onScroll={updateScrollState}
+							onMouseEnter={updateScrollState}
+							className="no-scrollbar flex items-center gap-0.5 overflow-x-auto"
+						>
+							{openTabs.map((tab) => {
+								const Icon = tabIconMap[tab.type];
+								return (
+									<DetailTab
+										key={tab.id}
+										tab={tab}
+										icon={Icon}
+										onClose={(id) => {
+											const isActive =
+												router.state.location.pathname === tab.url;
+											removeTab(id);
+											if (isActive) {
+												void router.navigate({ to: "/" });
+											}
+										}}
+									/>
+								);
+							})}
+						</div>
+					</div>
+				</div>
+			)}
+
 			<div className="ml-auto">
 				<Button
 					variant="ghost"
@@ -207,5 +289,43 @@ export function DashboardTopbar({
 				/>
 			</div>
 		</nav>
+	);
+}
+
+function DetailTab({
+	tab,
+	icon: Icon,
+	onClose,
+}: {
+	tab: Tab;
+	icon: typeof GitPullRequestIcon;
+	onClose: (id: string) => void;
+}) {
+	return (
+		<Link
+			to={tab.url}
+			activeOptions={{ exact: true }}
+			activeProps={{ className: "active" }}
+			className="group relative flex h-8 shrink-0 items-center gap-1.5 rounded-md px-3 text-[13px] font-medium text-muted-foreground transition-colors hover:bg-surface-1 hover:text-foreground [&.active]:bg-surface-1 [&.active]:text-foreground"
+		>
+			<Icon size={13} strokeWidth={2} className={`shrink-0 ${tab.iconColor}`} />
+			<span className="max-w-32 truncate">{tab.title}</span>
+			<span className="tabular-nums opacity-60">#{tab.number}</span>
+			<button
+				type="button"
+				onClick={(e) => {
+					e.preventDefault();
+					e.stopPropagation();
+					onClose(tab.id);
+				}}
+				className="absolute inset-y-0 right-0 flex items-center rounded-r-md bg-surface-1 pl-1.5 pr-1.5 opacity-0 transition-opacity group-hover:opacity-100"
+				aria-label={`Close ${tab.title}`}
+			>
+				<span className="absolute inset-y-0 -left-3 w-3 bg-gradient-to-r from-transparent to-surface-1" />
+				<span className="relative flex size-4 items-center justify-center rounded-sm hover:bg-border/50">
+					<CloseIcon size={10} strokeWidth={2} />
+				</span>
+			</button>
+		</Link>
 	);
 }

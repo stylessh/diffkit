@@ -26,6 +26,7 @@ import {
 } from "#/lib/github.query";
 import type { GitHubActor, PullDetail, PullStatus } from "#/lib/github.types";
 import { useHasMounted } from "#/lib/use-has-mounted";
+import { useRegisterTab } from "#/lib/use-register-tab";
 
 export const Route = createFileRoute("/_protected/$owner/$repo/pull/$pullId")({
 	component: PullDetailPage,
@@ -86,13 +87,27 @@ function PullDetailPage() {
 		enabled: hasMounted && detailQuery.data != null,
 	});
 
+	const pr = detailQuery.data;
+
+	useRegisterTab(
+		pr
+			? {
+					type: "pull",
+					title: pr.title,
+					number: pr.number,
+					url: `/${owner}/${repo}/pull/${pullId}`,
+					repo: `${owner}/${repo}`,
+					iconColor: getPrStateConfig(pr).color,
+				}
+			: null,
+	);
+
 	if (detailQuery.error) throw detailQuery.error;
 
 	if (hasMounted && detailQuery.isPending) {
 		return <DashboardContentLoading />;
 	}
 
-	const pr = detailQuery.data;
 	if (!pr) return null;
 
 	const stateConfig = getPrStateConfig(pr);

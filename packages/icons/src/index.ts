@@ -5,6 +5,7 @@ export {
   AddCircleHalfDotIcon as IssuesIcon,
   BookOpen01Icon as BookOpenIcon,
   Bug01Icon as BugIcon,
+  Cancel01Icon as CloseIcon,
   CheckListIcon as ReviewsIcon,
   CodeIcon,
   Comment01Icon as CommentIcon,

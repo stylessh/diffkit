@@ -199,6 +199,13 @@
 	background: var(--ring);
 }
 
+.no-scrollbar {
+	scrollbar-width: none;
+}
+.no-scrollbar::-webkit-scrollbar {
+	display: none;
+}
+
 /* Stable scrollbar — auto-hides, no layout shift, inset thumb */
 .overflow-stable {
 	overflow-y: auto;
