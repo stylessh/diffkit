@@ -49,7 +49,7 @@ const highlighterPromise: Promise<Highlighter> =
 
 const htmlCache = new Map<string, Promise<string>>();
 
-function highlightCode(code: string, lang: string): Promise<string> {
+export function highlightCode(code: string, lang: string): Promise<string> {
 	const key = `${lang}:${code}`;
 	const cached = htmlCache.get(key);
 	if (cached) return cached;

@@ -321,3 +321,18 @@ input[type="search"] {
 	background-color: color-mix(in srgb, var(--label-color) 20%, transparent);
 	color: var(--label-color);
 }
+
+.label-pill-close-gradient {
+	background: linear-gradient(
+		to left,
+		color-mix(in srgb, var(--label-color) 30%, var(--background)) 50%,
+		transparent
+	);
+}
+.dark .label-pill-close-gradient {
+	background: linear-gradient(
+		to left,
+		color-mix(in srgb, var(--label-color) 20%, var(--background)) 50%,
+		transparent
+	);
+}

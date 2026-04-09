@@ -48,6 +48,12 @@ export type PullSummary = {
 	repository: RepositoryRef;
 };
 
+export type RequestedTeam = {
+	slug: string;
+	name: string;
+	url: string;
+};
+
 export type PullDetail = PullSummary & {
 	body: string;
 	additions: number;
@@ -62,6 +68,7 @@ export type PullDetail = PullSummary & {
 	mergeable: boolean | null;
 	mergeableState?: string | null;
 	requestedReviewers: GitHubActor[];
+	requestedTeams: RequestedTeam[];
 };
 
 export type IssueSummary = {
@@ -210,6 +217,43 @@ export type SubmitReviewInput = {
 		startLine?: number;
 		startSide?: "LEFT" | "RIGHT";
 	}>;
+};
+
+export type RepoCollaborator = {
+	login: string;
+	avatarUrl: string;
+	permissions: {
+		admin: boolean;
+		push: boolean;
+		pull: boolean;
+	};
+};
+
+export type RequestReviewersInput = {
+	owner: string;
+	repo: string;
+	pullNumber: number;
+	reviewers?: string[];
+	teamReviewers?: string[];
+};
+
+export type CreateLabelInput = {
+	owner: string;
+	repo: string;
+	name: string;
+	color: string;
+};
+
+export type SetLabelsInput = {
+	owner: string;
+	repo: string;
+	issueNumber: number;
+	labels: string[];
+};
+
+export type OrgTeam = {
+	slug: string;
+	name: string;
 };
 
 export type CreateReviewCommentInput = {

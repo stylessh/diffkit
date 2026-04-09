@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { type Octokit as OctokitType, RequestError } from "octokit";
 import type {
+	CreateLabelInput,
 	CreateReviewCommentInput,
 	GitHubActor,
 	GitHubLabel,
@@ -10,6 +11,7 @@ import type {
 	IssueSummary,
 	MyIssuesResult,
 	MyPullsResult,
+	OrgTeam,
 	PullComment,
 	PullCommit,
 	PullDetail,
@@ -18,11 +20,15 @@ import type {
 	PullReviewComment,
 	PullStatus,
 	PullSummary,
+	RepoCollaborator,
 	RepositoryRef,
+	RequestReviewersInput,
+	SetLabelsInput,
 	SubmitReviewInput,
 	UserRepoSummary,
 } from "./github.types";
 import {
+	bustGitHubCache,
 	createGitHubResponseMetadata,
 	type GitHubConditionalHeaders,
 	type GitHubFetchResult,
@@ -75,6 +81,33 @@ type RepoPullReviewComment = Awaited<
 type RepoState = "all" | "closed" | "open";
 type PullSort = "created" | "long-running" | "popularity" | "updated";
 type IssueSort = "comments" | "created" | "updated";
+
+// ---------------------------------------------------------------------------
+// Entity-scoped cache busting helpers
+// ---------------------------------------------------------------------------
+// Each helper busts all server-side D1 cache entries related to an entity so
+// the next React Query refetch hits GitHub's API and returns fresh data.
+// Add new resource keys here as new cached endpoints are introduced.
+// ---------------------------------------------------------------------------
+
+type PullCacheParams = { owner: string; repo: string; pullNumber: number };
+type IssueCacheParams = { owner: string; repo: string; issueNumber: number };
+
+async function bustPullDetailCaches(userId: string, params: PullCacheParams) {
+	await Promise.all([
+		bustGitHubCache(userId, "pulls.detail.raw", params),
+		bustGitHubCache(userId, "pulls.status.raw", params),
+		bustGitHubCache(userId, "pulls.status.v1", params),
+	]);
+}
+
+async function bustPullReviewCaches(userId: string, params: PullCacheParams) {
+	await bustGitHubCache(userId, "pulls.reviewComments", params);
+}
+
+async function bustIssueCaches(userId: string, params: IssueCacheParams) {
+	await bustGitHubCache(userId, "issues.detail", params);
+}
 
 type GitHubApiUser = {
 	login?: string;
@@ -313,6 +346,11 @@ function mapPullDetail(
 		requestedReviewers: (pull.requested_reviewers ?? [])
 			.map((reviewer) => mapActor(reviewer))
 			.filter((reviewer): reviewer is GitHubActor => Boolean(reviewer)),
+		requestedTeams: (pull.requested_teams ?? []).map((team) => ({
+			slug: team.slug,
+			name: team.name,
+			url: team.html_url,
+		})),
 	};
 }
 
@@ -1398,6 +1436,30 @@ export const getPullPageData = createServerFn({ method: "GET" })
 		return getPullPageDataResult(context, data);
 	});
 
+type UpdatePullBodyInput = PullFromRepoInput & { body: string };
+
+export const updatePullBody = createServerFn({ method: "POST" })
+	.inputValidator(identityValidator<UpdatePullBodyInput>)
+	.handler(async ({ data }): Promise<boolean> => {
+		const context = await getGitHubContext();
+		if (!context) {
+			return false;
+		}
+
+		try {
+			await context.octokit.rest.pulls.update({
+				owner: data.owner,
+				repo: data.repo,
+				pull_number: data.pullNumber,
+				body: data.body,
+			});
+			await bustPullDetailCaches(context.session.user.id, data);
+			return true;
+		} catch {
+			return false;
+		}
+	});
+
 export const updatePullBranch = createServerFn({ method: "POST" })
 	.inputValidator(identityValidator<PullFromRepoInput>)
 	.handler(async ({ data }): Promise<boolean> => {
@@ -1412,6 +1474,7 @@ export const updatePullBranch = createServerFn({ method: "POST" })
 				repo: data.repo,
 				pull_number: data.pullNumber,
 			});
+			await bustPullDetailCaches(context.session.user.id, data);
 			return true;
 		} catch {
 			return false;
@@ -1536,6 +1599,11 @@ export const submitPullReview = createServerFn({ method: "POST" })
 						: {}),
 				})),
 			});
+			await bustPullDetailCaches(context.session.user.id, {
+				owner: data.owner,
+				repo: data.repo,
+				pullNumber: data.pullNumber,
+			});
 			return true;
 		} catch {
 			return false;
@@ -1563,6 +1631,12 @@ export const createReviewComment = createServerFn({ method: "POST" })
 			});
 
 			const comment = response.data;
+			await bustPullReviewCaches(context.session.user.id, {
+				owner: data.owner,
+				repo: data.repo,
+				pullNumber: data.pullNumber,
+			});
+
 			return {
 				id: comment.id,
 				body: comment.body,
@@ -1581,6 +1655,219 @@ export const createReviewComment = createServerFn({ method: "POST" })
 					: null,
 				inReplyToId: comment.in_reply_to_id ?? null,
 				diffHunk: comment.diff_hunk,
+			};
+		} catch {
+			return null;
+		}
+	});
+
+export type RepoCollaboratorsInput = {
+	owner: string;
+	repo: string;
+};
+
+export const getRepoCollaborators = createServerFn({ method: "GET" })
+	.inputValidator(identityValidator<RepoCollaboratorsInput>)
+	.handler(async ({ data }): Promise<RepoCollaborator[]> => {
+		const context = await getGitHubContext();
+		if (!context) {
+			return [];
+		}
+
+		try {
+			const allCollaborators = await context.octokit.paginate(
+				context.octokit.rest.repos.listCollaborators,
+				{
+					owner: data.owner,
+					repo: data.repo,
+					per_page: 100,
+				},
+			);
+
+			return allCollaborators.map((c) => ({
+				login: c.login,
+				avatarUrl: c.avatar_url,
+				permissions: {
+					admin: c.permissions?.admin ?? false,
+					push: c.permissions?.push ?? false,
+					pull: c.permissions?.pull ?? false,
+				},
+			}));
+		} catch {
+			return [];
+		}
+	});
+
+export type OrgTeamsInput = {
+	org: string;
+};
+
+export const getOrgTeams = createServerFn({ method: "GET" })
+	.inputValidator(identityValidator<OrgTeamsInput>)
+	.handler(async ({ data }): Promise<OrgTeam[]> => {
+		const context = await getGitHubContext();
+		if (!context) {
+			return [];
+		}
+
+		try {
+			const allTeams = await context.octokit.paginate(
+				context.octokit.rest.teams.list,
+				{
+					org: data.org,
+					per_page: 100,
+				},
+			);
+
+			return allTeams.map((t) => ({
+				slug: t.slug,
+				name: t.name,
+			}));
+		} catch {
+			return [];
+		}
+	});
+
+export const requestPullReviewers = createServerFn({ method: "POST" })
+	.inputValidator(identityValidator<RequestReviewersInput>)
+	.handler(async ({ data }): Promise<boolean> => {
+		const context = await getGitHubContext();
+		if (!context) {
+			return false;
+		}
+
+		try {
+			await context.octokit.rest.pulls.requestReviewers({
+				owner: data.owner,
+				repo: data.repo,
+				pull_number: data.pullNumber,
+				reviewers: data.reviewers ?? [],
+				team_reviewers: data.teamReviewers ?? [],
+			});
+			await bustPullDetailCaches(context.session.user.id, {
+				owner: data.owner,
+				repo: data.repo,
+				pullNumber: data.pullNumber,
+			});
+			return true;
+		} catch {
+			return false;
+		}
+	});
+
+export const removeReviewRequest = createServerFn({ method: "POST" })
+	.inputValidator(identityValidator<RequestReviewersInput>)
+	.handler(async ({ data }): Promise<boolean> => {
+		const context = await getGitHubContext();
+		if (!context) {
+			return false;
+		}
+
+		try {
+			await context.octokit.rest.pulls.removeRequestedReviewers({
+				owner: data.owner,
+				repo: data.repo,
+				pull_number: data.pullNumber,
+				reviewers: data.reviewers ?? [],
+				team_reviewers: data.teamReviewers ?? [],
+			});
+			await bustPullDetailCaches(context.session.user.id, {
+				owner: data.owner,
+				repo: data.repo,
+				pullNumber: data.pullNumber,
+			});
+			return true;
+		} catch {
+			return false;
+		}
+	});
+
+export type RepoLabelsInput = {
+	owner: string;
+	repo: string;
+};
+
+export const getRepoLabels = createServerFn({ method: "GET" })
+	.inputValidator(identityValidator<RepoLabelsInput>)
+	.handler(async ({ data }): Promise<GitHubLabel[]> => {
+		const context = await getGitHubContext();
+		if (!context) {
+			return [];
+		}
+
+		try {
+			const allLabels = await context.octokit.paginate(
+				context.octokit.rest.issues.listLabelsForRepo,
+				{
+					owner: data.owner,
+					repo: data.repo,
+					per_page: 100,
+				},
+			);
+
+			return allLabels.map((l) => ({
+				name: l.name,
+				color: l.color ?? "000000",
+				description: l.description ?? null,
+			}));
+		} catch {
+			return [];
+		}
+	});
+
+export const setIssueLabels = createServerFn({ method: "POST" })
+	.inputValidator(identityValidator<SetLabelsInput>)
+	.handler(async ({ data }): Promise<boolean> => {
+		const context = await getGitHubContext();
+		if (!context) {
+			return false;
+		}
+
+		try {
+			await context.octokit.rest.issues.setLabels({
+				owner: data.owner,
+				repo: data.repo,
+				issue_number: data.issueNumber,
+				labels: data.labels,
+			});
+			const userId = context.session.user.id;
+			await Promise.all([
+				bustPullDetailCaches(userId, {
+					owner: data.owner,
+					repo: data.repo,
+					pullNumber: data.issueNumber,
+				}),
+				bustIssueCaches(userId, {
+					owner: data.owner,
+					repo: data.repo,
+					issueNumber: data.issueNumber,
+				}),
+			]);
+			return true;
+		} catch {
+			return false;
+		}
+	});
+
+export const createRepoLabel = createServerFn({ method: "POST" })
+	.inputValidator(identityValidator<CreateLabelInput>)
+	.handler(async ({ data }): Promise<GitHubLabel | null> => {
+		const context = await getGitHubContext();
+		if (!context) {
+			return null;
+		}
+
+		try {
+			const response = await context.octokit.rest.issues.createLabel({
+				owner: data.owner,
+				repo: data.repo,
+				name: data.name,
+				color: data.color,
+			});
+			return {
+				name: response.data.name,
+				color: response.data.color ?? "000000",
+				description: response.data.description ?? null,
 			};
 		} catch {
 			return null;

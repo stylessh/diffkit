@@ -76,6 +76,60 @@ const vercelLightTokens: ThemeRegistrationRaw["tokenColors"] = [
 		scope: ["markup.inserted", "punctuation.definition.inserted"],
 		settings: { foreground: "#107d32" },
 	},
+	// Markdown-specific scopes
+	{
+		scope: [
+			"markup.heading",
+			"markup.heading.setext",
+			"punctuation.definition.heading",
+		],
+		settings: { foreground: "#005ff2", fontStyle: "bold" },
+	},
+	{
+		scope: ["markup.bold", "punctuation.definition.bold"],
+		settings: { fontStyle: "bold" },
+	},
+	{
+		scope: ["markup.italic", "punctuation.definition.italic"],
+		settings: { fontStyle: "italic" },
+	},
+	{
+		scope: [
+			"markup.inline.raw",
+			"markup.fenced_code",
+			"markup.raw",
+			"fenced_code.block.language",
+		],
+		settings: { foreground: "#c41562" },
+	},
+	{
+		scope: ["markup.quote", "punctuation.definition.quote.begin"],
+		settings: { foreground: "#666666", fontStyle: "italic" },
+	},
+	{
+		scope: [
+			"markup.list",
+			"punctuation.definition.list.begin",
+			"punctuation.definition.list_item",
+		],
+		settings: { foreground: "#aa4d00" },
+	},
+	{
+		scope: ["markup.underline.link", "meta.link.inline", "string.other.link"],
+		settings: { foreground: "#005ff2", fontStyle: "underline" },
+	},
+	{
+		scope: [
+			"meta.link.reference",
+			"string.other.link.title",
+			"string.other.link.description",
+		],
+		settings: { foreground: "#7d00cc" },
+	},
+	{
+		scope: ["meta.separator", "markup.hr"],
+		settings: { foreground: "#666666" },
+	},
 ];
 
 const vercelDarkTokens: ThemeRegistrationRaw["tokenColors"] = [
@@ -153,6 +207,60 @@ const vercelDarkTokens: ThemeRegistrationRaw["tokenColors"] = [
 	{
 		scope: ["markup.inserted", "punctuation.definition.inserted"],
 		settings: { foreground: "#00ca50" },
+	},
+	// Markdown-specific scopes
+	{
+		scope: [
+			"markup.heading",
+			"markup.heading.setext",
+			"punctuation.definition.heading",
+		],
+		settings: { foreground: "#47a8ff", fontStyle: "bold" },
+	},
+	{
+		scope: ["markup.bold", "punctuation.definition.bold"],
+		settings: { fontStyle: "bold" },
+	},
+	{
+		scope: ["markup.italic", "punctuation.definition.italic"],
+		settings: { fontStyle: "italic" },
+	},
+	{
+		scope: [
+			"markup.inline.raw",
+			"markup.fenced_code",
+			"markup.raw",
+			"fenced_code.block.language",
+		],
+		settings: { foreground: "#ff4d8d" },
+	},
+	{
+		scope: ["markup.quote", "punctuation.definition.quote.begin"],
+		settings: { foreground: "#a1a1a1", fontStyle: "italic" },
+	},
+	{
+		scope: [
+			"markup.list",
+			"punctuation.definition.list.begin",
+			"punctuation.definition.list_item",
+		],
+		settings: { foreground: "#ff9300" },
+	},
+	{
+		scope: ["markup.underline.link", "meta.link.inline", "string.other.link"],
+		settings: { foreground: "#47a8ff", fontStyle: "underline" },
+	},
+	{
+		scope: [
+			"meta.link.reference",
+			"string.other.link.title",
+			"string.other.link.description",
+		],
+		settings: { foreground: "#c472fb" },
+	},
+	{
+		scope: ["meta.separator", "markup.hr"],
+		settings: { foreground: "#a1a1a1" },
 	},
 ];
 

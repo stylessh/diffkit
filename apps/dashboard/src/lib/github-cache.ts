@@ -184,6 +184,17 @@ async function getGitHubCacheStore(): Promise<GitHubCacheStore> {
 	};
 }
 
+export async function bustGitHubCache(
+	userId: string,
+	resource: string,
+	params?: unknown,
+): Promise<void> {
+	const store = await getGitHubCacheStore();
+	const paramsJson = stableSerialize(params);
+	const cacheKey = buildGitHubCacheKey({ userId, resource, paramsJson });
+	await store.delete(cacheKey);
+}
+
 export function createGitHubResponseMetadata(
 	statusCode: number,
 	headers: Record<string, string | null | undefined>,

@@ -8,6 +8,7 @@ import {
 	getIssuesFromUser,
 	getMyIssues,
 	getMyPulls,
+	getOrgTeams,
 	getPullComments,
 	getPullFiles,
 	getPullFromRepo,
@@ -16,6 +17,8 @@ import {
 	getPullStatus,
 	getPullsFromRepo,
 	getPullsFromUser,
+	getRepoCollaborators,
+	getRepoLabels,
 	getUserRepos,
 } from "./github.functions";
 import { githubCachePolicy } from "./github-cache-policy";
@@ -124,6 +127,16 @@ export const githubQueryKeys = {
 		reviewComments: (scope: GitHubQueryScope, input: PullFromRepoQueryInput) =>
 			["github", scope.userId, "pulls", "reviewComments", input] as const,
 	},
+	collaborators: (
+		scope: GitHubQueryScope,
+		input: { owner: string; repo: string },
+	) => ["github", scope.userId, "collaborators", input] as const,
+	repoLabels: (
+		scope: GitHubQueryScope,
+		input: { owner: string; repo: string },
+	) => ["github", scope.userId, "repoLabels", input] as const,
+	orgTeams: (scope: GitHubQueryScope, org: string) =>
+		["github", scope.userId, "orgTeams", org] as const,
 	issues: {
 		mine: (scope: GitHubQueryScope) =>
 			["github", scope.userId, "issues", "mine"] as const,
@@ -278,6 +291,42 @@ export function githubPullReviewCommentsQueryOptions(
 		gcTime: githubCachePolicy.activity.gcTimeMs,
 		refetchOnMount: "always",
 		meta: tabPersistedMeta,
+	});
+}
+
+export function githubRepoCollaboratorsQueryOptions(
+	scope: GitHubQueryScope,
+	input: { owner: string; repo: string },
+) {
+	return queryOptions({
+		queryKey: githubQueryKeys.collaborators(scope, input),
+		queryFn: () => getRepoCollaborators({ data: input }),
+		staleTime: githubCachePolicy.viewer.staleTimeMs,
+		gcTime: githubCachePolicy.viewer.gcTimeMs,
+	});
+}
+
+export function githubRepoLabelsQueryOptions(
+	scope: GitHubQueryScope,
+	input: { owner: string; repo: string },
+) {
+	return queryOptions({
+		queryKey: githubQueryKeys.repoLabels(scope, input),
+		queryFn: () => getRepoLabels({ data: input }),
+		staleTime: githubCachePolicy.viewer.staleTimeMs,
+		gcTime: githubCachePolicy.viewer.gcTimeMs,
+	});
+}
+
+export function githubOrgTeamsQueryOptions(
+	scope: GitHubQueryScope,
+	org: string,
+) {
+	return queryOptions({
+		queryKey: githubQueryKeys.orgTeams(scope, org),
+		queryFn: () => getOrgTeams({ data: { org } }),
+		staleTime: githubCachePolicy.viewer.staleTimeMs,
+		gcTime: githubCachePolicy.viewer.gcTimeMs,
 	});
 }
 

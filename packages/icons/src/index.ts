@@ -39,6 +39,8 @@ export {
   Moon01Icon as MoonIcon,
   MoreHorizontalIcon,
   Notification01Icon as NotificationIcon,
+  PencilEdit01Icon as EditIcon,
+  PlusSignIcon,
   Search01Icon as SearchIcon,
   Settings01Icon as SettingsIcon,
   SidebarLeftIcon as PanelLeftIcon,
@@ -46,6 +48,7 @@ export {
   Sun01Icon as SunIcon,
   Tick02Icon as CheckIcon,
   Tick02Icon as TickIcon,
+  UserAdd01Icon as UserAddIcon,
   ViewIcon,
 } from "@hugeicons/react";
 export { GitHubLogo, GitHubWordmarkLogo } from "./brand-logos";

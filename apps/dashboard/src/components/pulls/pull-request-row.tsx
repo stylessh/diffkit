@@ -7,6 +7,7 @@ import {
 	ViewIcon,
 } from "@diffkit/icons";
 import { Markdown } from "@diffkit/ui/components/markdown";
+import { Spinner } from "@diffkit/ui/components/spinner";
 import { cn } from "@diffkit/ui/lib/utils";
 import { useQuery } from "@tanstack/react-query";
 import { Link, useRouter } from "@tanstack/react-router";
@@ -116,27 +117,7 @@ export function PullRequestRow({
 						className="flex items-center gap-1 rounded-md border bg-surface-1 px-2 py-0.5 text-xs font-medium text-muted-foreground opacity-0 transition-opacity hover:bg-surface-2 hover:text-foreground group-hover:opacity-100"
 					>
 						{expanded && commentsQuery.isPending ? (
-							<svg
-								className="size-3 animate-spin"
-								viewBox="0 0 16 16"
-								fill="none"
-								aria-hidden="true"
-							>
-								<circle
-									cx="8"
-									cy="8"
-									r="6.5"
-									stroke="currentColor"
-									strokeWidth="2"
-									opacity="0.25"
-								/>
-								<path
-									d="M14.5 8a6.5 6.5 0 0 0-6.5-6.5"
-									stroke="currentColor"
-									strokeWidth="2"
-									strokeLinecap="round"
-								/>
-							</svg>
+							<Spinner size={13} />
 						) : (
 							<ViewIcon size={13} strokeWidth={2} />
 						)}

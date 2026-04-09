@@ -10,8 +10,12 @@ import { cn } from "@diffkit/ui/lib/utils";
 import { useQuery } from "@tanstack/react-query";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState } from "react";
+import { LabelsSection } from "#/components/labels-section";
 import { formatRelativeTime } from "#/components/pulls/pull-request-row";
-import { githubIssuePageQueryOptions } from "#/lib/github.query";
+import {
+	githubIssuePageQueryOptions,
+	githubQueryKeys,
+} from "#/lib/github.query";
 import type { GitHubActor, IssueDetail } from "#/lib/github.types";
 import { useHasMounted } from "#/lib/use-has-mounted";
 import { useRegisterTab } from "#/lib/use-register-tab";
@@ -274,27 +278,18 @@ function IssueDetailPage() {
 					</SidebarSection>
 
 					{/* Labels */}
-					<SidebarSection title="Labels">
-						{issue.labels.length > 0 ? (
-							<div className="flex flex-wrap gap-1.5">
-								{issue.labels.map((label) => (
-									<span
-										key={label.name}
-										className="label-pill rounded-full px-2.5 py-0.5 text-xs font-medium"
-										style={
-											{
-												"--label-color": `#${label.color}`,
-											} as React.CSSProperties
-										}
-									>
-										{label.name}
-									</span>
-								))}
-							</div>
-						) : (
-							<p className="text-xs text-muted-foreground">No labels</p>
-						)}
-					</SidebarSection>
+					<LabelsSection
+						currentLabels={issue.labels}
+						owner={owner}
+						repo={repo}
+						issueNumber={issueNumber}
+						scope={scope}
+						pageQueryKey={githubQueryKeys.issues.page(scope, {
+							owner,
+							repo,
+							issueNumber,
+						})}
+					/>
 
 					{/* Participants */}
 					<SidebarSection title="Participants">
