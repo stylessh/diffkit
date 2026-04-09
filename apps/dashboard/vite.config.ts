@@ -120,8 +120,8 @@ export default {};`;
 	};
 }
 
-const config = defineConfig({
-	server: getTunnelServerConfig(),
+const config = defineConfig(({ command }) => ({
+	server: command === "serve" ? getTunnelServerConfig() : undefined,
 	plugins: [
 		devtools(),
 		shikiSSRStub(),
@@ -134,6 +134,6 @@ const config = defineConfig({
 		tanstackStart(),
 		viteReact(),
 	],
-});
+}));
 
 export default config;
