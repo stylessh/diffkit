@@ -378,7 +378,7 @@ export function ReviewPage() {
 										const startLineSide = startIsSmaller
 											? range.side
 											: (range.endSide ?? range.side);
-										const toGithubSide = (s: string) =>
+										const toGithubSide = (s: string | undefined) =>
 											s === "deletions"
 												? ("LEFT" as const)
 												: ("RIGHT" as const);
