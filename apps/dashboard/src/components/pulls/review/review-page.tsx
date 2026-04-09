@@ -370,19 +370,26 @@ export function ReviewPage() {
 											: null
 									}
 									onGutterClick={(range) => {
-										const side = range.side === "deletions" ? "LEFT" : "RIGHT";
 										const isMultiLine = range.start !== range.end;
+										const startIsSmaller = range.start <= range.end;
+										const lineSide = startIsSmaller
+											? (range.endSide ?? range.side)
+											: range.side;
+										const startLineSide = startIsSmaller
+											? range.side
+											: (range.endSide ?? range.side);
+										const toGithubSide = (s: string) =>
+											s === "deletions"
+												? ("LEFT" as const)
+												: ("RIGHT" as const);
 										setActiveCommentForm({
 											path: file.filename,
 											line: Math.max(range.start, range.end),
-											side,
+											side: toGithubSide(lineSide),
 											...(isMultiLine
 												? {
 														startLine: Math.min(range.start, range.end),
-														startSide:
-															(range.endSide ?? range.side) === "deletions"
-																? "LEFT"
-																: "RIGHT",
+														startSide: toGithubSide(startLineSide),
 													}
 												: {}),
 										});
