@@ -213,4 +213,45 @@ describe("getOrRevalidateGitHubResource", () => {
 			}),
 		).resolves.toEqual([{ fullName: "owner/repo-b" }]);
 	});
+
+	it("treats a newer revalidation signal as stale even before freshUntil expires", async () => {
+		const store = createMemoryStore([
+			buildEntry({
+				resource: "pulls.detail.raw",
+				cacheKey:
+					'user-1::pulls.detail.raw::{"owner":"stylessh","repo":"havana","pullNumber":42}',
+				paramsJson: '{"owner":"stylessh","repo":"havana","pullNumber":42}',
+				payloadJson: JSON.stringify({ title: "Old title" }),
+				fetchedAt: 1_000,
+				freshUntil: 100_000,
+			}),
+		]);
+		const fetcher = vi.fn<
+			(parameters: {
+				etag?: string | null;
+				lastModified?: string | null;
+			}) => Promise<GitHubFetchResult<{ title: string }>>
+		>(async () => ({
+			kind: "success",
+			data: { title: "New title" },
+			metadata: createGitHubResponseMetadata(200, {
+				etag: '"next"',
+			}),
+		}));
+
+		const result = await getOrRevalidateGitHubResource({
+			userId: "user-1",
+			resource: "pulls.detail.raw",
+			params: { owner: "stylessh", repo: "havana", pullNumber: 42 },
+			signalKeys: ["pull:stylessh/havana#42"],
+			freshForMs: 60_000,
+			store,
+			now: () => 5_000,
+			getLatestSignalUpdatedAt: async () => 4_000,
+			fetcher,
+		});
+
+		expect(result).toEqual({ title: "New title" });
+		expect(fetcher).toHaveBeenCalledTimes(1);
+	});
 });

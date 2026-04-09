@@ -32,9 +32,14 @@ import {
 	createGitHubResponseMetadata,
 	type GitHubConditionalHeaders,
 	type GitHubFetchResult,
+	getGitHubRevalidationSignals,
 	getOrRevalidateGitHubResource,
 } from "./github-cache";
 import { githubCachePolicy } from "./github-cache-policy";
+import {
+	type GitHubRevalidationSignalInput,
+	githubRevalidationSignalKeys,
+} from "./github-revalidation";
 
 type GitHubClient = OctokitType;
 type AuthSession = {
@@ -559,6 +564,7 @@ async function getCachedGitHubRequest<TGitHubData, TResult>({
 	resource,
 	params,
 	freshForMs,
+	signalKeys,
 	request,
 	mapData,
 }: {
@@ -566,6 +572,7 @@ async function getCachedGitHubRequest<TGitHubData, TResult>({
 	resource: string;
 	params: unknown;
 	freshForMs: number;
+	signalKeys?: string[];
 	request: (
 		headers: Record<string, string>,
 	) => Promise<GitHubRestResponse<TGitHubData>>;
@@ -576,6 +583,7 @@ async function getCachedGitHubRequest<TGitHubData, TResult>({
 		resource,
 		params,
 		freshForMs,
+		signalKeys,
 		fetcher: async (conditionals) => {
 			const result = await executeGitHubRequest(request, conditionals);
 
@@ -607,6 +615,13 @@ async function getCachedPullResponse({
 		resource,
 		params: data,
 		freshForMs,
+		signalKeys: [
+			githubRevalidationSignalKeys.pullEntity({
+				owner: data.owner,
+				repo: data.repo,
+				pullNumber: data.pullNumber,
+			}),
+		],
 		request: (headers) =>
 			context.octokit.rest.pulls.get({
 				owner: data.owner,
@@ -645,6 +660,13 @@ async function getPullCommentsResult(
 		resource: "pulls.comments",
 		params: data,
 		freshForMs: githubCachePolicy.activity.staleTimeMs,
+		signalKeys: [
+			githubRevalidationSignalKeys.pullEntity({
+				owner: data.owner,
+				repo: data.repo,
+				pullNumber: data.pullNumber,
+			}),
+		],
 		request: (headers) =>
 			context.octokit.rest.issues.listComments({
 				owner: data.owner,
@@ -683,6 +705,13 @@ async function getPullCommitsResult(
 		resource: "pulls.commits",
 		params: data,
 		freshForMs: githubCachePolicy.activity.staleTimeMs,
+		signalKeys: [
+			githubRevalidationSignalKeys.pullEntity({
+				owner: data.owner,
+				repo: data.repo,
+				pullNumber: data.pullNumber,
+			}),
+		],
 		request: (headers) =>
 			context.octokit.rest.pulls.listCommits({
 				owner: data.owner,
@@ -811,6 +840,13 @@ async function getPullStatusResult(
 		resource: "pulls.status.v1",
 		params: data,
 		freshForMs: githubCachePolicy.status.staleTimeMs,
+		signalKeys: [
+			githubRevalidationSignalKeys.pullEntity({
+				owner: data.owner,
+				repo: data.repo,
+				pullNumber: data.pullNumber,
+			}),
+		],
 		fetcher: async () => {
 			const pullForStatus =
 				pull ??
@@ -862,6 +898,13 @@ async function getIssueDetailResult(
 		resource: "issues.detail",
 		params: data,
 		freshForMs: githubCachePolicy.detail.staleTimeMs,
+		signalKeys: [
+			githubRevalidationSignalKeys.issueEntity({
+				owner: data.owner,
+				repo: data.repo,
+				issueNumber: data.issueNumber,
+			}),
+		],
 		request: (headers) =>
 			context.octokit.rest.issues.get({
 				owner: data.owner,
@@ -892,6 +935,13 @@ async function getIssueCommentsResult(
 		resource: "issues.comments",
 		params: data,
 		freshForMs: githubCachePolicy.activity.staleTimeMs,
+		signalKeys: [
+			githubRevalidationSignalKeys.issueEntity({
+				owner: data.owner,
+				repo: data.repo,
+				issueNumber: data.issueNumber,
+			}),
+		],
 		request: (headers) =>
 			context.octokit.rest.issues.listComments({
 				owner: data.owner,
@@ -993,6 +1043,7 @@ async function getMyPullSlice({
 		resource: `pulls.mine.${roleKey}`,
 		params: { username, role },
 		freshForMs: githubCachePolicy.list.staleTimeMs,
+		signalKeys: [githubRevalidationSignalKeys.pullsMine],
 		request: (headers) =>
 			context.octokit.rest.search.issuesAndPullRequests({
 				q: buildUserSearchQuery({
@@ -1026,6 +1077,7 @@ async function getMyIssueSlice({
 		resource: `issues.mine.${roleKey}`,
 		params: { username, role },
 		freshForMs: githubCachePolicy.list.staleTimeMs,
+		signalKeys: [githubRevalidationSignalKeys.issuesMine],
 		request: (headers) =>
 			context.octokit.rest.search.issuesAndPullRequests({
 				q: buildUserSearchQuery({
@@ -1046,6 +1098,20 @@ async function getMyIssueSlice({
 function identityValidator<TInput>(data: TInput) {
 	return data;
 }
+
+export const getGitHubRevalidationSignalRecords = createServerFn({
+	method: "POST",
+})
+	.inputValidator(identityValidator<GitHubRevalidationSignalInput>)
+	.handler(async ({ data }) => {
+		const { getRequestSession } = await import("./auth-runtime");
+		const session = await getRequestSession();
+		if (!session) {
+			return [];
+		}
+
+		return getGitHubRevalidationSignals(data.signalKeys);
+	});
 
 export const getGitHubViewer = createServerFn({ method: "GET" }).handler(
 	async () => {
@@ -1169,6 +1235,7 @@ export const getPullsFromUser = createServerFn({ method: "GET" })
 				repo: data.repo,
 			},
 			freshForMs: githubCachePolicy.list.staleTimeMs,
+			signalKeys: [githubRevalidationSignalKeys.pullsMine],
 			request: (headers) =>
 				context.octokit.rest.search.issuesAndPullRequests({
 					q: buildUserSearchQuery({
@@ -1213,6 +1280,7 @@ export const getPullsFromRepo = createServerFn({ method: "GET" })
 				direction: data.direction ?? "desc",
 			},
 			freshForMs: githubCachePolicy.list.staleTimeMs,
+			signalKeys: [githubRevalidationSignalKeys.pullsMine],
 			request: (headers) =>
 				context.octokit.rest.pulls.list({
 					owner: data.owner,
@@ -1315,6 +1383,7 @@ export const getIssuesFromUser = createServerFn({ method: "GET" })
 				repo: data.repo,
 			},
 			freshForMs: githubCachePolicy.list.staleTimeMs,
+			signalKeys: [githubRevalidationSignalKeys.issuesMine],
 			request: (headers) =>
 				context.octokit.rest.search.issuesAndPullRequests({
 					q: buildUserSearchQuery({
@@ -1361,6 +1430,7 @@ export const getIssuesFromRepo = createServerFn({ method: "GET" })
 				direction: data.direction ?? "desc",
 			},
 			freshForMs: githubCachePolicy.list.staleTimeMs,
+			signalKeys: [githubRevalidationSignalKeys.issuesMine],
 			request: (headers) =>
 				context.octokit.rest.issues.listForRepo({
 					owner: data.owner,
@@ -1490,6 +1560,13 @@ async function getPullFilesResult(
 		resource: "pulls.files",
 		params: data,
 		freshForMs: githubCachePolicy.detail.staleTimeMs,
+		signalKeys: [
+			githubRevalidationSignalKeys.pullEntity({
+				owner: data.owner,
+				repo: data.repo,
+				pullNumber: data.pullNumber,
+			}),
+		],
 		request: (headers) =>
 			context.octokit.rest.pulls.listFiles({
 				owner: data.owner,
@@ -1532,6 +1609,13 @@ async function getPullReviewCommentsResult(
 		resource: "pulls.reviewComments",
 		params: data,
 		freshForMs: githubCachePolicy.activity.staleTimeMs,
+		signalKeys: [
+			githubRevalidationSignalKeys.pullEntity({
+				owner: data.owner,
+				repo: data.repo,
+				pullNumber: data.pullNumber,
+			}),
+		],
 		request: (headers) =>
 			context.octokit.rest.pulls.listReviewComments({
 				owner: data.owner,

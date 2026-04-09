@@ -17,6 +17,7 @@ import { Route as ProtectedIndexRouteImport } from './routes/_protected/index'
 import { Route as ProtectedReviewsRouteImport } from './routes/_protected/reviews'
 import { Route as ProtectedPullsRouteImport } from './routes/_protected/pulls'
 import { Route as ProtectedIssuesRouteImport } from './routes/_protected/issues'
+import { Route as ApiWebhooksGithubRouteImport } from './routes/api/webhooks/github'
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
 import { Route as ProtectedOwnerRepoReviewPullIdRouteImport } from './routes/_protected/$owner/$repo/review.$pullId'
 import { Route as ProtectedOwnerRepoPullPullIdRouteImport } from './routes/_protected/$owner/$repo/pull.$pullId'
@@ -61,6 +62,11 @@ const ProtectedIssuesRoute = ProtectedIssuesRouteImport.update({
   path: '/issues',
   getParentRoute: () => ProtectedRoute,
 } as any)
+const ApiWebhooksGithubRoute = ApiWebhooksGithubRouteImport.update({
+  id: '/api/webhooks/github',
+  path: '/api/webhooks/github',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiAuthSplatRoute = ApiAuthSplatRouteImport.update({
   id: '/api/auth/$',
   path: '/api/auth/$',
@@ -94,6 +100,7 @@ export interface FileRoutesByFullPath {
   '/pulls': typeof ProtectedPullsRoute
   '/reviews': typeof ProtectedReviewsRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
+  '/api/webhooks/github': typeof ApiWebhooksGithubRoute
   '/$owner/$repo/issues/$issueId': typeof ProtectedOwnerRepoIssuesIssueIdRoute
   '/$owner/$repo/pull/$pullId': typeof ProtectedOwnerRepoPullPullIdRoute
   '/$owner/$repo/review/$pullId': typeof ProtectedOwnerRepoReviewPullIdRoute
@@ -107,6 +114,7 @@ export interface FileRoutesByTo {
   '/reviews': typeof ProtectedReviewsRoute
   '/': typeof ProtectedIndexRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
+  '/api/webhooks/github': typeof ApiWebhooksGithubRoute
   '/$owner/$repo/issues/$issueId': typeof ProtectedOwnerRepoIssuesIssueIdRoute
   '/$owner/$repo/pull/$pullId': typeof ProtectedOwnerRepoPullPullIdRoute
   '/$owner/$repo/review/$pullId': typeof ProtectedOwnerRepoReviewPullIdRoute
@@ -122,6 +130,7 @@ export interface FileRoutesById {
   '/_protected/reviews': typeof ProtectedReviewsRoute
   '/_protected/': typeof ProtectedIndexRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
+  '/api/webhooks/github': typeof ApiWebhooksGithubRoute
   '/_protected/$owner/$repo/issues/$issueId': typeof ProtectedOwnerRepoIssuesIssueIdRoute
   '/_protected/$owner/$repo/pull/$pullId': typeof ProtectedOwnerRepoPullPullIdRoute
   '/_protected/$owner/$repo/review/$pullId': typeof ProtectedOwnerRepoReviewPullIdRoute
@@ -137,6 +146,7 @@ export interface FileRouteTypes {
     | '/pulls'
     | '/reviews'
     | '/api/auth/$'
+    | '/api/webhooks/github'
     | '/$owner/$repo/issues/$issueId'
     | '/$owner/$repo/pull/$pullId'
     | '/$owner/$repo/review/$pullId'
@@ -150,6 +160,7 @@ export interface FileRouteTypes {
     | '/reviews'
     | '/'
     | '/api/auth/$'
+    | '/api/webhooks/github'
     | '/$owner/$repo/issues/$issueId'
     | '/$owner/$repo/pull/$pullId'
     | '/$owner/$repo/review/$pullId'
@@ -164,6 +175,7 @@ export interface FileRouteTypes {
     | '/_protected/reviews'
     | '/_protected/'
     | '/api/auth/$'
+    | '/api/webhooks/github'
     | '/_protected/$owner/$repo/issues/$issueId'
     | '/_protected/$owner/$repo/pull/$pullId'
     | '/_protected/$owner/$repo/review/$pullId'
@@ -175,6 +187,7 @@ export interface RootRouteChildren {
   RobotsDottxtRoute: typeof RobotsDottxtRoute
   SitemapDotxmlRoute: typeof SitemapDotxmlRoute
   ApiAuthSplatRoute: typeof ApiAuthSplatRoute
+  ApiWebhooksGithubRoute: typeof ApiWebhooksGithubRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -234,6 +247,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/issues'
       preLoaderRoute: typeof ProtectedIssuesRouteImport
       parentRoute: typeof ProtectedRoute
+    }
+    '/api/webhooks/github': {
+      id: '/api/webhooks/github'
+      path: '/api/webhooks/github'
+      fullPath: '/api/webhooks/github'
+      preLoaderRoute: typeof ApiWebhooksGithubRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/api/auth/$': {
       id: '/api/auth/$'
@@ -296,6 +316,7 @@ const rootRouteChildren: RootRouteChildren = {
   RobotsDottxtRoute: RobotsDottxtRoute,
   SitemapDotxmlRoute: SitemapDotxmlRoute,
   ApiAuthSplatRoute: ApiAuthSplatRoute,
+  ApiWebhooksGithubRoute: ApiWebhooksGithubRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

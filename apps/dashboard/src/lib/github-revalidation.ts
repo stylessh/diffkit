@@ -1,0 +1,330 @@
+import type { Tab } from "./tab-store";
+
+export const githubRevalidationSignalKeys = {
+	pullsMine: "pulls.mine",
+	issuesMine: "issues.mine",
+	actionsRepo: (input: { owner: string; repo: string }) =>
+		`actions:${input.owner}/${input.repo}`,
+	pullEntity: (input: { owner: string; repo: string; pullNumber: number }) =>
+		`pull:${input.owner}/${input.repo}#${input.pullNumber}`,
+	issueEntity: (input: { owner: string; repo: string; issueNumber: number }) =>
+		`issue:${input.owner}/${input.repo}#${input.issueNumber}`,
+	workflowRunEntity: (input: { owner: string; repo: string; runId: number }) =>
+		`workflowRun:${input.owner}/${input.repo}#${input.runId}`,
+	workflowJobEntity: (input: { owner: string; repo: string; jobId: number }) =>
+		`workflowJob:${input.owner}/${input.repo}#${input.jobId}`,
+} as const;
+
+export type GitHubRevalidationSignalRecord = {
+	signalKey: string;
+	updatedAt: number;
+};
+
+export type GitHubRevalidationSignalInput = {
+	signalKeys: string[];
+};
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+	return Boolean(value) && typeof value === "object";
+}
+
+function getRepositoryIdentity(payload: unknown) {
+	if (!isRecord(payload)) {
+		return null;
+	}
+
+	const repository = payload.repository;
+	if (!isRecord(repository)) {
+		return null;
+	}
+
+	const repo = repository.name;
+	const owner = isRecord(repository.owner) ? repository.owner.login : null;
+	if (typeof owner !== "string" || typeof repo !== "string") {
+		return null;
+	}
+
+	return { owner, repo };
+}
+
+function getPullRequestNumber(payload: unknown) {
+	if (!isRecord(payload) || !isRecord(payload.pull_request)) {
+		return null;
+	}
+
+	return typeof payload.pull_request.number === "number"
+		? payload.pull_request.number
+		: null;
+}
+
+function getIssueIdentity(payload: unknown) {
+	if (!isRecord(payload) || !isRecord(payload.issue)) {
+		return null;
+	}
+
+	const number = payload.issue.number;
+	if (typeof number !== "number") {
+		return null;
+	}
+
+	return {
+		number,
+		isPullRequest: isRecord(payload.issue.pull_request),
+	};
+}
+
+function getWorkflowRunId(payload: unknown) {
+	if (!isRecord(payload)) {
+		return null;
+	}
+
+	if (
+		isRecord(payload.workflow_run) &&
+		typeof payload.workflow_run.id === "number"
+	) {
+		return payload.workflow_run.id;
+	}
+
+	if (
+		isRecord(payload.workflow_job) &&
+		typeof payload.workflow_job.run_id === "number"
+	) {
+		return payload.workflow_job.run_id;
+	}
+
+	return null;
+}
+
+function getWorkflowJobId(payload: unknown) {
+	if (!isRecord(payload) || !isRecord(payload.workflow_job)) {
+		return null;
+	}
+
+	return typeof payload.workflow_job.id === "number"
+		? payload.workflow_job.id
+		: null;
+}
+
+function getCheckRunPullSignals(payload: unknown) {
+	const repository = getRepositoryIdentity(payload);
+	if (!repository || !isRecord(payload)) {
+		return [];
+	}
+
+	const checkRun = payload.check_run;
+	if (!isRecord(checkRun) || !Array.isArray(checkRun.pull_requests)) {
+		return [];
+	}
+
+	return checkRun.pull_requests.flatMap((pull) => {
+		if (!isRecord(pull) || typeof pull.number !== "number") {
+			return [];
+		}
+
+		return [
+			githubRevalidationSignalKeys.pullEntity({
+				owner: repository.owner,
+				repo: repository.repo,
+				pullNumber: pull.number,
+			}),
+		];
+	});
+}
+
+function getCheckSuitePullSignals(payload: unknown) {
+	const repository = getRepositoryIdentity(payload);
+	if (!repository || !isRecord(payload)) {
+		return [];
+	}
+
+	const checkSuite = payload.check_suite;
+	if (!isRecord(checkSuite) || !Array.isArray(checkSuite.pull_requests)) {
+		return [];
+	}
+
+	return checkSuite.pull_requests.flatMap((pull) => {
+		if (!isRecord(pull) || typeof pull.number !== "number") {
+			return [];
+		}
+
+		return [
+			githubRevalidationSignalKeys.pullEntity({
+				owner: repository.owner,
+				repo: repository.repo,
+				pullNumber: pull.number,
+			}),
+		];
+	});
+}
+
+export function getGitHubWebhookRevalidationSignalKeys(
+	event: string,
+	payload: unknown,
+) {
+	const repository = getRepositoryIdentity(payload);
+	if (!repository) {
+		return [];
+	}
+
+	if (event === "pull_request" || event === "pull_request_review") {
+		const pullNumber = getPullRequestNumber(payload);
+		return typeof pullNumber === "number"
+			? [
+					githubRevalidationSignalKeys.pullsMine,
+					githubRevalidationSignalKeys.pullEntity({
+						owner: repository.owner,
+						repo: repository.repo,
+						pullNumber,
+					}),
+				]
+			: [githubRevalidationSignalKeys.pullsMine];
+	}
+
+	if (
+		event === "pull_request_review_comment" ||
+		event === "pull_request_review_thread"
+	) {
+		const pullNumber = getPullRequestNumber(payload);
+		return typeof pullNumber === "number"
+			? [
+					githubRevalidationSignalKeys.pullEntity({
+						owner: repository.owner,
+						repo: repository.repo,
+						pullNumber,
+					}),
+				]
+			: [];
+	}
+
+	if (event === "issues") {
+		const issueIdentity = getIssueIdentity(payload);
+		if (!issueIdentity) {
+			return [githubRevalidationSignalKeys.issuesMine];
+		}
+
+		return issueIdentity.isPullRequest
+			? [
+					githubRevalidationSignalKeys.pullsMine,
+					githubRevalidationSignalKeys.pullEntity({
+						owner: repository.owner,
+						repo: repository.repo,
+						pullNumber: issueIdentity.number,
+					}),
+				]
+			: [
+					githubRevalidationSignalKeys.issuesMine,
+					githubRevalidationSignalKeys.issueEntity({
+						owner: repository.owner,
+						repo: repository.repo,
+						issueNumber: issueIdentity.number,
+					}),
+				];
+	}
+
+	if (event === "issue_comment") {
+		const issueIdentity = getIssueIdentity(payload);
+		if (!issueIdentity) {
+			return [];
+		}
+
+		return issueIdentity.isPullRequest
+			? [
+					githubRevalidationSignalKeys.pullEntity({
+						owner: repository.owner,
+						repo: repository.repo,
+						pullNumber: issueIdentity.number,
+					}),
+				]
+			: [
+					githubRevalidationSignalKeys.issueEntity({
+						owner: repository.owner,
+						repo: repository.repo,
+						issueNumber: issueIdentity.number,
+					}),
+				];
+	}
+
+	if (event === "check_run") {
+		return getCheckRunPullSignals(payload);
+	}
+
+	if (event === "check_suite") {
+		return getCheckSuitePullSignals(payload);
+	}
+
+	if (event === "workflow_run") {
+		const runId = getWorkflowRunId(payload);
+		return typeof runId === "number"
+			? [
+					githubRevalidationSignalKeys.actionsRepo({
+						owner: repository.owner,
+						repo: repository.repo,
+					}),
+					githubRevalidationSignalKeys.workflowRunEntity({
+						owner: repository.owner,
+						repo: repository.repo,
+						runId,
+					}),
+				]
+			: [
+					githubRevalidationSignalKeys.actionsRepo({
+						owner: repository.owner,
+						repo: repository.repo,
+					}),
+				];
+	}
+
+	if (event === "workflow_job") {
+		const runId = getWorkflowRunId(payload);
+		const jobId = getWorkflowJobId(payload);
+
+		return [
+			githubRevalidationSignalKeys.actionsRepo({
+				owner: repository.owner,
+				repo: repository.repo,
+			}),
+			...(typeof runId === "number"
+				? [
+						githubRevalidationSignalKeys.workflowRunEntity({
+							owner: repository.owner,
+							repo: repository.repo,
+							runId,
+						}),
+					]
+				: []),
+			...(typeof jobId === "number"
+				? [
+						githubRevalidationSignalKeys.workflowJobEntity({
+							owner: repository.owner,
+							repo: repository.repo,
+							jobId,
+						}),
+					]
+				: []),
+		];
+	}
+
+	return [];
+}
+
+export function getGitHubRevalidationSignalKeysForTab(tab: Tab) {
+	const [owner, repo] = tab.repo.split("/");
+
+	if (tab.type === "pull" || tab.type === "review") {
+		return [
+			githubRevalidationSignalKeys.pullEntity({
+				owner,
+				repo,
+				pullNumber: tab.number,
+			}),
+		];
+	}
+
+	return [
+		githubRevalidationSignalKeys.issueEntity({
+			owner,
+			repo,
+			issueNumber: tab.number,
+		}),
+	];
+}

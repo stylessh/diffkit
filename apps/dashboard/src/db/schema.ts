@@ -79,3 +79,11 @@ export const githubResponseCache = sqliteTable(
 		),
 	}),
 );
+
+export const githubRevalidationSignal = sqliteTable(
+	"github_revalidation_signal",
+	{
+		signalKey: text("signal_key").primaryKey(),
+		updatedAt: integer("updated_at").notNull(),
+	},
+);

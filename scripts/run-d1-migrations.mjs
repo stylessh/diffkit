@@ -26,8 +26,13 @@ function runPnpm(commandArgs) {
 	const pnpmExecPath = process.env.npm_execpath;
 
 	if (pnpmExecPath) {
-		return spawnSync(process.execPath, [pnpmExecPath, ...commandArgs], {
+		const shouldUseNode = /\.(c|m)?js$/u.test(pnpmExecPath);
+		const command = shouldUseNode ? process.execPath : pnpmExecPath;
+		const args = shouldUseNode ? [pnpmExecPath, ...commandArgs] : commandArgs;
+
+		return spawnSync(command, args, {
 			stdio: "inherit",
+			shell: process.platform === "win32" && !shouldUseNode,
 		});
 	}
 

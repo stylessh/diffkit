@@ -5,9 +5,11 @@ import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { tanstackStartCookies } from "better-auth/tanstack-start";
 import { drizzle } from "drizzle-orm/d1";
 import * as schema from "../db/schema";
+import { getGitHubAppAuthConfig } from "./github-app.server";
 
 export function getAuth() {
 	const db = drizzle(env.DB, { schema });
+	const github = getGitHubAppAuthConfig();
 
 	return betterAuth({
 		baseURL: env.BETTER_AUTH_URL,
@@ -17,18 +19,8 @@ export function getAuth() {
 		}),
 		socialProviders: {
 			github: {
-				clientId: env.GITHUB_CLIENT_ID,
-				clientSecret: env.GITHUB_CLIENT_SECRET,
-				scope: [
-					"read:user",
-					"user:email",
-					"repo",
-					"notifications",
-					"workflow",
-					"read:project",
-					"security_events",
-					"admin:repo_hook",
-				],
+				clientId: github.clientId,
+				clientSecret: github.clientSecret,
 			},
 		},
 		plugins: [tanstackStartCookies()],

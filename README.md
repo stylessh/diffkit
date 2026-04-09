@@ -19,7 +19,7 @@ A fast, design-first GitHub dashboard for developers who want to stay on top of 
 | Routing | TanStack Router (file-based) |
 | Data | TanStack Query + Octokit |
 | Database | Cloudflare D1 (SQLite) via Drizzle ORM |
-| Auth | Better Auth with GitHub OAuth |
+| Auth | Better Auth with GitHub App |
 | Styling | Tailwind CSS 4 + Radix UI |
 | Icons | Lucide React |
 | Build | Vite 7 + Turborepo |
@@ -32,7 +32,7 @@ A fast, design-first GitHub dashboard for developers who want to stay on top of 
 
 - [Node.js](https://nodejs.org/) (v20+)
 - [pnpm](https://pnpm.io/) (v10+)
-- A [GitHub OAuth App](https://docs.github.com/en/apps/oauth-apps/building-oauth-apps/creating-an-oauth-app)
+- A [GitHub App](https://github.com/settings/apps)
 
 ### Setup
 
@@ -54,21 +54,75 @@ A fast, design-first GitHub dashboard for developers who want to stay on top of 
    Create a `.dev.vars` file in `apps/dashboard/`:
 
    ```
-   GITHUB_CLIENT_ID=your_github_client_id
-   GITHUB_CLIENT_SECRET=your_github_client_secret
+   GITHUB_APP_CLIENT_ID=your_github_app_client_id
+   GITHUB_APP_CLIENT_SECRET=your_github_app_client_secret
+   GITHUB_WEBHOOK_SECRET=your_github_webhook_secret
    BETTER_AUTH_SECRET=a_random_32_character_string
    BETTER_AUTH_URL=http://localhost:3000
    ```
 
-   > To get GitHub OAuth credentials, create a new OAuth App in [GitHub Developer Settings](https://github.com/settings/developers) with the callback URL set to `http://localhost:3000/api/auth/callback/github`.
+   > DiffKit also accepts the legacy `GITHUB_CLIENT_ID` and `GITHUB_CLIENT_SECRET` names during migration, but new setups should use the `GITHUB_APP_*` names above.
 
-4. **Run database migrations**
+4. **Create and install the GitHub App**
+
+   In [GitHub App settings](https://github.com/settings/apps):
+
+   - Set the callback URL to `http://localhost:3000/api/auth/callback/github`
+   - Grant the account permission `Email addresses: Read-only`
+   - Install the app on the repositories or organizations you want DiffKit to access
+
+   Recommended GitHub App permissions derived from the current roadmap:
+
+   | Roadmap area | Roadmap items | GitHub App permission | Level | Notes |
+   | --- | --- | --- | --- | --- |
+   | Auth | Sign in and identify the user | User `Email addresses` | Read-only | Required for Better Auth to resolve the user's email address. |
+   | Core dashboard | Overview, repo list, repo search, private repo access | Repository `Metadata` | Read-only | Required baseline permission for repository-aware reads. |
+   | Pull requests | View/edit PRs, update branch, request reviewers, review diffs, merge, close/reopen, link issues | Repository `Pull requests` | Read & write | Required now for existing PR mutations and future PR management. |
+   | Issues | View/create/edit/close issues, labels, milestones, comments | Repository `Issues` | Read & write | Required now for current label mutations and future issue workflows. |
+   | CI and review status | PR checks, CI-aware review flows, CI notification filtering | Repository `Checks` | Read-only | Required now for pull request status surfaces. |
+   | GitHub Actions | Workflow run history, job logs, artifacts, rerun/cancel/retry flows, Actions-focused UI | Repository `Actions` | Read & write | `Read` is enough for viewing workflow runs and logs. Use `Read & write` if the product should also rerun, cancel, delete, or otherwise manage workflow runs. |
+   | Collaborators and teams | Reviewer pickers, org team reviewer flows | Organization `Members` | Read-only | Required for org installs if reviewer assignment should include teams. |
+   | Repository content | File browser, README preview, branch/tag management, create PR from branches | Repository `Contents` | Read & write | Inference from the roadmap. Likely needed once repository browsing and branch operations ship. |
+   | Workflow files and policy | Editing `.github/workflows/*`, enabling/disabling workflows, workflow policy/config management | Repository `Workflows` | Read & write | Separate from `Actions`. Needed when the app modifies workflow definitions or workflow configuration, not just when it reads logs or manages runs. |
+   | Search | Global search across PRs, issues, and repos | No extra permission beyond the resources being searched | N/A | Search inherits access from `Metadata`, `Pull requests`, `Issues`, and likely `Contents`. |
+   | Notifications | Notification inbox, mark read/unread, filter by type | No matching GitHub App permission | N/A | GitHub's notifications REST endpoints do not support GitHub App user or installation tokens, so this roadmap area needs a different implementation strategy. |
+
+   If we add new permissions after users have already installed the app, GitHub will require those installations to approve the expanded permission set.
+
+   Recommended webhook events in GitHub App setup:
+
+   | GitHub UI label | Enable now | Why |
+   | --- | --- | --- |
+   | `Check run` | Yes | Keeps PR status and check-derived cache fresh. |
+   | `Check suite` | Yes | Captures suite-level CI state changes for PR refreshes. |
+   | `Issue comment` | Yes | Refreshes issue and PR comment-related views. |
+   | `Issues` | Yes | Refreshes issue and PR metadata when titles, bodies, labels, or state change. |
+   | `Pull request` | Yes | Core PR invalidation event. |
+   | `Pull request review` | Yes | Refreshes review state and PR detail data. |
+   | `Pull request review comment` | Yes | Refreshes diff discussion and review comment data. |
+   | `Pull request review thread` | Yes | Refreshes review thread state changes. |
+   | `Workflow run` | Later | Recommended once the Actions dashboard ships. Useful for workflow-run level updates, logs, reruns, and run state transitions. |
+   | `Workflow job` | Later | Recommended once the Actions dashboard ships. Useful for job-level logs, timing, and per-job status updates. |
+   | `Push` | Later | Not used by the current invalidation code, but likely useful once branch-aware repo/activity features expand. |
+   | `Repository` | Later | Useful for repo settings and metadata changes if repository management surfaces expand. |
+   | `Create` | Later | Useful for branch/tag creation flows if repo management features ship. |
+   | `Delete` | Later | Useful for branch/tag deletion flows if repo management features ship. |
+
+   `Workflow run` and `Workflow job` require at least repository `Actions: Read-only`.
+
+   The current webhook invalidation route is wired for the first 8 events above. If you enable the `Later` events now, they are harmless, but the app will ignore them until we add handlers.
+
+   Set the webhook URL to `/api/webhooks/github` on your deployed app. For local webhook testing, use a tunnel that forwards to `http://localhost:3000/api/webhooks/github`.
+
+   For local Vite development, set `DEV_TUNNEL_URL` in `apps/dashboard/.dev.vars` to the full public tunnel URL, for example `https://your-subdomain.ngrok-free.app`. The dev server will use it to allow the tunnel host and configure HMR correctly.
+
+5. **Run database migrations**
 
    ```bash
    pnpm --filter dashboard migrate
    ```
 
-5. **Start the dev server**
+6. **Start the dev server**
 
    ```bash
    pnpm dev
@@ -156,7 +210,7 @@ A fast, design-first GitHub dashboard for developers who want to stay on top of 
 
 ### General
 
-- [x] GitHub OAuth authentication
+- [x] GitHub App authentication
 - [x] Dark mode with system preference
 - [x] Response caching with ETags
 - [ ] Keyboard shortcuts

@@ -5,6 +5,7 @@ import {
 	githubMyIssuesQueryOptions,
 	githubMyPullsQueryOptions,
 } from "#/lib/github.query";
+import { useGitHubRevalidation } from "#/lib/use-github-revalidation";
 import { useHasMounted } from "#/lib/use-has-mounted";
 import { DashboardTopbar } from "./dashboard-topbar";
 
@@ -14,6 +15,7 @@ export function DashboardLayout() {
 	const { user } = routeApi.useRouteContext();
 	const scope = { userId: user.id };
 	const hasMounted = useHasMounted();
+	useGitHubRevalidation(user.id);
 
 	const pullsQuery = useQuery({
 		...githubMyPullsQueryOptions(scope),

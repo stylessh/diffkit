@@ -48,11 +48,13 @@ type GetOrRevalidateGitHubResourceOptions<TData> = {
 	resource: string;
 	params?: unknown;
 	freshForMs: number;
+	signalKeys?: string[];
 	fetcher: (
 		conditionals: GitHubConditionalHeaders,
 	) => Promise<GitHubFetchResult<TData>>;
 	store?: GitHubCacheStore;
 	inFlightCache?: Map<string, Promise<unknown>>;
+	getLatestSignalUpdatedAt?: (signalKeys: string[]) => Promise<number | null>;
 	now?: () => number;
 };
 
@@ -184,6 +186,90 @@ async function getGitHubCacheStore(): Promise<GitHubCacheStore> {
 	};
 }
 
+async function getLatestGitHubRevalidationSignalUpdatedAt(
+	signalKeys: string[],
+) {
+	if (signalKeys.length === 0) {
+		return null;
+	}
+
+	const [{ inArray }, { getDb }, { githubRevalidationSignal }] =
+		await Promise.all([
+			import("drizzle-orm"),
+			import("../db"),
+			import("../db/schema"),
+		]);
+	const db = getDb();
+	const signals = await db
+		.select({
+			updatedAt: githubRevalidationSignal.updatedAt,
+		})
+		.from(githubRevalidationSignal)
+		.where(inArray(githubRevalidationSignal.signalKey, signalKeys));
+
+	if (signals.length === 0) {
+		return null;
+	}
+
+	return Math.max(...signals.map((signal) => signal.updatedAt));
+}
+
+export async function markGitHubRevalidationSignals(
+	signalKeys: string[],
+	at = Date.now(),
+) {
+	if (signalKeys.length === 0) {
+		return 0;
+	}
+
+	const uniqueSignalKeys = Array.from(new Set(signalKeys));
+	const [{ getDb }, { githubRevalidationSignal }] = await Promise.all([
+		import("../db"),
+		import("../db/schema"),
+	]);
+	const db = getDb();
+
+	await db
+		.insert(githubRevalidationSignal)
+		.values(
+			uniqueSignalKeys.map((signalKey) => ({
+				signalKey,
+				updatedAt: at,
+			})),
+		)
+		.onConflictDoUpdate({
+			target: githubRevalidationSignal.signalKey,
+			set: {
+				updatedAt: at,
+			},
+		});
+
+	return uniqueSignalKeys.length;
+}
+
+export async function getGitHubRevalidationSignals(signalKeys: string[]) {
+	if (signalKeys.length === 0) {
+		return [];
+	}
+
+	const uniqueSignalKeys = Array.from(new Set(signalKeys));
+	const [{ inArray }, { getDb }, { githubRevalidationSignal }] =
+		await Promise.all([
+			import("drizzle-orm"),
+			import("../db"),
+			import("../db/schema"),
+		]);
+	const db = getDb();
+
+	return db
+		.select({
+			signalKey: githubRevalidationSignal.signalKey,
+			updatedAt: githubRevalidationSignal.updatedAt,
+		})
+		.from(githubRevalidationSignal)
+		.where(inArray(githubRevalidationSignal.signalKey, uniqueSignalKeys));
+}
+
 export async function bustGitHubCache(
 	userId: string,
 	resource: string,
@@ -213,10 +299,12 @@ export async function getOrRevalidateGitHubResource<TData>({
 	resource,
 	params,
 	freshForMs,
+	signalKeys = [],
 	fetcher,
 	now = Date.now,
 	store,
 	inFlightCache,
+	getLatestSignalUpdatedAt = getLatestGitHubRevalidationSignalUpdatedAt,
 }: GetOrRevalidateGitHubResourceOptions<TData>): Promise<TData> {
 	const resolvedStore = store ?? (await getGitHubCacheStore());
 	const paramsJson = stableSerialize(params);
@@ -232,8 +320,19 @@ export async function getOrRevalidateGitHubResource<TData>({
 	const task = (async () => {
 		const existingEntry = await resolvedStore.get(cacheKey);
 		const currentTime = now();
+		const latestSignalUpdatedAt =
+			signalKeys.length > 0 ? await getLatestSignalUpdatedAt(signalKeys) : null;
+		const isSignalNewerThanCache = Boolean(
+			existingEntry &&
+				typeof latestSignalUpdatedAt === "number" &&
+				latestSignalUpdatedAt > existingEntry.fetchedAt,
+		);
 
-		if (existingEntry && existingEntry.freshUntil > currentTime) {
+		if (
+			existingEntry &&
+			existingEntry.freshUntil > currentTime &&
+			!isSignalNewerThanCache
+		) {
 			return parseCachedPayload<TData>(existingEntry.payloadJson);
 		}
 

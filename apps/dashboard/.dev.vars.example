@@ -1,8 +1,21 @@
-# GitHub OAuth App credentials
-# 1. Go to https://github.com/settings/developers
-# 2. Click "New OAuth App"
-# 3. Set "Authorization callback URL" to http://localhost:3000/api/auth/callback/github
-# 4. Copy the Client ID and generate a Client Secret
+# GitHub App credentials
+# 1. Go to https://github.com/settings/apps
+# 2. Create a new GitHub App
+# 3. Set the callback URL to http://localhost:3000/api/auth/callback/github
+# 4. Under Permissions & events, grant Email addresses account permission: Read-only
+# 5. Install the app on the repositories or organizations you want DiffKit to access
+GITHUB_APP_CLIENT_ID=
+GITHUB_APP_CLIENT_SECRET=
+
+# GitHub webhook secret used to verify deliveries to /api/webhooks/github
+# For local development, point your GitHub App webhook URL at a tunnel that forwards here.
+GITHUB_WEBHOOK_SECRET=
+
+# Optional: full tunnel URL used by Vite dev server to allow webhook traffic and HMR
+# Example: https://your-subdomain.ngrok-free.app
+DEV_TUNNEL_URL=
+
+# Legacy OAuth-style names are still supported as a fallback during migration.
 GITHUB_CLIENT_ID=
 GITHUB_CLIENT_SECRET=
 

@@ -3,17 +3,20 @@ import { getRequest } from "@tanstack/react-start/server";
 import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { tanstackStartCookies } from "better-auth/tanstack-start";
-import { and, eq } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/d1";
 import type { Octokit as OctokitType } from "octokit";
 import { Octokit } from "octokit";
-import { getDb } from "../db";
 import * as schema from "../db/schema";
-import { account } from "../db/schema";
+import {
+	getGitHubAccessTokenByUserId,
+	getGitHubAppAuthConfig,
+} from "./github-app.server";
 
 const authDb = drizzle(env.DB, { schema });
 
 function createAuth() {
+	const github = getGitHubAppAuthConfig();
+
 	return betterAuth({
 		baseURL: env.BETTER_AUTH_URL,
 		secret: env.BETTER_AUTH_SECRET,
@@ -22,18 +25,8 @@ function createAuth() {
 		}),
 		socialProviders: {
 			github: {
-				clientId: env.GITHUB_CLIENT_ID,
-				clientSecret: env.GITHUB_CLIENT_SECRET,
-				scope: [
-					"read:user",
-					"user:email",
-					"repo",
-					"notifications",
-					"workflow",
-					"read:project",
-					"security_events",
-					"admin:repo_hook",
-				],
+				clientId: github.clientId,
+				clientSecret: github.clientSecret,
 			},
 		},
 		plugins: [tanstackStartCookies()],
@@ -57,19 +50,8 @@ export async function getRequestSession() {
 export async function getGitHubClientByUserId(
 	userId: string,
 ): Promise<OctokitType> {
-	const db = getDb();
-	const githubAccount = await db
-		.select()
-		.from(account)
-		.where(and(eq(account.userId, userId), eq(account.providerId, "github")))
-		.get();
-
-	if (!githubAccount?.accessToken) {
-		throw new Error("No GitHub account linked");
-	}
-
 	return new Octokit({
-		auth: githubAccount.accessToken,
+		auth: await getGitHubAccessTokenByUserId(userId),
 		retry: { enabled: false },
 		throttle: { enabled: false },
 	});
