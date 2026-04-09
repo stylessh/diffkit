@@ -8,6 +8,7 @@ import {
 	githubMyIssuesQueryOptions,
 	githubMyPullsQueryOptions,
 } from "#/lib/github.query";
+import { buildSeo, formatPageTitle } from "#/lib/seo";
 import { useHasMounted } from "#/lib/use-has-mounted";
 
 export const Route = createFileRoute("/_protected/")({
@@ -19,6 +20,14 @@ export const Route = createFileRoute("/_protected/")({
 			context.queryClient.ensureQueryData(githubMyIssuesQueryOptions(scope)),
 		]);
 	},
+	head: ({ match }) =>
+		buildSeo({
+			path: match.pathname,
+			title: formatPageTitle("Dashboard overview"),
+			description:
+				"Private overview of your open pull requests, assigned issues, and pending review requests across GitHub.",
+			robots: "noindex",
+		}),
 	component: OverviewPage,
 });
 

@@ -53,6 +53,7 @@ import type {
 	PullFile,
 	PullReviewComment,
 } from "#/lib/github.types";
+import { buildSeo, formatPageTitle, summarizeText } from "#/lib/seo";
 import { useHasMounted } from "#/lib/use-has-mounted";
 import { useRegisterTab } from "#/lib/use-register-tab";
 
@@ -86,19 +87,48 @@ export const Route = createFileRoute("/_protected/$owner/$repo/review/$pullId")(
 			const pullNumber = Number(params.pullId);
 			const scope = { userId: context.user.id };
 			const input = { owner: params.owner, repo: params.repo, pullNumber };
+			const pageOptions = githubPullPageQueryOptions(scope, input);
+			const filesOptions = githubPullFilesQueryOptions(scope, input);
+			const commentsOptions = githubPullReviewCommentsQueryOptions(
+				scope,
+				input,
+			);
 
-			const primeQuery = (options: { queryKey: readonly unknown[] }) => {
-				if (context.queryClient.getQueryData(options.queryKey) !== undefined) {
-					return Promise.resolve();
-				}
-				return context.queryClient.ensureQueryData(options);
-			};
+			const pageData =
+				context.queryClient.getQueryData(pageOptions.queryKey) ??
+				(await context.queryClient.ensureQueryData(pageOptions));
 
-			await Promise.all([
-				primeQuery(githubPullPageQueryOptions(scope, input)),
-				primeQuery(githubPullFilesQueryOptions(scope, input)),
-				primeQuery(githubPullReviewCommentsQueryOptions(scope, input)),
-			]);
+			if (
+				context.queryClient.getQueryData(filesOptions.queryKey) === undefined
+			) {
+				await context.queryClient.ensureQueryData(filesOptions);
+			}
+
+			if (
+				context.queryClient.getQueryData(commentsOptions.queryKey) === undefined
+			) {
+				await context.queryClient.ensureQueryData(commentsOptions);
+			}
+
+			return pageData;
+		},
+		head: ({ loaderData, match, params }) => {
+			const pull = loaderData?.detail;
+			const title = pull
+				? formatPageTitle(`Review PR #${pull.number}: ${pull.title}`)
+				: formatPageTitle(`Review PR #${params.pullId}`);
+
+			return buildSeo({
+				path: match.pathname,
+				title,
+				description: pull
+					? summarizeText(
+							pull.body,
+							`Private code review workspace for pull request #${pull.number} in ${params.owner}/${params.repo}.`,
+						)
+					: `Private code review workspace for pull request #${params.pullId} in ${params.owner}/${params.repo}.`,
+				robots: "noindex",
+			});
 		},
 		component: ReviewPage,
 	},

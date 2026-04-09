@@ -36,6 +36,7 @@ import type {
 	PullStatus,
 } from "#/lib/github.types";
 import { githubCachePolicy } from "#/lib/github-cache-policy";
+import { buildSeo, formatPageTitle, summarizeText } from "#/lib/seo";
 import { useHasMounted } from "#/lib/use-has-mounted";
 import { useRegisterTab } from "#/lib/use-register-tab";
 
@@ -49,15 +50,30 @@ export const Route = createFileRoute("/_protected/$owner/$repo/pull/$pullId")({
 			pullNumber,
 		});
 
-		const primeQuery = (options: { queryKey: readonly unknown[] }) => {
-			if (context.queryClient.getQueryData(options.queryKey) !== undefined) {
-				return Promise.resolve();
-			}
+		const cachedData = context.queryClient.getQueryData(pageOptions.queryKey);
+		if (cachedData !== undefined) {
+			return cachedData;
+		}
 
-			return context.queryClient.ensureQueryData(options);
-		};
+		return context.queryClient.ensureQueryData(pageOptions);
+	},
+	head: ({ loaderData, match, params }) => {
+		const pull = loaderData?.detail;
+		const title = pull
+			? formatPageTitle(`PR #${pull.number}: ${pull.title}`)
+			: formatPageTitle(`PR #${params.pullId}`);
 
-		await Promise.all([primeQuery(pageOptions)]);
+		return buildSeo({
+			path: match.pathname,
+			title,
+			description: pull
+				? summarizeText(
+						pull.body,
+						`Private pull request #${pull.number} in ${params.owner}/${params.repo}.`,
+					)
+				: `Private pull request #${params.pullId} in ${params.owner}/${params.repo}.`,
+			robots: "noindex",
+		});
 	},
 	component: PullDetailPage,
 });

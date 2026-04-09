@@ -19,6 +19,7 @@ import { DashboardContentLoading } from "#/components/layouts/dashboard-content-
 import { PullRequestRow } from "#/components/pulls/pull-request-row";
 import { githubMyPullsQueryOptions } from "#/lib/github.query";
 import type { MyPullsResult, PullSummary } from "#/lib/github.types";
+import { buildSeo, formatPageTitle } from "#/lib/seo";
 import { useHasMounted } from "#/lib/use-has-mounted";
 
 export const Route = createFileRoute("/_protected/pulls")({
@@ -26,6 +27,14 @@ export const Route = createFileRoute("/_protected/pulls")({
 		const scope = { userId: context.user.id };
 		await context.queryClient.ensureQueryData(githubMyPullsQueryOptions(scope));
 	},
+	head: ({ match }) =>
+		buildSeo({
+			path: match.pathname,
+			title: formatPageTitle("GitHub pull requests"),
+			description:
+				"Private pull request dashboard for review requests, assigned work, authored PRs, mentions, and active branches.",
+			robots: "noindex",
+		}),
 	component: PullRequestsPage,
 });
 

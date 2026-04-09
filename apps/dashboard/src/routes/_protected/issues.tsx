@@ -13,6 +13,7 @@ import { IssueRow } from "#/components/issues/issue-row";
 import { DashboardContentLoading } from "#/components/layouts/dashboard-content-loading";
 import { githubMyIssuesQueryOptions } from "#/lib/github.query";
 import type { IssueSummary, MyIssuesResult } from "#/lib/github.types";
+import { buildSeo, formatPageTitle } from "#/lib/seo";
 import { useHasMounted } from "#/lib/use-has-mounted";
 
 export const Route = createFileRoute("/_protected/issues")({
@@ -22,6 +23,14 @@ export const Route = createFileRoute("/_protected/issues")({
 			githubMyIssuesQueryOptions(scope),
 		);
 	},
+	head: ({ match }) =>
+		buildSeo({
+			path: match.pathname,
+			title: formatPageTitle("GitHub issues"),
+			description:
+				"Private issue dashboard for assigned, authored, and mentioned GitHub issues across your repositories.",
+			robots: "noindex",
+		}),
 	component: IssuesPage,
 });
 

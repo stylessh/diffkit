@@ -13,6 +13,7 @@ import { useState } from "react";
 import { formatRelativeTime } from "#/components/pulls/pull-request-row";
 import { githubIssuePageQueryOptions } from "#/lib/github.query";
 import type { GitHubActor, IssueDetail } from "#/lib/github.types";
+import { buildSeo, formatPageTitle, summarizeText } from "#/lib/seo";
 import { useHasMounted } from "#/lib/use-has-mounted";
 import { useRegisterTab } from "#/lib/use-register-tab";
 
@@ -28,15 +29,30 @@ export const Route = createFileRoute(
 			issueNumber,
 		});
 
-		const primeQuery = (options: { queryKey: readonly unknown[] }) => {
-			if (context.queryClient.getQueryData(options.queryKey) !== undefined) {
-				return Promise.resolve();
-			}
+		const cachedData = context.queryClient.getQueryData(pageOptions.queryKey);
+		if (cachedData !== undefined) {
+			return cachedData;
+		}
 
-			return context.queryClient.ensureQueryData(options);
-		};
+		return context.queryClient.ensureQueryData(pageOptions);
+	},
+	head: ({ loaderData, match, params }) => {
+		const issue = loaderData?.detail;
+		const issueTitle = issue
+			? formatPageTitle(`Issue #${issue.number}: ${issue.title}`)
+			: formatPageTitle(`Issue #${params.issueId}`);
 
-		await Promise.all([primeQuery(pageOptions)]);
+		return buildSeo({
+			path: match.pathname,
+			title: issueTitle,
+			description: issue
+				? summarizeText(
+						issue.body,
+						`Private GitHub issue #${issue.number} in ${params.owner}/${params.repo}.`,
+					)
+				: `Private GitHub issue #${params.issueId} in ${params.owner}/${params.repo}.`,
+			robots: "noindex",
+		});
 	},
 	component: IssueDetailPage,
 });

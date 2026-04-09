@@ -5,6 +5,7 @@ import { useRef } from "react";
 import { DashboardContentLoading } from "#/components/layouts/dashboard-content-loading";
 import { PullRequestRow } from "#/components/pulls/pull-request-row";
 import { githubMyPullsQueryOptions } from "#/lib/github.query";
+import { buildSeo, formatPageTitle } from "#/lib/seo";
 import { useHasMounted } from "#/lib/use-has-mounted";
 
 export const Route = createFileRoute("/_protected/reviews")({
@@ -12,6 +13,14 @@ export const Route = createFileRoute("/_protected/reviews")({
 		const scope = { userId: context.user.id };
 		await context.queryClient.ensureQueryData(githubMyPullsQueryOptions(scope));
 	},
+	head: ({ match }) =>
+		buildSeo({
+			path: match.pathname,
+			title: formatPageTitle("GitHub code reviews"),
+			description:
+				"Private review queue for pull requests requesting your feedback, with fast access to diffs and discussion.",
+			robots: "noindex",
+		}),
 	component: ReviewsPage,
 });
 

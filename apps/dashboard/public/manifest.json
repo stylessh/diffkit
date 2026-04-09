@@ -1,6 +1,7 @@
 {
 	"short_name": "DiffKit",
 	"name": "DiffKit Dashboard",
+	"description": "GitHub dashboard for pull requests, issues, and code reviews.",
 	"icons": [
 		{
 			"src": "favicon.svg",
@@ -23,8 +24,11 @@
 			"sizes": "512x512"
 		}
 	],
-	"start_url": ".",
+	"id": "/",
+	"start_url": "/login",
+	"scope": "/",
 	"display": "standalone",
+	"categories": ["developer tools", "productivity"],
 	"theme_color": "#00C943",
 	"background_color": "#ffffff"
 }

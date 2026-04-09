@@ -10,23 +10,47 @@ import { TanStackRouterDevtoolsPanel } from "@tanstack/react-router-devtools";
 import { Agentation } from "agentation";
 import { ThemeProvider } from "next-themes";
 import { ErrorScreen } from "#/components/layouts/error-screen";
+import { buildSeo, buildWebSiteSchema } from "#/lib/seo";
+import { siteConfig } from "#/lib/site-config";
 
 import appCss from "../styles.css?url";
 
 export const Route = createRootRouteWithContext<{
 	queryClient: QueryClient;
 }>()({
-	head: () => ({
-		meta: [
-			{ charSet: "utf-8" },
-			{ name: "viewport", content: "width=device-width, initial-scale=1" },
-			{ title: "DiffKit Dashboard" },
-		],
-		links: [
-			{ rel: "icon", type: "image/svg+xml", href: "/favicon.svg" },
-			{ rel: "stylesheet", href: appCss },
-		],
-	}),
+	head: ({ match }) => {
+		const defaultSeo = buildSeo({
+			path: match.pathname,
+			title: siteConfig.defaultTitle,
+			description: siteConfig.defaultDescription,
+			includeCanonical: false,
+		});
+
+		return {
+			meta: [
+				{ charSet: "utf-8" },
+				{ name: "viewport", content: "width=device-width, initial-scale=1" },
+				{ name: "application-name", content: siteConfig.name },
+				{ name: "apple-mobile-web-app-title", content: siteConfig.name },
+				{ name: "theme-color", content: siteConfig.themeColor },
+				{ name: "format-detection", content: "telephone=no" },
+				...defaultSeo.meta,
+			],
+			links: [
+				{ rel: "icon", type: "image/svg+xml", href: "/favicon.svg" },
+				{ rel: "manifest", href: "/manifest.json" },
+				{ rel: "stylesheet", href: appCss },
+			],
+			scripts: [
+				{
+					type: "application/ld+json",
+					children: JSON.stringify(
+						buildWebSiteSchema({ path: match.pathname }),
+					),
+				},
+			],
+		};
+	},
 	component: RootComponent,
 	errorComponent: ErrorScreen,
 	shellComponent: RootDocument,
