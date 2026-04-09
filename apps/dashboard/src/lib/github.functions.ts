@@ -872,6 +872,8 @@ async function computePullStatus(
 			status: check.status,
 			conclusion: check.conclusion,
 			appAvatarUrl: check.app?.owner?.avatar_url ?? null,
+			outputTitle: check.output?.title ?? null,
+			startedAt: check.started_at ?? null,
 		})),
 		mergeable: pull.mergeable,
 		mergeableState:

@@ -138,6 +138,8 @@ export type PullCheckRun = {
 	status: string;
 	conclusion: string | null;
 	appAvatarUrl: string | null;
+	outputTitle: string | null;
+	startedAt: string | null;
 };
 
 export type PullReview = {

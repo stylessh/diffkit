@@ -169,7 +169,7 @@ function MergeStatusCard({
 	const isMergeBlocked = mergeableState === "blocked" || mergeable === false;
 
 	return (
-		<div className="flex flex-col rounded-lg border">
+		<div className="flex flex-col overflow-hidden rounded-lg border">
 			{/* Reviews section */}
 			<ReviewsSection
 				approvedReviews={approvedReviews}
@@ -514,6 +514,13 @@ function ChecksSection({
 								)}
 								<span className="min-w-0 flex-1 truncate text-xs">
 									{run.name}
+									<span className="text-muted-foreground">
+										{runStatus === "pending" && run.startedAt
+											? ` — Started ${formatRelativeTime(run.startedAt)}`
+											: run.outputTitle
+												? ` — ${run.outputTitle}`
+												: null}
+									</span>
 								</span>
 								<span
 									className={cn(
