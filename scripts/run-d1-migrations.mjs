@@ -22,11 +22,24 @@ if (mode === "--local" && isWorktreeCheckout()) {
 	args.push("--persist-to", getSharedWranglerStatePath());
 }
 
-const pnpmCommand = process.platform === "win32" ? "pnpm.cmd" : "pnpm";
+function runPnpm(commandArgs) {
+	const pnpmExecPath = process.env.npm_execpath;
 
-const result = spawnSync(pnpmCommand, args, {
-	stdio: "inherit",
-});
+	if (pnpmExecPath) {
+		return spawnSync(process.execPath, [pnpmExecPath, ...commandArgs], {
+			stdio: "inherit",
+		});
+	}
+
+	const pnpmCommand = process.platform === "win32" ? "pnpm.cmd" : "pnpm";
+
+	return spawnSync(pnpmCommand, commandArgs, {
+		stdio: "inherit",
+		shell: process.platform === "win32",
+	});
+}
+
+const result = runPnpm(args);
 
 if (result.error) {
 	console.error(result.error.message);
