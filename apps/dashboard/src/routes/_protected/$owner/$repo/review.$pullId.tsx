@@ -25,11 +25,13 @@ import {
 import { vercelDark, vercelLight } from "@diffkit/ui/lib/shiki-themes";
 import { cn } from "@diffkit/ui/lib/utils";
 import type { SelectedLineRange } from "@pierre/diffs";
-import type { DiffLineAnnotation } from "@pierre/diffs/react";
+import type { DiffLineAnnotation, PatchDiffProps } from "@pierre/diffs/react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useTheme } from "next-themes";
 import {
+	type ComponentType,
+	type LazyExoticComponent,
 	lazy,
 	Suspense,
 	useCallback,
@@ -57,14 +59,15 @@ import { useRegisterTab } from "#/lib/use-register-tab";
 // Lazy-load PatchDiff so @pierre/diffs (which bundles all shiki language grammars)
 // is excluded from the server bundle, keeping it under the CF Workers 3 MiB limit.
 // During SSR, return a no-op component to avoid stubbed-shiki runtime errors.
-const PatchDiff = lazy(() =>
+type ReviewPatchDiffComponent = ComponentType<PatchDiffProps<ReviewAnnotation>>;
+
+const PatchDiff: LazyExoticComponent<ReviewPatchDiffComponent> = lazy(() =>
 	import.meta.env.SSR
 		? Promise.resolve({
-				// biome-ignore lint: SSR placeholder for the lazy-loaded PatchDiff
-				default: (() => null) as any,
+				default: (() => null) as ReviewPatchDiffComponent,
 			})
 		: import("@pierre/diffs/react").then((mod) => ({
-				default: mod.PatchDiff,
+				default: mod.PatchDiff as ReviewPatchDiffComponent,
 			})),
 );
 
@@ -114,6 +117,7 @@ type PendingComment = {
 	body: string;
 };
 
+type ReviewAnnotation = PullReviewComment | PendingComment;
 type ReviewEvent = "APPROVE" | "REQUEST_CHANGES" | "COMMENT";
 
 type FileTreeNode = {
@@ -779,9 +783,7 @@ function FileDiffBlock({
 
 	// Combine existing review comments and pending comments into annotations
 	const allAnnotations = useMemo(() => {
-		const result: DiffLineAnnotation<PullReviewComment | PendingComment>[] = [
-			...annotations,
-		];
+		const result: DiffLineAnnotation<ReviewAnnotation>[] = [...annotations];
 
 		for (const pending of pendingComments) {
 			result.push({
@@ -877,7 +879,9 @@ function FileDiffBlock({
 							options={diffOptions}
 							selectedLines={selectedLines}
 							lineAnnotations={allAnnotations}
-							renderAnnotation={(annotation) => {
+							renderAnnotation={(
+								annotation: DiffLineAnnotation<ReviewAnnotation>,
+							) => {
 								const data = annotation.metadata as
 									| PendingComment
 									| PullReviewComment
