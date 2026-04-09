@@ -71,7 +71,11 @@ function cellRadii(cx: number, cy: number): [number, number, number, number] {
 	];
 }
 
-function Logo({ className, ...props }: React.ComponentProps<"svg">) {
+function Logo({
+	className,
+	variant = "default",
+	...props
+}: React.ComponentProps<"svg"> & { variant?: "default" | "dev" }) {
 	return (
 		<svg
 			data-slot="logo"
@@ -80,7 +84,10 @@ function Logo({ className, ...props }: React.ComponentProps<"svg">) {
 			className={cn("size-10 shrink-0", className)}
 			{...props}
 		>
-			<path d={SQUIRCLE} className="fill-brand" />
+			<path
+				d={SQUIRCLE}
+				className={variant === "dev" ? "fill-brand-dev" : "fill-brand"}
+			/>
 			{CELLS.map((cell) => (
 				<path
 					key={cell.id}

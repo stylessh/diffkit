@@ -38,7 +38,11 @@ export const Route = createRootRouteWithContext<{
 				...defaultSeo.meta,
 			],
 			links: [
-				{ rel: "icon", type: "image/svg+xml", href: "/favicon.svg" },
+				{
+					rel: "icon",
+					type: "image/svg+xml",
+					href: import.meta.env.DEV ? "/favicon-dev.svg" : "/favicon.svg",
+				},
 				{ rel: "manifest", href: "/manifest.json" },
 				{ rel: "stylesheet", href: appCss },
 			],

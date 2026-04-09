@@ -49,7 +49,10 @@ function LoginPage() {
 				<section className="flex min-h-dvh bg-background px-6 py-8 sm:px-10 sm:py-10 lg:px-16 lg:py-12 xl:px-20">
 					<div className="mx-auto flex w-full max-w-xs flex-1 flex-col justify-between gap-10">
 						<div className="flex items-center gap-3">
-							<Logo className="size-9 text-foreground" />
+							<Logo
+								className="size-9 text-foreground"
+								variant={import.meta.env.DEV ? "dev" : "default"}
+							/>
 							<div>
 								<p className="text-base font-medium text-foreground sm:text-sm">
 									DiffKit
