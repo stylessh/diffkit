@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { getRouteApi, Outlet } from "@tanstack/react-router";
+import { CommandPalette } from "#/components/command-palette";
 import {
 	githubMyIssuesQueryOptions,
 	githubMyPullsQueryOptions,
@@ -54,6 +55,7 @@ export function DashboardLayout() {
 					</div>
 				</div>
 			</div>
+			<CommandPalette />
 		</div>
 	);
 }
