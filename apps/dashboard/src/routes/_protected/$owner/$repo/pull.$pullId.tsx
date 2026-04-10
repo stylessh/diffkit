@@ -31,7 +31,7 @@ export const Route = createFileRoute("/_protected/$owner/$repo/pull/$pullId")({
 	head: ({ loaderData, match, params }) => {
 		const pull = loaderData?.detail;
 		const title = pull
-			? formatPageTitle(`PR #${pull.number}: ${pull.title}`)
+			? formatPageTitle(pull.title)
 			: formatPageTitle(`PR #${params.pullId}`);
 
 		return buildSeo({

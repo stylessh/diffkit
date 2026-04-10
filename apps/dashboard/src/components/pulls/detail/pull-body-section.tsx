@@ -297,43 +297,47 @@ export function PullBodySection({
 						) : (
 							<CheckIcon size={13} strokeWidth={2.5} />
 						)}
-						{isSaving ? "Saving..." : "Save"}
+						Save
 					</button>
 				</div>
 			</div>
 		);
 	}
 
+	const hasDropdownOptions = !!pr.body || isAuthor;
+
 	return (
 		<div className="relative rounded-lg border bg-surface-0 p-5">
-			<DropdownMenu>
-				<DropdownMenuTrigger asChild>
-					<button
-						type="button"
-						className="absolute right-3 top-3 flex size-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-surface-1 hover:text-foreground"
-					>
-						<MoreHorizontalIcon size={15} strokeWidth={2} />
-					</button>
-				</DropdownMenuTrigger>
-				<DropdownMenuContent align="end" className="w-44">
-					{pr.body && (
-						<DropdownMenuItem
-							onSelect={() => {
-								void navigator.clipboard.writeText(pr.body);
-							}}
+			{hasDropdownOptions && (
+				<DropdownMenu>
+					<DropdownMenuTrigger asChild>
+						<button
+							type="button"
+							className="absolute right-3 top-3 flex size-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-surface-1 hover:text-foreground"
 						>
-							<CopyIcon size={14} strokeWidth={2} />
-							Copy as Markdown
-						</DropdownMenuItem>
-					)}
-					{isAuthor && (
-						<DropdownMenuItem onSelect={startEditing}>
-							<EditIcon size={14} strokeWidth={2} />
-							Edit
-						</DropdownMenuItem>
-					)}
-				</DropdownMenuContent>
-			</DropdownMenu>
+							<MoreHorizontalIcon size={15} strokeWidth={2} />
+						</button>
+					</DropdownMenuTrigger>
+					<DropdownMenuContent align="end" className="w-44">
+						{pr.body && (
+							<DropdownMenuItem
+								onSelect={() => {
+									void navigator.clipboard.writeText(pr.body);
+								}}
+							>
+								<CopyIcon size={14} strokeWidth={2} />
+								Copy as Markdown
+							</DropdownMenuItem>
+						)}
+						{isAuthor && (
+							<DropdownMenuItem onSelect={startEditing}>
+								<EditIcon size={14} strokeWidth={2} />
+								Edit
+							</DropdownMenuItem>
+						)}
+					</DropdownMenuContent>
+				</DropdownMenu>
+			)}
 			{pr.body ? (
 				<Markdown>{pr.body}</Markdown>
 			) : (

@@ -1,4 +1,5 @@
 import {
+	CheckIcon,
 	CloseIcon,
 	CommentIcon,
 	GitBranchIcon,
@@ -9,6 +10,7 @@ import {
 	PopoverContent,
 	PopoverTrigger,
 } from "@diffkit/ui/components/popover";
+import { Spinner } from "@diffkit/ui/components/spinner";
 import { cn } from "@diffkit/ui/lib/utils";
 import { useState } from "react";
 import type { ReviewEvent } from "./review-types";
@@ -147,11 +149,19 @@ export function ReviewSubmitPopover({
 							type="button"
 							onClick={handleSubmit}
 							disabled={isSubmitting}
-							className="rounded-md bg-green-600 px-4 py-1.5 text-xs font-medium text-white transition-colors hover:bg-green-700 disabled:opacity-50"
+							className="flex items-center gap-1.5 rounded-md bg-green-600 px-4 py-1.5 text-xs font-medium text-white transition-colors hover:bg-green-700 disabled:opacity-50"
 						>
-							{isSubmitting
-								? "Submitting..."
-								: `Submit review${pendingCount > 0 ? ` (${pendingCount})` : ""}`}
+							{isSubmitting ? (
+								<Spinner size={12} />
+							) : (
+								<CheckIcon size={12} strokeWidth={2.5} />
+							)}
+							Submit review
+							{pendingCount > 0 && (
+								<span className="flex size-4 items-center justify-center rounded-full bg-white/20 text-[10px] font-bold">
+									{pendingCount}
+								</span>
+							)}
 						</button>
 					</div>
 				</div>
