@@ -6,6 +6,7 @@ import {
 } from "#/lib/github-app.server";
 import { markGitHubRevalidationSignals } from "#/lib/github-cache";
 import { getGitHubWebhookRevalidationSignalKeys } from "#/lib/github-revalidation";
+import { getGitHubWebhookPayloadMetadata } from "#/lib/github-webhook-debug";
 import { PRIVATE_ROUTE_HEADERS } from "#/lib/seo";
 
 export const Route = createFileRoute("/api/webhooks/github")({
@@ -32,6 +33,7 @@ export const Route = createFileRoute("/api/webhooks/github")({
 				debug("github-webhook", "received webhook request", {
 					deliveryId,
 					event,
+					bodyLength: requestBody.length,
 					hasSignature: Boolean(signature),
 					userAgent: request.headers.get("user-agent"),
 				});
@@ -68,7 +70,7 @@ export const Route = createFileRoute("/api/webhooks/github")({
 					debug("github-webhook", "rejected webhook due to invalid json", {
 						deliveryId,
 						event,
-						requestBody,
+						bodyLength: requestBody.length,
 					});
 					return new Response("Invalid JSON payload.", {
 						status: 400,
@@ -78,7 +80,7 @@ export const Route = createFileRoute("/api/webhooks/github")({
 				debug("github-webhook", "parsed webhook payload", {
 					deliveryId,
 					event,
-					payload,
+					...getGitHubWebhookPayloadMetadata(payload),
 				});
 
 				const signalKeys = getGitHubWebhookRevalidationSignalKeys(
