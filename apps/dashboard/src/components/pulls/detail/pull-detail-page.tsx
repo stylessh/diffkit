@@ -7,10 +7,8 @@ import {
 } from "#/components/details/detail-page";
 import {
 	githubPullPageQueryOptions,
-	githubPullStatusQueryOptions,
 	githubViewerQueryOptions,
 } from "#/lib/github.query";
-import { githubCachePolicy } from "#/lib/github-cache-policy";
 import { useHasMounted } from "#/lib/use-has-mounted";
 import { useRegisterTab } from "#/lib/use-register-tab";
 import { PullBodySection } from "./pull-body-section";
@@ -32,13 +30,6 @@ export function PullDetailPage() {
 		enabled: hasMounted,
 	});
 
-	const statusQuery = useQuery({
-		...githubPullStatusQueryOptions(scope, { owner, repo, pullNumber }),
-		enabled: hasMounted && pageQuery.data?.detail != null,
-		refetchOnWindowFocus: "always",
-		refetchInterval: githubCachePolicy.status.staleTimeMs,
-	});
-
 	const viewerQuery = useQuery({
 		...githubViewerQueryOptions(scope),
 		enabled: hasMounted,
@@ -47,7 +38,6 @@ export function PullDetailPage() {
 	const pr = pageQuery.data?.detail;
 	const comments = pageQuery.data?.comments;
 	const commits = pageQuery.data?.commits;
-	const status = statusQuery.data ?? null;
 	const viewer = viewerQuery.data ?? null;
 
 	useRegisterTab(
@@ -91,11 +81,11 @@ export function PullDetailPage() {
 						comments={comments}
 						commits={commits}
 						isFetching={pageQuery.isFetching}
-						status={status}
 						pr={pr}
 						owner={owner}
 						repo={repo}
 						pullNumber={pullNumber}
+						scope={scope}
 					/>
 				</>
 			}

@@ -57,7 +57,9 @@ const PatchDiff: LazyExoticComponent<ReviewPatchDiffComponent> = lazy(() =>
 			})),
 );
 
-if (!import.meta.env.SSR) {
+let themesRegistered = false;
+if (!import.meta.env.SSR && !themesRegistered) {
+	themesRegistered = true;
 	import("@pierre/diffs").then(({ registerCustomTheme }) => {
 		registerCustomTheme("vercel-light", () => Promise.resolve(vercelLight));
 		registerCustomTheme("vercel-dark", () => Promise.resolve(vercelDark));

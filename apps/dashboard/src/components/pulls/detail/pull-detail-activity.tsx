@@ -24,7 +24,7 @@ import { Markdown } from "@diffkit/ui/components/markdown";
 import { Skeleton } from "@diffkit/ui/components/skeleton";
 import { toast } from "@diffkit/ui/components/sonner";
 import { cn } from "@diffkit/ui/lib/utils";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import {
 	DetailActivityHeader,
@@ -37,6 +37,10 @@ import {
 	requestPullReviewers,
 	updatePullBranch,
 } from "#/lib/github.functions";
+import {
+	type GitHubQueryScope,
+	githubPullStatusQueryOptions,
+} from "#/lib/github.query";
 import type {
 	PullCheckRun,
 	PullComment,
@@ -44,26 +48,27 @@ import type {
 	PullDetail,
 	PullStatus,
 } from "#/lib/github.types";
+import { githubCachePolicy } from "#/lib/github-cache-policy";
 import { checkPermissionWarning } from "#/lib/warning-store";
 
 export function PullDetailActivitySection({
 	comments,
 	commits,
 	isFetching,
-	status,
 	pr,
 	owner,
 	repo,
 	pullNumber,
+	scope,
 }: {
 	comments?: PullComment[];
 	commits?: PullCommit[];
 	isFetching: boolean;
-	status: PullStatus | null;
 	pr: PullDetail;
 	owner: string;
 	repo: string;
 	pullNumber: number;
+	scope: GitHubQueryScope;
 }) {
 	return (
 		<div className="flex flex-col">
@@ -112,16 +117,12 @@ export function PullDetailActivitySection({
 
 			{!pr.isMerged && pr.state !== "closed" && (
 				<div className="mt-6">
-					{status ? (
-						<MergeStatusCard
-							status={status}
-							owner={owner}
-							repo={repo}
-							pullNumber={pullNumber}
-						/>
-					) : (
-						<MergeStatusSkeleton />
-					)}
+					<MergeStatusSection
+						scope={scope}
+						owner={owner}
+						repo={repo}
+						pullNumber={pullNumber}
+					/>
 				</div>
 			)}
 
@@ -129,6 +130,39 @@ export function PullDetailActivitySection({
 				<DetailCommentBox />
 			</div>
 		</div>
+	);
+}
+
+// ── Merge status section — owns its own polling query ────────────────
+
+function MergeStatusSection({
+	scope,
+	owner,
+	repo,
+	pullNumber,
+}: {
+	scope: GitHubQueryScope;
+	owner: string;
+	repo: string;
+	pullNumber: number;
+}) {
+	const statusQuery = useQuery({
+		...githubPullStatusQueryOptions(scope, { owner, repo, pullNumber }),
+		refetchOnWindowFocus: "always",
+		refetchInterval: githubCachePolicy.status.staleTimeMs,
+	});
+
+	const status = statusQuery.data ?? null;
+
+	if (!status) return <MergeStatusSkeleton />;
+
+	return (
+		<MergeStatusCard
+			status={status}
+			owner={owner}
+			repo={repo}
+			pullNumber={pullNumber}
+		/>
 	);
 }
 
