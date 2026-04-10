@@ -54,6 +54,14 @@ export const Route = createRootRouteWithContext<{
 						buildWebSiteSchema({ path: match.pathname }),
 					),
 				},
+				...(import.meta.env.DEV
+					? [
+							{
+								src: "https://unpkg.com/react-scan/dist/auto.global.js",
+								async: true,
+							},
+						]
+					: []),
 			],
 		};
 	},
