@@ -13,6 +13,7 @@ export const Route = createFileRoute("/_protected/reviews")({
 		const scope = { userId: context.user.id };
 		await context.queryClient.ensureQueryData(githubMyPullsQueryOptions(scope));
 	},
+	pendingComponent: DashboardContentLoading,
 	head: ({ match }) =>
 		buildSeo({
 			path: match.pathname,
@@ -80,9 +81,5 @@ function ReviewsPage() {
 			</div>
 		);
 	}
-	if (hasMounted && query.isPending) {
-		return <DashboardContentLoading />;
-	}
-
-	return null;
+	return <DashboardContentLoading />;
 }
