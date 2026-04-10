@@ -10,6 +10,7 @@ import {
 	getMyPulls,
 	getOrgTeams,
 	getPullComments,
+	getPullFileSummaries,
 	getPullFiles,
 	getPullFromRepo,
 	getPullPageData,
@@ -118,6 +119,8 @@ export const githubQueryKeys = {
 			["github", scope.userId, "pulls", "page", input] as const,
 		detail: (scope: GitHubQueryScope, input: PullFromRepoQueryInput) =>
 			["github", scope.userId, "pulls", "detail", input] as const,
+		fileSummaries: (scope: GitHubQueryScope, input: PullFromRepoQueryInput) =>
+			["github", scope.userId, "pulls", "fileSummaries", input] as const,
 		comments: (scope: GitHubQueryScope, input: PullFromRepoQueryInput) =>
 			["github", scope.userId, "pulls", "comments", input] as const,
 		status: (scope: GitHubQueryScope, input: PullFromRepoQueryInput) =>
@@ -273,6 +276,20 @@ export function githubPullFilesQueryOptions(
 	return queryOptions({
 		queryKey: githubQueryKeys.pulls.files(scope, input),
 		queryFn: () => getPullFiles({ data: input }),
+		staleTime: githubCachePolicy.detail.staleTimeMs,
+		gcTime: githubCachePolicy.detail.gcTimeMs,
+		refetchOnMount: "always",
+		meta: tabPersistedMeta,
+	});
+}
+
+export function githubPullFileSummariesQueryOptions(
+	scope: GitHubQueryScope,
+	input: PullFromRepoQueryInput,
+) {
+	return queryOptions({
+		queryKey: githubQueryKeys.pulls.fileSummaries(scope, input),
+		queryFn: () => getPullFileSummaries({ data: input }),
 		staleTime: githubCachePolicy.detail.staleTimeMs,
 		gcTime: githubCachePolicy.detail.gcTimeMs,
 		refetchOnMount: "always",

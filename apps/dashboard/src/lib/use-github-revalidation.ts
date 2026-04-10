@@ -38,6 +38,7 @@ async function invalidatePullTabQueries(
 	const queryKeys = [
 		githubQueryKeys.pulls.page(scope, input),
 		githubQueryKeys.pulls.detail(scope, input),
+		githubQueryKeys.pulls.fileSummaries(scope, input),
 		githubQueryKeys.pulls.comments(scope, input),
 		githubQueryKeys.pulls.status(scope, input),
 		githubQueryKeys.pulls.files(scope, input),

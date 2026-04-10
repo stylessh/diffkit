@@ -1,9 +1,8 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { ReviewPage } from "#/components/pulls/review/review-page";
 import {
-	githubPullFilesQueryOptions,
+	githubPullFileSummariesQueryOptions,
 	githubPullPageQueryOptions,
-	githubPullReviewCommentsQueryOptions,
 } from "#/lib/github.query";
 import { buildSeo, formatPageTitle, summarizeText } from "#/lib/seo";
 
@@ -14,8 +13,7 @@ export const Route = createFileRoute("/_protected/$owner/$repo/review/$pullId")(
 			const scope = { userId: context.user.id };
 			const input = { owner: params.owner, repo: params.repo, pullNumber };
 			const pageOptions = githubPullPageQueryOptions(scope, input);
-			const filesOptions = githubPullFilesQueryOptions(scope, input);
-			const commentsOptions = githubPullReviewCommentsQueryOptions(
+			const fileSummariesOptions = githubPullFileSummariesQueryOptions(
 				scope,
 				input,
 			);
@@ -24,22 +22,14 @@ export const Route = createFileRoute("/_protected/$owner/$repo/review/$pullId")(
 				context.queryClient.getQueryData(pageOptions.queryKey) ??
 				(await context.queryClient.ensureQueryData(pageOptions));
 
-			if (
-				context.queryClient.getQueryData(filesOptions.queryKey) === undefined
-			) {
-				await context.queryClient.ensureQueryData(filesOptions);
-			}
+			const fileSummaries =
+				context.queryClient.getQueryData(fileSummariesOptions.queryKey) ??
+				(await context.queryClient.ensureQueryData(fileSummariesOptions));
 
-			if (
-				context.queryClient.getQueryData(commentsOptions.queryKey) === undefined
-			) {
-				await context.queryClient.ensureQueryData(commentsOptions);
-			}
-
-			return pageData;
+			return { pageData, fileSummaries };
 		},
 		head: ({ loaderData, match, params }) => {
-			const pull = loaderData?.detail;
+			const pull = loaderData?.pageData?.detail;
 			const title = pull
 				? formatPageTitle(`Review PR #${pull.number}: ${pull.title}`)
 				: formatPageTitle(`Review PR #${params.pullId}`);

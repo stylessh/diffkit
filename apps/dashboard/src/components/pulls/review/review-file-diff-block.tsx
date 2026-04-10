@@ -9,7 +9,9 @@ import {
 	type ComponentType,
 	type LazyExoticComponent,
 	lazy,
+	memo,
 	Suspense,
+	useCallback,
 	useEffect,
 	useMemo,
 	useRef,
@@ -22,9 +24,12 @@ import type {
 	PendingComment,
 	ReviewAnnotation,
 } from "./review-types";
-import { buildPatchString, encodeFileId } from "./review-utils";
+import { buildPatchString } from "./review-utils";
 
 type ReviewPatchDiffComponent = ComponentType<PatchDiffProps<ReviewAnnotation>>;
+
+const LARGE_PATCH_CHANGE_THRESHOLD = 400;
+const LARGE_PATCH_CHAR_THRESHOLD = 24_000;
 
 const PatchDiff: LazyExoticComponent<ReviewPatchDiffComponent> = lazy(() =>
 	import.meta.env.SSR
@@ -43,9 +48,11 @@ if (!import.meta.env.SSR) {
 	});
 }
 
-export function ReviewFileDiffBlock({
+export const ReviewFileDiffBlock = memo(function ReviewFileDiffBlock({
+	id,
 	file,
 	diffStyle,
+	isNearViewport,
 	annotations,
 	pendingComments,
 	activeCommentForm,
@@ -54,19 +61,25 @@ export function ReviewFileDiffBlock({
 	onCancelComment,
 	onAddComment,
 }: {
+	id: string;
 	file: PullFile;
 	diffStyle: "unified" | "split";
+	isNearViewport: boolean;
 	annotations: DiffLineAnnotation<PullReviewComment>[];
 	pendingComments: PendingComment[];
 	activeCommentForm: ActiveCommentForm | null;
 	selectedLines: SelectedLineRange | null;
-	onGutterClick: (range: SelectedLineRange) => void;
+	onGutterClick: (filename: string, range: SelectedLineRange) => void;
 	onCancelComment: () => void;
 	onAddComment: (comment: PendingComment) => void;
 }) {
 	const [isCollapsed, setIsCollapsed] = useState(false);
 	const { resolvedTheme } = useTheme();
 	const isDark = resolvedTheme === "dark";
+	const handleGutterUtilityClick = useCallback(
+		(range: SelectedLineRange) => onGutterClick(file.filename, range),
+		[file.filename, onGutterClick],
+	);
 
 	const allAnnotations = useMemo(() => {
 		const result: DiffLineAnnotation<ReviewAnnotation>[] = [...annotations];
@@ -100,6 +113,9 @@ export function ReviewFileDiffBlock({
 	const mutedFg = isDark
 		? "oklch(0.705 0.015 286.067)"
 		: "oklch(0.552 0.016 285.938)";
+	const useWordDiff =
+		file.changes <= LARGE_PATCH_CHANGE_THRESHOLD &&
+		(file.patch?.length ?? 0) <= LARGE_PATCH_CHAR_THRESHOLD;
 
 	const diffOptions = useMemo(
 		() => ({
@@ -108,13 +124,14 @@ export function ReviewFileDiffBlock({
 				dark: "vercel-dark" as const,
 				light: "vercel-light" as const,
 			},
-			lineDiffType: "word" as const,
+			lineDiffType: useWordDiff ? ("word" as const) : ("none" as const),
+			maxLineDiffLength: useWordDiff ? 1_000 : 200,
 			hunkSeparators: "line-info" as const,
 			overflow: "scroll" as const,
 			disableFileHeader: true,
 			enableGutterUtility: true,
 			enableLineSelection: true,
-			onGutterUtilityClick: onGutterClick,
+			onGutterUtilityClick: handleGutterUtilityClick,
 			unsafeCSS: [
 				`:host { color-scheme: ${isDark ? "dark" : "light"}; ${isDark ? "" : "--diffs-light-bg: oklch(0.967 0.001 286.375);"} }`,
 				`:host { --diffs-font-family: 'Geist Mono Variable', 'SF Mono', ui-monospace, 'Cascadia Code', monospace; }`,
@@ -127,36 +144,37 @@ export function ReviewFileDiffBlock({
 					: `:host { --diffs-bg-addition-override: color-mix(in lab, var(--diffs-bg) 82%, var(--diffs-addition-base)); --diffs-bg-addition-number-override: color-mix(in lab, var(--diffs-bg) 78%, var(--diffs-addition-base)); --diffs-bg-deletion-override: color-mix(in lab, var(--diffs-bg) 82%, var(--diffs-deletion-base)); --diffs-bg-deletion-number-override: color-mix(in lab, var(--diffs-bg) 78%, var(--diffs-deletion-base)); }`,
 			].join("\n"),
 		}),
-		[diffStyle, isDark, mutedFg, onGutterClick],
+		[diffStyle, handleGutterUtilityClick, isDark, mutedFg, useWordDiff],
 	);
+	const patchString = useMemo(() => buildPatchString(file), [file]);
 
 	if (!file.patch) {
 		return (
-			<div id={encodeFileId(file.filename)} data-filename={file.filename}>
+			<div id={id} data-filename={file.filename}>
 				<FileHeader
 					file={file}
 					isCollapsed={isCollapsed}
 					onToggleCollapse={() => setIsCollapsed(!isCollapsed)}
 				/>
 				{!isCollapsed && (
-					<div className="flex items-center justify-center rounded-b-lg border border-t-0 bg-surface-0 py-8 text-sm text-muted-foreground">
-						Binary file or diff too large to display
+					<div className="px-2 pb-2">
+						<div className="flex items-center justify-center rounded-b-lg border border-t-0 bg-surface-0 py-8 text-sm text-muted-foreground">
+							Binary file or diff too large to display
+						</div>
 					</div>
 				)}
 			</div>
 		);
 	}
 
-	const patchString = buildPatchString(file);
-
 	return (
-		<div id={encodeFileId(file.filename)} data-filename={file.filename}>
+		<div id={id} data-filename={file.filename}>
 			<FileHeader
 				file={file}
 				isCollapsed={isCollapsed}
 				onToggleCollapse={() => setIsCollapsed(!isCollapsed)}
 			/>
-			{!isCollapsed && (
+			{!isCollapsed && isNearViewport && (
 				<div className="px-2 pb-2">
 					<Suspense>
 						<PatchDiff
@@ -218,7 +236,7 @@ export function ReviewFileDiffBlock({
 			)}
 		</div>
 	);
-}
+});
 
 function FileHeader({
 	file,

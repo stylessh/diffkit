@@ -7,13 +7,26 @@ import {
 import { cn } from "@diffkit/ui/lib/utils";
 import type { SelectedLineRange } from "@pierre/diffs";
 import type { DiffLineAnnotation } from "@pierre/diffs/react";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { getRouteApi, Link } from "@tanstack/react-router";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { getPrStateConfig } from "#/components/pulls/detail/pull-detail-header";
-import { submitPullReview } from "#/lib/github.functions";
 import {
-	githubPullFilesQueryOptions,
+	useInfiniteQuery,
+	useQuery,
+	useQueryClient,
+} from "@tanstack/react-query";
+import { getRouteApi, Link } from "@tanstack/react-router";
+import {
+	lazy,
+	Suspense,
+	useCallback,
+	useDeferredValue,
+	useEffect,
+	useMemo,
+	useRef,
+	useState,
+} from "react";
+import { getPrStateConfig } from "#/components/pulls/detail/pull-detail-header";
+import { getPullFiles, submitPullReview } from "#/lib/github.functions";
+import {
+	githubPullFileSummariesQueryOptions,
 	githubPullPageQueryOptions,
 	githubPullReviewCommentsQueryOptions,
 	githubQueryKeys,
@@ -21,7 +34,7 @@ import {
 import type { PullReviewComment } from "#/lib/github.types";
 import { useHasMounted } from "#/lib/use-has-mounted";
 import { useRegisterTab } from "#/lib/use-register-tab";
-import { ReviewFileDiffBlock } from "./review-file-diff-block";
+import type { ReviewDiffPaneHandle } from "./review-diff-pane";
 import { ReviewFileTreeNode } from "./review-file-tree";
 import { ReviewSubmitPopover } from "./review-submit-popover";
 import type {
@@ -30,37 +43,73 @@ import type {
 	PendingComment,
 	ReviewEvent,
 } from "./review-types";
-import { buildFileTree, encodeFileId } from "./review-utils";
+import { buildFileTree } from "./review-utils";
 
 const routeApi = getRouteApi("/_protected/$owner/$repo/review/$pullId");
+const PULL_FILES_PAGE_SIZE = 50;
+const ReviewDiffPane = lazy(() =>
+	import("./review-diff-pane").then((mod) => ({
+		default: mod.ReviewDiffPane,
+	})),
+);
 
 export function ReviewPage() {
 	const { user } = routeApi.useRouteContext();
+	const loaderData = routeApi.useLoaderData();
 	const { owner, repo, pullId } = routeApi.useParams();
 	const pullNumber = Number(pullId);
 	const scope = { userId: user.id };
 	const hasMounted = useHasMounted();
 	const queryClient = useQueryClient();
 	const input = { owner, repo, pullNumber };
+	const diffPaneRef = useRef<ReviewDiffPaneHandle>(null);
+	const [shouldLoadReviewComments, setShouldLoadReviewComments] =
+		useState(false);
 
 	const pageQuery = useQuery({
 		...githubPullPageQueryOptions(scope, input),
-		enabled: hasMounted,
+		refetchOnMount: false,
+		refetchOnWindowFocus: false,
 	});
 
-	const filesQuery = useQuery({
-		...githubPullFilesQueryOptions(scope, input),
+	const fileSummariesQuery = useQuery({
+		...githubPullFileSummariesQueryOptions(scope, input),
+		refetchOnMount: false,
+		refetchOnWindowFocus: false,
+	});
+
+	const filesQuery = useInfiniteQuery({
+		queryKey: githubQueryKeys.pulls.files(scope, input),
+		initialPageParam: 1,
 		enabled: hasMounted,
+		queryFn: ({ pageParam }) =>
+			getPullFiles({
+				data: {
+					...input,
+					page: pageParam,
+					perPage: PULL_FILES_PAGE_SIZE,
+				},
+			}),
+		getNextPageParam: (lastPage) => lastPage.nextPage ?? undefined,
+		refetchOnMount: false,
+		refetchOnWindowFocus: false,
 	});
 
 	const reviewCommentsQuery = useQuery({
 		...githubPullReviewCommentsQueryOptions(scope, input),
-		enabled: hasMounted,
+		enabled: shouldLoadReviewComments,
+		refetchOnWindowFocus: false,
 	});
 
-	const pr = pageQuery.data?.detail;
-	const files = filesQuery.data ?? [];
+	const pr = pageQuery.data?.detail ?? loaderData?.pageData?.detail ?? null;
+	const sidebarFiles =
+		fileSummariesQuery.data ?? loaderData?.fileSummaries ?? [];
+	const diffFiles = useMemo(
+		() => filesQuery.data?.pages.flatMap((page) => page.files) ?? [],
+		[filesQuery.data],
+	);
 	const reviewComments = reviewCommentsQuery.data ?? [];
+	const hasDiffPayload = filesQuery.data !== undefined;
 
 	const [diffStyle, setDiffStyle] = useState<"unified" | "split">("unified");
 	const [pendingComments, setPendingComments] = useState<PendingComment[]>([]);
@@ -72,8 +121,7 @@ export function ReviewPage() {
 	const [activeFile, setActiveFile] = useState<string | null>(null);
 	const [fileFilter, setFileFilter] = useState("");
 	const [isSubmitting, setIsSubmitting] = useState(false);
-
-	const diffPanelRef = useRef<HTMLDivElement>(null);
+	const deferredFileFilter = useDeferredValue(fileFilter);
 
 	useRegisterTab(
 		pr
@@ -90,11 +138,11 @@ export function ReviewPage() {
 			: null,
 	);
 
-	const fileTree = useMemo(() => buildFileTree(files), [files]);
+	const fileTree = useMemo(() => buildFileTree(sidebarFiles), [sidebarFiles]);
 
 	const filteredTree = useMemo(() => {
-		if (!fileFilter) return fileTree;
-		const lower = fileFilter.toLowerCase();
+		if (!deferredFileFilter) return fileTree;
+		const lower = deferredFileFilter.toLowerCase();
 
 		function filterNodes(nodes: FileTreeNode[]): FileTreeNode[] {
 			return nodes
@@ -112,43 +160,12 @@ export function ReviewPage() {
 		}
 
 		return filterNodes(fileTree);
-	}, [fileFilter, fileTree]);
+	}, [deferredFileFilter, fileTree]);
 
 	const scrollToFile = useCallback((filename: string) => {
-		const element = document.getElementById(encodeFileId(filename));
-		if (element) {
-			element.scrollIntoView({ behavior: "smooth", block: "start" });
-			setActiveFile(filename);
-		}
+		diffPaneRef.current?.scrollToFile(filename);
+		setActiveFile(filename);
 	}, []);
-
-	useEffect(() => {
-		const panel = diffPanelRef.current;
-		if (!panel || files.length === 0) return;
-
-		const observer = new IntersectionObserver(
-			(entries) => {
-				for (const entry of entries) {
-					if (entry.isIntersecting) {
-						const filename = entry.target.getAttribute("data-filename");
-						if (filename) setActiveFile(filename);
-					}
-				}
-			},
-			{
-				root: panel,
-				rootMargin: "-10% 0px -80% 0px",
-				threshold: 0,
-			},
-		);
-
-		for (const file of files) {
-			const element = document.getElementById(encodeFileId(file.filename));
-			if (element) observer.observe(element);
-		}
-
-		return () => observer.disconnect();
-	}, [files]);
 
 	const annotationsByFile = useMemo(() => {
 		const map = new Map<string, DiffLineAnnotation<PullReviewComment>[]>();
@@ -165,10 +182,82 @@ export function ReviewPage() {
 		return map;
 	}, [reviewComments]);
 
+	const pendingCommentsByFile = useMemo(() => {
+		const map = new Map<string, PendingComment[]>();
+		for (const comment of pendingComments) {
+			const existing = map.get(comment.path) ?? [];
+			existing.push(comment);
+			map.set(comment.path, existing);
+		}
+		return map;
+	}, [pendingComments]);
+
+	const diffStats = useMemo(() => {
+		let totalAdditions = 0;
+		let totalDeletions = 0;
+		for (const file of sidebarFiles) {
+			totalAdditions += file.additions;
+			totalDeletions += file.deletions;
+		}
+		return { totalAdditions, totalDeletions };
+	}, [sidebarFiles]);
+
+	useEffect(() => {
+		if (!hasMounted || !hasDiffPayload || shouldLoadReviewComments) return;
+
+		const timeoutId = window.setTimeout(() => {
+			setShouldLoadReviewComments(true);
+		}, 250);
+
+		return () => window.clearTimeout(timeoutId);
+	}, [hasDiffPayload, hasMounted, shouldLoadReviewComments]);
+
 	const addPendingComment = useCallback((comment: PendingComment) => {
 		setPendingComments((previous) => [...previous, comment]);
 		setActiveCommentForm(null);
 	}, []);
+
+	const handleCancelComment = useCallback(() => {
+		setActiveCommentForm(null);
+		setSelectedLines(null);
+	}, []);
+
+	const handleAddComment = useCallback(
+		(comment: PendingComment) => {
+			addPendingComment(comment);
+			setSelectedLines(null);
+		},
+		[addPendingComment],
+	);
+
+	const handleStartComment = useCallback(
+		(filename: string, range: SelectedLineRange) => {
+			const isMultiLine = range.start !== range.end;
+			const startIsSmaller = range.start <= range.end;
+			const lineSide = startIsSmaller
+				? (range.endSide ?? range.side)
+				: range.side;
+			const startLineSide = startIsSmaller
+				? range.side
+				: (range.endSide ?? range.side);
+			const toGithubSide = (side: string | undefined) =>
+				side === "deletions" ? ("LEFT" as const) : ("RIGHT" as const);
+
+			setActiveCommentForm({
+				path: filename,
+				line: Math.max(range.start, range.end),
+				side: toGithubSide(lineSide),
+				...(isMultiLine
+					? {
+							startLine: Math.min(range.start, range.end),
+							startSide: toGithubSide(startLineSide),
+						}
+					: {}),
+			});
+			setSelectedLines(range);
+		},
+		[],
+	);
 
 	const handleSubmitReview = useCallback(
 		async (body: string, event: ReviewEvent) => {
@@ -211,6 +300,9 @@ export function ReviewPage() {
 	);
 
 	if (pageQuery.error) throw pageQuery.error;
+	if (fileSummariesQuery.error) throw fileSummariesQuery.error;
+	if (filesQuery.error) throw filesQuery.error;
+	if (reviewCommentsQuery.error) throw reviewCommentsQuery.error;
 
 	if (!pr) {
 		return (
@@ -222,8 +314,7 @@ export function ReviewPage() {
 
 	const stateConfig = getPrStateConfig(pr);
 	const StateIcon = stateConfig.icon;
-	const totalAdditions = files.reduce((sum, file) => sum + file.additions, 0);
-	const totalDeletions = files.reduce((sum, file) => sum + file.deletions, 0);
+	const sidebarFileCount = sidebarFiles.length;
 
 	return (
 		<div className="flex h-full flex-col">
@@ -251,15 +342,15 @@ export function ReviewPage() {
 						<span className="flex items-center gap-1">
 							<FileIcon size={13} strokeWidth={2} />
 							<span className="font-mono tabular-nums font-medium text-foreground">
-								{files.length}
+								{sidebarFileCount}
 							</span>{" "}
-							{files.length === 1 ? "file" : "files"}
+							{sidebarFileCount === 1 ? "file" : "files"}
 						</span>
 						<span className="font-mono tabular-nums font-medium text-green-500">
-							+{totalAdditions}
+							+{diffStats.totalAdditions}
 						</span>
 						<span className="font-mono tabular-nums font-medium text-red-500">
-							-{totalDeletions}
+							-{diffStats.totalDeletions}
 						</span>
 					</div>
 
@@ -335,7 +426,8 @@ export function ReviewPage() {
 						</div>
 
 						<div className="border-t px-3 py-2 text-xs text-muted-foreground">
-							{files.length} {files.length === 1 ? "file" : "files"} changed
+							{sidebarFileCount} {sidebarFileCount === 1 ? "file" : "files"}{" "}
+							changed
 						</div>
 					</div>
 				</ResizablePanel>
@@ -343,73 +435,42 @@ export function ReviewPage() {
 				<ResizableHandle />
 
 				<ResizablePanel defaultSize={80}>
-					<div ref={diffPanelRef} className="h-full overflow-auto">
-						<div className="flex flex-col gap-4 p-4">
-							{files.map((file) => (
-								<ReviewFileDiffBlock
-									key={file.filename}
-									file={file}
-									diffStyle={diffStyle}
-									annotations={annotationsByFile.get(file.filename) ?? []}
-									pendingComments={pendingComments.filter(
-										(comment) => comment.path === file.filename,
-									)}
-									activeCommentForm={
-										activeCommentForm?.path === file.filename
-											? activeCommentForm
-											: null
+					{hasMounted && hasDiffPayload ? (
+						<Suspense fallback={<ReviewDiffPanePlaceholder />}>
+							<ReviewDiffPane
+								ref={diffPaneRef}
+								files={diffFiles}
+								totalFileCount={sidebarFileCount}
+								diffStyle={diffStyle}
+								annotationsByFile={annotationsByFile}
+								pendingCommentsByFile={pendingCommentsByFile}
+								hasNextPage={filesQuery.hasNextPage}
+								isFetchingNextPage={filesQuery.isFetchingNextPage}
+								onLoadMore={() => {
+									if (
+										filesQuery.hasNextPage &&
+										!filesQuery.isFetchingNextPage
+									) {
+										void filesQuery.fetchNextPage();
 									}
-									selectedLines={
-										activeCommentForm?.path === file.filename
-											? selectedLines
-											: null
-									}
-									onGutterClick={(range) => {
-										const isMultiLine = range.start !== range.end;
-										const startIsSmaller = range.start <= range.end;
-										const lineSide = startIsSmaller
-											? (range.endSide ?? range.side)
-											: range.side;
-										const startLineSide = startIsSmaller
-											? range.side
-											: (range.endSide ?? range.side);
-										const toGithubSide = (s: string | undefined) =>
-											s === "deletions"
-												? ("LEFT" as const)
-												: ("RIGHT" as const);
-										setActiveCommentForm({
-											path: file.filename,
-											line: Math.max(range.start, range.end),
-											side: toGithubSide(lineSide),
-											...(isMultiLine
-												? {
-														startLine: Math.min(range.start, range.end),
-														startSide: toGithubSide(startLineSide),
-													}
-												: {}),
-										});
-										setSelectedLines(range);
-									}}
-									onCancelComment={() => {
-										setActiveCommentForm(null);
-										setSelectedLines(null);
-									}}
-									onAddComment={(comment) => {
-										addPendingComment(comment);
-										setSelectedLines(null);
-									}}
-								/>
-							))}
-
-							{files.length === 0 && !filesQuery.isLoading && (
-								<div className="flex items-center justify-center py-20 text-sm text-muted-foreground">
-									No files changed in this pull request.
-								</div>
-							)}
-						</div>
-					</div>
+								}}
+								activeCommentForm={activeCommentForm}
+								selectedLines={selectedLines}
+								onActiveFileChange={setActiveFile}
+								onStartComment={handleStartComment}
+								onCancelComment={handleCancelComment}
+								onAddComment={handleAddComment}
+							/>
+						</Suspense>
+					) : (
+						<ReviewDiffPanePlaceholder />
+					)}
 				</ResizablePanel>
 			</ResizablePanelGroup>
 		</div>
 	);
+}
+
+function ReviewDiffPanePlaceholder() {
+	return <div className="h-full" />;
 }

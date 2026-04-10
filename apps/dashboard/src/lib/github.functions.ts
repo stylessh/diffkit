@@ -16,6 +16,9 @@ import type {
 	PullCommit,
 	PullDetail,
 	PullFile,
+	PullFileSummary,
+	PullFilesPage,
+	PullFilesPageInput,
 	PullPageData,
 	PullReviewComment,
 	PullStatus,
@@ -663,6 +666,62 @@ async function getCachedGitHubRequest<TGitHubData, TResult>({
 			return {
 				...result,
 				data: mapData(result.data),
+			};
+		},
+	});
+}
+
+async function getCachedPaginatedGitHubRequest<TGitHubItem, TResult>({
+	context,
+	resource,
+	params,
+	freshForMs,
+	signalKeys,
+	request,
+	mapData,
+	pageSize = 100,
+}: {
+	context: GitHubContext;
+	resource: string;
+	params: unknown;
+	freshForMs: number;
+	signalKeys?: string[];
+	request: (page: number) => Promise<GitHubRestResponse<TGitHubItem[]>>;
+	mapData: (items: TGitHubItem[]) => TResult;
+	pageSize?: number;
+}) {
+	return getOrRevalidateGitHubResource<TResult>({
+		userId: context.session.user.id,
+		resource,
+		params,
+		freshForMs,
+		signalKeys,
+		fetcher: async () => {
+			const items: TGitHubItem[] = [];
+			let page = 1;
+			let metadata = createGitHubResponseMetadata(200, {});
+
+			while (true) {
+				const response = await request(page);
+				if (page === 1) {
+					metadata = createGitHubResponseMetadata(
+						response.status,
+						normalizeResponseHeaders(response.headers),
+					);
+				}
+
+				items.push(...response.data);
+				if (response.data.length < pageSize) {
+					break;
+				}
+
+				page += 1;
+			}
+
+			return {
+				kind: "success",
+				data: mapData(items),
+				metadata,
 			};
 		},
 	});
@@ -1784,12 +1843,21 @@ export const mergePullRequest = createServerFn({ method: "POST" })
 
 async function getPullFilesResult(
 	context: GitHubContext,
-	data: PullFromRepoInput,
-): Promise<PullFile[]> {
-	return getCachedGitHubRequest<RepoPullFile[], PullFile[]>({
+	data: PullFilesPageInput,
+): Promise<PullFilesPage> {
+	const page = clampPage(data.page);
+	const perPage = clampPerPage(data.perPage, 20);
+
+	return getCachedGitHubRequest<RepoPullFile[], PullFilesPage>({
 		context,
-		resource: "pulls.files",
-		params: data,
+		resource: "pulls.filesPage",
+		params: {
+			owner: data.owner,
+			repo: data.repo,
+			pullNumber: data.pullNumber,
+			page,
+			perPage,
+		},
 		freshForMs: githubCachePolicy.detail.staleTimeMs,
 		signalKeys: [
 			githubRevalidationSignalKeys.pullEntity({
@@ -1803,11 +1871,12 @@ async function getPullFilesResult(
 				owner: data.owner,
 				repo: data.repo,
 				pull_number: data.pullNumber,
-				per_page: 300,
+				page,
+				per_page: perPage,
 				headers,
 			}),
-		mapData: (files) =>
-			files.map((file) => ({
+		mapData: (files) => ({
+			files: files.map((file) => ({
 				sha: file.sha,
 				filename: file.filename,
 				status: file.status as PullFile["status"],
@@ -1817,15 +1886,64 @@ async function getPullFilesResult(
 				patch: file.patch ?? null,
 				previousFilename: file.previous_filename ?? null,
 			})),
+			nextPage: files.length === perPage ? page + 1 : null,
+		}),
 	});
 }
 
-export const getPullFiles = createServerFn({ method: "GET" })
+async function getPullFileSummariesResult(
+	context: GitHubContext,
+	data: PullFromRepoInput,
+): Promise<PullFileSummary[]> {
+	return getCachedPaginatedGitHubRequest<RepoPullFile, PullFileSummary[]>({
+		context,
+		resource: "pulls.fileSummaries",
+		params: data,
+		freshForMs: githubCachePolicy.detail.staleTimeMs,
+		signalKeys: [
+			githubRevalidationSignalKeys.pullEntity({
+				owner: data.owner,
+				repo: data.repo,
+				pullNumber: data.pullNumber,
+			}),
+		],
+		request: (page) =>
+			context.octokit.rest.pulls.listFiles({
+				owner: data.owner,
+				repo: data.repo,
+				pull_number: data.pullNumber,
+				page,
+				per_page: 100,
+			}),
+		mapData: (files) =>
+			files.map((file) => ({
+				filename: file.filename,
+				status: file.status as PullFileSummary["status"],
+				additions: file.additions,
+				deletions: file.deletions,
+				changes: file.changes,
+				previousFilename: file.previous_filename ?? null,
+			})),
+	});
+}
+
+export const getPullFileSummaries = createServerFn({ method: "GET" })
 	.inputValidator(identityValidator<PullFromRepoInput>)
-	.handler(async ({ data }): Promise<PullFile[]> => {
+	.handler(async ({ data }): Promise<PullFileSummary[]> => {
 		const context = await getGitHubContext();
 		if (!context) {
 			return [];
+		}
+
+		return getPullFileSummariesResult(context, data);
+	});
+
+export const getPullFiles = createServerFn({ method: "GET" })
+	.inputValidator(identityValidator<PullFilesPageInput>)
+	.handler(async ({ data }): Promise<PullFilesPage> => {
+		const context = await getGitHubContext();
+		if (!context) {
+			return { files: [], nextPage: null };
 		}
 
 		return getPullFilesResult(context, data);
@@ -1835,7 +1953,10 @@ async function getPullReviewCommentsResult(
 	context: GitHubContext,
 	data: PullFromRepoInput,
 ): Promise<PullReviewComment[]> {
-	return getCachedGitHubRequest<RepoPullReviewComment[], PullReviewComment[]>({
+	return getCachedPaginatedGitHubRequest<
+		RepoPullReviewComment,
+		PullReviewComment[]
+	>({
 		context,
 		resource: "pulls.reviewComments",
 		params: data,
@@ -1847,13 +1968,13 @@ async function getPullReviewCommentsResult(
 				pullNumber: data.pullNumber,
 			}),
 		],
-		request: (headers) =>
+		request: (page) =>
 			context.octokit.rest.pulls.listReviewComments({
 				owner: data.owner,
 				repo: data.repo,
 				pull_number: data.pullNumber,
+				page,
 				per_page: 100,
-				headers,
 			}),
 		mapData: (comments) =>
 			comments.map((comment) => ({

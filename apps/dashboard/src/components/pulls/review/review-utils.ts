@@ -1,7 +1,12 @@
-import type { PullFile } from "#/lib/github.types";
+import type { PullFile, PullFileSummary } from "#/lib/github.types";
 import type { FileTreeNode } from "./review-types";
 
-export function buildFileTree(files: PullFile[]): FileTreeNode[] {
+type FileTreeEntry = Pick<
+	PullFileSummary,
+	"filename" | "status" | "additions" | "deletions"
+>;
+
+export function buildFileTree(files: FileTreeEntry[]): FileTreeNode[] {
 	const root: FileTreeNode = {
 		name: "",
 		path: "",

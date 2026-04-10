@@ -2,6 +2,7 @@ import { FileIcon, FolderIcon } from "@diffkit/icons";
 import { cn } from "@diffkit/ui/lib/utils";
 import { useState } from "react";
 import type { FileTreeNode } from "./review-types";
+import { encodeFileId } from "./review-utils";
 
 export function ReviewFileTreeNode({
 	node,
@@ -61,10 +62,11 @@ export function ReviewFileTreeNode({
 	}
 
 	const isActive = activeFile === node.path;
+	const fileId = encodeFileId(node.path);
 
 	return (
-		<button
-			type="button"
+		<a
+			href={`#${fileId}`}
 			className={cn(
 				"flex w-full items-center gap-1.5 px-3 py-1.5 text-[13px] transition-colors hover:bg-surface-1",
 				isActive ? "bg-surface-1 text-foreground" : "text-muted-foreground",
@@ -92,6 +94,6 @@ export function ReviewFileTreeNode({
 					)}
 				</span>
 			)}
-		</button>
+		</a>
 	);
 }

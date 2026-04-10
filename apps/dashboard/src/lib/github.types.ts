@@ -197,6 +197,21 @@ export type PullFile = {
 	previousFilename: string | null;
 };
 
+export type PullFileSummary = Omit<PullFile, "patch" | "sha">;
+
+export type PullFilesPageInput = {
+	owner: string;
+	repo: string;
+	pullNumber: number;
+	page?: number;
+	perPage?: number;
+};
+
+export type PullFilesPage = {
+	files: PullFile[];
+	nextPage: number | null;
+};
+
 export type PullReviewComment = {
 	id: number;
 	body: string;
