@@ -303,12 +303,7 @@ export function ReviewPage() {
 			</div>
 
 			<ResizablePanelGroup direction="horizontal" className="flex-1">
-				<ResizablePanel
-					defaultSize={20}
-					minSize={12}
-					maxSize={40}
-					className="border-r"
-				>
+				<ResizablePanel defaultSize={20} minSize={12} maxSize={40}>
 					<div className="flex h-full flex-col">
 						<div className="px-3 py-2">
 							<div className="relative flex items-center rounded-md border bg-surface-0 px-2.5 py-1.5">

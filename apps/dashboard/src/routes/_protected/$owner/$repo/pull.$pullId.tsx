@@ -1,6 +1,9 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { PullDetailPage } from "#/components/pulls/detail/pull-detail-page";
-import { githubPullPageQueryOptions } from "#/lib/github.query";
+import {
+	githubPullPageQueryOptions,
+	githubViewerQueryOptions,
+} from "#/lib/github.query";
 import { buildSeo, formatPageTitle, summarizeText } from "#/lib/seo";
 
 export const Route = createFileRoute("/_protected/$owner/$repo/pull/$pullId")({
@@ -15,10 +18,15 @@ export const Route = createFileRoute("/_protected/$owner/$repo/pull/$pullId")({
 
 		const cachedData = context.queryClient.getQueryData(pageOptions.queryKey);
 		if (cachedData !== undefined) {
+			void context.queryClient.ensureQueryData(githubViewerQueryOptions(scope));
 			return cachedData;
 		}
 
-		return context.queryClient.ensureQueryData(pageOptions);
+		const [pageData] = await Promise.all([
+			context.queryClient.ensureQueryData(pageOptions),
+			context.queryClient.ensureQueryData(githubViewerQueryOptions(scope)),
+		]);
+		return pageData;
 	},
 	head: ({ loaderData, match, params }) => {
 		const pull = loaderData?.detail;

@@ -23,6 +23,7 @@ export const Route = createFileRoute("/_protected/issues")({
 			githubMyIssuesQueryOptions(scope),
 		);
 	},
+	pendingComponent: DashboardContentLoading,
 	head: ({ match }) =>
 		buildSeo({
 			path: match.pathname,
@@ -113,11 +114,7 @@ function IssuesPage() {
 			</div>
 		);
 	}
-	if (hasMounted && query.isPending) {
-		return <DashboardContentLoading />;
-	}
-
-	return null;
+	return <DashboardContentLoading />;
 }
 
 type IssueGroupData = {
