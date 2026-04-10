@@ -26,6 +26,7 @@ import { useTheme } from "next-themes";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { signOutToLogin } from "#/lib/auth-actions";
 import { preloadRouteOnce } from "#/lib/route-preload";
+import { useGlobalShortcuts } from "#/lib/shortcuts";
 import { removeTab, type Tab, useTabs } from "#/lib/tab-store";
 
 interface DashboardTopbarProps {
@@ -62,6 +63,7 @@ const tabIconMap = {
 } as const;
 
 const primaryNavRoutes = ["/", "/pulls", "/issues", "/reviews"] as const;
+const MAX_TAB_SHORTCUTS = 9;
 
 export function DashboardTopbar({
 	user,
@@ -143,6 +145,50 @@ export function DashboardTopbar({
 			openTabs.map((tab) => preloadRouteOnce(router, tab.url)),
 		);
 	}, [router, tabsReady, openTabs]);
+
+	function navigateToTab(tab: Tab | undefined) {
+		if (!tab) return;
+		void router.navigate({ to: tab.url });
+	}
+
+	useGlobalShortcuts([
+		...Array.from(
+			{ length: Math.min(openTabs.length, MAX_TAB_SHORTCUTS) },
+			(_, index) => ({
+				shortcut: { code: `Digit${index + 1}`, shift: true },
+				enabled: tabsReady,
+				onTrigger: () => {
+					navigateToTab(openTabs[index]);
+				},
+			}),
+		),
+		{
+			shortcut: { key: "ArrowLeft", shift: true },
+			enabled: tabsReady && openTabs.length > 1,
+			onTrigger: () => {
+				const currentIndex = openTabs.findIndex(
+					(tab) => tab.url === router.state.location.pathname,
+				);
+				const nextIndex =
+					currentIndex === -1
+						? openTabs.length - 1
+						: (currentIndex - 1 + openTabs.length) % openTabs.length;
+				navigateToTab(openTabs[nextIndex]);
+			},
+		},
+		{
+			shortcut: { key: "ArrowRight", shift: true },
+			enabled: tabsReady && openTabs.length > 1,
+			onTrigger: () => {
+				const currentIndex = openTabs.findIndex(
+					(tab) => tab.url === router.state.location.pathname,
+				);
+				const nextIndex =
+					currentIndex === -1 ? 0 : (currentIndex + 1) % openTabs.length;
+				navigateToTab(openTabs[nextIndex]);
+			},
+		},
+	]);
 
 	return (
 		<nav className="flex min-w-0 items-center gap-3 overflow-hidden px-3 py-2">

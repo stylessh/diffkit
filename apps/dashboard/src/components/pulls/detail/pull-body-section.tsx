@@ -23,6 +23,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { updatePullBody } from "#/lib/github.functions";
 import { type GitHubQueryScope, githubQueryKeys } from "#/lib/github.query";
 import type { PullDetail, PullPageData } from "#/lib/github.types";
+import { matchesShortcut } from "#/lib/shortcuts";
 import { useOptimisticMutation } from "#/lib/use-optimistic-mutation";
 
 export function PullBodySection({
@@ -68,36 +69,47 @@ export function PullBodySection({
 
 	const handleEditorKeyDown = useCallback(
 		(event: React.KeyboardEvent<HTMLTextAreaElement>) => {
-			const mod = event.metaKey || event.ctrlKey;
-			if (!mod) return;
+			const action = [
+				{
+					shortcut: { key: "b", mod: true },
+					run: () => insertMarkdown("**", "**", "bold"),
+				},
+				{
+					shortcut: { key: "i", mod: true },
+					run: () => insertMarkdown("_", "_", "italic"),
+				},
+				{
+					shortcut: { key: "e", mod: true },
+					run: () => insertMarkdown("`", "`", "code"),
+				},
+				{
+					shortcut: { key: "k", mod: true },
+					run: () => insertMarkdown("[", "](url)", "text"),
+				},
+				{
+					shortcut: { key: "h", mod: true },
+					run: () => insertMarkdown("### ", "", "heading"),
+				},
+				{
+					shortcut: { key: ".", mod: true, shift: true },
+					run: () => insertMarkdown("> ", "", "quote"),
+				},
+				{
+					shortcut: { key: "8", mod: true, shift: true },
+					run: () => insertMarkdown("- ", "", "item"),
+				},
+				{
+					shortcut: { key: "7", mod: true, shift: true },
+					run: () => insertMarkdown("1. ", "", "item"),
+				},
+			].find(({ shortcut }) => matchesShortcut(event, shortcut));
 
-			const shortcuts: Record<string, () => void> = {
-				b: () => insertMarkdown("**", "**", "bold"),
-				i: () => insertMarkdown("_", "_", "italic"),
-				e: () => insertMarkdown("`", "`", "code"),
-				k: () => insertMarkdown("[", "](url)", "text"),
-				h: () => insertMarkdown("### ", "", "heading"),
-			};
-
-			if (event.shiftKey) {
-				const shiftShortcuts: Record<string, () => void> = {
-					".": () => insertMarkdown("> ", "", "quote"),
-					"8": () => insertMarkdown("- ", "", "item"),
-					"7": () => insertMarkdown("1. ", "", "item"),
-				};
-				const action = shiftShortcuts[event.key];
-				if (action) {
-					event.preventDefault();
-					action();
-				}
+			if (!action) {
 				return;
 			}
 
-			const action = shortcuts[event.key];
-			if (action) {
-				event.preventDefault();
-				action();
-			}
+			event.preventDefault();
+			action.run();
 		},
 		[insertMarkdown],
 	);
