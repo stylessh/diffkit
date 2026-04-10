@@ -27,6 +27,13 @@ import type {
 	SubmitReviewInput,
 	UserRepoSummary,
 } from "./github.types";
+import {
+	buildGitHubAppInstallUrl,
+	type GitHubAppAccessState,
+	type GitHubAppInstallation,
+	type GitHubInstallationTargetType,
+	type GitHubOrganization,
+} from "./github-access";
 import { getGitHubAppSlug } from "./github-app.server";
 import {
 	bustGitHubCache,
@@ -128,6 +135,31 @@ type GitHubApiLabel = {
 	description?: string | null;
 };
 
+type GitHubInstallationAccountPayload = {
+	login?: string;
+	avatar_url?: string | null;
+	type?: string;
+};
+
+type GitHubUserInstallationPayload = {
+	id?: number;
+	account?: GitHubInstallationAccountPayload | null;
+	html_url?: string | null;
+	target_type?: string;
+	repository_selection?: string;
+	suspended_at?: string | null;
+};
+
+type GitHubUserInstallationsPayload = {
+	installations?: GitHubUserInstallationPayload[];
+};
+
+type GitHubAuthenticatedOrgPayload = {
+	id?: number;
+	login?: string;
+	avatar_url?: string | null;
+};
+
 type PullSearchRole =
 	| "all"
 	| "assigned"
@@ -176,13 +208,10 @@ function toMutationError(action: string, error: unknown): MutationResult {
 	console.error(`[${action}]`, error);
 	if (error instanceof RequestError) {
 		if (error.status === 403) {
-			const slug = getGitHubAppSlug();
 			return {
 				ok: false,
 				error: `Failed to ${action}: Insufficient permissions`,
-				installUrl: slug
-					? `https://github.com/apps/${slug}/installations/new`
-					: undefined,
+				installUrl: buildGitHubAppInstallUrl(getGitHubAppSlug()) ?? undefined,
 			};
 		}
 		if (error.status === 404) {
@@ -1187,6 +1216,116 @@ export const getGitHubViewer = createServerFn({ method: "GET" }).handler(
 	},
 );
 
+export const getGitHubAppAccessState = createServerFn({
+	method: "GET",
+}).handler(async (): Promise<GitHubAppAccessState | null> => {
+	const context = await getGitHubContext();
+	if (!context) {
+		return null;
+	}
+
+	const viewer = await getViewer(context);
+	const appSlug = getGitHubAppSlug();
+	const publicInstallUrl = buildGitHubAppInstallUrl(appSlug);
+
+	let installations: GitHubAppInstallation[] = [];
+	try {
+		const installationsResponse = await context.octokit.request(
+			"GET /user/installations",
+			{
+				per_page: 100,
+			},
+		);
+		const payload =
+			installationsResponse.data as GitHubUserInstallationsPayload;
+		installations = (payload.installations ?? []).flatMap((installation) => {
+			if (!installation.id || !installation.account?.login) {
+				return [];
+			}
+
+			const targetType = toInstallationTargetType(installation.target_type);
+
+			return [
+				{
+					id: installation.id,
+					account: {
+						login: installation.account.login,
+						name: null,
+						avatarUrl: installation.account.avatar_url ?? null,
+						type: toInstallationTargetType(installation.account.type),
+					},
+					targetType,
+					repositorySelection:
+						installation.repository_selection === "all" ||
+						installation.repository_selection === "selected"
+							? installation.repository_selection
+							: "unknown",
+					manageUrl: installation.html_url ?? null,
+					suspendedAt: installation.suspended_at ?? null,
+				},
+			];
+		});
+	} catch (error) {
+		console.error("[github-access] failed to load installations", error);
+	}
+
+	let organizations: GitHubOrganization[] = [];
+	try {
+		const organizationsResponse = await context.octokit.request(
+			"GET /user/orgs",
+			{
+				per_page: 100,
+			},
+		);
+		const payload =
+			organizationsResponse.data as GitHubAuthenticatedOrgPayload[];
+		organizations = payload.flatMap((organization) => {
+			if (!organization.id || !organization.login) {
+				return [];
+			}
+
+			return [
+				{
+					id: organization.id,
+					login: organization.login,
+					avatarUrl: organization.avatar_url ?? null,
+				},
+			];
+		});
+	} catch (error) {
+		console.error("[github-access] failed to load organizations", error);
+	}
+
+	const viewerLogin = viewer.login;
+	const personalInstallation =
+		installations.find(
+			(installation) =>
+				installation.targetType === "User" ||
+				installation.account.login.toLowerCase() === viewerLogin.toLowerCase(),
+		) ?? null;
+	const orgInstallations = installations.filter(
+		(installation) => installation.targetType === "Organization",
+	);
+	const installedOrganizationLogins = new Set(
+		orgInstallations.map((installation) =>
+			installation.account.login.toLowerCase(),
+		),
+	);
+
+	return {
+		viewerLogin,
+		appSlug,
+		publicInstallUrl,
+		personalInstallation,
+		orgInstallations,
+		organizations,
+		missingOrganizations: organizations.filter(
+			(organization) =>
+				!installedOrganizationLogins.has(organization.login.toLowerCase()),
+		),
+	};
+});
+
 export const getUserRepos = createServerFn({ method: "GET" }).handler(
 	async (): Promise<UserRepoSummary[]> => {
 		const context = await getGitHubContext();
@@ -1223,6 +1362,16 @@ export const getUserRepos = createServerFn({ method: "GET" }).handler(
 		});
 	},
 );
+
+function toInstallationTargetType(
+	value: string | undefined,
+): GitHubInstallationTargetType {
+	if (value === "Organization" || value === "User") {
+		return value;
+	}
+
+	return "Unknown";
+}
 
 export const getMyPulls = createServerFn({ method: "GET" }).handler(
 	async (): Promise<MyPullsResult> => {

@@ -10,6 +10,7 @@ import {
 import { TanStackRouterDevtoolsPanel } from "@tanstack/react-router-devtools";
 import { Agentation } from "agentation";
 import { ThemeProvider } from "next-themes";
+import { NuqsAdapter } from "nuqs/adapters/tanstack-router";
 import { ErrorScreen } from "#/components/layouts/error-screen";
 import { buildSeo, buildWebSiteSchema } from "#/lib/seo";
 import { siteConfig } from "#/lib/site-config";
@@ -88,8 +89,10 @@ function RootDocument({ children }: { children: React.ReactNode }) {
 function RootComponent() {
 	return (
 		<ThemeProvider attribute="class" defaultTheme="system" enableSystem>
-			<Outlet />
-			<Toaster />
+			<NuqsAdapter>
+				<Outlet />
+				<Toaster />
+			</NuqsAdapter>
 		</ThemeProvider>
 	);
 }

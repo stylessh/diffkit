@@ -1,9 +1,18 @@
 import { useSyncExternalStore } from "react";
 
-export interface WarningAction {
-	label: string;
-	href: string;
-}
+export type WarningAction =
+	| {
+			kind: "link";
+			label: string;
+			href: string;
+	  }
+	| {
+			kind: "github-access";
+			label: string;
+			href?: string;
+			owner?: string;
+			repo?: string;
+	  };
 
 export interface Warning {
 	id: string;
@@ -58,16 +67,19 @@ export function checkPermissionWarning(
 		result.error &&
 		result.error.includes("Insufficient permissions")
 	) {
+		const [owner = repo] = repo.split("/");
+
 		addWarning({
 			id: `permissions:${repo}`,
 			message: `Your GitHub App may not have sufficient permissions for ${repo}.`,
 			dismissible: true,
-			action: result.installUrl
-				? {
-						label: "Configure access",
-						href: result.installUrl,
-					}
-				: undefined,
+			action: {
+				kind: "github-access",
+				label: "Configure access",
+				href: result.installUrl,
+				owner,
+				repo,
+			},
 		});
 	}
 }

@@ -9,6 +9,7 @@ import { useGitHubRevalidation } from "#/lib/use-github-revalidation";
 import { useHasMounted } from "#/lib/use-has-mounted";
 import { DashboardBottomBar } from "./dashboard-bottombar";
 import { DashboardTopbar } from "./dashboard-topbar";
+import { GitHubAccessDialog } from "./github-access-dialog";
 
 const routeApi = getRouteApi("/_protected");
 
@@ -41,7 +42,7 @@ export function DashboardLayout() {
 	const tabsReady = hasMounted && Boolean(pullsQuery.data && issuesQuery.data);
 
 	return (
-		<div className="flex h-dvh flex-col bg-muted">
+		<div className="isolate flex h-dvh flex-col bg-muted">
 			<DashboardTopbar
 				user={user}
 				tabsReady={tabsReady}
@@ -60,6 +61,7 @@ export function DashboardLayout() {
 			</div>
 			<DashboardBottomBar />
 			<CommandPalette />
+			<GitHubAccessDialog userId={user.id} />
 		</div>
 	);
 }
