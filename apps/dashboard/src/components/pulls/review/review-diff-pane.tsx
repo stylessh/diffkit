@@ -169,7 +169,13 @@ export const ReviewDiffPane = memo(
 
 				element.scrollIntoView({ block: "start" });
 				const filename = element.getAttribute("data-filename");
-				if (filename) onActiveFileChange(filename);
+				if (filename) {
+					onActiveFileChange(filename);
+					const hash = `#${encodeFileId(filename)}`;
+					if (window.location.hash !== hash) {
+						history.replaceState(null, "", hash);
+					}
+				}
 				setScrollTarget(null);
 			});
 			return () => cancelAnimationFrame(frameId);
@@ -244,10 +250,6 @@ export const ReviewDiffPane = memo(
 						const filename = entry.target.getAttribute("data-filename");
 						if (filename) {
 							onActiveFileChange(filename);
-							const hash = `#${encodeFileId(filename)}`;
-							if (window.location.hash !== hash) {
-								history.replaceState(null, "", hash);
-							}
 						}
 					}
 				},

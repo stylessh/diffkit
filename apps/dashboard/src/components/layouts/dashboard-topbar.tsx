@@ -21,9 +21,9 @@ import {
 	DropdownMenuShortcut,
 	DropdownMenuTrigger,
 } from "@diffkit/ui/components/dropdown-menu";
-import { Link, useRouter } from "@tanstack/react-router";
+import { Link, useRouter, useRouterState } from "@tanstack/react-router";
 import { useTheme } from "next-themes";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { signOutToLogin } from "#/lib/auth-actions";
 import { preloadRouteOnce } from "#/lib/route-preload";
 import { useGlobalShortcuts } from "#/lib/shortcuts";
@@ -73,7 +73,12 @@ export function DashboardTopbar({
 	const { theme, setTheme } = useTheme();
 	const [avatarLoadFailed, setAvatarLoadFailed] = useState(false);
 	const openTabs = useTabs();
+	// Store router in a ref — only used imperatively (navigate, preload),
+	// never read during render, so we avoid subscribing to state changes.
 	const router = useRouter();
+	const routerRef = useRef(router);
+	routerRef.current = router;
+	const pathname = useRouterState({ select: (s) => s.location.pathname });
 	const scrollRef = useRef<HTMLDivElement>(null);
 	const [canScrollLeft, setCanScrollLeft] = useState(false);
 	const [canScrollRight, setCanScrollRight] = useState(false);
@@ -108,48 +113,62 @@ export function DashboardTopbar({
 		.slice(0, 2)
 		.toUpperCase();
 
-	const navItems: NavItem[] = [
-		{ to: "/", label: "Overview", icon: HomeIcon },
-		{
-			to: "/pulls",
-			label: "Pull Requests",
-			icon: GitPullRequestIcon,
-			count: counts.pulls,
-		},
-		{
-			to: "/issues",
-			label: "Issues",
-			icon: IssuesIcon,
-			count: counts.issues,
-		},
-		{
-			to: "/reviews",
-			label: "Reviews",
-			icon: ReviewsIcon,
-			count: counts.reviews,
-		},
-	];
+	const navItems = useMemo<NavItem[]>(
+		() => [
+			{ to: "/", label: "Overview", icon: HomeIcon },
+			{
+				to: "/pulls",
+				label: "Pull Requests",
+				icon: GitPullRequestIcon,
+				count: counts.pulls,
+			},
+			{
+				to: "/issues",
+				label: "Issues",
+				icon: IssuesIcon,
+				count: counts.issues,
+			},
+			{
+				to: "/reviews",
+				label: "Reviews",
+				icon: ReviewsIcon,
+				count: counts.reviews,
+			},
+		],
+		[counts.pulls, counts.issues, counts.reviews],
+	);
 
 	useEffect(() => {
 		if (!tabsReady) return;
 
 		void Promise.allSettled(
-			primaryNavRoutes.map((to) => router.preloadRoute({ to })),
+			primaryNavRoutes.map((to) => routerRef.current.preloadRoute({ to })),
 		);
-	}, [router, tabsReady]);
+	}, [tabsReady]);
 
 	useEffect(() => {
 		if (!tabsReady || openTabs.length === 0) return;
 
 		void Promise.allSettled(
-			openTabs.map((tab) => preloadRouteOnce(router, tab.url)),
+			openTabs.map((tab) => preloadRouteOnce(routerRef.current, tab.url)),
 		);
-	}, [router, tabsReady, openTabs]);
+	}, [tabsReady, openTabs]);
 
 	function navigateToTab(tab: Tab | undefined) {
 		if (!tab) return;
-		void router.navigate({ to: tab.url });
+		void routerRef.current.navigate({ to: tab.url });
 	}
+
+	const handleCloseTab = useCallback(
+		(id: string, tabUrl: string) => {
+			const isActive = pathname === tabUrl;
+			removeTab(id);
+			if (isActive) {
+				void routerRef.current.navigate({ to: "/" });
+			}
+		},
+		[pathname],
+	);
 
 	useGlobalShortcuts([
 		...Array.from(
@@ -167,7 +186,7 @@ export function DashboardTopbar({
 			enabled: tabsReady && openTabs.length > 1,
 			onTrigger: () => {
 				const currentIndex = openTabs.findIndex(
-					(tab) => tab.url === router.state.location.pathname,
+					(tab) => tab.url === routerRef.current.state.location.pathname,
 				);
 				const nextIndex =
 					currentIndex === -1
@@ -181,7 +200,7 @@ export function DashboardTopbar({
 			enabled: tabsReady && openTabs.length > 1,
 			onTrigger: () => {
 				const currentIndex = openTabs.findIndex(
-					(tab) => tab.url === router.state.location.pathname,
+					(tab) => tab.url === routerRef.current.state.location.pathname,
 				);
 				const nextIndex =
 					currentIndex === -1 ? 0 : (currentIndex + 1) % openTabs.length;
@@ -331,14 +350,8 @@ export function DashboardTopbar({
 											key={tab.id}
 											tab={tab}
 											icon={Icon}
-											onClose={(id) => {
-												const isActive =
-													router.state.location.pathname === tab.url;
-												removeTab(id);
-												if (isActive) {
-													void router.navigate({ to: "/" });
-												}
-											}}
+											onClose={handleCloseTab}
+											routerRef={routerRef}
 										/>
 									);
 								})}
@@ -361,18 +374,19 @@ export function DashboardTopbar({
 	);
 }
 
-function DetailTab({
+const DetailTab = memo(function DetailTab({
 	tab,
 	icon: Icon,
 	onClose,
+	routerRef,
 }: {
 	tab: Tab;
 	icon: typeof GitPullRequestIcon;
-	onClose: (id: string) => void;
+	onClose: (id: string, tabUrl: string) => void;
+	routerRef: React.RefObject<ReturnType<typeof useRouter>>;
 }) {
-	const router = useRouter();
 	const preloadTab = () => {
-		void preloadRouteOnce(router, tab.url);
+		void preloadRouteOnce(routerRef.current, tab.url);
 	};
 
 	return (
@@ -407,7 +421,7 @@ function DetailTab({
 				onClick={(e) => {
 					e.preventDefault();
 					e.stopPropagation();
-					onClose(tab.id);
+					onClose(tab.id, tab.url);
 				}}
 				className="absolute inset-y-0 right-0 flex items-center rounded-r-md bg-surface-1 pl-1.5 pr-1.5 opacity-0 transition-opacity group-hover:opacity-100"
 				aria-label={`Close ${tab.title}`}
@@ -419,4 +433,4 @@ function DetailTab({
 			</button>
 		</Link>
 	);
-}
+});

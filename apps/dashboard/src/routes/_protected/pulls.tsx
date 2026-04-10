@@ -10,6 +10,7 @@ import { useQuery } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
 import {
 	type ComponentType,
+	memo,
 	type RefObject,
 	useEffect,
 	useRef,
@@ -148,7 +149,7 @@ type PullGroupData = {
 
 const PULL_GROUP_STICKY_TOP = -32;
 
-function PullMetricCard({
+const PullMetricCard = memo(function PullMetricCard({
 	href,
 	icon: Icon,
 	label,
@@ -190,12 +191,12 @@ function PullMetricCard({
 			{content}
 		</a>
 	);
-}
+});
 
-function PullGroup({
+const PullGroup = memo(function PullGroup({
 	id,
 	title,
-	icon: Icon,
+	icon,
 	pulls,
 	scope,
 	scrollContainerRef,
@@ -208,6 +209,50 @@ function PullGroup({
 	scrollContainerRef: RefObject<HTMLDivElement | null>;
 }) {
 	const sectionRef = useRef<HTMLElement>(null);
+
+	return (
+		<section
+			ref={sectionRef}
+			id={id}
+			style={{ contentVisibility: "auto", containIntrinsicSize: "auto 200px" }}
+		>
+			<StickyGroupHeader
+				sectionRef={sectionRef}
+				scrollContainerRef={scrollContainerRef}
+				stickyTop={PULL_GROUP_STICKY_TOP}
+				icon={icon}
+				title={title}
+				count={pulls.length}
+				isEmpty={pulls.length === 0}
+			/>
+			{pulls.length > 0 && (
+				<div className="mt-2 flex flex-col gap-1">
+					{pulls.map((pull) => (
+						<PullRequestRow key={pull.id} pr={pull} scope={scope} />
+					))}
+				</div>
+			)}
+		</section>
+	);
+});
+
+function StickyGroupHeader({
+	sectionRef,
+	scrollContainerRef,
+	stickyTop: stickyTopOffset,
+	icon: Icon,
+	title,
+	count,
+	isEmpty,
+}: {
+	sectionRef: RefObject<HTMLElement | null>;
+	scrollContainerRef: RefObject<HTMLDivElement | null>;
+	stickyTop: number;
+	icon: ComponentType<{ size?: number; strokeWidth?: number }>;
+	title: string;
+	count: number;
+	isEmpty: boolean;
+}) {
 	const headerRef = useRef<HTMLDivElement>(null);
 	const [isStickyActive, setIsStickyActive] = useState(false);
 
@@ -223,7 +268,7 @@ function PullGroup({
 		const updateStickyState = () => {
 			const scrollContainerRect = scrollContainer.getBoundingClientRect();
 			const sectionRect = section.getBoundingClientRect();
-			const stickyTop = scrollContainerRect.top + PULL_GROUP_STICKY_TOP;
+			const stickyTop = scrollContainerRect.top + stickyTopOffset;
 			const headerHeight = header.offsetHeight;
 			const isStuck =
 				sectionRect.top <= stickyTop &&
@@ -242,35 +287,26 @@ function PullGroup({
 			scrollContainer.removeEventListener("scroll", updateStickyState);
 			window.removeEventListener("resize", updateStickyState);
 		};
-	}, [scrollContainerRef]);
+	}, [scrollContainerRef, sectionRef, stickyTopOffset]);
 
 	return (
-		<section ref={sectionRef} id={id}>
-			<div
-				ref={headerRef}
-				className={cn(
-					"sticky -top-8 z-10 flex items-center justify-between gap-3 rounded-lg bg-surface-1 px-3 py-2 transition-shadow",
-					isStickyActive && "shadow-lg",
-					pulls.length === 0 && "opacity-70",
-				)}
-			>
-				<div className="flex min-w-0 items-center gap-2">
-					<div className="shrink-0 text-muted-foreground">
-						<Icon size={15} strokeWidth={1.9} />
-					</div>
-					<h2 className="truncate text-sm font-medium">{title}</h2>
-				</div>
-				<span className="text-sm tabular-nums text-muted-foreground">
-					{pulls.length}
-				</span>
-			</div>
-			{pulls.length > 0 && (
-				<div className="mt-2 flex flex-col gap-1">
-					{pulls.map((pull) => (
-						<PullRequestRow key={pull.id} pr={pull} scope={scope} />
-					))}
-				</div>
+		<div
+			ref={headerRef}
+			className={cn(
+				"sticky -top-8 z-10 flex items-center justify-between gap-3 rounded-lg bg-surface-1 px-3 py-2 transition-shadow",
+				isStickyActive && "shadow-lg",
+				isEmpty && "opacity-70",
 			)}
-		</section>
+		>
+			<div className="flex min-w-0 items-center gap-2">
+				<div className="shrink-0 text-muted-foreground">
+					<Icon size={15} strokeWidth={1.9} />
+				</div>
+				<h2 className="truncate text-sm font-medium">{title}</h2>
+			</div>
+			<span className="text-sm tabular-nums text-muted-foreground">
+				{count}
+			</span>
+		</div>
 	);
 }

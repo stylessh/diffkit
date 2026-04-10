@@ -1,10 +1,14 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { ReviewPage } from "#/components/pulls/review/review-page";
+import { getPullFiles } from "#/lib/github.functions";
 import {
 	githubPullFileSummariesQueryOptions,
 	githubPullPageQueryOptions,
+	githubQueryKeys,
 } from "#/lib/github.query";
 import { buildSeo, formatPageTitle, summarizeText } from "#/lib/seo";
+
+const PULL_FILES_PAGE_SIZE = 50;
 
 export const Route = createFileRoute("/_protected/$owner/$repo/review/$pullId")(
 	{
@@ -18,15 +22,33 @@ export const Route = createFileRoute("/_protected/$owner/$repo/review/$pullId")(
 				input,
 			);
 
-			const pageData =
-				context.queryClient.getQueryData(pageOptions.queryKey) ??
-				(await context.queryClient.ensureQueryData(pageOptions));
+			const cachedPageData = context.queryClient.getQueryData(
+				pageOptions.queryKey,
+			);
+			const cachedFileSummaries = context.queryClient.getQueryData(
+				fileSummariesOptions.queryKey,
+			);
 
-			const fileSummaries =
-				context.queryClient.getQueryData(fileSummariesOptions.queryKey) ??
-				(await context.queryClient.ensureQueryData(fileSummariesOptions));
+			// Check if infinite query already has data
+			const filesQueryKey = githubQueryKeys.pulls.files(scope, input);
+			const cachedFilesData = context.queryClient.getQueryData(filesQueryKey);
 
-			return { pageData, fileSummaries };
+			const [pageData, fileSummaries, firstFilesPage] = await Promise.all([
+				cachedPageData ?? context.queryClient.ensureQueryData(pageOptions),
+				cachedFileSummaries ??
+					context.queryClient.ensureQueryData(fileSummariesOptions),
+				cachedFilesData
+					? null
+					: getPullFiles({
+							data: {
+								...input,
+								page: 1,
+								perPage: PULL_FILES_PAGE_SIZE,
+							},
+						}),
+			]);
+
+			return { pageData, fileSummaries, firstFilesPage };
 		},
 		head: ({ loaderData, match, params }) => {
 			const pull = loaderData?.pageData?.detail;

@@ -6,12 +6,11 @@ import {
 	GitPullRequestIcon,
 	ViewIcon,
 } from "@diffkit/icons";
-import { Markdown } from "@diffkit/ui/components/markdown";
 import { Spinner } from "@diffkit/ui/components/spinner";
 import { cn } from "@diffkit/ui/lib/utils";
 import { useQuery } from "@tanstack/react-query";
 import { Link, useRouter } from "@tanstack/react-router";
-import { useState } from "react";
+import { lazy, memo, Suspense, useState } from "react";
 import { formatRelativeTime } from "#/lib/format-relative-time";
 import {
 	type GitHubQueryScope,
@@ -19,6 +18,12 @@ import {
 } from "#/lib/github.query";
 import type { PullSummary } from "#/lib/github.types";
 import { preloadRouteOnce } from "#/lib/route-preload";
+
+const Markdown = lazy(() =>
+	import("@diffkit/ui/components/markdown").then((mod) => ({
+		default: mod.Markdown,
+	})),
+);
 
 function getPrStateProps(pr: PullSummary) {
 	if (pr.isDraft) {
@@ -33,7 +38,7 @@ function getPrStateProps(pr: PullSummary) {
 	return { icon: GitPullRequestIcon, color: "text-green-500" };
 }
 
-export function PullRequestRow({
+export const PullRequestRow = memo(function PullRequestRow({
 	pr,
 	scope,
 }: {
@@ -149,9 +154,17 @@ export function PullRequestRow({
 										</span>
 									</div>
 									<div className="line-clamp-3">
-										<Markdown className="text-muted-foreground">
-											{comment.body}
-										</Markdown>
+										<Suspense
+											fallback={
+												<p className="text-xs text-muted-foreground">
+													{comment.body.slice(0, 200)}
+												</p>
+											}
+										>
+											<Markdown className="text-muted-foreground">
+												{comment.body}
+											</Markdown>
+										</Suspense>
 									</div>
 								</div>
 							))}
@@ -161,4 +174,4 @@ export function PullRequestRow({
 			)}
 		</div>
 	);
-}
+});

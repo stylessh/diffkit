@@ -1,6 +1,7 @@
 import { CommentIcon, IssuesIcon } from "@diffkit/icons";
 import { cn } from "@diffkit/ui/lib/utils";
 import { Link } from "@tanstack/react-router";
+import { memo } from "react";
 import { formatRelativeTime } from "#/lib/format-relative-time";
 import type { IssueSummary } from "#/lib/github.types";
 
@@ -14,7 +15,11 @@ function getIssueStateProps(issue: IssueSummary) {
 	return { color: "text-green-500" };
 }
 
-export function IssueRow({ issue }: { issue: IssueSummary }) {
+export const IssueRow = memo(function IssueRow({
+	issue,
+}: {
+	issue: IssueSummary;
+}) {
 	const { color } = getIssueStateProps(issue);
 	const href = `/${issue.repository.owner}/${issue.repository.name}/issues/${issue.number}`;
 
@@ -55,4 +60,4 @@ export function IssueRow({ issue }: { issue: IssueSummary }) {
 			)}
 		</Link>
 	);
-}
+});

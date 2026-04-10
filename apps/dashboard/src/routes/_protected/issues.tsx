@@ -4,6 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
 import {
 	type ComponentType,
+	memo,
 	type RefObject,
 	useEffect,
 	useRef,
@@ -126,7 +127,7 @@ type IssueGroupData = {
 
 const ISSUE_GROUP_STICKY_TOP = -32;
 
-function IssueMetricCard({
+const IssueMetricCard = memo(function IssueMetricCard({
 	href,
 	icon: Icon,
 	label,
@@ -168,12 +169,12 @@ function IssueMetricCard({
 			{content}
 		</a>
 	);
-}
+});
 
-function IssueGroup({
+const IssueGroup = memo(function IssueGroup({
 	id,
 	title,
-	icon: Icon,
+	icon,
 	issues,
 	scrollContainerRef,
 }: {
@@ -184,6 +185,50 @@ function IssueGroup({
 	scrollContainerRef: RefObject<HTMLDivElement | null>;
 }) {
 	const sectionRef = useRef<HTMLElement>(null);
+
+	return (
+		<section
+			ref={sectionRef}
+			id={id}
+			style={{ contentVisibility: "auto", containIntrinsicSize: "auto 200px" }}
+		>
+			<StickyGroupHeader
+				sectionRef={sectionRef}
+				scrollContainerRef={scrollContainerRef}
+				stickyTop={ISSUE_GROUP_STICKY_TOP}
+				icon={icon}
+				title={title}
+				count={issues.length}
+				isEmpty={issues.length === 0}
+			/>
+			{issues.length > 0 && (
+				<div className="mt-2 flex flex-col gap-1">
+					{issues.map((issue) => (
+						<IssueRow key={issue.id} issue={issue} />
+					))}
+				</div>
+			)}
+		</section>
+	);
+});
+
+function StickyGroupHeader({
+	sectionRef,
+	scrollContainerRef,
+	stickyTop: stickyTopOffset,
+	icon: Icon,
+	title,
+	count,
+	isEmpty,
+}: {
+	sectionRef: RefObject<HTMLElement | null>;
+	scrollContainerRef: RefObject<HTMLDivElement | null>;
+	stickyTop: number;
+	icon: ComponentType<{ size?: number; strokeWidth?: number }>;
+	title: string;
+	count: number;
+	isEmpty: boolean;
+}) {
 	const headerRef = useRef<HTMLDivElement>(null);
 	const [isStickyActive, setIsStickyActive] = useState(false);
 
@@ -199,7 +244,7 @@ function IssueGroup({
 		const updateStickyState = () => {
 			const scrollContainerRect = scrollContainer.getBoundingClientRect();
 			const sectionRect = section.getBoundingClientRect();
-			const stickyTop = scrollContainerRect.top + ISSUE_GROUP_STICKY_TOP;
+			const stickyTop = scrollContainerRect.top + stickyTopOffset;
 			const headerHeight = header.offsetHeight;
 			const isStuck =
 				sectionRect.top <= stickyTop &&
@@ -218,35 +263,26 @@ function IssueGroup({
 			scrollContainer.removeEventListener("scroll", updateStickyState);
 			window.removeEventListener("resize", updateStickyState);
 		};
-	}, [scrollContainerRef]);
+	}, [scrollContainerRef, sectionRef, stickyTopOffset]);
 
 	return (
-		<section ref={sectionRef} id={id}>
-			<div
-				ref={headerRef}
-				className={cn(
-					"sticky -top-8 z-10 flex items-center justify-between gap-3 rounded-lg bg-surface-1 px-3 py-2 transition-shadow",
-					isStickyActive && "shadow-lg",
-					issues.length === 0 && "opacity-70",
-				)}
-			>
-				<div className="flex min-w-0 items-center gap-2">
-					<div className="shrink-0 text-muted-foreground">
-						<Icon size={15} strokeWidth={1.9} />
-					</div>
-					<h2 className="truncate text-sm font-medium">{title}</h2>
-				</div>
-				<span className="text-sm tabular-nums text-muted-foreground">
-					{issues.length}
-				</span>
-			</div>
-			{issues.length > 0 && (
-				<div className="mt-2 flex flex-col gap-1">
-					{issues.map((issue) => (
-						<IssueRow key={issue.id} issue={issue} />
-					))}
-				</div>
+		<div
+			ref={headerRef}
+			className={cn(
+				"sticky -top-8 z-10 flex items-center justify-between gap-3 rounded-lg bg-surface-1 px-3 py-2 transition-shadow",
+				isStickyActive && "shadow-lg",
+				isEmpty && "opacity-70",
 			)}
-		</section>
+		>
+			<div className="flex min-w-0 items-center gap-2">
+				<div className="shrink-0 text-muted-foreground">
+					<Icon size={15} strokeWidth={1.9} />
+				</div>
+				<h2 className="truncate text-sm font-medium">{title}</h2>
+			</div>
+			<span className="text-sm tabular-nums text-muted-foreground">
+				{count}
+			</span>
+		</div>
 	);
 }

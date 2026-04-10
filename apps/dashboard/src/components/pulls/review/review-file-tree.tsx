@@ -1,18 +1,56 @@
 import { FileIcon, FolderIcon } from "@diffkit/icons";
 import { cn } from "@diffkit/ui/lib/utils";
-import { useState } from "react";
+import { memo, useCallback, useState, useSyncExternalStore } from "react";
 import type { FileTreeNode } from "./review-types";
 import { encodeFileId } from "./review-utils";
 
-export function ReviewFileTreeNode({
+/**
+ * Lightweight store so that only the old-active and new-active file nodes
+ * re-render when the active file changes — not the entire tree.
+ */
+export type ActiveFileStore = {
+	get: () => string | null;
+	set: (file: string | null) => void;
+	subscribe: (listener: () => void) => () => void;
+};
+
+export function createActiveFileStore(
+	initial: string | null = null,
+): ActiveFileStore {
+	let value = initial;
+	const listeners = new Set<() => void>();
+	return {
+		get: () => value,
+		set: (v) => {
+			if (v === value) return;
+			value = v;
+			for (const l of listeners) l();
+		},
+		subscribe: (l) => {
+			listeners.add(l);
+			return () => listeners.delete(l);
+		},
+	};
+}
+
+function useIsActiveFile(store: ActiveFileStore, path: string): boolean {
+	const subscribe = useCallback(
+		(cb: () => void) => store.subscribe(cb),
+		[store],
+	);
+	const getSnapshot = useCallback(() => store.get() === path, [store, path]);
+	return useSyncExternalStore(subscribe, getSnapshot);
+}
+
+export const ReviewFileTreeNode = memo(function ReviewFileTreeNode({
 	node,
 	depth,
-	activeFile,
+	activeFileStore,
 	onFileClick,
 }: {
 	node: FileTreeNode;
 	depth: number;
-	activeFile: string | null;
+	activeFileStore: ActiveFileStore;
 	onFileClick: (path: string) => void;
 }) {
 	const [isOpen, setIsOpen] = useState(true);
@@ -51,7 +89,7 @@ export function ReviewFileTreeNode({
 								key={child.path}
 								node={child}
 								depth={depth + 1}
-								activeFile={activeFile}
+								activeFileStore={activeFileStore}
 								onFileClick={onFileClick}
 							/>
 						))}
@@ -61,7 +99,28 @@ export function ReviewFileTreeNode({
 		);
 	}
 
-	const isActive = activeFile === node.path;
+	return (
+		<FileTreeLeaf
+			node={node}
+			depth={depth}
+			activeFileStore={activeFileStore}
+			onFileClick={onFileClick}
+		/>
+	);
+});
+
+const FileTreeLeaf = memo(function FileTreeLeaf({
+	node,
+	depth,
+	activeFileStore,
+	onFileClick,
+}: {
+	node: FileTreeNode;
+	depth: number;
+	activeFileStore: ActiveFileStore;
+	onFileClick: (path: string) => void;
+}) {
+	const isActive = useIsActiveFile(activeFileStore, node.path);
 	const fileId = encodeFileId(node.path);
 
 	return (
@@ -96,4 +155,4 @@ export function ReviewFileTreeNode({
 			)}
 		</a>
 	);
-}
+});

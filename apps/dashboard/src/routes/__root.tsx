@@ -8,12 +8,16 @@ import {
 	Scripts,
 } from "@tanstack/react-router";
 import { TanStackRouterDevtoolsPanel } from "@tanstack/react-router-devtools";
-import { Agentation } from "agentation";
 import { ThemeProvider } from "next-themes";
 import { NuqsAdapter } from "nuqs/adapters/tanstack-router";
+import { lazy, Suspense } from "react";
 import { ErrorScreen } from "#/components/layouts/error-screen";
 import { buildSeo, buildWebSiteSchema } from "#/lib/seo";
 import { siteConfig } from "#/lib/site-config";
+
+const Agentation = lazy(() =>
+	import("agentation").then((mod) => ({ default: mod.Agentation })),
+);
 
 import appCss from "../styles.css?url";
 
@@ -78,7 +82,11 @@ function RootDocument({ children }: { children: React.ReactNode }) {
 			</head>
 			<body className="min-h-screen bg-background font-sans antialiased">
 				{children}
-				{import.meta.env.DEV ? <Agentation /> : null}
+				{import.meta.env.DEV ? (
+					<Suspense>
+						<Agentation />
+					</Suspense>
+				) : null}
 				<TanStackDevtools
 					config={{ position: "bottom-right" }}
 					plugins={[

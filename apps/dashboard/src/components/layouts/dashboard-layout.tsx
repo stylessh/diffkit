@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { getRouteApi, Outlet } from "@tanstack/react-router";
-import { CommandPalette } from "#/components/navigation/command-palette";
+import { lazy, Suspense } from "react";
 import {
 	githubMyIssuesQueryOptions,
 	githubMyPullsQueryOptions,
@@ -9,7 +9,17 @@ import { useGitHubRevalidation } from "#/lib/use-github-revalidation";
 import { useHasMounted } from "#/lib/use-has-mounted";
 import { DashboardBottomBar } from "./dashboard-bottombar";
 import { DashboardTopbar } from "./dashboard-topbar";
-import { GitHubAccessDialog } from "./github-access-dialog";
+
+const CommandPalette = lazy(() =>
+	import("#/components/navigation/command-palette").then((mod) => ({
+		default: mod.CommandPalette,
+	})),
+);
+const GitHubAccessDialog = lazy(() =>
+	import("./github-access-dialog").then((mod) => ({
+		default: mod.GitHubAccessDialog,
+	})),
+);
 
 const routeApi = getRouteApi("/_protected");
 
@@ -60,8 +70,10 @@ export function DashboardLayout() {
 				</div>
 			</div>
 			<DashboardBottomBar />
-			<CommandPalette />
-			<GitHubAccessDialog userId={user.id} />
+			<Suspense>
+				<CommandPalette />
+				<GitHubAccessDialog userId={user.id} />
+			</Suspense>
 		</div>
 	);
 }

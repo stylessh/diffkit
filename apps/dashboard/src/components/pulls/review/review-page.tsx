@@ -15,10 +15,10 @@ import {
 import { getRouteApi, Link } from "@tanstack/react-router";
 import {
 	lazy,
+	memo,
 	Suspense,
 	useCallback,
 	useDeferredValue,
-	useEffect,
 	useMemo,
 	useRef,
 	useState,
@@ -31,11 +31,18 @@ import {
 	githubPullReviewCommentsQueryOptions,
 	githubQueryKeys,
 } from "#/lib/github.query";
-import type { PullReviewComment } from "#/lib/github.types";
-import { useHasMounted } from "#/lib/use-has-mounted";
+import type {
+	PullDetail,
+	PullFileSummary,
+	PullReviewComment,
+} from "#/lib/github.types";
 import { useRegisterTab } from "#/lib/use-register-tab";
 import type { ReviewDiffPaneHandle } from "./review-diff-pane";
-import { ReviewFileTreeNode } from "./review-file-tree";
+import {
+	type ActiveFileStore,
+	createActiveFileStore,
+	ReviewFileTreeNode,
+} from "./review-file-tree";
 import { ReviewSubmitPopover } from "./review-submit-popover";
 import type {
 	ActiveCommentForm,
@@ -47,8 +54,9 @@ import { buildFileTree } from "./review-utils";
 
 const routeApi = getRouteApi("/_protected/$owner/$repo/review/$pullId");
 const PULL_FILES_PAGE_SIZE = 50;
+const reviewDiffPaneImport = import("./review-diff-pane");
 const ReviewDiffPane = lazy(() =>
-	import("./review-diff-pane").then((mod) => ({
+	reviewDiffPaneImport.then((mod) => ({
 		default: mod.ReviewDiffPane,
 	})),
 );
@@ -59,12 +67,12 @@ export function ReviewPage() {
 	const { owner, repo, pullId } = routeApi.useParams();
 	const pullNumber = Number(pullId);
 	const scope = { userId: user.id };
-	const hasMounted = useHasMounted();
 	const queryClient = useQueryClient();
 	const input = { owner, repo, pullNumber };
 	const diffPaneRef = useRef<ReviewDiffPaneHandle>(null);
-	const [shouldLoadReviewComments, setShouldLoadReviewComments] =
-		useState(false);
+
+	// Stable store for active file — updates bypass ReviewPage renders entirely
+	const activeFileStore = useRef(createActiveFileStore(null)).current;
 
 	const pageQuery = useQuery({
 		...githubPullPageQueryOptions(scope, input),
@@ -78,10 +86,10 @@ export function ReviewPage() {
 		refetchOnWindowFocus: false,
 	});
 
+	const firstFilesPage = loaderData?.firstFilesPage ?? null;
 	const filesQuery = useInfiniteQuery({
 		queryKey: githubQueryKeys.pulls.files(scope, input),
 		initialPageParam: 1,
-		enabled: hasMounted,
 		queryFn: ({ pageParam }) =>
 			getPullFiles({
 				data: {
@@ -91,13 +99,22 @@ export function ReviewPage() {
 				},
 			}),
 		getNextPageParam: (lastPage) => lastPage.nextPage ?? undefined,
+		...(firstFilesPage
+			? {
+					initialData: {
+						pages: [firstFilesPage],
+						pageParams: [1],
+					},
+				}
+			: {}),
 		refetchOnMount: false,
 		refetchOnWindowFocus: false,
 	});
 
+	const hasDiffPayload = filesQuery.data !== undefined;
 	const reviewCommentsQuery = useQuery({
 		...githubPullReviewCommentsQueryOptions(scope, input),
-		enabled: shouldLoadReviewComments,
+		enabled: hasDiffPayload,
 		refetchOnWindowFocus: false,
 	});
 
@@ -109,7 +126,6 @@ export function ReviewPage() {
 		[filesQuery.data],
 	);
 	const reviewComments = reviewCommentsQuery.data ?? [];
-	const hasDiffPayload = filesQuery.data !== undefined;
 
 	const [diffStyle, setDiffStyle] = useState<"unified" | "split">("unified");
 	const [pendingComments, setPendingComments] = useState<PendingComment[]>([]);
@@ -118,10 +134,7 @@ export function ReviewPage() {
 	const [selectedLines, setSelectedLines] = useState<SelectedLineRange | null>(
 		null,
 	);
-	const [activeFile, setActiveFile] = useState<string | null>(null);
-	const [fileFilter, setFileFilter] = useState("");
 	const [isSubmitting, setIsSubmitting] = useState(false);
-	const deferredFileFilter = useDeferredValue(fileFilter);
 
 	useRegisterTab(
 		pr
@@ -138,34 +151,21 @@ export function ReviewPage() {
 			: null,
 	);
 
-	const fileTree = useMemo(() => buildFileTree(sidebarFiles), [sidebarFiles]);
+	// Diff pane → sidebar active file sync (no ReviewPage re-render)
+	const handleActiveFileChange = useCallback(
+		(filename: string) => {
+			activeFileStore.set(filename);
+		},
+		[activeFileStore],
+	);
 
-	const filteredTree = useMemo(() => {
-		if (!deferredFileFilter) return fileTree;
-		const lower = deferredFileFilter.toLowerCase();
-
-		function filterNodes(nodes: FileTreeNode[]): FileTreeNode[] {
-			return nodes
-				.map((node) => {
-					if (node.type === "file") {
-						return node.name.toLowerCase().includes(lower) ? node : null;
-					}
-
-					const filteredChildren = filterNodes(node.children);
-					return filteredChildren.length > 0
-						? { ...node, children: filteredChildren }
-						: null;
-				})
-				.filter(Boolean) as FileTreeNode[];
-		}
-
-		return filterNodes(fileTree);
-	}, [deferredFileFilter, fileTree]);
-
-	const scrollToFile = useCallback((filename: string) => {
-		diffPaneRef.current?.scrollToFile(filename);
-		setActiveFile(filename);
-	}, []);
+	const scrollToFile = useCallback(
+		(filename: string) => {
+			diffPaneRef.current?.scrollToFile(filename);
+			activeFileStore.set(filename);
+		},
+		[activeFileStore],
+	);
 
 	const annotationsByFile = useMemo(() => {
 		const map = new Map<string, DiffLineAnnotation<PullReviewComment>[]>();
@@ -201,16 +201,6 @@ export function ReviewPage() {
 		}
 		return { totalAdditions, totalDeletions };
 	}, [sidebarFiles]);
-
-	useEffect(() => {
-		if (!hasMounted || !hasDiffPayload || shouldLoadReviewComments) return;
-
-		const timeoutId = window.setTimeout(() => {
-			setShouldLoadReviewComments(true);
-		}, 250);
-
-		return () => window.clearTimeout(timeoutId);
-	}, [hasDiffPayload, hasMounted, shouldLoadReviewComments]);
 
 	const addPendingComment = useCallback((comment: PendingComment) => {
 		setPendingComments((previous) => [...previous, comment]);
@@ -299,6 +289,16 @@ export function ReviewPage() {
 		[owner, pendingComments, pullNumber, queryClient, repo],
 	);
 
+	// Ref-stable onLoadMore — avoids busting ReviewDiffPane memo
+	const filesQueryRef = useRef(filesQuery);
+	filesQueryRef.current = filesQuery;
+	const handleLoadMore = useCallback(() => {
+		const q = filesQueryRef.current;
+		if (q.hasNextPage && !q.isFetchingNextPage) {
+			void q.fetchNextPage();
+		}
+	}, []);
+
 	if (pageQuery.error) throw pageQuery.error;
 	if (fileSummariesQuery.error) throw fileSummariesQuery.error;
 	if (filesQuery.error) throw filesQuery.error;
@@ -312,130 +312,38 @@ export function ReviewPage() {
 		);
 	}
 
-	const stateConfig = getPrStateConfig(pr);
-	const StateIcon = stateConfig.icon;
 	const sidebarFileCount = sidebarFiles.length;
 
 	return (
 		<div className="flex h-full flex-col">
-			<div className="flex shrink-0 items-center gap-3 border-b bg-surface-0 px-4 py-2">
-				<Link
-					to="/$owner/$repo/pull/$pullId"
-					params={{ owner, repo, pullId }}
-					className="flex items-center gap-1.5 text-xs text-muted-foreground transition-colors hover:text-foreground"
-				>
-					<GitPullRequestIcon size={14} strokeWidth={2} />
-					<span>#{pr.number}</span>
-				</Link>
-
-				<div className="mx-1 h-4 w-px bg-border" />
-
-				<div className="flex min-w-0 items-center gap-2">
-					<div className={cn("shrink-0", stateConfig.color)}>
-						<StateIcon size={14} strokeWidth={2} />
-					</div>
-					<span className="truncate text-sm font-medium">{pr.title}</span>
-				</div>
-
-				<div className="ml-auto flex items-center gap-3">
-					<div className="flex items-center gap-2 text-xs text-muted-foreground">
-						<span className="flex items-center gap-1">
-							<FileIcon size={13} strokeWidth={2} />
-							<span className="font-mono tabular-nums font-medium text-foreground">
-								{sidebarFileCount}
-							</span>{" "}
-							{sidebarFileCount === 1 ? "file" : "files"}
-						</span>
-						<span className="font-mono tabular-nums font-medium text-green-500">
-							+{diffStats.totalAdditions}
-						</span>
-						<span className="font-mono tabular-nums font-medium text-red-500">
-							-{diffStats.totalDeletions}
-						</span>
-					</div>
-
-					<div className="h-4 w-px bg-border" />
-
-					<div className="flex items-center rounded-md border bg-surface-1">
-						<button
-							type="button"
-							className={cn(
-								"rounded-l-md px-2.5 py-1 text-xs font-medium transition-colors",
-								diffStyle === "unified"
-									? "bg-surface-0 text-foreground shadow-sm"
-									: "text-muted-foreground hover:text-foreground",
-							)}
-							onClick={() => setDiffStyle("unified")}
-						>
-							Unified
-						</button>
-						<button
-							type="button"
-							className={cn(
-								"rounded-r-md px-2.5 py-1 text-xs font-medium transition-colors",
-								diffStyle === "split"
-									? "bg-surface-0 text-foreground shadow-sm"
-									: "text-muted-foreground hover:text-foreground",
-							)}
-							onClick={() => setDiffStyle("split")}
-						>
-							Split
-						</button>
-					</div>
-
-					<div className="h-4 w-px bg-border" />
-
-					<ReviewSubmitPopover
-						pendingCount={pendingComments.length}
-						isSubmitting={isSubmitting}
-						onSubmit={handleSubmitReview}
-					/>
-				</div>
-			</div>
+			<ReviewToolbar
+				owner={owner}
+				repo={repo}
+				pullId={pullId}
+				pr={pr}
+				sidebarFileCount={sidebarFileCount}
+				diffStats={diffStats}
+				diffStyle={diffStyle}
+				onSetDiffStyle={setDiffStyle}
+				pendingCount={pendingComments.length}
+				isSubmitting={isSubmitting}
+				onSubmitReview={handleSubmitReview}
+			/>
 
 			<ResizablePanelGroup direction="horizontal" className="flex-1">
 				<ResizablePanel defaultSize={20} minSize={12} maxSize={40}>
-					<div className="flex h-full flex-col">
-						<div className="px-3 py-2">
-							<div className="relative flex items-center rounded-md border bg-surface-0 px-2.5 py-1.5">
-								<SearchIcon
-									size={13}
-									strokeWidth={2}
-									className="shrink-0 text-muted-foreground"
-								/>
-								<input
-									type="text"
-									placeholder="Filter files..."
-									value={fileFilter}
-									onChange={(event) => setFileFilter(event.target.value)}
-									className="ml-2 w-full bg-transparent text-xs outline-none placeholder:text-muted-foreground"
-								/>
-							</div>
-						</div>
-
-						<div className="flex-1 overflow-auto py-1">
-							{filteredTree.map((node) => (
-								<ReviewFileTreeNode
-									key={node.path}
-									node={node}
-									depth={0}
-									activeFile={activeFile}
-									onFileClick={scrollToFile}
-								/>
-							))}
-						</div>
-
-						<div className="border-t px-3 py-2 text-xs text-muted-foreground">
-							{sidebarFileCount} {sidebarFileCount === 1 ? "file" : "files"}{" "}
-							changed
-						</div>
-					</div>
+					<ReviewSidebar
+						sidebarFiles={sidebarFiles}
+						sidebarFileCount={sidebarFileCount}
+						activeFileStore={activeFileStore}
+						onFileClick={scrollToFile}
+					/>
 				</ResizablePanel>
 
 				<ResizableHandle />
 
 				<ResizablePanel defaultSize={80}>
-					{hasMounted && hasDiffPayload ? (
+					{hasDiffPayload ? (
 						<Suspense fallback={<ReviewDiffPanePlaceholder />}>
 							<ReviewDiffPane
 								ref={diffPaneRef}
@@ -446,17 +354,10 @@ export function ReviewPage() {
 								pendingCommentsByFile={pendingCommentsByFile}
 								hasNextPage={filesQuery.hasNextPage}
 								isFetchingNextPage={filesQuery.isFetchingNextPage}
-								onLoadMore={() => {
-									if (
-										filesQuery.hasNextPage &&
-										!filesQuery.isFetchingNextPage
-									) {
-										void filesQuery.fetchNextPage();
-									}
-								}}
+								onLoadMore={handleLoadMore}
 								activeCommentForm={activeCommentForm}
 								selectedLines={selectedLines}
-								onActiveFileChange={setActiveFile}
+								onActiveFileChange={handleActiveFileChange}
 								onStartComment={handleStartComment}
 								onCancelComment={handleCancelComment}
 								onAddComment={handleAddComment}
@@ -470,6 +371,196 @@ export function ReviewPage() {
 		</div>
 	);
 }
+
+// ---------------------------------------------------------------------------
+// ReviewToolbar — memoized, only re-renders when its own props change
+// ---------------------------------------------------------------------------
+
+const ReviewToolbar = memo(function ReviewToolbar({
+	owner,
+	repo,
+	pullId,
+	pr,
+	sidebarFileCount,
+	diffStats,
+	diffStyle,
+	onSetDiffStyle,
+	pendingCount,
+	isSubmitting,
+	onSubmitReview,
+}: {
+	owner: string;
+	repo: string;
+	pullId: string;
+	pr: PullDetail;
+	sidebarFileCount: number;
+	diffStats: { totalAdditions: number; totalDeletions: number };
+	diffStyle: "unified" | "split";
+	onSetDiffStyle: (style: "unified" | "split") => void;
+	pendingCount: number;
+	isSubmitting: boolean;
+	onSubmitReview: (body: string, event: ReviewEvent) => Promise<void>;
+}) {
+	const stateConfig = getPrStateConfig(pr);
+	const StateIcon = stateConfig.icon;
+
+	return (
+		<div className="flex shrink-0 items-center gap-3 border-b bg-surface-0 px-4 py-2">
+			<Link
+				to="/$owner/$repo/pull/$pullId"
+				params={{ owner, repo, pullId }}
+				className="flex items-center gap-1.5 text-xs text-muted-foreground transition-colors hover:text-foreground"
+			>
+				<GitPullRequestIcon size={14} strokeWidth={2} />
+				<span>#{pr.number}</span>
+			</Link>
+
+			<div className="mx-1 h-4 w-px bg-border" />
+
+			<div className="flex min-w-0 items-center gap-2">
+				<div className={cn("shrink-0", stateConfig.color)}>
+					<StateIcon size={14} strokeWidth={2} />
+				</div>
+				<span className="truncate text-sm font-medium">{pr.title}</span>
+			</div>
+
+			<div className="ml-auto flex items-center gap-3">
+				<div className="flex items-center gap-2 text-xs text-muted-foreground">
+					<span className="flex items-center gap-1">
+						<FileIcon size={13} strokeWidth={2} />
+						<span className="font-mono tabular-nums font-medium text-foreground">
+							{sidebarFileCount}
+						</span>{" "}
+						{sidebarFileCount === 1 ? "file" : "files"}
+					</span>
+					<span className="font-mono tabular-nums font-medium text-green-500">
+						+{diffStats.totalAdditions}
+					</span>
+					<span className="font-mono tabular-nums font-medium text-red-500">
+						-{diffStats.totalDeletions}
+					</span>
+				</div>
+
+				<div className="h-4 w-px bg-border" />
+
+				<div className="flex items-center rounded-md border bg-surface-1">
+					<button
+						type="button"
+						className={cn(
+							"rounded-l-md px-2.5 py-1 text-xs font-medium transition-colors",
+							diffStyle === "unified"
+								? "bg-surface-0 text-foreground shadow-sm"
+								: "text-muted-foreground hover:text-foreground",
+						)}
+						onClick={() => onSetDiffStyle("unified")}
+					>
+						Unified
+					</button>
+					<button
+						type="button"
+						className={cn(
+							"rounded-r-md px-2.5 py-1 text-xs font-medium transition-colors",
+							diffStyle === "split"
+								? "bg-surface-0 text-foreground shadow-sm"
+								: "text-muted-foreground hover:text-foreground",
+						)}
+						onClick={() => onSetDiffStyle("split")}
+					>
+						Split
+					</button>
+				</div>
+
+				<div className="h-4 w-px bg-border" />
+
+				<ReviewSubmitPopover
+					pendingCount={pendingCount}
+					isSubmitting={isSubmitting}
+					onSubmit={onSubmitReview}
+				/>
+			</div>
+		</div>
+	);
+});
+
+// ---------------------------------------------------------------------------
+// ReviewSidebar — owns file filter state, reads activeFile from store
+// ---------------------------------------------------------------------------
+
+const ReviewSidebar = memo(function ReviewSidebar({
+	sidebarFiles,
+	sidebarFileCount,
+	activeFileStore,
+	onFileClick,
+}: {
+	sidebarFiles: PullFileSummary[];
+	sidebarFileCount: number;
+	activeFileStore: ActiveFileStore;
+	onFileClick: (path: string) => void;
+}) {
+	const [fileFilter, setFileFilter] = useState("");
+	const deferredFileFilter = useDeferredValue(fileFilter);
+
+	const fileTree = useMemo(() => buildFileTree(sidebarFiles), [sidebarFiles]);
+
+	const filteredTree = useMemo(() => {
+		if (!deferredFileFilter) return fileTree;
+		const lower = deferredFileFilter.toLowerCase();
+
+		function filterNodes(nodes: FileTreeNode[]): FileTreeNode[] {
+			return nodes
+				.map((node) => {
+					if (node.type === "file") {
+						return node.name.toLowerCase().includes(lower) ? node : null;
+					}
+
+					const filteredChildren = filterNodes(node.children);
+					return filteredChildren.length > 0
+						? { ...node, children: filteredChildren }
+						: null;
+				})
+				.filter(Boolean) as FileTreeNode[];
+		}
+
+		return filterNodes(fileTree);
+	}, [deferredFileFilter, fileTree]);
+
+	return (
+		<div className="flex h-full flex-col">
+			<div className="px-3 py-2">
+				<div className="relative flex items-center rounded-md border bg-surface-0 px-2.5 py-1.5">
+					<SearchIcon
+						size={13}
+						strokeWidth={2}
+						className="shrink-0 text-muted-foreground"
+					/>
+					<input
+						type="text"
+						placeholder="Filter files..."
+						value={fileFilter}
+						onChange={(event) => setFileFilter(event.target.value)}
+						className="ml-2 w-full bg-transparent text-xs outline-none placeholder:text-muted-foreground"
+					/>
+				</div>
+			</div>
+
+			<div className="flex-1 overflow-auto py-1">
+				{filteredTree.map((node) => (
+					<ReviewFileTreeNode
+						key={node.path}
+						node={node}
+						depth={0}
+						activeFileStore={activeFileStore}
+						onFileClick={onFileClick}
+					/>
+				))}
+			</div>
+
+			<div className="border-t px-3 py-2 text-xs text-muted-foreground">
+				{sidebarFileCount} {sidebarFileCount === 1 ? "file" : "files"} changed
+			</div>
+		</div>
+	);
+});
 
 function ReviewDiffPanePlaceholder() {
 	return <div className="h-full" />;

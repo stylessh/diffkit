@@ -30,6 +30,22 @@ type ReviewPatchDiffComponent = ComponentType<PatchDiffProps<ReviewAnnotation>>;
 
 const LARGE_PATCH_CHANGE_THRESHOLD = 400;
 const LARGE_PATCH_CHAR_THRESHOLD = 24_000;
+const DIFF_LINE_HEIGHT = 20;
+const DIFF_HUNK_SEPARATOR_HEIGHT = 28;
+
+function estimateDiffHeight(
+	patch: string | undefined,
+	diffStyle: "unified" | "split",
+): number {
+	if (!patch) return 0;
+	const lines = patch.split("\n").length;
+	const hunkCount = patch.match(/^@@/gm)?.length ?? 0;
+	const effectiveLines =
+		diffStyle === "split" ? Math.ceil(lines * 0.75) : lines;
+	return (
+		effectiveLines * DIFF_LINE_HEIGHT + hunkCount * DIFF_HUNK_SEPARATOR_HEIGHT
+	);
+}
 
 const PatchDiff: LazyExoticComponent<ReviewPatchDiffComponent> = lazy(() =>
 	import.meta.env.SSR
@@ -174,6 +190,14 @@ export const ReviewFileDiffBlock = memo(function ReviewFileDiffBlock({
 				isCollapsed={isCollapsed}
 				onToggleCollapse={() => setIsCollapsed(!isCollapsed)}
 			/>
+			{!isCollapsed && !isNearViewport && (
+				<div
+					className="px-2 pb-2"
+					style={{
+						height: estimateDiffHeight(file.patch, diffStyle),
+					}}
+				/>
+			)}
 			{!isCollapsed && isNearViewport && (
 				<div className="px-2 pb-2">
 					<Suspense>
