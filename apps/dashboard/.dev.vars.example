@@ -1,8 +1,16 @@
-# GitHub App credentials
+# GitHub OAuth App credentials (used for user authentication)
+# 1. Go to https://github.com/settings/developers > OAuth Apps > New OAuth App
+# 2. Set the callback URL to http://localhost:3000/api/auth/callback/github
+# 3. Note the Client ID and generate a Client Secret
+# OAuth App tokens support scopes (repo, user:email) and don't expire.
+GITHUB_OAUTH_CLIENT_ID=
+GITHUB_OAUTH_CLIENT_SECRET=
+
+# GitHub App credentials (used for webhooks and installation management)
 # 1. Go to https://github.com/settings/apps
-# 2. Create a new GitHub App
+# 2. Create a new GitHub App (or use an existing one)
 # 3. Set the callback URL to http://localhost:3000/api/auth/callback/github
-# 4. Under Permissions & events, grant Email addresses account permission: Read-only
+# 4. Under Permissions & events, grant the permissions listed in the README
 # 5. Install the app on the repositories or organizations you want DiffKit to access
 GITHUB_APP_CLIENT_ID=
 GITHUB_APP_CLIENT_SECRET=
@@ -17,7 +25,7 @@ GITHUB_WEBHOOK_SECRET=
 # Example: https://your-subdomain.ngrok-free.app
 DEV_TUNNEL_URL=
 
-# Legacy OAuth-style names are still supported as a fallback during migration.
+# Legacy OAuth-style names are still supported as a fallback for GITHUB_OAUTH_* during migration.
 GITHUB_CLIENT_ID=
 GITHUB_CLIENT_SECRET=
 

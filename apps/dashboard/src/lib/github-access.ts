@@ -24,6 +24,8 @@ export type GitHubAppAccessState = {
 	viewerLogin: string;
 	appSlug: string | null;
 	publicInstallUrl: string | null;
+	/** Whether the installations endpoint was reachable (false with OAuth App tokens). */
+	installationsAvailable: boolean;
 	personalInstallation: GitHubAppInstallation | null;
 	orgInstallations: GitHubAppInstallation[];
 	organizations: GitHubOrganization[];

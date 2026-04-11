@@ -127,9 +127,35 @@ export type IssueComment = {
 	author: GitHubActor | null;
 };
 
+export type TimelineEvent = {
+	id: number;
+	event: string;
+	createdAt: string;
+	actor: GitHubActor | null;
+	label?: { name: string; color: string };
+	assignee?: GitHubActor | null;
+	requestedReviewer?: GitHubActor | null;
+	requestedTeam?: { name: string; slug: string } | null;
+	rename?: { from: string; to: string };
+	source?: {
+		type: "issue" | "pull_request";
+		number: number;
+		title: string;
+		state: string;
+		url: string;
+		repository: string | null;
+	} | null;
+	milestone?: { title: string } | null;
+	reviewState?: string;
+	body?: string;
+};
+
 export type IssuePageData = {
 	detail: IssueDetail | null;
 	comments: IssueComment[];
+	events: TimelineEvent[];
+	commentPagination: CommentPagination;
+	eventPagination: EventPagination;
 };
 
 export type PullCheckRun = {
@@ -173,10 +199,24 @@ export type PullCommit = {
 	author: GitHubActor | null;
 };
 
+export type CommentPagination = {
+	totalCount: number;
+	perPage: number;
+	loadedPages: number[];
+};
+
+export type EventPagination = {
+	loadedPages: number[];
+	hasMore: boolean;
+};
+
 export type PullPageData = {
 	detail: PullDetail | null;
 	comments: PullComment[];
 	commits: PullCommit[];
+	events: TimelineEvent[];
+	commentPagination: CommentPagination;
+	eventPagination: EventPagination;
 };
 
 export type PullFile = {

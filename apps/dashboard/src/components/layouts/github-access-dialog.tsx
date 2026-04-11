@@ -149,7 +149,7 @@ export function GitHubAccessDialog({ userId }: { userId: string }) {
 type AccessTarget = {
 	login: string;
 	type: "personal" | "org";
-	installed: boolean;
+	status: "installed" | "not-installed" | "unknown";
 	scope: "all" | "selected" | null;
 	href: string | null;
 	isHighlighted: boolean;
@@ -160,11 +160,16 @@ function buildTargets(
 	highlightedOwner: string | null,
 ): AccessTarget[] {
 	const targets: AccessTarget[] = [];
+	const canDetect = state.installationsAvailable;
 
 	targets.push({
 		login: state.viewerLogin,
 		type: "personal",
-		installed: !!state.personalInstallation,
+		status: canDetect
+			? state.personalInstallation
+				? "installed"
+				: "not-installed"
+			: "unknown",
 		scope: state.personalInstallation
 			? state.personalInstallation.repositorySelection === "selected"
 				? "selected"
@@ -180,7 +185,11 @@ function buildTargets(
 		targets.push({
 			login: org.login,
 			type: "org",
-			installed: !!installation,
+			status: canDetect
+				? installation
+					? "installed"
+					: "not-installed"
+				: "unknown",
 			scope: installation
 				? installation.repositorySelection === "selected"
 					? "selected"
@@ -215,7 +224,7 @@ function AccessList({
 						target.isHighlighted && "bg-accent/55",
 					)}
 				>
-					<StatusDot installed={target.installed} />
+					<StatusDot status={target.status} />
 
 					<div className="min-w-0 flex-1">
 						<div className="flex items-center gap-2">
@@ -230,11 +239,13 @@ function AccessList({
 							) : null}
 						</div>
 						<p className="text-xs text-muted-foreground">
-							{target.installed
+							{target.status === "installed"
 								? target.scope === "selected"
 									? "Installed · selected repositories"
 									: "Installed"
-								: "Not installed"}
+								: target.status === "not-installed"
+									? "Not installed"
+									: "Check installation status on GitHub"}
 							{target.type === "personal" ? " · personal" : " · org"}
 						</p>
 					</div>
@@ -242,12 +253,12 @@ function AccessList({
 					{target.href ? (
 						<Button
 							asChild
-							variant={target.installed ? "secondary" : "outline"}
+							variant={target.status === "installed" ? "secondary" : "outline"}
 							size="xs"
 							className="shrink-0"
 						>
 							<a href={target.href} target="_blank" rel="noopener noreferrer">
-								{target.installed ? "Manage" : "Install"}
+								{target.status === "installed" ? "Manage" : "Configure"}
 							</a>
 						</Button>
 					) : null}
@@ -265,12 +276,20 @@ function AccessList({
 	);
 }
 
-function StatusDot({ installed }: { installed: boolean }) {
+function StatusDot({
+	status,
+}: {
+	status: "installed" | "not-installed" | "unknown";
+}) {
 	return (
 		<div
 			className={cn(
 				"flex size-2 shrink-0 rounded-full",
-				installed ? "bg-green-500" : "bg-yellow-500",
+				status === "installed"
+					? "bg-green-500"
+					: status === "not-installed"
+						? "bg-yellow-500"
+						: "bg-muted-foreground/40",
 			)}
 		/>
 	);

@@ -11,6 +11,7 @@ const state: GitHubAppAccessState = {
 	viewerLogin: "adn",
 	appSlug: "diff-kit",
 	publicInstallUrl: "https://github.com/apps/diff-kit/installations/new",
+	installationsAvailable: true,
 	personalInstallation: {
 		id: 1,
 		account: {

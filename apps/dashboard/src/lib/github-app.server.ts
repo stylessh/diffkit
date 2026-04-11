@@ -4,26 +4,7 @@ import { and, eq } from "drizzle-orm";
 import { getDb } from "../db";
 import { account } from "../db/schema";
 
-const GITHUB_TOKEN_REFRESH_BUFFER_MS = 60_000;
-const GITHUB_ACCESS_TOKEN_ENDPOINT =
-	"https://github.com/login/oauth/access_token";
-const githubTokenRefreshes = new Map<string, Promise<string>>();
-
 type WorkerEnvRecord = typeof env & Record<string, string | undefined>;
-type GitHubAccountRecord = typeof account.$inferSelect;
-
-type GitHubTokenRefreshSuccess = {
-	access_token: string;
-	expires_in?: number;
-	refresh_token?: string;
-	refresh_token_expires_in?: number;
-	scope?: string;
-};
-
-type GitHubTokenRefreshFailure = {
-	error: string;
-	error_description?: string;
-};
 
 function getWorkerEnv() {
 	return env as WorkerEnvRecord;
@@ -33,50 +14,45 @@ function pickFirstNonEmpty(...values: Array<string | null | undefined>) {
 	return values.find((value) => typeof value === "string" && value.length > 0);
 }
 
-function toFutureDate(seconds?: number) {
-	if (
-		typeof seconds !== "number" ||
-		!Number.isFinite(seconds) ||
-		seconds <= 0
-	) {
-		return null;
-	}
-
-	return new Date(Date.now() + seconds * 1_000);
-}
-
-function needsGitHubAccessTokenRefresh(githubAccount: GitHubAccountRecord) {
-	if (!githubAccount.accessTokenExpiresAt) {
-		return false;
-	}
-
-	return (
-		githubAccount.accessTokenExpiresAt.getTime() <=
-		Date.now() + GITHUB_TOKEN_REFRESH_BUFFER_MS
-	);
-}
-
-export function getGitHubAppAuthConfig() {
+/**
+ * Returns the classic OAuth App credentials used for user authentication.
+ * OAuth App tokens support scopes (e.g. `repo`) and don't expire.
+ */
+export function getGitHubOAuthConfig() {
 	const workerEnv = getWorkerEnv();
 	const clientId = pickFirstNonEmpty(
-		workerEnv.GITHUB_APP_CLIENT_ID,
+		workerEnv.GITHUB_OAUTH_CLIENT_ID,
 		workerEnv.GITHUB_CLIENT_ID,
 	);
 	const clientSecret = pickFirstNonEmpty(
-		workerEnv.GITHUB_APP_CLIENT_SECRET,
+		workerEnv.GITHUB_OAUTH_CLIENT_SECRET,
 		workerEnv.GITHUB_CLIENT_SECRET,
 	);
 
 	if (!clientId || !clientSecret) {
 		throw new Error(
-			"Missing GitHub app credentials. Set GITHUB_APP_CLIENT_ID and GITHUB_APP_CLIENT_SECRET.",
+			"Missing GitHub OAuth credentials. Set GITHUB_OAUTH_CLIENT_ID and GITHUB_OAUTH_CLIENT_SECRET.",
 		);
 	}
 
-	return {
-		clientId,
-		clientSecret,
-	};
+	return { clientId, clientSecret };
+}
+
+/**
+ * Returns the GitHub App credentials used for webhooks and installation management.
+ */
+export function getGitHubAppAuthConfig() {
+	const workerEnv = getWorkerEnv();
+	const clientId = pickFirstNonEmpty(workerEnv.GITHUB_APP_CLIENT_ID);
+	const clientSecret = pickFirstNonEmpty(workerEnv.GITHUB_APP_CLIENT_SECRET);
+
+	if (!clientId || !clientSecret) {
+		throw new Error(
+			"Missing GitHub App credentials. Set GITHUB_APP_CLIENT_ID and GITHUB_APP_CLIENT_SECRET.",
+		);
+	}
+
+	return { clientId, clientSecret };
 }
 
 export function getGitHubAppSlug(): string | null {
@@ -85,62 +61,6 @@ export function getGitHubAppSlug(): string | null {
 
 export function getGitHubWebhookSecret() {
 	return pickFirstNonEmpty(getWorkerEnv().GITHUB_WEBHOOK_SECRET) ?? null;
-}
-
-async function refreshGitHubAccessToken(githubAccount: GitHubAccountRecord) {
-	const { clientId, clientSecret } = getGitHubAppAuthConfig();
-
-	if (!githubAccount.refreshToken) {
-		throw new Error(
-			"GitHub access token expired and no refresh token is available.",
-		);
-	}
-
-	const body = new URLSearchParams({
-		client_id: clientId,
-		client_secret: clientSecret,
-		grant_type: "refresh_token",
-		refresh_token: githubAccount.refreshToken,
-	});
-
-	const response = await fetch(GITHUB_ACCESS_TOKEN_ENDPOINT, {
-		method: "POST",
-		headers: {
-			accept: "application/json",
-			"content-type": "application/x-www-form-urlencoded",
-		},
-		body: body.toString(),
-	});
-
-	const payload = (await response.json()) as
-		| GitHubTokenRefreshSuccess
-		| GitHubTokenRefreshFailure;
-
-	if (!response.ok || "error" in payload || !payload.access_token) {
-		throw new Error(
-			"error" in payload
-				? `GitHub token refresh failed: ${payload.error}`
-				: "GitHub token refresh failed.",
-		);
-	}
-
-	const db = getDb();
-	await db
-		.update(account)
-		.set({
-			accessToken: payload.access_token,
-			refreshToken: payload.refresh_token ?? githubAccount.refreshToken,
-			accessTokenExpiresAt:
-				toFutureDate(payload.expires_in) ?? githubAccount.accessTokenExpiresAt,
-			refreshTokenExpiresAt:
-				toFutureDate(payload.refresh_token_expires_in) ??
-				githubAccount.refreshTokenExpiresAt,
-			scope: payload.scope ?? githubAccount.scope,
-			updatedAt: new Date(),
-		})
-		.where(eq(account.id, githubAccount.id));
-
-	return payload.access_token;
 }
 
 export async function getGitHubAccessTokenByUserId(userId: string) {
@@ -155,22 +75,7 @@ export async function getGitHubAccessTokenByUserId(userId: string) {
 		throw new Error("No GitHub account linked");
 	}
 
-	if (!needsGitHubAccessTokenRefresh(githubAccount)) {
-		return githubAccount.accessToken;
-	}
-
-	const existingRefresh = githubTokenRefreshes.get(githubAccount.id);
-	if (existingRefresh) {
-		return existingRefresh;
-	}
-
-	const refreshTask = refreshGitHubAccessToken(githubAccount).finally(() => {
-		githubTokenRefreshes.delete(githubAccount.id);
-	});
-
-	githubTokenRefreshes.set(githubAccount.id, refreshTask);
-
-	return refreshTask;
+	return githubAccount.accessToken;
 }
 
 function fromHex(hex: string) {

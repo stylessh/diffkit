@@ -19,7 +19,7 @@ A fast, design-first GitHub dashboard for developers who want to stay on top of 
 | Routing | TanStack Router (file-based) |
 | Data | TanStack Query + Octokit |
 | Database | Cloudflare D1 (SQLite) via Drizzle ORM |
-| Auth | Better Auth with GitHub App |
+| Auth | Better Auth with GitHub OAuth App + GitHub App |
 | Styling | Tailwind CSS 4 + Radix UI |
 | Icons | Lucide React |
 | Build | Vite 7 + Turborepo |
@@ -32,7 +32,8 @@ A fast, design-first GitHub dashboard for developers who want to stay on top of 
 
 - [Node.js](https://nodejs.org/) (v20+)
 - [pnpm](https://pnpm.io/) (v10+)
-- A [GitHub App](https://github.com/settings/apps)
+- A [GitHub OAuth App](https://github.com/settings/developers) (for user authentication)
+- A [GitHub App](https://github.com/settings/apps) (for webhooks and installation management)
 
 ### Setup
 
@@ -54,6 +55,8 @@ A fast, design-first GitHub dashboard for developers who want to stay on top of 
    Create a `.dev.vars` file in `apps/dashboard/`:
 
    ```
+   GITHUB_OAUTH_CLIENT_ID=your_oauth_app_client_id
+   GITHUB_OAUTH_CLIENT_SECRET=your_oauth_app_client_secret
    GITHUB_APP_CLIENT_ID=your_github_app_client_id
    GITHUB_APP_CLIENT_SECRET=your_github_app_client_secret
    GITHUB_WEBHOOK_SECRET=your_github_webhook_secret
@@ -61,9 +64,19 @@ A fast, design-first GitHub dashboard for developers who want to stay on top of 
    BETTER_AUTH_URL=http://localhost:3000
    ```
 
-   > DiffKit also accepts the legacy `GITHUB_CLIENT_ID` and `GITHUB_CLIENT_SECRET` names during migration, but new setups should use the `GITHUB_APP_*` names above.
+   > DiffKit also accepts the legacy `GITHUB_CLIENT_ID` and `GITHUB_CLIENT_SECRET` names as a fallback for the OAuth App credentials during migration.
 
-4. **Create and install the GitHub App**
+4. **Create the GitHub OAuth App** (for user authentication)
+
+   In [OAuth App settings](https://github.com/settings/developers):
+
+   - Click **New OAuth App**
+   - Set the callback URL to `http://localhost:3000/api/auth/callback/github`
+   - Note the **Client ID** and generate a **Client Secret**
+
+   The OAuth App handles user login and provides a token with `repo` scope, which gives broad read access to public repositories (needed for cross-references and timeline events).
+
+5. **Create and install the GitHub App** (for webhooks and installations)
 
    In [GitHub App settings](https://github.com/settings/apps):
 
@@ -116,13 +129,13 @@ A fast, design-first GitHub dashboard for developers who want to stay on top of 
 
    For local Vite development, set `DEV_TUNNEL_URL` in `apps/dashboard/.dev.vars` to the full public tunnel URL, for example `https://your-subdomain.ngrok-free.app`. The dev server will use it to allow the tunnel host and configure HMR correctly.
 
-5. **Run database migrations**
+6. **Run database migrations**
 
    ```bash
    pnpm --filter dashboard migrate
    ```
 
-6. **Start the dev server**
+7. **Start the dev server**
 
    ```bash
    pnpm dev
