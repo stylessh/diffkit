@@ -1,6 +1,10 @@
 import "@tanstack/react-start/server-only";
-import { Octokit, type Octokit as OctokitType } from "octokit";
-import { getGitHubAccessTokenByUserId } from "./github-app.server";
+import { App, Octokit, type Octokit as OctokitType } from "octokit";
+import {
+	getGitHubAccessTokenByUserId,
+	getGitHubAppId,
+	getGitHubAppPrivateKey,
+} from "./github-app.server";
 
 const GITHUB_CLIENT_USER_AGENT = "quickhub-dashboard";
 const GITHUB_READ_RETRY_COUNT = 2;
@@ -101,6 +105,29 @@ export async function getGitHubClient(userId: string): Promise<OctokitType> {
 			},
 		},
 	});
+
+	configureGitHubRequestPolicies(octokit);
+
+	return octokit;
+}
+
+export async function getGitHubInstallationClient(
+	installationId: number,
+): Promise<OctokitType> {
+	const appId = getGitHubAppId();
+	const privateKey = getGitHubAppPrivateKey();
+	if (!appId || !privateKey) {
+		throw new Error(
+			"Missing GitHub App installation credentials. Set GITHUB_APP_ID and GITHUB_APP_PRIVATE_KEY.",
+		);
+	}
+
+	const app = new App({
+		appId,
+		privateKey,
+		Octokit,
+	});
+	const octokit = await app.getInstallationOctokit(installationId);
 
 	configureGitHubRequestPolicies(octokit);
 

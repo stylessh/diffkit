@@ -24,20 +24,29 @@ const octokitConstructor = vi.fn((options: Record<string, unknown>) => {
 		log: instance.log,
 	};
 });
+const appConstructor = vi.fn();
 const getGitHubAccessTokenByUserId = vi.fn(async () => "github-token");
+const getGitHubAppId = vi.fn(() => "12345");
+const getGitHubAppPrivateKey = vi.fn(() => "private-key");
 
 vi.mock("octokit", () => ({
+	App: appConstructor,
 	Octokit: octokitConstructor,
 }));
 
 vi.mock("./github-app.server", () => ({
 	getGitHubAccessTokenByUserId,
+	getGitHubAppId,
+	getGitHubAppPrivateKey,
 }));
 
 beforeEach(() => {
 	octokitInstances.length = 0;
 	octokitConstructor.mockClear();
+	appConstructor.mockClear();
 	getGitHubAccessTokenByUserId.mockClear();
+	getGitHubAppId.mockClear();
+	getGitHubAppPrivateKey.mockClear();
 });
 
 describe("getGitHubClient", () => {
@@ -141,5 +150,28 @@ describe("getGitHubClient", () => {
 		).toBe(false);
 		expect(instance.log.warn).toHaveBeenCalled();
 		expect(instance.log.info).toHaveBeenCalledTimes(1);
+	});
+
+	it("creates GitHub App installation clients from app credentials", async () => {
+		const installationOctokit = {
+			hook: {
+				before: vi.fn(),
+			},
+		};
+		appConstructor.mockImplementationOnce(() => ({
+			getInstallationOctokit: vi.fn(async () => installationOctokit),
+		}));
+		const { getGitHubInstallationClient } = await import("./github.server");
+
+		await getGitHubInstallationClient(987);
+
+		expect(getGitHubAppId).toHaveBeenCalled();
+		expect(getGitHubAppPrivateKey).toHaveBeenCalled();
+		expect(appConstructor).toHaveBeenCalledWith({
+			appId: "12345",
+			privateKey: "private-key",
+			Octokit: octokitConstructor,
+		});
+		expect(installationOctokit.hook.before).toHaveBeenCalledTimes(1);
 	});
 });

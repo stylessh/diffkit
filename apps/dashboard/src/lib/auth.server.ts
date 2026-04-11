@@ -21,7 +21,7 @@ export function getAuth() {
 			github: {
 				clientId: github.clientId,
 				clientSecret: github.clientSecret,
-				scope: ["repo", "user:email"],
+				scope: ["repo", "read:org", "user:email"],
 			},
 		},
 		plugins: [tanstackStartCookies()],

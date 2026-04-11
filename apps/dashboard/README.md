@@ -9,6 +9,28 @@ pnpm install
 pnpm dev
 ```
 
+## GitHub Configuration
+
+The dashboard requires both a GitHub OAuth App and a GitHub App.
+
+OAuth App:
+
+- Callback URL: `http://localhost:3000/api/auth/callback/github`
+- Environment variables: `GITHUB_OAUTH_CLIENT_ID`, `GITHUB_OAUTH_CLIENT_SECRET`
+- Used for login and public/external repository reads.
+
+GitHub App:
+
+- Callback URL: `http://localhost:3000/api/github/app/callback`
+- Setup URL: `http://localhost:3000/?show-org-setup=true`
+- Enable **Redirect on update**
+- Leave **Request user authorization (OAuth) during installation** unchecked
+- Environment variables: `GITHUB_APP_CLIENT_ID`, `GITHUB_APP_CLIENT_SECRET`, `GITHUB_APP_ID`, `GITHUB_APP_PRIVATE_KEY`, `GITHUB_APP_SLUG`, `GITHUB_WEBHOOK_SECRET`
+- Webhook URL: `/api/webhooks/github`
+- Used for installation discovery and app-scoped repo access.
+
+Copy `.dev.vars.example` to `.dev.vars` and fill in the real values. Never commit `.dev.vars` or private keys.
+
 # Building For Production
 
 To build this application for production:

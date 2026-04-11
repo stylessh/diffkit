@@ -28,6 +28,14 @@ import { useHasMounted } from "#/lib/use-has-mounted";
 
 const ONBOARDING_STORAGE_KEY_PREFIX = "diffkit:github-access-onboarding:v1:";
 
+function getExternalLinkProps(href: string) {
+	if (href.startsWith("http://") || href.startsWith("https://")) {
+		return { target: "_blank", rel: "noopener noreferrer" } as const;
+	}
+
+	return {};
+}
+
 function getOnboardingStorageKey(userId: string) {
 	return `${ONBOARDING_STORAGE_KEY_PREFIX}${userId}`;
 }
@@ -92,8 +100,14 @@ export function GitHubAccessDialog({ userId }: { userId: string }) {
 	const description = prompt?.repo
 		? `DiffKit needs access to this repository.`
 		: "Configure the accounts DiffKit can access.";
-	const primaryHref =
-		highlightedHref ?? state?.publicInstallUrl ?? prompt?.fallbackHref ?? null;
+	const needsAppAuthorization =
+		Boolean(state) && state?.installationsAvailable === false;
+	const primaryHref = needsAppAuthorization
+		? state?.appAuthorizationUrl
+		: (highlightedHref ??
+			state?.publicInstallUrl ??
+			prompt?.fallbackHref ??
+			null);
 
 	return (
 		<Dialog open={isOpen} onOpenChange={handleOpenChange}>
@@ -135,8 +149,8 @@ export function GitHubAccessDialog({ userId }: { userId: string }) {
 					</Button>
 					{primaryHref ? (
 						<Button asChild size="sm">
-							<a href={primaryHref} target="_blank" rel="noopener noreferrer">
-								Configure access
+							<a href={primaryHref} {...getExternalLinkProps(primaryHref)}>
+								{needsAppAuthorization ? "Authorize app" : "Configure access"}
 							</a>
 						</Button>
 					) : null}
@@ -257,8 +271,12 @@ function AccessList({
 							size="xs"
 							className="shrink-0"
 						>
-							<a href={target.href} target="_blank" rel="noopener noreferrer">
-								{target.status === "installed" ? "Manage" : "Configure"}
+							<a href={target.href} {...getExternalLinkProps(target.href)}>
+								{target.status === "installed"
+									? "Manage"
+									: target.status === "unknown"
+										? "Authorize"
+										: "Configure"}
 							</a>
 						</Button>
 					) : null}

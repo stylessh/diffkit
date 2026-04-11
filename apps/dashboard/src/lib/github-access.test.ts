@@ -10,11 +10,14 @@ import {
 const state: GitHubAppAccessState = {
 	viewerLogin: "adn",
 	appSlug: "diff-kit",
+	appAuthorizationUrl:
+		"/api/github/app/authorize?returnTo=%2F%3Fshow-org-setup%3Dtrue",
 	publicInstallUrl: "https://github.com/apps/diff-kit/installations/new",
 	installationsAvailable: true,
 	personalInstallation: {
 		id: 1,
 		account: {
+			id: 100,
 			login: "adn",
 			name: null,
 			avatarUrl: null,
@@ -29,6 +32,7 @@ const state: GitHubAppAccessState = {
 		{
 			id: 2,
 			account: {
+				id: 200,
 				login: "supabase",
 				name: null,
 				avatarUrl: null,
@@ -83,6 +87,15 @@ describe("getAccessHrefForOwner", () => {
 		expect(
 			getAccessHrefForOwner(null, "vercel", "https://fallback.example"),
 		).toBe("https://fallback.example");
+	});
+
+	it("uses app authorization when installation status is unavailable", () => {
+		expect(
+			getAccessHrefForOwner(
+				{ ...state, installationsAvailable: false },
+				"supabase",
+			),
+		).toBe("/api/github/app/authorize?returnTo=%2F%3Fshow-org-setup%3Dtrue");
 	});
 });
 

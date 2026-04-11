@@ -59,6 +59,9 @@ A fast, design-first GitHub dashboard for developers who want to stay on top of 
    GITHUB_OAUTH_CLIENT_SECRET=your_oauth_app_client_secret
    GITHUB_APP_CLIENT_ID=your_github_app_client_id
    GITHUB_APP_CLIENT_SECRET=your_github_app_client_secret
+   GITHUB_APP_ID=your_numeric_github_app_id
+   GITHUB_APP_PRIVATE_KEY="-----BEGIN RSA PRIVATE KEY-----\n...\n-----END RSA PRIVATE KEY-----\n"
+   GITHUB_APP_SLUG=your_github_app_slug
    GITHUB_WEBHOOK_SECRET=your_github_webhook_secret
    BETTER_AUTH_SECRET=a_random_32_character_string
    BETTER_AUTH_URL=http://localhost:3000
@@ -74,15 +77,29 @@ A fast, design-first GitHub dashboard for developers who want to stay on top of 
    - Set the callback URL to `http://localhost:3000/api/auth/callback/github`
    - Note the **Client ID** and generate a **Client Secret**
 
-   The OAuth App handles user login and provides a token with `repo` scope, which gives broad read access to public repositories (needed for cross-references and timeline events).
+   The OAuth App handles user login and broad user-context reads. DiffKit requests `repo`, `read:org`, and `user:email` scopes. OAuth is also the fallback path for public or external repositories where the GitHub App is not installed, such as upstream open source repositories.
 
 5. **Create and install the GitHub App** (for webhooks and installations)
 
    In [GitHub App settings](https://github.com/settings/apps):
 
-   - Set the callback URL to `http://localhost:3000/api/auth/callback/github`
-   - Grant the account permission `Email addresses: Read-only`
+   - Set the callback URL to `http://localhost:3000/api/github/app/callback`
+   - Set the setup URL to `http://localhost:3000/?show-org-setup=true`
+   - Enable **Redirect on update**
+   - Leave **Request user authorization (OAuth) during installation** unchecked
+   - Note the **Client ID**, generate a **Client Secret**, note the numeric **App ID**, and generate a private key
    - Install the app on the repositories or organizations you want DiffKit to access
+
+   The GitHub App user authorization flow stores a `ghu_` user-to-server token for installation discovery. Repo-scoped reads and writes prefer GitHub App installation tokens when the app is installed, and fall back to OAuth for external/public repositories.
+
+   Store the downloaded private key as an escaped single-line value in `.dev.vars`:
+
+   ```bash
+   printf 'GITHUB_APP_PRIVATE_KEY="' > /tmp/github-app-private-key.env
+   sed 's/$/\\n/' /path/to/github-app-private-key.pem | tr -d '\n' >> /tmp/github-app-private-key.env
+   printf '"\n' >> /tmp/github-app-private-key.env
+   cat /tmp/github-app-private-key.env
+   ```
 
    Recommended GitHub App permissions derived from the current roadmap:
 

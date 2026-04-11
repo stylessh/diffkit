@@ -3,6 +3,7 @@ export type GitHubInstallationTargetType = "Organization" | "User" | "Unknown";
 export type GitHubAppInstallation = {
 	id: number;
 	account: {
+		id: number | null;
 		login: string;
 		name: string | null;
 		avatarUrl: string | null;
@@ -23,6 +24,7 @@ export type GitHubOrganization = {
 export type GitHubAppAccessState = {
 	viewerLogin: string;
 	appSlug: string | null;
+	appAuthorizationUrl: string | null;
 	publicInstallUrl: string | null;
 	/** Whether the installations endpoint was reachable (false with OAuth App tokens). */
 	installationsAvailable: boolean;
@@ -34,6 +36,13 @@ export type GitHubAppAccessState = {
 
 export function buildGitHubAppInstallUrl(slug: string | null | undefined) {
 	return slug ? `https://github.com/apps/${slug}/installations/new` : null;
+}
+
+export function buildGitHubAppAuthorizePath(
+	returnTo = "/?show-org-setup=true",
+) {
+	const params = new URLSearchParams({ returnTo });
+	return `/api/github/app/authorize?${params.toString()}`;
 }
 
 export function buildGitHubOrganizationInstallationsUrl(login: string) {
@@ -72,6 +81,10 @@ export function getAccessHrefForOwner(
 	}
 
 	const normalizedOwner = normalizeLogin(owner);
+	if (!state.installationsAvailable && state.appAuthorizationUrl) {
+		return state.appAuthorizationUrl;
+	}
+
 	const installation = findInstallationForOwner(state, owner);
 	if (installation?.manageUrl) {
 		return installation.manageUrl;

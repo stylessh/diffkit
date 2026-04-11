@@ -1,10 +1,13 @@
 import { useQuery } from "@tanstack/react-query";
 import { getRouteApi, Outlet } from "@tanstack/react-router";
-import { lazy, Suspense } from "react";
+import { lazy, Suspense, useEffect, useRef } from "react";
+import { getGitHubAppAccessState } from "#/lib/github.functions";
 import {
 	githubMyIssuesQueryOptions,
 	githubMyPullsQueryOptions,
 } from "#/lib/github.query";
+import { useShowOrgSetupQueryState } from "#/lib/github-access-dialog-query";
+import { openGitHubAccessPrompt } from "#/lib/github-access-modal-store";
 import { useGitHubRevalidation } from "#/lib/use-github-revalidation";
 import { useHasMounted } from "#/lib/use-has-mounted";
 import { DashboardBottomBar } from "./dashboard-bottombar";
@@ -28,8 +31,16 @@ export function DashboardLayout() {
 	const { user } = routeApi.useRouteContext();
 	const scope = { userId: user.id };
 	const hasMounted = useHasMounted();
+	const missingAppAuthPromptedRef = useRef(false);
+	const [showOrgSetup, setShowOrgSetup] = useShowOrgSetupQueryState();
 	useGitHubRevalidation(user.id);
 
+	const githubAccessQuery = useQuery({
+		queryKey: ["github-app-access-state", user.id],
+		queryFn: () => getGitHubAppAccessState(),
+		enabled: hasMounted,
+		staleTime: 5 * 60 * 1000,
+	});
 	const pullsQuery = useQuery({
 		...githubMyPullsQueryOptions(scope),
 		enabled: hasMounted,
@@ -51,6 +62,22 @@ export function DashboardLayout() {
 			issuesQuery.data.mentioned.length
 		: undefined;
 	const tabsReady = hasMounted && Boolean(pullsQuery.data && issuesQuery.data);
+
+	useEffect(() => {
+		if (
+			!hasMounted ||
+			showOrgSetup ||
+			missingAppAuthPromptedRef.current ||
+			!githubAccessQuery.data ||
+			githubAccessQuery.data.installationsAvailable
+		) {
+			return;
+		}
+
+		missingAppAuthPromptedRef.current = true;
+		openGitHubAccessPrompt({ source: "onboarding" });
+		void setShowOrgSetup(true);
+	}, [githubAccessQuery.data, hasMounted, setShowOrgSetup, showOrgSetup]);
 
 	return (
 		<div className="isolate flex h-dvh flex-col bg-muted">

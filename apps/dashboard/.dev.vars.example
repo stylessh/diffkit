@@ -2,18 +2,28 @@
 # 1. Go to https://github.com/settings/developers > OAuth Apps > New OAuth App
 # 2. Set the callback URL to http://localhost:3000/api/auth/callback/github
 # 3. Note the Client ID and generate a Client Secret
-# OAuth App tokens support scopes (repo, user:email) and don't expire.
+# OAuth App tokens support scopes (repo, read:org, user:email) and don't expire.
+# Used for login plus public/external repository reads where the GitHub App is not installed.
 GITHUB_OAUTH_CLIENT_ID=
 GITHUB_OAUTH_CLIENT_SECRET=
 
-# GitHub App credentials (used for webhooks and installation management)
+# GitHub App credentials (used for installation discovery and app-scoped repo access)
 # 1. Go to https://github.com/settings/apps
 # 2. Create a new GitHub App (or use an existing one)
-# 3. Set the callback URL to http://localhost:3000/api/auth/callback/github
-# 4. Under Permissions & events, grant the permissions listed in the README
-# 5. Install the app on the repositories or organizations you want DiffKit to access
+# 3. Set the callback URL to http://localhost:3000/api/github/app/callback
+# 4. Set the setup URL to http://localhost:3000/?show-org-setup=true
+# 5. Enable "Redirect on update"
+# 6. Leave "Request user authorization (OAuth) during installation" unchecked
+# 7. Under Permissions & events, grant the permissions listed in the README
+# 8. Install the app on the repositories or organizations you want DiffKit to access
 GITHUB_APP_CLIENT_ID=
 GITHUB_APP_CLIENT_SECRET=
+# Numeric App ID from the GitHub App settings page
+GITHUB_APP_ID=
+# Private key generated from the GitHub App settings page.
+# Store as a quoted value with escaped newlines:
+# GITHUB_APP_PRIVATE_KEY="-----BEGIN RSA PRIVATE KEY-----\n...\n-----END RSA PRIVATE KEY-----\n"
+GITHUB_APP_PRIVATE_KEY=
 # The slug from your GitHub App URL (https://github.com/apps/<slug>)
 GITHUB_APP_SLUG=
 

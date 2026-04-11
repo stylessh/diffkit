@@ -41,8 +41,20 @@ DiffKit is a **pnpm monorepo** managed with **Turborepo**:
 - **TanStack Router** — File-based routing in `apps/dashboard/src/routes/`
 - **TanStack Query** — Server state management and caching
 - **Drizzle ORM** — Database schema and migrations in `apps/dashboard/src/db/` and `apps/dashboard/drizzle/`
-- **Better Auth** — Authentication with a GitHub OAuth App (+ GitHub App for webhooks)
+- **Better Auth** — Authentication with a GitHub OAuth App, plus GitHub App user and installation tokens for installed repos
 - **Cloudflare D1** — SQLite database at the edge
+
+### GitHub Integration
+
+DiffKit uses a hybrid GitHub auth model:
+
+- The **GitHub OAuth App** signs users in and powers broad user-context reads, including public or external repositories where the GitHub App is not installed.
+- The **GitHub App user token** powers installation discovery, including `GET /user/installations`.
+- The **GitHub App installation token** is preferred for repo-scoped reads and writes when the app is installed for that owner.
+
+Local development requires both app configs. The OAuth App callback is `/api/auth/callback/github`. The GitHub App user authorization callback is `/api/github/app/callback`, and the GitHub App setup URL is `/?show-org-setup=true` with **Redirect on update** enabled.
+
+Required local variables are documented in `apps/dashboard/.dev.vars.example`. Do not commit real `.dev.vars` values or private keys. If a private key is exposed, revoke it in GitHub App settings and generate a replacement.
 
 ### Adding a New Route
 

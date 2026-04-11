@@ -6,6 +6,20 @@ import { account } from "../db/schema";
 
 type WorkerEnvRecord = typeof env & Record<string, string | undefined>;
 
+export const GITHUB_OAUTH_PROVIDER_ID = "github";
+export const GITHUB_APP_USER_PROVIDER_ID = "github-app";
+
+type GitHubTokenResponse = {
+	access_token?: string;
+	token_type?: string;
+	expires_in?: number;
+	refresh_token?: string;
+	refresh_token_expires_in?: number;
+	scope?: string;
+	error?: string;
+	error_description?: string;
+};
+
 function getWorkerEnv() {
 	return env as WorkerEnvRecord;
 }
@@ -55,6 +69,15 @@ export function getGitHubAppAuthConfig() {
 	return { clientId, clientSecret };
 }
 
+export function getGitHubAppId(): string | null {
+	return pickFirstNonEmpty(getWorkerEnv().GITHUB_APP_ID) ?? null;
+}
+
+export function getGitHubAppPrivateKey(): string | null {
+	const privateKey = pickFirstNonEmpty(getWorkerEnv().GITHUB_APP_PRIVATE_KEY);
+	return privateKey?.replace(/\\n/g, "\n") ?? null;
+}
+
 export function getGitHubAppSlug(): string | null {
 	return pickFirstNonEmpty(getWorkerEnv().GITHUB_APP_SLUG) ?? null;
 }
@@ -64,18 +87,192 @@ export function getGitHubWebhookSecret() {
 }
 
 export async function getGitHubAccessTokenByUserId(userId: string) {
-	const db = getDb();
-	const githubAccount = await db
-		.select()
-		.from(account)
-		.where(and(eq(account.userId, userId), eq(account.providerId, "github")))
-		.get();
+	const githubAccount = await getGitHubOAuthAccountByUserId(userId);
 
 	if (!githubAccount?.accessToken) {
 		throw new Error("No GitHub account linked");
 	}
 
 	return githubAccount.accessToken;
+}
+
+export async function getGitHubOAuthAccountByUserId(userId: string) {
+	const db = getDb();
+
+	return db
+		.select()
+		.from(account)
+		.where(
+			and(
+				eq(account.userId, userId),
+				eq(account.providerId, GITHUB_OAUTH_PROVIDER_ID),
+			),
+		)
+		.get();
+}
+
+async function getGitHubAppUserAccountByUserId(userId: string) {
+	const db = getDb();
+
+	return db
+		.select()
+		.from(account)
+		.where(
+			and(
+				eq(account.userId, userId),
+				eq(account.providerId, GITHUB_APP_USER_PROVIDER_ID),
+			),
+		)
+		.get();
+}
+
+function getTokenExpiresAt(expiresInSeconds: number | undefined) {
+	if (!expiresInSeconds || expiresInSeconds <= 0) {
+		return null;
+	}
+
+	return new Date(Date.now() + expiresInSeconds * 1000);
+}
+
+function isUsableAccessTokenExpiresAt(expiresAt: Date | null) {
+	if (!expiresAt) {
+		return true;
+	}
+
+	return expiresAt.getTime() - Date.now() > 5 * 60 * 1000;
+}
+
+async function requestGitHubAppUserToken(params: Record<string, string>) {
+	const response = await fetch("https://github.com/login/oauth/access_token", {
+		method: "POST",
+		headers: {
+			Accept: "application/json",
+			"Content-Type": "application/x-www-form-urlencoded",
+		},
+		body: new URLSearchParams(params),
+	});
+	const payload = (await response.json()) as GitHubTokenResponse;
+
+	if (!response.ok || !payload.access_token) {
+		const message =
+			payload.error_description ?? payload.error ?? response.statusText;
+		throw new Error(`GitHub App user token request failed: ${message}`);
+	}
+
+	return payload;
+}
+
+export async function exchangeGitHubAppUserCode({
+	code,
+	redirectUri,
+	userId,
+}: {
+	code: string;
+	redirectUri?: string;
+	userId: string;
+}) {
+	const githubApp = getGitHubAppAuthConfig();
+	const payload = await requestGitHubAppUserToken({
+		client_id: githubApp.clientId,
+		client_secret: githubApp.clientSecret,
+		code,
+		...(redirectUri ? { redirect_uri: redirectUri } : {}),
+	});
+
+	await saveGitHubAppUserToken({
+		userId,
+		payload,
+	});
+}
+
+async function refreshGitHubAppUserToken({
+	refreshToken,
+	userId,
+}: {
+	refreshToken: string;
+	userId: string;
+}) {
+	const githubApp = getGitHubAppAuthConfig();
+	const payload = await requestGitHubAppUserToken({
+		client_id: githubApp.clientId,
+		client_secret: githubApp.clientSecret,
+		grant_type: "refresh_token",
+		refresh_token: refreshToken,
+	});
+
+	await saveGitHubAppUserToken({
+		userId,
+		payload,
+	});
+
+	return payload.access_token;
+}
+
+async function saveGitHubAppUserToken({
+	payload,
+	userId,
+}: {
+	payload: GitHubTokenResponse;
+	userId: string;
+}) {
+	if (!payload.access_token) {
+		throw new Error("GitHub App user token response did not include a token.");
+	}
+
+	const db = getDb();
+	const now = new Date();
+	const existingAccount = await getGitHubAppUserAccountByUserId(userId);
+	const oauthAccount = await getGitHubOAuthAccountByUserId(userId);
+	const values = {
+		accountId: oauthAccount?.accountId ?? userId,
+		providerId: GITHUB_APP_USER_PROVIDER_ID,
+		userId,
+		accessToken: payload.access_token,
+		refreshToken: payload.refresh_token ?? null,
+		accessTokenExpiresAt: getTokenExpiresAt(payload.expires_in),
+		refreshTokenExpiresAt: getTokenExpiresAt(payload.refresh_token_expires_in),
+		scope: payload.scope ?? null,
+		updatedAt: now,
+	};
+
+	if (existingAccount) {
+		await db
+			.update(account)
+			.set(values)
+			.where(eq(account.id, existingAccount.id));
+		return;
+	}
+
+	await db.insert(account).values({
+		id: crypto.randomUUID(),
+		...values,
+		idToken: null,
+		password: null,
+		createdAt: now,
+	});
+}
+
+export async function getGitHubAppUserAccessTokenByUserId(userId: string) {
+	const githubAccount = await getGitHubAppUserAccountByUserId(userId);
+	if (!githubAccount?.accessToken) {
+		return null;
+	}
+
+	if (isUsableAccessTokenExpiresAt(githubAccount.accessTokenExpiresAt)) {
+		return githubAccount.accessToken;
+	}
+
+	if (
+		!githubAccount.refreshToken ||
+		!isUsableAccessTokenExpiresAt(githubAccount.refreshTokenExpiresAt)
+	) {
+		return null;
+	}
+
+	return refreshGitHubAppUserToken({
+		refreshToken: githubAccount.refreshToken,
+		userId,
+	});
 }
 
 function fromHex(hex: string) {

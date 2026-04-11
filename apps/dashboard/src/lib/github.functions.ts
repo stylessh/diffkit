@@ -32,6 +32,7 @@ import type {
 	UserRepoSummary,
 } from "./github.types";
 import {
+	buildGitHubAppAuthorizePath,
 	buildGitHubAppInstallUrl,
 	type GitHubAppAccessState,
 	type GitHubAppInstallation,
@@ -141,6 +142,7 @@ type GitHubApiLabel = {
 };
 
 type GitHubInstallationAccountPayload = {
+	id?: number;
 	login?: string;
 	avatar_url?: string | null;
 	type?: string;
@@ -529,6 +531,112 @@ async function getGitHubContext(): Promise<GitHubContext | null> {
 		session,
 		octokit: await getGitHubClientByUserId(session.user.id),
 	};
+}
+
+function toRepositorySelection(value: string | undefined) {
+	return value === "all" || value === "selected" ? value : "unknown";
+}
+
+function mapGitHubAppInstallations(
+	payload: GitHubUserInstallationsPayload,
+): GitHubAppInstallation[] {
+	return (payload.installations ?? []).flatMap((installation) => {
+		if (!installation.id || !installation.account?.login) {
+			return [];
+		}
+
+		const targetType = toInstallationTargetType(installation.target_type);
+
+		return [
+			{
+				id: installation.id,
+				account: {
+					id: installation.account.id ?? null,
+					login: installation.account.login,
+					name: null,
+					avatarUrl: installation.account.avatar_url ?? null,
+					type: toInstallationTargetType(installation.account.type),
+				},
+				targetType,
+				repositorySelection: toRepositorySelection(
+					installation.repository_selection,
+				),
+				manageUrl: installation.html_url ?? null,
+				suspendedAt: installation.suspended_at ?? null,
+			},
+		];
+	});
+}
+
+async function getGitHubAppUserInstallations(userId: string): Promise<{
+	installations: GitHubAppInstallation[];
+	installationsAvailable: boolean;
+}> {
+	const { getGitHubAppUserClientByUserId } = await import("./auth-runtime");
+	const appUserOctokit = await getGitHubAppUserClientByUserId(userId);
+	if (!appUserOctokit) {
+		return { installations: [], installationsAvailable: false };
+	}
+
+	try {
+		const installationsResponse = await appUserOctokit.request(
+			"GET /user/installations",
+			{
+				per_page: 100,
+			},
+		);
+		return {
+			installations: mapGitHubAppInstallations(
+				installationsResponse.data as GitHubUserInstallationsPayload,
+			),
+			installationsAvailable: true,
+		};
+	} catch (error) {
+		console.error("[github-access] failed to load app installations", error);
+		return { installations: [], installationsAvailable: false };
+	}
+}
+
+async function getGitHubContextForOwner(owner: string) {
+	const context = await getGitHubContext();
+	if (!context) {
+		return null;
+	}
+
+	const { installations } = await getGitHubAppUserInstallations(
+		context.session.user.id,
+	);
+	const normalizedOwner = owner.toLowerCase();
+	const installation = installations.find(
+		(candidate) =>
+			candidate.account.login.toLowerCase() === normalizedOwner ||
+			(candidate.targetType === "User" &&
+				candidate.account.login.toLowerCase() === normalizedOwner),
+	);
+	if (!installation) {
+		return context;
+	}
+
+	try {
+		const { getGitHubInstallationClient } = await import("./github.server");
+		return {
+			...context,
+			octokit: await getGitHubInstallationClient(installation.id),
+		};
+	} catch (error) {
+		console.error(
+			"[github-access] failed to create installation client",
+			error,
+		);
+		return context;
+	}
+}
+
+async function getGitHubContextForRepository(input: {
+	owner: string;
+	repo: string;
+}) {
+	return getGitHubContextForOwner(input.owner);
 }
 
 function buildUserSearchQuery({
@@ -1733,52 +1841,10 @@ export const getGitHubAppAccessState = createServerFn({
 
 	const viewer = await getViewer(context);
 	const appSlug = getGitHubAppSlug();
+	const appAuthorizationUrl = buildGitHubAppAuthorizePath();
 	const publicInstallUrl = buildGitHubAppInstallUrl(appSlug);
-
-	// GET /user/installations requires a GitHub App user-to-server token (ghu_).
-	// With an OAuth App token (gho_), this endpoint returns 403 — expected behavior.
-	let installations: GitHubAppInstallation[] = [];
-	let installationsAvailable = false;
-	try {
-		const installationsResponse = await context.octokit.request(
-			"GET /user/installations",
-			{
-				per_page: 100,
-			},
-		);
-		installationsAvailable = true;
-		const payload =
-			installationsResponse.data as GitHubUserInstallationsPayload;
-		installations = (payload.installations ?? []).flatMap((installation) => {
-			if (!installation.id || !installation.account?.login) {
-				return [];
-			}
-
-			const targetType = toInstallationTargetType(installation.target_type);
-
-			return [
-				{
-					id: installation.id,
-					account: {
-						login: installation.account.login,
-						name: null,
-						avatarUrl: installation.account.avatar_url ?? null,
-						type: toInstallationTargetType(installation.account.type),
-					},
-					targetType,
-					repositorySelection:
-						installation.repository_selection === "all" ||
-						installation.repository_selection === "selected"
-							? installation.repository_selection
-							: "unknown",
-					manageUrl: installation.html_url ?? null,
-					suspendedAt: installation.suspended_at ?? null,
-				},
-			];
-		});
-	} catch {
-		// Silently ignored — OAuth App tokens cannot list GitHub App installations.
-	}
+	const { installations, installationsAvailable } =
+		await getGitHubAppUserInstallations(context.session.user.id);
 
 	let organizations: GitHubOrganization[] = [];
 	try {
@@ -1817,6 +1883,22 @@ export const getGitHubAppAccessState = createServerFn({
 	const orgInstallations = installations.filter(
 		(installation) => installation.targetType === "Organization",
 	);
+	const organizationByLogin = new Map(
+		organizations.map((organization) => [
+			organization.login.toLowerCase(),
+			organization,
+		]),
+	);
+	for (const installation of orgInstallations) {
+		if (!organizationByLogin.has(installation.account.login.toLowerCase())) {
+			organizationByLogin.set(installation.account.login.toLowerCase(), {
+				id: installation.account.id ?? installation.id,
+				login: installation.account.login,
+				avatarUrl: installation.account.avatarUrl,
+			});
+		}
+	}
+	organizations = [...organizationByLogin.values()];
 	const installedOrganizationLogins = new Set(
 		orgInstallations.map((installation) =>
 			installation.account.login.toLowerCase(),
@@ -1826,6 +1908,7 @@ export const getGitHubAppAccessState = createServerFn({
 	return {
 		viewerLogin,
 		appSlug,
+		appAuthorizationUrl,
 		publicInstallUrl,
 		installationsAvailable,
 		personalInstallation,
@@ -1977,7 +2060,7 @@ export const getPullsFromUser = createServerFn({ method: "GET" })
 export const getPullsFromRepo = createServerFn({ method: "GET" })
 	.inputValidator(identityValidator<PullsFromRepoInput>)
 	.handler(async ({ data }): Promise<PullSummary[]> => {
-		const context = await getGitHubContext();
+		const context = await getGitHubContextForRepository(data);
 		if (!context) {
 			return [];
 		}
@@ -2020,7 +2103,7 @@ export const getPullsFromRepo = createServerFn({ method: "GET" })
 export const getCommentPage = createServerFn({ method: "GET" })
 	.inputValidator(identityValidator<CommentPageInput>)
 	.handler(async ({ data }) => {
-		const context = await getGitHubContext();
+		const context = await getGitHubContextForRepository(data);
 		if (!context) {
 			return { comments: [], total: 0 };
 		}
@@ -2038,7 +2121,7 @@ type TimelineEventPageInput = {
 export const getTimelineEventPage = createServerFn({ method: "GET" })
 	.inputValidator(identityValidator<TimelineEventPageInput>)
 	.handler(async ({ data }) => {
-		const context = await getGitHubContext();
+		const context = await getGitHubContextForRepository(data);
 		if (!context) {
 			return { events: [], hasMore: false };
 		}
@@ -2049,7 +2132,7 @@ export const getTimelineEventPage = createServerFn({ method: "GET" })
 export const getPullFromRepo = createServerFn({ method: "GET" })
 	.inputValidator(identityValidator<PullFromRepoInput>)
 	.handler(async ({ data }): Promise<PullDetail | null> => {
-		const context = await getGitHubContext();
+		const context = await getGitHubContextForRepository(data);
 		if (!context) {
 			return null;
 		}
@@ -2060,7 +2143,7 @@ export const getPullFromRepo = createServerFn({ method: "GET" })
 export const getPullComments = createServerFn({ method: "GET" })
 	.inputValidator(identityValidator<PullFromRepoInput>)
 	.handler(async ({ data }): Promise<PullComment[]> => {
-		const context = await getGitHubContext();
+		const context = await getGitHubContextForRepository(data);
 		if (!context) {
 			return [];
 		}
@@ -2154,7 +2237,7 @@ export const getIssuesFromUser = createServerFn({ method: "GET" })
 export const getIssuesFromRepo = createServerFn({ method: "GET" })
 	.inputValidator(identityValidator<IssuesFromRepoInput>)
 	.handler(async ({ data }): Promise<IssueSummary[]> => {
-		const context = await getGitHubContext();
+		const context = await getGitHubContextForRepository(data);
 		if (!context) {
 			return [];
 		}
@@ -2201,7 +2284,7 @@ export const getIssuesFromRepo = createServerFn({ method: "GET" })
 export const getIssueFromRepo = createServerFn({ method: "GET" })
 	.inputValidator(identityValidator<IssueFromRepoInput>)
 	.handler(async ({ data }): Promise<IssueDetail | null> => {
-		const context = await getGitHubContext();
+		const context = await getGitHubContextForRepository(data);
 		if (!context) {
 			return null;
 		}
@@ -2212,7 +2295,7 @@ export const getIssueFromRepo = createServerFn({ method: "GET" })
 export const getIssueComments = createServerFn({ method: "GET" })
 	.inputValidator(identityValidator<IssueFromRepoInput>)
 	.handler(async ({ data }): Promise<IssueComment[]> => {
-		const context = await getGitHubContext();
+		const context = await getGitHubContextForRepository(data);
 		if (!context) {
 			return [];
 		}
@@ -2223,7 +2306,7 @@ export const getIssueComments = createServerFn({ method: "GET" })
 export const getIssuePageData = createServerFn({ method: "GET" })
 	.inputValidator(identityValidator<IssueFromRepoInput>)
 	.handler(async ({ data }): Promise<IssuePageData | null> => {
-		const context = await getGitHubContext();
+		const context = await getGitHubContextForRepository(data);
 		if (!context) {
 			return null;
 		}
@@ -2234,7 +2317,7 @@ export const getIssuePageData = createServerFn({ method: "GET" })
 export const getPullStatus = createServerFn({ method: "GET" })
 	.inputValidator(identityValidator<PullFromRepoInput>)
 	.handler(async ({ data }): Promise<PullStatus | null> => {
-		const context = await getGitHubContext();
+		const context = await getGitHubContextForRepository(data);
 		if (!context) {
 			return null;
 		}
@@ -2245,7 +2328,7 @@ export const getPullStatus = createServerFn({ method: "GET" })
 export const getPullPageData = createServerFn({ method: "GET" })
 	.inputValidator(identityValidator<PullFromRepoInput>)
 	.handler(async ({ data }): Promise<PullPageData | null> => {
-		const context = await getGitHubContext();
+		const context = await getGitHubContextForRepository(data);
 		if (!context) {
 			return null;
 		}
@@ -2258,7 +2341,7 @@ type UpdatePullBodyInput = PullFromRepoInput & { body: string };
 export const updatePullBody = createServerFn({ method: "POST" })
 	.inputValidator(identityValidator<UpdatePullBodyInput>)
 	.handler(async ({ data }): Promise<boolean> => {
-		const context = await getGitHubContext();
+		const context = await getGitHubContextForRepository(data);
 		if (!context) {
 			return false;
 		}
@@ -2280,7 +2363,7 @@ export const updatePullBody = createServerFn({ method: "POST" })
 export const updatePullBranch = createServerFn({ method: "POST" })
 	.inputValidator(identityValidator<PullFromRepoInput>)
 	.handler(async ({ data }): Promise<MutationResult> => {
-		const context = await getGitHubContext();
+		const context = await getGitHubContextForRepository(data);
 		if (!context) {
 			return { ok: false, error: "Not authenticated" };
 		}
@@ -2306,7 +2389,7 @@ export type MergePullInput = PullFromRepoInput & {
 export const mergePullRequest = createServerFn({ method: "POST" })
 	.inputValidator(identityValidator<MergePullInput>)
 	.handler(async ({ data }): Promise<MutationResult> => {
-		const context = await getGitHubContext();
+		const context = await getGitHubContextForRepository(data);
 		if (!context) {
 			return { ok: false, error: "Not authenticated" };
 		}
@@ -2330,7 +2413,7 @@ export const deleteBranch = createServerFn({ method: "POST" })
 		identityValidator<{ owner: string; repo: string; branch: string }>,
 	)
 	.handler(async ({ data }): Promise<MutationResult> => {
-		const context = await getGitHubContext();
+		const context = await getGitHubContextForRepository(data);
 		if (!context) {
 			return { ok: false, error: "Not authenticated" };
 		}
@@ -2439,7 +2522,7 @@ async function getPullFileSummariesResult(
 export const getPullFileSummaries = createServerFn({ method: "GET" })
 	.inputValidator(identityValidator<PullFromRepoInput>)
 	.handler(async ({ data }): Promise<PullFileSummary[]> => {
-		const context = await getGitHubContext();
+		const context = await getGitHubContextForRepository(data);
 		if (!context) {
 			return [];
 		}
@@ -2450,7 +2533,7 @@ export const getPullFileSummaries = createServerFn({ method: "GET" })
 export const getPullFiles = createServerFn({ method: "GET" })
 	.inputValidator(identityValidator<PullFilesPageInput>)
 	.handler(async ({ data }): Promise<PullFilesPage> => {
-		const context = await getGitHubContext();
+		const context = await getGitHubContextForRepository(data);
 		if (!context) {
 			return { files: [], nextPage: null };
 		}
@@ -2513,7 +2596,7 @@ async function getPullReviewCommentsResult(
 export const getPullReviewComments = createServerFn({ method: "GET" })
 	.inputValidator(identityValidator<PullFromRepoInput>)
 	.handler(async ({ data }): Promise<PullReviewComment[]> => {
-		const context = await getGitHubContext();
+		const context = await getGitHubContextForRepository(data);
 		if (!context) {
 			return [];
 		}
@@ -2524,7 +2607,7 @@ export const getPullReviewComments = createServerFn({ method: "GET" })
 export const submitPullReview = createServerFn({ method: "POST" })
 	.inputValidator(identityValidator<SubmitReviewInput>)
 	.handler(async ({ data }): Promise<boolean> => {
-		const context = await getGitHubContext();
+		const context = await getGitHubContextForRepository(data);
 		if (!context) {
 			return false;
 		}
@@ -2560,7 +2643,7 @@ export const submitPullReview = createServerFn({ method: "POST" })
 export const createReviewComment = createServerFn({ method: "POST" })
 	.inputValidator(identityValidator<CreateReviewCommentInput>)
 	.handler(async ({ data }): Promise<PullReviewComment | null> => {
-		const context = await getGitHubContext();
+		const context = await getGitHubContextForRepository(data);
 		if (!context) {
 			return null;
 		}
@@ -2616,7 +2699,7 @@ export type RepoCollaboratorsInput = {
 export const getRepoCollaborators = createServerFn({ method: "GET" })
 	.inputValidator(identityValidator<RepoCollaboratorsInput>)
 	.handler(async ({ data }): Promise<RepoCollaborator[]> => {
-		const context = await getGitHubContext();
+		const context = await getGitHubContextForRepository(data);
 		if (!context) {
 			return [];
 		}
@@ -2665,7 +2748,7 @@ export type OrgTeamsInput = {
 export const getOrgTeams = createServerFn({ method: "GET" })
 	.inputValidator(identityValidator<OrgTeamsInput>)
 	.handler(async ({ data }): Promise<OrgTeam[]> => {
-		const context = await getGitHubContext();
+		const context = await getGitHubContextForOwner(data.org);
 		if (!context) {
 			return [];
 		}
@@ -2699,7 +2782,7 @@ export const getOrgTeams = createServerFn({ method: "GET" })
 export const requestPullReviewers = createServerFn({ method: "POST" })
 	.inputValidator(identityValidator<RequestReviewersInput>)
 	.handler(async ({ data }): Promise<MutationResult> => {
-		const context = await getGitHubContext();
+		const context = await getGitHubContextForRepository(data);
 		if (!context) {
 			return { ok: false, error: "Not authenticated" };
 		}
@@ -2726,7 +2809,7 @@ export const requestPullReviewers = createServerFn({ method: "POST" })
 export const removeReviewRequest = createServerFn({ method: "POST" })
 	.inputValidator(identityValidator<RequestReviewersInput>)
 	.handler(async ({ data }): Promise<MutationResult> => {
-		const context = await getGitHubContext();
+		const context = await getGitHubContextForRepository(data);
 		if (!context) {
 			return { ok: false, error: "Not authenticated" };
 		}
@@ -2761,7 +2844,7 @@ export type DismissReviewInput = {
 export const dismissPullReview = createServerFn({ method: "POST" })
 	.inputValidator(identityValidator<DismissReviewInput>)
 	.handler(async ({ data }): Promise<MutationResult> => {
-		const context = await getGitHubContext();
+		const context = await getGitHubContextForRepository(data);
 		if (!context) {
 			return { ok: false, error: "Not authenticated" };
 		}
@@ -2793,7 +2876,7 @@ export type RepoLabelsInput = {
 export const getRepoLabels = createServerFn({ method: "GET" })
 	.inputValidator(identityValidator<RepoLabelsInput>)
 	.handler(async ({ data }): Promise<GitHubLabel[]> => {
-		const context = await getGitHubContext();
+		const context = await getGitHubContextForRepository(data);
 		if (!context) {
 			return [];
 		}
@@ -2834,7 +2917,7 @@ export const getRepoLabels = createServerFn({ method: "GET" })
 export const setIssueLabels = createServerFn({ method: "POST" })
 	.inputValidator(identityValidator<SetLabelsInput>)
 	.handler(async ({ data }): Promise<boolean> => {
-		const context = await getGitHubContext();
+		const context = await getGitHubContextForRepository(data);
 		if (!context) {
 			return false;
 		}
@@ -2868,7 +2951,7 @@ export const setIssueLabels = createServerFn({ method: "POST" })
 export const createRepoLabel = createServerFn({ method: "POST" })
 	.inputValidator(identityValidator<CreateLabelInput>)
 	.handler(async ({ data }): Promise<GitHubLabel | null> => {
-		const context = await getGitHubContext();
+		const context = await getGitHubContextForRepository(data);
 		if (!context) {
 			return null;
 		}
