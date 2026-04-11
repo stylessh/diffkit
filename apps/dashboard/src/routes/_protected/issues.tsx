@@ -7,9 +7,18 @@ import {
 	memo,
 	type RefObject,
 	useEffect,
+	useMemo,
 	useRef,
 	useState,
 } from "react";
+import {
+	applyFilters,
+	FilterBar,
+	getFilterCookie,
+	issueFilterDefs,
+	issueSortOptions,
+	useListFilters,
+} from "#/components/filters";
 import { IssueRow } from "#/components/issues/issue-row";
 import { DashboardContentLoading } from "#/components/layouts/dashboard-content-loading";
 import { githubMyIssuesQueryOptions } from "#/lib/github.query";
@@ -20,9 +29,11 @@ import { useHasMounted } from "#/lib/use-has-mounted";
 export const Route = createFileRoute("/_protected/issues")({
 	loader: async ({ context }) => {
 		const scope = { userId: context.user.id };
-		await context.queryClient.ensureQueryData(
-			githubMyIssuesQueryOptions(scope),
-		);
+		const [, filterStore] = await Promise.all([
+			context.queryClient.ensureQueryData(githubMyIssuesQueryOptions(scope)),
+			getFilterCookie(),
+		]);
+		return { filterStore };
 	},
 	pendingComponent: DashboardContentLoading,
 	head: ({ match }) =>
@@ -37,6 +48,7 @@ export const Route = createFileRoute("/_protected/issues")({
 });
 
 function IssuesPage() {
+	const { filterStore } = Route.useLoaderData();
 	const { user } = Route.useRouteContext();
 	const scope = { userId: user.id };
 	const hasMounted = useHasMounted();
@@ -44,6 +56,21 @@ function IssuesPage() {
 	const query = useQuery({
 		...githubMyIssuesQueryOptions(scope),
 		enabled: hasMounted,
+	});
+
+	const allIssues = useMemo(() => {
+		if (!query.data) return [];
+		const d = query.data;
+		return [...d.assigned, ...d.authored, ...d.mentioned];
+	}, [query.data]);
+
+	const filterState = useListFilters({
+		pageId: "issues",
+		items: allIssues,
+		filterDefs: issueFilterDefs,
+		sortOptions: issueSortOptions,
+		defaultSortId: "updated",
+		initialStore: filterStore,
 	});
 
 	if (query.error) throw query.error;
@@ -54,19 +81,19 @@ function IssuesPage() {
 				id: "assigned",
 				title: "Assigned",
 				icon: InboxIcon,
-				issues: data.assigned,
+				issues: applyFilters(data.assigned, filterState),
 			},
 			{
 				id: "authored",
 				title: "Authored",
 				icon: IssuesIcon,
-				issues: data.authored,
+				issues: applyFilters(data.authored, filterState),
 			},
 			{
 				id: "mentioned",
 				title: "Mentioned",
 				icon: CommentIcon,
-				issues: data.mentioned,
+				issues: applyFilters(data.mentioned, filterState),
 			},
 		];
 		const totalIssues = groups.reduce(
@@ -100,6 +127,7 @@ function IssuesPage() {
 					</aside>
 
 					<div className="flex flex-col gap-2">
+						<FilterBar state={filterState} />
 						{groups.map((group) => (
 							<IssueGroup
 								key={group.id}

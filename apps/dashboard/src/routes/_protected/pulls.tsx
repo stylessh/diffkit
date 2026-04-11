@@ -13,9 +13,18 @@ import {
 	memo,
 	type RefObject,
 	useEffect,
+	useMemo,
 	useRef,
 	useState,
 } from "react";
+import {
+	applyFilters,
+	FilterBar,
+	getFilterCookie,
+	pullFilterDefs,
+	pullSortOptions,
+	useListFilters,
+} from "#/components/filters";
 import { DashboardContentLoading } from "#/components/layouts/dashboard-content-loading";
 import { PullRequestRow } from "#/components/pulls/pull-request-row";
 import { githubMyPullsQueryOptions } from "#/lib/github.query";
@@ -26,7 +35,11 @@ import { useHasMounted } from "#/lib/use-has-mounted";
 export const Route = createFileRoute("/_protected/pulls")({
 	loader: async ({ context }) => {
 		const scope = { userId: context.user.id };
-		await context.queryClient.ensureQueryData(githubMyPullsQueryOptions(scope));
+		const [, filterStore] = await Promise.all([
+			context.queryClient.ensureQueryData(githubMyPullsQueryOptions(scope)),
+			getFilterCookie(),
+		]);
+		return { filterStore };
 	},
 	pendingComponent: DashboardContentLoading,
 	head: ({ match }) =>
@@ -41,6 +54,7 @@ export const Route = createFileRoute("/_protected/pulls")({
 });
 
 function PullRequestsPage() {
+	const { filterStore } = Route.useLoaderData();
 	const { user } = Route.useRouteContext();
 	const scope = { userId: user.id };
 	const hasMounted = useHasMounted();
@@ -48,6 +62,28 @@ function PullRequestsPage() {
 	const query = useQuery({
 		...githubMyPullsQueryOptions(scope),
 		enabled: hasMounted,
+	});
+
+	// Flatten all pulls for filter option extraction
+	const allPulls = useMemo(() => {
+		if (!query.data) return [];
+		const d = query.data;
+		return [
+			...d.reviewRequested,
+			...d.assigned,
+			...d.authored,
+			...d.mentioned,
+			...d.involved,
+		];
+	}, [query.data]);
+
+	const filterState = useListFilters({
+		pageId: "pulls",
+		items: allPulls,
+		filterDefs: pullFilterDefs,
+		sortOptions: pullSortOptions,
+		defaultSortId: "updated",
+		initialStore: filterStore,
 	});
 
 	if (query.error) throw query.error;
@@ -58,31 +94,31 @@ function PullRequestsPage() {
 				id: "review-requested",
 				title: "Review requested",
 				icon: ReviewsIcon,
-				pulls: data.reviewRequested,
+				pulls: applyFilters(data.reviewRequested, filterState),
 			},
 			{
 				id: "assigned",
 				title: "Assigned",
 				icon: InboxIcon,
-				pulls: data.assigned,
+				pulls: applyFilters(data.assigned, filterState),
 			},
 			{
 				id: "authored",
 				title: "Authored",
 				icon: GitPullRequestIcon,
-				pulls: data.authored,
+				pulls: applyFilters(data.authored, filterState),
 			},
 			{
 				id: "mentioned",
 				title: "Mentioned",
 				icon: CommentIcon,
-				pulls: data.mentioned,
+				pulls: applyFilters(data.mentioned, filterState),
 			},
 			{
 				id: "involved",
 				title: "Involved",
 				icon: GitBranchIcon,
-				pulls: data.involved,
+				pulls: applyFilters(data.involved, filterState),
 			},
 		];
 		const totalPulls = groups.reduce(
@@ -121,6 +157,7 @@ function PullRequestsPage() {
 					</aside>
 
 					<div className="flex flex-col gap-2">
+						<FilterBar state={filterState} />
 						{groups.map((group) => (
 							<PullGroup
 								key={group.id}
