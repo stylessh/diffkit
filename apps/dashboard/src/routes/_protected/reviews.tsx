@@ -1,7 +1,15 @@
 import { ReviewsIcon } from "@diffkit/icons";
 import { useQuery } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
-import { useRef } from "react";
+import { useMemo, useRef } from "react";
+import {
+	applyFilters,
+	FilterBar,
+	getFilterCookie,
+	pullFilterDefs,
+	pullSortOptions,
+	useListFilters,
+} from "#/components/filters";
 import { DashboardContentLoading } from "#/components/layouts/dashboard-content-loading";
 import { PullRequestRow } from "#/components/pulls/pull-request-row";
 import { githubMyPullsQueryOptions } from "#/lib/github.query";
@@ -11,7 +19,11 @@ import { useHasMounted } from "#/lib/use-has-mounted";
 export const Route = createFileRoute("/_protected/reviews")({
 	loader: async ({ context }) => {
 		const scope = { userId: context.user.id };
-		await context.queryClient.ensureQueryData(githubMyPullsQueryOptions(scope));
+		const [, filterStore] = await Promise.all([
+			context.queryClient.ensureQueryData(githubMyPullsQueryOptions(scope)),
+			getFilterCookie(),
+		]);
+		return { filterStore };
 	},
 	pendingComponent: DashboardContentLoading,
 	head: ({ match }) =>
@@ -26,6 +38,7 @@ export const Route = createFileRoute("/_protected/reviews")({
 });
 
 function ReviewsPage() {
+	const { filterStore } = Route.useLoaderData();
 	const { user } = Route.useRouteContext();
 	const scope = { userId: user.id };
 	const hasMounted = useHasMounted();
@@ -35,9 +48,23 @@ function ReviewsPage() {
 		enabled: hasMounted,
 	});
 
+	const rawReviews = useMemo(
+		() => query.data?.reviewRequested ?? [],
+		[query.data],
+	);
+
+	const filterState = useListFilters({
+		pageId: "reviews",
+		items: rawReviews,
+		filterDefs: pullFilterDefs,
+		sortOptions: pullSortOptions,
+		defaultSortId: "updated",
+		initialStore: filterStore,
+	});
+
 	if (query.error) throw query.error;
 	if (query.data) {
-		const reviews = query.data.reviewRequested;
+		const reviews = applyFilters(rawReviews, filterState);
 
 		return (
 			<div ref={scrollContainerRef} className="h-full overflow-auto py-10">
@@ -65,9 +92,12 @@ function ReviewsPage() {
 					</aside>
 
 					<div className="flex flex-col gap-2">
+						<FilterBar state={filterState} />
 						{reviews.length === 0 ? (
 							<p className="px-3 py-6 text-center text-sm text-muted-foreground">
-								No review requests right now — you're all caught up.
+								{filterState.hasActiveFilters
+									? "No reviews match your filters."
+									: "No review requests right now — you're all caught up."}
 							</p>
 						) : (
 							<div className="flex flex-col gap-1">

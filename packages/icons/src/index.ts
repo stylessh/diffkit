@@ -4,6 +4,7 @@
 export {
   AddCircleHalfDotIcon as IssuesIcon,
   AlertCircleIcon,
+  ArrangeIcon as SortIcon,
   ArrowDown01Icon as ChevronDownIcon,
   ArrowLeft01Icon as ChevronLeftIcon,
   ArrowReloadHorizontalIcon as RefreshCwIcon,
@@ -42,6 +43,7 @@ export {
   Notification01Icon as NotificationIcon,
   PencilEdit01Icon as EditIcon,
   PlusSignIcon,
+  Remove01Icon,
   Search01Icon as SearchIcon,
   Settings01Icon as SettingsIcon,
   SidebarLeftIcon as PanelLeftIcon,
@@ -50,6 +52,7 @@ export {
   Tick02Icon as CheckIcon,
   Tick02Icon as TickIcon,
   UserAdd01Icon as UserAddIcon,
+  UserCircleIcon,
   ViewIcon,
 } from "@hugeicons/react";
 export { GitHubLogo, GitHubWordmarkLogo } from "./brand-logos";
