@@ -20,7 +20,7 @@ type PersistedGitHubQueryCache = {
 type PersistBehavior = true | "tab";
 
 type PersistableGitHubQuery = {
-	state: { status: string };
+	state: { data?: unknown; status: string };
 	meta?: Record<string, unknown>;
 	queryKey: readonly unknown[];
 };
@@ -88,6 +88,10 @@ function shouldPersistGitHubQuery(query: PersistableGitHubQuery) {
 		return false;
 	}
 
+	if (query.state.data == null) {
+		return false;
+	}
+
 	if (persist === true) {
 		return true;
 	}
@@ -105,6 +109,13 @@ function pruneClosedTabQueries(queryClient: QueryClient, tabs: Tab[]) {
 			query.queryKey[0] === "github" &&
 			query.meta?.persist === "tab" &&
 			!tabs.some((tab) => matchesTabQuery(query.queryKey, tab)),
+	});
+}
+
+function pruneNullGitHubQueries(queryClient: QueryClient) {
+	queryClient.removeQueries({
+		predicate: (query) =>
+			query.queryKey[0] === "github" && query.state.data == null,
 	});
 }
 
@@ -143,6 +154,7 @@ function restorePersistedGitHubQueryCache(queryClient: QueryClient) {
 		}
 
 		hydrate(queryClient, persistedState.clientState);
+		pruneNullGitHubQueries(queryClient);
 	} catch {
 		window.localStorage.removeItem(GITHUB_QUERY_CACHE_STORAGE_KEY);
 	}

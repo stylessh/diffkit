@@ -1,0 +1,11 @@
+{
+  "worktree": {
+    "setup": [
+      "pnpm i && cd apps/dashboard && yes | node ../../scripts/run-d1-migrations.mjs diffkit-db --local; exit 0"
+    ],
+    "teardown": [
+      "rm -rf \"$PASEO_WORKTREE_PATH/node_modules\" \"$PASEO_WORKTREE_PATH/apps/*/node_modules\" \"$PASEO_WORKTREE_PATH/packages/*/node_modules\"",
+      "if [ -n \"$PASEO_WORKTREE_PORT\" ]; then lsof -ti :$PASEO_WORKTREE_PORT | xargs -r kill -9; fi"
+    ]
+  }
+}

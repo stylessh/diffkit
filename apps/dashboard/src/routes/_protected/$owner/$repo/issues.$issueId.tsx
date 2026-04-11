@@ -16,8 +16,14 @@ export const Route = createFileRoute(
 		});
 
 		const cachedData = context.queryClient.getQueryData(pageOptions.queryKey);
-		if (cachedData !== undefined) {
+		if (cachedData !== null && cachedData !== undefined) {
 			return cachedData;
+		}
+		if (cachedData === null) {
+			context.queryClient.removeQueries({
+				queryKey: pageOptions.queryKey,
+				exact: true,
+			});
 		}
 
 		return context.queryClient.ensureQueryData(pageOptions);

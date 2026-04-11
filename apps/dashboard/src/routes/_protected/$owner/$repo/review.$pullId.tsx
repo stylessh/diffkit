@@ -22,12 +22,19 @@ export const Route = createFileRoute("/_protected/$owner/$repo/review/$pullId")(
 				input,
 			);
 
-			const cachedPageData = context.queryClient.getQueryData(
+			let cachedPageData = context.queryClient.getQueryData(
 				pageOptions.queryKey,
 			);
 			const cachedFileSummaries = context.queryClient.getQueryData(
 				fileSummariesOptions.queryKey,
 			);
+			if (cachedPageData !== undefined && !cachedPageData?.detail) {
+				context.queryClient.removeQueries({
+					queryKey: pageOptions.queryKey,
+					exact: true,
+				});
+				cachedPageData = undefined;
+			}
 
 			// Check if infinite query already has data
 			const filesQueryKey = githubQueryKeys.pulls.files(scope, input);

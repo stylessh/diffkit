@@ -17,9 +17,15 @@ export const Route = createFileRoute("/_protected/$owner/$repo/pull/$pullId")({
 		});
 
 		const cachedData = context.queryClient.getQueryData(pageOptions.queryKey);
-		if (cachedData !== undefined) {
+		if (cachedData?.detail) {
 			void context.queryClient.ensureQueryData(githubViewerQueryOptions(scope));
 			return cachedData;
+		}
+		if (cachedData !== undefined) {
+			context.queryClient.removeQueries({
+				queryKey: pageOptions.queryKey,
+				exact: true,
+			});
 		}
 
 		const [pageData] = await Promise.all([
