@@ -96,6 +96,41 @@ type RepoPullFile = Awaited<
 type RepoPullReviewComment = Awaited<
 	ReturnType<GitHubClient["rest"]["pulls"]["listReviewComments"]>
 >["data"][number];
+type RepositoryPermissions = {
+	admin?: boolean;
+	maintain?: boolean;
+	push?: boolean;
+	triage?: boolean;
+	pull?: boolean;
+};
+type GitHubBranchRule = {
+	ruleset_id?: number;
+};
+type GitHubRepositoryRuleset = {
+	current_user_can_bypass?:
+		| "always"
+		| "pull_requests_only"
+		| "never"
+		| "exempt";
+};
+type GitHubBranchProtection = {
+	enforce_admins?: {
+		enabled?: boolean;
+	};
+	required_pull_request_reviews?: {
+		bypass_pull_request_allowances?: {
+			users?: Array<{ login?: string }>;
+			teams?: Array<{ slug?: string }>;
+			apps?: Array<{ slug?: string }>;
+		};
+	};
+};
+type GitHubUserTeam = {
+	slug?: string;
+	organization?: {
+		login?: string;
+	};
+};
 
 type RepoState = "all" | "closed" | "open";
 type PullSort = "created" | "long-running" | "popularity" | "updated";
@@ -118,6 +153,7 @@ async function bustPullDetailCaches(userId: string, params: PullCacheParams) {
 		bustGitHubCache(userId, "pulls.status.raw", params),
 		bustGitHubCache(userId, "pulls.status.v1", params),
 		bustGitHubCache(userId, "pulls.status.v2", params),
+		bustGitHubCache(userId, "pulls.status.v3", params),
 	]);
 }
 
@@ -680,6 +716,271 @@ async function getGitHubUserContextForRepository(input: {
 	repo: string;
 }) {
 	return getGitHubUserContextForOwner(input.owner);
+}
+
+function isBypassableRulesetMode(
+	mode: GitHubRepositoryRuleset["current_user_can_bypass"] | undefined,
+) {
+	return (
+		mode === "always" || mode === "pull_requests_only" || mode === "exempt"
+	);
+}
+
+function mergeRepositoryPermissions(
+	...permissionsList: Array<RepositoryPermissions | null | undefined>
+): RepositoryPermissions | undefined {
+	const permissions = permissionsList.filter(
+		(candidate): candidate is RepositoryPermissions => Boolean(candidate),
+	);
+	if (permissions.length === 0) {
+		return undefined;
+	}
+
+	return {
+		admin: permissions.some((permission) => permission.admin === true),
+		maintain: permissions.some((permission) => permission.maintain === true),
+		push: permissions.some((permission) => permission.push === true),
+		triage: permissions.some((permission) => permission.triage === true),
+		pull: permissions.some((permission) => permission.pull === true),
+	};
+}
+
+async function getRepositoryPermissions(
+	context: GitHubContext | null,
+	owner: string,
+	repo: string,
+) {
+	if (!context) {
+		return null;
+	}
+
+	const response = await context.octokit.rest.repos
+		.get({ owner, repo })
+		.catch(() => null);
+	return response?.data.permissions ?? null;
+}
+
+async function getRulesetPullRequestBypassState({
+	branch,
+	context,
+	owner,
+	repo,
+}: {
+	branch: string;
+	context: GitHubContext;
+	owner: string;
+	repo: string;
+}) {
+	try {
+		const rulesResponse = await context.octokit.request(
+			"GET /repos/{owner}/{repo}/rules/branches/{branch}",
+			{
+				owner,
+				repo,
+				branch,
+				per_page: 100,
+			},
+		);
+		const rules = rulesResponse.data as GitHubBranchRule[];
+		const rulesetIds = Array.from(
+			new Set(
+				rules
+					.map((rule) => rule.ruleset_id)
+					.filter((id): id is number => typeof id === "number"),
+			),
+		);
+
+		if (rulesetIds.length === 0) {
+			return null;
+		}
+
+		const rulesets = await Promise.all(
+			rulesetIds.map(async (rulesetId) => {
+				const response = await context.octokit.request(
+					"GET /repos/{owner}/{repo}/rulesets/{ruleset_id}",
+					{
+						owner,
+						repo,
+						ruleset_id: rulesetId,
+						includes_parents: true,
+					},
+				);
+				return response.data as GitHubRepositoryRuleset;
+			}),
+		);
+
+		if (
+			rulesets.some((ruleset) => ruleset.current_user_can_bypass === "never")
+		) {
+			return false;
+		}
+
+		if (
+			rulesets.every((ruleset) =>
+				isBypassableRulesetMode(ruleset.current_user_can_bypass),
+			)
+		) {
+			return true;
+		}
+
+		return null;
+	} catch {
+		return null;
+	}
+}
+
+function loginMatches(left: string | undefined, right: string) {
+	return left?.toLowerCase() === right.toLowerCase();
+}
+
+async function getAuthenticatedUserTeamSlugsForOrg(
+	context: GitHubContext,
+	org: string,
+) {
+	const teamSlugs = new Set<string>();
+	let page = 1;
+
+	while (true) {
+		const response = await context.octokit.request("GET /user/teams", {
+			page,
+			per_page: 100,
+		});
+		const teams = response.data as GitHubUserTeam[];
+		for (const team of teams) {
+			if (loginMatches(team.organization?.login, org) && team.slug) {
+				teamSlugs.add(team.slug.toLowerCase());
+			}
+		}
+
+		if (teams.length < 100) {
+			break;
+		}
+
+		page += 1;
+	}
+
+	return teamSlugs;
+}
+
+async function legacyBranchProtectionAllowsPullRequestBypass({
+	branch,
+	context,
+	owner,
+	permissions,
+	repo,
+	viewerLogin,
+}: {
+	branch: string;
+	context: GitHubContext;
+	owner: string;
+	permissions: RepositoryPermissions | undefined;
+	repo: string;
+	viewerLogin: string;
+}) {
+	try {
+		const response = await context.octokit.request(
+			"GET /repos/{owner}/{repo}/branches/{branch}/protection",
+			{
+				owner,
+				repo,
+				branch,
+			},
+		);
+		const protection = response.data as GitHubBranchProtection;
+		const allowances =
+			protection.required_pull_request_reviews?.bypass_pull_request_allowances;
+		const allowedUsers = allowances?.users ?? [];
+		if (allowedUsers.some((user) => loginMatches(user.login, viewerLogin))) {
+			return true;
+		}
+
+		const allowedTeamSlugs = (allowances?.teams ?? []).flatMap((team) =>
+			team.slug ? [team.slug.toLowerCase()] : [],
+		);
+		if (allowedTeamSlugs.length > 0) {
+			const userTeamSlugs = await getAuthenticatedUserTeamSlugsForOrg(
+				context,
+				owner,
+			);
+			if (allowedTeamSlugs.some((slug) => userTeamSlugs.has(slug))) {
+				return true;
+			}
+		}
+
+		return (
+			permissions?.admin === true && protection.enforce_admins?.enabled !== true
+		);
+	} catch {
+		return null;
+	}
+}
+
+async function getPullRequestBypassState({
+	branch,
+	context,
+	fallbackContext,
+	owner,
+	permissions,
+	repo,
+}: {
+	branch: string;
+	context: GitHubContext;
+	fallbackContext: GitHubContext | null;
+	owner: string;
+	permissions: RepositoryPermissions | undefined;
+	repo: string;
+}) {
+	const contexts = [context, fallbackContext].filter(
+		(candidate, index, candidates): candidate is GitHubContext =>
+			Boolean(candidate) && candidates.indexOf(candidate) === index,
+	);
+
+	let rulesetState: boolean | null = null;
+	for (const candidate of contexts) {
+		const candidateRulesetState = await getRulesetPullRequestBypassState({
+			branch,
+			context: candidate,
+			owner,
+			repo,
+		});
+		if (candidateRulesetState === false) {
+			rulesetState ??= false;
+		}
+		if (candidateRulesetState === true) {
+			rulesetState = true;
+		}
+	}
+
+	let legacyState: boolean | null = null;
+	for (const candidate of contexts) {
+		try {
+			const viewerResponse =
+				await candidate.octokit.rest.users.getAuthenticated();
+			const candidateLegacyState =
+				await legacyBranchProtectionAllowsPullRequestBypass({
+					branch,
+					context: candidate,
+					owner,
+					permissions,
+					repo,
+					viewerLogin: viewerResponse.data.login,
+				});
+			if (candidateLegacyState === false) {
+				legacyState ??= false;
+			}
+			if (candidateLegacyState === true) {
+				legacyState = true;
+			}
+		} catch {}
+	}
+
+	if (rulesetState === false || legacyState === false) {
+		return false;
+	}
+
+	return (
+		rulesetState === true || legacyState === true || permissions?.admin === true
+	);
 }
 
 function buildUserSearchQuery({
@@ -1403,28 +1704,34 @@ async function computePullStatus(
 	data: PullFromRepoInput,
 	pull: RepoPullDetail,
 ): Promise<PullStatus> {
-	const [reviewsResponse, checksResponse, userContext] = await Promise.all([
-		context.octokit.rest.pulls.listReviews({
-			owner: data.owner,
-			repo: data.repo,
-			pull_number: data.pullNumber,
-			per_page: 100,
-		}),
-		context.octokit.rest.checks
-			.listForRef({
+	const [reviewsResponse, checksResponse, userContext, oauthContext] =
+		await Promise.all([
+			context.octokit.rest.pulls.listReviews({
 				owner: data.owner,
 				repo: data.repo,
-				ref: pull.head.sha,
+				pull_number: data.pullNumber,
 				per_page: 100,
-			})
-			.catch(() => null),
-		getGitHubUserContextForRepository(data),
-	]);
-	const repoResponse = await (
-		userContext?.octokit ?? context.octokit
-	).rest.repos
-		.get({ owner: data.owner, repo: data.repo })
-		.catch(() => null);
+			}),
+			context.octokit.rest.checks
+				.listForRef({
+					owner: data.owner,
+					repo: data.repo,
+					ref: pull.head.sha,
+					per_page: 100,
+				})
+				.catch(() => null),
+			getGitHubUserContextForRepository(data),
+			getGitHubContext(),
+		]);
+	const permissions = mergeRepositoryPermissions(
+		await getRepositoryPermissions(
+			userContext ?? context,
+			data.owner,
+			data.repo,
+		),
+		await getRepositoryPermissions(oauthContext, data.owner, data.repo),
+		pull.base.repo.permissions,
+	);
 
 	const latestReviews = new Map<
 		string,
@@ -1475,11 +1782,16 @@ async function computePullStatus(
 		behindBy = null;
 	}
 
-	const permissions =
-		repoResponse?.data.permissions ?? pull.base.repo.permissions;
 	const canUpdateBranch =
 		!permissions || permissions.push === true || permissions.admin === true;
-	const canBypassProtections = permissions?.admin === true;
+	const canBypassProtections = await getPullRequestBypassState({
+		branch: pull.base.ref,
+		context: userContext ?? context,
+		fallbackContext: oauthContext,
+		owner: data.owner,
+		permissions,
+		repo: data.repo,
+	});
 
 	return {
 		reviews: Array.from(latestReviews.values()),
@@ -1522,7 +1834,7 @@ async function getPullStatusResult(
 
 	return getOrRevalidateGitHubResource<PullStatus>({
 		userId: context.session.user.id,
-		resource: "pulls.status.v2",
+		resource: "pulls.status.v3",
 		params: data,
 		freshForMs: githubCachePolicy.status.staleTimeMs,
 		signalKeys: [pullNamespaceKey],
