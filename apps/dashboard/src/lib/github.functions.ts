@@ -537,7 +537,13 @@ function mapPullSearchItems(items: SearchItem[]) {
 				return null;
 			}
 
-			return mapPullSummary(item, repository);
+			return mapPullSummary(
+				{
+					...item,
+					merged_at: item.pull_request?.merged_at ?? null,
+				},
+				repository,
+			);
 		})
 		.filter((item): item is PullSummary => Boolean(item));
 }
