@@ -12,6 +12,7 @@ import {
 	getGitHubAppUserAccessTokenByUserId,
 	getGitHubOAuthConfig,
 } from "./github-app.server";
+import { configureGitHubRequestPolicies } from "./github-request-policy";
 
 const authDb = drizzle(env.DB, { schema });
 
@@ -52,11 +53,15 @@ export async function getRequestSession() {
 export async function getGitHubClientByUserId(
 	userId: string,
 ): Promise<OctokitType> {
-	return new Octokit({
+	const octokit = new Octokit({
 		auth: await getGitHubAccessTokenByUserId(userId),
 		retry: { enabled: false },
 		throttle: { enabled: false },
 	});
+
+	configureGitHubRequestPolicies(octokit);
+
+	return octokit;
 }
 
 export async function getGitHubAppUserClientByUserId(
@@ -67,9 +72,13 @@ export async function getGitHubAppUserClientByUserId(
 		return null;
 	}
 
-	return new Octokit({
+	const octokit = new Octokit({
 		auth: token,
 		retry: { enabled: false },
 		throttle: { enabled: false },
 	});
+
+	configureGitHubRequestPolicies(octokit);
+
+	return octokit;
 }

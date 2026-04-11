@@ -10,6 +10,7 @@ import {
 import { type Tab, useTabs } from "./tab-store";
 
 const GITHUB_REVALIDATION_POLL_INTERVAL_MS = 10_000;
+const GITHUB_REVALIDATION_INITIAL_DELAY_MS = 5_000;
 
 function getUniqueSignalKeys(tabs: Tab[]) {
 	return Array.from(
@@ -104,8 +105,8 @@ export function useGitHubRevalidation(userId: string) {
 				const signalsByKey = new Map(
 					records.map((record) => [record.signalKey, record.updatedAt]),
 				);
-				const invalidations: Promise<unknown>[] = [];
 
+				// Invalidate list queries first (lightweight)
 				const pullsMineUpdatedAt =
 					signalsByKey.get(githubRevalidationSignalKeys.pullsMine) ?? 0;
 				if (
@@ -115,11 +116,9 @@ export function useGitHubRevalidation(userId: string) {
 					debug("github-revalidation", "invalidating pull list queries", {
 						pullsMineUpdatedAt,
 					});
-					invalidations.push(
-						queryClient.invalidateQueries({
-							queryKey: githubQueryKeys.pulls.mine(scope),
-						}),
-					);
+					await queryClient.invalidateQueries({
+						queryKey: githubQueryKeys.pulls.mine(scope),
+					});
 				}
 
 				const issuesMineUpdatedAt =
@@ -131,14 +130,16 @@ export function useGitHubRevalidation(userId: string) {
 					debug("github-revalidation", "invalidating issue list queries", {
 						issuesMineUpdatedAt,
 					});
-					invalidations.push(
-						queryClient.invalidateQueries({
-							queryKey: githubQueryKeys.issues.mine(scope),
-						}),
-					);
+					await queryClient.invalidateQueries({
+						queryKey: githubQueryKeys.issues.mine(scope),
+					});
 				}
 
+				// Invalidate tab queries serially to avoid a burst of concurrent
+				// server function RPCs that can overwhelm the Worker.
 				for (const tab of tabs) {
+					if (cancelled) break;
+
 					const signalKey = getGitHubRevalidationSignalKeysForTab(tab)[0];
 					const updatedAt = signalsByKey.get(signalKey) ?? 0;
 					if (updatedAt === 0) {
@@ -157,9 +158,7 @@ export function useGitHubRevalidation(userId: string) {
 								signalKey,
 								tabId: tab.id,
 							});
-							invalidations.push(
-								invalidatePullTabQueries(queryClient, scope, tab),
-							);
+							await invalidatePullTabQueries(queryClient, scope, tab);
 						}
 						continue;
 					}
@@ -175,13 +174,9 @@ export function useGitHubRevalidation(userId: string) {
 							signalKey,
 							tabId: tab.id,
 						});
-						invalidations.push(
-							invalidateIssueTabQueries(queryClient, scope, tab),
-						);
+						await invalidateIssueTabQueries(queryClient, scope, tab);
 					}
 				}
-
-				await Promise.all(invalidations);
 			} catch (error) {
 				debug("github-revalidation", "poll failed", {
 					error: error instanceof Error ? error.message : String(error),
@@ -196,7 +191,12 @@ export function useGitHubRevalidation(userId: string) {
 			}
 		};
 
-		void pollSignals();
+		// Delay the first poll so it doesn't collide with initial data loading
+		// (route loaders + preloading) which already makes server function RPCs.
+		timeoutId = window.setTimeout(
+			pollSignals,
+			GITHUB_REVALIDATION_INITIAL_DELAY_MS,
+		);
 
 		return () => {
 			cancelled = true;

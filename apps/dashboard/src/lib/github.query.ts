@@ -253,7 +253,6 @@ export function githubPullDetailQueryOptions(
 		queryFn: () => getPullFromRepo({ data: input }),
 		staleTime: githubCachePolicy.detail.staleTimeMs,
 		gcTime: githubCachePolicy.detail.gcTimeMs,
-		refetchOnMount: "always",
 		meta: tabPersistedMeta,
 	});
 }
@@ -265,10 +264,8 @@ export function githubPullPageQueryOptions(
 	return queryOptions({
 		queryKey: githubQueryKeys.pulls.page(scope, input),
 		queryFn: () => getPullPageData({ data: input }),
-		staleTime: githubCachePolicy.activity.staleTimeMs,
+		staleTime: githubCachePolicy.detail.staleTimeMs,
 		gcTime: githubCachePolicy.detail.gcTimeMs,
-		refetchOnMount: "always",
-		refetchOnWindowFocus: "always",
 		meta: tabPersistedMeta,
 	});
 }
@@ -282,7 +279,6 @@ export function githubPullCommentsQueryOptions(
 		queryFn: () => getPullComments({ data: input }),
 		staleTime: githubCachePolicy.activity.staleTimeMs,
 		gcTime: githubCachePolicy.activity.gcTimeMs,
-		refetchOnMount: "always",
 		meta: tabPersistedMeta,
 	});
 }
@@ -296,7 +292,6 @@ export function githubPullStatusQueryOptions(
 		queryFn: () => getPullStatus({ data: input }),
 		staleTime: githubCachePolicy.status.staleTimeMs,
 		gcTime: githubCachePolicy.status.gcTimeMs,
-		refetchOnMount: "always",
 		meta: tabPersistedMeta,
 	});
 }
@@ -310,7 +305,6 @@ export function githubPullFilesQueryOptions(
 		queryFn: () => getPullFiles({ data: input }),
 		staleTime: githubCachePolicy.detail.staleTimeMs,
 		gcTime: githubCachePolicy.detail.gcTimeMs,
-		refetchOnMount: "always",
 		meta: tabPersistedMeta,
 	});
 }
@@ -324,7 +318,6 @@ export function githubPullFileSummariesQueryOptions(
 		queryFn: () => getPullFileSummaries({ data: input }),
 		staleTime: githubCachePolicy.detail.staleTimeMs,
 		gcTime: githubCachePolicy.detail.gcTimeMs,
-		refetchOnMount: "always",
 		meta: tabPersistedMeta,
 	});
 }
@@ -338,7 +331,6 @@ export function githubPullReviewCommentsQueryOptions(
 		queryFn: () => getPullReviewComments({ data: input }),
 		staleTime: githubCachePolicy.activity.staleTimeMs,
 		gcTime: githubCachePolicy.activity.gcTimeMs,
-		refetchOnMount: "always",
 		meta: tabPersistedMeta,
 	});
 }
@@ -424,7 +416,6 @@ export function githubIssueDetailQueryOptions(
 		queryFn: () => getIssueFromRepo({ data: input }),
 		staleTime: githubCachePolicy.detail.staleTimeMs,
 		gcTime: githubCachePolicy.detail.gcTimeMs,
-		refetchOnMount: "always",
 		meta: tabPersistedMeta,
 	});
 }
@@ -436,10 +427,8 @@ export function githubIssuePageQueryOptions(
 	return queryOptions({
 		queryKey: githubQueryKeys.issues.page(scope, input),
 		queryFn: () => getIssuePageData({ data: input }),
-		staleTime: githubCachePolicy.activity.staleTimeMs,
+		staleTime: githubCachePolicy.detail.staleTimeMs,
 		gcTime: githubCachePolicy.detail.gcTimeMs,
-		refetchOnMount: "always",
-		refetchOnWindowFocus: "always",
 		meta: tabPersistedMeta,
 	});
 }
@@ -453,7 +442,6 @@ export function githubIssueCommentsQueryOptions(
 		queryFn: () => getIssueComments({ data: input }),
 		staleTime: githubCachePolicy.activity.staleTimeMs,
 		gcTime: githubCachePolicy.activity.gcTimeMs,
-		refetchOnMount: "always",
 		meta: tabPersistedMeta,
 	});
 }

@@ -6,13 +6,14 @@ import {
 	githubPullPageQueryOptions,
 	githubQueryKeys,
 } from "#/lib/github.query";
-import { buildSeo, formatPageTitle, summarizeText } from "#/lib/seo";
+import { buildSeo, formatPageTitle } from "#/lib/seo";
 
 const PULL_FILES_PAGE_SIZE = 25;
 
 export const Route = createFileRoute("/_protected/$owner/$repo/review/$pullId")(
 	{
-		loader: async ({ context, params }) => {
+		ssr: false,
+		loader: ({ context, params }) => {
 			const pullNumber = Number(params.pullId);
 			const scope = { userId: context.user.id };
 			const input = { owner: params.owner, repo: params.repo, pullNumber };
@@ -22,59 +23,37 @@ export const Route = createFileRoute("/_protected/$owner/$repo/review/$pullId")(
 				input,
 			);
 
-			let cachedPageData = context.queryClient.getQueryData(
+			// Clean up broken cache entries (no detail)
+			const cachedPageData = context.queryClient.getQueryData(
 				pageOptions.queryKey,
-			);
-			const cachedFileSummaries = context.queryClient.getQueryData(
-				fileSummariesOptions.queryKey,
 			);
 			if (cachedPageData !== undefined && !cachedPageData?.detail) {
 				context.queryClient.removeQueries({
 					queryKey: pageOptions.queryKey,
 					exact: true,
 				});
-				cachedPageData = undefined;
 			}
 
-			// Check if infinite query already has data
+			// Never block navigation — fire prefetches and let the component
+			// show cached data instantly or a skeleton while loading.
+			void context.queryClient.prefetchQuery(pageOptions);
+			void context.queryClient.prefetchQuery(fileSummariesOptions);
+
+			// Prefetch first page of files if not cached
 			const filesQueryKey = githubQueryKeys.pulls.files(scope, input);
-			const cachedFilesData = context.queryClient.getQueryData(filesQueryKey);
-
-			const [pageData, fileSummaries, firstFilesPage] = await Promise.all([
-				cachedPageData ?? context.queryClient.ensureQueryData(pageOptions),
-				cachedFileSummaries ??
-					context.queryClient.ensureQueryData(fileSummariesOptions),
-				cachedFilesData
-					? null
-					: getPullFiles({
-							data: {
-								...input,
-								page: 1,
-								perPage: PULL_FILES_PAGE_SIZE,
-							},
-						}),
-			]);
-
-			return { pageData, fileSummaries, firstFilesPage };
+			if (!context.queryClient.getQueryData(filesQueryKey)) {
+				void getPullFiles({
+					data: { ...input, page: 1, perPage: PULL_FILES_PAGE_SIZE },
+				});
+			}
 		},
-		head: ({ loaderData, match, params }) => {
-			const pull = loaderData?.pageData?.detail;
-			const title = pull
-				? formatPageTitle(pull.title)
-				: formatPageTitle(`Review PR #${params.pullId}`);
-
-			return buildSeo({
+		head: ({ match, params }) =>
+			buildSeo({
 				path: match.pathname,
-				title,
-				description: pull
-					? summarizeText(
-							pull.body,
-							`Private code review workspace for pull request #${pull.number} in ${params.owner}/${params.repo}.`,
-						)
-					: `Private code review workspace for pull request #${params.pullId} in ${params.owner}/${params.repo}.`,
+				title: formatPageTitle(`Review PR #${params.pullId}`),
+				description: `Private code review workspace for pull request #${params.pullId} in ${params.owner}/${params.repo}.`,
 				robots: "noindex",
-			});
-		},
+			}),
 		component: ReviewPage,
 	},
 );

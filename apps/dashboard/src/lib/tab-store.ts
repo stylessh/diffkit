@@ -88,6 +88,8 @@ export function removeTabsToRight(id: string) {
 	emitChange();
 }
 
+const emptyTabs: Tab[] = [];
+
 export function useTabs() {
-	return useSyncExternalStore(subscribe, getSnapshot, getSnapshot);
+	return useSyncExternalStore(subscribe, getSnapshot, () => emptyTabs);
 }

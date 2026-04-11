@@ -87,7 +87,6 @@ function useIsDesktop() {
 
 export function ReviewPage() {
 	const { user } = routeApi.useRouteContext();
-	const loaderData = routeApi.useLoaderData();
 	const { owner, repo, pullId } = routeApi.useParams();
 	const pullNumber = Number(pullId);
 	const scope = { userId: user.id };
@@ -110,7 +109,6 @@ export function ReviewPage() {
 		refetchOnWindowFocus: false,
 	});
 
-	const firstFilesPage = loaderData?.firstFilesPage ?? null;
 	const filesQuery = useInfiniteQuery({
 		queryKey: githubQueryKeys.pulls.files(scope, input),
 		initialPageParam: 1,
@@ -123,14 +121,6 @@ export function ReviewPage() {
 				},
 			}),
 		getNextPageParam: (lastPage) => lastPage.nextPage ?? undefined,
-		...(firstFilesPage
-			? {
-					initialData: {
-						pages: [firstFilesPage],
-						pageParams: [1],
-					},
-				}
-			: {}),
 		refetchOnMount: false,
 		refetchOnWindowFocus: false,
 	});
@@ -142,9 +132,8 @@ export function ReviewPage() {
 		refetchOnWindowFocus: false,
 	});
 
-	const pr = pageQuery.data?.detail ?? loaderData?.pageData?.detail ?? null;
-	const sidebarFiles =
-		fileSummariesQuery.data ?? loaderData?.fileSummaries ?? [];
+	const pr = pageQuery.data?.detail ?? null;
+	const sidebarFiles = fileSummariesQuery.data ?? [];
 	const diffFiles = useMemo(
 		() => filesQuery.data?.pages.flatMap((page) => page.files) ?? [],
 		[filesQuery.data],

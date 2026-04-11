@@ -50,7 +50,7 @@ beforeEach(() => {
 });
 
 describe("getGitHubClient", () => {
-	it("configures Octokit throttling and safe-method retries", async () => {
+	it("configures Octokit throttling, bounded retries, and request timeouts", async () => {
 		const { getGitHubClient } = await import("./github.server");
 
 		await getGitHubClient("user-123");
@@ -102,23 +102,28 @@ describe("getGitHubClient", () => {
 		expect(instance.hookBefore).toHaveBeenCalledTimes(1);
 		const [hookEvent, hookHandler] = instance.hookBefore.mock.calls[0] as [
 			string,
-			(options: { method?: string; request?: { retries?: number } }) => void,
+			(options: {
+				method?: string;
+				request?: { retries?: number; signal?: AbortSignal };
+			}) => void,
 		];
 		expect(hookEvent).toBe("request");
 
 		const getOptions = { method: "GET" } as {
 			method?: string;
-			request?: { retries?: number };
+			request?: { retries?: number; signal?: AbortSignal };
 		};
 		hookHandler(getOptions);
-		expect(getOptions.request?.retries).toBe(2);
+		expect(getOptions.request?.retries).toBe(1);
+		expect(getOptions.request?.signal).toBeInstanceOf(AbortSignal);
 
 		const postOptions = { method: "POST" } as {
 			method?: string;
-			request?: { retries?: number };
+			request?: { retries?: number; signal?: AbortSignal };
 		};
 		hookHandler(postOptions);
 		expect(postOptions.request?.retries).toBe(0);
+		expect(postOptions.request?.signal).toBeInstanceOf(AbortSignal);
 
 		expect(
 			options.throttle.onRateLimit(
@@ -129,7 +134,7 @@ describe("getGitHubClient", () => {
 				},
 				0,
 			),
-		).toBe(true);
+		).toBe(false);
 		expect(
 			options.throttle.onRateLimit(
 				30,
@@ -149,7 +154,7 @@ describe("getGitHubClient", () => {
 			),
 		).toBe(false);
 		expect(instance.log.warn).toHaveBeenCalled();
-		expect(instance.log.info).toHaveBeenCalledTimes(1);
+		expect(instance.log.info).not.toHaveBeenCalled();
 	});
 
 	it("creates GitHub App installation clients from app credentials", async () => {

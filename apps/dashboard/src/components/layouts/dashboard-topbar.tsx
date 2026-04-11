@@ -108,9 +108,23 @@ export function DashboardTopbar({
 	useEffect(() => {
 		if (!tabsReady) return;
 
-		void Promise.allSettled(
-			primaryNavRoutes.map((to) => routerRef.current.preloadRoute({ to })),
-		);
+		// Preload routes serially to avoid a burst of concurrent server function
+		// RPCs that can overwhelm the Cloudflare Worker.
+		let cancelled = false;
+		(async () => {
+			for (const to of primaryNavRoutes) {
+				if (cancelled) break;
+				try {
+					await routerRef.current.preloadRoute({ to });
+				} catch {
+					// preload is best-effort
+				}
+			}
+		})();
+
+		return () => {
+			cancelled = true;
+		};
 	}, [tabsReady]);
 
 	function navigateToTab(tab: Tab | undefined) {

@@ -4,10 +4,11 @@ import {
 	githubPullPageQueryOptions,
 	githubViewerQueryOptions,
 } from "#/lib/github.query";
-import { buildSeo, formatPageTitle, summarizeText } from "#/lib/seo";
+import { buildSeo, formatPageTitle } from "#/lib/seo";
 
 export const Route = createFileRoute("/_protected/$owner/$repo/pull/$pullId")({
-	loader: async ({ context, params }) => {
+	ssr: false,
+	loader: ({ context, params }) => {
 		const pullNumber = Number(params.pullId);
 		const scope = { userId: context.user.id };
 		const pageOptions = githubPullPageQueryOptions(scope, {
@@ -16,41 +17,26 @@ export const Route = createFileRoute("/_protected/$owner/$repo/pull/$pullId")({
 			pullNumber,
 		});
 
+		// Clean up broken cache entries (no detail)
 		const cachedData = context.queryClient.getQueryData(pageOptions.queryKey);
-		if (cachedData?.detail) {
-			void context.queryClient.ensureQueryData(githubViewerQueryOptions(scope));
-			return cachedData;
-		}
-		if (cachedData !== undefined) {
+		if (cachedData !== undefined && !cachedData?.detail) {
 			context.queryClient.removeQueries({
 				queryKey: pageOptions.queryKey,
 				exact: true,
 			});
 		}
 
-		const [pageData] = await Promise.all([
-			context.queryClient.ensureQueryData(pageOptions),
-			context.queryClient.ensureQueryData(githubViewerQueryOptions(scope)),
-		]);
-		return pageData;
+		// Never block navigation — fire prefetches and let the component
+		// show cached data instantly or a skeleton while loading.
+		void context.queryClient.prefetchQuery(pageOptions);
+		void context.queryClient.prefetchQuery(githubViewerQueryOptions(scope));
 	},
-	head: ({ loaderData, match, params }) => {
-		const pull = loaderData?.detail;
-		const title = pull
-			? formatPageTitle(pull.title)
-			: formatPageTitle(`PR #${params.pullId}`);
-
-		return buildSeo({
+	head: ({ match, params }) =>
+		buildSeo({
 			path: match.pathname,
-			title,
-			description: pull
-				? summarizeText(
-						pull.body,
-						`Private pull request #${pull.number} in ${params.owner}/${params.repo}.`,
-					)
-				: `Private pull request #${params.pullId} in ${params.owner}/${params.repo}.`,
+			title: formatPageTitle(`PR #${params.pullId}`),
+			description: `Private pull request #${params.pullId} in ${params.owner}/${params.repo}.`,
 			robots: "noindex",
-		});
-	},
+		}),
 	component: PullDetailPage,
 });

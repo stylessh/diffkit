@@ -5,10 +5,9 @@ import {
 	getGitHubAppId,
 	getGitHubAppPrivateKey,
 } from "./github-app.server";
+import { configureGitHubRequestPolicies } from "./github-request-policy";
 
 const GITHUB_CLIENT_USER_AGENT = "quickhub-dashboard";
-const GITHUB_READ_RETRY_COUNT = 2;
-const GITHUB_RATE_LIMIT_RETRY_COUNT = 1;
 const GITHUB_SECONDARY_RATE_LIMIT_FALLBACK_SECONDS = 60;
 
 type GitHubThrottleRequestOptions = {
@@ -17,33 +16,6 @@ type GitHubThrottleRequestOptions = {
 };
 
 type GitHubThrottleClient = Pick<OctokitType, "log">;
-
-function isSafeGitHubRetryMethod(method: string | undefined) {
-	return method === "GET" || method === "HEAD" || method === "OPTIONS";
-}
-
-function shouldRetryGitHubRateLimitedRequest({
-	method,
-	retryCount,
-}: {
-	method: string | undefined;
-	retryCount: number;
-}) {
-	return (
-		isSafeGitHubRetryMethod(method) &&
-		retryCount < GITHUB_RATE_LIMIT_RETRY_COUNT
-	);
-}
-
-function configureGitHubRequestPolicies(octokit: OctokitType) {
-	octokit.hook.before("request", (options) => {
-		const requestOptions = options.request ?? {};
-		options.request = requestOptions;
-		requestOptions.retries = isSafeGitHubRetryMethod(options.method)
-			? GITHUB_READ_RETRY_COUNT
-			: 0;
-	});
-}
 
 export async function getGitHubClient(userId: string): Promise<OctokitType> {
 	const octokit = new Octokit({
@@ -65,18 +37,6 @@ export async function getGitHubClient(userId: string): Promise<OctokitType> {
 					`GitHub rate limit for ${options.method} ${options.url}; retryAfter=${retryAfter}s retryCount=${retryCount}`,
 				);
 
-				if (
-					shouldRetryGitHubRateLimitedRequest({
-						method: options.method,
-						retryCount,
-					})
-				) {
-					throttledOctokit.log.info(
-						`Retrying ${options.method} ${options.url} after ${retryAfter}s`,
-					);
-					return true;
-				}
-
 				return false;
 			},
 			onSecondaryRateLimit: (
@@ -88,18 +48,6 @@ export async function getGitHubClient(userId: string): Promise<OctokitType> {
 				throttledOctokit.log.warn(
 					`GitHub secondary rate limit for ${options.method} ${options.url}; retryAfter=${retryAfter}s retryCount=${retryCount}`,
 				);
-
-				if (
-					shouldRetryGitHubRateLimitedRequest({
-						method: options.method,
-						retryCount,
-					})
-				) {
-					throttledOctokit.log.info(
-						`Retrying ${options.method} ${options.url} after secondary rate limit (${retryAfter}s)`,
-					);
-					return true;
-				}
 
 				return false;
 			},

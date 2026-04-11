@@ -4,6 +4,7 @@ import { and, eq } from "drizzle-orm";
 import { getDb } from "../db";
 import { account } from "../db/schema";
 import { normalizeGitHubAppPrivateKey } from "./github-private-key";
+import { GITHUB_REQUEST_TIMEOUT_MS } from "./github-request-policy";
 
 type WorkerEnvRecord = typeof env & Record<string, string | undefined>;
 
@@ -150,6 +151,7 @@ async function requestGitHubAppUserToken(params: Record<string, string>) {
 			Accept: "application/json",
 			"Content-Type": "application/x-www-form-urlencoded",
 		},
+		signal: AbortSignal.timeout(GITHUB_REQUEST_TIMEOUT_MS),
 		body: new URLSearchParams(params),
 	});
 	const payload = (await response.json()) as GitHubTokenResponse;

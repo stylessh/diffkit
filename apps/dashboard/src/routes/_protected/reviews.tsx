@@ -17,6 +17,7 @@ import { buildSeo, formatPageTitle } from "#/lib/seo";
 import { useHasMounted } from "#/lib/use-has-mounted";
 
 export const Route = createFileRoute("/_protected/reviews")({
+	ssr: false,
 	loader: async ({ context }) => {
 		const scope = { userId: context.user.id };
 		const [, filterStore] = await Promise.all([

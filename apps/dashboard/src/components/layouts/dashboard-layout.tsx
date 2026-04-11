@@ -49,18 +49,20 @@ export function DashboardLayout() {
 		...githubMyIssuesQueryOptions(scope),
 		enabled: hasMounted,
 	});
-	const pullCount = pullsQuery.data
-		? pullsQuery.data.reviewRequested.length +
-			pullsQuery.data.assigned.length +
-			pullsQuery.data.authored.length +
-			pullsQuery.data.mentioned.length +
-			pullsQuery.data.involved.length
-		: undefined;
-	const issueCount = issuesQuery.data
-		? issuesQuery.data.assigned.length +
-			issuesQuery.data.authored.length +
-			issuesQuery.data.mentioned.length
-		: undefined;
+	const pullCount =
+		hasMounted && pullsQuery.data
+			? pullsQuery.data.reviewRequested.length +
+				pullsQuery.data.assigned.length +
+				pullsQuery.data.authored.length +
+				pullsQuery.data.mentioned.length +
+				pullsQuery.data.involved.length
+			: undefined;
+	const issueCount =
+		hasMounted && issuesQuery.data
+			? issuesQuery.data.assigned.length +
+				issuesQuery.data.authored.length +
+				issuesQuery.data.mentioned.length
+			: undefined;
 	const tabsReady = hasMounted && Boolean(pullsQuery.data && issuesQuery.data);
 
 	useEffect(() => {
@@ -87,7 +89,9 @@ export function DashboardLayout() {
 				counts={{
 					pulls: pullCount,
 					issues: issueCount,
-					reviews: pullsQuery.data?.reviewRequested.length,
+					reviews: hasMounted
+						? pullsQuery.data?.reviewRequested.length
+						: undefined,
 				}}
 			/>
 			<div className="flex flex-1 flex-col overflow-hidden p-2 pt-0">
@@ -104,7 +108,9 @@ export function DashboardLayout() {
 				counts={{
 					pulls: pullCount,
 					issues: issueCount,
-					reviews: pullsQuery.data?.reviewRequested.length,
+					reviews: hasMounted
+						? pullsQuery.data?.reviewRequested.length
+						: undefined,
 				}}
 			/>
 			<Suspense>
