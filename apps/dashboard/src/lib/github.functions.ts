@@ -145,6 +145,16 @@ type GitHubInstallationAccountPayload = {
 	type?: string;
 };
 
+type GitHubReviewerBotInstallationPayload = {
+	id?: number;
+	account?: GitHubInstallationAccountPayload | null;
+	repository_selection?: string;
+	target_type?: string;
+	permissions?: Record<string, string | undefined>;
+	app_slug?: string;
+	suspended_at?: string | null;
+};
+
 type GitHubUserInstallationPayload = {
 	id?: number;
 	account?: GitHubInstallationAccountPayload | null;
@@ -152,11 +162,48 @@ type GitHubUserInstallationPayload = {
 	target_type?: string;
 	repository_selection?: string;
 	suspended_at?: string | null;
+	permissions?: Record<string, string | undefined>;
+	app_slug?: string;
 };
 
 type GitHubUserInstallationsPayload = {
 	installations?: GitHubUserInstallationPayload[];
 };
+
+type GitHubInstallationRepositoriesPayload = {
+	repositories?: Array<{
+		name?: string;
+		full_name?: string;
+		owner?: {
+			login?: string;
+		} | null;
+	}>;
+};
+
+function normalizeLogin(login: string) {
+	return login.toLowerCase();
+}
+
+const KNOWN_REVIEWER_BOTS = [
+	{
+		appSlug: "copilot-pull-request-reviewer",
+		botLogin: "copilot-pull-request-reviewer[bot]",
+	},
+	{ appSlug: "coderabbitai", botLogin: "coderabbitai[bot]" },
+	{ appSlug: "cursor", botLogin: "cursor[bot]" },
+	{ appSlug: "gemini-code-assist", botLogin: "gemini-code-assist[bot]" },
+	{ appSlug: "claude", botLogin: "claude[bot]" },
+	{ appSlug: "codegen-sh", botLogin: "codegen-sh[bot]" },
+	{ appSlug: "qodo-merge", botLogin: "qodo-merge[bot]" },
+] as const;
+
+type KnownReviewerBot = (typeof KNOWN_REVIEWER_BOTS)[number];
+
+const KNOWN_REVIEWER_BOTS_BY_APP_SLUG: ReadonlyMap<string, KnownReviewerBot> =
+	new Map(KNOWN_REVIEWER_BOTS.map((bot) => [bot.appSlug, bot]));
+const KNOWN_REVIEWER_BOT_LOGINS = new Set(
+	KNOWN_REVIEWER_BOTS.map((bot) => normalizeLogin(bot.botLogin)),
+);
 
 type GitHubAuthenticatedOrgPayload = {
 	id?: number;
@@ -339,6 +386,53 @@ function mapActor(user: GitHubApiUser | null | undefined): GitHubActor | null {
 		url: user.html_url ?? `https://github.com/${user.login}`,
 		type: user.type ?? "User",
 	};
+}
+
+function mapReviewerCandidate(user: GitHubApiUser): RepoCollaborator | null {
+	const actor = mapActor(user);
+	if (!actor) {
+		return null;
+	}
+
+	return {
+		login: actor.login,
+		avatarUrl: actor.avatarUrl,
+		url: actor.url,
+		type: actor.type,
+		permissions: {
+			admin: false,
+			push: false,
+			pull: true,
+		},
+	};
+}
+
+function mergeReviewerCandidates(
+	collaborators: RepoCollaborator[],
+	bots: RepoCollaborator[],
+) {
+	const byLogin = new Map<string, RepoCollaborator>();
+
+	for (const candidate of [...collaborators, ...bots]) {
+		byLogin.set(candidate.login.toLowerCase(), candidate);
+	}
+
+	return Array.from(byLogin.values()).sort((left, right) =>
+		left.login.localeCompare(right.login, undefined, { sensitivity: "base" }),
+	);
+}
+
+function isKnownReviewerBotLogin(login: string) {
+	return KNOWN_REVIEWER_BOT_LOGINS.has(normalizeLogin(login));
+}
+
+function isOwnGitHubAppBot(login: string) {
+	const appSlug = getGitHubAppSlug();
+	return appSlug !== null && normalizeLogin(login) === `${appSlug}[bot]`;
+}
+
+function isReviewerCandidate(candidate: RepoCollaborator) {
+	return candidate.type !== "Bot" || isKnownReviewerBotLogin(candidate.login);
 }
 
 function mapLabel(
@@ -738,6 +832,282 @@ async function getCachedPaginatedGitHubRequest<TGitHubItem, TResult>({
 			};
 		},
 	});
+}
+
+async function listPaginatedGitHubItems<TItem>({
+	request,
+	getItems,
+	pageSize = 100,
+}: {
+	request: (page: number) => Promise<GitHubRestResponse<unknown>>;
+	getItems: (data: unknown) => TItem[];
+	pageSize?: number;
+}) {
+	const items: TItem[] = [];
+	let page = 1;
+
+	while (true) {
+		const response = await request(page);
+		const pageItems = getItems(response.data);
+		items.push(...pageItems);
+
+		if (pageItems.length < pageSize) {
+			break;
+		}
+
+		page += 1;
+	}
+
+	return items;
+}
+
+function installationBelongsToOwner(
+	installation: GitHubReviewerBotInstallationPayload,
+	owner: string,
+) {
+	return (
+		installation.account?.login !== undefined &&
+		normalizeLogin(installation.account.login) === normalizeLogin(owner)
+	);
+}
+
+function installationCanReviewPullRequests(
+	installation: GitHubReviewerBotInstallationPayload,
+) {
+	const pullRequestsPermission = installation.permissions?.pull_requests;
+
+	return (
+		!installation.suspended_at &&
+		installation.app_slug !== undefined &&
+		KNOWN_REVIEWER_BOTS_BY_APP_SLUG.has(installation.app_slug) &&
+		(pullRequestsPermission === "write" || pullRequestsPermission === "admin")
+	);
+}
+
+function getKnownReviewerBotForInstallation(
+	installation: GitHubReviewerBotInstallationPayload,
+): KnownReviewerBot | null {
+	if (!installation.app_slug) {
+		return null;
+	}
+
+	return KNOWN_REVIEWER_BOTS_BY_APP_SLUG.get(installation.app_slug) ?? null;
+}
+
+function repositoryMatchesInstallationRepository(
+	repository: NonNullable<
+		GitHubInstallationRepositoriesPayload["repositories"]
+	>[number],
+	params: RepoCollaboratorsInput,
+) {
+	const fullName = repository.full_name?.toLowerCase();
+	if (fullName === `${params.owner}/${params.repo}`.toLowerCase()) {
+		return true;
+	}
+
+	return (
+		repository.owner?.login !== undefined &&
+		repository.name !== undefined &&
+		normalizeLogin(repository.owner.login) === normalizeLogin(params.owner) &&
+		normalizeLogin(repository.name) === normalizeLogin(params.repo)
+	);
+}
+
+async function installationHasRepositoryAccess(
+	context: GitHubContext,
+	installation: GitHubReviewerBotInstallationPayload,
+	params: RepoCollaboratorsInput,
+) {
+	if (
+		!installation.id ||
+		!installationBelongsToOwner(installation, params.owner)
+	) {
+		return false;
+	}
+
+	if (installation.repository_selection === "all") {
+		return true;
+	}
+
+	if (installation.repository_selection !== "selected") {
+		return false;
+	}
+
+	try {
+		const repositories = await listPaginatedGitHubItems({
+			request: (page) =>
+				context.octokit.rest.apps.listInstallationReposForAuthenticatedUser({
+					installation_id: installation.id as number,
+					page,
+					per_page: 100,
+				}),
+			getItems: (payload) =>
+				((payload as GitHubInstallationRepositoriesPayload).repositories ??
+					[]) as NonNullable<
+					GitHubInstallationRepositoriesPayload["repositories"]
+				>,
+		});
+
+		return repositories.some((repository) =>
+			repositoryMatchesInstallationRepository(repository, params),
+		);
+	} catch {
+		return false;
+	}
+}
+
+async function listReviewerBotInstallations(
+	context: GitHubContext,
+	params: RepoCollaboratorsInput,
+) {
+	const installations = new Map<number, GitHubReviewerBotInstallationPayload>();
+
+	try {
+		const orgInstallations = await listPaginatedGitHubItems({
+			request: (page) =>
+				context.octokit.rest.orgs.listAppInstallations({
+					org: params.owner,
+					page,
+					per_page: 100,
+				}),
+			getItems: (payload) =>
+				(
+					(
+						payload as {
+							installations?: GitHubReviewerBotInstallationPayload[];
+						}
+					).installations ?? []
+				).filter((installation) => typeof installation.id === "number"),
+		});
+
+		for (const installation of orgInstallations) {
+			if (installation.id) {
+				installations.set(installation.id, installation);
+			}
+		}
+	} catch {
+		// Not every user can list all org app installations. Fall back below to
+		// installations the authenticated user can see.
+	}
+
+	try {
+		const userInstallations = await listPaginatedGitHubItems({
+			request: (page) =>
+				context.octokit.rest.apps.listInstallationsForAuthenticatedUser({
+					page,
+					per_page: 100,
+				}),
+			getItems: (payload) =>
+				(
+					(
+						payload as {
+							installations?: GitHubReviewerBotInstallationPayload[];
+						}
+					).installations ?? []
+				).filter((installation) => typeof installation.id === "number"),
+		});
+
+		for (const installation of userInstallations) {
+			if (installation.id) {
+				installations.set(installation.id, installation);
+			}
+		}
+	} catch {
+		// Reviewer bots are additive; missing this endpoint should not hide
+		// normal people or teams from the picker.
+	}
+
+	return Array.from(installations.values());
+}
+
+async function mapReviewerBotInstallation(
+	context: GitHubContext,
+	installation: GitHubReviewerBotInstallationPayload,
+) {
+	const knownBot = getKnownReviewerBotForInstallation(installation);
+	if (!knownBot) {
+		return null;
+	}
+
+	try {
+		const response = await context.octokit.rest.users.getByUsername({
+			username: knownBot.botLogin,
+		});
+
+		const candidate = mapReviewerCandidate(response.data);
+		return candidate?.type === "Bot" ? candidate : null;
+	} catch {
+		return null;
+	}
+}
+
+async function getCachedRepoReviewerBots(
+	context: GitHubContext,
+	params: RepoCollaboratorsInput,
+) {
+	return getOrRevalidateGitHubResource<RepoCollaborator[]>({
+		userId: context.session.user.id,
+		resource: "repos.reviewerBots",
+		params,
+		freshForMs: githubCachePolicy.viewer.staleTimeMs,
+		namespaceKeys: [
+			githubRevalidationSignalKeys.repoCollaborators({
+				owner: params.owner,
+				repo: params.repo,
+			}),
+		],
+		cacheMode: "split",
+		fetcher: async () => {
+			const installations = await listReviewerBotInstallations(context, params);
+			const matchingInstallations: GitHubReviewerBotInstallationPayload[] = [];
+			const ownAppSlug = getGitHubAppSlug();
+
+			for (const installation of installations) {
+				if (
+					installation.app_slug !== ownAppSlug &&
+					installationCanReviewPullRequests(installation) &&
+					(await installationHasRepositoryAccess(context, installation, params))
+				) {
+					matchingInstallations.push(installation);
+				}
+			}
+
+			const bots = (
+				await Promise.all(
+					matchingInstallations.map((installation) =>
+						mapReviewerBotInstallation(context, installation),
+					),
+				)
+			).filter((candidate): candidate is RepoCollaborator =>
+				Boolean(candidate),
+			);
+
+			return {
+				kind: "success",
+				data: mergeReviewerCandidates([], bots),
+				metadata: createGitHubResponseMetadata(200, {}),
+			};
+		},
+	});
+}
+
+async function orgTeamHasRepoAccess(
+	context: GitHubContext,
+	params: OrgTeamsInput,
+	team: OrgTeam,
+) {
+	try {
+		await context.octokit.rest.teams.checkPermissionsForRepoInOrg({
+			org: params.org,
+			team_slug: team.slug,
+			owner: params.owner,
+			repo: params.repo,
+		});
+
+		return true;
+	} catch {
+		return false;
+	}
 }
 
 async function getCachedPullResponse({
@@ -2145,7 +2515,7 @@ export const getRepoCollaborators = createServerFn({ method: "GET" })
 			return [];
 		}
 
-		return getCachedPaginatedGitHubRequest<
+		const collaboratorsPromise = getCachedPaginatedGitHubRequest<
 			Awaited<
 				ReturnType<GitHubClient["rest"]["repos"]["listCollaborators"]>
 			>["data"][number],
@@ -2166,24 +2536,45 @@ export const getRepoCollaborators = createServerFn({ method: "GET" })
 				context.octokit.rest.repos.listCollaborators({
 					owner: data.owner,
 					repo: data.repo,
+					permission: "push",
 					page,
 					per_page: 100,
 				}),
 			mapData: (allCollaborators) =>
-				allCollaborators.map((c) => ({
-					login: c.login,
-					avatarUrl: c.avatar_url,
-					permissions: {
-						admin: c.permissions?.admin ?? false,
-						push: c.permissions?.push ?? false,
-						pull: c.permissions?.pull ?? false,
-					},
-				})),
+				allCollaborators
+					.map((c) => ({
+						login: c.login,
+						avatarUrl: c.avatar_url,
+						url: c.html_url,
+						type: c.type ?? "User",
+						permissions: {
+							admin: c.permissions?.admin ?? false,
+							push: c.permissions?.push ?? false,
+							pull: c.permissions?.pull ?? false,
+						},
+					}))
+					.filter(
+						(candidate) =>
+							!isOwnGitHubAppBot(candidate.login) &&
+							isReviewerCandidate(candidate),
+					),
 		}).catch(() => []);
+		const botsPromise = getCachedRepoReviewerBots(context, data).catch(
+			() => [],
+		);
+
+		const [collaborators, bots] = await Promise.all([
+			collaboratorsPromise,
+			botsPromise,
+		]);
+
+		return mergeReviewerCandidates(collaborators, bots);
 	});
 
 export type OrgTeamsInput = {
 	org: string;
+	owner: string;
+	repo: string;
 };
 
 export const getOrgTeams = createServerFn({ method: "GET" })
@@ -2194,7 +2585,7 @@ export const getOrgTeams = createServerFn({ method: "GET" })
 			return [];
 		}
 
-		return getCachedPaginatedGitHubRequest<
+		const teams = await getCachedPaginatedGitHubRequest<
 			Awaited<
 				ReturnType<GitHubClient["rest"]["teams"]["list"]>
 			>["data"][number],
@@ -2213,11 +2604,19 @@ export const getOrgTeams = createServerFn({ method: "GET" })
 					per_page: 100,
 				}),
 			mapData: (allTeams) =>
-				allTeams.map((t) => ({
-					slug: t.slug,
-					name: t.name,
+				allTeams.map((team) => ({
+					slug: team.slug,
+					name: team.name,
 				})),
 		}).catch(() => []);
+
+		const teamsWithAccess = await Promise.all(
+			teams.map(async (team) =>
+				(await orgTeamHasRepoAccess(context, data, team)) ? team : null,
+			),
+		);
+
+		return teamsWithAccess.filter((team): team is OrgTeam => Boolean(team));
 	});
 
 export const requestPullReviewers = createServerFn({ method: "POST" })

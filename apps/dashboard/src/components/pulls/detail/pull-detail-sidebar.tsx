@@ -141,7 +141,7 @@ function ReviewersSection({
 		enabled: pickerOpen,
 	});
 	const teamsQuery = useQuery({
-		...githubOrgTeamsQueryOptions(scope, owner),
+		...githubOrgTeamsQueryOptions(scope, { org: owner, owner, repo }),
 		enabled: pickerOpen,
 	});
 
@@ -166,13 +166,30 @@ function ReviewersSection({
 		);
 	}, [collaborators, pr.author?.login]);
 
+	const botCandidates = useMemo(
+		() => candidates.filter((candidate) => candidate.type === "Bot"),
+		[candidates],
+	);
+	const userCandidates = useMemo(
+		() => candidates.filter((candidate) => candidate.type !== "Bot"),
+		[candidates],
+	);
+
 	const filteredUsers = useMemo(() => {
-		if (!search) return candidates;
+		if (!search) return userCandidates;
 		const query = search.toLowerCase();
-		return candidates.filter((candidate) =>
+		return userCandidates.filter((candidate) =>
 			candidate.login.toLowerCase().includes(query),
 		);
-	}, [candidates, search]);
+	}, [userCandidates, search]);
+
+	const filteredBots = useMemo(() => {
+		if (!search) return botCandidates;
+		const query = search.toLowerCase();
+		return botCandidates.filter((candidate) =>
+			candidate.login.toLowerCase().includes(query),
+		);
+	}, [botCandidates, search]);
 
 	const filteredTeams = useMemo(() => {
 		if (!search) return teams;
@@ -223,8 +240,9 @@ function ReviewersSection({
 												{
 													login,
 													avatarUrl: collaborator?.avatarUrl ?? "",
-													url: `https://github.com/${login}`,
-													type: "User",
+													url:
+														collaborator?.url ?? `https://github.com/${login}`,
+													type: collaborator?.type ?? "User",
 												},
 											],
 								}
@@ -288,11 +306,14 @@ function ReviewersSection({
 		const items: ReviewerItem[] = [];
 		for (const team of filteredTeams)
 			items.push({ kind: "team", slug: team.slug });
+		for (const bot of filteredBots) {
+			items.push({ kind: "user", login: bot.login });
+		}
 		for (const collaborator of filteredUsers) {
 			items.push({ kind: "user", login: collaborator.login });
 		}
 		return items;
-	}, [filteredTeams, filteredUsers]);
+	}, [filteredBots, filteredTeams, filteredUsers]);
 
 	const scrollToFocused = useCallback((index: number) => {
 		const element = listRef.current?.querySelector(`[data-index="${index}"]`);
@@ -361,7 +382,7 @@ function ReviewersSection({
 										setFocusedIndex(-1);
 									}}
 									onKeyDown={handleKeyDown}
-									placeholder="Search people and teams..."
+									placeholder="Search people, bots, and teams..."
 									className="w-full bg-transparent text-sm outline-none placeholder:text-muted-foreground"
 								/>
 							</div>
@@ -370,7 +391,9 @@ function ReviewersSection({
 									<p className="px-3 py-4 text-center text-xs text-muted-foreground">
 										Loading…
 									</p>
-								) : filteredUsers.length === 0 && filteredTeams.length === 0 ? (
+								) : filteredUsers.length === 0 &&
+									filteredBots.length === 0 &&
+									filteredTeams.length === 0 ? (
 									<p className="px-3 py-4 text-center text-xs text-muted-foreground">
 										No results found
 									</p>
@@ -410,13 +433,51 @@ function ReviewersSection({
 												})}
 											</>
 										)}
+										{filteredBots.length > 0 && (
+											<>
+												<p className="px-3 py-1.5 text-[11px] font-medium text-muted-foreground">
+													Bots
+												</p>
+												{filteredBots.map((bot, index) => {
+													const itemIndex = filteredTeams.length + index;
+													const isSelected = requestedLogins.has(bot.login);
+													return (
+														<button
+															key={bot.login}
+															type="button"
+															data-index={itemIndex}
+															onClick={() => toggleReviewer(bot.login)}
+															onMouseEnter={() => setFocusedIndex(itemIndex)}
+															className={`flex w-full items-center gap-2 px-3 py-1.5 text-left text-sm transition-colors hover:bg-surface-1 disabled:opacity-50 ${focusedIndex === itemIndex ? "bg-surface-1" : ""}`}
+														>
+															<img
+																src={bot.avatarUrl}
+																alt={bot.login}
+																className="size-5 rounded-full border border-border"
+															/>
+															<span className="min-w-0 flex-1 truncate">
+																{bot.login}
+															</span>
+															{isSelected && (
+																<CheckIcon
+																	size={14}
+																	strokeWidth={2}
+																	className="shrink-0 text-green-500"
+																/>
+															)}
+														</button>
+													);
+												})}
+											</>
+										)}
 										{filteredUsers.length > 0 && (
 											<>
 												<p className="px-3 py-1.5 text-[11px] font-medium text-muted-foreground">
 													People
 												</p>
 												{filteredUsers.map((collaborator, index) => {
-													const itemIndex = filteredTeams.length + index;
+													const itemIndex =
+														filteredTeams.length + filteredBots.length + index;
 													const isSelected = requestedLogins.has(
 														collaborator.login,
 													);

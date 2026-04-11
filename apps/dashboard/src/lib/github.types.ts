@@ -244,6 +244,8 @@ export type SubmitReviewInput = {
 export type RepoCollaborator = {
 	login: string;
 	avatarUrl: string;
+	url: string;
+	type: string;
 	permissions: {
 		admin: boolean;
 		push: boolean;
