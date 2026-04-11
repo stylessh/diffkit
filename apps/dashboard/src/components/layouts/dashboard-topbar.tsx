@@ -230,9 +230,11 @@ export function DashboardTopbar({
 								Profile
 								<DropdownMenuShortcut keys={["G", "P"]} />
 							</DropdownMenuItem>
-							<DropdownMenuItem>
-								Settings
-								<DropdownMenuShortcut keys={["G", "S"]} />
+							<DropdownMenuItem asChild>
+								<Link to="/settings">
+									Settings
+									<DropdownMenuShortcut keys={["G", "S"]} />
+								</Link>
 							</DropdownMenuItem>
 						</DropdownMenuGroup>
 						<DropdownMenuSeparator />

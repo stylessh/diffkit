@@ -3,6 +3,7 @@ import {
 	GitPullRequestIcon,
 	IssuesIcon,
 	ReviewsIcon,
+	SettingsIcon,
 } from "@diffkit/icons";
 import type { CommandItem } from "./types";
 
@@ -70,5 +71,14 @@ registerCommands([
 		keywords: ["review", "requested"],
 		shortcut: ["G", "R"],
 		action: { type: "navigate", to: "/reviews" },
+	},
+	{
+		id: "nav:settings",
+		label: "Go to Settings",
+		group: "Pages",
+		icon: SettingsIcon,
+		keywords: ["settings", "preferences", "config"],
+		shortcut: ["G", "S"],
+		action: { type: "navigate", to: "/settings" },
 	},
 ]);
