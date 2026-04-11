@@ -4,7 +4,7 @@ import {
 	PopoverContent,
 	PopoverTrigger,
 } from "@diffkit/ui/components/popover";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useCallback, useMemo, useRef, useState } from "react";
 import { createRepoLabel, setIssueLabels } from "#/lib/github.functions";
 import {
@@ -52,16 +52,23 @@ export function LabelsSection({
 	pageQueryKey: readonly unknown[];
 }) {
 	const { mutate } = useOptimisticMutation();
+	const queryClient = useQueryClient();
 	const [pickerOpen, setPickerOpen] = useState(false);
 	const [search, setSearch] = useState("");
 	const [pending, setPending] = useState(false);
 	const [focusedIndex, setFocusedIndex] = useState(-1);
 	const listRef = useRef<HTMLDivElement>(null);
 
+	const labelsOptions = githubRepoLabelsQueryOptions(scope, { owner, repo });
+
 	const repoLabelsQuery = useQuery({
-		...githubRepoLabelsQueryOptions(scope, { owner, repo }),
+		...labelsOptions,
 		enabled: pickerOpen,
 	});
+
+	const prefetchLabels = useCallback(() => {
+		void queryClient.prefetchQuery(labelsOptions);
+	}, [queryClient, labelsOptions]);
 	const repoLabels = repoLabelsQuery.data ?? [];
 
 	const activeNames = useMemo(
@@ -201,6 +208,8 @@ export function LabelsSection({
 					<PopoverTrigger asChild>
 						<button
 							type="button"
+							onMouseEnter={prefetchLabels}
+							onFocus={prefetchLabels}
 							className="flex size-5 items-center justify-center rounded text-muted-foreground transition-colors hover:bg-surface-2 hover:text-foreground"
 						>
 							<PlusSignIcon size={14} strokeWidth={2} />

@@ -4,6 +4,7 @@ import { Logo } from "@diffkit/ui/components/logo";
 import { createFileRoute, redirect } from "@tanstack/react-router";
 import { getSession } from "#/lib/auth.functions";
 import { signInWithGitHub } from "#/lib/auth-actions";
+import { normalizeAuthRedirect } from "#/lib/auth-redirect";
 import {
 	buildSeo,
 	buildSoftwareApplicationSchema,
@@ -12,9 +13,12 @@ import {
 import { siteConfig } from "#/lib/site-config";
 
 export const Route = createFileRoute("/login")({
-	beforeLoad: async () => {
+	validateSearch: (search) => ({
+		redirect: normalizeAuthRedirect(search.redirect),
+	}),
+	beforeLoad: async ({ search }) => {
 		const session = await getSession();
-		if (session) throw redirect({ to: "/" });
+		if (session) throw redirect({ href: search.redirect });
 	},
 	head: () => {
 		const seo = buildSeo({
@@ -43,6 +47,8 @@ export const Route = createFileRoute("/login")({
 });
 
 function LoginPage() {
+	const { redirect } = Route.useSearch();
+
 	return (
 		<main className="isolate min-h-dvh bg-background">
 			<div className="grid min-h-dvh lg:grid-cols-[35fr_65fr]">
@@ -79,7 +85,7 @@ function LoginPage() {
 								className="space-y-3"
 								onSubmit={(event) => {
 									event.preventDefault();
-									void signInWithGitHub();
+									void signInWithGitHub({ redirect });
 								}}
 							>
 								<Button

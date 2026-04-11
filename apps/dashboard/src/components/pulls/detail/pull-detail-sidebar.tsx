@@ -14,7 +14,7 @@ import {
 	PopoverContent,
 	PopoverTrigger,
 } from "@diffkit/ui/components/popover";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useCallback, useMemo, useRef, useState } from "react";
 import {
 	DetailParticipantAvatars,
@@ -131,19 +131,31 @@ function ReviewersSection({
 	scope: GitHubQueryScope;
 }) {
 	const { mutate } = useOptimisticMutation();
+	const queryClient = useQueryClient();
 	const [pickerOpen, setPickerOpen] = useState(false);
 	const [search, setSearch] = useState("");
 	const [focusedIndex, setFocusedIndex] = useState(-1);
 	const listRef = useRef<HTMLDivElement>(null);
 
+	const collaboratorsOptions = githubRepoCollaboratorsQueryOptions(scope, {
+		owner,
+		repo,
+	});
+	const teamsOptions = githubOrgTeamsQueryOptions(scope, owner);
+
 	const collaboratorsQuery = useQuery({
-		...githubRepoCollaboratorsQueryOptions(scope, { owner, repo }),
+		...collaboratorsOptions,
 		enabled: pickerOpen,
 	});
 	const teamsQuery = useQuery({
-		...githubOrgTeamsQueryOptions(scope, owner),
+		...teamsOptions,
 		enabled: pickerOpen,
 	});
+
+	const prefetchReviewers = useCallback(() => {
+		void queryClient.prefetchQuery(collaboratorsOptions);
+		void queryClient.prefetchQuery(teamsOptions);
+	}, [queryClient, collaboratorsOptions, teamsOptions]);
 
 	const collaborators = collaboratorsQuery.data ?? [];
 	const teams = teamsQuery.data ?? [];
@@ -346,6 +358,8 @@ function ReviewersSection({
 						<PopoverTrigger asChild>
 							<button
 								type="button"
+								onMouseEnter={prefetchReviewers}
+								onFocus={prefetchReviewers}
 								className="flex size-5 items-center justify-center rounded text-muted-foreground transition-colors hover:bg-surface-2 hover:text-foreground"
 							>
 								<PlusSignIcon size={14} strokeWidth={2} />

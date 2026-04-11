@@ -8,6 +8,7 @@ import {
 	GitMergeIcon,
 	GitPullRequestIcon,
 	MoreHorizontalIcon,
+	RefreshCwIcon,
 	ReviewsIcon,
 	UserAddIcon,
 	XIcon,
@@ -28,6 +29,7 @@ import {
 import { Markdown } from "@diffkit/ui/components/markdown";
 import { Skeleton } from "@diffkit/ui/components/skeleton";
 import { toast } from "@diffkit/ui/components/sonner";
+import { Spinner } from "@diffkit/ui/components/spinner";
 import { cn } from "@diffkit/ui/lib/utils";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useCallback, useRef, useState } from "react";
@@ -655,11 +657,18 @@ function UpdateBranchButton({
 				size="xs"
 				disabled={isUpdating}
 				className="rounded-r-none"
+				iconLeft={
+					isUpdating ? (
+						<Spinner size={12} />
+					) : (
+						<RefreshCwIcon size={12} strokeWidth={2} />
+					)
+				}
 				onClick={() => {
 					void handleUpdate();
 				}}
 			>
-				{isUpdating ? "Updating…" : "Update branch"}
+				Update branch
 			</Button>
 			<DropdownMenu>
 				<DropdownMenuTrigger asChild>
@@ -772,9 +781,15 @@ function MergeFooter({
 								void handleMerge();
 							}}
 							className="rounded-r-none"
-							iconLeft={<GitMergeIcon size={14} strokeWidth={2} />}
+							iconLeft={
+								isMerging ? (
+									<Spinner size={14} />
+								) : (
+									<GitMergeIcon size={14} strokeWidth={2} />
+								)
+							}
 						>
-							{isMerging ? "Merging…" : currentStrategy.label}
+							{currentStrategy.label}
 						</Button>
 						<DropdownMenu>
 							<DropdownMenuTrigger asChild>
