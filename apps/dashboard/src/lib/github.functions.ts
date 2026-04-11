@@ -742,10 +742,15 @@ async function getGitHubContext(): Promise<GitHubContext | null> {
 		}
 
 		debug("github-access", "session found", { userId: session.user.id });
-		return {
-			session,
-			octokit: await getGitHubClientByUserId(session.user.id),
-		};
+		try {
+			return {
+				session,
+				octokit: await getGitHubClientByUserId(session.user.id),
+			};
+		} catch (error) {
+			console.error("[github-access] failed to create GitHub client", error);
+			return null;
+		}
 	});
 }
 
@@ -2707,6 +2712,19 @@ export const getGitHubViewer = createServerFn({ method: "GET" }).handler(
 		};
 	},
 );
+
+export const checkSetupComplete = createServerFn({
+	method: "GET",
+}).handler(async (): Promise<boolean> => {
+	const { getRequestSession } = await import("./auth-runtime");
+	const session = await getRequestSession();
+	if (!session) {
+		return false;
+	}
+
+	const { hasGitHubAppUserAccount } = await import("./github-app.server");
+	return hasGitHubAppUserAccount(session.user.id);
+});
 
 export const getGitHubAppAccessState = createServerFn({
 	method: "GET",

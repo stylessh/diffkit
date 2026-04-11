@@ -38,9 +38,7 @@ export function buildGitHubAppInstallUrl(slug: string | null | undefined) {
 	return slug ? `https://github.com/apps/${slug}/installations/new` : null;
 }
 
-export function buildGitHubAppAuthorizePath(
-	returnTo = "/?show-org-setup=true",
-) {
+export function buildGitHubAppAuthorizePath(returnTo = "/setup") {
 	const params = new URLSearchParams({ returnTo });
 	return `/api/github/app/authorize?${params.toString()}`;
 }

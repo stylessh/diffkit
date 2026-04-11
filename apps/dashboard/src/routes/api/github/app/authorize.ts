@@ -5,7 +5,7 @@ import { PRIVATE_ROUTE_HEADERS } from "#/lib/seo";
 
 const STATE_COOKIE = "github_app_oauth_state";
 const RETURN_TO_COOKIE = "github_app_oauth_return_to";
-const DEFAULT_RETURN_TO = "/?show-org-setup=true";
+const DEFAULT_RETURN_TO = "/setup";
 
 function normalizeReturnTo(value: string | null) {
 	if (!value || !value.startsWith("/") || value.startsWith("//")) {

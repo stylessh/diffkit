@@ -2,6 +2,7 @@ import { createFileRoute, redirect } from "@tanstack/react-router";
 import { DashboardLayout } from "#/components/layouts/dashboard-layout";
 import { ErrorScreen } from "#/components/layouts/error-screen";
 import { getSession } from "#/lib/auth.functions";
+import { checkSetupComplete } from "#/lib/github.functions";
 import { buildSeo, formatPageTitle, PRIVATE_ROUTE_HEADERS } from "#/lib/seo";
 
 export const Route = createFileRoute("/_protected")({
@@ -13,6 +14,12 @@ export const Route = createFileRoute("/_protected")({
 				search: { redirect: location.href },
 			});
 		}
+
+		const setupComplete = await checkSetupComplete();
+		if (!setupComplete) {
+			throw redirect({ to: "/setup" });
+		}
+
 		return { user: session.user, session: session.session };
 	},
 	headers: () => PRIVATE_ROUTE_HEADERS,

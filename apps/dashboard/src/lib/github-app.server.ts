@@ -114,6 +114,11 @@ export async function getGitHubOAuthAccountByUserId(userId: string) {
 		.get();
 }
 
+export async function hasGitHubAppUserAccount(userId: string) {
+	const row = await getGitHubAppUserAccountByUserId(userId);
+	return Boolean(row?.accessToken);
+}
+
 async function getGitHubAppUserAccountByUserId(userId: string) {
 	const db = getDb();
 

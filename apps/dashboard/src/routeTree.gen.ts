@@ -10,6 +10,7 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as SitemapDotxmlRouteImport } from './routes/sitemap[.]xml'
+import { Route as SetupRouteImport } from './routes/setup'
 import { Route as RobotsDottxtRouteImport } from './routes/robots[.]txt'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as ProtectedRouteImport } from './routes/_protected'
@@ -28,6 +29,11 @@ import { Route as ProtectedOwnerRepoIssuesIssueIdRouteImport } from './routes/_p
 const SitemapDotxmlRoute = SitemapDotxmlRouteImport.update({
   id: '/sitemap.xml',
   path: '/sitemap.xml',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SetupRoute = SetupRouteImport.update({
+  id: '/setup',
+  path: '/setup',
   getParentRoute: () => rootRouteImport,
 } as any)
 const RobotsDottxtRoute = RobotsDottxtRouteImport.update({
@@ -107,6 +113,7 @@ export interface FileRoutesByFullPath {
   '/': typeof ProtectedIndexRoute
   '/login': typeof LoginRoute
   '/robots.txt': typeof RobotsDottxtRoute
+  '/setup': typeof SetupRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/issues': typeof ProtectedIssuesRoute
   '/pulls': typeof ProtectedPullsRoute
@@ -122,6 +129,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/login': typeof LoginRoute
   '/robots.txt': typeof RobotsDottxtRoute
+  '/setup': typeof SetupRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/issues': typeof ProtectedIssuesRoute
   '/pulls': typeof ProtectedPullsRoute
@@ -140,6 +148,7 @@ export interface FileRoutesById {
   '/_protected': typeof ProtectedRouteWithChildren
   '/login': typeof LoginRoute
   '/robots.txt': typeof RobotsDottxtRoute
+  '/setup': typeof SetupRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/_protected/issues': typeof ProtectedIssuesRoute
   '/_protected/pulls': typeof ProtectedPullsRoute
@@ -159,6 +168,7 @@ export interface FileRouteTypes {
     | '/'
     | '/login'
     | '/robots.txt'
+    | '/setup'
     | '/sitemap.xml'
     | '/issues'
     | '/pulls'
@@ -174,6 +184,7 @@ export interface FileRouteTypes {
   to:
     | '/login'
     | '/robots.txt'
+    | '/setup'
     | '/sitemap.xml'
     | '/issues'
     | '/pulls'
@@ -191,6 +202,7 @@ export interface FileRouteTypes {
     | '/_protected'
     | '/login'
     | '/robots.txt'
+    | '/setup'
     | '/sitemap.xml'
     | '/_protected/issues'
     | '/_protected/pulls'
@@ -209,6 +221,7 @@ export interface RootRouteChildren {
   ProtectedRoute: typeof ProtectedRouteWithChildren
   LoginRoute: typeof LoginRoute
   RobotsDottxtRoute: typeof RobotsDottxtRoute
+  SetupRoute: typeof SetupRoute
   SitemapDotxmlRoute: typeof SitemapDotxmlRoute
   ApiAuthSplatRoute: typeof ApiAuthSplatRoute
   ApiWebhooksGithubRoute: typeof ApiWebhooksGithubRoute
@@ -223,6 +236,13 @@ declare module '@tanstack/react-router' {
       path: '/sitemap.xml'
       fullPath: '/sitemap.xml'
       preLoaderRoute: typeof SitemapDotxmlRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/setup': {
+      id: '/setup'
+      path: '/setup'
+      fullPath: '/setup'
+      preLoaderRoute: typeof SetupRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/robots.txt': {
@@ -354,6 +374,7 @@ const rootRouteChildren: RootRouteChildren = {
   ProtectedRoute: ProtectedRouteWithChildren,
   LoginRoute: LoginRoute,
   RobotsDottxtRoute: RobotsDottxtRoute,
+  SetupRoute: SetupRoute,
   SitemapDotxmlRoute: SitemapDotxmlRoute,
   ApiAuthSplatRoute: ApiAuthSplatRoute,
   ApiWebhooksGithubRoute: ApiWebhooksGithubRoute,

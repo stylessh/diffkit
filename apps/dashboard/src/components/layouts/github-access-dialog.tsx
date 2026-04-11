@@ -12,7 +12,6 @@ import {
 } from "@diffkit/ui/components/dialog";
 import { cn } from "@diffkit/ui/lib/utils";
 import { useQuery } from "@tanstack/react-query";
-import { useEffect, useState } from "react";
 import { getGitHubAppAccessState } from "#/lib/github.functions";
 import {
 	findInstallationForOwner,
@@ -26,8 +25,6 @@ import {
 } from "#/lib/github-access-modal-store";
 import { useHasMounted } from "#/lib/use-has-mounted";
 
-const ONBOARDING_STORAGE_KEY_PREFIX = "diffkit:github-access-onboarding:v1:";
-
 function getExternalLinkProps(href: string) {
 	if (href.startsWith("http://") || href.startsWith("https://")) {
 		return { target: "_blank", rel: "noopener noreferrer" } as const;
@@ -36,34 +33,10 @@ function getExternalLinkProps(href: string) {
 	return {};
 }
 
-function getOnboardingStorageKey(userId: string) {
-	return `${ONBOARDING_STORAGE_KEY_PREFIX}${userId}`;
-}
-
-function dismissOnboarding(userId: string) {
-	window.localStorage.setItem(getOnboardingStorageKey(userId), "dismissed");
-}
-
-function isOnboardingDismissed(userId: string) {
-	return (
-		window.localStorage.getItem(getOnboardingStorageKey(userId)) === "dismissed"
-	);
-}
-
 export function GitHubAccessDialog({ userId }: { userId: string }) {
 	const hasMounted = useHasMounted();
 	const prompt = useGitHubAccessPrompt();
-	const [onboardingOpen, setOnboardingOpen] = useState(false);
 	const [showOrgSetup, setShowOrgSetup] = useShowOrgSetupQueryState();
-
-	useEffect(() => {
-		if (!hasMounted || isOnboardingDismissed(userId)) {
-			return;
-		}
-
-		setOnboardingOpen(true);
-		void setShowOrgSetup(true);
-	}, [hasMounted, setShowOrgSetup, userId]);
 
 	const isOpen = showOrgSetup;
 	const accessQuery = useQuery({
@@ -88,10 +61,6 @@ export function GitHubAccessDialog({ userId }: { userId: string }) {
 
 		void setShowOrgSetup(false);
 		closeGitHubAccessPrompt();
-		if (onboardingOpen) {
-			dismissOnboarding(userId);
-			setOnboardingOpen(false);
-		}
 	}
 
 	const title = prompt?.repo
