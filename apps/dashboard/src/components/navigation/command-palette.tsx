@@ -9,25 +9,54 @@ import {
 	CommandShortcut,
 } from "@diffkit/ui/components/command";
 import { cn } from "@diffkit/ui/lib/utils";
-import { useRouter } from "@tanstack/react-router";
+import { useQuery } from "@tanstack/react-query";
+import { getRouteApi, useRouter } from "@tanstack/react-router";
+import { useEffect, useMemo, useState } from "react";
 import type { CommandItem, CommandItemMeta } from "#/lib/command-palette/types";
-import { useCommandItems } from "#/lib/command-palette/use-command-items";
+import {
+	getCommandSearchItems,
+	useCommandItems,
+} from "#/lib/command-palette/use-command-items";
 import { useCommandPalette } from "#/lib/command-palette/use-command-palette";
 import { formatRelativeTime } from "#/lib/format-relative-time";
+import { githubCommandPaletteSearchQueryOptions } from "#/lib/github.query";
+
+const routeApi = getRouteApi("/_protected");
 
 export function CommandPalette() {
 	const { open, setOpen, close } = useCommandPalette();
 	const router = useRouter();
+	const { user } = routeApi.useRouteContext();
+	const [search, setSearch] = useState("");
+	const debouncedSearch = useDebouncedValue(search, 250);
+	const trimmedDebouncedSearch = debouncedSearch.trim();
+	const shouldSearchGitHub = open && trimmedDebouncedSearch.length >= 2;
 	const items = useCommandItems();
+	const githubSearchQuery = useQuery({
+		...githubCommandPaletteSearchQueryOptions(
+			{ userId: user.id },
+			{ query: trimmedDebouncedSearch, perPage: 5 },
+		),
+		enabled: shouldSearchGitHub,
+	});
+	const searchItems = useMemo(
+		() => getCommandSearchItems(githubSearchQuery.data),
+		[githubSearchQuery.data],
+	);
+	const allItems = useMemo(
+		() => mergeCommandItems(items, searchItems),
+		[items, searchItems],
+	);
 
 	const groups = new Map<string, CommandItem[]>();
-	for (const item of items) {
+	for (const item of allItems) {
 		const list = groups.get(item.group) ?? [];
 		list.push(item);
 		groups.set(item.group, list);
 	}
 
 	function handleSelect(item: CommandItem) {
+		setSearch("");
 		close();
 		if (item.action.type === "navigate") {
 			void router.navigate({ to: item.action.to });
@@ -36,11 +65,27 @@ export function CommandPalette() {
 		}
 	}
 
+	function handleOpenChange(nextOpen: boolean) {
+		setOpen(nextOpen);
+		if (!nextOpen) {
+			setSearch("");
+		}
+	}
+
 	return (
-		<CommandDialog open={open} onOpenChange={setOpen}>
-			<CommandInput placeholder="Type a command or search..." />
+		<CommandDialog open={open} onOpenChange={handleOpenChange}>
+			<CommandInput
+				placeholder="Type a command or search GitHub..."
+				value={search}
+				onValueChange={setSearch}
+			/>
 			<CommandList>
-				<CommandEmpty>No results found.</CommandEmpty>
+				<CommandEmpty>
+					{getEmptyMessage(
+						search,
+						shouldSearchGitHub && githubSearchQuery.isFetching,
+					)}
+				</CommandEmpty>
 				{Array.from(groups.entries()).map(([groupName, groupItems]) => (
 					<CommandGroup key={groupName} heading={groupName}>
 						{groupItems.map((item) => (
@@ -72,6 +117,47 @@ export function CommandPalette() {
 			</CommandList>
 		</CommandDialog>
 	);
+}
+
+function useDebouncedValue(value: string, delayMs: number) {
+	const [debouncedValue, setDebouncedValue] = useState(value);
+
+	useEffect(() => {
+		const timeout = setTimeout(() => {
+			setDebouncedValue(value);
+		}, delayMs);
+
+		return () => clearTimeout(timeout);
+	}, [delayMs, value]);
+
+	return debouncedValue;
+}
+
+function mergeCommandItems(
+	localItems: CommandItem[],
+	searchItems: CommandItem[],
+) {
+	const itemsById = new Map<string, CommandItem>();
+
+	for (const item of [...localItems, ...searchItems]) {
+		if (!itemsById.has(item.id)) {
+			itemsById.set(item.id, item);
+		}
+	}
+
+	return [...itemsById.values()];
+}
+
+function getEmptyMessage(search: string, isSearching: boolean) {
+	if (search.trim().length === 1) {
+		return "Type at least 2 characters to search GitHub.";
+	}
+
+	if (isSearching) {
+		return "Searching GitHub...";
+	}
+
+	return "No results found.";
 }
 
 function ItemMeta({ meta }: { meta: CommandItemMeta }) {

@@ -1,5 +1,6 @@
 import { queryOptions } from "@tanstack/react-query";
 import {
+	type CommandPaletteSearchInput,
 	getCommentPage,
 	getGitHubViewer,
 	getIssueComments,
@@ -23,6 +24,7 @@ import {
 	getRepoLabels,
 	getTimelineEventPage,
 	getUserRepos,
+	searchCommandPaletteGitHub,
 } from "./github.functions";
 import { githubCachePolicy } from "./github-cache-policy";
 
@@ -110,6 +112,12 @@ export const githubQueryKeys = {
 		list: (scope: GitHubQueryScope) =>
 			["github", scope.userId, "repos", "list"] as const,
 	},
+	search: {
+		commandPalette: (
+			scope: GitHubQueryScope,
+			input: CommandPaletteSearchInput,
+		) => ["github", scope.userId, "search", "commandPalette", input] as const,
+	},
 	pulls: {
 		mine: (scope: GitHubQueryScope) =>
 			["github", scope.userId, "pulls", "mine"] as const,
@@ -183,6 +191,18 @@ export function githubUserReposQueryOptions(scope: GitHubQueryScope) {
 		staleTime: githubCachePolicy.reposList.staleTimeMs,
 		gcTime: githubCachePolicy.reposList.gcTimeMs,
 		meta: persistedMeta,
+	});
+}
+
+export function githubCommandPaletteSearchQueryOptions(
+	scope: GitHubQueryScope,
+	input: CommandPaletteSearchInput,
+) {
+	return queryOptions({
+		queryKey: githubQueryKeys.search.commandPalette(scope, input),
+		queryFn: () => searchCommandPaletteGitHub({ data: input }),
+		staleTime: 30 * 1000,
+		gcTime: 5 * 60 * 1000,
 	});
 }
 

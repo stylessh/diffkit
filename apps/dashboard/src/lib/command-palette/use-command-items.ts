@@ -5,12 +5,15 @@ import {
 	GitPullRequestDraftIcon,
 	GitPullRequestIcon,
 	IssuesIcon,
+	UserAddIcon,
 } from "@diffkit/icons";
 import { useQueryClient } from "@tanstack/react-query";
 import { getRouteApi } from "@tanstack/react-router";
 import { useSyncExternalStore } from "react";
 import { githubQueryKeys } from "#/lib/github.query";
 import type {
+	CommandPaletteSearchResult,
+	GitHubAccountSummary,
 	IssueSummary,
 	MyIssuesResult,
 	MyPullsResult,
@@ -45,6 +48,14 @@ function getIssueIcon(issue: IssueSummary) {
 	}
 	return { icon: IssuesIcon, iconClassName: "text-green-500" };
 }
+
+function getGitHubAccountGroup(account: GitHubAccountSummary) {
+	return account.type === "Organization"
+		? "GitHub Organizations"
+		: "GitHub Users";
+}
+
+const noopCommandAction = () => {};
 
 const routeApi = getRouteApi("/_protected");
 
@@ -173,4 +184,101 @@ export function useCommandItems(): CommandItem[] {
 	});
 
 	return [...staticCommands, ...dynamicItems];
+}
+
+export function getCommandSearchItems(
+	result: CommandPaletteSearchResult | undefined,
+): CommandItem[] {
+	if (!result) {
+		return [];
+	}
+
+	const items: CommandItem[] = [];
+
+	for (const repo of result.repositories) {
+		items.push({
+			id: `repo:${repo.id}`,
+			label: repo.fullName,
+			group: "GitHub Repositories",
+			icon: CodeIcon,
+			keywords: [repo.name, repo.owner, repo.language ?? ""].filter(Boolean),
+			action: {
+				type: "execute",
+				fn: noopCommandAction,
+			},
+			meta: {
+				language: repo.language,
+				stars: repo.stars,
+				updatedAt: repo.updatedAt ?? undefined,
+			},
+		});
+	}
+
+	for (const user of result.users) {
+		items.push({
+			id: `github-account:${user.id}`,
+			label: user.login,
+			group: getGitHubAccountGroup(user),
+			icon: UserAddIcon,
+			keywords: [user.login, user.type],
+			action: {
+				type: "execute",
+				fn: noopCommandAction,
+			},
+		});
+	}
+
+	for (const pr of result.pulls) {
+		const prState = getPrIcon(pr);
+		items.push({
+			id: `pull:${pr.id}`,
+			label: `#${pr.number} ${pr.title}`,
+			group: "GitHub Pull Requests",
+			icon: prState.icon,
+			iconClassName: prState.iconClassName,
+			keywords: [
+				pr.repository.name,
+				pr.repository.owner,
+				pr.author?.login ?? "",
+				String(pr.number),
+			].filter(Boolean),
+			action: {
+				type: "execute",
+				fn: noopCommandAction,
+			},
+			meta: {
+				repo: pr.repository.fullName,
+				comments: pr.comments,
+				updatedAt: pr.updatedAt,
+			},
+		});
+	}
+
+	for (const issue of result.issues) {
+		const issueState = getIssueIcon(issue);
+		items.push({
+			id: `issue:${issue.id}`,
+			label: `#${issue.number} ${issue.title}`,
+			group: "GitHub Issues",
+			icon: issueState.icon,
+			iconClassName: issueState.iconClassName,
+			keywords: [
+				issue.repository.name,
+				issue.repository.owner,
+				issue.author?.login ?? "",
+				String(issue.number),
+			].filter(Boolean),
+			action: {
+				type: "execute",
+				fn: noopCommandAction,
+			},
+			meta: {
+				repo: issue.repository.fullName,
+				comments: issue.comments,
+				updatedAt: issue.updatedAt,
+			},
+		});
+	}
+
+	return items;
 }

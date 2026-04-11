@@ -12,6 +12,14 @@ export type GitHubActor = {
 	type: string;
 };
 
+export type GitHubAccountSummary = {
+	id: number;
+	login: string;
+	avatarUrl: string;
+	url: string;
+	type: string;
+};
+
 export type GitHubLabel = {
 	name: string;
 	color: string;
@@ -111,6 +119,13 @@ export type MyIssuesResult = {
 	assigned: IssueSummary[];
 	authored: IssueSummary[];
 	mentioned: IssueSummary[];
+};
+
+export type CommandPaletteSearchResult = {
+	repositories: UserRepoSummary[];
+	users: GitHubAccountSummary[];
+	pulls: PullSummary[];
+	issues: IssueSummary[];
 };
 
 export type PullComment = {

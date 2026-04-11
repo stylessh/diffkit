@@ -1,8 +1,10 @@
 import { createServerFn } from "@tanstack/react-start";
 import { type Octokit as OctokitType, RequestError } from "octokit";
 import type {
+	CommandPaletteSearchResult,
 	CreateLabelInput,
 	CreateReviewCommentInput,
+	GitHubAccountSummary,
 	GitHubActor,
 	GitHubLabel,
 	IssueComment,
@@ -78,6 +80,12 @@ type SearchItem = Awaited<
 type SearchResult = Awaited<
 	ReturnType<GitHubClient["rest"]["search"]["issuesAndPullRequests"]>
 >["data"];
+type RepositorySearchItem = Awaited<
+	ReturnType<GitHubClient["rest"]["search"]["repos"]>
+>["data"]["items"][number];
+type UserSearchItem = Awaited<
+	ReturnType<GitHubClient["rest"]["search"]["users"]>
+>["data"]["items"][number];
 type AuthenticatedUserRepo = Awaited<
 	ReturnType<GitHubClient["rest"]["repos"]["listForAuthenticatedUser"]>
 >["data"][number];
@@ -300,6 +308,11 @@ export type IssueFromRepoInput = {
 	issueNumber: number;
 };
 
+export type CommandPaletteSearchInput = {
+	query: string;
+	perPage?: number;
+};
+
 const myPullRoleDefinitions = [
 	{ key: "reviewRequested", role: "review-requested" },
 	{ key: "assigned", role: "assigned" },
@@ -334,6 +347,23 @@ function clampPage(value: number | undefined) {
 	}
 
 	return Math.max(Math.trunc(value ?? 1), 1);
+}
+
+function clampCommandSearchPerPage(value: number | undefined) {
+	return Math.min(clampPerPage(value, 5), 10);
+}
+
+function normalizeCommandPaletteSearchQuery(query: string) {
+	return query.trim().replace(/\s+/g, " ").slice(0, 120);
+}
+
+function emptyCommandPaletteSearchResult(): CommandPaletteSearchResult {
+	return {
+		repositories: [],
+		users: [],
+		pulls: [],
+		issues: [],
+	};
 }
 
 function buildRepositoryRef(
@@ -378,6 +408,42 @@ function mapActor(user: GitHubApiUser | null | undefined): GitHubActor | null {
 		avatarUrl: user.avatar_url ?? "",
 		url: user.html_url ?? `https://github.com/${user.login}`,
 		type: user.type ?? "User",
+	};
+}
+
+function mapGitHubAccountSearchItem(
+	user: UserSearchItem,
+): GitHubAccountSummary | null {
+	if (!user.login) {
+		return null;
+	}
+
+	return {
+		id: user.id,
+		login: user.login,
+		avatarUrl: user.avatar_url ?? "",
+		url: user.html_url ?? `https://github.com/${user.login}`,
+		type: user.type ?? "User",
+	};
+}
+
+function mapRepositorySearchItem(repo: RepositorySearchItem): UserRepoSummary {
+	const ownerLogin = repo.owner?.login ?? "";
+	const fullName =
+		repo.full_name ?? [ownerLogin, repo.name].filter(Boolean).join("/");
+	const fallbackOwner = fullName.split("/")[0] ?? "";
+
+	return {
+		id: repo.id,
+		name: repo.name,
+		fullName,
+		description: repo.description ?? null,
+		stars: repo.stargazers_count ?? 0,
+		language: repo.language ?? null,
+		updatedAt: repo.updated_at ?? null,
+		isPrivate: repo.private ?? false,
+		url: repo.html_url ?? `https://github.com/${fullName}`,
+		owner: ownerLogin || fallbackOwner,
 	};
 }
 
@@ -553,6 +619,23 @@ function mapIssueSearchItems(items: SearchItem[]) {
 			return mapIssueSummary(item, repository);
 		})
 		.filter((item): item is IssueSummary => Boolean(item));
+}
+
+async function safeCommandPaletteSearch<T>({
+	fallback,
+	label,
+	task,
+}: {
+	fallback: T;
+	label: string;
+	task: () => Promise<T>;
+}) {
+	try {
+		return await task();
+	} catch (error) {
+		console.error(`[github-command-search] failed to search ${label}`, error);
+		return fallback;
+	}
 }
 
 async function getGitHubContext(): Promise<GitHubContext | null> {
@@ -2317,6 +2400,85 @@ export const getUserRepos = createServerFn({ method: "GET" }).handler(
 		});
 	},
 );
+
+export const searchCommandPaletteGitHub = createServerFn({ method: "GET" })
+	.inputValidator(identityValidator<CommandPaletteSearchInput>)
+	.handler(async ({ data }): Promise<CommandPaletteSearchResult> => {
+		const query = normalizeCommandPaletteSearchQuery(data.query);
+		if (query.length < 2) {
+			return emptyCommandPaletteSearchResult();
+		}
+
+		const context = await getGitHubContext();
+		if (!context) {
+			return emptyCommandPaletteSearchResult();
+		}
+
+		const perPage = clampCommandSearchPerPage(data.perPage);
+		const [repositories, users, pullItems, issueItems] = await Promise.all([
+			safeCommandPaletteSearch({
+				label: "repositories",
+				fallback: [] as UserRepoSummary[],
+				task: async () => {
+					const response = await context.octokit.rest.search.repos({
+						q: `${query} in:name,description fork:true`,
+						per_page: perPage,
+						sort: "updated",
+						order: "desc",
+					});
+					return response.data.items.map(mapRepositorySearchItem);
+				},
+			}),
+			safeCommandPaletteSearch({
+				label: "users",
+				fallback: [] as GitHubAccountSummary[],
+				task: async () => {
+					const response = await context.octokit.rest.search.users({
+						q: `${query} in:login,fullname`,
+						per_page: perPage,
+					});
+					return response.data.items
+						.map((user) => mapGitHubAccountSearchItem(user))
+						.filter((user): user is GitHubAccountSummary => Boolean(user));
+				},
+			}),
+			safeCommandPaletteSearch({
+				label: "pull requests",
+				fallback: [] as SearchItem[],
+				task: async () => {
+					const response =
+						await context.octokit.rest.search.issuesAndPullRequests({
+							q: `${query} is:pr in:title,body archived:false`,
+							per_page: perPage,
+							sort: "updated",
+							order: "desc",
+						});
+					return response.data.items;
+				},
+			}),
+			safeCommandPaletteSearch({
+				label: "issues",
+				fallback: [] as SearchItem[],
+				task: async () => {
+					const response =
+						await context.octokit.rest.search.issuesAndPullRequests({
+							q: `${query} is:issue in:title,body archived:false`,
+							per_page: perPage,
+							sort: "updated",
+							order: "desc",
+						});
+					return response.data.items;
+				},
+			}),
+		]);
+
+		return {
+			repositories,
+			users,
+			pulls: mapPullSearchItems(pullItems),
+			issues: mapIssueSearchItems(issueItems),
+		};
+	});
 
 function toInstallationTargetType(
 	value: string | undefined,
