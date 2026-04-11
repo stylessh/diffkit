@@ -1,6 +1,5 @@
+import { Md } from "@m2d/react-markdown/client";
 import { Suspense, use, useCallback, useRef, useState } from "react";
-import type { Components } from "react-markdown";
-import ReactMarkdown from "react-markdown";
 import rehypeRaw from "rehype-raw";
 import remarkGfm from "remark-gfm";
 import type { BundledLanguage, Highlighter } from "shiki";
@@ -152,8 +151,9 @@ function ShikiCode({ code, lang }: { code: string; lang: string }) {
 	);
 }
 
-const components: Components = {
-	h1: ({ children, ...props }) => (
+// eslint-disable-next-line @typescript-eslint/no-explicit-any -- component overrides receive union props from @m2d/react-markdown
+const components: Record<string, React.FC<any>> = {
+	h1: ({ node: _, children, ...props }) => (
 		<h1
 			className="text-2xl font-semibold tracking-tight mb-3 mt-5 first:mt-0"
 			{...props}
@@ -161,7 +161,7 @@ const components: Components = {
 			{children}
 		</h1>
 	),
-	h2: ({ children, ...props }) => (
+	h2: ({ node: _, children, ...props }) => (
 		<h2
 			className="text-xl font-semibold tracking-tight mb-2 mt-4 first:mt-0"
 			{...props}
@@ -169,7 +169,7 @@ const components: Components = {
 			{children}
 		</h2>
 	),
-	h3: ({ children, ...props }) => (
+	h3: ({ node: _, children, ...props }) => (
 		<h3
 			className="text-lg font-semibold tracking-tight mb-2 mt-3 first:mt-0"
 			{...props}
@@ -177,17 +177,17 @@ const components: Components = {
 			{children}
 		</h3>
 	),
-	h4: ({ children, ...props }) => (
+	h4: ({ node: _, children, ...props }) => (
 		<h4 className="text-base font-semibold mb-1.5 mt-3 first:mt-0" {...props}>
 			{children}
 		</h4>
 	),
-	p: ({ children, ...props }) => (
+	p: ({ node: _, children, ...props }) => (
 		<p className="text-sm leading-relaxed mb-2 last:mb-0" {...props}>
 			{children}
 		</p>
 	),
-	a: ({ children, href, ...props }) => (
+	a: ({ node: _, children, href, ...props }) => (
 		<a
 			href={href}
 			className="text-sm font-medium underline underline-offset-2 decoration-border hover:decoration-foreground transition-colors"
@@ -198,7 +198,7 @@ const components: Components = {
 			{children}
 		</a>
 	),
-	ul: ({ children, ...props }) => (
+	ul: ({ node: _, children, ...props }) => (
 		<ul
 			className="text-sm list-disc pl-5 mb-2 flex flex-col gap-0.5"
 			{...props}
@@ -206,7 +206,7 @@ const components: Components = {
 			{children}
 		</ul>
 	),
-	ol: ({ children, ...props }) => (
+	ol: ({ node: _, children, ...props }) => (
 		<ol
 			className="text-sm list-decimal pl-5 mb-2 flex flex-col gap-0.5"
 			{...props}
@@ -214,12 +214,12 @@ const components: Components = {
 			{children}
 		</ol>
 	),
-	li: ({ children, ...props }) => (
+	li: ({ node: _, children, ...props }) => (
 		<li className="text-sm leading-relaxed" {...props}>
 			{children}
 		</li>
 	),
-	blockquote: ({ children, ...props }) => (
+	blockquote: ({ node: _, children, ...props }) => (
 		<blockquote
 			className="border-l-2 border-border pl-3 text-sm text-muted-foreground italic mb-2"
 			{...props}
@@ -227,7 +227,7 @@ const components: Components = {
 			{children}
 		</blockquote>
 	),
-	code: ({ children, className, ...props }) => {
+	code: ({ node: _, children, className, ...props }) => {
 		const langMatch = className?.match(/language-(\w+)/);
 		if (langMatch) {
 			const code = String(children).replace(/\n$/, "");
@@ -263,27 +263,29 @@ const components: Components = {
 			</pre>
 		);
 	},
-	hr: (props) => <hr className="my-4 border-border" {...props} />,
-	img: ({ alt, ...props }) => (
+	hr: ({ node: _, ...props }) => (
+		<hr className="my-4 border-border" {...props} />
+	),
+	img: ({ node: _, alt, ...props }) => (
 		<img
 			className="inline-block max-w-full rounded-lg my-2"
 			alt={alt}
 			{...props}
 		/>
 	),
-	table: ({ children, ...props }) => (
+	table: ({ node: _, children, ...props }) => (
 		<div className="overflow-hidden mb-2 rounded-lg border border-border bg-surface-0">
 			<table className="w-full text-sm border-collapse" {...props}>
 				{children}
 			</table>
 		</div>
 	),
-	thead: ({ children, ...props }) => (
+	thead: ({ node: _, children, ...props }) => (
 		<thead className="bg-surface-1" {...props}>
 			{children}
 		</thead>
 	),
-	th: ({ children, ...props }) => (
+	th: ({ node: _, children, ...props }) => (
 		<th
 			className="border-b border-r border-border/50 px-3 py-1.5 text-left text-xs font-medium text-muted-foreground last:border-r-0"
 			{...props}
@@ -291,7 +293,7 @@ const components: Components = {
 			{children}
 		</th>
 	),
-	td: ({ children, ...props }) => (
+	td: ({ node: _, children, ...props }) => (
 		<td
 			className="border-b border-r border-border/50 px-3 py-1.5 text-xs last:border-r-0 [tr:last-child_&]:border-b-0"
 			{...props}
@@ -299,7 +301,7 @@ const components: Components = {
 			{children}
 		</td>
 	),
-	input: ({ type, checked, ...props }) => {
+	input: ({ node: _, type, checked, ...props }) => {
 		if (type === "checkbox") {
 			return (
 				<input
@@ -313,22 +315,22 @@ const components: Components = {
 		}
 		return <input type={type} {...props} />;
 	},
-	strong: ({ children, ...props }) => (
+	strong: ({ node: _, children, ...props }) => (
 		<strong className="font-semibold" {...props}>
 			{children}
 		</strong>
 	),
-	em: ({ children, ...props }) => (
+	em: ({ node: _, children, ...props }) => (
 		<em className="italic" {...props}>
 			{children}
 		</em>
 	),
-	del: ({ children, ...props }) => (
+	del: ({ node: _, children, ...props }) => (
 		<del className="text-muted-foreground line-through" {...props}>
 			{children}
 		</del>
 	),
-	details: ({ children, ...props }) => (
+	details: ({ node: _, children, ...props }) => (
 		<details
 			className="group/details mb-2 text-sm [&>:not(summary)]:mt-2"
 			{...props}
@@ -336,7 +338,7 @@ const components: Components = {
 			{children}
 		</details>
 	),
-	summary: ({ children, ...props }) => (
+	summary: ({ node: _, children, ...props }) => (
 		<summary
 			className="flex w-fit cursor-pointer select-none list-none items-center gap-1.5 rounded-lg border border-border bg-surface-0 px-3 py-1.5 text-[13px] font-medium hover:bg-surface-1 [&::-webkit-details-marker]:hidden"
 			{...props}
@@ -367,13 +369,13 @@ export function Markdown({
 }) {
 	return (
 		<div className={cn("text-foreground", className)}>
-			<ReactMarkdown
+			<Md
 				remarkPlugins={[remarkGfm]}
 				rehypePlugins={[rehypeRaw]}
 				components={components}
 			>
 				{children}
-			</ReactMarkdown>
+			</Md>
 		</div>
 	);
 }

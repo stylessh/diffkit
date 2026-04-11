@@ -22,6 +22,7 @@ export {
   ComputerIcon as SystemIcon,
   Copy01Icon as CopyIcon,
   DashboardSquare01Icon as DashboardIcon,
+  Delete01Icon,
   DragDropVerticalIcon as GripVerticalIcon,
   File02Icon as FileIcon,
   Folder01Icon as FolderIcon,

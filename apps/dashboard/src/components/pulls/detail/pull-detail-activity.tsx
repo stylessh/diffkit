@@ -2,6 +2,7 @@ import {
 	CheckIcon,
 	ChevronDownIcon,
 	ChevronUpIcon,
+	Delete01Icon,
 	GitCommitIcon,
 	GitMergeIcon,
 	MoreHorizontalIcon,
@@ -34,6 +35,7 @@ import {
 } from "#/components/details/detail-activity";
 import { formatRelativeTime } from "#/lib/format-relative-time";
 import {
+	deleteBranch,
 	dismissPullReview,
 	mergePullRequest,
 	requestPullReviewers,
@@ -127,6 +129,16 @@ export function PullDetailActivitySection({
 				</div>
 			)}
 
+			{pr.isMerged && (
+				<div className="mt-6">
+					<MergedBranchBanner
+						owner={owner}
+						repo={repo}
+						branchName={pr.headRefName}
+					/>
+				</div>
+			)}
+
 			<div className="mt-6">
 				<DetailCommentBox />
 			</div>
@@ -163,6 +175,85 @@ function MergeStatusSection({
 			repo={repo}
 			pullNumber={pullNumber}
 		/>
+	);
+}
+
+function MergedBranchBanner({
+	owner,
+	repo,
+	branchName,
+}: {
+	owner: string;
+	repo: string;
+	branchName: string;
+}) {
+	const [isDeleting, setIsDeleting] = useState(false);
+	const [isDeleted, setIsDeleted] = useState(false);
+
+	const handleDelete = async () => {
+		setIsDeleting(true);
+		try {
+			const result = await deleteBranch({
+				data: { owner, repo, branch: branchName },
+			});
+			if (result.ok) {
+				setIsDeleted(true);
+			} else {
+				toast.error(result.error);
+				checkPermissionWarning(result, `${owner}/${repo}`);
+				setIsDeleting(false);
+			}
+		} catch {
+			toast.error("Failed to delete branch");
+			setIsDeleting(false);
+		}
+	};
+
+	return (
+		<div className="flex items-center gap-3 rounded-lg bg-purple-500/15 px-4 py-3">
+			<div className="flex size-5 shrink-0 items-center justify-center rounded-full bg-purple-500 text-white">
+				<GitMergeIcon size={12} strokeWidth={2} />
+			</div>
+			<p className="flex-1 text-sm text-purple-900 dark:text-purple-200">
+				{isDeleted ? (
+					<>
+						Branch{" "}
+						<code className="rounded bg-purple-500/20 px-1 py-0.5 font-mono text-xs">
+							{branchName}
+						</code>{" "}
+						has been deleted.
+					</>
+				) : (
+					<>
+						Branch{" "}
+						<code className="rounded bg-purple-500/20 px-1 py-0.5 font-mono text-xs">
+							{branchName}
+						</code>{" "}
+						has been merged.
+					</>
+				)}
+			</p>
+			{!isDeleted && (
+				<Button
+					variant="ghost"
+					size="xs"
+					disabled={isDeleting}
+					className="shrink-0 text-purple-700 hover:bg-purple-500/10 hover:text-purple-800 dark:text-purple-300 dark:hover:bg-purple-500/10 dark:hover:text-purple-200"
+					iconLeft={
+						isDeleting ? (
+							<Spinner size={12} />
+						) : (
+							<Delete01Icon size={12} strokeWidth={2} />
+						)
+					}
+					onClick={() => {
+						void handleDelete();
+					}}
+				>
+					Delete branch
+				</Button>
+			)}
+		</div>
 	);
 }
 

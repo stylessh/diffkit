@@ -64,7 +64,7 @@ export function DetailParticipantAvatars({
 	}>;
 }) {
 	return (
-		<div className="group/participants flex items-center">
+		<div className="group/participants flex flex-wrap items-center">
 			{actors.map((actor, index) => (
 				<Tooltip key={actor.login}>
 					<TooltipTrigger asChild>

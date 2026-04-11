@@ -1871,6 +1871,28 @@ export const mergePullRequest = createServerFn({ method: "POST" })
 		}
 	});
 
+export const deleteBranch = createServerFn({ method: "POST" })
+	.inputValidator(
+		identityValidator<{ owner: string; repo: string; branch: string }>,
+	)
+	.handler(async ({ data }): Promise<MutationResult> => {
+		const context = await getGitHubContext();
+		if (!context) {
+			return { ok: false, error: "Not authenticated" };
+		}
+
+		try {
+			await context.octokit.rest.git.deleteRef({
+				owner: data.owner,
+				repo: data.repo,
+				ref: `heads/${data.branch}`,
+			});
+			return { ok: true };
+		} catch (error) {
+			return toMutationError("delete branch", error);
+		}
+	});
+
 async function getPullFilesResult(
 	context: GitHubContext,
 	data: PullFilesPageInput,
