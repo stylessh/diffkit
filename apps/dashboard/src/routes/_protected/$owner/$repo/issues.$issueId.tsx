@@ -1,26 +1,23 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { IssueDetailPage } from "#/components/issues/detail/issue-detail-page";
+import { DashboardContentLoading } from "#/components/layouts/dashboard-content-loading";
 import { githubIssuePageQueryOptions } from "#/lib/github.query";
 import { buildSeo, formatPageTitle, summarizeText } from "#/lib/seo";
 
 export const Route = createFileRoute(
 	"/_protected/$owner/$repo/issues/$issueId",
 )({
-	loader: async ({ context, params }) => {
+	loader: ({ context, params }) => {
 		const issueNumber = Number(params.issueId);
 		const scope = { userId: context.user.id };
-		const pageOptions = githubIssuePageQueryOptions(scope, {
-			owner: params.owner,
-			repo: params.repo,
-			issueNumber,
-		});
 
-		const cachedData = context.queryClient.getQueryData(pageOptions.queryKey);
-		if (cachedData !== undefined) {
-			return cachedData;
-		}
-
-		return context.queryClient.ensureQueryData(pageOptions);
+		return context.queryClient.getQueryData(
+			githubIssuePageQueryOptions(scope, {
+				owner: params.owner,
+				repo: params.repo,
+				issueNumber,
+			}).queryKey,
+		);
 	},
 	head: ({ loaderData, match, params }) => {
 		const issue = loaderData?.detail;
@@ -40,5 +37,6 @@ export const Route = createFileRoute(
 			robots: "noindex",
 		});
 	},
+	pendingComponent: DashboardContentLoading,
 	component: IssueDetailPage,
 });

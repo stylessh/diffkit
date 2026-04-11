@@ -1,54 +1,31 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { DashboardContentLoading } from "#/components/layouts/dashboard-content-loading";
 import { ReviewPage } from "#/components/pulls/review/review-page";
-import { getPullFiles } from "#/lib/github.functions";
 import {
 	githubPullFileSummariesQueryOptions,
 	githubPullPageQueryOptions,
-	githubQueryKeys,
 } from "#/lib/github.query";
 import { buildSeo, formatPageTitle, summarizeText } from "#/lib/seo";
 
-const PULL_FILES_PAGE_SIZE = 25;
-
 export const Route = createFileRoute("/_protected/$owner/$repo/review/$pullId")(
 	{
-		loader: async ({ context, params }) => {
+		loader: ({ context, params }) => {
 			const pullNumber = Number(params.pullId);
 			const scope = { userId: context.user.id };
 			const input = { owner: params.owner, repo: params.repo, pullNumber };
-			const pageOptions = githubPullPageQueryOptions(scope, input);
-			const fileSummariesOptions = githubPullFileSummariesQueryOptions(
-				scope,
-				input,
-			);
 
 			const cachedPageData = context.queryClient.getQueryData(
-				pageOptions.queryKey,
+				githubPullPageQueryOptions(scope, input).queryKey,
 			);
 			const cachedFileSummaries = context.queryClient.getQueryData(
-				fileSummariesOptions.queryKey,
+				githubPullFileSummariesQueryOptions(scope, input).queryKey,
 			);
 
-			// Check if infinite query already has data
-			const filesQueryKey = githubQueryKeys.pulls.files(scope, input);
-			const cachedFilesData = context.queryClient.getQueryData(filesQueryKey);
-
-			const [pageData, fileSummaries, firstFilesPage] = await Promise.all([
-				cachedPageData ?? context.queryClient.ensureQueryData(pageOptions),
-				cachedFileSummaries ??
-					context.queryClient.ensureQueryData(fileSummariesOptions),
-				cachedFilesData
-					? null
-					: getPullFiles({
-							data: {
-								...input,
-								page: 1,
-								perPage: PULL_FILES_PAGE_SIZE,
-							},
-						}),
-			]);
-
-			return { pageData, fileSummaries, firstFilesPage };
+			return {
+				pageData: cachedPageData ?? null,
+				fileSummaries: cachedFileSummaries ?? null,
+				firstFilesPage: null,
+			};
 		},
 		head: ({ loaderData, match, params }) => {
 			const pull = loaderData?.pageData?.detail;
@@ -68,6 +45,7 @@ export const Route = createFileRoute("/_protected/$owner/$repo/review/$pullId")(
 				robots: "noindex",
 			});
 		},
+		pendingComponent: DashboardContentLoading,
 		component: ReviewPage,
 	},
 );

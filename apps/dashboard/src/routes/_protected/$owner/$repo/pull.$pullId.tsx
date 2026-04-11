@@ -1,32 +1,21 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { DashboardContentLoading } from "#/components/layouts/dashboard-content-loading";
 import { PullDetailPage } from "#/components/pulls/detail/pull-detail-page";
-import {
-	githubPullPageQueryOptions,
-	githubViewerQueryOptions,
-} from "#/lib/github.query";
+import { githubPullPageQueryOptions } from "#/lib/github.query";
 import { buildSeo, formatPageTitle, summarizeText } from "#/lib/seo";
 
 export const Route = createFileRoute("/_protected/$owner/$repo/pull/$pullId")({
-	loader: async ({ context, params }) => {
+	loader: ({ context, params }) => {
 		const pullNumber = Number(params.pullId);
 		const scope = { userId: context.user.id };
-		const pageOptions = githubPullPageQueryOptions(scope, {
-			owner: params.owner,
-			repo: params.repo,
-			pullNumber,
-		});
 
-		const cachedData = context.queryClient.getQueryData(pageOptions.queryKey);
-		if (cachedData !== undefined) {
-			void context.queryClient.ensureQueryData(githubViewerQueryOptions(scope));
-			return cachedData;
-		}
-
-		const [pageData] = await Promise.all([
-			context.queryClient.ensureQueryData(pageOptions),
-			context.queryClient.ensureQueryData(githubViewerQueryOptions(scope)),
-		]);
-		return pageData;
+		return context.queryClient.getQueryData(
+			githubPullPageQueryOptions(scope, {
+				owner: params.owner,
+				repo: params.repo,
+				pullNumber,
+			}).queryKey,
+		);
 	},
 	head: ({ loaderData, match, params }) => {
 		const pull = loaderData?.detail;
@@ -46,5 +35,6 @@ export const Route = createFileRoute("/_protected/$owner/$repo/pull/$pullId")({
 			robots: "noindex",
 		});
 	},
+	pendingComponent: DashboardContentLoading,
 	component: PullDetailPage,
 });
