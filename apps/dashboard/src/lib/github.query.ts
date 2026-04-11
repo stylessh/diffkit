@@ -1,5 +1,6 @@
 import { queryOptions } from "@tanstack/react-query";
 import {
+	getCommentPage,
 	getGitHubViewer,
 	getIssueComments,
 	getIssueFromRepo,
@@ -20,6 +21,7 @@ import {
 	getPullsFromUser,
 	getRepoCollaborators,
 	getRepoLabels,
+	getTimelineEventPage,
 	getUserRepos,
 } from "./github.functions";
 import { githubCachePolicy } from "./github-cache-policy";
@@ -140,6 +142,14 @@ export const githubQueryKeys = {
 	) => ["github", scope.userId, "repoLabels", input] as const,
 	orgTeams: (scope: GitHubQueryScope, org: string) =>
 		["github", scope.userId, "orgTeams", org] as const,
+	commentPage: (
+		scope: GitHubQueryScope,
+		input: { owner: string; repo: string; issueNumber: number; page: number },
+	) => ["github", scope.userId, "commentPage", input] as const,
+	timelineEventPage: (
+		scope: GitHubQueryScope,
+		input: { owner: string; repo: string; issueNumber: number; page: number },
+	) => ["github", scope.userId, "timelineEventPage", input] as const,
 	issues: {
 		mine: (scope: GitHubQueryScope) =>
 			["github", scope.userId, "issues", "mine"] as const,
@@ -422,6 +432,32 @@ export function githubIssueCommentsQueryOptions(
 		staleTime: githubCachePolicy.activity.staleTimeMs,
 		gcTime: githubCachePolicy.activity.gcTimeMs,
 		refetchOnMount: "always",
+		meta: tabPersistedMeta,
+	});
+}
+
+export function githubCommentPageQueryOptions(
+	scope: GitHubQueryScope,
+	input: { owner: string; repo: string; issueNumber: number; page: number },
+) {
+	return queryOptions({
+		queryKey: githubQueryKeys.commentPage(scope, input),
+		queryFn: () => getCommentPage({ data: input }),
+		staleTime: githubCachePolicy.activity.staleTimeMs,
+		gcTime: githubCachePolicy.activity.gcTimeMs,
+		meta: tabPersistedMeta,
+	});
+}
+
+export function githubTimelineEventPageQueryOptions(
+	scope: GitHubQueryScope,
+	input: { owner: string; repo: string; issueNumber: number; page: number },
+) {
+	return queryOptions({
+		queryKey: githubQueryKeys.timelineEventPage(scope, input),
+		queryFn: () => getTimelineEventPage({ data: input }),
+		staleTime: githubCachePolicy.activity.staleTimeMs,
+		gcTime: githubCachePolicy.activity.gcTimeMs,
 		meta: tabPersistedMeta,
 	});
 }

@@ -41,7 +41,7 @@ DiffKit is a **pnpm monorepo** managed with **Turborepo**:
 - **TanStack Router** — File-based routing in `apps/dashboard/src/routes/`
 - **TanStack Query** — Server state management and caching
 - **Drizzle ORM** — Database schema and migrations in `apps/dashboard/src/db/` and `apps/dashboard/drizzle/`
-- **Better Auth** — Authentication with a GitHub App
+- **Better Auth** — Authentication with a GitHub OAuth App (+ GitHub App for webhooks)
 - **Cloudflare D1** — SQLite database at the edge
 
 ### Adding a New Route

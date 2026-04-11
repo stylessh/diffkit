@@ -7,6 +7,7 @@ import {
 } from "#/components/details/detail-page";
 import {
 	githubPullPageQueryOptions,
+	githubQueryKeys,
 	githubViewerQueryOptions,
 } from "#/lib/github.query";
 import { useHasMounted } from "#/lib/use-has-mounted";
@@ -37,6 +38,9 @@ export function PullDetailPage() {
 	const pr = pageQuery.data?.detail;
 	const comments = pageQuery.data?.comments;
 	const commits = pageQuery.data?.commits;
+	const events = pageQuery.data?.events;
+	const commentPagination = pageQuery.data?.commentPagination;
+	const eventPagination = pageQuery.data?.eventPagination;
 	const viewer = viewerQuery.data ?? null;
 
 	useRegisterTab(
@@ -79,6 +83,14 @@ export function PullDetailPage() {
 					<PullDetailActivitySection
 						comments={comments}
 						commits={commits}
+						events={events}
+						commentPagination={commentPagination}
+						eventPagination={eventPagination}
+						pageQueryKey={githubQueryKeys.pulls.page(scope, {
+							owner,
+							repo,
+							pullNumber,
+						})}
 						isFetching={pageQuery.isFetching}
 						pr={pr}
 						owner={owner}

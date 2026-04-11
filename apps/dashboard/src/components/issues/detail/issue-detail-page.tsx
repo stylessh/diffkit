@@ -5,7 +5,10 @@ import {
 	DetailPageLayout,
 	DetailPageSkeletonLayout,
 } from "#/components/details/detail-page";
-import { githubIssuePageQueryOptions } from "#/lib/github.query";
+import {
+	githubIssuePageQueryOptions,
+	githubQueryKeys,
+} from "#/lib/github.query";
 import { useHasMounted } from "#/lib/use-has-mounted";
 import { useRegisterTab } from "#/lib/use-register-tab";
 import { IssueDetailActivitySection } from "./issue-detail-activity";
@@ -28,6 +31,9 @@ export function IssueDetailPage() {
 
 	const issue = pageQuery.data?.detail;
 	const comments = pageQuery.data?.comments;
+	const events = pageQuery.data?.events;
+	const commentPagination = pageQuery.data?.commentPagination;
+	const eventPagination = pageQuery.data?.eventPagination;
 
 	useRegisterTab(
 		issue
@@ -52,7 +58,18 @@ export function IssueDetailPage() {
 					<IssueDetailHeader owner={owner} repo={repo} issue={issue} />
 					<IssueDetailActivitySection
 						comments={comments}
+						events={events}
+						commentPagination={commentPagination}
+						eventPagination={eventPagination}
+						pageQueryKey={githubQueryKeys.issues.page(scope, {
+							owner,
+							repo,
+							issueNumber,
+						})}
 						isFetching={pageQuery.isFetching}
+						owner={owner}
+						repo={repo}
+						issueNumber={issueNumber}
 					/>
 				</>
 			}
