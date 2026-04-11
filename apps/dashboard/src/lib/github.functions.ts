@@ -1820,6 +1820,8 @@ const TIMELINE_EVENT_TYPES = new Set([
 	"reviewed",
 	"convert_to_draft",
 	"ready_for_review",
+	"head_ref_deleted",
+	"head_ref_restored",
 ]);
 
 function mapTimelineEvents(rawEvents: unknown[]): TimelineEvent[] {
@@ -1921,6 +1923,14 @@ function mapTimelineEvents(rawEvents: unknown[]): TimelineEvent[] {
 				body: (raw.body as string) ?? undefined,
 			};
 		});
+}
+
+function deriveHeadRefDeleted(events: TimelineEvent[]): boolean {
+	for (let i = events.length - 1; i >= 0; i--) {
+		if (events[i].event === "head_ref_restored") return false;
+		if (events[i].event === "head_ref_deleted") return true;
+	}
+	return false;
 }
 
 type GraphQLCrossRefResponse = {
@@ -2320,6 +2330,7 @@ async function getPullPageDataResult(
 			loadedPages: [1],
 			hasMore: timelineResult.hasMore,
 		},
+		headRefDeleted: deriveHeadRefDeleted(timelineResult.events),
 	};
 }
 
@@ -3167,7 +3178,7 @@ type UpdatePullBodyInput = PullFromRepoInput & { body: string };
 export const updatePullBody = createServerFn({ method: "POST" })
 	.inputValidator(identityValidator<UpdatePullBodyInput>)
 	.handler(async ({ data }): Promise<boolean> => {
-		const context = await getGitHubContextForRepository(data);
+		const context = await getGitHubUserContextForRepository(data);
 		if (!context) {
 			return false;
 		}
@@ -3189,7 +3200,7 @@ export const updatePullBody = createServerFn({ method: "POST" })
 export const updatePullBranch = createServerFn({ method: "POST" })
 	.inputValidator(identityValidator<PullFromRepoInput>)
 	.handler(async ({ data }): Promise<MutationResult> => {
-		const context = await getGitHubContextForRepository(data);
+		const context = await getGitHubUserContextForRepository(data);
 		if (!context) {
 			return { ok: false, error: "Not authenticated" };
 		}
@@ -3236,10 +3247,15 @@ export const mergePullRequest = createServerFn({ method: "POST" })
 
 export const deleteBranch = createServerFn({ method: "POST" })
 	.inputValidator(
-		identityValidator<{ owner: string; repo: string; branch: string }>,
+		identityValidator<{
+			owner: string;
+			repo: string;
+			branch: string;
+			pullNumber: number;
+		}>,
 	)
 	.handler(async ({ data }): Promise<MutationResult> => {
-		const context = await getGitHubContextForRepository(data);
+		const context = await getGitHubUserContextForRepository(data);
 		if (!context) {
 			return { ok: false, error: "Not authenticated" };
 		}
@@ -3250,6 +3266,7 @@ export const deleteBranch = createServerFn({ method: "POST" })
 				repo: data.repo,
 				ref: `heads/${data.branch}`,
 			});
+			await bustPullDetailCaches(context.session.user.id, data);
 			return { ok: true };
 		} catch (error) {
 			return toMutationError("delete branch", error);
@@ -3433,7 +3450,7 @@ export const getPullReviewComments = createServerFn({ method: "GET" })
 export const submitPullReview = createServerFn({ method: "POST" })
 	.inputValidator(identityValidator<SubmitReviewInput>)
 	.handler(async ({ data }): Promise<boolean> => {
-		const context = await getGitHubContextForRepository(data);
+		const context = await getGitHubUserContextForRepository(data);
 		if (!context) {
 			return false;
 		}
@@ -3469,7 +3486,7 @@ export const submitPullReview = createServerFn({ method: "POST" })
 export const createReviewComment = createServerFn({ method: "POST" })
 	.inputValidator(identityValidator<CreateReviewCommentInput>)
 	.handler(async ({ data }): Promise<PullReviewComment | null> => {
-		const context = await getGitHubContextForRepository(data);
+		const context = await getGitHubUserContextForRepository(data);
 		if (!context) {
 			return null;
 		}
@@ -3637,7 +3654,7 @@ export const getOrgTeams = createServerFn({ method: "GET" })
 export const requestPullReviewers = createServerFn({ method: "POST" })
 	.inputValidator(identityValidator<RequestReviewersInput>)
 	.handler(async ({ data }): Promise<MutationResult> => {
-		const context = await getGitHubContextForRepository(data);
+		const context = await getGitHubUserContextForRepository(data);
 		if (!context) {
 			return { ok: false, error: "Not authenticated" };
 		}
@@ -3664,7 +3681,7 @@ export const requestPullReviewers = createServerFn({ method: "POST" })
 export const removeReviewRequest = createServerFn({ method: "POST" })
 	.inputValidator(identityValidator<RequestReviewersInput>)
 	.handler(async ({ data }): Promise<MutationResult> => {
-		const context = await getGitHubContextForRepository(data);
+		const context = await getGitHubUserContextForRepository(data);
 		if (!context) {
 			return { ok: false, error: "Not authenticated" };
 		}
@@ -3699,7 +3716,7 @@ export type DismissReviewInput = {
 export const dismissPullReview = createServerFn({ method: "POST" })
 	.inputValidator(identityValidator<DismissReviewInput>)
 	.handler(async ({ data }): Promise<MutationResult> => {
-		const context = await getGitHubContextForRepository(data);
+		const context = await getGitHubUserContextForRepository(data);
 		if (!context) {
 			return { ok: false, error: "Not authenticated" };
 		}
@@ -3772,7 +3789,7 @@ export const getRepoLabels = createServerFn({ method: "GET" })
 export const setIssueLabels = createServerFn({ method: "POST" })
 	.inputValidator(identityValidator<SetLabelsInput>)
 	.handler(async ({ data }): Promise<boolean> => {
-		const context = await getGitHubContextForRepository(data);
+		const context = await getGitHubUserContextForRepository(data);
 		if (!context) {
 			return false;
 		}
@@ -3806,7 +3823,7 @@ export const setIssueLabels = createServerFn({ method: "POST" })
 export const createRepoLabel = createServerFn({ method: "POST" })
 	.inputValidator(identityValidator<CreateLabelInput>)
 	.handler(async ({ data }): Promise<GitHubLabel | null> => {
-		const context = await getGitHubContextForRepository(data);
+		const context = await getGitHubUserContextForRepository(data);
 		if (!context) {
 			return null;
 		}

@@ -1,13 +1,28 @@
 import {
+	ChevronRightIcon,
 	CloseIcon,
 	GitPullRequestIcon,
 	IssuesIcon,
+	Remove01Icon,
 	ReviewsIcon,
 } from "@diffkit/icons";
+import {
+	ContextMenu,
+	ContextMenuContent,
+	ContextMenuItem,
+	ContextMenuTrigger,
+} from "@diffkit/ui/components/context-menu";
+import { cn } from "@diffkit/ui/lib/utils";
 import { Link, type useRouter, useRouterState } from "@tanstack/react-router";
 import { memo, useCallback, useEffect, useRef, useState } from "react";
 import { preloadRouteOnce } from "#/lib/route-preload";
-import { removeTab, type Tab, useTabs } from "#/lib/tab-store";
+import {
+	removeOtherTabs,
+	removeTab,
+	removeTabsToRight,
+	type Tab,
+	useTabs,
+} from "#/lib/tab-store";
 
 const tabIconMap = {
 	pull: GitPullRequestIcon,
@@ -45,7 +60,25 @@ function useScrollShadows(tabCount: number) {
 		return () => ro.disconnect();
 	}, [tabCount, updateScrollState]);
 
-	return { scrollRef, canScrollLeft, canScrollRight, updateScrollState };
+	const handleWheel = useCallback(
+		(e: React.WheelEvent<HTMLDivElement>) => {
+			const el = scrollRef.current;
+			if (!el || el.scrollWidth <= el.clientWidth) return;
+			if (e.deltaY === 0) return;
+			e.preventDefault();
+			el.scrollLeft += e.deltaY;
+			updateScrollState();
+		},
+		[updateScrollState],
+	);
+
+	return {
+		scrollRef,
+		canScrollLeft,
+		canScrollRight,
+		updateScrollState,
+		handleWheel,
+	};
 }
 
 interface DashboardTabsProps {
@@ -56,8 +89,14 @@ interface DashboardTabsProps {
 export function DashboardTabs({ tabsReady, routerRef }: DashboardTabsProps) {
 	const openTabs = useTabs();
 	const pathname = useRouterState({ select: (s) => s.location.pathname });
-	const { scrollRef, canScrollLeft, canScrollRight, updateScrollState } =
-		useScrollShadows(openTabs.length);
+	const contextTabRef = useRef<{ tab: Tab; index: number } | null>(null);
+	const {
+		scrollRef,
+		canScrollLeft,
+		canScrollRight,
+		updateScrollState,
+		handleWheel,
+	} = useScrollShadows(openTabs.length);
 
 	// biome-ignore lint/correctness/useExhaustiveDependencies: pathname is intentionally used as a trigger to re-run when the route changes
 	useEffect(() => {
@@ -94,46 +133,102 @@ export function DashboardTabs({ tabsReady, routerRef }: DashboardTabsProps) {
 		[pathname, routerRef],
 	);
 
+	const handleContextClose = useCallback(() => {
+		const ctx = contextTabRef.current;
+		if (!ctx) return;
+		handleCloseTab(ctx.tab.id, ctx.tab.url);
+	}, [handleCloseTab]);
+
+	const handleContextCloseOthers = useCallback(() => {
+		const ctx = contextTabRef.current;
+		if (!ctx) return;
+		if (pathname !== ctx.tab.url) {
+			void routerRef.current.navigate({ to: ctx.tab.url });
+		}
+		removeOtherTabs(ctx.tab.id);
+	}, [pathname, routerRef]);
+
+	const handleContextCloseRight = useCallback(() => {
+		const ctx = contextTabRef.current;
+		if (!ctx) return;
+		removeTabsToRight(ctx.tab.id);
+	}, []);
+
 	if (openTabs.length === 0) return null;
 
 	return (
 		<div
 			aria-hidden={!tabsReady}
-			className={`flex min-w-0 items-center gap-3 overflow-hidden transition-[opacity,transform] duration-300 ease-out ${
+			className={cn(
+				"flex min-w-0 items-center gap-3 overflow-hidden transition-[opacity,transform] duration-300 ease-out",
 				tabsReady
 					? "translate-y-0 opacity-100"
-					: "pointer-events-none -translate-y-0.5 opacity-0"
-			}`}
+					: "pointer-events-none -translate-y-0.5 opacity-0",
+			)}
 		>
 			<div className="hidden h-4 shrink-0 border-l border-border/50 md:block" />
-			<div className="relative min-w-0 flex-1 overflow-hidden">
-				<div
-					className={`pointer-events-none absolute inset-y-0 left-0 z-10 w-6 bg-gradient-to-r from-muted to-transparent transition-opacity ${canScrollLeft ? "opacity-100" : "opacity-0"}`}
-				/>
-				<div
-					className={`pointer-events-none absolute inset-y-0 right-0 z-10 w-6 bg-gradient-to-l from-muted to-transparent transition-opacity ${canScrollRight ? "opacity-100" : "opacity-0"}`}
-				/>
-				{/* biome-ignore lint/a11y/noStaticElementInteractions: scroll container needs onScroll for gradient visibility */}
-				<div
-					ref={scrollRef}
-					onScroll={updateScrollState}
-					onMouseEnter={updateScrollState}
-					className="no-scrollbar flex w-0 min-w-full items-center gap-0.5 overflow-x-auto"
-				>
-					{openTabs.map((tab) => {
-						const Icon = tabIconMap[tab.type];
-						return (
-							<DetailTab
-								key={tab.id}
-								tab={tab}
-								icon={Icon}
-								onClose={handleCloseTab}
-								routerRef={routerRef}
-							/>
-						);
-					})}
-				</div>
-			</div>
+			<ContextMenu>
+				<ContextMenuTrigger asChild>
+					<div className="relative min-w-0 flex-1 overflow-hidden">
+						<div
+							className={cn(
+								"pointer-events-none absolute inset-y-0 left-0 z-10 w-6 bg-gradient-to-r from-muted to-transparent transition-opacity",
+								canScrollLeft ? "opacity-100" : "opacity-0",
+							)}
+						/>
+						<div
+							className={cn(
+								"pointer-events-none absolute inset-y-0 right-0 z-10 w-6 bg-gradient-to-l from-muted to-transparent transition-opacity",
+								canScrollRight ? "opacity-100" : "opacity-0",
+							)}
+						/>
+						{/* biome-ignore lint/a11y/noStaticElementInteractions: scroll container needs onScroll for gradient visibility */}
+						<div
+							ref={scrollRef}
+							onScroll={updateScrollState}
+							onWheel={handleWheel}
+							onMouseEnter={updateScrollState}
+							className="no-scrollbar flex w-0 min-w-full items-center gap-0.5 overflow-x-auto"
+						>
+							{openTabs.map((tab, index) => {
+								const Icon = tabIconMap[tab.type];
+								return (
+									<DetailTab
+										key={tab.id}
+										tab={tab}
+										icon={Icon}
+										onClose={handleCloseTab}
+										onContextMenu={() => {
+											contextTabRef.current = { tab, index };
+										}}
+										routerRef={routerRef}
+									/>
+								);
+							})}
+						</div>
+					</div>
+				</ContextMenuTrigger>
+				<ContextMenuContent>
+					<ContextMenuItem onSelect={handleContextClose}>
+						<CloseIcon size={14} strokeWidth={2} />
+						Close
+					</ContextMenuItem>
+					<ContextMenuItem
+						onSelect={handleContextCloseOthers}
+						disabled={openTabs.length <= 1}
+					>
+						<Remove01Icon size={14} strokeWidth={2} />
+						Close other tabs
+					</ContextMenuItem>
+					<ContextMenuItem
+						onSelect={handleContextCloseRight}
+						disabled={contextTabRef.current?.index === openTabs.length - 1}
+					>
+						<ChevronRightIcon size={14} strokeWidth={2} />
+						Close tabs to the right
+					</ContextMenuItem>
+				</ContextMenuContent>
+			</ContextMenu>
 		</div>
 	);
 }
@@ -142,11 +237,13 @@ const DetailTab = memo(function DetailTab({
 	tab,
 	icon: Icon,
 	onClose,
+	onContextMenu,
 	routerRef,
 }: {
 	tab: Tab;
 	icon: typeof GitPullRequestIcon;
 	onClose: (id: string, tabUrl: string) => void;
+	onContextMenu: () => void;
 	routerRef: React.RefObject<ReturnType<typeof useRouter>>;
 }) {
 	const preloadTab = () => {
@@ -160,11 +257,16 @@ const DetailTab = memo(function DetailTab({
 			onMouseEnter={preloadTab}
 			onFocus={preloadTab}
 			onTouchStart={preloadTab}
+			onContextMenu={onContextMenu}
 			activeOptions={{ exact: true }}
 			activeProps={{ className: "active" }}
 			className="group relative flex h-8 shrink-0 items-center gap-1.5 rounded-md px-3 text-[13px] font-medium text-muted-foreground transition-colors hover:bg-surface-1 hover:text-foreground [&.active]:bg-surface-1 [&.active]:text-foreground"
 		>
-			<Icon size={13} strokeWidth={2} className={`shrink-0 ${tab.iconColor}`} />
+			<Icon
+				size={13}
+				strokeWidth={2}
+				className={cn("shrink-0", tab.iconColor)}
+			/>
 			<span className="max-w-32 truncate">{tab.title}</span>
 			{tab.type === "review" ? (
 				<span className="flex items-center gap-1 font-mono text-[11px] font-medium tabular-nums">

@@ -37,6 +37,8 @@ export function useOptimisticMutation() {
 				isSuccess = (result: TResult) => Boolean(result),
 			} = options;
 
+			const hasOptimisticUpdates = updates.length > 0;
+
 			const snapshots = updates.map((u) => ({
 				queryKey: u.queryKey,
 				data: queryClient.getQueryData(u.queryKey),
@@ -53,9 +55,16 @@ export function useOptimisticMutation() {
 				const result = await mutationFn();
 
 				if (isSuccess(result)) {
-					await queryClient.invalidateQueries({
-						queryKey: invalidateQueryKey,
-					});
+					// Skip immediate invalidation when optimistic updates were applied.
+					// The optimistic cache already reflects the expected state, and an
+					// immediate refetch can return stale data from GitHub before the
+					// write has propagated — causing a flash. Webhook-driven revalidation
+					// will bring in the canonical data once GitHub has processed the event.
+					if (!hasOptimisticUpdates) {
+						await queryClient.invalidateQueries({
+							queryKey: invalidateQueryKey,
+						});
+					}
 					return result;
 				}
 

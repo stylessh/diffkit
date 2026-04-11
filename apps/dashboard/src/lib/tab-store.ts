@@ -76,6 +76,18 @@ export function removeTab(id: string) {
 	emitChange();
 }
 
+export function removeOtherTabs(id: string) {
+	tabs = tabs.filter((t) => t.id === id);
+	emitChange();
+}
+
+export function removeTabsToRight(id: string) {
+	const index = tabs.findIndex((t) => t.id === id);
+	if (index === -1) return;
+	tabs = tabs.slice(0, index + 1);
+	emitChange();
+}
+
 export function useTabs() {
 	return useSyncExternalStore(subscribe, getSnapshot, getSnapshot);
 }

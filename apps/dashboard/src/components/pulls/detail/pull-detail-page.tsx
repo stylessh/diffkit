@@ -41,6 +41,7 @@ export function PullDetailPage() {
 	const events = pageQuery.data?.events;
 	const commentPagination = pageQuery.data?.commentPagination;
 	const eventPagination = pageQuery.data?.eventPagination;
+	const headRefDeleted = pageQuery.data?.headRefDeleted ?? false;
 	const viewer = viewerQuery.data ?? null;
 
 	useRegisterTab(
@@ -97,6 +98,7 @@ export function PullDetailPage() {
 						repo={repo}
 						pullNumber={pullNumber}
 						scope={scope}
+						headRefDeleted={headRefDeleted}
 					/>
 				</>
 			}

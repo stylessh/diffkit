@@ -5,6 +5,7 @@ import {
 	CircleIcon,
 	Delete01Icon,
 	EditIcon,
+	GitBranchIcon,
 	GitCommitIcon,
 	GitMergeIcon,
 	GitPullRequestIcon,
@@ -79,6 +80,7 @@ export function PullDetailActivitySection({
 	repo,
 	pullNumber,
 	scope,
+	headRefDeleted,
 }: {
 	comments?: PullComment[];
 	commits?: PullCommit[];
@@ -92,6 +94,7 @@ export function PullDetailActivitySection({
 	repo: string;
 	pullNumber: number;
 	scope: GitHubQueryScope;
+	headRefDeleted: boolean;
 }) {
 	return (
 		<div className="flex flex-col">
@@ -167,7 +170,9 @@ export function PullDetailActivitySection({
 					<MergedBranchBanner
 						owner={owner}
 						repo={repo}
+						pullNumber={pullNumber}
 						branchName={pr.headRefName}
+						headRefDeleted={headRefDeleted}
 					/>
 				</div>
 			)}
@@ -214,20 +219,26 @@ function MergeStatusSection({
 function MergedBranchBanner({
 	owner,
 	repo,
+	pullNumber,
 	branchName,
+	headRefDeleted,
 }: {
 	owner: string;
 	repo: string;
+	pullNumber: number;
 	branchName: string;
+	headRefDeleted: boolean;
 }) {
 	const [isDeleting, setIsDeleting] = useState(false);
 	const [isDeleted, setIsDeleted] = useState(false);
+
+	const deleted = headRefDeleted || isDeleted;
 
 	const handleDelete = async () => {
 		setIsDeleting(true);
 		try {
 			const result = await deleteBranch({
-				data: { owner, repo, branch: branchName },
+				data: { owner, repo, branch: branchName, pullNumber },
 			});
 			if (result.ok) {
 				setIsDeleted(true);
@@ -248,7 +259,7 @@ function MergedBranchBanner({
 				<GitMergeIcon size={12} strokeWidth={2} />
 			</div>
 			<p className="flex-1 text-sm text-purple-900 dark:text-purple-200">
-				{isDeleted ? (
+				{deleted ? (
 					<>
 						Branch{" "}
 						<code className="rounded bg-purple-500/20 px-1 py-0.5 font-mono text-xs">
@@ -266,7 +277,7 @@ function MergedBranchBanner({
 					</>
 				)}
 			</p>
-			{!isDeleted && (
+			{!deleted && (
 				<Button
 					variant="ghost"
 					size="xs"
@@ -1080,7 +1091,8 @@ function MergeStatusSkeleton() {
 type TimelineItem =
 	| { type: "comment"; date: string; data: PullComment }
 	| { type: "commit"; date: string; data: PullCommit }
-	| { type: "event"; date: string; data: TimelineEvent };
+	| { type: "event"; date: string; data: TimelineEvent }
+	| { type: "merged"; date: string; data: PullDetail };
 
 const WINDOW_THRESHOLD = 25;
 const EDGE_SIZE = 10;
@@ -1318,6 +1330,9 @@ function ActivityTimeline({
 				date: event.createdAt,
 				data: event,
 			})),
+		...(pr.isMerged && pr.mergedAt
+			? [{ type: "merged" as const, date: pr.mergedAt, data: pr }]
+			: []),
 	].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
 
 	const {
@@ -1428,6 +1443,50 @@ function ActivityTimeline({
 						);
 					}
 
+					if (item.type === "merged") {
+						const mergedPr = item.data;
+						return (
+							<div
+								key="merged"
+								className={cn(
+									"flex items-center gap-1.5 pb-5",
+									index === 0 ? "pt-5" : "pt-5",
+								)}
+							>
+								<div className="flex size-5 shrink-0 items-center justify-center rounded-full bg-purple-500 text-white">
+									<GitMergeIcon size={12} strokeWidth={2} />
+								</div>
+								{mergedPr.mergedBy ? (
+									<img
+										src={mergedPr.mergedBy.avatarUrl}
+										alt={mergedPr.mergedBy.login}
+										className="size-5 shrink-0 rounded-full border border-border"
+									/>
+								) : (
+									<div className="size-5 shrink-0 rounded-full bg-surface-2" />
+								)}
+								<span className="text-[13px]">
+									<span className="font-medium">
+										{mergedPr.mergedBy?.login ?? "Unknown"}
+									</span>
+									{" merged commit "}
+									{mergedPr.mergeCommitSha && (
+										<code className="rounded bg-surface-1 px-1 py-0.5 font-mono text-[10px] text-muted-foreground">
+											{mergedPr.mergeCommitSha.slice(0, 7)}
+										</code>
+									)}
+									{" into "}
+									<code className="rounded bg-surface-1 px-1 py-0.5 font-mono text-[10px] text-muted-foreground">
+										{mergedPr.baseRefName}
+									</code>
+								</span>
+								<span className="ml-auto shrink-0 text-[13px] text-muted-foreground">
+									{formatRelativeTime(mergedPr.mergedAt as string)}
+								</span>
+							</div>
+						);
+					}
+
 					const event = item.data;
 					return (
 						<TimelineEventRow
@@ -1436,6 +1495,7 @@ function ActivityTimeline({
 							isFirst={index === 0}
 							isConsecutive={isConsecutiveEvent}
 							isLastInRun={isLastInEventRun}
+							headRefName={pr.headRefName}
 						/>
 					);
 				})();
@@ -1455,40 +1515,6 @@ function ActivityTimeline({
 					</>
 				);
 			})}
-			{pr.isMerged && pr.mergedAt && (
-				<div className="flex items-center gap-1.5 pt-5 pb-5">
-					<div className="flex size-5 shrink-0 items-center justify-center rounded-full bg-purple-500 text-white">
-						<GitMergeIcon size={12} strokeWidth={2} />
-					</div>
-					{pr.mergedBy ? (
-						<img
-							src={pr.mergedBy.avatarUrl}
-							alt={pr.mergedBy.login}
-							className="size-5 shrink-0 rounded-full border border-border"
-						/>
-					) : (
-						<div className="size-5 shrink-0 rounded-full bg-surface-2" />
-					)}
-					<span className="text-[13px]">
-						<span className="font-medium">
-							{pr.mergedBy?.login ?? "Unknown"}
-						</span>
-						{" merged commit "}
-						{pr.mergeCommitSha && (
-							<code className="rounded bg-surface-1 px-1 py-0.5 font-mono text-[10px] text-muted-foreground">
-								{pr.mergeCommitSha.slice(0, 7)}
-							</code>
-						)}
-						{" into "}
-						<code className="rounded bg-surface-1 px-1 py-0.5 font-mono text-[10px] text-muted-foreground">
-							{pr.baseRefName}
-						</code>
-					</span>
-					<span className="ml-auto shrink-0 text-[13px] text-muted-foreground">
-						{formatRelativeTime(pr.mergedAt)}
-					</span>
-				</div>
-			)}
 		</div>
 	);
 }
@@ -1562,14 +1588,16 @@ function TimelineEventRow({
 	isFirst,
 	isConsecutive,
 	isLastInRun,
+	headRefName,
 }: {
 	event: TimelineEvent;
 	isFirst: boolean;
 	isConsecutive: boolean;
 	isLastInRun: boolean;
+	headRefName: string;
 }) {
 	const icon = getEventIcon(event);
-	const description = getEventDescription(event);
+	const description = getEventDescription(event, headRefName);
 	const isCrossRef =
 		event.event === "cross-referenced" || event.event === "referenced";
 	const hasActorAvatar = !isCrossRef && event.actor?.avatarUrl;
@@ -1706,6 +1734,15 @@ function getEventIcon(event: TimelineEvent) {
 					className="text-green-600 dark:text-green-400"
 				/>
 			);
+		case "head_ref_deleted":
+		case "head_ref_restored":
+			return (
+				<GitBranchIcon
+					size={12}
+					strokeWidth={2}
+					className="text-muted-foreground"
+				/>
+			);
 		default:
 			return (
 				<CircleIcon
@@ -1739,7 +1776,10 @@ function ActorMention({
 	);
 }
 
-function getEventDescription(event: TimelineEvent): React.ReactNode {
+function getEventDescription(
+	event: TimelineEvent,
+	headRefName: string,
+): React.ReactNode {
 	const reviewer =
 		event.requestedReviewer ??
 		(event.requestedTeam ? { login: event.requestedTeam.name } : null);
@@ -1897,6 +1937,28 @@ function getEventDescription(event: TimelineEvent): React.ReactNode {
 				<span className="inline-flex items-center gap-1">
 					<ActorMention actor={event.actor} hideAvatar />
 					{" marked this as ready for review"}
+				</span>
+			);
+		case "head_ref_deleted":
+			return (
+				<span className="inline-flex items-center gap-1">
+					<ActorMention actor={event.actor} hideAvatar />
+					{" deleted "}
+					<code className="rounded bg-surface-1 px-1 py-0.5 font-mono text-[10px] text-muted-foreground">
+						{headRefName}
+					</code>
+					{" branch"}
+				</span>
+			);
+		case "head_ref_restored":
+			return (
+				<span className="inline-flex items-center gap-1">
+					<ActorMention actor={event.actor} hideAvatar />
+					{" restored "}
+					<code className="rounded bg-surface-1 px-1 py-0.5 font-mono text-[10px] text-muted-foreground">
+						{headRefName}
+					</code>
+					{" branch"}
 				</span>
 			);
 		default:

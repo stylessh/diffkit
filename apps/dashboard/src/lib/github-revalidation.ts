@@ -249,6 +249,10 @@ export function getGitHubWebhookRevalidationSignalKeys(
 				];
 	}
 
+	if (event === "delete") {
+		return [githubRevalidationSignalKeys.pullsMine];
+	}
+
 	if (event === "check_run") {
 		return getCheckRunPullSignals(payload);
 	}

@@ -230,6 +230,7 @@ export type PullPageData = {
 	events: TimelineEvent[];
 	commentPagination: CommentPagination;
 	eventPagination: EventPagination;
+	headRefDeleted: boolean;
 };
 
 export type PullFile = {
