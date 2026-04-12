@@ -67,3 +67,4 @@ export {
 } from "@hugeicons/react";
 export { GitHubLogo, GitHubWordmarkLogo } from "./brand-logos";
 export { PenIcon } from "./pen-icon";
+export { SeparatorHorizontalIcon } from "./separator-horizontal-icon";

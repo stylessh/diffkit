@@ -28,11 +28,15 @@ export const Route = createFileRoute(
 		// Never block navigation — fire prefetch and let the component
 		// show cached data instantly or a skeleton while loading.
 		void context.queryClient.prefetchQuery(pageOptions);
+
+		return { issueTitle: cachedData?.detail?.title ?? null };
 	},
 	head: ({ match, params }) =>
 		buildSeo({
 			path: match.pathname,
-			title: formatPageTitle(`Issue #${params.issueId}`),
+			title: formatPageTitle(
+				match.loaderData?.issueTitle ?? `Issue #${params.issueId}`,
+			),
 			description: `Private GitHub issue #${params.issueId} in ${params.owner}/${params.repo}.`,
 			robots: "noindex",
 		}),

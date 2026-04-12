@@ -1,4 +1,4 @@
-import { CommentIcon } from "@diffkit/icons";
+import { CheckIcon, CommentIcon, CopyIcon } from "@diffkit/icons";
 import { Markdown } from "@diffkit/ui/components/markdown";
 import { vercelDark, vercelLight } from "@diffkit/ui/lib/shiki-themes";
 import { cn } from "@diffkit/ui/lib/utils";
@@ -274,12 +274,15 @@ function FileHeader({
 	isCollapsed: boolean;
 	onToggleCollapse: () => void;
 }) {
+	const [copied, setCopied] = useState(false);
+
 	return (
-		<div className="sticky top-2 z-10 flex items-center gap-2 rounded-lg border bg-surface-1 px-3 py-2">
+		<div className="sticky top-2 z-10 flex items-center gap-2 rounded-lg border bg-surface-1 px-3 py-2 select-none">
 			<button
 				type="button"
 				onClick={onToggleCollapse}
-				className="flex items-center gap-1.5 text-muted-foreground transition-colors hover:text-foreground"
+				className="flex shrink-0 items-center text-muted-foreground transition-colors hover:text-foreground"
+				aria-label={isCollapsed ? "Expand file" : "Collapse file"}
 			>
 				<svg
 					aria-hidden="true"
@@ -294,7 +297,12 @@ function FileHeader({
 				</svg>
 			</button>
 
-			<span className="truncate font-mono text-xs font-medium">
+			{/* biome-ignore lint/a11y/noStaticElementInteractions: span stops propagation so text selection doesn't trigger collapse */}
+			{/* biome-ignore lint/a11y/useKeyWithClickEvents: keyboard users use the collapse button; this only prevents mouse click bubbling */}
+			<span
+				className="min-w-0 flex-1 cursor-text truncate font-mono text-xs font-medium select-text"
+				onClick={(e) => e.stopPropagation()}
+			>
 				{file.previousFilename && file.previousFilename !== file.filename ? (
 					<>
 						<span className="text-muted-foreground line-through">
@@ -307,6 +315,25 @@ function FileHeader({
 					file.filename
 				)}
 			</span>
+
+			<button
+				type="button"
+				onClick={(e) => {
+					e.stopPropagation();
+					void navigator.clipboard.writeText(file.filename).then(() => {
+						setCopied(true);
+						setTimeout(() => setCopied(false), 1500);
+					});
+				}}
+				className="shrink-0 text-muted-foreground transition-colors hover:text-foreground"
+				aria-label="Copy file path"
+			>
+				{copied ? (
+					<CheckIcon size={12} strokeWidth={2.5} />
+				) : (
+					<CopyIcon size={12} strokeWidth={2} />
+				)}
+			</button>
 
 			<span className="ml-auto flex items-center gap-2 font-mono text-xs tabular-nums">
 				{file.additions > 0 && (

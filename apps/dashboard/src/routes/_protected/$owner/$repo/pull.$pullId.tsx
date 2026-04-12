@@ -19,7 +19,8 @@ export const Route = createFileRoute("/_protected/$owner/$repo/pull/$pullId")({
 
 		// Clean up broken cache entries (no detail)
 		const cachedData = context.queryClient.getQueryData(pageOptions.queryKey);
-		if (cachedData !== undefined && !cachedData?.detail) {
+		const isBrokenEntry = cachedData !== undefined && !cachedData?.detail;
+		if (isBrokenEntry) {
 			context.queryClient.removeQueries({
 				queryKey: pageOptions.queryKey,
 				exact: true,
@@ -30,11 +31,17 @@ export const Route = createFileRoute("/_protected/$owner/$repo/pull/$pullId")({
 		// show cached data instantly or a skeleton while loading.
 		void context.queryClient.prefetchQuery(pageOptions);
 		void context.queryClient.prefetchQuery(githubViewerQueryOptions(scope));
+
+		return {
+			prTitle: isBrokenEntry ? null : (cachedData?.detail?.title ?? null),
+		};
 	},
 	head: ({ match, params }) =>
 		buildSeo({
 			path: match.pathname,
-			title: formatPageTitle(`PR #${params.pullId}`),
+			title: formatPageTitle(
+				match.loaderData?.prTitle ?? `PR #${params.pullId}`,
+			),
 			description: `Private pull request #${params.pullId} in ${params.owner}/${params.repo}.`,
 			robots: "noindex",
 		}),

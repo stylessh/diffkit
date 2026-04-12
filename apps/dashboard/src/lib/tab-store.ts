@@ -17,12 +17,30 @@ export interface Tab {
 
 export const TABS_STORAGE_KEY = "diffkit:tabs";
 
+const VALID_TAB_TYPES = new Set<string>(["pull", "issue", "review"]);
+
+function isValidTab(t: unknown): t is Tab {
+	return (
+		t !== null &&
+		typeof t === "object" &&
+		typeof (t as Tab).id === "string" &&
+		VALID_TAB_TYPES.has((t as Tab).type)
+	);
+}
+
 export function readStoredTabs(): Tab[] {
 	if (typeof window === "undefined") return [];
 	try {
 		const raw = localStorage.getItem(TABS_STORAGE_KEY);
-		return raw ? JSON.parse(raw) : [];
+		if (!raw) return [];
+		const parsed: unknown = JSON.parse(raw);
+		if (!Array.isArray(parsed) || !parsed.every(isValidTab)) {
+			localStorage.removeItem(TABS_STORAGE_KEY);
+			return [];
+		}
+		return parsed;
 	} catch {
+		localStorage.removeItem(TABS_STORAGE_KEY);
 		return [];
 	}
 }

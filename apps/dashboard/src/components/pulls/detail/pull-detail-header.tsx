@@ -115,7 +115,7 @@ export function PullDetailHeader({
 						</span>
 						<DiffBoxes additions={pr.additions} deletions={pr.deletions} />
 					</span>
-					{!pr.isMerged && !isReviewRequested && (
+					{!isReviewRequested && (
 						<Link
 							to="/$owner/$repo/review/$pullId"
 							params={{ owner, repo, pullId }}
