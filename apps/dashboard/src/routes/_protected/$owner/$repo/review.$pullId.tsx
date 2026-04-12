@@ -27,7 +27,9 @@ export const Route = createFileRoute("/_protected/$owner/$repo/review/$pullId")(
 			const cachedPageData = context.queryClient.getQueryData(
 				pageOptions.queryKey,
 			);
-			if (cachedPageData !== undefined && !cachedPageData?.detail) {
+			const isBrokenEntry =
+				cachedPageData !== undefined && !cachedPageData?.detail;
+			if (isBrokenEntry) {
 				context.queryClient.removeQueries({
 					queryKey: pageOptions.queryKey,
 					exact: true,
@@ -46,11 +48,19 @@ export const Route = createFileRoute("/_protected/$owner/$repo/review/$pullId")(
 					data: { ...input, page: 1, perPage: PULL_FILES_PAGE_SIZE },
 				});
 			}
+
+			return {
+				prTitle: isBrokenEntry ? null : (cachedPageData?.detail?.title ?? null),
+			};
 		},
 		head: ({ match, params }) =>
 			buildSeo({
 				path: match.pathname,
-				title: formatPageTitle(`Review PR #${params.pullId}`),
+				title: formatPageTitle(
+					match.loaderData?.prTitle
+						? `Review: ${match.loaderData.prTitle}`
+						: `Review PR #${params.pullId}`,
+				),
 				description: `Private code review workspace for pull request #${params.pullId} in ${params.owner}/${params.repo}.`,
 				robots: "noindex",
 			}),
