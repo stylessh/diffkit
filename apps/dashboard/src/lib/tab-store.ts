@@ -17,14 +17,23 @@ export interface Tab {
 
 export const TABS_STORAGE_KEY = "diffkit:tabs";
 
-const VALID_TAB_TYPES = new Set<string>(["pull", "issue", "review"]);
+const VALID_TAB_TYPES = {
+	pull: true,
+	issue: true,
+	review: true,
+	repo: true,
+} satisfies Record<TabType, true>;
+
+function isValidTabType(type: unknown): type is TabType {
+	return typeof type === "string" && type in VALID_TAB_TYPES;
+}
 
 function isValidTab(t: unknown): t is Tab {
 	return (
 		t !== null &&
 		typeof t === "object" &&
 		typeof (t as Tab).id === "string" &&
-		VALID_TAB_TYPES.has((t as Tab).type)
+		isValidTabType((t as Tab).type)
 	);
 }
 
