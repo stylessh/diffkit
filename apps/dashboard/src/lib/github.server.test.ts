@@ -93,7 +93,7 @@ describe("getGitHubClient", () => {
 		};
 
 		expect(options.auth).toBe("github-token");
-		expect(options.userAgent).toBe("quickhub-dashboard");
+		expect(options.userAgent).toBe("diffkit-dashboard");
 		expect(options.retry).toEqual({ enabled: true });
 		expect(options.throttle.enabled).toBe(true);
 		expect(options.throttle.id).toBe("github-user:user-123");

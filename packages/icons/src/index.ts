@@ -44,6 +44,7 @@ export {
   Link02Icon as ExternalLinkIcon,
   Loading03Icon as LoaderCircleIcon,
   Location01Icon as LocationIcon,
+  LockIcon,
   Mail01Icon as MailIcon,
   Message01Icon as MessageIcon,
   Moon02Icon as MoonIcon,
@@ -64,6 +65,7 @@ export {
   UserCircleIcon,
   UserGroupIcon as FollowersIcon,
   ViewIcon,
+  WifiDisconnected01Icon as WifiOffIcon,
 } from "@hugeicons/react";
 export { GitHubLogo, GitHubWordmarkLogo } from "./brand-logos";
 export { PenIcon } from "./pen-icon";
