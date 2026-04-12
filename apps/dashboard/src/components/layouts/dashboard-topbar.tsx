@@ -20,16 +20,20 @@ import {
 	DropdownMenuShortcut,
 	DropdownMenuTrigger,
 } from "@diffkit/ui/components/dropdown-menu";
+import { useQuery } from "@tanstack/react-query";
 import { Link, useRouter } from "@tanstack/react-router";
 import { useTheme } from "next-themes";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { DashboardTabs } from "#/components/layouts/dashboard-tabs";
 import { signOutToLogin } from "#/lib/auth-actions";
+import { githubViewerQueryOptions } from "#/lib/github.query";
 import { useGlobalShortcuts } from "#/lib/shortcuts";
 import { type Tab, useTabs } from "#/lib/tab-store";
+import { useHasMounted } from "#/lib/use-has-mounted";
 
 interface DashboardTopbarProps {
 	user: {
+		id: string;
 		name?: string | null;
 		email: string;
 		image?: string | null;
@@ -66,6 +70,12 @@ export function DashboardTopbar({
 	const { theme, setTheme } = useTheme();
 	const [avatarLoadFailed, setAvatarLoadFailed] = useState(false);
 	const openTabs = useTabs();
+	const hasMounted = useHasMounted();
+	const viewerQuery = useQuery({
+		...githubViewerQueryOptions({ userId: user.id }),
+		enabled: hasMounted,
+	});
+	const viewerLogin = viewerQuery.data?.login;
 	// Store router in a ref — only used imperatively (navigate, preload),
 	// never read during render, so we avoid subscribing to state changes.
 	const router = useRouter();
@@ -226,9 +236,11 @@ export function DashboardTopbar({
 						</DropdownMenuLabel>
 						<DropdownMenuSeparator />
 						<DropdownMenuGroup>
-							<DropdownMenuItem>
-								Profile
-								<DropdownMenuShortcut keys={["G", "P"]} />
+							<DropdownMenuItem asChild disabled={!viewerLogin}>
+								<Link to="/$owner" params={{ owner: viewerLogin ?? "" }}>
+									Profile
+									<DropdownMenuShortcut keys={["G", "P"]} />
+								</Link>
 							</DropdownMenuItem>
 							<DropdownMenuItem asChild>
 								<Link to="/settings">

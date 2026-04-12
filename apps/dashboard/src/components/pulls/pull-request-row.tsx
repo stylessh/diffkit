@@ -1,11 +1,4 @@
-import {
-	CommentIcon,
-	GitMergeIcon,
-	GitPullRequestClosedIcon,
-	GitPullRequestDraftIcon,
-	GitPullRequestIcon,
-	ViewIcon,
-} from "@diffkit/icons";
+import { CommentIcon, ViewIcon } from "@diffkit/icons";
 import { Spinner } from "@diffkit/ui/components/spinner";
 import { cn } from "@diffkit/ui/lib/utils";
 import { useQuery } from "@tanstack/react-query";
@@ -17,6 +10,7 @@ import {
 	githubPullCommentsQueryOptions,
 } from "#/lib/github.query";
 import type { PullSummary } from "#/lib/github.types";
+import { getPrStateConfig } from "#/lib/pr-state";
 import { preloadRouteOnce } from "#/lib/route-preload";
 
 const Markdown = lazy(() =>
@@ -25,19 +19,6 @@ const Markdown = lazy(() =>
 	})),
 );
 
-function getPrStateProps(pr: PullSummary) {
-	if (pr.isDraft) {
-		return { icon: GitPullRequestDraftIcon, color: "text-muted-foreground" };
-	}
-	if (pr.mergedAt) {
-		return { icon: GitMergeIcon, color: "text-purple-500" };
-	}
-	if (pr.state === "closed") {
-		return { icon: GitPullRequestClosedIcon, color: "text-red-500" };
-	}
-	return { icon: GitPullRequestIcon, color: "text-green-500" };
-}
-
 export const PullRequestRow = memo(function PullRequestRow({
 	pr,
 	scope,
@@ -45,7 +26,7 @@ export const PullRequestRow = memo(function PullRequestRow({
 	pr: PullSummary;
 	scope: GitHubQueryScope;
 }) {
-	const { icon: Icon, color } = getPrStateProps(pr);
+	const { icon: Icon, color } = getPrStateConfig(pr);
 	const href = `/${pr.repository.owner}/${pr.repository.name}/pull/${pr.number}`;
 	const [expanded, setExpanded] = useState(false);
 	const router = useRouter();

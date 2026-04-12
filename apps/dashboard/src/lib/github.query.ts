@@ -1,4 +1,4 @@
-import { queryOptions } from "@tanstack/react-query";
+import { infiniteQueryOptions, queryOptions } from "@tanstack/react-query";
 import {
 	type CommandPaletteSearchInput,
 	getCommentPage,
@@ -23,6 +23,10 @@ import {
 	getRepoCollaborators,
 	getRepoLabels,
 	getTimelineEventPage,
+	getUserActivity,
+	getUserContributions,
+	getUserPinnedRepos,
+	getUserProfile,
 	getUserRepos,
 	searchCommandPaletteGitHub,
 } from "./github.functions";
@@ -160,6 +164,14 @@ export const githubQueryKeys = {
 		scope: GitHubQueryScope,
 		input: { owner: string; repo: string; issueNumber: number; page: number },
 	) => ["github", scope.userId, "timelineEventPage", input] as const,
+	profile: (scope: GitHubQueryScope, username: string) =>
+		["github", scope.userId, "profile", username] as const,
+	contributions: (scope: GitHubQueryScope, username: string) =>
+		["github", scope.userId, "contributions", username] as const,
+	pinnedRepos: (scope: GitHubQueryScope, username: string) =>
+		["github", scope.userId, "pinnedRepos", username] as const,
+	activity: (scope: GitHubQueryScope, username: string) =>
+		["github", scope.userId, "activity", username] as const,
 	issues: {
 		mine: (scope: GitHubQueryScope) =>
 			["github", scope.userId, "issues", "mine"] as const,
@@ -469,5 +481,58 @@ export function githubTimelineEventPageQueryOptions(
 		staleTime: githubCachePolicy.activity.staleTimeMs,
 		gcTime: githubCachePolicy.activity.gcTimeMs,
 		meta: tabPersistedMeta,
+	});
+}
+
+export function githubUserProfileQueryOptions(
+	scope: GitHubQueryScope,
+	username: string,
+) {
+	return queryOptions({
+		queryKey: githubQueryKeys.profile(scope, username),
+		queryFn: () => getUserProfile({ data: { username } }),
+		staleTime: githubCachePolicy.viewer.staleTimeMs,
+		gcTime: githubCachePolicy.viewer.gcTimeMs,
+	});
+}
+
+export function githubUserContributionsQueryOptions(
+	scope: GitHubQueryScope,
+	username: string,
+) {
+	return queryOptions({
+		queryKey: githubQueryKeys.contributions(scope, username),
+		queryFn: () => getUserContributions({ data: { username } }),
+		staleTime: githubCachePolicy.contributions.staleTimeMs,
+		gcTime: githubCachePolicy.contributions.gcTimeMs,
+	});
+}
+
+export function githubUserPinnedReposQueryOptions(
+	scope: GitHubQueryScope,
+	username: string,
+) {
+	return queryOptions({
+		queryKey: githubQueryKeys.pinnedRepos(scope, username),
+		queryFn: () => getUserPinnedRepos({ data: { username } }),
+		staleTime: githubCachePolicy.reposList.staleTimeMs,
+		gcTime: githubCachePolicy.reposList.gcTimeMs,
+	});
+}
+
+export function githubUserActivityQueryOptions(
+	scope: GitHubQueryScope,
+	username: string,
+	isOwnProfile: boolean,
+) {
+	return infiniteQueryOptions({
+		queryKey: githubQueryKeys.activity(scope, username),
+		queryFn: ({ pageParam }) =>
+			getUserActivity({ data: { username, isOwnProfile, page: pageParam } }),
+		initialPageParam: 1,
+		getNextPageParam: (lastPage, _allPages, lastPageParam) =>
+			lastPage.length === 30 ? lastPageParam + 1 : undefined,
+		staleTime: githubCachePolicy.userActivity.staleTimeMs,
+		gcTime: githubCachePolicy.userActivity.gcTimeMs,
 	});
 }

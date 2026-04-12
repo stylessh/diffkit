@@ -344,3 +344,82 @@ export type CreateReviewCommentInput = {
 	line: number;
 	side: "LEFT" | "RIGHT";
 };
+
+export type GitHubUserProfile = {
+	id: number;
+	login: string;
+	name: string | null;
+	avatarUrl: string;
+	bio: string | null;
+	company: string | null;
+	location: string | null;
+	blog: string | null;
+	twitterUsername: string | null;
+	followers: number;
+	following: number;
+	publicRepos: number;
+	createdAt: string;
+	url: string;
+};
+
+export type ContributionDay = {
+	date: string;
+	count: number;
+	level: 0 | 1 | 2 | 3 | 4;
+};
+
+export type ContributionWeek = {
+	days: ContributionDay[];
+};
+
+export type GitHubContributionCalendar = {
+	totalContributions: number;
+	weeks: ContributionWeek[];
+};
+
+export type PinnedRepo = {
+	name: string;
+	description: string | null;
+	stars: number;
+	language: string | null;
+	languageColor: string | null;
+	url: string;
+	owner: string;
+	isPrivate: boolean;
+	forks: number;
+};
+
+export type UserActivityEvent = {
+	id: string;
+	type: string;
+	createdAt: string;
+	repo: { name: string; url: string };
+	actor: { login: string; avatarUrl: string };
+	action: string | null;
+	title: string | null;
+	ref: string | null;
+	refType: string | null;
+	commits: Array<{ sha: string; message: string }> | null;
+	commentBody: string | null;
+	prDetail: {
+		number: number;
+		body: string | null;
+		additions: number;
+		deletions: number;
+		comments: number;
+		changedFiles: number;
+		state: string;
+		isDraft: boolean;
+		url: string;
+		headRef: string | null;
+		baseRef: string | null;
+		labels: Array<{ name: string; color: string }>;
+	} | null;
+	issueDetail: {
+		number: number;
+		body: string | null;
+		comments: number;
+		state: string;
+		url: string;
+	} | null;
+};

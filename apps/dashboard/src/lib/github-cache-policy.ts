@@ -19,8 +19,16 @@ export const githubCachePolicy = {
 		staleTimeMs: 20 * 1000,
 		gcTimeMs: 10 * 60 * 1000,
 	},
+	userActivity: {
+		staleTimeMs: 5 * 60 * 1000,
+		gcTimeMs: 30 * 60 * 1000,
+	},
 	status: {
 		staleTimeMs: 15 * 1000,
 		gcTimeMs: 5 * 60 * 1000,
+	},
+	contributions: {
+		staleTimeMs: 60 * 60 * 1000,
+		gcTimeMs: 24 * 60 * 60 * 1000,
 	},
 } as const;

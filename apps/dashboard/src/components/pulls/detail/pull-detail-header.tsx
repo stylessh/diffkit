@@ -1,12 +1,4 @@
-import {
-	FileIcon,
-	GitCommitIcon,
-	GitMergeIcon,
-	GitPullRequestClosedIcon,
-	GitPullRequestDraftIcon,
-	GitPullRequestIcon,
-	ReviewsIcon,
-} from "@diffkit/icons";
+import { FileIcon, GitCommitIcon, ReviewsIcon } from "@diffkit/icons";
 import {
 	Tooltip,
 	TooltipContent,
@@ -17,50 +9,9 @@ import { Link } from "@tanstack/react-router";
 import { useCallback, useRef, useState } from "react";
 import { DetailPageTitle } from "#/components/details/detail-page";
 import type { PullDetail } from "#/lib/github.types";
+import { getPrStateConfig } from "#/lib/pr-state";
 
-type PullStateConfig = {
-	icon: React.ComponentType<{
-		size?: number;
-		strokeWidth?: number;
-		className?: string;
-	}>;
-	color: string;
-	label: string;
-	badgeClass: string;
-};
-
-export function getPrStateConfig(pr: PullDetail): PullStateConfig {
-	if (pr.isDraft) {
-		return {
-			icon: GitPullRequestDraftIcon,
-			color: "text-muted-foreground",
-			label: "Draft",
-			badgeClass: "bg-muted text-muted-foreground",
-		};
-	}
-	if (pr.isMerged || pr.mergedAt) {
-		return {
-			icon: GitMergeIcon,
-			color: "text-purple-500",
-			label: "Merged",
-			badgeClass: "bg-purple-500/10 text-purple-500",
-		};
-	}
-	if (pr.state === "closed") {
-		return {
-			icon: GitPullRequestClosedIcon,
-			color: "text-red-500",
-			label: "Closed",
-			badgeClass: "bg-red-500/10 text-red-500",
-		};
-	}
-	return {
-		icon: GitPullRequestIcon,
-		color: "text-green-500",
-		label: "Open",
-		badgeClass: "bg-green-500/10 text-green-500",
-	};
-}
+export { getPrStateConfig, type PrStateConfig } from "#/lib/pr-state";
 
 export function PullDetailHeader({
 	owner,

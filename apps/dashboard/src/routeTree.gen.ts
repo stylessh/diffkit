@@ -20,6 +20,7 @@ import { Route as ProtectedReviewsRouteImport } from './routes/_protected/review
 import { Route as ProtectedPullsRouteImport } from './routes/_protected/pulls'
 import { Route as ProtectedIssuesRouteImport } from './routes/_protected/issues'
 import { Route as ProtectedSettingsIndexRouteImport } from './routes/_protected/settings/index'
+import { Route as ProtectedOwnerIndexRouteImport } from './routes/_protected/$owner/index'
 import { Route as ApiWebhooksGithubRouteImport } from './routes/api/webhooks/github'
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
 import { Route as ProtectedSettingsShortcutsRouteImport } from './routes/_protected/settings/shortcuts'
@@ -83,6 +84,11 @@ const ProtectedSettingsIndexRoute = ProtectedSettingsIndexRouteImport.update({
   path: '/',
   getParentRoute: () => ProtectedSettingsRoute,
 } as any)
+const ProtectedOwnerIndexRoute = ProtectedOwnerIndexRouteImport.update({
+  id: '/$owner/',
+  path: '/$owner/',
+  getParentRoute: () => ProtectedRoute,
+} as any)
 const ApiWebhooksGithubRoute = ApiWebhooksGithubRouteImport.update({
   id: '/api/webhooks/github',
   path: '/api/webhooks/github',
@@ -141,6 +147,7 @@ export interface FileRoutesByFullPath {
   '/settings/shortcuts': typeof ProtectedSettingsShortcutsRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/webhooks/github': typeof ApiWebhooksGithubRoute
+  '/$owner/': typeof ProtectedOwnerIndexRoute
   '/settings/': typeof ProtectedSettingsIndexRoute
   '/api/github/app/authorize': typeof ApiGithubAppAuthorizeRoute
   '/api/github/app/callback': typeof ApiGithubAppCallbackRoute
@@ -160,6 +167,7 @@ export interface FileRoutesByTo {
   '/settings/shortcuts': typeof ProtectedSettingsShortcutsRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/webhooks/github': typeof ApiWebhooksGithubRoute
+  '/$owner': typeof ProtectedOwnerIndexRoute
   '/settings': typeof ProtectedSettingsIndexRoute
   '/api/github/app/authorize': typeof ApiGithubAppAuthorizeRoute
   '/api/github/app/callback': typeof ApiGithubAppCallbackRoute
@@ -182,6 +190,7 @@ export interface FileRoutesById {
   '/_protected/settings/shortcuts': typeof ProtectedSettingsShortcutsRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/webhooks/github': typeof ApiWebhooksGithubRoute
+  '/_protected/$owner/': typeof ProtectedOwnerIndexRoute
   '/_protected/settings/': typeof ProtectedSettingsIndexRoute
   '/api/github/app/authorize': typeof ApiGithubAppAuthorizeRoute
   '/api/github/app/callback': typeof ApiGithubAppCallbackRoute
@@ -204,6 +213,7 @@ export interface FileRouteTypes {
     | '/settings/shortcuts'
     | '/api/auth/$'
     | '/api/webhooks/github'
+    | '/$owner/'
     | '/settings/'
     | '/api/github/app/authorize'
     | '/api/github/app/callback'
@@ -223,6 +233,7 @@ export interface FileRouteTypes {
     | '/settings/shortcuts'
     | '/api/auth/$'
     | '/api/webhooks/github'
+    | '/$owner'
     | '/settings'
     | '/api/github/app/authorize'
     | '/api/github/app/callback'
@@ -244,6 +255,7 @@ export interface FileRouteTypes {
     | '/_protected/settings/shortcuts'
     | '/api/auth/$'
     | '/api/webhooks/github'
+    | '/_protected/$owner/'
     | '/_protected/settings/'
     | '/api/github/app/authorize'
     | '/api/github/app/callback'
@@ -343,6 +355,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ProtectedSettingsIndexRouteImport
       parentRoute: typeof ProtectedSettingsRoute
     }
+    '/_protected/$owner/': {
+      id: '/_protected/$owner/'
+      path: '/$owner'
+      fullPath: '/$owner/'
+      preLoaderRoute: typeof ProtectedOwnerIndexRouteImport
+      parentRoute: typeof ProtectedRoute
+    }
     '/api/webhooks/github': {
       id: '/api/webhooks/github'
       path: '/api/webhooks/github'
@@ -421,6 +440,7 @@ interface ProtectedRouteChildren {
   ProtectedReviewsRoute: typeof ProtectedReviewsRoute
   ProtectedSettingsRoute: typeof ProtectedSettingsRouteWithChildren
   ProtectedIndexRoute: typeof ProtectedIndexRoute
+  ProtectedOwnerIndexRoute: typeof ProtectedOwnerIndexRoute
   ProtectedOwnerRepoIssuesIssueIdRoute: typeof ProtectedOwnerRepoIssuesIssueIdRoute
   ProtectedOwnerRepoPullPullIdRoute: typeof ProtectedOwnerRepoPullPullIdRoute
   ProtectedOwnerRepoReviewPullIdRoute: typeof ProtectedOwnerRepoReviewPullIdRoute
@@ -432,6 +452,7 @@ const ProtectedRouteChildren: ProtectedRouteChildren = {
   ProtectedReviewsRoute: ProtectedReviewsRoute,
   ProtectedSettingsRoute: ProtectedSettingsRouteWithChildren,
   ProtectedIndexRoute: ProtectedIndexRoute,
+  ProtectedOwnerIndexRoute: ProtectedOwnerIndexRoute,
   ProtectedOwnerRepoIssuesIssueIdRoute: ProtectedOwnerRepoIssuesIssueIdRoute,
   ProtectedOwnerRepoPullPullIdRoute: ProtectedOwnerRepoPullPullIdRoute,
   ProtectedOwnerRepoReviewPullIdRoute: ProtectedOwnerRepoReviewPullIdRoute,
