@@ -523,7 +523,7 @@ function ReviewsSection({
 														repo,
 														pullNumber,
 														reviewId: review.id,
-														message: "Dismissed via QuickHub",
+														message: "Dismissed via DiffKit",
 													},
 												})
 													.then((result) => {

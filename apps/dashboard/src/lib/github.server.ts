@@ -7,7 +7,7 @@ import {
 } from "./github-app.server";
 import { configureGitHubRequestPolicies } from "./github-request-policy";
 
-const GITHUB_CLIENT_USER_AGENT = "quickhub-dashboard";
+const GITHUB_CLIENT_USER_AGENT = "diffkit-dashboard";
 const GITHUB_SECONDARY_RATE_LIMIT_FALLBACK_SECONDS = 60;
 
 type GitHubThrottleRequestOptions = {
