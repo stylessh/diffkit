@@ -408,6 +408,9 @@ export type RepoOverview = {
 	ownerAvatarUrl: string;
 	branchCount: number;
 	tagCount: number;
+	openPullCount: number;
+	openIssueCount: number;
+	hasDiscussions: boolean;
 	latestCommit: {
 		sha: string;
 		message: string;
@@ -477,4 +480,21 @@ export type UserActivityEvent = {
 		state: string;
 		url: string;
 	} | null;
+};
+
+export type DiscussionSummary = {
+	number: number;
+	title: string;
+	createdAt: string;
+	updatedAt: string;
+	author: { login: string; avatarUrl: string } | null;
+	category: string | null;
+	comments: number;
+	isAnswered: boolean;
+	url: string;
+};
+
+export type DiscussionsResult = {
+	discussions: DiscussionSummary[];
+	totalCount: number;
 };

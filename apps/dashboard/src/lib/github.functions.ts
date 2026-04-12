@@ -7,6 +7,7 @@ import type {
 	ContributionWeek,
 	CreateLabelInput,
 	CreateReviewCommentInput,
+	DiscussionsResult,
 	GitHubActor,
 	GitHubContributionCalendar,
 	GitHubLabel,
@@ -4371,7 +4372,14 @@ export const getRepoOverview = createServerFn({ method: "GET" })
 		const context = await getGitHubContext();
 		if (!context) return null;
 
-		const [repoRes, branchesRes, tagsRes, commitsRes] = await Promise.all([
+		const [
+			repoRes,
+			branchesRes,
+			tagsRes,
+			commitsRes,
+			openPullsRes,
+			openIssuesRes,
+		] = await Promise.all([
 			context.octokit.rest.repos.get({
 				owner: data.owner,
 				repo: data.repo,
@@ -4391,6 +4399,18 @@ export const getRepoOverview = createServerFn({ method: "GET" })
 				repo: data.repo,
 				per_page: 1,
 			}),
+			context.octokit.rest.pulls.list({
+				owner: data.owner,
+				repo: data.repo,
+				state: "open",
+				per_page: 1,
+			}),
+			context.octokit.rest.issues.listForRepo({
+				owner: data.owner,
+				repo: data.repo,
+				state: "open",
+				per_page: 1,
+			}),
 		]);
 
 		const repo = repoRes.data;
@@ -4402,6 +4422,16 @@ export const getRepoOverview = createServerFn({ method: "GET" })
 		const tagCount =
 			parseLinkHeaderLastPage(tagsRes.headers.link as string | undefined) ??
 			tagsRes.data.length;
+		const openPullCount =
+			parseLinkHeaderLastPage(
+				openPullsRes.headers.link as string | undefined,
+			) ?? openPullsRes.data.length;
+		// issues.listForRepo includes PRs, so subtract pull count for pure issues
+		const openIssueAndPrCount =
+			parseLinkHeaderLastPage(
+				openIssuesRes.headers.link as string | undefined,
+			) ?? openIssuesRes.data.length;
+		const openIssueCount = Math.max(0, openIssueAndPrCount - openPullCount);
 
 		const latestCommit = commitsRes.data[0]
 			? {
@@ -4434,8 +4464,93 @@ export const getRepoOverview = createServerFn({ method: "GET" })
 			ownerAvatarUrl: repo.owner.avatar_url,
 			branchCount,
 			tagCount,
+			openPullCount,
+			openIssueCount,
+			hasDiscussions: !!(repo as Record<string, unknown>).has_discussions,
 			latestCommit,
 		};
+	});
+
+// ---------------------------------------------------------------------------
+// Repository discussions (GraphQL-only)
+// ---------------------------------------------------------------------------
+
+type RepoDiscussionsInput = {
+	owner: string;
+	repo: string;
+	first?: number;
+};
+
+type GraphQLDiscussionsResponse = {
+	repository: {
+		discussions: {
+			totalCount: number;
+			nodes: Array<{
+				number: number;
+				title: string;
+				createdAt: string;
+				updatedAt: string;
+				author: { login: string; avatarUrl: string } | null;
+				category: { name: string; emojiHTML: string } | null;
+				comments: { totalCount: number };
+				answerChosenAt: string | null;
+				url: string;
+			}>;
+		};
+	};
+};
+
+export const getRepoDiscussions = createServerFn({ method: "GET" })
+	.inputValidator(identityValidator<RepoDiscussionsInput>)
+	.handler(async ({ data }): Promise<DiscussionsResult> => {
+		const context = await getGitHubContext();
+		if (!context) return { discussions: [], totalCount: 0 };
+
+		try {
+			const response =
+				await context.octokit.graphql<GraphQLDiscussionsResponse>(
+					`query($owner: String!, $repo: String!, $first: Int!) {
+						repository(owner: $owner, name: $repo) {
+							discussions(first: $first, orderBy: { field: UPDATED_AT, direction: DESC }) {
+								totalCount
+								nodes {
+									number
+									title
+									createdAt
+									updatedAt
+									author { login avatarUrl }
+									category { name emojiHTML }
+									comments { totalCount }
+									answerChosenAt
+									url
+								}
+							}
+						}
+					}`,
+					{
+						owner: data.owner,
+						repo: data.repo,
+						first: data.first ?? 5,
+					},
+				);
+
+			return {
+				totalCount: response.repository.discussions.totalCount,
+				discussions: response.repository.discussions.nodes.map((d) => ({
+					number: d.number,
+					title: d.title,
+					createdAt: d.createdAt,
+					updatedAt: d.updatedAt,
+					author: d.author,
+					category: d.category?.name ?? null,
+					comments: d.comments.totalCount,
+					isAnswered: d.answerChosenAt !== null,
+					url: d.url,
+				})),
+			};
+		} catch {
+			return { discussions: [], totalCount: 0 };
+		}
 	});
 
 function parseLinkHeaderLastPage(link: string | undefined): number | null {

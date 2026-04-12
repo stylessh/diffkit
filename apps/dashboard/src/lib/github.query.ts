@@ -23,6 +23,7 @@ import {
 	getRepoBranches,
 	getRepoCollaborators,
 	getRepoContributors,
+	getRepoDiscussions,
 	getRepoFileContent,
 	getRepoLabels,
 	getRepoOverview,
@@ -198,6 +199,10 @@ export const githubQueryKeys = {
 			scope: GitHubQueryScope,
 			input: { owner: string; repo: string },
 		) => ["github", scope.userId, "repo", "contributors", input] as const,
+		discussions: (
+			scope: GitHubQueryScope,
+			input: { owner: string; repo: string },
+		) => ["github", scope.userId, "repo", "discussions", input] as const,
 	},
 	issues: {
 		mine: (scope: GitHubQueryScope) =>
@@ -631,6 +636,19 @@ export function githubRepoFileContentQueryOptions(
 		queryFn: () => getRepoFileContent({ data: input }),
 		staleTime: githubCachePolicy.repoMeta.staleTimeMs,
 		gcTime: githubCachePolicy.repoMeta.gcTimeMs,
+		meta: persistedMeta,
+	});
+}
+
+export function githubRepoDiscussionsQueryOptions(
+	scope: GitHubQueryScope,
+	input: { owner: string; repo: string },
+) {
+	return queryOptions({
+		queryKey: githubQueryKeys.repo.discussions(scope, input),
+		queryFn: () => getRepoDiscussions({ data: input }),
+		staleTime: githubCachePolicy.list.staleTimeMs,
+		gcTime: githubCachePolicy.list.gcTimeMs,
 		meta: persistedMeta,
 	});
 }

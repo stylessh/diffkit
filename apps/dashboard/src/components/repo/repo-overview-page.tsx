@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { getRouteApi } from "@tanstack/react-router";
 import { useState } from "react";
+import { SidePanelPortal } from "#/components/layouts/dashboard-side-panel";
 import {
 	githubRepoOverviewQueryOptions,
 	githubRepoTreeQueryOptions,
@@ -10,6 +11,7 @@ import { useRegisterTab } from "#/lib/use-register-tab";
 import { CodeExplorerToolbar } from "./code-explorer-toolbar";
 import { FileTree } from "./file-tree";
 import { LatestCommitBar } from "./latest-commit-bar";
+import { RepoActivityCards } from "./repo-activity-cards";
 import { RepoHeader } from "./repo-header";
 import { RepoMarkdownFiles } from "./repo-markdown-files";
 import { RepoOverviewSkeleton } from "./repo-overview-skeleton";
@@ -59,41 +61,51 @@ export function RepoOverviewPage() {
 	if (!repoData) return <RepoOverviewSkeleton />;
 
 	return (
-		<div className="h-full overflow-auto">
-			<div className="mx-auto grid max-w-7xl gap-10 px-3 py-10 md:px-6 xl:grid-cols-[minmax(0,1fr)_minmax(16rem,20rem)]">
-				<div className="flex min-w-0 flex-col gap-6">
-					<RepoHeader repo={repoData} />
+		<>
+			<div className="h-full overflow-auto">
+				<div className="mx-auto grid max-w-7xl gap-10 px-3 py-10 md:px-6 xl:grid-cols-[minmax(0,1fr)_minmax(16rem,20rem)]">
+					<div className="flex min-w-0 flex-col gap-6">
+						<RepoHeader repo={repoData} />
 
-					<CodeExplorerToolbar
-						repo={repoData}
-						currentRef={activeRef}
-						scope={scope}
-						onBranchChange={setCurrentRef}
-					/>
+						<CodeExplorerToolbar
+							repo={repoData}
+							currentRef={activeRef}
+							scope={scope}
+							onBranchChange={setCurrentRef}
+						/>
 
-					<div>
-						<LatestCommitBar repo={repoData} />
-						{treeQuery.data ? (
-							<FileTree entries={treeQuery.data} />
-						) : (
-							<FileTreeSkeleton />
+						<div>
+							<LatestCommitBar repo={repoData} />
+							{treeQuery.data ? (
+								<FileTree entries={treeQuery.data} />
+							) : (
+								<FileTreeSkeleton />
+							)}
+						</div>
+
+						{treeQuery.data && (
+							<RepoMarkdownFiles
+								entries={treeQuery.data}
+								owner={owner}
+								repo={repo}
+								currentRef={activeRef}
+								scope={scope}
+							/>
 						)}
 					</div>
 
-					{treeQuery.data && (
-						<RepoMarkdownFiles
-							entries={treeQuery.data}
-							owner={owner}
-							repo={repo}
-							currentRef={activeRef}
-							scope={scope}
-						/>
-					)}
+					<RepoSidebar repo={repoData} scope={scope} />
 				</div>
-
-				<RepoSidebar repo={repoData} scope={scope} />
 			</div>
-		</div>
+			<SidePanelPortal>
+				<RepoActivityCards
+					owner={owner}
+					repo={repo}
+					scope={scope}
+					repoData={repoData}
+				/>
+			</SidePanelPortal>
+		</>
 	);
 }
 

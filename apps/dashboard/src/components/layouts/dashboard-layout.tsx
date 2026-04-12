@@ -9,6 +9,12 @@ import { useGitHubRevalidation } from "#/lib/use-github-revalidation";
 import { useHasMounted } from "#/lib/use-has-mounted";
 import { DashboardBottomBar } from "./dashboard-bottombar";
 import { DashboardMobileNav } from "./dashboard-mobile-nav";
+import {
+	SidePanelProvider,
+	SidePanelSlot,
+	SidePanelToggle,
+	useSidePanelSlot,
+} from "./dashboard-side-panel";
 import { DashboardTopbar } from "./dashboard-topbar";
 
 const CommandPalette = lazy(() =>
@@ -54,6 +60,8 @@ export function DashboardLayout() {
 			: undefined;
 	const tabsReady = hasMounted && Boolean(pullsQuery.data && issuesQuery.data);
 
+	const sidePanel = useSidePanelSlot();
+
 	return (
 		<div className="isolate flex h-dvh flex-col bg-muted">
 			<DashboardTopbar
@@ -67,13 +75,28 @@ export function DashboardLayout() {
 						: undefined,
 				}}
 			/>
-			<div className="flex flex-1 flex-col overflow-hidden p-2 pt-0">
-				<div className="flex-1 overflow-hidden rounded-xl border bg-card shadow-[0_1px_4px_0_rgba(0,0,0,0.03)]">
-					<div className="h-full">
-						<Outlet />
+			<SidePanelProvider
+				value={{
+					node: sidePanel.node,
+					collapsed: sidePanel.collapsed,
+					hasContent: sidePanel.hasContent,
+					toggle: sidePanel.toggle,
+				}}
+			>
+				<div className="flex flex-1 overflow-hidden p-2 pt-0">
+					<div className="relative flex-1 overflow-hidden rounded-xl border bg-card shadow-[0_1px_4px_0_rgba(0,0,0,0.03)]">
+						<div className="h-full">
+							<Outlet />
+						</div>
+						<SidePanelToggle />
 					</div>
+					<SidePanelSlot
+						slotRef={sidePanel.setNode}
+						collapsed={sidePanel.collapsed}
+						onHasContent={sidePanel.setHasContent}
+					/>
 				</div>
-			</div>
+			</SidePanelProvider>
 			<DashboardBottomBar />
 			<DashboardMobileNav
 				user={user}

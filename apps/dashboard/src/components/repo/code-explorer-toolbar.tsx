@@ -89,7 +89,7 @@ function BranchSelector({
 		<Popover open={open} onOpenChange={setOpen}>
 			<PopoverTrigger asChild>
 				<Button
-					variant="outline"
+					variant="secondary"
 					size="sm"
 					onMouseEnter={prefetchBranches}
 					onFocus={prefetchBranches}
