@@ -77,6 +77,19 @@ For an exact URL redirect, use:
 3. Click Load unpacked
 4. Select `extensions/diffkit-redirect`
 
+## Package for Chrome Web Store / Firefox Add-ons
+
+Store uploads expect **`manifest.json` at the root of the ZIP** (not inside a parent folder). Create the archive from inside this directory:
+
+```bash
+cd extensions/diffkit-redirect
+zip -r ../../diffkit-redirect.zip . -x "*.DS_Store"
+```
+
+Then upload `diffkit-redirect.zip`.
+
+Firefox (AMO) requires a **Gecko add-on ID** and **`data_collection_permissions`** in MV3 (`required: ["none"]` here — no developer telemetry). Minimum versions are set for desktop **140+** and Android **142+** to match Firefox data-consent support and `options_page` compatibility. Chrome ignores `browser_specific_settings`.
+
 ## Scope
 
 This version is intentionally limited to `github.com` in `manifest.json`. If you later want redirects from other source hosts, add those hosts to the extension matches and permissions.
