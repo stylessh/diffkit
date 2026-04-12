@@ -8,7 +8,7 @@ import {
 	recordExtensionInstallPromptDismissed,
 	shouldShowExtensionInstallPrompt,
 } from "#/lib/extension-install-prompt-storage";
-import { siteConfig } from "#/lib/site-config";
+import { getExtensionStoreInstallUrl } from "#/lib/extension-store-url";
 import { useHasMounted } from "#/lib/use-has-mounted";
 
 export function ExtensionInstallPrompt() {
@@ -55,7 +55,7 @@ export function ExtensionInstallPrompt() {
 		return null;
 	}
 
-	const installHref = siteConfig.browserExtensionInstallUrl;
+	const installHref = getExtensionStoreInstallUrl();
 
 	return (
 		<div

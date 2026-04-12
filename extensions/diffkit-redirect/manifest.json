@@ -1,8 +1,20 @@
 {
   "manifest_version": 3,
   "name": "DiffKit",
-  "version": "0.1.1",
+  "version": "0.1.3",
   "description": "Redirect selected GitHub URLs to matching DiffKit routes.",
+  "browser_specific_settings": {
+    "gecko": {
+      "id": "diffkit-redirect@diff-kit.com",
+      "strict_min_version": "140.0",
+      "data_collection_permissions": {
+        "required": ["none"]
+      }
+    },
+    "gecko_android": {
+      "strict_min_version": "142.0"
+    }
+  },
   "icons": {
     "16": "icons/icon-16.png",
     "32": "icons/icon-32.png",
