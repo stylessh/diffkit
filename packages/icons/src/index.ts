@@ -45,6 +45,7 @@ export {
   Loading03Icon as LoaderCircleIcon,
   Location01Icon as LocationIcon,
   LockIcon,
+  Logout01Icon as LogOutIcon,
   Mail01Icon as MailIcon,
   Message01Icon as MessageIcon,
   Moon02Icon as MoonIcon,

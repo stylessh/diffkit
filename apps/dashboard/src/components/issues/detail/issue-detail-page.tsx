@@ -4,6 +4,7 @@ import { getRouteApi } from "@tanstack/react-router";
 import {
 	DetailPageLayout,
 	DetailPageSkeletonLayout,
+	StaggerItem,
 } from "#/components/details/detail-page";
 import {
 	githubIssuePageQueryOptions,
@@ -89,58 +90,77 @@ export function IssueDetailPage() {
 
 function IssueDetailPageSkeleton() {
 	return (
-		<DetailPageSkeletonLayout
-			main={
-				<>
-					<div className="flex flex-col gap-3">
-						<Skeleton className="h-4 w-48 rounded-md" />
-						<div className="flex items-start gap-3">
-							<Skeleton className="mt-1 size-5 rounded-full" />
-							<div className="flex min-w-0 flex-1 flex-col gap-2">
-								<Skeleton className="h-8 w-3/4 rounded-md" />
-								<div className="flex gap-2">
-									<Skeleton className="h-6 w-16 rounded-full" />
-									<Skeleton className="h-6 w-48 rounded-full" />
-								</div>
+		<DetailPageSkeletonLayout mainItemCount={4}>
+			<StaggerItem index={0}>
+				<div className="flex flex-col gap-3">
+					<Skeleton className="h-4 w-48 rounded-md" />
+					<div className="flex items-start gap-3">
+						<Skeleton className="mt-1 size-5 rounded-full" />
+						<div className="flex min-w-0 flex-1 flex-col gap-2">
+							<Skeleton className="h-8 w-3/4 rounded-md" />
+							<div className="flex gap-2">
+								<Skeleton className="h-5 w-16 rounded-full" />
+								<Skeleton className="h-4 w-48" />
 							</div>
 						</div>
 					</div>
+				</div>
+			</StaggerItem>
 
-					<div className="flex flex-wrap gap-1.5">
-						<Skeleton className="h-6 w-20 rounded-full" />
-						<Skeleton className="h-6 w-24 rounded-full" />
+			<StaggerItem index={1}>
+				<div className="flex flex-wrap gap-1.5">
+					<Skeleton className="h-6 w-20 rounded-full" />
+					<Skeleton className="h-6 w-24 rounded-full" />
+				</div>
+			</StaggerItem>
+
+			<StaggerItem index={2}>
+				<div className="rounded-lg border bg-surface-0 p-5">
+					<div className="flex flex-col gap-3">
+						<Skeleton className="h-4 w-full rounded-md" />
+						<Skeleton className="h-4 w-5/6 rounded-md" />
+						<Skeleton className="h-4 w-2/3 rounded-md" />
 					</div>
+				</div>
+			</StaggerItem>
 
-					<div className="rounded-lg border bg-surface-0 p-5">
-						<div className="flex flex-col gap-2">
-							<Skeleton className="h-4 w-full rounded-md" />
-							<Skeleton className="h-4 w-[92%] rounded-md" />
-							<Skeleton className="h-4 w-[78%] rounded-md" />
-							<Skeleton className="h-4 w-[66%] rounded-md" />
+			<StaggerItem index={3}>
+				<div className="flex flex-col gap-6">
+					<div className="flex items-center justify-between gap-2 rounded-lg bg-surface-1 px-4 py-2.5">
+						<Skeleton className="h-4 w-14 rounded-md" />
+						<Skeleton className="h-4 w-6 rounded-md" />
+					</div>
+					<div className="flex flex-col gap-5 pl-8">
+						{/* Comment */}
+						<div className="flex items-start gap-2">
+							<Skeleton className="size-5 rounded-full" />
+							<div className="flex flex-col gap-1.5">
+								<Skeleton className="h-3.5 w-36 rounded-md" />
+								<Skeleton className="h-12 w-64 rounded-lg" />
+							</div>
+						</div>
+						{/* Label event */}
+						<div className="flex items-center gap-2">
+							<Skeleton className="size-4 rounded" />
+							<Skeleton className="h-3.5 w-32 rounded-md" />
+							<Skeleton className="h-5 w-16 rounded-full" />
+						</div>
+						{/* Comment */}
+						<div className="flex items-start gap-2">
+							<Skeleton className="size-5 rounded-full" />
+							<div className="flex flex-col gap-1.5">
+								<Skeleton className="h-3.5 w-44 rounded-md" />
+								<Skeleton className="h-3.5 w-56 rounded-md" />
+							</div>
+						</div>
+						{/* Assignment */}
+						<div className="flex items-center gap-2">
+							<Skeleton className="size-4 rounded" />
+							<Skeleton className="h-3.5 w-40 rounded-md" />
 						</div>
 					</div>
-
-					<div className="flex flex-col">
-						<div className="flex items-center justify-between gap-2 rounded-lg bg-surface-1 px-4 py-2.5">
-							<Skeleton className="h-4 w-14 rounded-md" />
-							<Skeleton className="h-4 w-6 rounded-md" />
-						</div>
-						<div className="relative flex flex-col gap-5 py-5 pl-8 before:absolute before:left-4 before:top-0 before:h-full before:w-px before:bg-[linear-gradient(to_bottom,var(--color-border)_80%,transparent)]">
-							{["activity-1", "activity-2", "activity-3"].map((key) => (
-								<div key={key} className="flex flex-col gap-2">
-									<div className="flex items-center gap-2">
-										<Skeleton className="size-4 rounded-full" />
-										<Skeleton className="h-4 w-24 rounded-md" />
-										<Skeleton className="h-4 w-16 rounded-md" />
-									</div>
-									<Skeleton className="h-4 w-[88%] rounded-md" />
-									<Skeleton className="h-4 w-[72%] rounded-md" />
-								</div>
-							))}
-						</div>
-					</div>
-				</>
-			}
-		/>
+				</div>
+			</StaggerItem>
+		</DetailPageSkeletonLayout>
 	);
 }

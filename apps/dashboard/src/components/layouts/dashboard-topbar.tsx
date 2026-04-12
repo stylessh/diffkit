@@ -2,11 +2,11 @@ import {
 	GitPullRequestIcon,
 	HomeIcon,
 	IssuesIcon,
-	MoonIcon,
+	LogOutIcon,
 	MoreHorizontalIcon,
 	ReviewsIcon,
-	SunIcon,
-	SystemIcon,
+	SettingsIcon,
+	UserCircleIcon,
 } from "@diffkit/icons";
 import { Avatar, AvatarFallback } from "@diffkit/ui/components/avatar";
 import { Button } from "@diffkit/ui/components/button";
@@ -22,7 +22,6 @@ import {
 } from "@diffkit/ui/components/dropdown-menu";
 import { useQuery } from "@tanstack/react-query";
 import { Link, useRouter } from "@tanstack/react-router";
-import { useTheme } from "next-themes";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { DashboardTabs } from "#/components/layouts/dashboard-tabs";
 import { signOutToLogin } from "#/lib/auth-actions";
@@ -53,12 +52,6 @@ type NavItem = {
 	count?: number;
 };
 
-const themeOptions = [
-	{ value: "light", icon: SunIcon, label: "Light" },
-	{ value: "dark", icon: MoonIcon, label: "Dark" },
-	{ value: "system", icon: SystemIcon, label: "System" },
-] as const;
-
 const primaryNavRoutes = ["/", "/pulls", "/issues", "/reviews"] as const;
 const MAX_TAB_SHORTCUTS = 9;
 
@@ -67,7 +60,6 @@ export function DashboardTopbar({
 	tabsReady,
 	counts,
 }: DashboardTopbarProps) {
-	const { theme, setTheme } = useTheme();
 	const [avatarLoadFailed, setAvatarLoadFailed] = useState(false);
 	const openTabs = useTabs();
 	const hasMounted = useHasMounted();
@@ -209,41 +201,43 @@ export function DashboardTopbar({
 						</button>
 					</DropdownMenuTrigger>
 					<DropdownMenuContent align="start" className="w-56">
-						<DropdownMenuLabel className="flex items-center justify-between">
-							<div>
-								<p>{displayName}</p>
-								<p className="font-normal text-muted-foreground">
-									{user.email}
-								</p>
-							</div>
-							<div className="flex items-center gap-0.5 rounded-md border border-border/50 p-0.5">
-								{themeOptions.map((opt) => (
-									<button
-										key={opt.value}
-										type="button"
-										onClick={() => setTheme(opt.value)}
-										className={`flex size-6 items-center justify-center rounded-sm transition-colors ${
-											theme === opt.value
-												? "bg-surface-1 text-foreground"
-												: "text-muted-foreground hover:text-foreground"
-										}`}
-										title={opt.label}
-									>
-										<opt.icon size={13} strokeWidth={2} />
-									</button>
-								))}
+						<DropdownMenuLabel className="flex items-center gap-3 py-2">
+							<Avatar className="size-8 border border-border">
+								{user.image && !avatarLoadFailed ? (
+									<img
+										src={user.image}
+										alt={displayName}
+										className="size-full object-cover"
+									/>
+								) : (
+									<AvatarFallback className="text-xs">
+										{initials}
+									</AvatarFallback>
+								)}
+							</Avatar>
+							<div className="flex flex-col">
+								<span className="text-sm font-medium text-foreground">
+									{displayName}
+								</span>
+								{viewerLogin && (
+									<span className="text-xs font-normal text-muted-foreground">
+										@{viewerLogin}
+									</span>
+								)}
 							</div>
 						</DropdownMenuLabel>
 						<DropdownMenuSeparator />
 						<DropdownMenuGroup>
 							<DropdownMenuItem asChild disabled={!viewerLogin}>
 								<Link to="/$owner" params={{ owner: viewerLogin ?? "" }}>
+									<UserCircleIcon size={16} strokeWidth={2} />
 									Profile
 									<DropdownMenuShortcut keys={["G", "P"]} />
 								</Link>
 							</DropdownMenuItem>
 							<DropdownMenuItem asChild>
 								<Link to="/settings">
+									<SettingsIcon size={16} strokeWidth={2} />
 									Settings
 									<DropdownMenuShortcut keys={["G", "S"]} />
 								</Link>
@@ -255,6 +249,7 @@ export function DashboardTopbar({
 								void signOutToLogin();
 							}}
 						>
+							<LogOutIcon size={16} strokeWidth={2} />
 							Sign out
 						</DropdownMenuItem>
 					</DropdownMenuContent>

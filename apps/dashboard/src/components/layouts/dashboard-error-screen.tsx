@@ -6,8 +6,13 @@ import {
 	WifiOffIcon,
 } from "@diffkit/icons";
 import { Button } from "@diffkit/ui/components/button";
+import { Logo } from "@diffkit/ui/components/logo";
 import { cn } from "@diffkit/ui/lib/utils";
-import { type ErrorComponentProps, useRouter } from "@tanstack/react-router";
+import {
+	type ErrorComponentProps,
+	Link,
+	useRouter,
+} from "@tanstack/react-router";
 import type { ComponentType } from "react";
 import { useShowOrgSetupQueryState } from "#/lib/github-access-dialog-query";
 import { openGitHubAccessPrompt } from "#/lib/github-access-modal-store";
@@ -17,7 +22,7 @@ type ErrorInfo = {
 	iconClassName: string;
 	title: string;
 	description: string;
-	action: "retry" | "configure-access";
+	action: "retry" | "configure-access" | "go-home";
 };
 
 function getErrorInfo(error: Error): ErrorInfo {
@@ -58,7 +63,7 @@ function getErrorInfo(error: Error): ErrorInfo {
 			title: "Not found",
 			description:
 				"This resource doesn't exist or you don't have access to it.",
-			action: "retry",
+			action: "go-home",
 		};
 	}
 
@@ -119,19 +124,24 @@ export function DashboardErrorScreen({ error, reset }: ErrorComponentProps) {
 		description,
 		action,
 	} = getErrorInfo(error);
-	const detail = cleanErrorMessage(error.message);
+	const isNotFound = action === "go-home";
+	const detail = isNotFound ? null : cleanErrorMessage(error.message);
 
 	return (
 		<div className="flex h-full items-center justify-center px-6 py-16">
 			<div className="mx-auto flex w-full max-w-md flex-col items-center gap-6 text-center">
-				<div
-					className={cn(
-						"flex size-12 items-center justify-center rounded-xl",
-						iconClassName,
-					)}
-				>
-					<Icon size={24} strokeWidth={1.75} />
-				</div>
+				{isNotFound ? (
+					<Logo className="size-12" />
+				) : (
+					<div
+						className={cn(
+							"flex size-12 items-center justify-center rounded-xl",
+							iconClassName,
+						)}
+					>
+						<Icon size={24} strokeWidth={1.75} />
+					</div>
+				)}
 
 				<div className="flex flex-col gap-1.5">
 					<h1 className="text-lg font-semibold tracking-tight">{title}</h1>
@@ -148,17 +158,23 @@ export function DashboardErrorScreen({ error, reset }: ErrorComponentProps) {
 
 				<div className="flex items-center gap-2">
 					{action === "configure-access" ? <ConfigureAccessButton /> : null}
-					<Button
-						variant="outline"
-						size="sm"
-						iconLeft={<RefreshCwIcon />}
-						onClick={() => {
-							reset();
-							router.invalidate();
-						}}
-					>
-						Try again
-					</Button>
+					{action === "go-home" ? (
+						<Button variant="ghost" size="sm" asChild>
+							<Link to="/">Go home</Link>
+						</Button>
+					) : (
+						<Button
+							variant="outline"
+							size="sm"
+							iconLeft={<RefreshCwIcon />}
+							onClick={() => {
+								reset();
+								router.invalidate();
+							}}
+						>
+							Try again
+						</Button>
+					)}
 				</div>
 			</div>
 		</div>

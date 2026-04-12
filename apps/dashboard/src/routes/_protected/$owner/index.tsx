@@ -89,6 +89,7 @@ function ProfilePage() {
 	const activity = activityQuery.data?.pages.flat();
 
 	if (profileQuery.error) throw profileQuery.error;
+	if (profileQuery.data === null) throw new Error("Not found");
 
 	return (
 		<div className="overflow-stable h-full">
