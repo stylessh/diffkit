@@ -1,15 +1,16 @@
 import { useSyncExternalStore } from "react";
 
-export type TabType = "pull" | "issue" | "review";
+export type TabType = "pull" | "issue" | "review" | "repo";
 
 export interface Tab {
 	id: string;
 	type: TabType;
 	title: string;
-	number: number;
+	number?: number;
 	url: string;
 	repo: string;
 	iconColor: string;
+	avatarUrl?: string;
 	additions?: number;
 	deletions?: number;
 }

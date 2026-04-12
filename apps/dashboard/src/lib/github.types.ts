@@ -389,6 +389,61 @@ export type PinnedRepo = {
 	forks: number;
 };
 
+export type RepoOverview = {
+	id: number;
+	name: string;
+	fullName: string;
+	description: string | null;
+	isPrivate: boolean;
+	isFork: boolean;
+	defaultBranch: string;
+	stars: number;
+	forks: number;
+	watchers: number;
+	language: string | null;
+	license: string | null;
+	topics: string[];
+	url: string;
+	owner: string;
+	ownerAvatarUrl: string;
+	branchCount: number;
+	tagCount: number;
+	latestCommit: {
+		sha: string;
+		message: string;
+		date: string;
+		author: GitHubActor | null;
+	} | null;
+};
+
+export type RepoTreeEntry = {
+	name: string;
+	type: "file" | "dir" | "submodule";
+	path: string;
+	sha: string;
+	size: number | null;
+	lastCommit: {
+		message: string;
+		date: string;
+	} | null;
+};
+
+export type RepoBranch = {
+	name: string;
+	isProtected: boolean;
+};
+
+export type RepoContributor = {
+	login: string;
+	avatarUrl: string;
+	contributions: number;
+};
+
+export type RepoContributorsResult = {
+	contributors: RepoContributor[];
+	totalCount: number;
+};
+
 export type UserActivityEvent = {
 	id: string;
 	type: string;

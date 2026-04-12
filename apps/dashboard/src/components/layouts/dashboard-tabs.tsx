@@ -1,4 +1,5 @@
 import {
+	ArchiveIcon,
 	ChevronRightIcon,
 	CloseIcon,
 	GitPullRequestIcon,
@@ -28,6 +29,7 @@ const tabIconMap = {
 	pull: GitPullRequestIcon,
 	issue: IssuesIcon,
 	review: ReviewsIcon,
+	repo: ArchiveIcon,
 } as const;
 
 function useScrollShadows(tabCount: number) {
@@ -262,11 +264,19 @@ const DetailTab = memo(function DetailTab({
 			activeProps={{ className: "active" }}
 			className="group relative flex h-8 shrink-0 items-center gap-1.5 rounded-md px-3 text-[13px] font-medium text-muted-foreground transition-colors hover:bg-surface-1 hover:text-foreground [&.active]:bg-surface-1 [&.active]:text-foreground"
 		>
-			<Icon
-				size={13}
-				strokeWidth={2}
-				className={cn("shrink-0", tab.iconColor)}
-			/>
+			{tab.avatarUrl ? (
+				<img
+					src={tab.avatarUrl}
+					alt=""
+					className="size-3.5 shrink-0 rounded-sm"
+				/>
+			) : (
+				<Icon
+					size={13}
+					strokeWidth={2}
+					className={cn("shrink-0", tab.iconColor)}
+				/>
+			)}
 			<span className="max-w-32 truncate">{tab.title}</span>
 			{tab.type === "review" ? (
 				<span className="flex items-center gap-1 font-mono text-[11px] font-medium tabular-nums">
@@ -277,11 +287,11 @@ const DetailTab = memo(function DetailTab({
 						<span className="text-red-500">-{tab.deletions}</span>
 					)}
 				</span>
-			) : (
+			) : tab.number != null ? (
 				<span className="tabular-nums text-muted-foreground text-[11px]">
 					#{tab.number}
 				</span>
-			)}
+			) : null}
 			{/* Mobile: inline close button in flow — oversized touch target */}
 			<button
 				type="button"

@@ -9,8 +9,20 @@ import {
 } from "./github-revalidation";
 import { type Tab, useTabs } from "./tab-store";
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+	return Boolean(value) && typeof value === "object";
+}
+
 const GITHUB_REVALIDATION_POLL_INTERVAL_MS = 10_000;
 const GITHUB_REVALIDATION_INITIAL_DELAY_MS = 5_000;
+
+function getUniqueRepoKeys(tabs: Tab[]) {
+	const repos = new Set<string>();
+	for (const tab of tabs) {
+		repos.add(tab.repo);
+	}
+	return Array.from(repos);
+}
 
 function getUniqueSignalKeys(tabs: Tab[]) {
 	return Array.from(
@@ -18,6 +30,13 @@ function getUniqueSignalKeys(tabs: Tab[]) {
 			githubRevalidationSignalKeys.pullsMine,
 			githubRevalidationSignalKeys.issuesMine,
 			...tabs.flatMap((tab) => getGitHubRevalidationSignalKeysForTab(tab)),
+			...getUniqueRepoKeys(tabs).map((repo) => {
+				const [owner, name] = repo.split("/");
+				return githubRevalidationSignalKeys.repoCode({
+					owner,
+					repo: name,
+				});
+			}),
 		]),
 	);
 }
@@ -29,10 +48,12 @@ function getQueryUpdatedAt(
 	return queryClient.getQueryState(queryKey)?.dataUpdatedAt ?? 0;
 }
 
+type NumberedTab = Tab & { number: number };
+
 async function invalidatePullTabQueries(
 	queryClient: QueryClient,
 	scope: GitHubQueryScope,
-	tab: Tab,
+	tab: NumberedTab,
 ) {
 	const [owner, repo] = tab.repo.split("/");
 	const input = { owner, repo, pullNumber: tab.number };
@@ -63,7 +84,7 @@ async function invalidatePullTabQueries(
 async function invalidateIssueTabQueries(
 	queryClient: QueryClient,
 	scope: GitHubQueryScope,
-	tab: Tab,
+	tab: NumberedTab,
 ) {
 	const [owner, repo] = tab.repo.split("/");
 	const input = { owner, repo, issueNumber: tab.number };
@@ -139,6 +160,52 @@ export function useGitHubRevalidation(userId: string) {
 					});
 				}
 
+				// Invalidate repo code queries (tree, file content) on push events
+				for (const repoKey of getUniqueRepoKeys(tabs)) {
+					if (cancelled) break;
+					const [owner, repo] = repoKey.split("/");
+					const signalKey = githubRevalidationSignalKeys.repoCode({
+						owner,
+						repo,
+					});
+					const updatedAt = signalsByKey.get(signalKey) ?? 0;
+					if (updatedAt === 0) continue;
+
+					const matchesRepo = (query: { queryKey: readonly unknown[] }) => {
+						const key = query.queryKey;
+						const input = key[4];
+						return (
+							isRecord(input) && input.owner === owner && input.repo === repo
+						);
+					};
+
+					const treeQueries = queryClient.getQueriesData({
+						queryKey: ["github", scope.userId, "repo", "tree"],
+						predicate: matchesRepo,
+					});
+					const fileQueries = queryClient.getQueriesData({
+						queryKey: ["github", scope.userId, "repo", "fileContent"],
+						predicate: matchesRepo,
+					});
+
+					if (treeQueries.length > 0 || fileQueries.length > 0) {
+						debug("github-revalidation", "invalidating repo code queries", {
+							signalKey,
+							repoKey,
+						});
+						await queryClient.invalidateQueries({
+							queryKey: ["github", scope.userId, "repo", "tree"],
+							predicate: matchesRepo,
+							refetchType: "all",
+						});
+						await queryClient.invalidateQueries({
+							queryKey: ["github", scope.userId, "repo", "fileContent"],
+							predicate: matchesRepo,
+							refetchType: "all",
+						});
+					}
+				}
+
 				// Invalidate tab queries serially to avoid a burst of concurrent
 				// server function RPCs that can overwhelm the Worker.
 				for (const tab of tabs) {
@@ -150,19 +217,26 @@ export function useGitHubRevalidation(userId: string) {
 						continue;
 					}
 
+					// Repo tabs are revalidated via the repo code block above
+					if (tab.type === "repo" || tab.number == null) {
+						continue;
+					}
+
+					const numberedTab = tab as NumberedTab;
+
 					if (tab.type === "pull" || tab.type === "review") {
 						const [owner, repo] = tab.repo.split("/");
 						const comparisonKey = githubQueryKeys.pulls.page(scope, {
 							owner,
 							repo,
-							pullNumber: tab.number,
+							pullNumber: numberedTab.number,
 						});
 						if (updatedAt > getQueryUpdatedAt(queryClient, comparisonKey)) {
 							debug("github-revalidation", "invalidating pull tab queries", {
 								signalKey,
 								tabId: tab.id,
 							});
-							await invalidatePullTabQueries(queryClient, scope, tab);
+							await invalidatePullTabQueries(queryClient, scope, numberedTab);
 						}
 						continue;
 					}
@@ -171,14 +245,14 @@ export function useGitHubRevalidation(userId: string) {
 					const comparisonKey = githubQueryKeys.issues.page(scope, {
 						owner,
 						repo,
-						issueNumber: tab.number,
+						issueNumber: numberedTab.number,
 					});
 					if (updatedAt > getQueryUpdatedAt(queryClient, comparisonKey)) {
 						debug("github-revalidation", "invalidating issue tab queries", {
 							signalKey,
 							tabId: tab.id,
 						});
-						await invalidateIssueTabQueries(queryClient, scope, tab);
+						await invalidateIssueTabQueries(queryClient, scope, numberedTab);
 					}
 				}
 			} catch (error) {

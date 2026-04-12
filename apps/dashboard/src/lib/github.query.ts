@@ -20,8 +20,13 @@ import {
 	getPullStatus,
 	getPullsFromRepo,
 	getPullsFromUser,
+	getRepoBranches,
 	getRepoCollaborators,
+	getRepoContributors,
+	getRepoFileContent,
 	getRepoLabels,
+	getRepoOverview,
+	getRepoTree,
 	getTimelineEventPage,
 	getUserActivity,
 	getUserContributions,
@@ -172,6 +177,28 @@ export const githubQueryKeys = {
 		["github", scope.userId, "pinnedRepos", username] as const,
 	activity: (scope: GitHubQueryScope, username: string) =>
 		["github", scope.userId, "activity", username] as const,
+	repo: {
+		overview: (
+			scope: GitHubQueryScope,
+			input: { owner: string; repo: string },
+		) => ["github", scope.userId, "repo", "overview", input] as const,
+		branches: (
+			scope: GitHubQueryScope,
+			input: { owner: string; repo: string },
+		) => ["github", scope.userId, "repo", "branches", input] as const,
+		tree: (
+			scope: GitHubQueryScope,
+			input: { owner: string; repo: string; ref: string; path: string },
+		) => ["github", scope.userId, "repo", "tree", input] as const,
+		fileContent: (
+			scope: GitHubQueryScope,
+			input: { owner: string; repo: string; ref: string; path: string },
+		) => ["github", scope.userId, "repo", "fileContent", input] as const,
+		contributors: (
+			scope: GitHubQueryScope,
+			input: { owner: string; repo: string },
+		) => ["github", scope.userId, "repo", "contributors", input] as const,
+	},
 	issues: {
 		mine: (scope: GitHubQueryScope) =>
 			["github", scope.userId, "issues", "mine"] as const,
@@ -534,5 +561,76 @@ export function githubUserActivityQueryOptions(
 			lastPage.length === 30 ? lastPageParam + 1 : undefined,
 		staleTime: githubCachePolicy.userActivity.staleTimeMs,
 		gcTime: githubCachePolicy.userActivity.gcTimeMs,
+	});
+}
+
+// ---------------------------------------------------------------------------
+// Repository
+// ---------------------------------------------------------------------------
+
+// Repo metadata — aggressively cached, revalidated via webhooks
+export function githubRepoOverviewQueryOptions(
+	scope: GitHubQueryScope,
+	input: { owner: string; repo: string },
+) {
+	return queryOptions({
+		queryKey: githubQueryKeys.repo.overview(scope, input),
+		queryFn: () => getRepoOverview({ data: input }),
+		staleTime: githubCachePolicy.repoMeta.staleTimeMs,
+		gcTime: githubCachePolicy.repoMeta.gcTimeMs,
+		meta: persistedMeta,
+	});
+}
+
+export function githubRepoBranchesQueryOptions(
+	scope: GitHubQueryScope,
+	input: { owner: string; repo: string },
+) {
+	return queryOptions({
+		queryKey: githubQueryKeys.repo.branches(scope, input),
+		queryFn: () => getRepoBranches({ data: input }),
+		staleTime: githubCachePolicy.repoMeta.staleTimeMs,
+		gcTime: githubCachePolicy.repoMeta.gcTimeMs,
+		meta: persistedMeta,
+	});
+}
+
+export function githubRepoContributorsQueryOptions(
+	scope: GitHubQueryScope,
+	input: { owner: string; repo: string },
+) {
+	return queryOptions({
+		queryKey: githubQueryKeys.repo.contributors(scope, input),
+		queryFn: () => getRepoContributors({ data: input }),
+		staleTime: githubCachePolicy.repoMeta.staleTimeMs,
+		gcTime: githubCachePolicy.repoMeta.gcTimeMs,
+		meta: persistedMeta,
+	});
+}
+
+// Code content — shorter cache, will be webhook-revalidated on push
+export function githubRepoTreeQueryOptions(
+	scope: GitHubQueryScope,
+	input: { owner: string; repo: string; ref: string; path: string },
+) {
+	return queryOptions({
+		queryKey: githubQueryKeys.repo.tree(scope, input),
+		queryFn: () => getRepoTree({ data: input }),
+		staleTime: githubCachePolicy.detail.staleTimeMs,
+		gcTime: githubCachePolicy.detail.gcTimeMs,
+		meta: tabPersistedMeta,
+	});
+}
+
+export function githubRepoFileContentQueryOptions(
+	scope: GitHubQueryScope,
+	input: { owner: string; repo: string; ref: string; path: string },
+) {
+	return queryOptions({
+		queryKey: githubQueryKeys.repo.fileContent(scope, input),
+		queryFn: () => getRepoFileContent({ data: input }),
+		staleTime: githubCachePolicy.repoMeta.staleTimeMs,
+		gcTime: githubCachePolicy.repoMeta.gcTimeMs,
+		meta: persistedMeta,
 	});
 }

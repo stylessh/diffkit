@@ -5,24 +5,30 @@ export function useRegisterTab(
 	tab: {
 		type: TabType;
 		title: string | undefined;
-		number: number;
+		number?: number;
 		url: string;
 		repo: string;
 		iconColor: string;
+		avatarUrl?: string;
 		additions?: number;
 		deletions?: number;
 	} | null,
 ) {
 	useEffect(() => {
 		if (!tab?.title) return;
+		const id =
+			tab.number != null
+				? `${tab.type}:${tab.repo}#${tab.number}`
+				: `${tab.type}:${tab.repo}`;
 		addTab({
-			id: `${tab.type}:${tab.repo}#${tab.number}`,
+			id,
 			type: tab.type,
 			title: tab.title,
 			number: tab.number,
 			url: tab.url,
 			repo: tab.repo,
 			iconColor: tab.iconColor,
+			avatarUrl: tab.avatarUrl,
 			additions: tab.additions,
 			deletions: tab.deletions,
 		});
@@ -33,6 +39,7 @@ export function useRegisterTab(
 		tab?.url,
 		tab?.repo,
 		tab?.iconColor,
+		tab?.avatarUrl,
 		tab?.additions,
 		tab?.deletions,
 	]);

@@ -30,8 +30,13 @@ import type {
 	PullReviewComment,
 	PullStatus,
 	PullSummary,
+	RepoBranch,
 	RepoCollaborator,
+	RepoContributor,
+	RepoContributorsResult,
+	RepoOverview,
 	RepositoryRef,
+	RepoTreeEntry,
 	RequestReviewersInput,
 	SetLabelsInput,
 	SubmitReviewInput,
@@ -4349,4 +4354,274 @@ export const getUserActivity = createServerFn({ method: "GET" })
 		} catch {
 			return [];
 		}
+	});
+
+// ---------------------------------------------------------------------------
+// Repository overview
+// ---------------------------------------------------------------------------
+
+type RepoOverviewInput = {
+	owner: string;
+	repo: string;
+};
+
+export const getRepoOverview = createServerFn({ method: "GET" })
+	.inputValidator(identityValidator<RepoOverviewInput>)
+	.handler(async ({ data }): Promise<RepoOverview | null> => {
+		const context = await getGitHubContext();
+		if (!context) return null;
+
+		const [repoRes, branchesRes, tagsRes, commitsRes] = await Promise.all([
+			context.octokit.rest.repos.get({
+				owner: data.owner,
+				repo: data.repo,
+			}),
+			context.octokit.rest.repos.listBranches({
+				owner: data.owner,
+				repo: data.repo,
+				per_page: 1,
+			}),
+			context.octokit.rest.repos.listTags({
+				owner: data.owner,
+				repo: data.repo,
+				per_page: 1,
+			}),
+			context.octokit.rest.repos.listCommits({
+				owner: data.owner,
+				repo: data.repo,
+				per_page: 1,
+			}),
+		]);
+
+		const repo = repoRes.data;
+
+		// Extract total counts from Link headers
+		const branchCount =
+			parseLinkHeaderLastPage(branchesRes.headers.link as string | undefined) ??
+			branchesRes.data.length;
+		const tagCount =
+			parseLinkHeaderLastPage(tagsRes.headers.link as string | undefined) ??
+			tagsRes.data.length;
+
+		const latestCommit = commitsRes.data[0]
+			? {
+					sha: commitsRes.data[0].sha,
+					message: commitsRes.data[0].commit.message,
+					date:
+						commitsRes.data[0].commit.committer?.date ??
+						commitsRes.data[0].commit.author?.date ??
+						"",
+					author: mapActor(commitsRes.data[0].author),
+				}
+			: null;
+
+		return {
+			id: repo.id,
+			name: repo.name,
+			fullName: repo.full_name,
+			description: repo.description,
+			isPrivate: repo.private,
+			isFork: repo.fork,
+			defaultBranch: repo.default_branch,
+			stars: repo.stargazers_count,
+			forks: repo.forks_count,
+			watchers: repo.subscribers_count,
+			language: repo.language,
+			license: repo.license?.spdx_id ?? null,
+			topics: repo.topics ?? [],
+			url: repo.html_url,
+			owner: repo.owner.login,
+			ownerAvatarUrl: repo.owner.avatar_url,
+			branchCount,
+			tagCount,
+			latestCommit,
+		};
+	});
+
+function parseLinkHeaderLastPage(link: string | undefined): number | null {
+	if (!link) return null;
+	const match = link.match(/[&?]page=(\d+)[^>]*>;\s*rel="last"/);
+	return match ? Number(match[1]) : null;
+}
+
+// ---------------------------------------------------------------------------
+// Repository branches
+// ---------------------------------------------------------------------------
+
+type RepoBranchesInput = {
+	owner: string;
+	repo: string;
+};
+
+export const getRepoBranches = createServerFn({ method: "GET" })
+	.inputValidator(identityValidator<RepoBranchesInput>)
+	.handler(async ({ data }): Promise<RepoBranch[]> => {
+		const context = await getGitHubContext();
+		if (!context) return [];
+
+		const res = await context.octokit.rest.repos.listBranches({
+			owner: data.owner,
+			repo: data.repo,
+			per_page: 25,
+		});
+
+		return res.data.map((b) => ({
+			name: b.name,
+			isProtected: b.protected,
+		}));
+	});
+
+// ---------------------------------------------------------------------------
+// Repository tree contents
+// ---------------------------------------------------------------------------
+
+type RepoTreeInput = {
+	owner: string;
+	repo: string;
+	ref: string;
+	path: string;
+};
+
+export const getRepoTree = createServerFn({ method: "GET" })
+	.inputValidator(identityValidator<RepoTreeInput>)
+	.handler(async ({ data }): Promise<RepoTreeEntry[]> => {
+		const context = await getGitHubContext();
+		if (!context) return [];
+
+		const res = await context.octokit.rest.repos.getContent({
+			owner: data.owner,
+			repo: data.repo,
+			path: data.path,
+			ref: data.ref,
+		});
+
+		if (!Array.isArray(res.data)) return [];
+
+		const entries: RepoTreeEntry[] = res.data.map((item) => ({
+			name: item.name,
+			type:
+				item.type === "dir"
+					? "dir"
+					: item.type === "submodule"
+						? "submodule"
+						: "file",
+			path: item.path,
+			sha: item.sha,
+			size: item.size ?? null,
+			lastCommit: null,
+		}));
+
+		// Fetch last commit for each entry in parallel (capped at 15 to avoid rate limits)
+		const BATCH_SIZE = 15;
+		for (let i = 0; i < entries.length; i += BATCH_SIZE) {
+			const batch = entries.slice(i, i + BATCH_SIZE);
+			const commitResults = await Promise.all(
+				batch.map(async (entry) => {
+					try {
+						const commitRes = await context.octokit.rest.repos.listCommits({
+							owner: data.owner,
+							repo: data.repo,
+							sha: data.ref,
+							path: entry.path,
+							per_page: 1,
+						});
+						const commit = commitRes.data[0];
+						if (commit) {
+							return {
+								message: commit.commit.message.split("\n")[0],
+								date:
+									commit.commit.committer?.date ??
+									commit.commit.author?.date ??
+									"",
+							};
+						}
+					} catch {
+						// Ignore individual commit fetch failures
+					}
+					return null;
+				}),
+			);
+
+			for (let j = 0; j < batch.length; j++) {
+				batch[j].lastCommit = commitResults[j] ?? null;
+			}
+		}
+
+		// Sort: dirs first, then files, alphabetically within each group
+		entries.sort((a, b) => {
+			if (a.type === "dir" && b.type !== "dir") return -1;
+			if (a.type !== "dir" && b.type === "dir") return 1;
+			return a.name.localeCompare(b.name);
+		});
+
+		return entries;
+	});
+
+// ---------------------------------------------------------------------------
+// Repository file content
+// ---------------------------------------------------------------------------
+
+type RepoFileContentInput = {
+	owner: string;
+	repo: string;
+	path: string;
+	ref: string;
+};
+
+export const getRepoFileContent = createServerFn({ method: "GET" })
+	.inputValidator(identityValidator<RepoFileContentInput>)
+	.handler(async ({ data }): Promise<string | null> => {
+		const context = await getGitHubContext();
+		if (!context) return null;
+
+		try {
+			const res = await context.octokit.rest.repos.getContent({
+				owner: data.owner,
+				repo: data.repo,
+				path: data.path,
+				ref: data.ref,
+			});
+
+			if (Array.isArray(res.data) || !("content" in res.data)) return null;
+			return Buffer.from(res.data.content, "base64").toString("utf-8");
+		} catch {
+			return null;
+		}
+	});
+
+// ---------------------------------------------------------------------------
+// Repository contributors
+// ---------------------------------------------------------------------------
+
+type RepoContributorsInput = {
+	owner: string;
+	repo: string;
+};
+
+export const getRepoContributors = createServerFn({ method: "GET" })
+	.inputValidator(identityValidator<RepoContributorsInput>)
+	.handler(async ({ data }): Promise<RepoContributorsResult> => {
+		const context = await getGitHubContext();
+		if (!context) return { contributors: [], totalCount: 0 };
+
+		const res = await context.octokit.rest.repos.listContributors({
+			owner: data.owner,
+			repo: data.repo,
+			per_page: 30,
+			anon: "false",
+		});
+
+		const totalCount =
+			parseLinkHeaderLastPage(res.headers.link as string | undefined) ??
+			res.data.length;
+
+		const contributors: RepoContributor[] = res.data
+			.filter((c): c is typeof c & { login: string } => !!c.login)
+			.map((c) => ({
+				login: c.login,
+				avatarUrl: c.avatar_url ?? "",
+				contributions: c.contributions ?? 0,
+			}));
+
+		return { contributors, totalCount };
 	});

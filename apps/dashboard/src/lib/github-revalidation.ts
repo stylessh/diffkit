@@ -18,6 +18,8 @@ export const githubRevalidationSignalKeys = {
 		`workflowRun:${input.owner}/${input.repo}#${input.runId}`,
 	workflowJobEntity: (input: { owner: string; repo: string; jobId: number }) =>
 		`workflowJob:${input.owner}/${input.repo}#${input.jobId}`,
+	repoCode: (input: { owner: string; repo: string }) =>
+		`repoCode:${input.owner}/${input.repo}`,
 } as const;
 
 export type GitHubRevalidationSignalRecord = {
@@ -249,6 +251,15 @@ export function getGitHubWebhookRevalidationSignalKeys(
 				];
 	}
 
+	if (event === "push") {
+		return [
+			githubRevalidationSignalKeys.repoCode({
+				owner: repository.owner,
+				repo: repository.repo,
+			}),
+		];
+	}
+
 	if (event === "delete") {
 		return [githubRevalidationSignalKeys.pullsMine];
 	}
@@ -318,6 +329,17 @@ export function getGitHubWebhookRevalidationSignalKeys(
 
 export function getGitHubRevalidationSignalKeysForTab(tab: Tab) {
 	const [owner, repo] = tab.repo.split("/");
+
+	if (tab.type === "repo") {
+		return [
+			githubRevalidationSignalKeys.repoCode({
+				owner,
+				repo,
+			}),
+		];
+	}
+
+	if (tab.number == null) return [];
 
 	if (tab.type === "pull" || tab.type === "review") {
 		return [
