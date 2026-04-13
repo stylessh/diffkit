@@ -8,17 +8,9 @@ import {
 import { configureGitHubRequestPolicies } from "./github-request-policy";
 
 const GITHUB_CLIENT_USER_AGENT = "diffkit-dashboard";
-const GITHUB_SECONDARY_RATE_LIMIT_FALLBACK_SECONDS = 60;
 const GITHUB_INSTALLATION_TOKEN_CACHE_VERSION = "v1";
 const GITHUB_INSTALLATION_TOKEN_REFRESH_BUFFER_MS = 5 * 60 * 1000;
 const GITHUB_INSTALLATION_TOKEN_MIN_KV_TTL_SECONDS = 60;
-
-type GitHubThrottleRequestOptions = {
-	method?: string;
-	url: string;
-};
-
-type GitHubThrottleClient = Pick<OctokitType, "log">;
 
 type GitHubInstallationTokenCacheEntry = {
 	installationId: number;
@@ -62,37 +54,8 @@ export async function getGitHubClient(userId: string): Promise<OctokitType> {
 	const octokit = new Octokit({
 		auth: await getGitHubAccessTokenByUserId(userId),
 		userAgent: GITHUB_CLIENT_USER_AGENT,
-		retry: { enabled: true },
-		throttle: {
-			enabled: true,
-			id: `github-user:${userId}`,
-			fallbackSecondaryRateRetryAfter:
-				GITHUB_SECONDARY_RATE_LIMIT_FALLBACK_SECONDS,
-			onRateLimit: (
-				retryAfter: number,
-				options: GitHubThrottleRequestOptions,
-				throttledOctokit: GitHubThrottleClient,
-				retryCount: number,
-			) => {
-				throttledOctokit.log.warn(
-					`GitHub rate limit for ${options.method} ${options.url}; retryAfter=${retryAfter}s retryCount=${retryCount}`,
-				);
-
-				return false;
-			},
-			onSecondaryRateLimit: (
-				retryAfter: number,
-				options: GitHubThrottleRequestOptions,
-				throttledOctokit: GitHubThrottleClient,
-				retryCount: number,
-			) => {
-				throttledOctokit.log.warn(
-					`GitHub secondary rate limit for ${options.method} ${options.url}; retryAfter=${retryAfter}s retryCount=${retryCount}`,
-				);
-
-				return false;
-			},
-		},
+		retry: { enabled: false },
+		throttle: { enabled: false },
 	});
 
 	configureGitHubRequestPolicies(octokit, {
@@ -109,37 +72,8 @@ export async function getGitHubInstallationClient(
 	const octokit = new Octokit({
 		auth: tokenEntry.token,
 		userAgent: GITHUB_CLIENT_USER_AGENT,
-		retry: { enabled: true },
-		throttle: {
-			enabled: true,
-			id: `github-installation:${installationId}`,
-			fallbackSecondaryRateRetryAfter:
-				GITHUB_SECONDARY_RATE_LIMIT_FALLBACK_SECONDS,
-			onRateLimit: (
-				retryAfter: number,
-				options: GitHubThrottleRequestOptions,
-				throttledOctokit: GitHubThrottleClient,
-				retryCount: number,
-			) => {
-				throttledOctokit.log.warn(
-					`GitHub rate limit for ${options.method} ${options.url}; retryAfter=${retryAfter}s retryCount=${retryCount}`,
-				);
-
-				return false;
-			},
-			onSecondaryRateLimit: (
-				retryAfter: number,
-				options: GitHubThrottleRequestOptions,
-				throttledOctokit: GitHubThrottleClient,
-				retryCount: number,
-			) => {
-				throttledOctokit.log.warn(
-					`GitHub secondary rate limit for ${options.method} ${options.url}; retryAfter=${retryAfter}s retryCount=${retryCount}`,
-				);
-
-				return false;
-			},
-		},
+		retry: { enabled: false },
+		throttle: { enabled: false },
 	});
 
 	configureGitHubRequestPolicies(octokit, {
@@ -244,10 +178,15 @@ async function mintGitHubInstallationToken(
 		);
 	}
 
+	const AppOctokit = Octokit.defaults({
+		retry: { enabled: false },
+		throttle: { enabled: false },
+	});
+
 	const app = new App({
 		appId,
 		privateKey,
-		Octokit,
+		Octokit: AppOctokit,
 	});
 
 	configureGitHubRequestPolicies(app.octokit, {

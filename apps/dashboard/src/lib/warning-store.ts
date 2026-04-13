@@ -14,9 +14,12 @@ export type WarningAction =
 			repo?: string;
 	  };
 
+export type WarningSeverity = "warning" | "error";
+
 export interface Warning {
 	id: string;
 	message: string;
+	severity?: WarningSeverity;
 	dismissible?: boolean;
 	action?: WarningAction;
 }
@@ -73,6 +76,27 @@ export function surfaceForbiddenOrgWarnings(orgs: string[] | undefined) {
 			},
 		});
 	}
+}
+
+const GITHUB_API_TIMEOUT_WARNING_ID = "github-api-timeout";
+
+/**
+ * Surface a warning when GitHub API requests are timing out,
+ * indicating GitHub may be experiencing issues.
+ */
+export function surfaceTimeoutWarning(timedOut: boolean | undefined) {
+	if (!timedOut) {
+		removeWarning(GITHUB_API_TIMEOUT_WARNING_ID);
+		return;
+	}
+
+	addWarning({
+		id: GITHUB_API_TIMEOUT_WARNING_ID,
+		message:
+			"Some requests are taking too long and timing out. Data may be incomplete.",
+		severity: "error",
+		dismissible: true,
+	});
 }
 
 /**

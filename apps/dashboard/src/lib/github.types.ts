@@ -114,6 +114,7 @@ export type MyPullsResult = {
 	mentioned: PullSummary[];
 	involved: PullSummary[];
 	forbiddenOrgs?: string[];
+	timedOut?: boolean;
 };
 
 export type MyIssuesResult = {
@@ -121,6 +122,7 @@ export type MyIssuesResult = {
 	authored: IssueSummary[];
 	mentioned: IssueSummary[];
 	forbiddenOrgs?: string[];
+	timedOut?: boolean;
 };
 
 export type CommandPaletteSearchResult = {

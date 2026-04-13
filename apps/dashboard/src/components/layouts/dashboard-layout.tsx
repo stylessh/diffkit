@@ -8,7 +8,10 @@ import {
 } from "#/lib/github.query";
 import { useHasMounted } from "#/lib/use-has-mounted";
 import { useMediaQuery } from "#/lib/use-media-query";
-import { surfaceForbiddenOrgWarnings } from "#/lib/warning-store";
+import {
+	surfaceForbiddenOrgWarnings,
+	surfaceTimeoutWarning,
+} from "#/lib/warning-store";
 import { DashboardBottomBar } from "./dashboard-bottombar";
 import { DashboardMobileNav } from "./dashboard-mobile-nav";
 import {
@@ -57,6 +60,11 @@ export function DashboardLayout() {
 	useEffect(() => {
 		surfaceForbiddenOrgWarnings(issuesQuery.data?.forbiddenOrgs);
 	}, [issuesQuery.data?.forbiddenOrgs]);
+	useEffect(() => {
+		surfaceTimeoutWarning(
+			pullsQuery.data?.timedOut || issuesQuery.data?.timedOut,
+		);
+	}, [pullsQuery.data?.timedOut, issuesQuery.data?.timedOut]);
 
 	const pullCount =
 		hasMounted && pullsQuery.data

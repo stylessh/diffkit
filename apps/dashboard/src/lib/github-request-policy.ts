@@ -2,7 +2,6 @@ import { getRequest } from "@tanstack/react-start/server";
 import type { Octokit as OctokitType } from "octokit";
 import { debug } from "./debug";
 
-const GITHUB_READ_RETRY_COUNT = 1;
 export const GITHUB_REQUEST_TIMEOUT_MS = 12_000;
 
 type GitHubRequestOptions = Parameters<
@@ -28,10 +27,6 @@ type GitHubRateLimitError = {
 type GitHubRequestPolicyOptions = {
 	tokenLabel?: string;
 };
-
-function isSafeGitHubRetryMethod(method: string | undefined) {
-	return method === "GET" || method === "HEAD" || method === "OPTIONS";
-}
 
 function createGitHubRequestTimeoutSignal(
 	requestSignal: AbortSignal | undefined,
@@ -116,9 +111,6 @@ export function configureGitHubRequestPolicies(
 	octokit.hook.before("request", (options: GitHubRequestOptions) => {
 		const requestOptions = options.request ?? {};
 		options.request = requestOptions;
-		requestOptions.retries = isSafeGitHubRetryMethod(options.method)
-			? GITHUB_READ_RETRY_COUNT
-			: 0;
 		requestOptions.signal ??= createGitHubRequestTimeoutSignal(
 			getIncomingRequestSignal(),
 		);

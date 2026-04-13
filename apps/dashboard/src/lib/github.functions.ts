@@ -1286,6 +1286,31 @@ class GitHubOperationTimeoutError extends Error {
 	}
 }
 
+/**
+ * Module-level tracker for recent GitHub API timeouts.
+ * Automatically recorded by `withGitHubOperationTimeout` so that
+ * callers that swallow the error (fallback-to-REST, return []) still
+ * contribute to the global "GitHub is timing out" signal.
+ */
+const TIMEOUT_TRACKER_WINDOW_MS = 60_000;
+let recentTimeoutTimestamps: number[] = [];
+
+function recordGitHubTimeout() {
+	const now = Date.now();
+	recentTimeoutTimestamps.push(now);
+	recentTimeoutTimestamps = recentTimeoutTimestamps.filter(
+		(t) => now - t < TIMEOUT_TRACKER_WINDOW_MS,
+	);
+}
+
+function hasRecentGitHubTimeouts(): boolean {
+	const now = Date.now();
+	recentTimeoutTimestamps = recentTimeoutTimestamps.filter(
+		(t) => now - t < TIMEOUT_TRACKER_WINDOW_MS,
+	);
+	return recentTimeoutTimestamps.length > 0;
+}
+
 function getRemainingSearchTimeoutMs(deadlineAt: number, maxTimeoutMs: number) {
 	return Math.max(0, Math.min(maxTimeoutMs, deadlineAt - Date.now()));
 }
@@ -1296,6 +1321,7 @@ async function withGitHubOperationTimeout<T>(
 	task: (signal: AbortSignal) => Promise<T>,
 ) {
 	if (timeoutMs <= 0) {
+		recordGitHubTimeout();
 		throw new GitHubOperationTimeoutError(label, timeoutMs);
 	}
 
@@ -1305,6 +1331,7 @@ async function withGitHubOperationTimeout<T>(
 	const timeoutPromise = new Promise<never>((_, reject) => {
 		timeoutId = setTimeout(() => {
 			controller.abort();
+			recordGitHubTimeout();
 			reject(new GitHubOperationTimeoutError(label, timeoutMs));
 		}, timeoutMs);
 	});
@@ -3968,6 +3995,7 @@ async function getMyPullsResult({
 			const results: MyPullsResult[] = [];
 			const rateLimits: GitHubGraphQLRateLimit[] = [];
 			const forbiddenOrgs: string[] = [];
+			let timedOut = false;
 
 			for (const source of sources) {
 				const sourceTimeoutMs = getRemainingSearchTimeoutMs(
@@ -4105,6 +4133,9 @@ async function getMyPullsResult({
 						source.label,
 						error,
 					);
+					if (error instanceof GitHubOperationTimeoutError) {
+						timedOut = true;
+					}
 					const org = extractForbiddenOrg(error);
 					if (org) forbiddenOrgs.push(org);
 				}
@@ -4113,6 +4144,9 @@ async function getMyPullsResult({
 			const data = mergeMyPullsResults(results);
 			if (forbiddenOrgs.length > 0) {
 				data.forbiddenOrgs = [...new Set(forbiddenOrgs)];
+			}
+			if (timedOut || hasRecentGitHubTimeouts()) {
+				data.timedOut = true;
 			}
 
 			return {
@@ -4148,6 +4182,7 @@ async function getMyIssuesResult({
 			const results: MyIssuesResult[] = [];
 			const rateLimits: GitHubGraphQLRateLimit[] = [];
 			const forbiddenOrgs: string[] = [];
+			let timedOut = false;
 
 			for (const source of sources) {
 				const sourceTimeoutMs = getRemainingSearchTimeoutMs(
@@ -4260,6 +4295,9 @@ async function getMyIssuesResult({
 						source.label,
 						error,
 					);
+					if (error instanceof GitHubOperationTimeoutError) {
+						timedOut = true;
+					}
 					const org = extractForbiddenOrg(error);
 					if (org) forbiddenOrgs.push(org);
 				}
@@ -4268,6 +4306,9 @@ async function getMyIssuesResult({
 			const data = mergeMyIssuesResults(results);
 			if (forbiddenOrgs.length > 0) {
 				data.forbiddenOrgs = [...new Set(forbiddenOrgs)];
+			}
+			if (timedOut || hasRecentGitHubTimeouts()) {
+				data.timedOut = true;
 			}
 
 			return {
