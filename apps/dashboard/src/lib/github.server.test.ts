@@ -2,12 +2,16 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const octokitInstances: Array<{
 	hookBefore: ReturnType<typeof vi.fn>;
+	hookAfter: ReturnType<typeof vi.fn>;
+	hookError: ReturnType<typeof vi.fn>;
 	log: { warn: ReturnType<typeof vi.fn>; info: ReturnType<typeof vi.fn> };
 	options: Record<string, unknown>;
 }> = [];
 const octokitConstructor = vi.fn((options: Record<string, unknown>) => {
 	const instance = {
 		hookBefore: vi.fn(),
+		hookAfter: vi.fn(),
+		hookError: vi.fn(),
 		log: {
 			warn: vi.fn(),
 			info: vi.fn(),
@@ -19,7 +23,9 @@ const octokitConstructor = vi.fn((options: Record<string, unknown>) => {
 
 	return {
 		hook: {
+			after: instance.hookAfter,
 			before: instance.hookBefore,
+			error: instance.hookError,
 		},
 		log: instance.log,
 	};
@@ -41,6 +47,7 @@ vi.mock("./github-app.server", () => ({
 }));
 
 beforeEach(() => {
+	vi.resetModules();
 	octokitInstances.length = 0;
 	octokitConstructor.mockClear();
 	appConstructor.mockClear();
@@ -100,6 +107,8 @@ describe("getGitHubClient", () => {
 		expect(options.throttle.fallbackSecondaryRateRetryAfter).toBe(60);
 
 		expect(instance.hookBefore).toHaveBeenCalledTimes(1);
+		expect(instance.hookAfter).toHaveBeenCalledTimes(1);
+		expect(instance.hookError).toHaveBeenCalledTimes(1);
 		const [hookEvent, hookHandler] = instance.hookBefore.mock.calls[0] as [
 			string,
 			(options: {
@@ -158,13 +167,23 @@ describe("getGitHubClient", () => {
 	});
 
 	it("creates GitHub App installation clients from app credentials", async () => {
-		const installationOctokit = {
+		const appAuth = vi.fn(async () => ({
+			token: "installation-token",
+			expiresAt: new Date(Date.now() + 60 * 60 * 1000).toISOString(),
+			permissions: { contents: "read" },
+			repositoryIds: [123],
+			repositorySelection: "selected",
+		}));
+		const appOctokit = {
+			auth: appAuth,
 			hook: {
+				after: vi.fn(),
 				before: vi.fn(),
+				error: vi.fn(),
 			},
 		};
 		appConstructor.mockImplementationOnce(() => ({
-			getInstallationOctokit: vi.fn(async () => installationOctokit),
+			octokit: appOctokit,
 		}));
 		const { getGitHubInstallationClient } = await import("./github.server");
 
@@ -177,6 +196,68 @@ describe("getGitHubClient", () => {
 			privateKey: "private-key",
 			Octokit: octokitConstructor,
 		});
-		expect(installationOctokit.hook.before).toHaveBeenCalledTimes(1);
+		expect(appAuth).toHaveBeenCalledWith({
+			type: "installation",
+			installationId: 987,
+		});
+		expect(octokitConstructor).toHaveBeenCalledTimes(1);
+		const [installationInstance] = octokitInstances;
+		const options = installationInstance.options as {
+			auth: string;
+			userAgent: string;
+			retry: { enabled: boolean };
+			throttle: {
+				enabled: boolean;
+				id: string;
+				fallbackSecondaryRateRetryAfter: number;
+			};
+		};
+		expect(options.auth).toBe("installation-token");
+		expect(options.userAgent).toBe("diffkit-dashboard");
+		expect(options.retry).toEqual({ enabled: true });
+		expect(options.throttle.enabled).toBe(true);
+		expect(options.throttle.id).toBe("github-installation:987");
+		expect(options.throttle.fallbackSecondaryRateRetryAfter).toBe(60);
+		expect(appOctokit.hook.before).toHaveBeenCalledTimes(1);
+		expect(appOctokit.hook.after).toHaveBeenCalledTimes(1);
+		expect(appOctokit.hook.error).toHaveBeenCalledTimes(1);
+		expect(installationInstance.hookBefore).toHaveBeenCalledTimes(1);
+		expect(installationInstance.hookAfter).toHaveBeenCalledTimes(1);
+		expect(installationInstance.hookError).toHaveBeenCalledTimes(1);
+	});
+
+	it("reuses fresh installation tokens and remints after invalidation", async () => {
+		const appAuth = vi.fn(async () => ({
+			token: `installation-token-${appAuth.mock.calls.length}`,
+			expiresAt: new Date(Date.now() + 60 * 60 * 1000).toISOString(),
+		}));
+		appConstructor.mockImplementation(() => ({
+			octokit: {
+				auth: appAuth,
+				hook: {
+					after: vi.fn(),
+					before: vi.fn(),
+					error: vi.fn(),
+				},
+			},
+		}));
+		const { getGitHubInstallationClient, invalidateGitHubInstallationToken } =
+			await import("./github.server");
+
+		await getGitHubInstallationClient(987);
+		await getGitHubInstallationClient(987);
+
+		expect(appConstructor).toHaveBeenCalledTimes(1);
+		expect(appAuth).toHaveBeenCalledTimes(1);
+		expect(octokitConstructor).toHaveBeenCalledTimes(2);
+		expect(octokitInstances[0].options.auth).toBe("installation-token-1");
+		expect(octokitInstances[1].options.auth).toBe("installation-token-1");
+
+		await invalidateGitHubInstallationToken(987);
+		await getGitHubInstallationClient(987);
+
+		expect(appConstructor).toHaveBeenCalledTimes(2);
+		expect(appAuth).toHaveBeenCalledTimes(2);
+		expect(octokitInstances[2].options.auth).toBe("installation-token-2");
 	});
 });

@@ -1,6 +1,7 @@
 import { Skeleton } from "@diffkit/ui/components/skeleton";
 import { useQuery } from "@tanstack/react-query";
 import { getRouteApi } from "@tanstack/react-router";
+import { useMemo } from "react";
 import {
 	DetailPageLayout,
 	DetailPageSkeletonLayout,
@@ -11,6 +12,8 @@ import {
 	githubQueryKeys,
 	githubViewerQueryOptions,
 } from "#/lib/github.query";
+import { githubRevalidationSignalKeys } from "#/lib/github-revalidation";
+import { useGitHubSignalRefresh } from "#/lib/use-github-signal-refresh";
 import { useHasMounted } from "#/lib/use-has-mounted";
 import { useRegisterTab } from "#/lib/use-register-tab";
 import { PullBodySection } from "./pull-body-section";
@@ -24,16 +27,42 @@ export function PullDetailPage() {
 	const { user } = routeApi.useRouteContext();
 	const { owner, repo, pullId } = routeApi.useParams();
 	const pullNumber = Number(pullId);
-	const scope = { userId: user.id };
+	const scope = useMemo(() => ({ userId: user.id }), [user.id]);
+	const input = useMemo(
+		() => ({ owner, repo, pullNumber }),
+		[owner, repo, pullNumber],
+	);
 	const hasMounted = useHasMounted();
+	const pageQueryKey = useMemo(
+		() => githubQueryKeys.pulls.page(scope, input),
+		[scope, input],
+	);
+	const webhookRefreshTargets = useMemo(
+		() => [
+			{
+				queryKey: pageQueryKey,
+				signalKeys: [githubRevalidationSignalKeys.pullEntity(input)],
+			},
+			{
+				queryKey: githubQueryKeys.pulls.status(scope, input),
+				signalKeys: [githubRevalidationSignalKeys.pullEntity(input)],
+			},
+		],
+		[pageQueryKey, scope, input],
+	);
 
 	const pageQuery = useQuery({
-		...githubPullPageQueryOptions(scope, { owner, repo, pullNumber }),
+		...githubPullPageQueryOptions(scope, input),
 		enabled: hasMounted,
 	});
 	const viewerQuery = useQuery({
 		...githubViewerQueryOptions(scope),
 		enabled: hasMounted,
+	});
+	useGitHubSignalRefresh({
+		enabled:
+			hasMounted && pageQuery.data !== undefined && !pageQuery.isFetching,
+		targets: webhookRefreshTargets,
 	});
 
 	const pr = pageQuery.data?.detail;
@@ -88,11 +117,7 @@ export function PullDetailPage() {
 						events={events}
 						commentPagination={commentPagination}
 						eventPagination={eventPagination}
-						pageQueryKey={githubQueryKeys.pulls.page(scope, {
-							owner,
-							repo,
-							pullNumber,
-						})}
+						pageQueryKey={pageQueryKey}
 						isFetching={pageQuery.isFetching}
 						pr={pr}
 						owner={owner}

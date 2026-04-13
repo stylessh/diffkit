@@ -30,10 +30,8 @@ export const Route = createFileRoute("/_protected/issues")({
 	ssr: false,
 	loader: async ({ context }) => {
 		const scope = { userId: context.user.id };
-		const [, filterStore] = await Promise.all([
-			context.queryClient.ensureQueryData(githubMyIssuesQueryOptions(scope)),
-			getFilterCookie(),
-		]);
+		void context.queryClient.prefetchQuery(githubMyIssuesQueryOptions(scope));
+		const filterStore = await getFilterCookie();
 		return { filterStore };
 	},
 	pendingComponent: DashboardContentLoading,

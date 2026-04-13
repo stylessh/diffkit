@@ -11,7 +11,11 @@ describe("getGitHubWebhookRevalidationSignalKeys", () => {
 				},
 				pull_request: { number: 42 },
 			}),
-		).toEqual(["pulls.mine", "pull:stylessh/havana#42"]);
+		).toEqual([
+			"pulls.mine",
+			"repoMeta:stylessh/havana",
+			"pull:stylessh/havana#42",
+		]);
 	});
 
 	it("treats issue comments on pull requests as pull signals", () => {
@@ -42,7 +46,22 @@ describe("getGitHubWebhookRevalidationSignalKeys", () => {
 					number: 9,
 				},
 			}),
-		).toEqual(["issues.mine", "issue:stylessh/havana#9"]);
+		).toEqual([
+			"issues.mine",
+			"repoMeta:stylessh/havana",
+			"issue:stylessh/havana#9",
+		]);
+	});
+
+	it("maps push webhook events to repo metadata and code signals", () => {
+		expect(
+			getGitHubWebhookRevalidationSignalKeys("push", {
+				repository: {
+					name: "havana",
+					owner: { login: "stylessh" },
+				},
+			}),
+		).toEqual(["repoMeta:stylessh/havana", "repoCode:stylessh/havana"]);
 	});
 
 	it("extracts pull signals from check_run webhook payloads", () => {

@@ -116,14 +116,6 @@ export function DashboardTabs({ tabsReady, routerRef }: DashboardTabsProps) {
 		}
 	}, [pathname, scrollRef, updateScrollState]);
 
-	useEffect(() => {
-		if (!tabsReady || openTabs.length === 0) return;
-
-		void Promise.allSettled(
-			openTabs.map((tab) => preloadRouteOnce(routerRef.current, tab.url)),
-		);
-	}, [tabsReady, openTabs, routerRef]);
-
 	const handleCloseTab = useCallback(
 		(id: string, tabUrl: string) => {
 			const isActive = pathname === tabUrl;

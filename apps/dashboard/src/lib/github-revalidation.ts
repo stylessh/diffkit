@@ -3,6 +3,8 @@ import type { Tab } from "./tab-store";
 export const githubRevalidationSignalKeys = {
 	pullsMine: "pulls.mine",
 	issuesMine: "issues.mine",
+	repoMeta: (input: { owner: string; repo: string }) =>
+		`repoMeta:${input.owner}/${input.repo}`,
 	repoLabels: (input: { owner: string; repo: string }) =>
 		`repoLabels:${input.owner}/${input.repo}`,
 	repoCollaborators: (input: { owner: string; repo: string }) =>
@@ -178,13 +180,23 @@ export function getGitHubWebhookRevalidationSignalKeys(
 		return typeof pullNumber === "number"
 			? [
 					githubRevalidationSignalKeys.pullsMine,
+					githubRevalidationSignalKeys.repoMeta({
+						owner: repository.owner,
+						repo: repository.repo,
+					}),
 					githubRevalidationSignalKeys.pullEntity({
 						owner: repository.owner,
 						repo: repository.repo,
 						pullNumber,
 					}),
 				]
-			: [githubRevalidationSignalKeys.pullsMine];
+			: [
+					githubRevalidationSignalKeys.pullsMine,
+					githubRevalidationSignalKeys.repoMeta({
+						owner: repository.owner,
+						repo: repository.repo,
+					}),
+				];
 	}
 
 	if (
@@ -212,6 +224,10 @@ export function getGitHubWebhookRevalidationSignalKeys(
 		return issueIdentity.isPullRequest
 			? [
 					githubRevalidationSignalKeys.pullsMine,
+					githubRevalidationSignalKeys.repoMeta({
+						owner: repository.owner,
+						repo: repository.repo,
+					}),
 					githubRevalidationSignalKeys.pullEntity({
 						owner: repository.owner,
 						repo: repository.repo,
@@ -220,6 +236,10 @@ export function getGitHubWebhookRevalidationSignalKeys(
 				]
 			: [
 					githubRevalidationSignalKeys.issuesMine,
+					githubRevalidationSignalKeys.repoMeta({
+						owner: repository.owner,
+						repo: repository.repo,
+					}),
 					githubRevalidationSignalKeys.issueEntity({
 						owner: repository.owner,
 						repo: repository.repo,
@@ -253,6 +273,10 @@ export function getGitHubWebhookRevalidationSignalKeys(
 
 	if (event === "push") {
 		return [
+			githubRevalidationSignalKeys.repoMeta({
+				owner: repository.owner,
+				repo: repository.repo,
+			}),
 			githubRevalidationSignalKeys.repoCode({
 				owner: repository.owner,
 				repo: repository.repo,
@@ -260,8 +284,18 @@ export function getGitHubWebhookRevalidationSignalKeys(
 		];
 	}
 
-	if (event === "delete") {
-		return [githubRevalidationSignalKeys.pullsMine];
+	if (event === "create" || event === "delete") {
+		return [
+			githubRevalidationSignalKeys.pullsMine,
+			githubRevalidationSignalKeys.repoMeta({
+				owner: repository.owner,
+				repo: repository.repo,
+			}),
+			githubRevalidationSignalKeys.repoCode({
+				owner: repository.owner,
+				repo: repository.repo,
+			}),
+		];
 	}
 
 	if (event === "check_run") {

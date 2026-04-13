@@ -1,5 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { debug } from "#/lib/debug";
+import { invalidateGitHubInstallationToken } from "#/lib/github.server";
 import {
 	getGitHubWebhookSecret,
 	verifyGitHubWebhookSignature,
@@ -8,6 +9,30 @@ import { markGitHubRevalidationSignals } from "#/lib/github-cache";
 import { getGitHubWebhookRevalidationSignalKeys } from "#/lib/github-revalidation";
 import { getGitHubWebhookPayloadMetadata } from "#/lib/github-webhook-debug";
 import { PRIVATE_ROUTE_HEADERS } from "#/lib/seo";
+
+const INSTALLATION_TOKEN_INVALIDATION_EVENTS = new Set([
+	"installation",
+	"installation_repositories",
+	"github_app_authorization",
+]);
+
+function getWebhookInstallationId(payload: unknown) {
+	if (!payload || typeof payload !== "object" || !("installation" in payload)) {
+		return null;
+	}
+
+	const installation = payload.installation;
+	if (
+		!installation ||
+		typeof installation !== "object" ||
+		!("id" in installation) ||
+		typeof installation.id !== "number"
+	) {
+		return null;
+	}
+
+	return installation.id;
+}
 
 export const Route = createFileRoute("/api/webhooks/github")({
 	headers: () => PRIVATE_ROUTE_HEADERS,
@@ -87,12 +112,25 @@ export const Route = createFileRoute("/api/webhooks/github")({
 					event,
 					payload,
 				);
+				const installationId = getWebhookInstallationId(payload);
+				let invalidatedInstallationToken = false;
+
+				if (
+					installationId !== null &&
+					INSTALLATION_TOKEN_INVALIDATION_EVENTS.has(event)
+				) {
+					await invalidateGitHubInstallationToken(installationId);
+					invalidatedInstallationToken = true;
+				}
+
 				const updatedSignalCount =
 					await markGitHubRevalidationSignals(signalKeys);
 
 				debug("github-webhook", "processed webhook", {
 					deliveryId,
 					event,
+					installationId,
+					invalidatedInstallationToken,
 					signalKeys,
 					updatedSignalCount,
 				});

@@ -21,7 +21,7 @@ export const Route = createFileRoute("/setup")({
 		return { user: session.user };
 	},
 	loader: async () => {
-		const accessState = await getGitHubAppAccessState();
+		const accessState = await getGitHubAppAccessState().catch(() => null);
 		return { accessState };
 	},
 	headers: () => PRIVATE_ROUTE_HEADERS,

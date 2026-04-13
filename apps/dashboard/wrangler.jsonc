@@ -2,7 +2,10 @@
 	"$schema": "node_modules/wrangler/config-schema.json",
 	"name": "diffkit",
 	"compatibility_date": "2025-09-02",
-	"compatibility_flags": ["nodejs_compat"],
+	"compatibility_flags": [
+		"nodejs_compat",
+		"no_handle_cross_request_promise_resolution"
+	],
 	"main": "@tanstack/react-start/server-entry",
 	"observability": {
 		"logs": {

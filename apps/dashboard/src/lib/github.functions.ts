@@ -33,11 +33,11 @@ import type {
 	PullSummary,
 	RepoBranch,
 	RepoCollaborator,
-	RepoContributor,
 	RepoContributorsResult,
 	RepoOverview,
 	RepositoryRef,
 	RepoTreeEntry,
+	RequestedTeam,
 	RequestReviewersInput,
 	SetLabelsInput,
 	SubmitReviewInput,
@@ -79,6 +79,16 @@ type GitHubContext = {
 	session: AuthSession;
 	octokit: GitHubClient;
 };
+type GitHubSearchOwnerScope = {
+	login: string;
+	targetType: GitHubInstallationTargetType;
+};
+type GitHubGraphQLSearchSource = {
+	label: string;
+	context: GitHubContext;
+	owner?: GitHubSearchOwnerScope;
+	excludeOwners?: GitHubSearchOwnerScope[];
+};
 
 type GitHubRestResponse<TData> = {
 	data: TData;
@@ -92,6 +102,255 @@ type SearchItem = Awaited<
 type SearchResult = Awaited<
 	ReturnType<GitHubClient["rest"]["search"]["issuesAndPullRequests"]>
 >["data"];
+type GitHubGraphQLRateLimit = {
+	cost: number;
+	remaining: number;
+	resetAt: string;
+};
+type GitHubGraphQLActor = {
+	login: string;
+	avatarUrl: string;
+	url: string;
+	__typename?: string;
+} | null;
+type GitHubGraphQLLabel = {
+	name: string;
+	color: string;
+	description: string | null;
+};
+type GitHubGraphQLRepositoryRef = {
+	name: string;
+	nameWithOwner: string;
+	url: string;
+	owner: {
+		login: string;
+	};
+};
+type GitHubGraphQLCommentNode = {
+	id: string;
+	databaseId: number | null;
+	body: string;
+	createdAt: string;
+	author: GitHubGraphQLActor;
+};
+type GitHubGraphQLCommentConnection = {
+	totalCount: number;
+	nodes: Array<GitHubGraphQLCommentNode | null> | null;
+};
+type GitHubGraphQLSearchConnection<TNode> = {
+	nodes: Array<TNode | null> | null;
+};
+type GitHubGraphQLPullSearchNode = {
+	__typename: "PullRequest";
+	databaseId: number | null;
+	number: number;
+	title: string;
+	state: string;
+	isDraft: boolean;
+	createdAt: string;
+	updatedAt: string;
+	closedAt: string | null;
+	mergedAt: string | null;
+	url: string;
+	comments: {
+		totalCount: number;
+	};
+	author: GitHubGraphQLActor;
+	labels: {
+		nodes: Array<GitHubGraphQLLabel | null> | null;
+	} | null;
+	repository: GitHubGraphQLRepositoryRef;
+};
+type GitHubGraphQLIssueSearchNode = {
+	__typename: "Issue";
+	databaseId: number | null;
+	number: number;
+	title: string;
+	state: string;
+	stateReason: string | null;
+	createdAt: string;
+	updatedAt: string;
+	closedAt: string | null;
+	url: string;
+	comments: {
+		totalCount: number;
+	};
+	author: GitHubGraphQLActor;
+	labels: {
+		nodes: Array<GitHubGraphQLLabel | null> | null;
+	} | null;
+	repository: GitHubGraphQLRepositoryRef;
+};
+type GitHubGraphQLRepoOverviewResponse = {
+	repository: {
+		databaseId: number | null;
+		name: string;
+		nameWithOwner: string;
+		description: string | null;
+		isPrivate: boolean;
+		isFork: boolean;
+		defaultBranchRef: {
+			name: string;
+			target: {
+				__typename: string;
+				oid?: string;
+				message?: string;
+				committedDate?: string;
+				author?: {
+					user?: {
+						login: string;
+						avatarUrl: string;
+						url: string;
+					} | null;
+				} | null;
+			} | null;
+		} | null;
+		stargazerCount: number;
+		forkCount: number;
+		watchers: {
+			totalCount: number;
+		};
+		primaryLanguage: {
+			name: string;
+		} | null;
+		licenseInfo: {
+			spdxId: string | null;
+		} | null;
+		repositoryTopics: {
+			nodes: Array<{
+				topic: {
+					name: string;
+				};
+			} | null> | null;
+		};
+		url: string;
+		owner: {
+			login: string;
+			avatarUrl: string;
+		};
+		branches: {
+			totalCount: number;
+		};
+		tags: {
+			totalCount: number;
+		};
+		pullRequests: {
+			totalCount: number;
+		};
+		issues: {
+			totalCount: number;
+		};
+		hasDiscussionsEnabled: boolean;
+	} | null;
+	rateLimit: GitHubGraphQLRateLimit;
+};
+type GitHubGraphQLReviewRequestNode = {
+	requestedReviewer:
+		| ({
+				__typename: "User";
+				login: string;
+				avatarUrl: string;
+				url: string;
+		  } & Record<string, unknown>)
+		| {
+				__typename: "Team";
+				name: string;
+				slug: string;
+				url: string;
+		  }
+		| null;
+};
+type GitHubGraphQLPullPageResponse = {
+	repository: {
+		pullRequest: {
+			databaseId: number | null;
+			number: number;
+			title: string;
+			state: string;
+			isDraft: boolean;
+			createdAt: string;
+			updatedAt: string;
+			closedAt: string | null;
+			mergedAt: string | null;
+			url: string;
+			body: string;
+			additions: number;
+			deletions: number;
+			changedFiles: number;
+			comments: { totalCount: number };
+			author: GitHubGraphQLActor;
+			labels: {
+				nodes: Array<GitHubGraphQLLabel | null> | null;
+			} | null;
+			headRefName: string;
+			headRefOid: string;
+			baseRefName: string;
+			merged: boolean;
+			mergeCommit: { oid: string } | null;
+			mergedBy: GitHubGraphQLActor;
+			mergeable: string;
+			mergeStateStatus: string;
+			repository: GitHubGraphQLRepositoryRef;
+			reviewThreads: { totalCount: number };
+			reviewRequests: {
+				nodes: Array<GitHubGraphQLReviewRequestNode | null> | null;
+			} | null;
+			commits: {
+				totalCount: number;
+				nodes: Array<{
+					commit: {
+						oid: string;
+						message: string;
+						committedDate: string;
+						author: {
+							user?: {
+								login: string;
+								avatarUrl: string;
+								url: string;
+							} | null;
+						} | null;
+					};
+				} | null> | null;
+			};
+			firstComments: GitHubGraphQLCommentConnection;
+			lastComments: GitHubGraphQLCommentConnection;
+		} | null;
+	};
+	rateLimit: GitHubGraphQLRateLimit;
+};
+type GitHubGraphQLIssuePageResponse = {
+	repository: {
+		issue: {
+			databaseId: number | null;
+			number: number;
+			title: string;
+			state: string;
+			stateReason: string | null;
+			createdAt: string;
+			updatedAt: string;
+			closedAt: string | null;
+			url: string;
+			body: string;
+			comments: { totalCount: number };
+			author: GitHubGraphQLActor;
+			labels: {
+				nodes: Array<GitHubGraphQLLabel | null> | null;
+			} | null;
+			repository: GitHubGraphQLRepositoryRef;
+			assignees: {
+				nodes: Array<GitHubGraphQLActor | null> | null;
+			} | null;
+			milestone: {
+				title: string;
+				description: string | null;
+				dueOn: string | null;
+			} | null;
+			firstComments: GitHubGraphQLCommentConnection;
+			lastComments: GitHubGraphQLCommentConnection;
+		} | null;
+	};
+	rateLimit: GitHubGraphQLRateLimit;
+};
 type AuthenticatedUserRepo = Awaited<
 	ReturnType<GitHubClient["rest"]["repos"]["listForAuthenticatedUser"]>
 >["data"][number];
@@ -149,6 +408,12 @@ type GitHubUserTeam = {
 type RepoState = "all" | "closed" | "open";
 type PullSort = "created" | "long-running" | "popularity" | "updated";
 type IssueSort = "comments" | "created" | "updated";
+const GITHUB_OPERATION_TIMEOUT_MS = 15_000;
+const GITHUB_PAGINATED_OPERATION_TIMEOUT_MS = 25_000;
+const GITHUB_MIN_OPERATION_TIMEOUT_MS = 1_000;
+const MY_SEARCH_BUCKET_LIMIT = 30;
+const MY_SEARCH_SOURCE_TIMEOUT_MS = 8_000;
+const MY_SEARCH_TOTAL_TIMEOUT_MS = 18_000;
 
 // ---------------------------------------------------------------------------
 // Entity-scoped cache busting helpers
@@ -366,26 +631,6 @@ export type CommandPaletteSearchInput = {
 	perPage?: number;
 };
 
-const myPullRoleDefinitions = [
-	{ key: "reviewRequested", role: "review-requested" },
-	{ key: "assigned", role: "assigned" },
-	{ key: "authored", role: "author" },
-	{ key: "mentioned", role: "mentioned" },
-	{ key: "involved", role: "involved" },
-] as const satisfies Array<{
-	key: keyof MyPullsResult;
-	role: PullSearchRole;
-}>;
-
-const myIssueRoleDefinitions = [
-	{ key: "assigned", role: "assigned" },
-	{ key: "authored", role: "author" },
-	{ key: "mentioned", role: "mentioned" },
-] as const satisfies Array<{
-	key: keyof MyIssuesResult;
-	role: IssueSearchRole;
-}>;
-
 function clampPerPage(value: number | undefined, fallback = 30) {
 	if (!Number.isFinite(value)) {
 		return fallback;
@@ -447,6 +692,33 @@ function parseRepositoryRef(
 		match[2],
 		`https://github.com/${match[1]}/${match[2]}`,
 	);
+}
+
+function mapGraphQLActor(actor: GitHubGraphQLActor): GitHubActor | null {
+	if (!actor?.login) {
+		return null;
+	}
+
+	return {
+		login: actor.login,
+		avatarUrl: actor.avatarUrl,
+		url: actor.url,
+		type: actor.__typename ?? "User",
+	};
+}
+
+function mapGraphQLRepositoryRef(
+	repository: GitHubGraphQLRepositoryRef,
+): RepositoryRef {
+	const [ownerFromName, repoFromName] = repository.nameWithOwner.split("/");
+	const owner = repository.owner.login || ownerFromName;
+
+	return {
+		name: repository.name || repoFromName,
+		owner,
+		fullName: repository.nameWithOwner,
+		url: repository.url,
+	};
 }
 
 function mapActor(user: GitHubApiUser | null | undefined): GitHubActor | null {
@@ -527,6 +799,22 @@ function mapLabels(labels: Array<string | GitHubApiLabel> | null | undefined) {
 	return (labels ?? [])
 		.map((label) => mapLabel(label))
 		.filter((label): label is GitHubLabel => Boolean(label));
+}
+
+function mapGraphQLLabels(
+	labels: { nodes: Array<GitHubGraphQLLabel | null> | null } | null,
+) {
+	return (labels?.nodes ?? []).flatMap((label) =>
+		label
+			? [
+					{
+						name: label.name,
+						color: label.color,
+						description: label.description,
+					},
+				]
+			: [],
+	);
 }
 
 function mapPullSummary(
@@ -689,6 +977,366 @@ function mapIssueSearchItems(items: SearchItem[]) {
 		.filter((item): item is IssueSummary => Boolean(item));
 }
 
+function mapGraphQLPullSearchNode(
+	node: GitHubGraphQLPullSearchNode | null,
+): PullSummary | null {
+	if (!node || node.__typename !== "PullRequest" || node.databaseId == null) {
+		return null;
+	}
+
+	return {
+		id: node.databaseId,
+		number: node.number,
+		title: node.title,
+		state: node.state.toLowerCase(),
+		isDraft: node.isDraft,
+		createdAt: node.createdAt,
+		updatedAt: node.updatedAt,
+		closedAt: node.closedAt,
+		mergedAt: node.mergedAt,
+		comments: node.comments.totalCount,
+		url: node.url,
+		author: mapGraphQLActor(node.author),
+		labels: mapGraphQLLabels(node.labels),
+		repository: mapGraphQLRepositoryRef(node.repository),
+	};
+}
+
+function mapGraphQLIssueSearchNode(
+	node: GitHubGraphQLIssueSearchNode | null,
+): IssueSummary | null {
+	if (!node || node.__typename !== "Issue" || node.databaseId == null) {
+		return null;
+	}
+
+	return {
+		id: node.databaseId,
+		number: node.number,
+		title: node.title,
+		state: node.state.toLowerCase(),
+		stateReason: node.stateReason?.toLowerCase() ?? null,
+		createdAt: node.createdAt,
+		updatedAt: node.updatedAt,
+		closedAt: node.closedAt,
+		comments: node.comments.totalCount,
+		url: node.url,
+		author: mapGraphQLActor(node.author),
+		labels: mapGraphQLLabels(node.labels),
+		repository: mapGraphQLRepositoryRef(node.repository),
+	};
+}
+
+function numericIdFromGraphQLId(id: string) {
+	let hash = 0;
+	for (let i = 0; i < id.length; i++) {
+		hash = (hash * 31 + id.charCodeAt(i)) | 0;
+	}
+	return Math.abs(hash);
+}
+
+function mapGraphQLComments(
+	...connections: GitHubGraphQLCommentConnection[]
+): IssueComment[] {
+	const byId = new Map<number, IssueComment>();
+
+	for (const connection of connections) {
+		for (const node of connection.nodes ?? []) {
+			if (!node) {
+				continue;
+			}
+
+			const id = node.databaseId ?? numericIdFromGraphQLId(node.id);
+			byId.set(id, {
+				id,
+				body: node.body,
+				createdAt: node.createdAt,
+				author: mapGraphQLActor(node.author),
+			});
+		}
+	}
+
+	return [...byId.values()].sort(
+		(a, b) => Date.parse(a.createdAt) - Date.parse(b.createdAt),
+	);
+}
+
+function getLoadedCommentPages(totalComments: number) {
+	const totalPages = Math.max(1, Math.ceil(totalComments / COMMENTS_PER_PAGE));
+	return totalPages === 1 ? [1] : [1, totalPages];
+}
+
+function mapGraphQLPullDetail(
+	pull: NonNullable<GitHubGraphQLPullPageResponse["repository"]["pullRequest"]>,
+): PullDetail {
+	const requestedReviewers: GitHubActor[] = [];
+	const requestedTeams: RequestedTeam[] = [];
+
+	for (const node of pull.reviewRequests?.nodes ?? []) {
+		const reviewer = node?.requestedReviewer;
+		if (!reviewer) {
+			continue;
+		}
+
+		if (reviewer.__typename === "Team") {
+			requestedTeams.push({
+				slug: reviewer.slug,
+				name: reviewer.name,
+				url: reviewer.url,
+			});
+			continue;
+		}
+
+		const actor = mapGraphQLActor(reviewer);
+		if (actor) {
+			requestedReviewers.push(actor);
+		}
+	}
+
+	return {
+		id: pull.databaseId ?? 0,
+		number: pull.number,
+		title: pull.title,
+		state: pull.state.toLowerCase(),
+		isDraft: pull.isDraft,
+		createdAt: pull.createdAt,
+		updatedAt: pull.updatedAt,
+		closedAt: pull.closedAt,
+		mergedAt: pull.mergedAt,
+		comments: pull.comments.totalCount,
+		url: pull.url,
+		author: mapGraphQLActor(pull.author),
+		labels: mapGraphQLLabels(pull.labels),
+		repository: mapGraphQLRepositoryRef(pull.repository),
+		body: pull.body,
+		additions: pull.additions,
+		deletions: pull.deletions,
+		changedFiles: pull.changedFiles,
+		commits: pull.commits.totalCount,
+		reviewComments: pull.reviewThreads.totalCount,
+		headRefName: pull.headRefName,
+		headSha: pull.headRefOid,
+		baseRefName: pull.baseRefName,
+		isMerged: pull.merged,
+		mergeCommitSha: pull.mergeCommit?.oid ?? null,
+		mergedBy: mapGraphQLActor(pull.mergedBy),
+		mergeable:
+			pull.mergeable === "MERGEABLE"
+				? true
+				: pull.mergeable === "CONFLICTING"
+					? false
+					: null,
+		mergeableState: pull.mergeStateStatus?.toLowerCase() ?? null,
+		requestedReviewers,
+		requestedTeams,
+	};
+}
+
+function mapGraphQLPullCommits(
+	pull: NonNullable<GitHubGraphQLPullPageResponse["repository"]["pullRequest"]>,
+): PullCommit[] {
+	return (pull.commits.nodes ?? []).flatMap((node) => {
+		if (!node) {
+			return [];
+		}
+
+		return [
+			{
+				sha: node.commit.oid,
+				message: node.commit.message,
+				createdAt: node.commit.committedDate,
+				author: mapGraphQLActor(
+					node.commit.author?.user
+						? {
+								...node.commit.author.user,
+								__typename: "User",
+							}
+						: null,
+				),
+			},
+		];
+	});
+}
+
+function mapGraphQLIssueDetail(
+	issue: NonNullable<GitHubGraphQLIssuePageResponse["repository"]["issue"]>,
+): IssueDetail {
+	return {
+		id: issue.databaseId ?? 0,
+		number: issue.number,
+		title: issue.title,
+		state: issue.state.toLowerCase(),
+		stateReason: issue.stateReason?.toLowerCase() ?? null,
+		createdAt: issue.createdAt,
+		updatedAt: issue.updatedAt,
+		closedAt: issue.closedAt,
+		comments: issue.comments.totalCount,
+		url: issue.url,
+		author: mapGraphQLActor(issue.author),
+		labels: mapGraphQLLabels(issue.labels),
+		repository: mapGraphQLRepositoryRef(issue.repository),
+		body: issue.body,
+		assignees: (issue.assignees?.nodes ?? [])
+			.map((assignee) => mapGraphQLActor(assignee))
+			.filter((assignee): assignee is GitHubActor => Boolean(assignee)),
+		milestone: issue.milestone
+			? {
+					title: issue.milestone.title,
+					description: issue.milestone.description,
+					dueOn: issue.milestone.dueOn,
+				}
+			: null,
+	};
+}
+
+function mapGraphQLRepoOverview(
+	repository: NonNullable<GitHubGraphQLRepoOverviewResponse["repository"]>,
+): RepoOverview {
+	const latestCommitTarget = repository.defaultBranchRef?.target;
+	const latestCommit =
+		latestCommitTarget?.__typename === "Commit" && latestCommitTarget.oid
+			? {
+					sha: latestCommitTarget.oid,
+					message: latestCommitTarget.message ?? "",
+					date: latestCommitTarget.committedDate ?? "",
+					author: mapGraphQLActor(
+						latestCommitTarget.author?.user
+							? {
+									...latestCommitTarget.author.user,
+									__typename: "User",
+								}
+							: null,
+					),
+				}
+			: null;
+
+	return {
+		id: repository.databaseId ?? 0,
+		name: repository.name,
+		fullName: repository.nameWithOwner,
+		description: repository.description,
+		isPrivate: repository.isPrivate,
+		isFork: repository.isFork,
+		defaultBranch: repository.defaultBranchRef?.name ?? "main",
+		stars: repository.stargazerCount,
+		forks: repository.forkCount,
+		watchers: repository.watchers.totalCount,
+		language: repository.primaryLanguage?.name ?? null,
+		license: repository.licenseInfo?.spdxId ?? null,
+		topics: (repository.repositoryTopics.nodes ?? []).flatMap((node) =>
+			node ? [node.topic.name] : [],
+		),
+		url: repository.url,
+		owner: repository.owner.login,
+		ownerAvatarUrl: repository.owner.avatarUrl,
+		branchCount: repository.branches.totalCount,
+		tagCount: repository.tags.totalCount,
+		openPullCount: repository.pullRequests.totalCount,
+		openIssueCount: repository.issues.totalCount,
+		hasDiscussions: repository.hasDiscussionsEnabled,
+		latestCommit,
+	};
+}
+
+function createGraphQLResponseMetadata(
+	rateLimit: GitHubGraphQLRateLimit | null | undefined,
+) {
+	return createGitHubResponseMetadata(200, {
+		"x-ratelimit-remaining":
+			typeof rateLimit?.remaining === "number"
+				? String(rateLimit.remaining)
+				: undefined,
+		"x-ratelimit-reset": rateLimit?.resetAt
+			? String(Math.floor(new Date(rateLimit.resetAt).getTime() / 1_000))
+			: undefined,
+	});
+}
+
+function mergeGraphQLRateLimits(
+	rateLimits: Array<GitHubGraphQLRateLimit | null | undefined>,
+): GitHubGraphQLRateLimit | null {
+	const presentRateLimits = rateLimits.filter(
+		(rateLimit): rateLimit is GitHubGraphQLRateLimit => Boolean(rateLimit),
+	);
+	if (presentRateLimits.length === 0) {
+		return null;
+	}
+
+	return {
+		cost: presentRateLimits.reduce(
+			(total, rateLimit) => total + rateLimit.cost,
+			0,
+		),
+		remaining: Math.min(
+			...presentRateLimits.map((rateLimit) => rateLimit.remaining),
+		),
+		resetAt: presentRateLimits
+			.map((rateLimit) => rateLimit.resetAt)
+			.sort()
+			.at(-1) as string,
+	};
+}
+
+class GitHubOperationTimeoutError extends Error {
+	constructor(
+		label: string,
+		readonly timeoutMs: number,
+	) {
+		super(`${label} timed out after ${timeoutMs}ms`);
+		this.name = "GitHubOperationTimeoutError";
+	}
+}
+
+function getRemainingSearchTimeoutMs(deadlineAt: number, maxTimeoutMs: number) {
+	return Math.max(0, Math.min(maxTimeoutMs, deadlineAt - Date.now()));
+}
+
+async function withGitHubOperationTimeout<T>(
+	label: string,
+	timeoutMs: number,
+	task: (signal: AbortSignal) => Promise<T>,
+) {
+	if (timeoutMs <= 0) {
+		throw new GitHubOperationTimeoutError(label, timeoutMs);
+	}
+
+	const controller = new AbortController();
+	let timeoutId: ReturnType<typeof setTimeout> | null = null;
+	const taskPromise = task(controller.signal);
+	const timeoutPromise = new Promise<never>((_, reject) => {
+		timeoutId = setTimeout(() => {
+			controller.abort();
+			reject(new GitHubOperationTimeoutError(label, timeoutMs));
+		}, timeoutMs);
+	});
+
+	try {
+		return await Promise.race([taskPromise, timeoutPromise]);
+	} finally {
+		taskPromise.catch(() => {});
+		if (timeoutId) {
+			clearTimeout(timeoutId);
+		}
+		controller.abort();
+	}
+}
+
+async function executeGitHubGraphQL<TResponse>(
+	context: GitHubContext,
+	label: string,
+	query: string,
+	variables: Record<string, unknown>,
+) {
+	return withGitHubOperationTimeout(
+		label,
+		GITHUB_OPERATION_TIMEOUT_MS,
+		(signal) =>
+			context.octokit.graphql<TResponse>(query, {
+				...variables,
+				request: { signal },
+			}),
+	);
+}
+
 async function safeCommandPaletteSearch<T>({
 	fallback,
 	label,
@@ -696,10 +1344,14 @@ async function safeCommandPaletteSearch<T>({
 }: {
 	fallback: T;
 	label: string;
-	task: () => Promise<T>;
+	task: (signal: AbortSignal) => Promise<T>;
 }) {
 	try {
-		return await task();
+		return await withGitHubOperationTimeout(
+			`github command search ${label}`,
+			GITHUB_OPERATION_TIMEOUT_MS,
+			task,
+		);
 	} catch (error) {
 		console.error(`[github-command-search] failed to search ${label}`, error);
 		return fallback;
@@ -836,6 +1488,80 @@ async function getGitHubAppUserInstallations(userId: string): Promise<{
 	}
 }
 
+async function getGitHubAuthenticatedOrganizations(
+	context: GitHubContext,
+): Promise<GitHubOrganization[]> {
+	try {
+		const organizationsResponse = await context.octokit.request(
+			"GET /user/orgs",
+			{
+				per_page: 100,
+			},
+		);
+		const payload =
+			organizationsResponse.data as GitHubAuthenticatedOrgPayload[];
+		return payload.flatMap((organization) => {
+			if (!organization.id || !organization.login) {
+				return [];
+			}
+
+			return [
+				{
+					id: organization.id,
+					login: organization.login,
+					avatarUrl: organization.avatar_url ?? null,
+				},
+			];
+		});
+	} catch (error) {
+		console.error("[github-access] failed to load organizations", error);
+		return [];
+	}
+}
+
+async function getGitHubContextForInstallation(
+	baseContext: GitHubContext,
+	installation: GitHubAppInstallation,
+) {
+	return getOrCreateCachedContext(
+		`installation:${installation.id}`,
+		async () => {
+			if (installation.suspendedAt) {
+				return null;
+			}
+
+			try {
+				debug("github-access", "creating installation client", {
+					owner: installation.account.login,
+					installationId: installation.id,
+				});
+				const { getGitHubInstallationClient } = await import("./github.server");
+				const installationOctokit = await getGitHubInstallationClient(
+					installation.id,
+				);
+				// Eagerly authenticate to verify the installation token is valid.
+				// auth-app authenticates lazily by default, so without this the
+				// try/catch cannot catch auth failures.
+				await installationOctokit.auth({ type: "installation" });
+				debug("github-access", "installation client ready", {
+					owner: installation.account.login,
+				});
+				return {
+					...baseContext,
+					octokit: installationOctokit,
+				};
+			} catch (error) {
+				console.error(
+					"[github-access] installation client failed",
+					installation.account.login,
+					error,
+				);
+				return null;
+			}
+		},
+	);
+}
+
 async function getGitHubContextForOwner(owner: string) {
 	return getOrCreateCachedContext(`owner:${owner}`, async () => {
 		const context = await getGitHubContext();
@@ -857,32 +1583,19 @@ async function getGitHubContextForOwner(owner: string) {
 			return context;
 		}
 
-		try {
-			debug("github-access", "creating installation client", {
-				owner,
-				installationId: installation.id,
-			});
-			const { getGitHubInstallationClient } = await import("./github.server");
-			const installationOctokit = await getGitHubInstallationClient(
-				installation.id,
-			);
-			// Eagerly authenticate to verify the installation token is valid.
-			// auth-app authenticates lazily by default, so without this the
-			// try/catch cannot catch auth failures.
-			await installationOctokit.auth({ type: "installation" });
-			debug("github-access", "installation client ready", { owner });
-			return {
-				...context,
-				octokit: installationOctokit,
-			};
-		} catch (error) {
+		const installationContext = await getGitHubContextForInstallation(
+			context,
+			installation,
+		);
+		if (!installationContext) {
 			console.error(
 				"[github-access] installation client failed, falling back to OAuth token",
 				owner,
-				error,
 			);
 			return context;
 		}
+
+		return installationContext;
 	});
 }
 
@@ -1238,17 +1951,26 @@ function buildUserSearchQuery({
 	state,
 	username,
 	owner,
+	ownerType,
 	repo,
+	excludeOwners,
 }: {
 	itemType: "issue" | "pr";
 	role: IssueSearchRole | PullSearchRole;
 	state: RepoState;
 	username: string;
 	owner?: string;
+	ownerType?: GitHubInstallationTargetType;
 	repo?: string;
+	excludeOwners?: GitHubSearchOwnerScope[];
 }) {
 	const stateFilter = state === "all" ? "" : ` is:${state}`;
-	const scopeFilter = owner && repo ? ` repo:${owner}/${repo}` : "";
+	const scopeFilter =
+		owner && repo
+			? ` repo:${owner}/${repo}`
+			: owner
+				? ` ${buildOwnerSearchQualifier({ login: owner, targetType: ownerType })}`
+				: "";
 	const roleFilter =
 		role === "all"
 			? ` involves:${username}`
@@ -1261,8 +1983,20 @@ function buildUserSearchQuery({
 						: role === "involved"
 							? ` involves:${username}`
 							: ` author:${username}`;
+	const exclusionFilter =
+		excludeOwners
+			?.map((scope) => ` -${buildOwnerSearchQualifier(scope)}`)
+			.join("") ?? "";
 
-	return `is:${itemType}${stateFilter}${scopeFilter}${roleFilter} archived:false`;
+	return `is:${itemType}${stateFilter}${scopeFilter}${roleFilter}${exclusionFilter} archived:false`;
+}
+
+function buildOwnerSearchQualifier(scope: {
+	login: string;
+	targetType?: GitHubInstallationTargetType;
+}) {
+	const qualifier = scope.targetType === "Organization" ? "org" : "user";
+	return `${qualifier}:${scope.login}`;
 }
 
 function buildConditionalHeaders(conditionals: GitHubConditionalHeaders) {
@@ -1299,11 +2033,17 @@ function normalizeResponseHeaders(headers: Record<string, unknown>) {
 async function executeGitHubRequest<TData>(
 	request: (
 		headers: Record<string, string>,
+		signal: AbortSignal,
 	) => Promise<GitHubRestResponse<TData>>,
 	conditionals: GitHubConditionalHeaders,
+	label = "github request",
 ): Promise<GitHubFetchResult<TData>> {
 	try {
-		const response = await request(buildConditionalHeaders(conditionals));
+		const response = await withGitHubOperationTimeout(
+			label,
+			GITHUB_OPERATION_TIMEOUT_MS,
+			(signal) => request(buildConditionalHeaders(conditionals), signal),
+		);
 
 		return {
 			kind: "success",
@@ -1354,6 +2094,7 @@ async function getCachedGitHubRequest<TGitHubData, TResult>({
 	cacheMode?: "legacy" | "split";
 	request: (
 		headers: Record<string, string>,
+		signal: AbortSignal,
 	) => Promise<GitHubRestResponse<TGitHubData>>;
 	mapData: (data: TGitHubData) => TResult;
 }) {
@@ -1366,7 +2107,11 @@ async function getCachedGitHubRequest<TGitHubData, TResult>({
 		namespaceKeys,
 		cacheMode,
 		fetcher: async (conditionals) => {
-			const result = await executeGitHubRequest(request, conditionals);
+			const result = await executeGitHubRequest(
+				request,
+				conditionals,
+				`github ${resource}`,
+			);
 
 			if (result.kind === "not-modified") {
 				return result;
@@ -1399,7 +2144,10 @@ async function getCachedPaginatedGitHubRequest<TGitHubItem, TResult>({
 	signalKeys?: string[];
 	namespaceKeys?: string[];
 	cacheMode?: "legacy" | "split";
-	request: (page: number) => Promise<GitHubRestResponse<TGitHubItem[]>>;
+	request: (
+		page: number,
+		signal: AbortSignal,
+	) => Promise<GitHubRestResponse<TGitHubItem[]>>;
 	mapData: (items: TGitHubItem[]) => TResult;
 	pageSize?: number;
 }) {
@@ -1415,9 +2163,25 @@ async function getCachedPaginatedGitHubRequest<TGitHubItem, TResult>({
 			const items: TGitHubItem[] = [];
 			let page = 1;
 			let metadata = createGitHubResponseMetadata(200, {});
+			const deadlineAt = Date.now() + GITHUB_PAGINATED_OPERATION_TIMEOUT_MS;
 
 			while (true) {
-				const response = await request(page);
+				const timeoutMs = getRemainingSearchTimeoutMs(
+					deadlineAt,
+					GITHUB_OPERATION_TIMEOUT_MS,
+				);
+				if (timeoutMs < GITHUB_MIN_OPERATION_TIMEOUT_MS) {
+					throw new GitHubOperationTimeoutError(
+						`github ${resource} page ${page}`,
+						timeoutMs,
+					);
+				}
+
+				const response = await withGitHubOperationTimeout(
+					`github ${resource} page ${page}`,
+					timeoutMs,
+					(signal) => request(page, signal),
+				);
 				if (page === 1) {
 					metadata = createGitHubResponseMetadata(
 						response.status,
@@ -1445,17 +2209,35 @@ async function getCachedPaginatedGitHubRequest<TGitHubItem, TResult>({
 async function listPaginatedGitHubItems<TItem>({
 	request,
 	getItems,
+	label = "github paginated items",
 	pageSize = 100,
 }: {
-	request: (page: number) => Promise<GitHubRestResponse<unknown>>;
+	request: (
+		page: number,
+		signal: AbortSignal,
+	) => Promise<GitHubRestResponse<unknown>>;
 	getItems: (data: unknown) => TItem[];
+	label?: string;
 	pageSize?: number;
 }) {
 	const items: TItem[] = [];
 	let page = 1;
+	const deadlineAt = Date.now() + GITHUB_PAGINATED_OPERATION_TIMEOUT_MS;
 
 	while (true) {
-		const response = await request(page);
+		const timeoutMs = getRemainingSearchTimeoutMs(
+			deadlineAt,
+			GITHUB_OPERATION_TIMEOUT_MS,
+		);
+		if (timeoutMs < GITHUB_MIN_OPERATION_TIMEOUT_MS) {
+			throw new GitHubOperationTimeoutError(`${label} page ${page}`, timeoutMs);
+		}
+
+		const response = await withGitHubOperationTimeout(
+			`${label} page ${page}`,
+			timeoutMs,
+			(signal) => request(page, signal),
+		);
 		const pageItems = getItems(response.data);
 		items.push(...pageItems);
 
@@ -1666,28 +2448,42 @@ async function getCachedRepoReviewerBots(
 		],
 		cacheMode: "split",
 		fetcher: async () => {
-			const installations = await listReviewerBotInstallations(context, params);
-			const matchingInstallations: GitHubReviewerBotInstallationPayload[] = [];
-			const ownAppSlug = getGitHubAppSlug();
+			const bots = await withGitHubOperationTimeout(
+				`github reviewer bots ${params.owner}/${params.repo}`,
+				GITHUB_PAGINATED_OPERATION_TIMEOUT_MS,
+				async () => {
+					const installations = await listReviewerBotInstallations(
+						context,
+						params,
+					);
+					const matchingInstallations: GitHubReviewerBotInstallationPayload[] =
+						[];
+					const ownAppSlug = getGitHubAppSlug();
 
-			for (const installation of installations) {
-				if (
-					installation.app_slug !== ownAppSlug &&
-					installationCanReviewPullRequests(installation) &&
-					(await installationHasRepositoryAccess(context, installation, params))
-				) {
-					matchingInstallations.push(installation);
-				}
-			}
+					for (const installation of installations) {
+						if (
+							installation.app_slug !== ownAppSlug &&
+							installationCanReviewPullRequests(installation) &&
+							(await installationHasRepositoryAccess(
+								context,
+								installation,
+								params,
+							))
+						) {
+							matchingInstallations.push(installation);
+						}
+					}
 
-			const bots = (
-				await Promise.all(
-					matchingInstallations.map((installation) =>
-						mapReviewerBotInstallation(context, installation),
-					),
-				)
-			).filter((candidate): candidate is RepoCollaborator =>
-				Boolean(candidate),
+					return (
+						await Promise.all(
+							matchingInstallations.map((installation) =>
+								mapReviewerBotInstallation(context, installation),
+							),
+						)
+					).filter((candidate): candidate is RepoCollaborator =>
+						Boolean(candidate),
+					);
+				},
 			);
 
 			return {
@@ -2070,7 +2866,9 @@ async function getCrossReferencesViaGraphQL(
 	data: { owner: string; repo: string; issueNumber: number },
 ): Promise<TimelineEvent[]> {
 	try {
-		const response = await context.octokit.graphql<GraphQLCrossRefResponse>(
+		const response = await executeGitHubGraphQL<GraphQLCrossRefResponse>(
+			context,
+			`github cross references ${data.owner}/${data.repo}#${data.issueNumber}`,
 			`query ($owner: String!, $repo: String!, $number: Int!) {
 				repository(owner: $owner, name: $repo) {
 					issueOrPullRequest(number: $number) {
@@ -2387,14 +3185,189 @@ async function getPullStatusResult(
 
 			return {
 				kind: "success",
-				data: await computePullStatus(context, data, pullForStatus),
+				data: await withGitHubOperationTimeout(
+					`github pull status ${data.owner}/${data.repo}#${data.pullNumber}`,
+					GITHUB_PAGINATED_OPERATION_TIMEOUT_MS,
+					() => computePullStatus(context, data, pullForStatus),
+				),
 				metadata: createGitHubResponseMetadata(200, {}),
 			};
 		},
 	});
 }
 
-async function getPullPageDataResult(
+async function getPullPageDataViaGraphQL(
+	context: GitHubContext,
+	data: PullFromRepoInput,
+): Promise<PullPageData> {
+	const pullNamespaceKey = githubRevalidationSignalKeys.pullEntity({
+		owner: data.owner,
+		repo: data.repo,
+		pullNumber: data.pullNumber,
+	});
+
+	return getOrRevalidateGitHubResource<PullPageData>({
+		userId: context.session.user.id,
+		resource: "pulls.pageData.graphql.v1",
+		params: data,
+		freshForMs: githubCachePolicy.detail.staleTimeMs,
+		signalKeys: [pullNamespaceKey],
+		namespaceKeys: [pullNamespaceKey],
+		cacheMode: "split",
+		fetcher: async () => {
+			const [response, timelineResult] = await Promise.all([
+				executeGitHubGraphQL<GitHubGraphQLPullPageResponse>(
+					context,
+					`github pull page ${data.owner}/${data.repo}#${data.pullNumber}`,
+					`query($owner: String!, $repo: String!, $number: Int!) {
+						repository(owner: $owner, name: $repo) {
+							pullRequest(number: $number) {
+								databaseId
+								number
+								title
+								state
+								isDraft
+								createdAt
+								updatedAt
+								closedAt
+								mergedAt
+								url
+								body
+								additions
+								deletions
+								changedFiles
+								comments { totalCount }
+								author { __typename login avatarUrl url }
+								labels(first: 20) {
+									nodes { name color description }
+								}
+								headRefName
+								headRefOid
+								baseRefName
+								merged
+								mergeCommit { oid }
+								mergedBy { __typename login avatarUrl url }
+								mergeable
+								mergeStateStatus
+								repository {
+									name
+									nameWithOwner
+									url
+									owner { login }
+								}
+								reviewThreads(first: 1) { totalCount }
+								reviewRequests(first: 100) {
+									nodes {
+										requestedReviewer {
+											__typename
+											... on User {
+												login
+												avatarUrl
+												url
+											}
+											... on Team {
+												name
+												slug
+												url
+											}
+										}
+									}
+								}
+								commits(first: 100) {
+									totalCount
+									nodes {
+										commit {
+											oid
+											message
+											committedDate
+											author {
+												user {
+													login
+													avatarUrl
+													url
+												}
+											}
+										}
+									}
+								}
+								firstComments: comments(first: 30) {
+									totalCount
+									nodes {
+										id
+										databaseId
+										body
+										createdAt
+										author { __typename login avatarUrl url }
+									}
+								}
+								lastComments: comments(last: 30) {
+									totalCount
+									nodes {
+										id
+										databaseId
+										body
+										createdAt
+										author { __typename login avatarUrl url }
+									}
+								}
+							}
+						}
+						rateLimit {
+							cost
+							remaining
+							resetAt
+						}
+					}`,
+					{
+						owner: data.owner,
+						repo: data.repo,
+						number: data.pullNumber,
+					},
+				),
+				getTimelineEventsResult(context, {
+					owner: data.owner,
+					repo: data.repo,
+					issueNumber: data.pullNumber,
+				}),
+			]);
+
+			const pull = response.repository.pullRequest;
+			if (!pull) {
+				throw new Error(
+					`Pull request not found: ${data.owner}/${data.repo}#${data.pullNumber}`,
+				);
+			}
+
+			const totalComments = pull.comments.totalCount;
+			const loadedPages = getLoadedCommentPages(totalComments);
+			const detail = mapGraphQLPullDetail(pull);
+			const events = timelineResult.events;
+
+			return {
+				kind: "success",
+				data: {
+					detail,
+					comments: mapGraphQLComments(pull.firstComments, pull.lastComments),
+					commits: mapGraphQLPullCommits(pull),
+					events,
+					commentPagination: {
+						totalCount: totalComments,
+						perPage: COMMENTS_PER_PAGE,
+						loadedPages,
+					},
+					eventPagination: {
+						loadedPages: [1],
+						hasMore: timelineResult.hasMore,
+					},
+					headRefDeleted: deriveHeadRefDeleted(events),
+				},
+				metadata: createGraphQLResponseMetadata(response.rateLimit),
+			};
+		},
+	});
+}
+
+async function getPullPageDataViaRest(
 	context: GitHubContext,
 	data: PullFromRepoInput,
 ): Promise<PullPageData> {
@@ -2443,6 +3416,18 @@ async function getPullPageDataResult(
 		},
 		headRefDeleted: deriveHeadRefDeleted(timelineResult.events),
 	};
+}
+
+async function getPullPageDataResult(
+	context: GitHubContext,
+	data: PullFromRepoInput,
+): Promise<PullPageData> {
+	try {
+		return await getPullPageDataViaGraphQL(context, data);
+	} catch (error) {
+		console.error("[pull-page:gql] failed, falling back to REST", error);
+		return getPullPageDataViaRest(context, data);
+	}
 }
 
 async function getIssueDetailResult(
@@ -2526,7 +3511,139 @@ async function getIssueCommentsResult(
 	});
 }
 
-async function getIssuePageDataResult(
+async function getIssuePageDataViaGraphQL(
+	context: GitHubContext,
+	data: IssueFromRepoInput,
+): Promise<IssuePageData> {
+	const issueNamespaceKey = githubRevalidationSignalKeys.issueEntity({
+		owner: data.owner,
+		repo: data.repo,
+		issueNumber: data.issueNumber,
+	});
+
+	return getOrRevalidateGitHubResource<IssuePageData>({
+		userId: context.session.user.id,
+		resource: "issues.pageData.graphql.v1",
+		params: data,
+		freshForMs: githubCachePolicy.detail.staleTimeMs,
+		signalKeys: [issueNamespaceKey],
+		namespaceKeys: [issueNamespaceKey],
+		cacheMode: "split",
+		fetcher: async () => {
+			const [response, timelineResult] = await Promise.all([
+				executeGitHubGraphQL<GitHubGraphQLIssuePageResponse>(
+					context,
+					`github issue page ${data.owner}/${data.repo}#${data.issueNumber}`,
+					`query($owner: String!, $repo: String!, $number: Int!) {
+						repository(owner: $owner, name: $repo) {
+							issue(number: $number) {
+								databaseId
+								number
+								title
+								state
+								stateReason
+								createdAt
+								updatedAt
+								closedAt
+								url
+								body
+								comments { totalCount }
+								author { __typename login avatarUrl url }
+								labels(first: 20) {
+									nodes { name color description }
+								}
+								repository {
+									name
+									nameWithOwner
+									url
+									owner { login }
+								}
+								assignees(first: 20) {
+									nodes {
+										__typename
+										login
+										avatarUrl
+										url
+									}
+								}
+								milestone {
+									title
+									description
+									dueOn
+								}
+								firstComments: comments(first: 30) {
+									totalCount
+									nodes {
+										id
+										databaseId
+										body
+										createdAt
+										author { __typename login avatarUrl url }
+									}
+								}
+								lastComments: comments(last: 30) {
+									totalCount
+									nodes {
+										id
+										databaseId
+										body
+										createdAt
+										author { __typename login avatarUrl url }
+									}
+								}
+							}
+						}
+						rateLimit {
+							cost
+							remaining
+							resetAt
+						}
+					}`,
+					{
+						owner: data.owner,
+						repo: data.repo,
+						number: data.issueNumber,
+					},
+				),
+				getTimelineEventsResult(context, {
+					owner: data.owner,
+					repo: data.repo,
+					issueNumber: data.issueNumber,
+				}),
+			]);
+
+			const issue = response.repository.issue;
+			if (!issue) {
+				throw new Error(
+					`Issue not found: ${data.owner}/${data.repo}#${data.issueNumber}`,
+				);
+			}
+
+			const totalComments = issue.comments.totalCount;
+
+			return {
+				kind: "success",
+				data: {
+					detail: mapGraphQLIssueDetail(issue),
+					comments: mapGraphQLComments(issue.firstComments, issue.lastComments),
+					events: timelineResult.events,
+					commentPagination: {
+						totalCount: totalComments,
+						perPage: COMMENTS_PER_PAGE,
+						loadedPages: getLoadedCommentPages(totalComments),
+					},
+					eventPagination: {
+						loadedPages: [1],
+						hasMore: timelineResult.hasMore,
+					},
+				},
+				metadata: createGraphQLResponseMetadata(response.rateLimit),
+			};
+		},
+	});
+}
+
+async function getIssuePageDataViaRest(
 	context: GitHubContext,
 	data: IssueFromRepoInput,
 ): Promise<IssuePageData> {
@@ -2569,28 +3686,16 @@ async function getIssuePageDataResult(
 	};
 }
 
-async function runWithConcurrency<TValue>(
-	tasks: Array<() => Promise<TValue>>,
-	concurrency = 2,
-) {
-	const results = new Array<TValue>(tasks.length);
-	let nextIndex = 0;
-
-	const workers = Array.from(
-		{ length: Math.min(Math.max(concurrency, 1), tasks.length) },
-		() =>
-			(async () => {
-				while (nextIndex < tasks.length) {
-					const taskIndex = nextIndex;
-					nextIndex += 1;
-					results[taskIndex] = await tasks[taskIndex]();
-				}
-			})(),
-	);
-
-	await Promise.all(workers);
-
-	return results;
+async function getIssuePageDataResult(
+	context: GitHubContext,
+	data: IssueFromRepoInput,
+): Promise<IssuePageData> {
+	try {
+		return await getIssuePageDataViaGraphQL(context, data);
+	} catch (error) {
+		console.error("[issue-page:gql] failed, falling back to REST", error);
+		return getIssuePageDataViaRest(context, data);
+	}
 }
 
 async function getViewer(context: GitHubContext): Promise<AuthenticatedUser> {
@@ -2616,75 +3721,543 @@ async function resolveUsername(context: GitHubContext, username?: string) {
 	return viewer.login;
 }
 
-async function getMyPullSlice({
+type GraphQLMyPullsResponse = {
+	reviewRequested: GitHubGraphQLSearchConnection<GitHubGraphQLPullSearchNode>;
+	assigned: GitHubGraphQLSearchConnection<GitHubGraphQLPullSearchNode>;
+	authored: GitHubGraphQLSearchConnection<GitHubGraphQLPullSearchNode>;
+	mentioned: GitHubGraphQLSearchConnection<GitHubGraphQLPullSearchNode>;
+	involved: GitHubGraphQLSearchConnection<GitHubGraphQLPullSearchNode>;
+	rateLimit: GitHubGraphQLRateLimit;
+};
+
+type GraphQLMyIssuesResponse = {
+	assigned: GitHubGraphQLSearchConnection<GitHubGraphQLIssueSearchNode>;
+	authored: GitHubGraphQLSearchConnection<GitHubGraphQLIssueSearchNode>;
+	mentioned: GitHubGraphQLSearchConnection<GitHubGraphQLIssueSearchNode>;
+	rateLimit: GitHubGraphQLRateLimit;
+};
+
+function mapGraphQLPullSearchConnection(
+	connection: GitHubGraphQLSearchConnection<GitHubGraphQLPullSearchNode>,
+) {
+	return (connection.nodes ?? [])
+		.map((node) => mapGraphQLPullSearchNode(node))
+		.filter((item): item is PullSummary => Boolean(item));
+}
+
+function mapGraphQLIssueSearchConnection(
+	connection: GitHubGraphQLSearchConnection<GitHubGraphQLIssueSearchNode>,
+) {
+	return (connection.nodes ?? [])
+		.map((node) => mapGraphQLIssueSearchNode(node))
+		.filter((item): item is IssueSummary => Boolean(item));
+}
+
+function ownerScopeKey(scope: GitHubSearchOwnerScope) {
+	return `${scope.targetType}:${normalizeLogin(scope.login)}`;
+}
+
+function toSearchOwnerScope(
+	installation: GitHubAppInstallation,
+): GitHubSearchOwnerScope | null {
+	if (
+		installation.suspendedAt ||
+		(installation.targetType !== "Organization" &&
+			installation.targetType !== "User")
+	) {
+		return null;
+	}
+
+	return {
+		login: installation.account.login,
+		targetType: installation.targetType,
+	};
+}
+
+function addExcludedOwnerScope(
+	excludedOwners: Map<string, GitHubSearchOwnerScope>,
+	scope: GitHubSearchOwnerScope,
+) {
+	excludedOwners.set(ownerScopeKey(scope), scope);
+}
+
+async function getMySearchSources(
+	context: GitHubContext,
+	viewerLogin: string,
+	deadlineAt: number,
+): Promise<GitHubGraphQLSearchSource[]> {
+	let installations: GitHubAppInstallation[] = [];
+	let organizations: GitHubOrganization[] = [];
+	try {
+		const [installationResult, organizationResult] =
+			await withGitHubOperationTimeout(
+				"github search source discovery",
+				getRemainingSearchTimeoutMs(deadlineAt, MY_SEARCH_SOURCE_TIMEOUT_MS),
+				() =>
+					Promise.all([
+						getGitHubAppUserInstallations(context.session.user.id),
+						getGitHubAuthenticatedOrganizations(context),
+					]),
+			);
+		installations = installationResult.installations;
+		organizations = organizationResult;
+	} catch (error) {
+		console.error("[github-search] failed to discover search sources", error);
+	}
+
+	const sources: GitHubGraphQLSearchSource[] = [];
+	const excludedOAuthOwners = new Map<string, GitHubSearchOwnerScope>();
+
+	for (const organization of organizations) {
+		addExcludedOwnerScope(excludedOAuthOwners, {
+			login: organization.login,
+			targetType: "Organization",
+		});
+	}
+
+	for (const installation of installations) {
+		const owner = toSearchOwnerScope(installation);
+		if (!owner) {
+			continue;
+		}
+
+		const contextTimeoutMs = getRemainingSearchTimeoutMs(
+			deadlineAt,
+			MY_SEARCH_SOURCE_TIMEOUT_MS,
+		);
+		if (contextTimeoutMs < GITHUB_MIN_OPERATION_TIMEOUT_MS) {
+			debug("github-search", "skipping remaining installations, deadline low", {
+				remainingMs: contextTimeoutMs,
+			});
+			break;
+		}
+
+		if (owner.targetType === "Organization") {
+			addExcludedOwnerScope(excludedOAuthOwners, owner);
+		}
+		if (
+			owner.targetType === "User" &&
+			installation.repositorySelection === "all" &&
+			normalizeLogin(owner.login) === normalizeLogin(viewerLogin)
+		) {
+			addExcludedOwnerScope(excludedOAuthOwners, owner);
+		}
+
+		const installationContext = await withGitHubOperationTimeout(
+			`github installation context ${installation.id}`,
+			contextTimeoutMs,
+			() => getGitHubContextForInstallation(context, installation),
+		).catch((error) => {
+			console.error(
+				"[github-search] failed to create installation source",
+				installation.account.login,
+				error,
+			);
+			return null;
+		});
+		if (!installationContext) {
+			continue;
+		}
+
+		sources.push({
+			label: `installation:${installation.id}:${owner.login}`,
+			context: installationContext,
+			owner,
+		});
+	}
+
+	sources.push({
+		label: "oauth:fallback",
+		context,
+		excludeOwners: [...excludedOAuthOwners.values()],
+	});
+
+	return sources;
+}
+
+function mergeSearchBuckets<
+	TItem extends {
+		number: number;
+		updatedAt: string;
+		repository: RepositoryRef;
+	},
+>(buckets: TItem[][]) {
+	const byKey = new Map<string, TItem>();
+
+	for (const bucket of buckets) {
+		for (const item of bucket) {
+			const key = `${normalizeLogin(item.repository.fullName)}#${item.number}`;
+			const existing = byKey.get(key);
+			if (
+				!existing ||
+				Date.parse(item.updatedAt) > Date.parse(existing.updatedAt)
+			) {
+				byKey.set(key, item);
+			}
+		}
+	}
+
+	return [...byKey.values()]
+		.sort((a, b) => Date.parse(b.updatedAt) - Date.parse(a.updatedAt))
+		.slice(0, MY_SEARCH_BUCKET_LIMIT);
+}
+
+function mergeMyPullsResults(results: MyPullsResult[]): MyPullsResult {
+	return {
+		reviewRequested: mergeSearchBuckets(
+			results.map((result) => result.reviewRequested),
+		),
+		assigned: mergeSearchBuckets(results.map((result) => result.assigned)),
+		authored: mergeSearchBuckets(results.map((result) => result.authored)),
+		mentioned: mergeSearchBuckets(results.map((result) => result.mentioned)),
+		involved: mergeSearchBuckets(results.map((result) => result.involved)),
+	};
+}
+
+function mergeMyIssuesResults(results: MyIssuesResult[]): MyIssuesResult {
+	return {
+		assigned: mergeSearchBuckets(results.map((result) => result.assigned)),
+		authored: mergeSearchBuckets(results.map((result) => result.authored)),
+		mentioned: mergeSearchBuckets(results.map((result) => result.mentioned)),
+	};
+}
+
+function buildSourceSearchQuery({
+	itemType,
+	role,
+	source,
+	username,
+}: {
+	itemType: "issue" | "pr";
+	role: IssueSearchRole | PullSearchRole;
+	source: GitHubGraphQLSearchSource;
+	username: string;
+}) {
+	return buildUserSearchQuery({
+		itemType,
+		role,
+		state: "open",
+		username,
+		owner: source.owner?.login,
+		ownerType: source.owner?.targetType,
+		excludeOwners: source.excludeOwners,
+	});
+}
+
+async function getMyPullsResult({
 	context,
 	username,
-	roleKey,
-	role,
 }: {
 	context: GitHubContext;
 	username: string;
-	roleKey: keyof MyPullsResult;
-	role: PullSearchRole;
 }) {
-	return getCachedGitHubRequest<SearchResult, PullSummary[]>({
-		context,
-		resource: `pulls.mine.${roleKey}`,
-		params: { username, role },
+	return getOrRevalidateGitHubResource<MyPullsResult>({
+		userId: context.session.user.id,
+		resource: "pulls.mine.graphql.v2",
+		params: { username },
 		freshForMs: githubCachePolicy.list.staleTimeMs,
 		signalKeys: [githubRevalidationSignalKeys.pullsMine],
 		namespaceKeys: [githubRevalidationSignalKeys.pullsMine],
 		cacheMode: "split",
-		request: (headers) =>
-			context.octokit.rest.search.issuesAndPullRequests({
-				q: buildUserSearchQuery({
-					itemType: "pr",
-					role,
-					state: "open",
-					username,
-				}),
-				per_page: 30,
-				sort: "updated",
-				order: "desc",
-				headers,
-			}),
-		mapData: (result) => mapPullSearchItems(result.items),
+		fetcher: async () => {
+			const deadlineAt = Date.now() + MY_SEARCH_TOTAL_TIMEOUT_MS;
+			const sources = await getMySearchSources(context, username, deadlineAt);
+			const results: MyPullsResult[] = [];
+			const rateLimits: GitHubGraphQLRateLimit[] = [];
+
+			for (const source of sources) {
+				const sourceTimeoutMs = getRemainingSearchTimeoutMs(
+					deadlineAt,
+					MY_SEARCH_SOURCE_TIMEOUT_MS,
+				);
+				if (sourceTimeoutMs < GITHUB_MIN_OPERATION_TIMEOUT_MS) {
+					debug("github-search", "stopping pull search, deadline low", {
+						remainingMs: sourceTimeoutMs,
+					});
+					break;
+				}
+
+				try {
+					const response = await withGitHubOperationTimeout(
+						`github pull search ${source.label}`,
+						sourceTimeoutMs,
+						(signal) =>
+							source.context.octokit.graphql<GraphQLMyPullsResponse>(
+								`query(
+								$reviewRequestedQuery: String!
+								$assignedQuery: String!
+								$authoredQuery: String!
+								$mentionedQuery: String!
+								$involvedQuery: String!
+							) {
+								reviewRequested: search(type: ISSUE, first: 30, query: $reviewRequestedQuery) {
+									nodes { ...PullSearchFields }
+								}
+								assigned: search(type: ISSUE, first: 30, query: $assignedQuery) {
+									nodes { ...PullSearchFields }
+								}
+								authored: search(type: ISSUE, first: 30, query: $authoredQuery) {
+									nodes { ...PullSearchFields }
+								}
+								mentioned: search(type: ISSUE, first: 30, query: $mentionedQuery) {
+									nodes { ...PullSearchFields }
+								}
+								involved: search(type: ISSUE, first: 30, query: $involvedQuery) {
+									nodes { ...PullSearchFields }
+								}
+								rateLimit {
+									cost
+									remaining
+									resetAt
+								}
+							}
+
+							fragment PullSearchFields on PullRequest {
+								__typename
+								databaseId
+								number
+								title
+								state
+								isDraft
+								createdAt
+								updatedAt
+								closedAt
+								mergedAt
+								url
+								comments {
+									totalCount
+								}
+								author {
+									__typename
+									login
+									avatarUrl
+									url
+								}
+								labels(first: 20) {
+									nodes {
+										name
+										color
+										description
+									}
+								}
+								repository {
+									name
+									nameWithOwner
+									url
+									owner {
+										login
+									}
+								}
+							}`,
+								{
+									reviewRequestedQuery: buildSourceSearchQuery({
+										itemType: "pr",
+										role: "review-requested",
+										source,
+										username,
+									}),
+									assignedQuery: buildSourceSearchQuery({
+										itemType: "pr",
+										role: "assigned",
+										source,
+										username,
+									}),
+									authoredQuery: buildSourceSearchQuery({
+										itemType: "pr",
+										role: "author",
+										source,
+										username,
+									}),
+									mentionedQuery: buildSourceSearchQuery({
+										itemType: "pr",
+										role: "mentioned",
+										source,
+										username,
+									}),
+									involvedQuery: buildSourceSearchQuery({
+										itemType: "pr",
+										role: "involved",
+										source,
+										username,
+									}),
+									request: { signal },
+								},
+							),
+					);
+
+					results.push({
+						reviewRequested: mapGraphQLPullSearchConnection(
+							response.reviewRequested,
+						),
+						assigned: mapGraphQLPullSearchConnection(response.assigned),
+						authored: mapGraphQLPullSearchConnection(response.authored),
+						mentioned: mapGraphQLPullSearchConnection(response.mentioned),
+						involved: mapGraphQLPullSearchConnection(response.involved),
+					});
+					rateLimits.push(response.rateLimit);
+				} catch (error) {
+					console.error(
+						"[github-search] failed to load pull requests",
+						source.label,
+						error,
+					);
+				}
+			}
+
+			return {
+				kind: "success",
+				data: mergeMyPullsResults(results),
+				metadata: createGraphQLResponseMetadata(
+					mergeGraphQLRateLimits(rateLimits),
+				),
+			};
+		},
 	});
 }
 
-async function getMyIssueSlice({
+async function getMyIssuesResult({
 	context,
 	username,
-	roleKey,
-	role,
 }: {
 	context: GitHubContext;
 	username: string;
-	roleKey: keyof MyIssuesResult;
-	role: IssueSearchRole;
 }) {
-	return getCachedGitHubRequest<SearchResult, IssueSummary[]>({
-		context,
-		resource: `issues.mine.${roleKey}`,
-		params: { username, role },
+	return getOrRevalidateGitHubResource<MyIssuesResult>({
+		userId: context.session.user.id,
+		resource: "issues.mine.graphql.v2",
+		params: { username },
 		freshForMs: githubCachePolicy.list.staleTimeMs,
 		signalKeys: [githubRevalidationSignalKeys.issuesMine],
 		namespaceKeys: [githubRevalidationSignalKeys.issuesMine],
 		cacheMode: "split",
-		request: (headers) =>
-			context.octokit.rest.search.issuesAndPullRequests({
-				q: buildUserSearchQuery({
-					itemType: "issue",
-					role,
-					state: "open",
-					username,
-				}),
-				per_page: 30,
-				sort: "updated",
-				order: "desc",
-				headers,
-			}),
-		mapData: (result) => mapIssueSearchItems(result.items),
+		fetcher: async () => {
+			const deadlineAt = Date.now() + MY_SEARCH_TOTAL_TIMEOUT_MS;
+			const sources = await getMySearchSources(context, username, deadlineAt);
+			const results: MyIssuesResult[] = [];
+			const rateLimits: GitHubGraphQLRateLimit[] = [];
+
+			for (const source of sources) {
+				const sourceTimeoutMs = getRemainingSearchTimeoutMs(
+					deadlineAt,
+					MY_SEARCH_SOURCE_TIMEOUT_MS,
+				);
+				if (sourceTimeoutMs < GITHUB_MIN_OPERATION_TIMEOUT_MS) {
+					debug("github-search", "stopping issue search, deadline low", {
+						remainingMs: sourceTimeoutMs,
+					});
+					break;
+				}
+
+				try {
+					const response = await withGitHubOperationTimeout(
+						`github issue search ${source.label}`,
+						sourceTimeoutMs,
+						(signal) =>
+							source.context.octokit.graphql<GraphQLMyIssuesResponse>(
+								`query(
+								$assignedQuery: String!
+								$authoredQuery: String!
+								$mentionedQuery: String!
+							) {
+								assigned: search(type: ISSUE, first: 30, query: $assignedQuery) {
+									nodes { ...IssueSearchFields }
+								}
+								authored: search(type: ISSUE, first: 30, query: $authoredQuery) {
+									nodes { ...IssueSearchFields }
+								}
+								mentioned: search(type: ISSUE, first: 30, query: $mentionedQuery) {
+									nodes { ...IssueSearchFields }
+								}
+								rateLimit {
+									cost
+									remaining
+									resetAt
+								}
+							}
+
+							fragment IssueSearchFields on Issue {
+								__typename
+								databaseId
+								number
+								title
+								state
+								stateReason
+								createdAt
+								updatedAt
+								closedAt
+								url
+								comments {
+									totalCount
+								}
+								author {
+									__typename
+									login
+									avatarUrl
+									url
+								}
+								labels(first: 20) {
+									nodes {
+										name
+										color
+										description
+									}
+								}
+								repository {
+									name
+									nameWithOwner
+									url
+									owner {
+										login
+									}
+								}
+							}`,
+								{
+									assignedQuery: buildSourceSearchQuery({
+										itemType: "issue",
+										role: "assigned",
+										source,
+										username,
+									}),
+									authoredQuery: buildSourceSearchQuery({
+										itemType: "issue",
+										role: "author",
+										source,
+										username,
+									}),
+									mentionedQuery: buildSourceSearchQuery({
+										itemType: "issue",
+										role: "mentioned",
+										source,
+										username,
+									}),
+									request: { signal },
+								},
+							),
+					);
+
+					results.push({
+						assigned: mapGraphQLIssueSearchConnection(response.assigned),
+						authored: mapGraphQLIssueSearchConnection(response.authored),
+						mentioned: mapGraphQLIssueSearchConnection(response.mentioned),
+					});
+					rateLimits.push(response.rateLimit);
+				} catch (error) {
+					console.error(
+						"[github-search] failed to load issues",
+						source.label,
+						error,
+					);
+				}
+			}
+
+			return {
+				kind: "success",
+				data: mergeMyIssuesResults(results),
+				metadata: createGraphQLResponseMetadata(
+					mergeGraphQLRateLimits(rateLimits),
+				),
+			};
+		},
 	});
 }
 
@@ -2746,39 +4319,28 @@ export const getGitHubAppAccessState = createServerFn({
 		return null;
 	}
 
-	const viewer = await getViewer(context);
+	const viewer = await withGitHubOperationTimeout(
+		"github app access viewer",
+		GITHUB_OPERATION_TIMEOUT_MS,
+		() => getViewer(context),
+	);
 	const appSlug = getGitHubAppSlug();
 	const appAuthorizationUrl = buildGitHubAppAuthorizePath();
 	const publicInstallUrl = buildGitHubAppInstallUrl(appSlug);
-	const { installations, installationsAvailable } =
-		await getGitHubAppUserInstallations(context.session.user.id);
+	const [
+		{ installations, installationsAvailable },
+		authenticatedOrganizations,
+	] = await withGitHubOperationTimeout(
+		"github app access state",
+		GITHUB_PAGINATED_OPERATION_TIMEOUT_MS,
+		() =>
+			Promise.all([
+				getGitHubAppUserInstallations(context.session.user.id),
+				getGitHubAuthenticatedOrganizations(context),
+			]),
+	);
 
-	let organizations: GitHubOrganization[] = [];
-	try {
-		const organizationsResponse = await context.octokit.request(
-			"GET /user/orgs",
-			{
-				per_page: 100,
-			},
-		);
-		const payload =
-			organizationsResponse.data as GitHubAuthenticatedOrgPayload[];
-		organizations = payload.flatMap((organization) => {
-			if (!organization.id || !organization.login) {
-				return [];
-			}
-
-			return [
-				{
-					id: organization.id,
-					login: organization.login,
-					avatarUrl: organization.avatar_url ?? null,
-				},
-			];
-		});
-	} catch (error) {
-		console.error("[github-access] failed to load organizations", error);
-	}
+	let organizations = authenticatedOrganizations;
 
 	const viewerLogin = viewer.login;
 	const personalInstallation =
@@ -2888,13 +4450,14 @@ export const searchCommandPaletteGitHub = createServerFn({ method: "GET" })
 			safeCommandPaletteSearch({
 				label: "pull requests",
 				fallback: [] as SearchItem[],
-				task: async () => {
+				task: async (signal) => {
 					const response =
 						await context.octokit.rest.search.issuesAndPullRequests({
 							q: `${query} is:pr involves:${login} archived:false`,
 							per_page: perPage,
 							sort: "updated",
 							order: "desc",
+							request: { signal },
 						});
 					return response.data.items;
 				},
@@ -2902,13 +4465,14 @@ export const searchCommandPaletteGitHub = createServerFn({ method: "GET" })
 			safeCommandPaletteSearch({
 				label: "issues",
 				fallback: [] as SearchItem[],
-				task: async () => {
+				task: async (signal) => {
 					const response =
 						await context.octokit.rest.search.issuesAndPullRequests({
 							q: `${query} is:issue involves:${login} archived:false`,
 							per_page: perPage,
 							sort: "updated",
 							order: "desc",
+							request: { signal },
 						});
 					return response.data.items;
 				},
@@ -2945,32 +4509,7 @@ export const getMyPulls = createServerFn({ method: "GET" }).handler(
 		}
 
 		const viewer = await getViewer(context);
-		const slices = await runWithConcurrency(
-			myPullRoleDefinitions.map((definition) => async () => ({
-				key: definition.key,
-				data: await getMyPullSlice({
-					context,
-					username: viewer.login,
-					roleKey: definition.key,
-					role: definition.role,
-				}),
-			})),
-			2,
-		);
-
-		return slices.reduce<MyPullsResult>(
-			(accumulator, slice) => {
-				accumulator[slice.key] = slice.data;
-				return accumulator;
-			},
-			{
-				reviewRequested: [],
-				assigned: [],
-				authored: [],
-				mentioned: [],
-				involved: [],
-			},
-		);
+		return getMyPullsResult({ context, username: viewer.login });
 	},
 );
 
@@ -3124,30 +4663,7 @@ export const getMyIssues = createServerFn({ method: "GET" }).handler(
 		}
 
 		const viewer = await getViewer(context);
-		const slices = await runWithConcurrency(
-			myIssueRoleDefinitions.map((definition) => async () => ({
-				key: definition.key,
-				data: await getMyIssueSlice({
-					context,
-					username: viewer.login,
-					roleKey: definition.key,
-					role: definition.role,
-				}),
-			})),
-			2,
-		);
-
-		return slices.reduce<MyIssuesResult>(
-			(accumulator, slice) => {
-				accumulator[slice.key] = slice.data;
-				return accumulator;
-			},
-			{
-				assigned: [],
-				authored: [],
-				mentioned: [],
-			},
-		);
+		return getMyIssuesResult({ context, username: viewer.login });
 	},
 );
 
@@ -3827,10 +5343,15 @@ export const getOrgTeams = createServerFn({ method: "GET" })
 				})),
 		}).catch(() => []);
 
-		const teamsWithAccess = await Promise.all(
-			teams.map(async (team) =>
-				(await orgTeamHasRepoAccess(context, data, team)) ? team : null,
-			),
+		const teamsWithAccess = await withGitHubOperationTimeout(
+			`github org team access ${data.org}/${data.repo}`,
+			GITHUB_PAGINATED_OPERATION_TIMEOUT_MS,
+			() =>
+				Promise.all(
+					teams.map(async (team) =>
+						(await orgTeamHasRepoAccess(context, data, team)) ? team : null,
+					),
+				),
 		);
 
 		return teamsWithAccess.filter((team): team is OrgTeam => Boolean(team));
@@ -4104,7 +5625,9 @@ export const getUserContributions = createServerFn({ method: "GET" })
 						};
 					};
 				};
-			} = await context.octokit.graphql(
+			} = await executeGitHubGraphQL(
+				context,
+				`github user contributions ${data.username}`,
 				`query($username: String!) {
 					user(login: $username) {
 						contributionsCollection {
@@ -4177,7 +5700,9 @@ export const getUserPinnedRepos = createServerFn({ method: "GET" })
 						}>;
 					};
 				};
-			} = await context.octokit.graphql(
+			} = await executeGitHubGraphQL(
+				context,
+				`github user pinned repos ${data.username}`,
 				`query($username: String!) {
 					user(login: $username) {
 						pinnedItems(first: 6, types: REPOSITORY) {
@@ -4430,106 +5955,113 @@ type RepoOverviewInput = {
 export const getRepoOverview = createServerFn({ method: "GET" })
 	.inputValidator(identityValidator<RepoOverviewInput>)
 	.handler(async ({ data }): Promise<RepoOverview | null> => {
-		const context = await getGitHubContext();
+		const context = await getGitHubContextForRepository(data);
 		if (!context) return null;
 
-		const [
-			repoRes,
-			branchesRes,
-			tagsRes,
-			commitsRes,
-			openPullsRes,
-			openIssuesRes,
-		] = await Promise.all([
-			context.octokit.rest.repos.get({
-				owner: data.owner,
-				repo: data.repo,
-			}),
-			context.octokit.rest.repos.listBranches({
-				owner: data.owner,
-				repo: data.repo,
-				per_page: 1,
-			}),
-			context.octokit.rest.repos.listTags({
-				owner: data.owner,
-				repo: data.repo,
-				per_page: 1,
-			}),
-			context.octokit.rest.repos.listCommits({
-				owner: data.owner,
-				repo: data.repo,
-				per_page: 1,
-			}),
-			context.octokit.rest.pulls.list({
-				owner: data.owner,
-				repo: data.repo,
-				state: "open",
-				per_page: 1,
-			}),
-			context.octokit.rest.issues.listForRepo({
-				owner: data.owner,
-				repo: data.repo,
-				state: "open",
-				per_page: 1,
-			}),
-		]);
+		const repoMetaKey = githubRevalidationSignalKeys.repoMeta(data);
+		const repoCodeKey = githubRevalidationSignalKeys.repoCode(data);
 
-		const repo = repoRes.data;
+		return getOrRevalidateGitHubResource<RepoOverview>({
+			userId: context.session.user.id,
+			resource: "repo.overview.v1",
+			params: data,
+			freshForMs: githubCachePolicy.repoMeta.staleTimeMs,
+			signalKeys: [repoMetaKey, repoCodeKey],
+			namespaceKeys: [repoMetaKey, repoCodeKey],
+			cacheMode: "split",
+			fetcher: async () => {
+				const response =
+					await executeGitHubGraphQL<GitHubGraphQLRepoOverviewResponse>(
+						context,
+						`github repo overview ${data.owner}/${data.repo}`,
+						`query($owner: String!, $repo: String!) {
+							repository(owner: $owner, name: $repo) {
+								databaseId
+								name
+								nameWithOwner
+								description
+								isPrivate
+								isFork
+								defaultBranchRef {
+									name
+									target {
+										__typename
+										... on Commit {
+											oid
+											message
+											committedDate
+											author {
+												user {
+													login
+													avatarUrl
+													url
+												}
+											}
+										}
+									}
+								}
+								stargazerCount
+								forkCount
+								watchers(first: 1) {
+									totalCount
+								}
+								primaryLanguage {
+									name
+								}
+								licenseInfo {
+									spdxId
+								}
+								repositoryTopics(first: 20) {
+									nodes {
+										topic {
+											name
+										}
+									}
+								}
+								url
+								owner {
+									login
+									avatarUrl
+								}
+								branches: refs(refPrefix: "refs/heads/", first: 1) {
+									totalCount
+								}
+								tags: refs(refPrefix: "refs/tags/", first: 1) {
+									totalCount
+								}
+								pullRequests(states: OPEN, first: 1) {
+									totalCount
+								}
+								issues(states: OPEN, first: 1) {
+									totalCount
+								}
+								hasDiscussionsEnabled
+							}
+							rateLimit {
+								cost
+								remaining
+								resetAt
+							}
+						}`,
+						{
+							owner: data.owner,
+							repo: data.repo,
+						},
+					);
 
-		// Extract total counts from Link headers
-		const branchCount =
-			parseLinkHeaderLastPage(branchesRes.headers.link as string | undefined) ??
-			branchesRes.data.length;
-		const tagCount =
-			parseLinkHeaderLastPage(tagsRes.headers.link as string | undefined) ??
-			tagsRes.data.length;
-		const openPullCount =
-			parseLinkHeaderLastPage(
-				openPullsRes.headers.link as string | undefined,
-			) ?? openPullsRes.data.length;
-		// issues.listForRepo includes PRs, so subtract pull count for pure issues
-		const openIssueAndPrCount =
-			parseLinkHeaderLastPage(
-				openIssuesRes.headers.link as string | undefined,
-			) ?? openIssuesRes.data.length;
-		const openIssueCount = Math.max(0, openIssueAndPrCount - openPullCount);
-
-		const latestCommit = commitsRes.data[0]
-			? {
-					sha: commitsRes.data[0].sha,
-					message: commitsRes.data[0].commit.message,
-					date:
-						commitsRes.data[0].commit.committer?.date ??
-						commitsRes.data[0].commit.author?.date ??
-						"",
-					author: mapActor(commitsRes.data[0].author),
+				if (!response.repository) {
+					throw new Error(
+						`GitHub repository not found: ${data.owner}/${data.repo}`,
+					);
 				}
-			: null;
 
-		return {
-			id: repo.id,
-			name: repo.name,
-			fullName: repo.full_name,
-			description: repo.description,
-			isPrivate: repo.private,
-			isFork: repo.fork,
-			defaultBranch: repo.default_branch,
-			stars: repo.stargazers_count,
-			forks: repo.forks_count,
-			watchers: repo.subscribers_count,
-			language: repo.language,
-			license: repo.license?.spdx_id ?? null,
-			topics: repo.topics ?? [],
-			url: repo.html_url,
-			owner: repo.owner.login,
-			ownerAvatarUrl: repo.owner.avatar_url,
-			branchCount,
-			tagCount,
-			openPullCount,
-			openIssueCount,
-			hasDiscussions: !!(repo as Record<string, unknown>).has_discussions,
-			latestCommit,
-		};
+				return {
+					kind: "success",
+					data: mapGraphQLRepoOverview(response.repository),
+					metadata: createGraphQLResponseMetadata(response.rateLimit),
+				};
+			},
+		});
 	});
 
 // ---------------------------------------------------------------------------
@@ -4564,54 +6096,86 @@ type GraphQLDiscussionsResponse = {
 export const getRepoDiscussions = createServerFn({ method: "GET" })
 	.inputValidator(identityValidator<RepoDiscussionsInput>)
 	.handler(async ({ data }): Promise<DiscussionsResult> => {
-		const context = await getGitHubContext();
+		const context = await getGitHubContextForRepository(data);
 		if (!context) return { discussions: [], totalCount: 0 };
 
-		try {
-			const response =
-				await context.octokit.graphql<GraphQLDiscussionsResponse>(
-					`query($owner: String!, $repo: String!, $first: Int!) {
-						repository(owner: $owner, name: $repo) {
-							discussions(first: $first, orderBy: { field: UPDATED_AT, direction: DESC }) {
-								totalCount
-								nodes {
-									number
-									title
-									createdAt
-									updatedAt
-									author { login avatarUrl }
-									category { name emojiHTML }
-									comments { totalCount }
-									answerChosenAt
-									url
+		return getOrRevalidateGitHubResource<DiscussionsResult>({
+			userId: context.session.user.id,
+			resource: "repo.discussions.v1",
+			params: {
+				owner: data.owner,
+				repo: data.repo,
+				first: data.first ?? 5,
+			},
+			freshForMs: githubCachePolicy.list.staleTimeMs,
+			signalKeys: [githubRevalidationSignalKeys.repoMeta(data)],
+			namespaceKeys: [githubRevalidationSignalKeys.repoMeta(data)],
+			cacheMode: "split",
+			fetcher: async () => {
+				try {
+					const response =
+						await executeGitHubGraphQL<GraphQLDiscussionsResponse>(
+							context,
+							`github repo discussions ${data.owner}/${data.repo}`,
+							`query($owner: String!, $repo: String!, $first: Int!) {
+								repository(owner: $owner, name: $repo) {
+									discussions(first: $first, orderBy: { field: UPDATED_AT, direction: DESC }) {
+										totalCount
+										nodes {
+											number
+											title
+											createdAt
+											updatedAt
+											author { login avatarUrl }
+											category { name emojiHTML }
+											comments { totalCount }
+											answerChosenAt
+											url
+										}
+									}
 								}
-							}
-						}
-					}`,
-					{
-						owner: data.owner,
-						repo: data.repo,
-						first: data.first ?? 5,
-					},
-				);
+							}`,
+							{
+								owner: data.owner,
+								repo: data.repo,
+								first: data.first ?? 5,
+							},
+						);
 
-			return {
-				totalCount: response.repository.discussions.totalCount,
-				discussions: response.repository.discussions.nodes.map((d) => ({
-					number: d.number,
-					title: d.title,
-					createdAt: d.createdAt,
-					updatedAt: d.updatedAt,
-					author: d.author,
-					category: d.category?.name ?? null,
-					comments: d.comments.totalCount,
-					isAnswered: d.answerChosenAt !== null,
-					url: d.url,
-				})),
-			};
-		} catch {
-			return { discussions: [], totalCount: 0 };
-		}
+					return {
+						kind: "success",
+						data: {
+							totalCount: response.repository.discussions.totalCount,
+							discussions: response.repository.discussions.nodes.map((d) => ({
+								number: d.number,
+								title: d.title,
+								createdAt: d.createdAt,
+								updatedAt: d.updatedAt,
+								author: d.author,
+								category: d.category?.name ?? null,
+								comments: d.comments.totalCount,
+								isAnswered: d.answerChosenAt !== null,
+								url: d.url,
+							})),
+						},
+						metadata: createGitHubResponseMetadata(200, {}),
+					};
+				} catch (error) {
+					if (
+						error instanceof RequestError &&
+						(error.status === 403 || error.status === 429)
+					) {
+						throw error;
+					}
+
+					return {
+						kind: "success",
+						data: { discussions: [], totalCount: 0 },
+						metadata: createGitHubResponseMetadata(200, {}),
+					};
+				}
+			},
+		});
 	});
 
 function parseLinkHeaderLastPage(link: string | undefined): number | null {
@@ -4632,19 +6196,35 @@ type RepoBranchesInput = {
 export const getRepoBranches = createServerFn({ method: "GET" })
 	.inputValidator(identityValidator<RepoBranchesInput>)
 	.handler(async ({ data }): Promise<RepoBranch[]> => {
-		const context = await getGitHubContext();
+		const context = await getGitHubContextForRepository(data);
 		if (!context) return [];
 
-		const res = await context.octokit.rest.repos.listBranches({
-			owner: data.owner,
-			repo: data.repo,
-			per_page: 25,
+		return getCachedGitHubRequest<
+			Awaited<
+				ReturnType<GitHubClient["rest"]["repos"]["listBranches"]>
+			>["data"],
+			RepoBranch[]
+		>({
+			context,
+			resource: "repo.branches.v1",
+			params: data,
+			freshForMs: githubCachePolicy.repoMeta.staleTimeMs,
+			signalKeys: [githubRevalidationSignalKeys.repoCode(data)],
+			namespaceKeys: [githubRevalidationSignalKeys.repoCode(data)],
+			cacheMode: "split",
+			request: (headers) =>
+				context.octokit.rest.repos.listBranches({
+					owner: data.owner,
+					repo: data.repo,
+					per_page: 25,
+					headers,
+				}),
+			mapData: (branches) =>
+				branches.map((b) => ({
+					name: b.name,
+					isProtected: b.protected,
+				})),
 		});
-
-		return res.data.map((b) => ({
-			name: b.name,
-			isProtected: b.protected,
-		}));
 	});
 
 // ---------------------------------------------------------------------------
@@ -4661,76 +6241,54 @@ type RepoTreeInput = {
 export const getRepoTree = createServerFn({ method: "GET" })
 	.inputValidator(identityValidator<RepoTreeInput>)
 	.handler(async ({ data }): Promise<RepoTreeEntry[]> => {
-		const context = await getGitHubContext();
+		const context = await getGitHubContextForRepository(data);
 		if (!context) return [];
 
-		const res = await context.octokit.rest.repos.getContent({
-			owner: data.owner,
-			repo: data.repo,
-			path: data.path,
-			ref: data.ref,
-		});
-
-		if (!Array.isArray(res.data)) return [];
-
-		const entries: RepoTreeEntry[] = res.data.map((item) => ({
-			name: item.name,
-			type:
-				item.type === "dir"
-					? "dir"
-					: item.type === "submodule"
-						? "submodule"
-						: "file",
-			path: item.path,
-			sha: item.sha,
-			size: item.size ?? null,
-			lastCommit: null,
-		}));
-
-		// Fetch last commit for each entry in parallel (capped at 15 to avoid rate limits)
-		const BATCH_SIZE = 15;
-		for (let i = 0; i < entries.length; i += BATCH_SIZE) {
-			const batch = entries.slice(i, i + BATCH_SIZE);
-			const commitResults = await Promise.all(
-				batch.map(async (entry) => {
-					try {
-						const commitRes = await context.octokit.rest.repos.listCommits({
-							owner: data.owner,
-							repo: data.repo,
-							sha: data.ref,
-							path: entry.path,
-							per_page: 1,
-						});
-						const commit = commitRes.data[0];
-						if (commit) {
-							return {
-								message: commit.commit.message.split("\n")[0],
-								date:
-									commit.commit.committer?.date ??
-									commit.commit.author?.date ??
-									"",
-							};
-						}
-					} catch {
-						// Ignore individual commit fetch failures
-					}
-					return null;
+		return getCachedGitHubRequest<
+			Awaited<ReturnType<GitHubClient["rest"]["repos"]["getContent"]>>["data"],
+			RepoTreeEntry[]
+		>({
+			context,
+			resource: "repo.tree.v1",
+			params: data,
+			freshForMs: githubCachePolicy.detail.staleTimeMs,
+			signalKeys: [githubRevalidationSignalKeys.repoCode(data)],
+			namespaceKeys: [githubRevalidationSignalKeys.repoCode(data)],
+			cacheMode: "split",
+			request: (headers) =>
+				context.octokit.rest.repos.getContent({
+					owner: data.owner,
+					repo: data.repo,
+					path: data.path,
+					ref: data.ref,
+					headers,
 				}),
-			);
+			mapData: (content) => {
+				if (!Array.isArray(content)) return [];
 
-			for (let j = 0; j < batch.length; j++) {
-				batch[j].lastCommit = commitResults[j] ?? null;
-			}
-		}
+				const entries: RepoTreeEntry[] = content.map((item) => ({
+					name: item.name,
+					type:
+						item.type === "dir"
+							? "dir"
+							: item.type === "submodule"
+								? "submodule"
+								: "file",
+					path: item.path,
+					sha: item.sha,
+					size: item.size ?? null,
+					lastCommit: null,
+				}));
 
-		// Sort: dirs first, then files, alphabetically within each group
-		entries.sort((a, b) => {
-			if (a.type === "dir" && b.type !== "dir") return -1;
-			if (a.type !== "dir" && b.type === "dir") return 1;
-			return a.name.localeCompare(b.name);
+				entries.sort((a, b) => {
+					if (a.type === "dir" && b.type !== "dir") return -1;
+					if (a.type !== "dir" && b.type === "dir") return 1;
+					return a.name.localeCompare(b.name);
+				});
+
+				return entries;
+			},
 		});
-
-		return entries;
 	});
 
 // ---------------------------------------------------------------------------
@@ -4747,22 +6305,33 @@ type RepoFileContentInput = {
 export const getRepoFileContent = createServerFn({ method: "GET" })
 	.inputValidator(identityValidator<RepoFileContentInput>)
 	.handler(async ({ data }): Promise<string | null> => {
-		const context = await getGitHubContext();
+		const context = await getGitHubContextForRepository(data);
 		if (!context) return null;
 
-		try {
-			const res = await context.octokit.rest.repos.getContent({
-				owner: data.owner,
-				repo: data.repo,
-				path: data.path,
-				ref: data.ref,
-			});
-
-			if (Array.isArray(res.data) || !("content" in res.data)) return null;
-			return Buffer.from(res.data.content, "base64").toString("utf-8");
-		} catch {
-			return null;
-		}
+		return getCachedGitHubRequest<
+			Awaited<ReturnType<GitHubClient["rest"]["repos"]["getContent"]>>["data"],
+			string | null
+		>({
+			context,
+			resource: "repo.fileContent.v1",
+			params: data,
+			freshForMs: githubCachePolicy.repoMeta.staleTimeMs,
+			signalKeys: [githubRevalidationSignalKeys.repoCode(data)],
+			namespaceKeys: [githubRevalidationSignalKeys.repoCode(data)],
+			cacheMode: "split",
+			request: (headers) =>
+				context.octokit.rest.repos.getContent({
+					owner: data.owner,
+					repo: data.repo,
+					path: data.path,
+					ref: data.ref,
+					headers,
+				}),
+			mapData: (content) => {
+				if (Array.isArray(content) || !("content" in content)) return null;
+				return Buffer.from(content.content, "base64").toString("utf-8");
+			},
+		}).catch(() => null);
 	});
 
 // ---------------------------------------------------------------------------
@@ -4777,27 +6346,67 @@ type RepoContributorsInput = {
 export const getRepoContributors = createServerFn({ method: "GET" })
 	.inputValidator(identityValidator<RepoContributorsInput>)
 	.handler(async ({ data }): Promise<RepoContributorsResult> => {
-		const context = await getGitHubContext();
+		const context = await getGitHubContextForRepository(data);
 		if (!context) return { contributors: [], totalCount: 0 };
 
-		const res = await context.octokit.rest.repos.listContributors({
-			owner: data.owner,
-			repo: data.repo,
-			per_page: 30,
-			anon: "false",
+		return getOrRevalidateGitHubResource<RepoContributorsResult>({
+			userId: context.session.user.id,
+			resource: "repo.contributors.v1",
+			params: data,
+			freshForMs: githubCachePolicy.repoMeta.staleTimeMs,
+			signalKeys: [githubRevalidationSignalKeys.repoCode(data)],
+			namespaceKeys: [githubRevalidationSignalKeys.repoCode(data)],
+			cacheMode: "split",
+			fetcher: async (conditionals) => {
+				try {
+					const response = await context.octokit.rest.repos.listContributors({
+						owner: data.owner,
+						repo: data.repo,
+						per_page: 30,
+						anon: "false",
+						headers: buildConditionalHeaders(conditionals),
+					});
+					const totalCount =
+						parseLinkHeaderLastPage(
+							response.headers.link as string | undefined,
+						) ?? response.data.length;
+
+					return {
+						kind: "success",
+						data: {
+							contributors: response.data
+								.filter((c): c is typeof c & { login: string } => !!c.login)
+								.map((c) => ({
+									login: c.login,
+									avatarUrl: c.avatar_url ?? "",
+									contributions: c.contributions ?? 0,
+								})),
+							totalCount,
+						},
+						metadata: createGitHubResponseMetadata(
+							response.status,
+							normalizeResponseHeaders(response.headers),
+						),
+					};
+				} catch (error) {
+					if (
+						error instanceof RequestError &&
+						error.status === 304 &&
+						error.response?.headers
+					) {
+						return {
+							kind: "not-modified",
+							metadata: createGitHubResponseMetadata(
+								304,
+								normalizeResponseHeaders(
+									error.response.headers as Record<string, unknown>,
+								),
+							),
+						};
+					}
+
+					throw error;
+				}
+			},
 		});
-
-		const totalCount =
-			parseLinkHeaderLastPage(res.headers.link as string | undefined) ??
-			res.data.length;
-
-		const contributors: RepoContributor[] = res.data
-			.filter((c): c is typeof c & { login: string } => !!c.login)
-			.map((c) => ({
-				login: c.login,
-				avatarUrl: c.avatar_url ?? "",
-				contributions: c.contributions ?? 0,
-			}));
-
-		return { contributors, totalCount };
 	});

@@ -32,18 +32,15 @@ import { useHasMounted } from "#/lib/use-has-mounted";
 
 export const Route = createFileRoute("/_protected/$owner/")({
 	ssr: false,
-	loader: async ({ context, params }) => {
+	loader: ({ context, params }) => {
 		const scope = { userId: context.user.id };
-		await Promise.all([
-			context.queryClient.ensureQueryData(
-				githubUserProfileQueryOptions(scope, params.owner),
-			),
-			context.queryClient.ensureQueryData(githubViewerQueryOptions(scope)),
-			context.queryClient.ensureQueryData(
-				githubUserPinnedReposQueryOptions(scope, params.owner),
-			),
-		]);
-		// Contributions & activity load client-side
+		void context.queryClient.prefetchQuery(
+			githubUserProfileQueryOptions(scope, params.owner),
+		);
+		void context.queryClient.prefetchQuery(githubViewerQueryOptions(scope));
+		void context.queryClient.prefetchQuery(
+			githubUserPinnedReposQueryOptions(scope, params.owner),
+		);
 		void context.queryClient.prefetchQuery(
 			githubUserContributionsQueryOptions(scope, params.owner),
 		);

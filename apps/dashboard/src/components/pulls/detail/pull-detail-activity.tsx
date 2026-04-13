@@ -222,7 +222,7 @@ function getInvolvedUsers(
 	return users;
 }
 
-// ── Merge status section — owns its own polling query ────────────────
+// ── Merge status section ─────────────────────────────────────────────
 
 function MergeStatusSection({
 	scope,
@@ -237,7 +237,6 @@ function MergeStatusSection({
 }) {
 	const statusQuery = useQuery({
 		...githubPullStatusQueryOptions(scope, { owner, repo, pullNumber }),
-		refetchOnWindowFocus: "always",
 	});
 
 	const status = statusQuery.data ?? null;

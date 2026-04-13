@@ -1,6 +1,7 @@
 import { Skeleton } from "@diffkit/ui/components/skeleton";
 import { useQuery } from "@tanstack/react-query";
 import { getRouteApi } from "@tanstack/react-router";
+import { useMemo } from "react";
 import {
 	DetailPageLayout,
 	DetailPageSkeletonLayout,
@@ -10,6 +11,8 @@ import {
 	githubIssuePageQueryOptions,
 	githubQueryKeys,
 } from "#/lib/github.query";
+import { githubRevalidationSignalKeys } from "#/lib/github-revalidation";
+import { useGitHubSignalRefresh } from "#/lib/use-github-signal-refresh";
 import { useHasMounted } from "#/lib/use-has-mounted";
 import { useRegisterTab } from "#/lib/use-register-tab";
 import { IssueDetailActivitySection } from "./issue-detail-activity";
@@ -22,12 +25,34 @@ export function IssueDetailPage() {
 	const { user } = routeApi.useRouteContext();
 	const { owner, repo, issueId } = routeApi.useParams();
 	const issueNumber = Number(issueId);
-	const scope = { userId: user.id };
+	const scope = useMemo(() => ({ userId: user.id }), [user.id]);
+	const input = useMemo(
+		() => ({ owner, repo, issueNumber }),
+		[owner, repo, issueNumber],
+	);
 	const hasMounted = useHasMounted();
+	const pageQueryKey = useMemo(
+		() => githubQueryKeys.issues.page(scope, input),
+		[scope, input],
+	);
+	const webhookRefreshTargets = useMemo(
+		() => [
+			{
+				queryKey: pageQueryKey,
+				signalKeys: [githubRevalidationSignalKeys.issueEntity(input)],
+			},
+		],
+		[pageQueryKey, input],
+	);
 
 	const pageQuery = useQuery({
-		...githubIssuePageQueryOptions(scope, { owner, repo, issueNumber }),
+		...githubIssuePageQueryOptions(scope, input),
 		enabled: hasMounted,
+	});
+	useGitHubSignalRefresh({
+		enabled:
+			hasMounted && pageQuery.data !== undefined && !pageQuery.isFetching,
+		targets: webhookRefreshTargets,
 	});
 
 	const issue = pageQuery.data?.detail;
@@ -62,11 +87,7 @@ export function IssueDetailPage() {
 						events={events}
 						commentPagination={commentPagination}
 						eventPagination={eventPagination}
-						pageQueryKey={githubQueryKeys.issues.page(scope, {
-							owner,
-							repo,
-							issueNumber,
-						})}
+						pageQueryKey={pageQueryKey}
 						isFetching={pageQuery.isFetching}
 						owner={owner}
 						repo={repo}

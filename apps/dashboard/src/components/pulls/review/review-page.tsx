@@ -52,6 +52,8 @@ import type {
 	PullFileSummary,
 	PullReviewComment,
 } from "#/lib/github.types";
+import { githubRevalidationSignalKeys } from "#/lib/github-revalidation";
+import { useGitHubSignalRefresh } from "#/lib/use-github-signal-refresh";
 import { useRegisterTab } from "#/lib/use-register-tab";
 import { checkPermissionWarning } from "#/lib/warning-store";
 import type { ReviewDiffPaneHandle } from "./review-diff-pane";
@@ -95,9 +97,44 @@ export function ReviewPage() {
 	const { user } = routeApi.useRouteContext();
 	const { owner, repo, pullId } = routeApi.useParams();
 	const pullNumber = Number(pullId);
-	const scope = { userId: user.id };
+	const scope = useMemo(() => ({ userId: user.id }), [user.id]);
 	const queryClient = useQueryClient();
-	const input = { owner, repo, pullNumber };
+	const input = useMemo(
+		() => ({ owner, repo, pullNumber }),
+		[owner, repo, pullNumber],
+	);
+	const pageQueryKey = useMemo(
+		() => githubQueryKeys.pulls.page(scope, input),
+		[scope, input],
+	);
+	const fileSummariesQueryKey = useMemo(
+		() => githubQueryKeys.pulls.fileSummaries(scope, input),
+		[scope, input],
+	);
+	const filesQueryKey = useMemo(
+		() => githubQueryKeys.pulls.files(scope, input),
+		[scope, input],
+	);
+	const reviewCommentsQueryKey = useMemo(
+		() => githubQueryKeys.pulls.reviewComments(scope, input),
+		[scope, input],
+	);
+	const pullSignalKey = githubRevalidationSignalKeys.pullEntity(input);
+	const webhookRefreshTargets = useMemo(
+		() => [
+			{ queryKey: pageQueryKey, signalKeys: [pullSignalKey] },
+			{ queryKey: fileSummariesQueryKey, signalKeys: [pullSignalKey] },
+			{ queryKey: filesQueryKey, signalKeys: [pullSignalKey] },
+			{ queryKey: reviewCommentsQueryKey, signalKeys: [pullSignalKey] },
+		],
+		[
+			pageQueryKey,
+			fileSummariesQueryKey,
+			filesQueryKey,
+			reviewCommentsQueryKey,
+			pullSignalKey,
+		],
+	);
 	const diffPaneRef = useRef<ReviewDiffPaneHandle>(null);
 
 	// Stable store for active file — updates bypass ReviewPage renders entirely
@@ -116,7 +153,7 @@ export function ReviewPage() {
 	});
 
 	const filesQuery = useInfiniteQuery({
-		queryKey: githubQueryKeys.pulls.files(scope, input),
+		queryKey: filesQueryKey,
 		initialPageParam: 1,
 		queryFn: ({ pageParam }) =>
 			getPullFiles({
@@ -136,6 +173,15 @@ export function ReviewPage() {
 		...githubPullReviewCommentsQueryOptions(scope, input),
 		enabled: hasDiffPayload,
 		refetchOnWindowFocus: false,
+	});
+	useGitHubSignalRefresh({
+		enabled:
+			pageQuery.data !== undefined &&
+			!pageQuery.isFetching &&
+			!fileSummariesQuery.isFetching &&
+			!filesQuery.isFetching &&
+			!reviewCommentsQuery.isFetching,
+		targets: webhookRefreshTargets,
 	});
 
 	const pr = pageQuery.data?.detail ?? null;

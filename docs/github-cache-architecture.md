@@ -27,8 +27,8 @@ Cloudflare D1 stores durable app data and cache control state.
 Relevant tables:
 
 - `github_response_cache`: legacy durable response cache and migration fallback.
-- `github_revalidation_signal`: timestamped invalidation signals used by
-  webhook and client revalidation flows.
+- `github_revalidation_signal`: timestamped invalidation signals written by
+  webhook and mutation flows.
 - `github_cache_namespace`: version rows used by the split KV cache.
 
 The namespace table is created by:
@@ -150,9 +150,13 @@ The first implemented split-cache coverage includes:
 
 - Authenticated viewer.
 - Authenticated user repo list.
-- My pull request dashboard slices.
-- My issue dashboard slices.
+- My pull request dashboard result, fetched through installation-scoped GraphQL
+  searches for installed owners plus a guarded OAuth fallback.
+- My issue dashboard result, fetched through installation-scoped GraphQL searches
+  for installed owners plus a guarded OAuth fallback.
 - Pull detail data.
+- Pull page data, with detail, first/last comments, and commits bundled through
+  a repo-scoped GraphQL query plus timeline fallback reads.
 - Pull comments.
 - Pull commits.
 - Pull status.
@@ -160,10 +164,18 @@ The first implemented split-cache coverage includes:
 - Pull file summaries.
 - Pull review comments.
 - Issue detail data.
+- Issue page data, with detail and first/last comments bundled through a
+  repo-scoped GraphQL query plus timeline fallback reads.
 - Issue comments.
 - Repo collaborators.
 - Org teams.
 - Repo labels.
+- Repository overview metadata.
+- Repository branches.
+- Repository tree listings.
+- Repository file contents.
+- Repository contributors.
+- Repository discussions.
 
 Most resource opt-ins are in:
 
@@ -171,9 +183,38 @@ Most resource opt-ins are in:
 apps/dashboard/src/lib/github.functions.ts
 ```
 
+Repository overview also uses a single GraphQL repository query for metadata,
+counts, topics, and the latest default-branch commit. This avoids the previous
+multi-REST-call cold miss for the same screen.
+
+The dashboard "my pulls" and "my issues" reads prefer GitHub App installation
+tokens when the app is installed for an owner. The OAuth fallback excludes
+organizations the viewer belongs to, so an OAuth-restricted organization cannot
+make the whole aggregate search fail. Public repositories outside those
+organizations are still discovered through the fallback.
+
+Those dashboard aggregate searches have a hard request budget. Source discovery,
+installation client setup, and each owner-scoped GraphQL search are bounded so a
+slow GitHub/App-token path can be skipped and the server function can still
+return partial cached/search results instead of hanging the Worker request.
+
+Shared cached GitHub request helpers also wrap REST pagination, GraphQL calls,
+and composed reads in operation deadlines. Route loaders avoid blocking
+navigation on GitHub data; they prefetch and let React Query show cached data or
+the normal loading state. The Worker config enables
+`no_handle_cross_request_promise_resolution` to avoid cross-request promise
+resolution behavior in the runtime.
+
 ## Rate-Limit Behavior
 
 There are two layers of rate-limit protection.
+
+During development, the Octokit request policy logs a rate-limit snapshot for
+each GitHub response under the `github-rate-limit` debug scope. The token label
+is non-secret and identifies the bucket being used, for example
+`oauth:user:{id}`, `app-user:{id}`, or `installation:{id}`. The log includes the
+method, URL, status, rate-limit resource, limit, used count, remaining count, and
+reset time.
 
 ### Cache-level stale fallback
 
@@ -217,18 +258,51 @@ It enables Octokit's retry and throttling plugins with these rules:
 This keeps read paths resilient while avoiding duplicated side effects from
 `POST`, `PATCH`, or `DELETE` requests.
 
-## PR Status Refresh
+### GitHub App installation token cache
 
-The pull detail page no longer polls PR status every 15 seconds.
+Installation clients do not mint a new GitHub App installation token for every
+read. The server caches installation tokens per `installationId` in memory and,
+when available, in `GITHUB_CACHE_KV`. Cached tokens are reused until five
+minutes before GitHub's `expiresAt` timestamp, and concurrent misses for the
+same installation share one in-flight token mint.
 
-Status fetching is owned by the merge status section in:
+Webhook delivery invalidates the cached token for installation access changes:
+
+- `installation`
+- `installation_repositories`
+- `github_app_authorization`
+
+This keeps normal PR and issue reads on the larger installation rate-limit
+bucket without continuing to use a token after app permissions or selected
+repositories change.
+
+## Client Refresh
+
+The browser does not poll GitHub revalidation signals and does not sweep open
+tabs to preload or refetch their routes. Webhook handlers and mutation handlers
+update the durable server-side invalidation state; subsequent navigation,
+explicit hover/focus prefetch, or normal query reads observe that state through
+the server cache.
+
+PR detail, issue detail, and PR review routes also run a one-shot client signal
+check after their page query has data. This preserves the fast path where cached
+React Query data renders immediately, then asks the server for the relevant D1
+webhook signal timestamp once. If that signal is newer than the active query's
+cached data, only that active query is invalidated and refetched.
 
 ```text
-apps/dashboard/src/components/pulls/detail/pull-detail-activity.tsx
+apps/dashboard/src/lib/use-github-signal-refresh.ts
 ```
 
-It still refreshes on window focus, but it avoids constant background polling.
-Webhook invalidation and server cache freshness now carry more of the load.
+Tab prefetching is intentionally user-driven. Detail tabs call route preload on
+hover, focus, or touch start only:
+
+```text
+apps/dashboard/src/components/layouts/dashboard-tabs.tsx
+```
+
+This keeps cached tab switches fast without turning every open tab into a
+background GitHub refresh source.
 
 ## Operational Requirements
 
@@ -238,6 +312,10 @@ Before this architecture is active in an environment:
 2. The `github_cache_namespace` D1 migration must be applied.
 3. Existing legacy D1 cache entries can remain in place.
 
+`GITHUB_CACHE_KV` stores GitHub payload cache entries and short-lived GitHub App
+installation tokens. Installation token entries expire before the token itself
+enters its refresh window.
+
 Migration commands:
 
 ```sh
@@ -245,8 +323,9 @@ pnpm --filter @diffkit/dashboard migrate:local
 pnpm --filter @diffkit/dashboard migrate:remote
 ```
 
-If the KV binding is unavailable, the cache layer falls back to legacy D1
-behavior.
+If the KV binding is unavailable, the payload cache layer falls back to legacy
+D1 behavior, and installation token reuse is limited to the current Worker
+isolate's memory cache.
 
 ## Testing Coverage
 
@@ -260,6 +339,7 @@ The focused tests cover:
 - adaptive freshness when GitHub quota is low.
 - stale serving when GitHub is rate limited.
 - Octokit throttling and safe-method retry policy.
+- GitHub App installation token reuse and webhook invalidation.
 
 Relevant test files:
 
@@ -274,10 +354,14 @@ apps/dashboard/src/lib/github.server.test.ts
 - Split-cache writes still mirror payloads to legacy D1, so D1 cache churn is
   reduced but not eliminated yet.
 - In-flight deduplication is request-scoped, not cross-request or cross-worker.
-- Realtime client updates still depend on the existing client revalidation
-  model rather than server push.
-- KV is used for payloads only. It should not become the source of truth for
-  invalidation.
+- Installation token in-flight deduplication is per worker isolate. The KV entry
+  prevents most cross-isolate remints after the first token is stored.
+- Repository tree listings intentionally avoid per-entry commit lookups because
+  that pattern can turn one directory view into dozens of GitHub API calls.
+- Realtime client updates are not pushed to the browser yet. Detail routes do a
+  one-shot signal check on entry, but users who keep a page open indefinitely do
+  not receive webhook updates until another read is triggered.
+- KV is not the source of truth for invalidation.
 
 ## Future Work
 
@@ -288,5 +372,5 @@ Likely next steps:
 - Add cross-request coalescing for hot GitHub reads.
 - Add metrics for KV hit rate, D1 fallback rate, stale-if-rate-limited events,
   and GitHub quota pressure.
-- Move more realtime behavior toward push-based delivery if 10 second
-  revalidation polling becomes too noisy.
+- Add push-based client notifications if live updates are needed without
+  reintroducing browser polling.

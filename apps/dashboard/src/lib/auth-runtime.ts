@@ -21,7 +21,9 @@ export async function getGitHubClientByUserId(
 		throttle: { enabled: false },
 	});
 
-	configureGitHubRequestPolicies(octokit);
+	configureGitHubRequestPolicies(octokit, {
+		tokenLabel: `oauth:user:${userId}`,
+	});
 
 	return octokit;
 }
@@ -40,7 +42,9 @@ export async function getGitHubAppUserClientByUserId(
 		throttle: { enabled: false },
 	});
 
-	configureGitHubRequestPolicies(octokit);
+	configureGitHubRequestPolicies(octokit, {
+		tokenLabel: `app-user:${userId}`,
+	});
 
 	return octokit;
 }
