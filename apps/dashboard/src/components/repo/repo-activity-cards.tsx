@@ -168,7 +168,7 @@ function ActivityCard<T>({
 
 function PullItem({ pr }: { pr: PullSummary }) {
 	const { icon: StateIcon, color } = getPrStateConfig(pr);
-	const href = `/${pr.repository.owner}/${pr.repository.name}/pulls/${pr.number}`;
+	const href = `/${pr.repository.owner}/${pr.repository.name}/pull/${pr.number}`;
 
 	return (
 		<Link

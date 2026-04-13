@@ -1,12 +1,12 @@
 import { GitForkIcon, StarIcon } from "@diffkit/icons";
+import { Link } from "@tanstack/react-router";
 import type { PinnedRepo } from "#/lib/github.types";
 
 export function PinnedRepoCard({ repo }: { repo: PinnedRepo }) {
 	return (
-		<a
-			href={repo.url}
-			target="_blank"
-			rel="noopener noreferrer"
+		<Link
+			to="/$owner/$repo"
+			params={{ owner: repo.owner, repo: repo.name }}
 			className="flex flex-col gap-2 rounded-xl bg-surface-1 p-4"
 		>
 			<div className="flex items-center gap-2 min-w-0">
@@ -49,7 +49,7 @@ export function PinnedRepoCard({ repo }: { repo: PinnedRepo }) {
 					</span>
 				)}
 			</div>
-		</a>
+		</Link>
 	);
 }
 

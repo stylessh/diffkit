@@ -1,6 +1,7 @@
 import { createRouter as createTanStackRouter } from "@tanstack/react-router";
 import { setupRouterSsrQueryIntegration } from "@tanstack/react-router-ssr-query";
 import { DashboardErrorScreen } from "#/components/layouts/dashboard-error-screen";
+import { NotFoundScreen } from "#/components/layouts/not-found-screen";
 import {
 	AppQueryClientProvider,
 	createAppQueryClient,
@@ -19,6 +20,7 @@ export function getRouter() {
 		defaultPreloadStaleTime: 0,
 		defaultPendingMs: 0,
 		defaultErrorComponent: DashboardErrorScreen,
+		defaultNotFoundComponent: NotFoundScreen,
 		Wrap: ({ children }) => (
 			<AppQueryClientProvider queryClient={queryClient}>
 				{children}
