@@ -3602,8 +3602,10 @@ export const submitPullReview = createServerFn({ method: "POST" })
 				pullNumber: data.pullNumber,
 			});
 			return true;
-		} catch {
-			return false;
+		} catch (error) {
+			console.error("[submitPullReview] Failed:", error);
+			const message = error instanceof Error ? error.message : "Unknown error";
+			throw new Error(message);
 		}
 	});
 
@@ -3655,6 +3657,65 @@ export const createReviewComment = createServerFn({ method: "POST" })
 			};
 		} catch {
 			return null;
+		}
+	});
+
+// ── Create issue/PR comment ────────────────────────────────────────
+
+export type CreateCommentInput = {
+	owner: string;
+	repo: string;
+	issueNumber: number;
+	body: string;
+};
+
+export const createComment = createServerFn({ method: "POST" })
+	.inputValidator(identityValidator<CreateCommentInput>)
+	.handler(async ({ data }): Promise<MutationResult> => {
+		const context = await getGitHubUserContextForRepository(data);
+		if (!context) {
+			return { ok: false, error: "Not authenticated" };
+		}
+
+		try {
+			await context.octokit.rest.issues.createComment({
+				owner: data.owner,
+				repo: data.repo,
+				issue_number: data.issueNumber,
+				body: data.body,
+			});
+
+			// Bust caches so the comment appears immediately
+			const userId = context.session.user.id;
+			await Promise.all([
+				bustGitHubCache(userId, "issues.comments", {
+					owner: data.owner,
+					repo: data.repo,
+					issueNumber: data.issueNumber,
+				}),
+				bustGitHubCache(userId, "pulls.comments", {
+					owner: data.owner,
+					repo: data.repo,
+					pullNumber: data.issueNumber,
+				}),
+				// Bump namespace versions to invalidate split-mode KV payloads
+				bumpGitHubCacheNamespaces([
+					githubRevalidationSignalKeys.pullEntity({
+						owner: data.owner,
+						repo: data.repo,
+						pullNumber: data.issueNumber,
+					}),
+					githubRevalidationSignalKeys.issueEntity({
+						owner: data.owner,
+						repo: data.repo,
+						issueNumber: data.issueNumber,
+					}),
+				]),
+			]);
+
+			return { ok: true };
+		} catch (error) {
+			return toMutationError("create comment", error);
 		}
 	});
 

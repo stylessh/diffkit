@@ -18,9 +18,11 @@ import {
 import { LabelPill } from "#/components/details/label-pill";
 import { formatRelativeTime } from "#/lib/format-relative-time";
 import { getCommentPage, getTimelineEventPage } from "#/lib/github.functions";
+import type { GitHubQueryScope } from "#/lib/github.query";
 import type {
 	CommentPagination,
 	EventPagination,
+	GitHubActor,
 	IssueComment,
 	IssuePageData,
 	TimelineEvent,
@@ -234,6 +236,8 @@ export function IssueDetailActivitySection({
 	owner,
 	repo,
 	issueNumber,
+	scope,
+	issueAuthor,
 }: {
 	comments?: IssueComment[];
 	events?: TimelineEvent[];
@@ -244,6 +248,8 @@ export function IssueDetailActivitySection({
 	owner: string;
 	repo: string;
 	issueNumber: number;
+	scope: GitHubQueryScope;
+	issueAuthor: GitHubActor | null;
 }) {
 	const allItems: IssueTimelineItem[] = [
 		...(comments ?? []).map((comment) => ({
@@ -423,10 +429,42 @@ export function IssueDetailActivitySection({
 			)}
 
 			<div className="mt-6">
-				<DetailCommentBox />
+				<DetailCommentBox
+					owner={owner}
+					repo={repo}
+					issueNumber={issueNumber}
+					scope={scope}
+					involvedUsers={getInvolvedUsers(issueAuthor, comments)}
+				/>
 			</div>
 		</div>
 	);
+}
+
+function getInvolvedUsers(
+	issueAuthor: GitHubActor | null,
+	comments?: IssueComment[],
+): GitHubActor[] {
+	const seen = new Set<string>();
+	const users: GitHubActor[] = [];
+
+	const add = (actor: GitHubActor | null | undefined) => {
+		if (!actor || seen.has(actor.login)) return;
+		seen.add(actor.login);
+		users.push(actor);
+	};
+
+	// Issue author first
+	add(issueAuthor);
+
+	// Commenters (most recent first)
+	if (comments) {
+		for (let i = comments.length - 1; i >= 0; i--) {
+			add(comments[i].author);
+		}
+	}
+
+	return users;
 }
 
 // ── Load more divider ───────────────────────────────────────────────

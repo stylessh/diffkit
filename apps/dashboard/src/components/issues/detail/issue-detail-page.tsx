@@ -71,6 +71,8 @@ export function IssueDetailPage() {
 						owner={owner}
 						repo={repo}
 						issueNumber={issueNumber}
+						scope={scope}
+						issueAuthor={issue.author}
 					/>
 				</>
 			}

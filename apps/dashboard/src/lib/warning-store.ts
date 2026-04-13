@@ -62,24 +62,31 @@ export function checkPermissionWarning(
 	result: { ok: boolean; error?: string; installUrl?: string },
 	repo: string,
 ) {
-	if (
-		!result.ok &&
-		result.error &&
-		result.error.includes("Insufficient permissions")
-	) {
-		const [owner = repo] = repo.split("/");
+	if (!result.ok && result.error) {
+		const isInsufficientPermissions = result.error.includes(
+			"Insufficient permissions",
+		);
+		const isOrgRestriction = result.error.includes(
+			"OAuth App access restrictions",
+		);
 
-		addWarning({
-			id: `permissions:${repo}`,
-			message: `Your GitHub App may not have sufficient permissions for ${repo}.`,
-			dismissible: true,
-			action: {
-				kind: "github-access",
-				label: "Configure access",
-				href: result.installUrl,
-				owner,
-				repo,
-			},
-		});
+		if (isInsufficientPermissions || isOrgRestriction) {
+			const [owner = repo] = repo.split("/");
+
+			addWarning({
+				id: `permissions:${repo}`,
+				message: isOrgRestriction
+					? `The organization that owns ${repo} has restricted third-party access. You need to request or grant access.`
+					: `Your GitHub App may not have sufficient permissions for ${repo}.`,
+				dismissible: true,
+				action: {
+					kind: "github-access",
+					label: "Configure access",
+					href: result.installUrl,
+					owner,
+					repo,
+				},
+			});
+		}
 	}
 }

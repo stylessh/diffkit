@@ -9,11 +9,13 @@ import {
 	DrawerContent,
 	DrawerTitle,
 } from "@diffkit/ui/components/drawer";
+import type { MentionConfig } from "@diffkit/ui/components/markdown-editor";
 import {
 	ResizableHandle,
 	ResizablePanel,
 	ResizablePanelGroup,
 } from "@diffkit/ui/components/resizable";
+import { toast } from "@diffkit/ui/components/sonner";
 import { cn } from "@diffkit/ui/lib/utils";
 import type { SelectedLineRange } from "@pierre/diffs";
 import type { DiffLineAnnotation } from "@pierre/diffs/react";
@@ -41,13 +43,17 @@ import {
 	githubPullPageQueryOptions,
 	githubPullReviewCommentsQueryOptions,
 	githubQueryKeys,
+	githubRepoCollaboratorsQueryOptions,
+	githubViewerQueryOptions,
 } from "#/lib/github.query";
 import type {
+	GitHubActor,
 	PullDetail,
 	PullFileSummary,
 	PullReviewComment,
 } from "#/lib/github.types";
 import { useRegisterTab } from "#/lib/use-register-tab";
+import { checkPermissionWarning } from "#/lib/warning-store";
 import type { ReviewDiffPaneHandle } from "./review-diff-pane";
 import {
 	type ActiveFileStore,
@@ -140,6 +146,69 @@ export function ReviewPage() {
 	);
 	const reviewComments = reviewCommentsQuery.data ?? [];
 
+	// ── Mention support for inline comment forms ──────────────────────
+	const [mentionActivated, setMentionActivated] = useState(false);
+	const viewerQuery = useQuery(githubViewerQueryOptions(scope));
+	const collaboratorsQuery = useQuery({
+		...githubRepoCollaboratorsQueryOptions(scope, { owner, repo }),
+		enabled: mentionActivated,
+	});
+
+	const mentionConfig: MentionConfig = useMemo(() => {
+		const viewerLogin = viewerQuery.data?.login;
+		const seen = new Set<string>();
+		const candidates: MentionConfig["candidates"] = [];
+
+		if (viewerLogin) seen.add(viewerLogin);
+
+		const add = (actor: GitHubActor | null | undefined) => {
+			if (!actor || seen.has(actor.login)) return;
+			seen.add(actor.login);
+			candidates.push({
+				id: actor.login,
+				label: actor.login,
+				avatarUrl: actor.avatarUrl,
+				secondary: actor.type === "Bot" ? "Bot" : undefined,
+			});
+		};
+
+		// PR author first
+		if (pr) {
+			add(pr.author);
+			for (const r of pr.requestedReviewers) add(r);
+		}
+
+		// Review commenters (most recent first)
+		for (let i = reviewComments.length - 1; i >= 0; i--) {
+			add(reviewComments[i].author);
+		}
+
+		// Remaining collaborators
+		for (const c of collaboratorsQuery.data ?? []) {
+			if (seen.has(c.login)) continue;
+			seen.add(c.login);
+			candidates.push({
+				id: c.login,
+				label: c.login,
+				avatarUrl: c.avatarUrl,
+				secondary: c.type === "Bot" ? "Bot" : undefined,
+			});
+		}
+
+		return {
+			candidates,
+			onActivate: () => setMentionActivated(true),
+			isLoading: collaboratorsQuery.isLoading && mentionActivated,
+		};
+	}, [
+		viewerQuery.data?.login,
+		pr,
+		reviewComments,
+		collaboratorsQuery.data,
+		collaboratorsQuery.isLoading,
+		mentionActivated,
+	]);
+
 	const [diffStyle, setDiffStyle] = useState<"unified" | "split">("unified");
 	const [pendingComments, setPendingComments] = useState<PendingComment[]>([]);
 	const [activeCommentForm, setActiveCommentForm] =
@@ -223,6 +292,22 @@ export function ReviewPage() {
 		setActiveCommentForm(null);
 	}, []);
 
+	const handleEditComment = useCallback(
+		(original: PendingComment, newBody: string) => {
+			setPendingComments((previous) =>
+				previous.map((c) =>
+					c.path === original.path &&
+					c.line === original.line &&
+					c.side === original.side &&
+					c.startLine === original.startLine
+						? { ...c, body: newBody }
+						: c,
+				),
+			);
+		},
+		[],
+	);
+
 	const handleCancelComment = useCallback(() => {
 		setActiveCommentForm(null);
 		setSelectedLines(null);
@@ -266,7 +351,7 @@ export function ReviewPage() {
 	);
 
 	const handleSubmitReview = useCallback(
-		async (body: string, event: ReviewEvent) => {
+		async (body: string, event: ReviewEvent): Promise<boolean> => {
 			setIsSubmitting(true);
 			try {
 				const success = await submitPullReview({
@@ -297,7 +382,28 @@ export function ReviewPage() {
 					void queryClient.invalidateQueries({
 						queryKey: githubQueryKeys.all,
 					});
+				} else {
+					toast.error("Failed to submit review");
 				}
+
+				return success;
+			} catch (error) {
+				console.error("[submitReview]", error);
+				const message =
+					error instanceof Error ? error.message : "Unknown error";
+				const isAccessRestriction =
+					message.includes("OAuth App access restrictions") ||
+					message.includes("Insufficient permissions");
+				checkPermissionWarning(
+					{ ok: false, error: message },
+					`${owner}/${repo}`,
+				);
+				if (!isAccessRestriction) {
+					toast.error("Failed to submit review", {
+						description: message,
+					});
+				}
+				return false;
 			} finally {
 				setIsSubmitting(false);
 			}
@@ -348,6 +454,8 @@ export function ReviewPage() {
 				onStartComment={handleStartComment}
 				onCancelComment={handleCancelComment}
 				onAddComment={handleAddComment}
+				onEditComment={handleEditComment}
+				mentionConfig={mentionConfig}
 			/>
 		</Suspense>
 	) : (
@@ -436,7 +544,7 @@ const ReviewToolbar = memo(function ReviewToolbar({
 	onSetDiffStyle: (style: "unified" | "split") => void;
 	pendingCount: number;
 	isSubmitting: boolean;
-	onSubmitReview: (body: string, event: ReviewEvent) => Promise<void>;
+	onSubmitReview: (body: string, event: ReviewEvent) => Promise<boolean>;
 	onOpenFileSheet: () => void;
 	isDesktop: boolean;
 }) {

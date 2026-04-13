@@ -70,17 +70,19 @@ export function ReviewSubmitPopover({
 }: {
 	pendingCount: number;
 	isSubmitting: boolean;
-	onSubmit: (body: string, event: ReviewEvent) => void;
+	onSubmit: (body: string, event: ReviewEvent) => Promise<boolean>;
 }) {
 	const [body, setBody] = useState("");
 	const [event, setEvent] = useState<ReviewEvent>("COMMENT");
 	const [isOpen, setIsOpen] = useState(false);
 	const isDesktop = useIsDesktop();
 
-	const handleSubmit = () => {
-		onSubmit(body, event);
-		setBody("");
-		setIsOpen(false);
+	const handleSubmit = async () => {
+		const success = await onSubmit(body, event);
+		if (success) {
+			setBody("");
+			setIsOpen(false);
+		}
 	};
 
 	const trigger = (
