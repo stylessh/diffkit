@@ -5296,6 +5296,52 @@ export const createComment = createServerFn({ method: "POST" })
 		}
 	});
 
+export type CreateIssueInput = {
+	owner: string;
+	repo: string;
+	title: string;
+	body?: string;
+	labels?: string[];
+	assignees?: string[];
+};
+
+export type CreateIssueResult =
+	| { ok: true; issueNumber: number }
+	| { ok: false; error: string; installUrl?: string };
+
+export const createIssue = createServerFn({ method: "POST" })
+	.inputValidator(identityValidator<CreateIssueInput>)
+	.handler(async ({ data }): Promise<CreateIssueResult> => {
+		const context = await getGitHubUserContextForRepository(data);
+		if (!context) {
+			return { ok: false, error: "Not authenticated" };
+		}
+
+		try {
+			const response = await context.octokit.rest.issues.create({
+				owner: data.owner,
+				repo: data.repo,
+				title: data.title,
+				body: data.body,
+				labels: data.labels,
+				assignees: data.assignees,
+			});
+
+			await bumpGitHubCacheNamespaces([
+				githubRevalidationSignalKeys.issuesMine,
+				githubRevalidationSignalKeys.repoMeta({
+					owner: data.owner,
+					repo: data.repo,
+				}),
+			]);
+
+			return { ok: true, issueNumber: response.data.number };
+		} catch (error) {
+			const result = toMutationError("create issue", error);
+			return { ok: false, error: result.ok ? "" : result.error };
+		}
+	});
+
 export type RepoCollaboratorsInput = {
 	owner: string;
 	repo: string;

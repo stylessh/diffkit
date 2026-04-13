@@ -3,6 +3,7 @@ import {
 	CommentIcon,
 	GitPullRequestIcon,
 	IssuesIcon,
+	PlusSignIcon,
 } from "@diffkit/icons";
 import { cn } from "@diffkit/ui/lib/utils";
 import { useQuery } from "@tanstack/react-query";
@@ -93,6 +94,7 @@ export function RepoActivityCards({
 				items={issuesQuery.data}
 				count={repoData.openIssueCount}
 				viewAllHref={`/${owner}/${repo}/issues`}
+				actionHref={`/${owner}/${repo}/issues/new`}
 				renderItem={(issue) => <IssueItem key={issue.id} issue={issue} />}
 			/>
 			{repoData.hasDiscussions && (
@@ -117,6 +119,7 @@ function ActivityCard<T>({
 	items,
 	count,
 	viewAllHref,
+	actionHref,
 	renderItem,
 }: {
 	title: string;
@@ -128,6 +131,7 @@ function ActivityCard<T>({
 	items: T[] | undefined;
 	count?: number;
 	viewAllHref: string;
+	actionHref?: string;
 	renderItem: (item: T) => React.ReactNode;
 }) {
 	return (
@@ -141,6 +145,14 @@ function ActivityCard<T>({
 					<span className="text-xs tabular-nums text-muted-foreground">
 						{count}
 					</span>
+				)}
+				{actionHref && (
+					<Link
+						to={actionHref}
+						className="flex size-5 items-center justify-center rounded text-muted-foreground transition-colors hover:bg-surface-1 hover:text-foreground"
+					>
+						<PlusSignIcon size={14} strokeWidth={2} />
+					</Link>
 				)}
 			</div>
 			<div className="flex flex-col">
