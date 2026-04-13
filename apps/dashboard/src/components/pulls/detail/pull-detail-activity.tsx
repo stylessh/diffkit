@@ -57,6 +57,7 @@ import {
 import type {
 	CommentPagination,
 	EventPagination,
+	GitHubActor,
 	PullCheckRun,
 	PullComment,
 	PullCommit,
@@ -178,10 +179,47 @@ export function PullDetailActivitySection({
 			)}
 
 			<div className="mt-6">
-				<DetailCommentBox />
+				<DetailCommentBox
+					owner={owner}
+					repo={repo}
+					issueNumber={pullNumber}
+					scope={scope}
+					involvedUsers={getInvolvedUsers(pr, comments)}
+				/>
 			</div>
 		</div>
 	);
+}
+
+function getInvolvedUsers(
+	pr: PullDetail,
+	comments?: PullComment[],
+): GitHubActor[] {
+	const seen = new Set<string>();
+	const users: GitHubActor[] = [];
+
+	const add = (actor: GitHubActor | null | undefined) => {
+		if (!actor || seen.has(actor.login)) return;
+		seen.add(actor.login);
+		users.push(actor);
+	};
+
+	// PR author first
+	add(pr.author);
+
+	// Requested reviewers
+	for (const reviewer of pr.requestedReviewers) {
+		add(reviewer);
+	}
+
+	// Commenters (most recent first to prioritize active participants)
+	if (comments) {
+		for (let i = comments.length - 1; i >= 0; i--) {
+			add(comments[i].author);
+		}
+	}
+
+	return users;
 }
 
 // ── Merge status section — owns its own polling query ────────────────

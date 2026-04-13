@@ -1,3 +1,4 @@
+import type { MentionConfig } from "@diffkit/ui/components/markdown-editor";
 import type { SelectedLineRange } from "@pierre/diffs";
 import type { DiffLineAnnotation } from "@pierre/diffs/react";
 import {
@@ -43,6 +44,8 @@ type ReviewDiffPaneProps = {
 	onStartComment: (filename: string, range: SelectedLineRange) => void;
 	onCancelComment: () => void;
 	onAddComment: (comment: PendingComment) => void;
+	onEditComment: (original: PendingComment, newBody: string) => void;
+	mentionConfig?: MentionConfig;
 };
 
 export const ReviewDiffPane = memo(
@@ -62,6 +65,8 @@ export const ReviewDiffPane = memo(
 			onStartComment,
 			onCancelComment,
 			onAddComment,
+			onEditComment,
+			mentionConfig,
 		},
 		ref,
 	) {
@@ -348,6 +353,8 @@ export const ReviewDiffPane = memo(
 							onGutterClick={onStartComment}
 							onCancelComment={onCancelComment}
 							onAddComment={onAddComment}
+							onEditComment={onEditComment}
+							mentionConfig={mentionConfig}
 						/>
 					))}
 

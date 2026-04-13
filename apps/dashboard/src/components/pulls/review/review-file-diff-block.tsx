@@ -1,5 +1,9 @@
-import { CheckIcon, CommentIcon, CopyIcon } from "@diffkit/icons";
+import { CheckIcon, CommentIcon, CopyIcon, EditIcon } from "@diffkit/icons";
 import { Markdown } from "@diffkit/ui/components/markdown";
+import {
+	MarkdownEditor,
+	type MentionConfig,
+} from "@diffkit/ui/components/markdown-editor";
 import { vercelDark, vercelLight } from "@diffkit/ui/lib/shiki-themes";
 import { cn } from "@diffkit/ui/lib/utils";
 import type { SelectedLineRange } from "@pierre/diffs";
@@ -12,9 +16,7 @@ import {
 	memo,
 	Suspense,
 	useCallback,
-	useEffect,
 	useMemo,
-	useRef,
 	useState,
 } from "react";
 import { formatRelativeTime } from "#/lib/format-relative-time";
@@ -78,6 +80,8 @@ export const ReviewFileDiffBlock = memo(function ReviewFileDiffBlock({
 	onGutterClick,
 	onCancelComment,
 	onAddComment,
+	onEditComment,
+	mentionConfig,
 }: {
 	id: string;
 	file: PullFile;
@@ -90,6 +94,8 @@ export const ReviewFileDiffBlock = memo(function ReviewFileDiffBlock({
 	onGutterClick: (filename: string, range: SelectedLineRange) => void;
 	onCancelComment: () => void;
 	onAddComment: (comment: PendingComment) => void;
+	onEditComment: (original: PendingComment, newBody: string) => void;
+	mentionConfig?: MentionConfig;
 }) {
 	const [isCollapsed, setIsCollapsed] = useState(false);
 	const { resolvedTheme } = useTheme();
@@ -239,13 +245,18 @@ export const ReviewFileDiffBlock = memo(function ReviewFileDiffBlock({
 												})
 											}
 											onCancel={onCancelComment}
+											mentionConfig={mentionConfig}
 										/>
 									);
 								}
 
 								if ("body" in data && !("id" in data)) {
 									return (
-										<PendingCommentBubble comment={data as PendingComment} />
+										<PendingCommentBubble
+											comment={data as PendingComment}
+											onEdit={onEditComment}
+											mentionConfig={mentionConfig}
+										/>
 									);
 								}
 
@@ -353,33 +364,30 @@ function InlineCommentForm({
 	endLine,
 	onSubmit,
 	onCancel,
+	mentionConfig,
 }: {
 	isMultiLine?: boolean;
 	startLine?: number;
 	endLine?: number;
 	onSubmit: (body: string) => void;
 	onCancel: () => void;
+	mentionConfig?: MentionConfig;
 }) {
 	const [body, setBody] = useState("");
-	const textareaRef = useRef<HTMLTextAreaElement>(null);
-
-	useEffect(() => {
-		textareaRef.current?.focus();
-	}, []);
 
 	return (
-		<div className="mx-2 my-1 flex flex-col gap-2 rounded-lg border bg-surface-0 p-3">
+		<div className="mx-2 my-1 flex flex-col gap-2">
 			{isMultiLine && startLine != null && endLine != null && (
 				<div className="text-xs text-muted-foreground">
 					Commenting on lines {startLine}–{endLine}
 				</div>
 			)}
-			<textarea
-				ref={textareaRef}
+			<MarkdownEditor
 				value={body}
-				onChange={(event) => setBody(event.target.value)}
+				onChange={setBody}
 				placeholder="Leave a comment..."
-				className="min-h-[60px] w-full resize-y rounded-md border bg-background px-3 py-2 text-xs outline-none placeholder:text-muted-foreground focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+				compact
+				mentions={mentionConfig}
 			/>
 			<div className="flex items-center justify-end gap-2">
 				<button
@@ -406,45 +414,103 @@ function InlineCommentForm({
 
 function ReviewCommentBubble({ comment }: { comment: PullReviewComment }) {
 	return (
-		<div className="mx-2 my-1 rounded-lg border bg-surface-0 p-3">
-			<div className="mb-2 flex items-center gap-2">
-				{comment.author && (
-					<>
-						<img
-							src={comment.author.avatarUrl}
-							alt={comment.author.login}
-							className="size-5 rounded-full border border-border"
-						/>
-						<span className="text-xs font-medium">{comment.author.login}</span>
-					</>
+		<div className="mx-2 my-1 rounded-lg border bg-surface-0 px-3 py-2.5">
+			<div className="mb-1.5 flex items-center gap-1.5">
+				{comment.author ? (
+					<img
+						src={comment.author.avatarUrl}
+						alt={comment.author.login}
+						className="size-4 rounded-full border border-border"
+					/>
+				) : (
+					<div className="size-4 rounded-full bg-surface-2" />
 				)}
-				<span className="text-xs text-muted-foreground">
+				<span className="text-[13px] font-medium">
+					{comment.author?.login ?? "Unknown"}
+				</span>
+				<span className="text-[13px] text-muted-foreground">
 					{formatRelativeTime(comment.createdAt)}
 				</span>
 			</div>
-			<div className="text-xs">
-				<Markdown>{comment.body}</Markdown>
-			</div>
+			<Markdown className="text-muted-foreground">{comment.body}</Markdown>
 		</div>
 	);
 }
 
-function PendingCommentBubble({ comment }: { comment: PendingComment }) {
+function PendingCommentBubble({
+	comment,
+	onEdit,
+	mentionConfig,
+}: {
+	comment: PendingComment;
+	onEdit: (original: PendingComment, newBody: string) => void;
+	mentionConfig?: MentionConfig;
+}) {
 	const isMultiLine =
 		comment.startLine != null && comment.startLine !== comment.line;
+	const [isEditing, setIsEditing] = useState(false);
+	const [draft, setDraft] = useState(comment.body);
+
+	if (isEditing) {
+		return (
+			<div className="mx-2 my-1 flex flex-col gap-2">
+				<MarkdownEditor
+					value={draft}
+					onChange={setDraft}
+					placeholder="Leave a comment..."
+					compact
+					mentions={mentionConfig}
+				/>
+				<div className="flex items-center justify-end gap-2">
+					<button
+						type="button"
+						onClick={() => {
+							setDraft(comment.body);
+							setIsEditing(false);
+						}}
+						className="rounded-md px-3 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:text-foreground"
+					>
+						Cancel
+					</button>
+					<button
+						type="button"
+						onClick={() => {
+							if (draft.trim()) {
+								onEdit(comment, draft.trim());
+								setIsEditing(false);
+							}
+						}}
+						disabled={!draft.trim()}
+						className="rounded-md bg-foreground px-3 py-1.5 text-xs font-medium text-background transition-opacity disabled:opacity-50"
+					>
+						Update
+					</button>
+				</div>
+			</div>
+		);
+	}
 
 	return (
-		<div className="mx-2 my-1 rounded-lg border border-yellow-500/30 bg-yellow-500/5 p-3">
-			<div className="mb-1 flex items-center gap-1.5 text-xs text-yellow-600 dark:text-yellow-400">
-				<CommentIcon size={12} strokeWidth={2} />
-				<span className="font-medium">
+		<div className="mx-2 my-1 rounded-lg border border-dashed bg-surface-0 px-3 py-2.5">
+			<div className="mb-1.5 flex items-center gap-1.5">
+				<CommentIcon
+					size={12}
+					strokeWidth={2}
+					className="text-muted-foreground"
+				/>
+				<span className="text-[13px] font-medium text-muted-foreground">
 					Pending
-					{isMultiLine ? ` (lines ${comment.startLine}–${comment.line})` : ""}
+					{isMultiLine ? ` · lines ${comment.startLine}–${comment.line}` : ""}
 				</span>
+				<button
+					type="button"
+					onClick={() => setIsEditing(true)}
+					className="ml-auto flex size-6 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-surface-1 hover:text-foreground"
+				>
+					<EditIcon size={12} strokeWidth={2} />
+				</button>
 			</div>
-			<div className="text-xs">
-				<Markdown>{comment.body}</Markdown>
-			</div>
+			<Markdown className="text-muted-foreground">{comment.body}</Markdown>
 		</div>
 	);
 }
