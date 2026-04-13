@@ -2,6 +2,14 @@ import startEntry from "@tanstack/react-start/server-entry";
 
 export { SignalRelay } from "./lib/signal-relay.server";
 
+const SECURITY_HEADERS: Record<string, string> = {
+	"Strict-Transport-Security": "max-age=63072000; includeSubDomains; preload",
+	"X-Content-Type-Options": "nosniff",
+	"X-Frame-Options": "DENY",
+	"Referrer-Policy": "strict-origin-when-cross-origin",
+	"Permissions-Policy": "camera=(), microphone=(), geolocation=(), payment=()",
+};
+
 async function handleWebSocketUpgrade(
 	request: Request,
 	env: Record<string, unknown>,
@@ -53,6 +61,16 @@ export default {
 			env: Record<string, unknown>,
 			ctx: ExecutionContext,
 		) => Promise<Response>;
-		return (startEntry.fetch as unknown as WorkerFetch)(request, env, ctx);
+		const response = await (startEntry.fetch as unknown as WorkerFetch)(
+			request,
+			env,
+			ctx,
+		);
+
+		for (const [key, value] of Object.entries(SECURITY_HEADERS)) {
+			response.headers.set(key, value);
+		}
+
+		return response;
 	},
 };
