@@ -3803,33 +3803,19 @@ async function getMySearchSources(
 	deadlineAt: number,
 ): Promise<GitHubGraphQLSearchSource[]> {
 	let installations: GitHubAppInstallation[] = [];
-	let organizations: GitHubOrganization[] = [];
 	try {
-		const [installationResult, organizationResult] =
-			await withGitHubOperationTimeout(
-				"github search source discovery",
-				getRemainingSearchTimeoutMs(deadlineAt, MY_SEARCH_SOURCE_TIMEOUT_MS),
-				() =>
-					Promise.all([
-						getGitHubAppUserInstallations(context.session.user.id),
-						getGitHubAuthenticatedOrganizations(context),
-					]),
-			);
+		const installationResult = await withGitHubOperationTimeout(
+			"github search source discovery",
+			getRemainingSearchTimeoutMs(deadlineAt, MY_SEARCH_SOURCE_TIMEOUT_MS),
+			() => getGitHubAppUserInstallations(context.session.user.id),
+		);
 		installations = installationResult.installations;
-		organizations = organizationResult;
 	} catch (error) {
 		console.error("[github-search] failed to discover search sources", error);
 	}
 
 	const sources: GitHubGraphQLSearchSource[] = [];
 	const excludedOAuthOwners = new Map<string, GitHubSearchOwnerScope>();
-
-	for (const organization of organizations) {
-		addExcludedOwnerScope(excludedOAuthOwners, {
-			login: organization.login,
-			targetType: "Organization",
-		});
-	}
 
 	for (const installation of installations) {
 		const owner = toSearchOwnerScope(installation);
@@ -3848,17 +3834,6 @@ async function getMySearchSources(
 			break;
 		}
 
-		if (owner.targetType === "Organization") {
-			addExcludedOwnerScope(excludedOAuthOwners, owner);
-		}
-		if (
-			owner.targetType === "User" &&
-			installation.repositorySelection === "all" &&
-			normalizeLogin(owner.login) === normalizeLogin(viewerLogin)
-		) {
-			addExcludedOwnerScope(excludedOAuthOwners, owner);
-		}
-
 		const installationContext = await withGitHubOperationTimeout(
 			`github installation context ${installation.id}`,
 			contextTimeoutMs,
@@ -3873,6 +3848,17 @@ async function getMySearchSources(
 		});
 		if (!installationContext) {
 			continue;
+		}
+
+		if (owner.targetType === "Organization") {
+			addExcludedOwnerScope(excludedOAuthOwners, owner);
+		}
+		if (
+			owner.targetType === "User" &&
+			installation.repositorySelection === "all" &&
+			normalizeLogin(owner.login) === normalizeLogin(viewerLogin)
+		) {
+			addExcludedOwnerScope(excludedOAuthOwners, owner);
 		}
 
 		sources.push({
@@ -3975,6 +3961,7 @@ async function getMyPullsResult({
 		signalKeys: [githubRevalidationSignalKeys.pullsMine],
 		namespaceKeys: [githubRevalidationSignalKeys.pullsMine],
 		cacheMode: "split",
+		merge: (existing, fresh) => mergeMyPullsResults([existing, fresh]),
 		fetcher: async () => {
 			const deadlineAt = Date.now() + MY_SEARCH_TOTAL_TIMEOUT_MS;
 			const sources = await getMySearchSources(context, username, deadlineAt);
@@ -4154,6 +4141,7 @@ async function getMyIssuesResult({
 		signalKeys: [githubRevalidationSignalKeys.issuesMine],
 		namespaceKeys: [githubRevalidationSignalKeys.issuesMine],
 		cacheMode: "split",
+		merge: (existing, fresh) => mergeMyIssuesResults([existing, fresh]),
 		fetcher: async () => {
 			const deadlineAt = Date.now() + MY_SEARCH_TOTAL_TIMEOUT_MS;
 			const sources = await getMySearchSources(context, username, deadlineAt);
