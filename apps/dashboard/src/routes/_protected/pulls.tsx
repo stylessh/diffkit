@@ -27,9 +27,11 @@ import {
 } from "#/components/filters";
 import { DashboardContentLoading } from "#/components/layouts/dashboard-content-loading";
 import { PullRequestRow } from "#/components/pulls/pull-request-row";
-import { githubMyPullsQueryOptions } from "#/lib/github.query";
+import { githubMyPullsQueryOptions, githubQueryKeys } from "#/lib/github.query";
 import type { PullSummary } from "#/lib/github.types";
+import { githubRevalidationSignalKeys } from "#/lib/github-revalidation";
 import { buildSeo, formatPageTitle } from "#/lib/seo";
+import { useGitHubSignalStream } from "#/lib/use-github-signal-stream";
 import { useHasMounted } from "#/lib/use-has-mounted";
 
 export const Route = createFileRoute("/_protected/pulls")({
@@ -55,13 +57,23 @@ export const Route = createFileRoute("/_protected/pulls")({
 function PullRequestsPage() {
 	const { filterStore } = Route.useLoaderData();
 	const { user } = Route.useRouteContext();
-	const scope = { userId: user.id };
+	const scope = useMemo(() => ({ userId: user.id }), [user.id]);
 	const hasMounted = useHasMounted();
 	const scrollContainerRef = useRef<HTMLDivElement>(null);
 	const query = useQuery({
 		...githubMyPullsQueryOptions(scope),
 		enabled: hasMounted,
 	});
+	const webhookTargets = useMemo(
+		() => [
+			{
+				queryKey: githubQueryKeys.pulls.mine(scope),
+				signalKeys: [githubRevalidationSignalKeys.pullsMine],
+			},
+		],
+		[scope],
+	);
+	useGitHubSignalStream(webhookTargets);
 
 	// Flatten all pulls for filter option extraction
 	const allPulls = useMemo(() => {

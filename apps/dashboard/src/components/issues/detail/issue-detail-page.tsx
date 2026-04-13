@@ -12,7 +12,7 @@ import {
 	githubQueryKeys,
 } from "#/lib/github.query";
 import { githubRevalidationSignalKeys } from "#/lib/github-revalidation";
-import { useGitHubSignalRefresh } from "#/lib/use-github-signal-refresh";
+import { useGitHubSignalStream } from "#/lib/use-github-signal-stream";
 import { useHasMounted } from "#/lib/use-has-mounted";
 import { useRegisterTab } from "#/lib/use-register-tab";
 import { IssueDetailActivitySection } from "./issue-detail-activity";
@@ -49,11 +49,7 @@ export function IssueDetailPage() {
 		...githubIssuePageQueryOptions(scope, input),
 		enabled: hasMounted,
 	});
-	useGitHubSignalRefresh({
-		enabled:
-			hasMounted && pageQuery.data !== undefined && !pageQuery.isFetching,
-		targets: webhookRefreshTargets,
-	});
+	useGitHubSignalStream(webhookRefreshTargets);
 
 	const issue = pageQuery.data?.detail;
 	const comments = pageQuery.data?.comments;

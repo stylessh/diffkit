@@ -21,9 +21,14 @@ import {
 } from "#/components/filters";
 import { IssueRow } from "#/components/issues/issue-row";
 import { DashboardContentLoading } from "#/components/layouts/dashboard-content-loading";
-import { githubMyIssuesQueryOptions } from "#/lib/github.query";
+import {
+	githubMyIssuesQueryOptions,
+	githubQueryKeys,
+} from "#/lib/github.query";
 import type { IssueSummary } from "#/lib/github.types";
+import { githubRevalidationSignalKeys } from "#/lib/github-revalidation";
 import { buildSeo, formatPageTitle } from "#/lib/seo";
+import { useGitHubSignalStream } from "#/lib/use-github-signal-stream";
 import { useHasMounted } from "#/lib/use-has-mounted";
 
 export const Route = createFileRoute("/_protected/issues")({
@@ -49,13 +54,23 @@ export const Route = createFileRoute("/_protected/issues")({
 function IssuesPage() {
 	const { filterStore } = Route.useLoaderData();
 	const { user } = Route.useRouteContext();
-	const scope = { userId: user.id };
+	const scope = useMemo(() => ({ userId: user.id }), [user.id]);
 	const hasMounted = useHasMounted();
 	const scrollContainerRef = useRef<HTMLDivElement>(null);
 	const query = useQuery({
 		...githubMyIssuesQueryOptions(scope),
 		enabled: hasMounted,
 	});
+	const webhookTargets = useMemo(
+		() => [
+			{
+				queryKey: githubQueryKeys.issues.mine(scope),
+				signalKeys: [githubRevalidationSignalKeys.issuesMine],
+			},
+		],
+		[scope],
+	);
+	useGitHubSignalStream(webhookTargets);
 
 	const allIssues = useMemo(() => {
 		if (!query.data) return [];

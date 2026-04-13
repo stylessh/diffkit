@@ -53,7 +53,7 @@ import type {
 	PullReviewComment,
 } from "#/lib/github.types";
 import { githubRevalidationSignalKeys } from "#/lib/github-revalidation";
-import { useGitHubSignalRefresh } from "#/lib/use-github-signal-refresh";
+import { useGitHubSignalStream } from "#/lib/use-github-signal-stream";
 import { useRegisterTab } from "#/lib/use-register-tab";
 import { checkPermissionWarning } from "#/lib/warning-store";
 import type { ReviewDiffPaneHandle } from "./review-diff-pane";
@@ -174,15 +174,7 @@ export function ReviewPage() {
 		enabled: hasDiffPayload,
 		refetchOnWindowFocus: false,
 	});
-	useGitHubSignalRefresh({
-		enabled:
-			pageQuery.data !== undefined &&
-			!pageQuery.isFetching &&
-			!fileSummariesQuery.isFetching &&
-			!filesQuery.isFetching &&
-			!reviewCommentsQuery.isFetching,
-		targets: webhookRefreshTargets,
-	});
+	useGitHubSignalStream(webhookRefreshTargets);
 
 	const pr = pageQuery.data?.detail ?? null;
 	const sidebarFiles = fileSummariesQuery.data ?? [];
