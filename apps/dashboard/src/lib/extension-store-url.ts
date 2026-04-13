@@ -1,15 +1,24 @@
-import { siteConfig } from "#/lib/site-config";
+/** Canonical listing URLs (also used by `siteConfig` for SEO / consistency). */
+export const CHROME_EXTENSION_STORE_URL =
+	"https://chromewebstore.google.com/detail/celjddfjncnnkgfgldobcahfiimlebll/" as const;
+
+export const FIREFOX_EXTENSION_STORE_URL =
+	"https://addons.mozilla.org/en-US/firefox/addon/diffkit/" as const;
+
+function isFirefoxFamilyUserAgent(ua: string): boolean {
+	// Desktop Firefox: "Firefox/123"; Firefox iOS: "FxiOS/123"; avoid relying on siteConfig.
+	return /(?:Firefox|FxiOS)\//i.test(ua);
+}
 
 /**
  * Resolves the correct extension listing for the user's browser (Firefox AMO vs Chrome Web Store).
+ * Uses inline URLs so the install link never depends on a mis-resolved or stale `siteConfig` bundle.
  */
 export function getExtensionStoreInstallUrl(): string {
 	if (typeof navigator === "undefined") {
-		return siteConfig.chromeExtensionStoreUrl;
+		return CHROME_EXTENSION_STORE_URL;
 	}
-	const ua = navigator.userAgent;
-	if (/Firefox\//i.test(ua)) {
-		return siteConfig.firefoxExtensionStoreUrl;
-	}
-	return siteConfig.chromeExtensionStoreUrl;
+	return isFirefoxFamilyUserAgent(navigator.userAgent)
+		? FIREFOX_EXTENSION_STORE_URL
+		: CHROME_EXTENSION_STORE_URL;
 }

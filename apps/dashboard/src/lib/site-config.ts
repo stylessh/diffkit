@@ -1,3 +1,8 @@
+import {
+	CHROME_EXTENSION_STORE_URL,
+	FIREFOX_EXTENSION_STORE_URL,
+} from "#/lib/extension-store-url";
+
 type SiteConfig = {
 	name: string;
 	domain: string;
@@ -19,10 +24,8 @@ export const siteConfig: SiteConfig = {
 	name: "DiffKit",
 	domain: "diff-kit.com",
 	url: "https://diff-kit.com",
-	chromeExtensionStoreUrl:
-		"https://chromewebstore.google.com/detail/celjddfjncnnkgfgldobcahfiimlebll/",
-	firefoxExtensionStoreUrl:
-		"https://addons.mozilla.org/en-US/firefox/addon/diffkit/",
+	chromeExtensionStoreUrl: CHROME_EXTENSION_STORE_URL,
+	firefoxExtensionStoreUrl: FIREFOX_EXTENSION_STORE_URL,
 	githubRepositoryUrl: "https://github.com/stylessh/diffkit",
 	themeColor: "#00C943",
 	socialImagePath: "/logo512.png",
