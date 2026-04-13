@@ -6499,3 +6499,24 @@ export const getRepoContributors = createServerFn({ method: "GET" })
 			},
 		});
 	});
+
+type RevalidationSignalTimestampsInput = { signalKeys: string[] };
+
+export const getRevalidationSignalTimestamps = createServerFn({
+	method: "GET",
+})
+	.inputValidator(identityValidator<RevalidationSignalTimestampsInput>)
+	.handler(
+		async ({
+			data,
+		}): Promise<Array<{ signalKey: string; updatedAt: number }>> => {
+			const { getRequestSession } = await import("./auth-runtime");
+			const session = await getRequestSession();
+			if (!session) {
+				return [];
+			}
+
+			const { getGitHubRevalidationSignals } = await import("./github-cache");
+			return getGitHubRevalidationSignals(data.signalKeys);
+		},
+	);
