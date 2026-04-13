@@ -24,7 +24,7 @@ import { useHasMounted } from "#/lib/use-has-mounted";
 
 const PER_PAGE = 30;
 
-export const Route = createFileRoute("/_protected/$owner/$repo/issues")({
+export const Route = createFileRoute("/_protected/$owner/$repo/issues/")({
 	ssr: false,
 	head: ({ match, params }) =>
 		buildSeo({
