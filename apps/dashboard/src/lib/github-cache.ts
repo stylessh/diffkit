@@ -71,6 +71,7 @@ type GetOrRevalidateGitHubResourceOptions<TData> = {
 	getNamespaceVersions?: (
 		namespaceKeys: string[],
 	) => Promise<Record<string, number>>;
+	merge?: (existing: TData, fresh: TData) => TData;
 	now?: () => number;
 };
 
@@ -615,6 +616,7 @@ export async function getOrRevalidateGitHubResource<TData>({
 	cacheMode = "legacy",
 	payloadRetentionSeconds = DEFAULT_GITHUB_PAYLOAD_RETENTION_SECONDS,
 	fetcher,
+	merge,
 	now = Date.now,
 	store,
 	payloadStore,
@@ -755,6 +757,14 @@ export async function getOrRevalidateGitHubResource<TData>({
 			return parseCachedPayload<TData>(existingEntry.payloadJson);
 		}
 
+		const mergedData =
+			merge && existingEntry
+				? merge(
+						parseCachedPayload<TData>(existingEntry.payloadJson),
+						result.data,
+					)
+				: result.data;
+
 		const nextEntry = {
 			cacheKey,
 			userId,
@@ -762,7 +772,7 @@ export async function getOrRevalidateGitHubResource<TData>({
 			paramsJson,
 			etag: result.metadata.etag,
 			lastModified: result.metadata.lastModified,
-			payloadJson: JSON.stringify(result.data),
+			payloadJson: JSON.stringify(mergedData),
 			fetchedAt: currentTime,
 			freshUntil:
 				currentTime +
@@ -780,7 +790,7 @@ export async function getOrRevalidateGitHubResource<TData>({
 			payloadRetentionSeconds,
 		});
 
-		return result.data;
+		return mergedData;
 	})();
 
 	resolvedInFlightCache?.set(cacheKey, task);
