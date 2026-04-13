@@ -13,7 +13,7 @@ import {
 	githubViewerQueryOptions,
 } from "#/lib/github.query";
 import { githubRevalidationSignalKeys } from "#/lib/github-revalidation";
-import { useGitHubSignalRefresh } from "#/lib/use-github-signal-refresh";
+import { useGitHubSignalStream } from "#/lib/use-github-signal-stream";
 import { useHasMounted } from "#/lib/use-has-mounted";
 import { useRegisterTab } from "#/lib/use-register-tab";
 import { PullBodySection } from "./pull-body-section";
@@ -59,11 +59,7 @@ export function PullDetailPage() {
 		...githubViewerQueryOptions(scope),
 		enabled: hasMounted,
 	});
-	useGitHubSignalRefresh({
-		enabled:
-			hasMounted && pageQuery.data !== undefined && !pageQuery.isFetching,
-		targets: webhookRefreshTargets,
-	});
+	useGitHubSignalStream(webhookRefreshTargets);
 
 	const pr = pageQuery.data?.detail;
 	const comments = pageQuery.data?.comments;

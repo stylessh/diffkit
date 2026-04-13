@@ -6,7 +6,7 @@
 		"nodejs_compat",
 		"no_handle_cross_request_promise_resolution"
 	],
-	"main": "@tanstack/react-start/server-entry",
+	"main": "src/entry-worker.ts",
 	"observability": {
 		"logs": {
 			"enabled": true,
@@ -22,6 +22,20 @@
 			"database_name": "diffkit-db",
 			"database_id": "7a94a843-0906-416c-9908-4c9fe5339db7",
 			"migrations_dir": "drizzle"
+		}
+	],
+	"durable_objects": {
+		"bindings": [
+			{
+				"name": "SIGNAL_RELAY",
+				"class_name": "SignalRelay"
+			}
+		]
+	},
+	"migrations": [
+		{
+			"tag": "v1",
+			"new_classes": ["SignalRelay"]
 		}
 	],
 	"kv_namespaces": [

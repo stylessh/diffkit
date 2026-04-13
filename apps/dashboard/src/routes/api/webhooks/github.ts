@@ -9,6 +9,7 @@ import { markGitHubRevalidationSignals } from "#/lib/github-cache";
 import { getGitHubWebhookRevalidationSignalKeys } from "#/lib/github-revalidation";
 import { getGitHubWebhookPayloadMetadata } from "#/lib/github-webhook-debug";
 import { PRIVATE_ROUTE_HEADERS } from "#/lib/seo";
+import { broadcastSignalKeys } from "#/lib/signal-relay-broadcast.server";
 
 const INSTALLATION_TOKEN_INVALIDATION_EVENTS = new Set([
 	"installation",
@@ -125,6 +126,10 @@ export const Route = createFileRoute("/api/webhooks/github")({
 
 				const updatedSignalCount =
 					await markGitHubRevalidationSignals(signalKeys);
+
+				if (signalKeys.length > 0) {
+					await broadcastSignalKeys(signalKeys);
+				}
 
 				debug("github-webhook", "processed webhook", {
 					deliveryId,

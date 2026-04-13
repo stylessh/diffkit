@@ -1,14 +1,17 @@
 import { GitPullRequestIcon, IssuesIcon, ReviewsIcon } from "@diffkit/icons";
 import { useQuery } from "@tanstack/react-query";
 import { createFileRoute, Link } from "@tanstack/react-router";
-import type { ComponentType } from "react";
+import { type ComponentType, useMemo } from "react";
 import { DashboardContentLoading } from "#/components/layouts/dashboard-content-loading";
 import { PullRequestRow } from "#/components/pulls/pull-request-row";
 import {
 	githubMyIssuesQueryOptions,
 	githubMyPullsQueryOptions,
+	githubQueryKeys,
 } from "#/lib/github.query";
+import { githubRevalidationSignalKeys } from "#/lib/github-revalidation";
 import { buildSeo, formatPageTitle } from "#/lib/seo";
+import { useGitHubSignalStream } from "#/lib/use-github-signal-stream";
 import { useHasMounted } from "#/lib/use-has-mounted";
 
 export const Route = createFileRoute("/_protected/")({
@@ -32,7 +35,7 @@ export const Route = createFileRoute("/_protected/")({
 
 function OverviewPage() {
 	const { user } = Route.useRouteContext();
-	const scope = { userId: user.id };
+	const scope = useMemo(() => ({ userId: user.id }), [user.id]);
 	const hasMounted = useHasMounted();
 	const pullsQuery = useQuery({
 		...githubMyPullsQueryOptions(scope),
@@ -42,6 +45,20 @@ function OverviewPage() {
 		...githubMyIssuesQueryOptions(scope),
 		enabled: hasMounted,
 	});
+	const webhookTargets = useMemo(
+		() => [
+			{
+				queryKey: githubQueryKeys.pulls.mine(scope),
+				signalKeys: [githubRevalidationSignalKeys.pullsMine],
+			},
+			{
+				queryKey: githubQueryKeys.issues.mine(scope),
+				signalKeys: [githubRevalidationSignalKeys.issuesMine],
+			},
+		],
+		[scope],
+	);
+	useGitHubSignalStream(webhookTargets);
 
 	if (pullsQuery.error) throw pullsQuery.error;
 	if (issuesQuery.error) throw issuesQuery.error;

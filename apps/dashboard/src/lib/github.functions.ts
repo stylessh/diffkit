@@ -60,14 +60,10 @@ import {
 	createGitHubResponseMetadata,
 	type GitHubConditionalHeaders,
 	type GitHubFetchResult,
-	getGitHubRevalidationSignals,
 	getOrRevalidateGitHubResource,
 } from "./github-cache";
 import { githubCachePolicy } from "./github-cache-policy";
-import {
-	type GitHubRevalidationSignalInput,
-	githubRevalidationSignalKeys,
-} from "./github-revalidation";
+import { githubRevalidationSignalKeys } from "./github-revalidation";
 
 type GitHubClient = OctokitType;
 type AuthSession = {
@@ -4325,20 +4321,6 @@ async function getMyIssuesResult({
 function identityValidator<TInput>(data: TInput) {
 	return data;
 }
-
-export const getGitHubRevalidationSignalRecords = createServerFn({
-	method: "POST",
-})
-	.inputValidator(identityValidator<GitHubRevalidationSignalInput>)
-	.handler(async ({ data }) => {
-		const { getRequestSession } = await import("./auth-runtime");
-		const session = await getRequestSession();
-		if (!session) {
-			return [];
-		}
-
-		return getGitHubRevalidationSignals(data.signalKeys);
-	});
 
 export const getGitHubViewer = createServerFn({ method: "GET" }).handler(
 	async () => {

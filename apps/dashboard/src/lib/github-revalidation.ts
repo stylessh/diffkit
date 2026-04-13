@@ -24,15 +24,6 @@ export const githubRevalidationSignalKeys = {
 		`repoCode:${input.owner}/${input.repo}`,
 } as const;
 
-export type GitHubRevalidationSignalRecord = {
-	signalKey: string;
-	updatedAt: number;
-};
-
-export type GitHubRevalidationSignalInput = {
-	signalKeys: string[];
-};
-
 function isRecord(value: unknown): value is Record<string, unknown> {
 	return Boolean(value) && typeof value === "object";
 }
