@@ -116,6 +116,71 @@ export const pullFilterDefs: FilterDefinition[] = [
 	},
 ];
 
+/** Filter defs for repo-scoped pull lists — static options, no repository filter. */
+export const repoPullFilterDefs: FilterDefinition[] = [
+	{
+		id: "status",
+		label: "Status",
+		icon: CircleIcon,
+		extractOptions: () => {
+			const colorMap: Record<string, string> = {
+				open: "text-green-500",
+				draft: "text-muted-foreground",
+				merged: "text-purple-500",
+				closed: "text-red-500",
+			};
+			return (
+				[
+					{ value: "open", label: "Open", icon: GitPullRequestIcon },
+					{ value: "draft", label: "Draft", icon: GitPullRequestDraftIcon },
+					{ value: "merged", label: "Merged", icon: GitMergeIcon },
+					{ value: "closed", label: "Closed", icon: GitPullRequestClosedIcon },
+				] as const
+			).map((s) => ({
+				value: s.value,
+				label: s.label,
+				icon: createElement(s.icon, {
+					size: 14,
+					className: colorMap[s.value],
+				}),
+			}));
+		},
+		match: (item, values) => {
+			const pull = asPull(item);
+			if (pull.mergedAt) return values.has("merged");
+			if (pull.state === "closed") return values.has("closed");
+			if (pull.isDraft) return values.has("draft");
+			return values.has("open");
+		},
+	},
+	{
+		id: "author",
+		label: "Author",
+		icon: UserCircleIcon,
+		extractOptions: (items) => {
+			const authors = new Map<string, { login: string; avatarUrl: string }>();
+			for (const item of items) {
+				if (item.author && !authors.has(item.author.login)) {
+					authors.set(item.author.login, item.author);
+				}
+			}
+			return [...authors.entries()]
+				.sort(([a], [b]) => a.localeCompare(b))
+				.map(([login, author]) => ({
+					value: login,
+					label: login,
+					icon: createElement("img", {
+						src: author.avatarUrl,
+						alt: login,
+						className: "size-4 rounded-full",
+					}),
+				}));
+		},
+		match: (item, values) =>
+			item.author ? values.has(item.author.login) : false,
+	},
+];
+
 export const pullSortOptions: SortOption[] = [
 	{
 		id: "updated",

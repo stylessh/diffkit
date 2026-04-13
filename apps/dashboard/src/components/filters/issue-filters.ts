@@ -111,6 +111,69 @@ export const issueFilterDefs: FilterDefinition[] = [
 	},
 ];
 
+/** Filter defs for repo-scoped issue lists — static options, no repository filter. */
+export const repoIssueFilterDefs: FilterDefinition[] = [
+	{
+		id: "status",
+		label: "Status",
+		icon: CircleIcon,
+		extractOptions: () => {
+			const colorMap: Record<string, string> = {
+				open: "text-green-500",
+				completed: "text-purple-500",
+				not_planned: "text-muted-foreground",
+			};
+			return [
+				{ value: "open", label: "Open" },
+				{ value: "completed", label: "Closed (completed)" },
+				{ value: "not_planned", label: "Closed (not planned)" },
+			].map((s) => ({
+				value: s.value,
+				label: s.label,
+				icon: createElement(IssuesIcon, {
+					size: 14,
+					className: colorMap[s.value],
+				}),
+			}));
+		},
+		match: (item, values) => {
+			const issue = asIssue(item);
+			if (issue.state === "closed") {
+				return issue.stateReason === "not_planned"
+					? values.has("not_planned")
+					: values.has("completed");
+			}
+			return values.has("open");
+		},
+	},
+	{
+		id: "author",
+		label: "Author",
+		icon: UserCircleIcon,
+		extractOptions: (items) => {
+			const authors = new Map<string, { login: string; avatarUrl: string }>();
+			for (const item of items) {
+				if (item.author && !authors.has(item.author.login)) {
+					authors.set(item.author.login, item.author);
+				}
+			}
+			return [...authors.entries()]
+				.sort(([a], [b]) => a.localeCompare(b))
+				.map(([login, author]) => ({
+					value: login,
+					label: login,
+					icon: createElement("img", {
+						src: author.avatarUrl,
+						alt: login,
+						className: "size-4 rounded-full",
+					}),
+				}));
+		},
+		match: (item, values) =>
+			item.author ? values.has(item.author.login) : false,
+	},
+];
+
 export const issueSortOptions: SortOption[] = [
 	{
 		id: "updated",
