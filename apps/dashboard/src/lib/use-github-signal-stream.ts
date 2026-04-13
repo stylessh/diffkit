@@ -56,7 +56,6 @@ export function useGitHubSignalStream(
 		let ws: WebSocket | null = null;
 		let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
 		let disposed = false;
-		let visible = !document.hidden;
 
 		function sendSubscription(socket: WebSocket) {
 			if (socket.readyState === WebSocket.OPEN) {
@@ -144,7 +143,7 @@ export function useGitHubSignalStream(
 		}
 
 		function connect() {
-			if (disposed || !visible) return;
+			if (disposed) return;
 
 			debug("github-signal-stream", "connecting", {
 				url: getWebSocketUrl(),
@@ -176,7 +175,7 @@ export function useGitHubSignalStream(
 		}
 
 		function scheduleReconnect() {
-			if (disposed || !visible) return;
+			if (disposed) return;
 			debug("github-signal-stream", "scheduling reconnect", {
 				delayMs: RECONNECT_DELAY_MS,
 			});
@@ -194,28 +193,10 @@ export function useGitHubSignalStream(
 			}
 		}
 
-		function handleVisibilityChange() {
-			const wasVisible = visible;
-			visible = !document.hidden;
-
-			if (visible && !wasVisible) {
-				debug("github-signal-stream", "tab became visible, reconnecting");
-				connect();
-			} else if (!visible && wasVisible) {
-				debug("github-signal-stream", "tab hidden, disconnecting");
-				cleanup();
-			}
-		}
-
-		if (visible) {
-			connect();
-		}
-
-		document.addEventListener("visibilitychange", handleVisibilityChange);
+		connect();
 
 		return () => {
 			disposed = true;
-			document.removeEventListener("visibilitychange", handleVisibilityChange);
 			cleanup();
 		};
 	}, [signalKeysKey, queryClient]);
