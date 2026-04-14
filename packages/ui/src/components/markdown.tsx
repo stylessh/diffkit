@@ -1,5 +1,13 @@
 import { Md } from "@m2d/react-markdown/client";
-import { Suspense, use, useCallback, useRef, useState } from "react";
+import {
+	createContext,
+	Suspense,
+	use,
+	useCallback,
+	useContext,
+	useRef,
+	useState,
+} from "react";
 import rehypeRaw from "rehype-raw";
 import remarkGfm from "remark-gfm";
 import { remarkAlert } from "remark-github-blockquote-alert";
@@ -48,6 +56,40 @@ const highlighterPromise: Promise<Highlighter> =
 		: new Promise<Highlighter>(() => {}); // Never resolves on server → Suspense fallback
 
 const htmlCache = new Map<string, Promise<string>>();
+
+export type MarkdownAssetUrlResolver = (url: string) => string;
+
+const MarkdownAssetUrlResolverContext =
+	createContext<MarkdownAssetUrlResolver | null>(null);
+
+function useResolvedAssetUrl(url: string | undefined) {
+	const resolveAssetUrl = useContext(MarkdownAssetUrlResolverContext);
+	if (!url || !resolveAssetUrl) return url;
+	return resolveAssetUrl(url);
+}
+
+function resolveAssetSrcSet(
+	srcSet: string | undefined,
+	resolveAssetUrl: MarkdownAssetUrlResolver | null,
+) {
+	if (!srcSet || !resolveAssetUrl) return srcSet;
+
+	return srcSet
+		.split(",")
+		.map((candidate) => {
+			const trimmed = candidate.trim();
+			if (!trimmed) return candidate;
+
+			const match = trimmed.match(/^(\S+)(\s+.+)?$/u);
+			if (!match) return candidate;
+
+			const url = match[1];
+			if (/^data:/iu.test(url)) return candidate;
+
+			return `${resolveAssetUrl(url)}${match[2] ?? ""}`;
+		})
+		.join(", ");
+}
 
 export function highlightCode(code: string, lang: string): Promise<string> {
 	const key = `${lang}:${code}`;
@@ -152,7 +194,7 @@ function ShikiCode({ code, lang }: { code: string; lang: string }) {
 	);
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any -- component overrides receive union props from @m2d/react-markdown
+// biome-ignore lint/suspicious/noExplicitAny: component overrides receive union props from @m2d/react-markdown
 const components: Record<string, React.FC<any>> = {
 	h1: ({ node: _, children, ...props }) => (
 		<h1
@@ -267,13 +309,29 @@ const components: Record<string, React.FC<any>> = {
 	hr: ({ node: _, ...props }) => (
 		<hr className="my-4 border-border" {...props} />
 	),
-	img: ({ node: _, alt, ...props }) => (
+	img: ({ node: _, alt, src, ...props }) => (
 		<img
 			className="inline-block max-w-full rounded-lg my-2"
 			alt={alt}
+			src={useResolvedAssetUrl(src)}
 			{...props}
 		/>
 	),
+	source: ({ node: _, src, srcSet, srcset, ...props }) => {
+		const resolveAssetUrl = useContext(MarkdownAssetUrlResolverContext);
+		const resolvedSrcSet = resolveAssetSrcSet(
+			srcSet ?? srcset,
+			resolveAssetUrl,
+		);
+
+		return (
+			<source
+				src={useResolvedAssetUrl(src)}
+				srcSet={resolvedSrcSet}
+				{...props}
+			/>
+		);
+	},
 	table: ({ node: _, children, ...props }) => (
 		<div className="flex flex-col overflow-hidden mb-2 rounded-lg border border-border bg-surface-0">
 			<table className="w-full text-sm border-collapse" {...props}>
@@ -364,19 +422,23 @@ const components: Record<string, React.FC<any>> = {
 export function Markdown({
 	children,
 	className,
+	resolveAssetUrl,
 }: {
 	children: string;
 	className?: string;
+	resolveAssetUrl?: MarkdownAssetUrlResolver;
 }) {
 	return (
-		<div className={cn("not-prose text-foreground", className)}>
-			<Md
-				remarkPlugins={[remarkGfm, remarkAlert]}
-				rehypePlugins={[rehypeRaw]}
-				components={components}
-			>
-				{children}
-			</Md>
-		</div>
+		<MarkdownAssetUrlResolverContext.Provider value={resolveAssetUrl ?? null}>
+			<div className={cn("not-prose text-foreground", className)}>
+				<Md
+					remarkPlugins={[remarkGfm, remarkAlert]}
+					rehypePlugins={[rehypeRaw]}
+					components={components}
+				>
+					{children}
+				</Md>
+			</div>
+		</MarkdownAssetUrlResolverContext.Provider>
 	);
 }

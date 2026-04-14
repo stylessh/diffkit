@@ -5,7 +5,14 @@ import {
 	useQuery,
 	useQueryClient,
 } from "@tanstack/react-query";
-import { lazy, Suspense, useEffect, useMemo, useState } from "react";
+import {
+	lazy,
+	Suspense,
+	useCallback,
+	useEffect,
+	useMemo,
+	useState,
+} from "react";
 import {
 	type GitHubQueryScope,
 	githubRepoFileContentQueryOptions,
@@ -142,6 +149,15 @@ function MarkdownFileContent({
 		placeholderData: keepPreviousData,
 	});
 
+	const resolveAssetUrl = useCallback(
+		(url: string) =>
+			resolveGitHubMarkdownAssetUrl(
+				{ owner, repo, ref: currentRef, path },
+				url,
+			),
+		[owner, repo, currentRef, path],
+	);
+
 	if (contentQuery.isLoading) {
 		return (
 			<div className="flex flex-col gap-3 p-6">
@@ -174,10 +190,57 @@ function MarkdownFileContent({
 					</div>
 				}
 			>
-				<Markdown className="prose prose-sm dark:prose-invert max-w-none">
+				<Markdown
+					className="prose prose-sm dark:prose-invert max-w-none"
+					resolveAssetUrl={resolveAssetUrl}
+				>
 					{contentQuery.data}
 				</Markdown>
 			</Suspense>
 		</div>
 	);
+}
+
+const ABSOLUTE_MARKDOWN_URL_RE = /^[a-z][a-z\d+\-.]*:|^\/\//iu;
+
+export function resolveGitHubMarkdownAssetUrl(
+	{
+		owner,
+		repo,
+		ref,
+		path,
+	}: { owner: string; repo: string; ref: string; path: string },
+	url: string,
+) {
+	const trimmedUrl = url.trim();
+	if (
+		!trimmedUrl ||
+		trimmedUrl.startsWith("#") ||
+		ABSOLUTE_MARKDOWN_URL_RE.test(trimmedUrl)
+	) {
+		return trimmedUrl;
+	}
+
+	const rootUrl = `https://raw.githubusercontent.com/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/${encodePath(ref)}/`;
+	const directoryPath = encodePath(getDirectoryPath(path));
+	const baseUrl = trimmedUrl.startsWith("/")
+		? rootUrl
+		: directoryPath
+			? new URL(`${directoryPath}/`, rootUrl).toString()
+			: rootUrl;
+
+	return new URL(trimmedUrl.replace(/^\/+/u, ""), baseUrl).toString();
+}
+
+function getDirectoryPath(path: string) {
+	const lastSlashIndex = path.lastIndexOf("/");
+	return lastSlashIndex === -1 ? "" : path.slice(0, lastSlashIndex);
+}
+
+function encodePath(path: string) {
+	return path
+		.split("/")
+		.filter(Boolean)
+		.map((segment) => encodeURIComponent(segment))
+		.join("/");
 }
