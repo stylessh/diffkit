@@ -167,6 +167,20 @@ export type TimelineEvent = {
 	body?: string;
 };
 
+export type GroupedLabelEvent = {
+	actor: GitHubActor | null;
+	added: { name: string; color: string }[];
+	removed: { name: string; color: string }[];
+	createdAt: string;
+};
+
+export type GroupedReviewRequestEvent = {
+	actor: GitHubActor | null;
+	requested: (GitHubActor | { login: string })[];
+	removed: (GitHubActor | { login: string })[];
+	createdAt: string;
+};
+
 export type IssuePageData = {
 	detail: IssueDetail | null;
 	comments: IssueComment[];
@@ -203,6 +217,7 @@ export type PullStatus = {
 	checkRuns: PullCheckRun[];
 	mergeable: boolean | null;
 	mergeableState: string | null;
+	conflictingFiles: string[];
 	behindBy: number | null;
 	baseRefName: string;
 	canUpdateBranch: boolean;
