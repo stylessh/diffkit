@@ -3187,7 +3187,14 @@ async function computePullStatus(
 		behindBy = null;
 	}
 
+	const viewer = await getViewer(userContext ?? context);
+	const isViewerAuthor = pull.user?.login === viewer.login;
 	const canUpdateBranch =
+		isViewerAuthor ||
+		!permissions ||
+		permissions.push === true ||
+		permissions.admin === true;
+	const canMerge =
 		!permissions || permissions.push === true || permissions.admin === true;
 	const canBypassProtections = await getPullRequestBypassState({
 		branch: pull.base.ref,
@@ -3224,6 +3231,7 @@ async function computePullStatus(
 		baseRefName: pull.base.ref,
 		canUpdateBranch,
 		canBypassProtections,
+		canMerge,
 	};
 }
 

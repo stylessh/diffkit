@@ -223,6 +223,7 @@ export type PullStatus = {
 	baseRefName: string;
 	canUpdateBranch: boolean;
 	canBypassProtections: boolean;
+	canMerge: boolean;
 };
 
 export type PullCommit = {

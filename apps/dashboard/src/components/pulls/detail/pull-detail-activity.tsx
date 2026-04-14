@@ -422,6 +422,7 @@ function MergeStatusCard({
 		baseRefName,
 		canUpdateBranch,
 		canBypassProtections,
+		canMerge,
 	} = status;
 
 	const approvedReviews = reviews.filter((r) => r.state === "APPROVED");
@@ -489,6 +490,7 @@ function MergeStatusCard({
 			<MergeFooter
 				isMergeBlocked={isMergeBlocked}
 				canBypassProtections={canBypassProtections}
+				canMerge={canMerge}
 				owner={owner}
 				repo={repo}
 				pullNumber={pullNumber}
@@ -989,12 +991,14 @@ const MERGE_STRATEGIES = [
 function MergeFooter({
 	isMergeBlocked,
 	canBypassProtections,
+	canMerge,
 	owner,
 	repo,
 	pullNumber,
 }: {
 	isMergeBlocked: boolean;
 	canBypassProtections: boolean;
+	canMerge: boolean;
 	owner: string;
 	repo: string;
 	pullNumber: number;
@@ -1035,7 +1039,8 @@ function MergeFooter({
 		}
 	};
 
-	const isDisabled = (isMergeBlocked && !bypassChecks) || isMerging;
+	const isDisabled =
+		!canMerge || (isMergeBlocked && !bypassChecks) || isMerging;
 
 	return (
 		<div className="flex flex-col gap-3 px-4 py-3">
@@ -1091,11 +1096,15 @@ function MergeFooter({
 						</DropdownMenu>
 					</div>
 				</div>
-				{isMergeBlocked && !bypassChecks && (
+				{!canMerge ? (
+					<p className="text-xs text-muted-foreground">
+						You don't have permission to merge this pull request.
+					</p>
+				) : isMergeBlocked && !bypassChecks ? (
 					<p className="text-xs text-muted-foreground">
 						Merging is blocked — all required conditions have not been met.
 					</p>
-				)}
+				) : null}
 			</div>
 			{isMergeBlocked && canBypassProtections && (
 				<div className="flex items-center gap-2 text-xs text-yellow-600 dark:text-yellow-500">
