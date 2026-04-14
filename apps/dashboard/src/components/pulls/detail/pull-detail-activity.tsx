@@ -461,12 +461,7 @@ function MergeStatusCard({
 	const bypass = useMergeBypass({
 		isMergeBlocked,
 		canBypassProtections,
-		hasCheckFailures,
-		hasReviewIssue,
 		hasConflicts,
-		isBehind,
-		allChecksPassed,
-		totalChecks: checks.total,
 	});
 
 	return (
@@ -1138,7 +1133,7 @@ function MergeFooter({
 						onClick={() => {
 							void handleMerge();
 						}}
-						disabled={!commitTitle.trim() || isMerging}
+						disabled={isDisabled || !commitTitle.trim()}
 						iconLeft={
 							isMerging ? (
 								<Spinner size={14} />
