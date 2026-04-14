@@ -71,6 +71,7 @@ export type PullDetail = PullSummary & {
 	reviewComments: number;
 	headRefName: string;
 	headSha: string;
+	headRepoOwner: string | null;
 	baseRefName: string;
 	isMerged: boolean;
 	mergeCommitSha: string | null;

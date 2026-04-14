@@ -282,6 +282,7 @@ type GitHubGraphQLPullPageResponse = {
 			} | null;
 			headRefName: string;
 			headRefOid: string;
+			headRepositoryOwner: { login: string } | null;
 			baseRefName: string;
 			merged: boolean;
 			mergeCommit: { oid: string } | null;
@@ -868,6 +869,7 @@ function mapPullDetail(
 		reviewComments: pull.review_comments,
 		headRefName: pull.head.ref,
 		headSha: pull.head.sha,
+		headRepoOwner: pull.head.repo?.owner?.login ?? null,
 		baseRefName: pull.base.ref,
 		isMerged: pull.merged,
 		mergeCommitSha: pull.merge_commit_sha ?? null,
@@ -1113,6 +1115,7 @@ function mapGraphQLPullDetail(
 		reviewComments: pull.reviewThreads.totalCount,
 		headRefName: pull.headRefName,
 		headSha: pull.headRefOid,
+		headRepoOwner: pull.headRepositoryOwner?.login ?? null,
 		baseRefName: pull.baseRefName,
 		isMerged: pull.merged,
 		mergeCommitSha: pull.mergeCommit?.oid ?? null,
@@ -3313,6 +3316,7 @@ async function getPullPageDataViaGraphQL(
 								}
 								headRefName
 								headRefOid
+								headRepositoryOwner { login }
 								baseRefName
 								merged
 								mergeCommit { oid }
