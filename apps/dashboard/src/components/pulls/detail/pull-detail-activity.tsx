@@ -1628,7 +1628,7 @@ function ActivityTimeline({
 							<div
 								key={`commit-${commit.sha}`}
 								className={cn(
-									"flex items-center gap-1.5",
+									"flex items-start gap-1.5",
 									index === 0 ? "pt-5" : isConsecutiveCommit ? "pt-2" : "pt-5",
 									isLastInCommitRun ? "pb-5" : "pb-2",
 								)}
@@ -1668,7 +1668,7 @@ function ActivityTimeline({
 							<div
 								key="merged"
 								className={cn(
-									"flex items-center gap-1.5 pb-5",
+									"flex items-start gap-1.5 pb-5",
 									index === 0 ? "pt-5" : "pt-5",
 								)}
 							>
@@ -1733,7 +1733,7 @@ function ActivityTimeline({
 							<div
 								key={`${item.type}-${group.createdAt}`}
 								className={cn(
-									"flex items-center gap-1.5",
+									"flex items-start gap-1.5",
 									index === 0 ? "pt-5" : isConsecutiveEvent ? "pt-2" : "pt-5",
 									isLastInEventRun ? "pb-5" : "pb-2",
 								)}
@@ -1958,7 +1958,7 @@ function TimelineEventRow({
 	return (
 		<div
 			className={cn(
-				"flex items-center gap-1.5",
+				"flex items-start gap-1.5",
 				isFirst ? "pt-5" : isConsecutive ? "pt-2" : "pt-5",
 				isLastInRun ? "pb-5" : "pb-2",
 			)}

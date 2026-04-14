@@ -435,7 +435,7 @@ export function IssueDetailActivitySection({
 									<div
 										key={`${item.type}-${group.createdAt}`}
 										className={cn(
-											"flex items-center gap-1.5",
+											"flex items-start gap-1.5",
 											index === 0
 												? "pt-5"
 												: isConsecutiveEvent
@@ -487,7 +487,7 @@ export function IssueDetailActivitySection({
 								<div
 									key={`event-${event.event}-${event.id}-${event.createdAt}`}
 									className={cn(
-										"flex items-center gap-1.5",
+										"flex items-start gap-1.5",
 										index === 0 ? "pt-5" : isConsecutiveEvent ? "pt-2" : "pt-5",
 										isLastInEventRun ? "pb-5" : "pb-2",
 									)}
