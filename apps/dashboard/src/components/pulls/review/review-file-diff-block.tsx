@@ -565,7 +565,7 @@ function ReviewCommentThread({
 	};
 
 	return (
-		<div className="m-2 divide-y rounded-lg border bg-surface-0">
+		<div className="m-2 divide-y overflow-hidden rounded-lg border bg-surface-0">
 			{threadInfo?.isResolved && (
 				<div className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-green-600 dark:text-green-400">
 					<CheckIcon size={12} strokeWidth={2} />

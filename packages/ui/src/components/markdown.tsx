@@ -430,7 +430,7 @@ export function Markdown({
 }) {
 	return (
 		<MarkdownAssetUrlResolverContext.Provider value={resolveAssetUrl ?? null}>
-			<div className={cn("not-prose text-foreground", className)}>
+			<div className={cn("not-prose break-words text-foreground", className)}>
 				<Md
 					remarkPlugins={[remarkGfm, remarkAlert]}
 					rehypePlugins={[rehypeRaw]}
