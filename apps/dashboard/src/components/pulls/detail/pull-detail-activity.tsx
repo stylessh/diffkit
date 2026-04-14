@@ -227,6 +227,8 @@ export function PullDetailActivitySection({
 						owner={owner}
 						repo={repo}
 						pullNumber={pullNumber}
+						prTitle={pr.title}
+						firstCommitMessage={commits?.[0]?.message}
 					/>
 				</div>
 			)}
@@ -250,6 +252,11 @@ export function PullDetailActivitySection({
 					issueNumber={pullNumber}
 					scope={scope}
 					involvedUsers={getInvolvedUsers(pr, comments)}
+					pullState={
+						!pr.isMerged && (pr.state === "open" || pr.state === "closed")
+							? pr.state
+							: undefined
+					}
 				/>
 			</div>
 		</div>
@@ -294,11 +301,15 @@ function MergeStatusSection({
 	owner,
 	repo,
 	pullNumber,
+	prTitle,
+	firstCommitMessage,
 }: {
 	scope: GitHubQueryScope;
 	owner: string;
 	repo: string;
 	pullNumber: number;
+	prTitle: string;
+	firstCommitMessage?: string;
 }) {
 	const statusQuery = useQuery({
 		...githubPullStatusQueryOptions(scope, { owner, repo, pullNumber }),
@@ -314,6 +325,8 @@ function MergeStatusSection({
 			owner={owner}
 			repo={repo}
 			pullNumber={pullNumber}
+			prTitle={prTitle}
+			firstCommitMessage={firstCommitMessage}
 		/>
 	);
 }
@@ -408,11 +421,15 @@ function MergeStatusCard({
 	owner,
 	repo,
 	pullNumber,
+	prTitle,
+	firstCommitMessage,
 }: {
 	status: PullStatus;
 	owner: string;
 	repo: string;
 	pullNumber: number;
+	prTitle: string;
+	firstCommitMessage?: string;
 }) {
 	const {
 		checks,
@@ -444,12 +461,7 @@ function MergeStatusCard({
 	const bypass = useMergeBypass({
 		isMergeBlocked,
 		canBypassProtections,
-		hasCheckFailures,
-		hasReviewIssue,
 		hasConflicts,
-		isBehind,
-		allChecksPassed,
-		totalChecks: checks.total,
 	});
 
 	return (
@@ -508,6 +520,8 @@ function MergeStatusCard({
 				owner={owner}
 				repo={repo}
 				pullNumber={pullNumber}
+				prTitle={prTitle}
+				firstCommitMessage={firstCommitMessage}
 			/>
 		</div>
 	);
@@ -585,6 +599,11 @@ function ReviewsSection({
 				</button>
 			</CollapsibleTrigger>
 			<CollapsibleContent>
+				{allReviews.length === 0 && (
+					<div className="border-b border-border/50 bg-surface-1/50 px-4 py-3 pl-11">
+						<p className="text-xs text-muted-foreground">No reviewers added</p>
+					</div>
+				)}
 				{allReviews.length > 0 && (
 					<div className="flex flex-col border-b border-border/50 bg-surface-1/50 py-1">
 						{allReviews.map((review) => (
@@ -1009,6 +1028,8 @@ function MergeFooter({
 	owner,
 	repo,
 	pullNumber,
+	prTitle,
+	firstCommitMessage,
 }: {
 	isMergeBlocked: boolean;
 	canMerge: boolean;
@@ -1016,16 +1037,36 @@ function MergeFooter({
 	owner: string;
 	repo: string;
 	pullNumber: number;
+	prTitle: string;
+	firstCommitMessage?: string;
 }) {
 	const [mergeMethod, setMergeMethod] = useState<"merge" | "squash" | "rebase">(
 		"squash",
 	);
 	const [isMerging, setIsMerging] = useState(false);
+	const [showCommitForm, setShowCommitForm] = useState(false);
+	const [commitTitle, setCommitTitle] = useState("");
+	const [commitDescription, setCommitDescription] = useState("");
 	const queryClient = useQueryClient();
 
 	const currentStrategy =
 		MERGE_STRATEGIES.find((s) => s.value === mergeMethod) ??
 		MERGE_STRATEGIES[0];
+
+	const getDefaultCommitTitle = useCallback(() => {
+		if (mergeMethod === "squash") {
+			return (
+				firstCommitMessage?.split("\n")[0] ?? `${prTitle} (#${pullNumber})`
+			);
+		}
+		return `Merge pull request #${pullNumber}`;
+	}, [mergeMethod, firstCommitMessage, prTitle, pullNumber]);
+
+	const openCommitForm = () => {
+		setCommitTitle(getDefaultCommitTitle());
+		setCommitDescription("");
+		setShowCommitForm(true);
+	};
 
 	const handleMerge = async () => {
 		setIsMerging(true);
@@ -1037,6 +1078,8 @@ function MergeFooter({
 					pullNumber,
 					mergeMethod,
 					bypassProtections: bypass.shouldBypass,
+					commitTitle: commitTitle || undefined,
+					commitMessage: commitDescription || undefined,
 				},
 			});
 			if (result.ok) {
@@ -1055,6 +1098,65 @@ function MergeFooter({
 	const isDisabled =
 		!canMerge || (isMergeBlocked && !bypass.shouldBypass) || isMerging;
 
+	if (!canMerge) return null;
+
+	if (showCommitForm) {
+		return (
+			<div className="flex flex-col gap-3 bg-surface-1/50 px-4 py-3">
+				<div className="flex flex-col gap-1.5">
+					<label htmlFor="merge-commit-title" className="text-xs font-medium">
+						Commit message
+					</label>
+					<input
+						id="merge-commit-title"
+						value={commitTitle}
+						onChange={(e) => setCommitTitle(e.target.value)}
+						className="flex h-9 w-full rounded-md border bg-transparent px-3 py-1 text-sm shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+					/>
+				</div>
+				<div className="flex flex-col gap-1.5">
+					<label htmlFor="merge-commit-desc" className="text-xs font-medium">
+						Extended description
+					</label>
+					<textarea
+						id="merge-commit-desc"
+						value={commitDescription}
+						onChange={(e) => setCommitDescription(e.target.value)}
+						placeholder="Add an optional extended description..."
+						rows={3}
+						className="flex w-full rounded-md border bg-transparent px-3 py-2 text-sm shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring resize-none"
+					/>
+				</div>
+				<div className="flex items-center gap-2">
+					<Button
+						size="sm"
+						onClick={() => {
+							void handleMerge();
+						}}
+						disabled={isDisabled || !commitTitle.trim()}
+						iconLeft={
+							isMerging ? (
+								<Spinner size={14} />
+							) : (
+								<GitMergeIcon size={14} strokeWidth={2} />
+							)
+						}
+					>
+						Confirm {currentStrategy.label.toLowerCase()}
+					</Button>
+					<Button
+						variant="ghost"
+						size="sm"
+						onClick={() => setShowCommitForm(false)}
+						disabled={isMerging}
+					>
+						Cancel
+					</Button>
+				</div>
+			</div>
+		);
+	}
+
 	return (
 		<div className="flex flex-col gap-3 px-4 py-3">
 			<div className="flex items-center gap-3">
@@ -1063,9 +1165,7 @@ function MergeFooter({
 						<Button
 							size="sm"
 							disabled={isDisabled}
-							onClick={() => {
-								void handleMerge();
-							}}
+							onClick={openCommitForm}
 							className="rounded-r-none"
 							iconLeft={
 								isMerging ? (
@@ -1109,11 +1209,7 @@ function MergeFooter({
 						</DropdownMenu>
 					</div>
 				</div>
-				{!canMerge ? (
-					<p className="text-xs text-muted-foreground">
-						You don't have permission to merge this pull request.
-					</p>
-				) : isMergeBlocked && !bypass.shouldBypass ? (
+				{isMergeBlocked && !bypass.shouldBypass ? (
 					<p className="text-xs text-muted-foreground">
 						Merging is blocked — all required conditions have not been met.
 					</p>

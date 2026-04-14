@@ -4935,6 +4935,35 @@ export const updatePullBody = createServerFn({ method: "POST" })
 		}
 	});
 
+type UpdatePullStateInput = PullFromRepoInput & {
+	state: "open" | "closed";
+};
+
+export const updatePullState = createServerFn({ method: "POST" })
+	.inputValidator(identityValidator<UpdatePullStateInput>)
+	.handler(async ({ data }): Promise<MutationResult> => {
+		const context = await getGitHubUserContextForRepository(data);
+		if (!context) {
+			return { ok: false, error: "Not authenticated" };
+		}
+
+		try {
+			await context.octokit.rest.pulls.update({
+				owner: data.owner,
+				repo: data.repo,
+				pull_number: data.pullNumber,
+				state: data.state,
+			});
+			await bustPullDetailCaches(context.session.user.id, data);
+			return { ok: true };
+		} catch (error) {
+			return toMutationError(
+				`${data.state === "closed" ? "close" : "reopen"} pull request`,
+				error,
+			);
+		}
+	});
+
 export const updatePullBranch = createServerFn({ method: "POST" })
 	.inputValidator(identityValidator<PullFromRepoInput>)
 	.handler(async ({ data }): Promise<MutationResult> => {
@@ -4959,6 +4988,8 @@ export const updatePullBranch = createServerFn({ method: "POST" })
 export type MergePullInput = PullFromRepoInput & {
 	mergeMethod: "merge" | "squash" | "rebase";
 	bypassProtections?: boolean;
+	commitTitle?: string;
+	commitMessage?: string;
 };
 
 export const mergePullRequest = createServerFn({ method: "POST" })
@@ -4975,6 +5006,8 @@ export const mergePullRequest = createServerFn({ method: "POST" })
 				repo: data.repo,
 				pull_number: data.pullNumber,
 				merge_method: data.mergeMethod,
+				...(data.commitTitle && { commit_title: data.commitTitle }),
+				...(data.commitMessage && { commit_message: data.commitMessage }),
 			});
 			await bustPullDetailCaches(context.session.user.id, data);
 			return { ok: true };
