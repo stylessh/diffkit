@@ -2631,13 +2631,17 @@ function getEventDescription(
 		}
 		case "renamed":
 			return (
-				<span className="inline-flex items-center gap-1">
-					<ActorMention actor={event.actor} hideAvatar />
-					{" changed the title from "}
-					<span className="line-through">{event.rename?.from}</span>
-					{" to "}
-					<span className="font-medium text-foreground">
-						{event.rename?.to}
+				<span className="flex min-w-0 flex-col gap-0.5">
+					<span>
+						<ActorMention actor={event.actor} hideAvatar />
+						{" changed the title"}
+					</span>
+					<span className="wrap-break-word">
+						<span className="line-through">{event.rename?.from}</span>
+						{" to "}
+						<span className="font-medium text-foreground">
+							{event.rename?.to}
+						</span>
 					</span>
 				</span>
 			);
