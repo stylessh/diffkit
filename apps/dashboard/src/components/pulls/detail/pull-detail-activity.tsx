@@ -2684,7 +2684,7 @@ function ActorMention({
 				<img
 					src={actor.avatarUrl}
 					alt={login}
-					className="inline-block size-3.5 rounded-full border border-border align-text-bottom"
+					className="inline-block size-3.5 rounded-full border border-border align-text-bottom self-start"
 				/>
 			)}
 			{login}
@@ -2703,7 +2703,7 @@ function getEventDescription(
 	switch (event.event) {
 		case "labeled":
 			return (
-				<span className="flex items-center gap-1.5">
+				<span className="flex items-center gap-1.5 flex-wrap">
 					<ActorMention actor={event.actor} hideAvatar />
 					{" added "}
 					{event.label && (
@@ -2717,7 +2717,7 @@ function getEventDescription(
 			);
 		case "unlabeled":
 			return (
-				<span className="flex items-center gap-1.5">
+				<span className="flex items-center gap-1.5 flex-wrap">
 					<ActorMention actor={event.actor} hideAvatar />
 					{" removed "}
 					{event.label && (
@@ -2731,7 +2731,7 @@ function getEventDescription(
 			);
 		case "assigned":
 			return (
-				<span className="inline-flex items-center gap-1">
+				<span className="inline-flex items-center gap-1 flex-wrap">
 					<ActorMention actor={event.actor} hideAvatar />
 					{" assigned "}
 					<ActorMention actor={event.assignee} />
@@ -2739,7 +2739,7 @@ function getEventDescription(
 			);
 		case "unassigned":
 			return (
-				<span className="inline-flex items-center gap-1">
+				<span className="inline-flex items-center gap-1 flex-wrap">
 					<ActorMention actor={event.actor} hideAvatar />
 					{" unassigned "}
 					<ActorMention actor={event.assignee} />
@@ -2747,7 +2747,7 @@ function getEventDescription(
 			);
 		case "review_requested":
 			return (
-				<span className="inline-flex items-center gap-1">
+				<span className="inline-flex items-center gap-1 flex-wrap">
 					<ActorMention actor={event.actor} hideAvatar />
 					{" requested review from "}
 					<ActorMention actor={reviewer} />
@@ -2755,7 +2755,7 @@ function getEventDescription(
 			);
 		case "review_request_removed":
 			return (
-				<span className="inline-flex items-center gap-1">
+				<span className="inline-flex items-center gap-1 flex-wrap">
 					<ActorMention actor={event.actor} hideAvatar />
 					{" removed review request for "}
 					<ActorMention actor={reviewer} />
@@ -2778,7 +2778,7 @@ function getEventDescription(
 		}
 		case "renamed":
 			return (
-				<span className="inline-flex items-center gap-1">
+				<span className="inline-flex items-center gap-1 flex-wrap">
 					<ActorMention actor={event.actor} hideAvatar />
 					{" changed the title from "}
 					<span className="line-through">{event.rename?.from}</span>
@@ -2807,7 +2807,7 @@ function getEventDescription(
 			if (!event.source) return null;
 			const prefix = event.source.type === "pull_request" ? "PR" : "Issue";
 			return (
-				<span className="inline-flex flex-wrap items-center gap-1">
+				<span className="inline-flex items-center gap-1 flex-wrap">
 					<ActorMention actor={event.actor} />
 					{" mentioned this in "}
 					<span className="font-medium text-foreground">
@@ -2821,7 +2821,7 @@ function getEventDescription(
 		}
 		case "milestoned":
 			return (
-				<span className="inline-flex items-center gap-1">
+				<span className="inline-flex items-center gap-1 flex-wrap">
 					<ActorMention actor={event.actor} hideAvatar />
 					{" added this to the "}
 					<span className="font-medium text-foreground">
@@ -2832,7 +2832,7 @@ function getEventDescription(
 			);
 		case "demilestoned":
 			return (
-				<span className="inline-flex items-center gap-1">
+				<span className="inline-flex items-center gap-1 flex-wrap">
 					<ActorMention actor={event.actor} hideAvatar />
 					{" removed this from the "}
 					<span className="font-medium text-foreground">
@@ -2857,7 +2857,7 @@ function getEventDescription(
 			);
 		case "head_ref_deleted":
 			return (
-				<span className="inline-flex items-center gap-1">
+				<span className="inline-flex items-center gap-1 flex-wrap">
 					<ActorMention actor={event.actor} hideAvatar />
 					{" deleted "}
 					<code className="rounded bg-surface-1 px-1 py-0.5 font-mono text-[10px] text-muted-foreground">
@@ -2868,7 +2868,7 @@ function getEventDescription(
 			);
 		case "head_ref_restored":
 			return (
-				<span className="inline-flex items-center gap-1">
+				<span className="inline-flex items-center gap-1 flex-wrap">
 					<ActorMention actor={event.actor} hideAvatar />
 					{" restored "}
 					<code className="rounded bg-surface-1 px-1 py-0.5 font-mono text-[10px] text-muted-foreground">

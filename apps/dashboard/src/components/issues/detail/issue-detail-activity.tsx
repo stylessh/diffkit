@@ -859,7 +859,7 @@ function ActorMention({
 				<img
 					src={actor.avatarUrl}
 					alt={login}
-					className="inline-block size-3.5 rounded-full border border-border align-text-bottom"
+					className="inline-block size-3.5 rounded-full border border-border align-text-bottom self-start"
 				/>
 			)}
 			{login}
@@ -875,7 +875,7 @@ function getIssueEventDescription(event: TimelineEvent): React.ReactNode {
 	switch (event.event) {
 		case "labeled":
 			return (
-				<span className="flex items-center gap-1.5">
+				<span className="flex items-center gap-1.5 flex-wrap">
 					<ActorMention actor={event.actor} hideAvatar />
 					{" added "}
 					{event.label && (
@@ -889,7 +889,7 @@ function getIssueEventDescription(event: TimelineEvent): React.ReactNode {
 			);
 		case "unlabeled":
 			return (
-				<span className="flex items-center gap-1.5">
+				<span className="flex items-center gap-1.5 flex-wrap">
 					<ActorMention actor={event.actor} hideAvatar />
 					{" removed "}
 					{event.label && (
@@ -903,7 +903,7 @@ function getIssueEventDescription(event: TimelineEvent): React.ReactNode {
 			);
 		case "assigned":
 			return (
-				<span className="inline-flex items-center gap-1">
+				<span className="inline-flex items-center gap-1 flex-wrap">
 					<ActorMention actor={event.actor} hideAvatar />
 					{" assigned "}
 					<ActorMention actor={event.assignee} />
@@ -911,7 +911,7 @@ function getIssueEventDescription(event: TimelineEvent): React.ReactNode {
 			);
 		case "unassigned":
 			return (
-				<span className="inline-flex items-center gap-1">
+				<span className="inline-flex items-center gap-1 flex-wrap">
 					<ActorMention actor={event.actor} hideAvatar />
 					{" unassigned "}
 					<ActorMention actor={event.assignee} />
@@ -919,7 +919,7 @@ function getIssueEventDescription(event: TimelineEvent): React.ReactNode {
 			);
 		case "renamed":
 			return (
-				<span className="inline-flex items-center gap-1">
+				<span className="inline-flex items-center gap-1 flex-wrap">
 					<ActorMention actor={event.actor} hideAvatar />
 					{" changed the title from "}
 					<span className="line-through">{event.rename?.from}</span>
@@ -931,14 +931,14 @@ function getIssueEventDescription(event: TimelineEvent): React.ReactNode {
 			);
 		case "closed":
 			return (
-				<span className="inline-flex items-center gap-1">
+				<span className="inline-flex items-center gap-1 flex-wrap">
 					<ActorMention actor={event.actor} hideAvatar />
 					{" closed this"}
 				</span>
 			);
 		case "reopened":
 			return (
-				<span className="inline-flex items-center gap-1">
+				<span className="inline-flex items-center gap-1 flex-wrap">
 					<ActorMention actor={event.actor} hideAvatar />
 					{" reopened this"}
 				</span>
@@ -948,7 +948,7 @@ function getIssueEventDescription(event: TimelineEvent): React.ReactNode {
 			if (!event.source) return null;
 			const prefix = event.source.type === "pull_request" ? "PR" : "Issue";
 			return (
-				<span className="inline-flex flex-wrap items-center gap-1">
+				<span className="inline-flex items-center gap-1 flex-wrap">
 					<ActorMention actor={event.actor} />
 					{" mentioned this in "}
 					<span className="font-medium text-foreground">
@@ -962,7 +962,7 @@ function getIssueEventDescription(event: TimelineEvent): React.ReactNode {
 		}
 		case "milestoned":
 			return (
-				<span className="inline-flex items-center gap-1">
+				<span className="inline-flex items-center gap-1 flex-wrap">
 					<ActorMention actor={event.actor} hideAvatar />
 					{" added this to the "}
 					<span className="font-medium text-foreground">
@@ -973,7 +973,7 @@ function getIssueEventDescription(event: TimelineEvent): React.ReactNode {
 			);
 		case "demilestoned":
 			return (
-				<span className="inline-flex items-center gap-1">
+				<span className="inline-flex items-center gap-1 flex-wrap">
 					<ActorMention actor={event.actor} hideAvatar />
 					{" removed this from the "}
 					<span className="font-medium text-foreground">
@@ -984,7 +984,7 @@ function getIssueEventDescription(event: TimelineEvent): React.ReactNode {
 			);
 		case "review_requested":
 			return (
-				<span className="inline-flex items-center gap-1">
+				<span className="inline-flex items-center gap-1 flex-wrap">
 					<ActorMention actor={event.actor} hideAvatar />
 					{" requested review from "}
 					<ActorMention actor={reviewer} />
@@ -992,7 +992,7 @@ function getIssueEventDescription(event: TimelineEvent): React.ReactNode {
 			);
 		case "review_request_removed":
 			return (
-				<span className="inline-flex items-center gap-1">
+				<span className="inline-flex items-center gap-1 flex-wrap">
 					<ActorMention actor={event.actor} hideAvatar />
 					{" removed review request for "}
 					<ActorMention actor={reviewer} />
