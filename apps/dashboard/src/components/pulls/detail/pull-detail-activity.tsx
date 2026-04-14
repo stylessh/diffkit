@@ -60,6 +60,7 @@ import {
 	groupTimelineEvents,
 } from "#/components/details/grouped-label-event";
 import { LabelPill } from "#/components/details/label-pill";
+import { useMergeBypass } from "#/components/pulls/detail/use-merge-bypass";
 import { formatRelativeTime } from "#/lib/format-relative-time";
 import {
 	deleteBranch,
@@ -438,6 +439,17 @@ function MergeStatusCard({
 	const hasConflicts = mergeableState === "dirty";
 	const isMergeBlocked = mergeableState === "blocked" || mergeable === false;
 
+	const bypass = useMergeBypass({
+		isMergeBlocked,
+		canBypassProtections,
+		hasCheckFailures,
+		hasReviewIssue,
+		hasConflicts,
+		isBehind,
+		allChecksPassed,
+		totalChecks: checks.total,
+	});
+
 	return (
 		<div className="flex flex-col overflow-hidden rounded-lg border">
 			{/* Reviews section */}
@@ -489,8 +501,8 @@ function MergeStatusCard({
 			{/* Merge action footer */}
 			<MergeFooter
 				isMergeBlocked={isMergeBlocked}
-				canBypassProtections={canBypassProtections}
 				canMerge={canMerge}
+				bypass={bypass}
 				owner={owner}
 				repo={repo}
 				pullNumber={pullNumber}
@@ -990,15 +1002,15 @@ const MERGE_STRATEGIES = [
 
 function MergeFooter({
 	isMergeBlocked,
-	canBypassProtections,
 	canMerge,
+	bypass,
 	owner,
 	repo,
 	pullNumber,
 }: {
 	isMergeBlocked: boolean;
-	canBypassProtections: boolean;
 	canMerge: boolean;
+	bypass: ReturnType<typeof useMergeBypass>;
 	owner: string;
 	repo: string;
 	pullNumber: number;
@@ -1007,7 +1019,6 @@ function MergeFooter({
 		"squash",
 	);
 	const [isMerging, setIsMerging] = useState(false);
-	const [bypassChecks, setBypassChecks] = useState(false);
 	const queryClient = useQueryClient();
 
 	const currentStrategy =
@@ -1023,7 +1034,7 @@ function MergeFooter({
 					repo,
 					pullNumber,
 					mergeMethod,
-					bypassProtections: bypassChecks,
+					bypassProtections: bypass.shouldBypass,
 				},
 			});
 			if (result.ok) {
@@ -1040,7 +1051,7 @@ function MergeFooter({
 	};
 
 	const isDisabled =
-		!canMerge || (isMergeBlocked && !bypassChecks) || isMerging;
+		!canMerge || (isMergeBlocked && !bypass.shouldBypass) || isMerging;
 
 	return (
 		<div className="flex flex-col gap-3 px-4 py-3">
@@ -1100,18 +1111,18 @@ function MergeFooter({
 					<p className="text-xs text-muted-foreground">
 						You don't have permission to merge this pull request.
 					</p>
-				) : isMergeBlocked && !bypassChecks ? (
+				) : isMergeBlocked && !bypass.shouldBypass ? (
 					<p className="text-xs text-muted-foreground">
 						Merging is blocked — all required conditions have not been met.
 					</p>
 				) : null}
 			</div>
-			{isMergeBlocked && canBypassProtections && (
+			{bypass.showOption && (
 				<div className="flex items-center gap-2 text-xs text-yellow-600 dark:text-yellow-500">
 					<Checkbox
 						id="bypass-checks"
-						checked={bypassChecks}
-						onCheckedChange={(checked) => setBypassChecks(checked === true)}
+						checked={bypass.checked}
+						onCheckedChange={(checked) => bypass.setChecked(checked === true)}
 					/>
 					<label htmlFor="bypass-checks">
 						Merge without waiting for requirements to be met (bypass branch
