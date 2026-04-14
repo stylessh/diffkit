@@ -221,7 +221,7 @@ export function resolveGitHubMarkdownAssetUrl(
 		return trimmedUrl;
 	}
 
-	const rootUrl = `https://raw.githubusercontent.com/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/${encodePath(ref)}/`;
+	const rootUrl = `https://github.com/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/raw/${encodePath(ref)}/`;
 	const directoryPath = encodePath(getDirectoryPath(path));
 	const baseUrl = trimmedUrl.startsWith("/")
 		? rootUrl
