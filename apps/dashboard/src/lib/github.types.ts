@@ -71,6 +71,7 @@ export type PullDetail = PullSummary & {
 	reviewComments: number;
 	headRefName: string;
 	headSha: string;
+	headRepoOwner: string | null;
 	baseRefName: string;
 	isMerged: boolean;
 	mergeCommitSha: string | null;
@@ -167,6 +168,20 @@ export type TimelineEvent = {
 	body?: string;
 };
 
+export type GroupedLabelEvent = {
+	actor: GitHubActor | null;
+	added: { name: string; color: string }[];
+	removed: { name: string; color: string }[];
+	createdAt: string;
+};
+
+export type GroupedReviewRequestEvent = {
+	actor: GitHubActor | null;
+	requested: (GitHubActor | { login: string })[];
+	removed: (GitHubActor | { login: string })[];
+	createdAt: string;
+};
+
 export type IssuePageData = {
 	detail: IssueDetail | null;
 	comments: IssueComment[];
@@ -203,6 +218,7 @@ export type PullStatus = {
 	checkRuns: PullCheckRun[];
 	mergeable: boolean | null;
 	mergeableState: string | null;
+	conflictingFiles: string[];
 	behindBy: number | null;
 	baseRefName: string;
 	canUpdateBranch: boolean;
@@ -272,15 +288,25 @@ export type PullFilesPage = {
 
 export type PullReviewComment = {
 	id: number;
+	nodeId: string;
+	pullRequestReviewId: number | null;
 	body: string;
 	path: string;
 	line: number | null;
+	startLine: number | null;
 	side: "LEFT" | "RIGHT";
 	createdAt: string;
 	updatedAt: string;
 	author: GitHubActor | null;
 	inReplyToId: number | null;
 	diffHunk: string;
+};
+
+export type ReviewThreadInfo = {
+	threadId: string;
+	isResolved: boolean;
+	/** The database ID of the first comment in this thread */
+	firstCommentId: number;
 };
 
 export type SubmitReviewInput = {
@@ -347,6 +373,14 @@ export type CreateReviewCommentInput = {
 	path: string;
 	line: number;
 	side: "LEFT" | "RIGHT";
+};
+
+export type ReplyToReviewCommentInput = {
+	owner: string;
+	repo: string;
+	pullNumber: number;
+	commentId: number;
+	body: string;
 };
 
 export type GitHubUserProfile = {

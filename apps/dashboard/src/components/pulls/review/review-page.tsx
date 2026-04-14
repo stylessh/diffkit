@@ -24,7 +24,7 @@ import {
 	useQuery,
 	useQueryClient,
 } from "@tanstack/react-query";
-import { getRouteApi, Link } from "@tanstack/react-router";
+import { getRouteApi, Link, useNavigate } from "@tanstack/react-router";
 import {
 	lazy,
 	memo,
@@ -44,6 +44,7 @@ import {
 	githubPullReviewCommentsQueryOptions,
 	githubQueryKeys,
 	githubRepoCollaboratorsQueryOptions,
+	githubReviewThreadStatusesQueryOptions,
 	githubViewerQueryOptions,
 } from "#/lib/github.query";
 import type {
@@ -96,6 +97,7 @@ function useIsDesktop() {
 export function ReviewPage() {
 	const { user } = routeApi.useRouteContext();
 	const { owner, repo, pullId } = routeApi.useParams();
+	const navigate = useNavigate();
 	const pullNumber = Number(pullId);
 	const scope = useMemo(() => ({ userId: user.id }), [user.id]);
 	const queryClient = useQueryClient();
@@ -171,6 +173,11 @@ export function ReviewPage() {
 	const hasDiffPayload = filesQuery.data !== undefined;
 	const reviewCommentsQuery = useQuery({
 		...githubPullReviewCommentsQueryOptions(scope, input),
+		enabled: hasDiffPayload,
+		refetchOnWindowFocus: false,
+	});
+	const threadStatusesQuery = useQuery({
+		...githubReviewThreadStatusesQueryOptions(scope, input),
 		enabled: hasDiffPayload,
 		refetchOnWindowFocus: false,
 	});
@@ -293,7 +300,7 @@ export function ReviewPage() {
 	const annotationsByFile = useMemo(() => {
 		const map = new Map<string, DiffLineAnnotation<PullReviewComment>[]>();
 		for (const comment of reviewComments) {
-			if (comment.line == null) continue;
+			if (comment.line == null || comment.inReplyToId != null) continue;
 			const existing = map.get(comment.path) ?? [];
 			existing.push({
 				side: comment.side === "LEFT" ? "deletions" : "additions",
@@ -304,6 +311,28 @@ export function ReviewPage() {
 		}
 		return map;
 	}, [reviewComments]);
+
+	const repliesByCommentId = useMemo(() => {
+		const map = new Map<number, PullReviewComment[]>();
+		for (const comment of reviewComments) {
+			if (comment.inReplyToId == null) continue;
+			const existing = map.get(comment.inReplyToId) ?? [];
+			existing.push(comment);
+			map.set(comment.inReplyToId, existing);
+		}
+		return map;
+	}, [reviewComments]);
+
+	const threadInfoByCommentId = useMemo(() => {
+		const map = new Map<number, { threadId: string; isResolved: boolean }>();
+		for (const t of threadStatusesQuery.data ?? []) {
+			map.set(t.firstCommentId, {
+				threadId: t.threadId,
+				isResolved: t.isResolved,
+			});
+		}
+		return map;
+	}, [threadStatusesQuery.data]);
 
 	const pendingCommentsByFile = useMemo(() => {
 		const map = new Map<string, PendingComment[]>();
@@ -420,6 +449,10 @@ export function ReviewPage() {
 					void queryClient.invalidateQueries({
 						queryKey: githubQueryKeys.all,
 					});
+					void navigate({
+						to: "/$owner/$repo/pull/$pullId",
+						params: { owner, repo, pullId },
+					});
 				} else {
 					toast.error("Failed to submit review");
 				}
@@ -446,7 +479,7 @@ export function ReviewPage() {
 				setIsSubmitting(false);
 			}
 		},
-		[owner, pendingComments, pullNumber, queryClient, repo],
+		[navigate, owner, pendingComments, pullId, pullNumber, queryClient, repo],
 	);
 
 	// Ref-stable onLoadMore — avoids busting ReviewDiffPane memo
@@ -482,6 +515,10 @@ export function ReviewPage() {
 				totalFileCount={sidebarFileCount}
 				diffStyle={diffStyle}
 				annotationsByFile={annotationsByFile}
+				repliesByCommentId={repliesByCommentId}
+				owner={owner}
+				repo={repo}
+				pullNumber={pullNumber}
 				pendingCommentsByFile={pendingCommentsByFile}
 				hasNextPage={filesQuery.hasNextPage}
 				isFetchingNextPage={filesQuery.isFetchingNextPage}
@@ -494,6 +531,8 @@ export function ReviewPage() {
 				onAddComment={handleAddComment}
 				onEditComment={handleEditComment}
 				mentionConfig={mentionConfig}
+				viewerLogin={viewerQuery.data?.login}
+				threadInfoByCommentId={threadInfoByCommentId}
 			/>
 		</Suspense>
 	) : (

@@ -1,3 +1,4 @@
+import { CommentIcon } from "@diffkit/icons";
 import {
 	MarkdownEditor,
 	type MentionCandidate,
@@ -140,7 +141,11 @@ export function DetailCommentBox({
 					onClick={handleSend}
 					className="flex items-center gap-1.5 rounded-lg bg-foreground px-3 py-1.5 text-xs font-medium text-background transition-opacity disabled:opacity-40"
 				>
-					{isSending && <Spinner size={12} />}
+					{isSending ? (
+						<Spinner size={12} />
+					) : (
+						<CommentIcon size={12} strokeWidth={2} />
+					)}
 					Send
 				</button>
 			</div>

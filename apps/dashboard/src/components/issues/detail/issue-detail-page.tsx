@@ -10,6 +10,7 @@ import {
 import {
 	githubIssuePageQueryOptions,
 	githubQueryKeys,
+	githubViewerQueryOptions,
 } from "#/lib/github.query";
 import { githubRevalidationSignalKeys } from "#/lib/github-revalidation";
 import { useGitHubSignalStream } from "#/lib/use-github-signal-stream";
@@ -47,6 +48,10 @@ export function IssueDetailPage() {
 
 	const pageQuery = useQuery({
 		...githubIssuePageQueryOptions(scope, input),
+		enabled: hasMounted,
+	});
+	const viewerQuery = useQuery({
+		...githubViewerQueryOptions(scope),
 		enabled: hasMounted,
 	});
 	useGitHubSignalStream(webhookRefreshTargets);
@@ -90,6 +95,7 @@ export function IssueDetailPage() {
 						issueNumber={issueNumber}
 						scope={scope}
 						issueAuthor={issue.author}
+						viewerLogin={viewerQuery.data?.login}
 					/>
 				</>
 			}

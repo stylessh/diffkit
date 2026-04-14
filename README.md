@@ -68,7 +68,7 @@ The GitHub App provides installation tokens for repo-scoped access, webhook deli
    - **GitHub App name**: DiffKit Dev (must be globally unique)
    - **Homepage URL**: `http://localhost:3000`
    - **Callback URL**: `http://localhost:3000/api/github/app/callback`
-   - **Setup URL**: `http://localhost:3000/?show-org-setup=true`
+   - **Setup URL**: `http://localhost:3000/setup`
    - Check **Redirect on update**
    - Leave **Request user authorization (OAuth) during installation** **unchecked**
    - **Webhook URL**: leave blank for now (see [Local webhook testing](#local-webhook-testing) below)
@@ -272,23 +272,23 @@ Events marked "Later" are harmless to enable now — the app will ignore them un
 - [x] Submit reviews (approve, request changes, comment)
 - [x] Update branch with base
 - [ ] Create new pull requests
-- [ ] Merge pull requests (merge, squash, rebase)
-- [ ] Close / reopen pull requests
+- [x] Merge pull requests (merge, squash, rebase)
+- [x] Close / reopen pull requests
 - [ ] Edit PR title, body, and metadata
-- [ ] Add / remove reviewers
-- [ ] Add / remove labels
+- [x] Add / remove reviewers
+- [x] Add / remove labels
 - [ ] Link issues to pull requests
 
 ### Issues
 
 - [x] List issues by role (assigned, authored, mentioned)
 - [x] Issue detail view with metadata, body, and comments
-- [ ] Create new issues
+- [x] Create new issues
 - [ ] Close / reopen issues
-- [ ] Comment on issues
+- [x] Comment on issues
 - [ ] Edit issue title, body, and metadata
-- [ ] Assign / unassign users
-- [ ] Add / remove labels
+- [x] Assign / unassign users
+- [x] Add / remove labels
 - [ ] Set milestones
 
 ### Code Reviews
@@ -310,14 +310,14 @@ Events marked "Later" are harmless to enable now — the app will ignore them un
 
 ### Repositories
 
-- [ ] Repository list and search
-- [ ] Repository file browser
+- [x] Repository list and search
+- [x] Repository file browser
 - [ ] Branch and tag management
-- [ ] README preview
+- [x] README preview
 
 ### Search
 
-- [ ] Global search across PRs, issues, and repos
+- [x] Global search across PRs, issues, and repos
 - [ ] Saved searches and filters
 - [ ] Advanced query syntax
 
@@ -326,10 +326,10 @@ Events marked "Later" are harmless to enable now — the app will ignore them un
 - [x] GitHub App authentication
 - [x] Dark mode with system preference
 - [x] Response caching with ETags
-- [ ] Keyboard shortcuts
-- [ ] Command palette
-- [ ] User settings and preferences
-- [ ] Mobile-responsive layout
+- [x] Keyboard shortcuts
+- [x] Command palette
+- [x] User settings and preferences
+- [x] Mobile-responsive layout
 
 ## Contributing
 
