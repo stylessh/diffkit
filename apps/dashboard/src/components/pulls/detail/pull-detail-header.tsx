@@ -66,7 +66,14 @@ export function PullDetailHeader({
 								<span className="shrink-0">wants to merge into</span>
 								<CopyBadge value={pr.baseRefName} />
 								<span className="shrink-0">from</span>
-								<CopyBadge value={pr.headRefName} canTruncate />
+								<CopyBadge
+									value={
+										pr.headRepoOwner && pr.headRepoOwner !== owner
+											? `${pr.headRepoOwner}:${pr.headRefName}`
+											: pr.headRefName
+									}
+									canTruncate
+								/>
 							</>
 						)}
 					</div>

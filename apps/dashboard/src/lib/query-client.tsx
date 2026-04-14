@@ -49,6 +49,17 @@ function isIssueQueryKeyInput(
 	);
 }
 
+function isRepoQueryKeyInput(
+	value: unknown,
+): value is { owner: string; repo: string } {
+	return Boolean(
+		value &&
+			typeof value === "object" &&
+			typeof (value as { owner?: unknown }).owner === "string" &&
+			typeof (value as { repo?: unknown }).repo === "string",
+	);
+}
+
 function matchesTabQuery(queryKey: readonly unknown[], tab: Tab) {
 	const resourceType = queryKey[2];
 	const resourceName = queryKey[3];
@@ -66,6 +77,15 @@ function matchesTabQuery(queryKey: readonly unknown[], tab: Tab) {
 			input.owner === owner &&
 			input.repo === repo &&
 			input.pullNumber === tab.number
+		);
+	}
+
+	if (tab.type === "repo") {
+		return (
+			resourceType === "repo" &&
+			isRepoQueryKeyInput(input) &&
+			input.owner === owner &&
+			input.repo === repo
 		);
 	}
 

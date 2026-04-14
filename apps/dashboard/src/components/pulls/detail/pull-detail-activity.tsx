@@ -54,6 +54,11 @@ import {
 	DetailActivityHeader,
 	DetailCommentBox,
 } from "#/components/details/detail-activity";
+import {
+	GroupedLabelDescription,
+	GroupedReviewRequestDescription,
+	groupTimelineEvents,
+} from "#/components/details/grouped-label-event";
 import { LabelPill } from "#/components/details/label-pill";
 import { formatRelativeTime } from "#/lib/format-relative-time";
 import {
@@ -77,6 +82,8 @@ import type {
 	CommentPagination,
 	EventPagination,
 	GitHubActor,
+	GroupedLabelEvent,
+	GroupedReviewRequestEvent,
 	PullCheckRun,
 	PullComment,
 	PullCommit,
@@ -410,6 +417,7 @@ function MergeStatusCard({
 		reviews,
 		mergeable,
 		mergeableState,
+		conflictingFiles = [],
 		behindBy,
 		baseRefName,
 		canUpdateBranch,
@@ -453,11 +461,7 @@ function MergeStatusCard({
 
 			{/* Conflicts / branch status */}
 			{hasConflicts ? (
-				<StatusRow
-					icon={<StatusIcon status="error" />}
-					title="This branch has conflicts that must be resolved"
-					description="Use the command line to resolve conflicts."
-				/>
+				<ConflictsSection conflictingFiles={conflictingFiles} />
 			) : isBehind ? (
 				<StatusRow
 					icon={<StatusIcon status="pending" />}
@@ -805,6 +809,70 @@ function ChecksSection({
 							</div>
 						);
 					})}
+				</div>
+			</CollapsibleContent>
+		</Collapsible>
+	);
+}
+
+// ── Conflicts section ──────────────────────────────────────────────
+
+function ConflictsSection({
+	conflictingFiles,
+}: {
+	conflictingFiles: string[];
+}) {
+	const [open, setOpen] = useState(conflictingFiles.length > 0);
+	const hasFiles = conflictingFiles.length > 0;
+
+	if (!hasFiles) {
+		return (
+			<StatusRow
+				icon={<StatusIcon status="error" />}
+				title="This branch has conflicts that must be resolved"
+				description="Use the command line to resolve conflicts."
+			/>
+		);
+	}
+
+	return (
+		<Collapsible open={open} onOpenChange={setOpen}>
+			<CollapsibleTrigger asChild>
+				<button
+					type="button"
+					className="flex w-full items-start gap-3 border-b border-border/50 px-4 py-3 text-left transition-colors hover:bg-surface-1/50"
+				>
+					<div className="mt-0.5 shrink-0">
+						<StatusIcon status="error" />
+					</div>
+					<div className="flex min-w-0 flex-1 flex-col gap-0.5">
+						<p className="text-sm font-medium">
+							This branch has conflicts that must be resolved
+						</p>
+						<p className="text-xs text-muted-foreground">
+							{conflictingFiles.length} conflicting file
+							{conflictingFiles.length !== 1 ? "s" : ""}
+						</p>
+					</div>
+					<div className="mt-0.5 shrink-0 text-muted-foreground">
+						{open ? (
+							<ChevronUpIcon size={16} strokeWidth={2} />
+						) : (
+							<ChevronDownIcon size={16} strokeWidth={2} />
+						)}
+					</div>
+				</button>
+			</CollapsibleTrigger>
+			<CollapsibleContent>
+				<div className="flex max-h-64 flex-col overflow-y-auto border-b border-border/50 bg-surface-1/50 py-1">
+					{conflictingFiles.map((file) => (
+						<div
+							key={file}
+							className="flex items-center gap-2 px-4 py-1.5 pl-11"
+						>
+							<span className="min-w-0 truncate font-mono text-xs">{file}</span>
+						</div>
+					))}
 				</div>
 			</CollapsibleContent>
 		</Collapsible>
@@ -1184,6 +1252,12 @@ type TimelineItem =
 	| { type: "comment"; date: string; data: PullComment }
 	| { type: "commit"; date: string; data: PullCommit }
 	| { type: "event"; date: string; data: TimelineEvent }
+	| { type: "label_group"; date: string; data: GroupedLabelEvent }
+	| {
+			type: "review_request_group";
+			date: string;
+			data: GroupedReviewRequestEvent;
+	  }
 	| { type: "merged"; date: string; data: PullDetail };
 
 const WINDOW_THRESHOLD = 25;
@@ -1432,28 +1506,30 @@ function ActivityTimeline({
 		}
 		return { reviewCommentsByReviewId: byReview, repliesByCommentId: replies };
 	}, [reviewComments]);
-	const allItems: TimelineItem[] = [
-		...comments.map((comment) => ({
-			type: "comment" as const,
-			date: comment.createdAt,
-			data: comment,
-		})),
-		...commits.map((commit) => ({
-			type: "commit" as const,
-			date: commit.createdAt,
-			data: commit,
-		})),
-		...events
-			.filter((event) => !(event.event === "closed" && pr.isMerged))
-			.map((event) => ({
-				type: "event" as const,
-				date: event.createdAt,
-				data: event,
+	const allItems = groupTimelineEvents(
+		[
+			...comments.map((comment) => ({
+				type: "comment" as const,
+				date: comment.createdAt,
+				data: comment,
 			})),
-		...(pr.isMerged && pr.mergedAt
-			? [{ type: "merged" as const, date: pr.mergedAt, data: pr }]
-			: []),
-	].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+			...commits.map((commit) => ({
+				type: "commit" as const,
+				date: commit.createdAt,
+				data: commit,
+			})),
+			...events
+				.filter((event) => !(event.event === "closed" && pr.isMerged))
+				.map((event) => ({
+					type: "event" as const,
+					date: event.createdAt,
+					data: event,
+				})),
+			...(pr.isMerged && pr.mergedAt
+				? [{ type: "merged" as const, date: pr.mergedAt, data: pr }]
+				: []),
+		].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()),
+	) as TimelineItem[];
 
 	const {
 		visibleItems,
@@ -1483,9 +1559,18 @@ function ActivityTimeline({
 					item.type === "commit" && previousType === "commit";
 				const isLastInCommitRun =
 					item.type === "commit" && nextType !== "commit";
-				const isConsecutiveEvent =
-					item.type === "event" && previousType === "event";
-				const isLastInEventRun = item.type === "event" && nextType !== "event";
+				const eventLikeTypes = new Set([
+					"event",
+					"label_group",
+					"review_request_group",
+				]);
+				const isEventLike = eventLikeTypes.has(item.type);
+				const prevIsEventLike =
+					previousType !== null && eventLikeTypes.has(previousType);
+				const nextIsEventLike =
+					nextType !== null && eventLikeTypes.has(nextType);
+				const isConsecutiveEvent = isEventLike && prevIsEventLike;
+				const isLastInEventRun = isEventLike && !nextIsEventLike;
 
 				const row = (() => {
 					if (item.type === "comment") {
@@ -1616,6 +1701,67 @@ function ActivityTimeline({
 								</span>
 								<span className="ml-auto shrink-0 text-[13px] text-muted-foreground">
 									{formatRelativeTime(mergedPr.mergedAt as string)}
+								</span>
+							</div>
+						);
+					}
+
+					if (
+						item.type === "label_group" ||
+						item.type === "review_request_group"
+					) {
+						const group = item.data;
+						const hasActorAvatar = group.actor?.avatarUrl;
+						const icon =
+							item.type === "label_group" ? (
+								<svg
+									viewBox="0 0 16 16"
+									className="size-3 text-muted-foreground"
+									fill="currentColor"
+									aria-hidden="true"
+								>
+									<path d="M2.5 7.775V3a.5.5 0 0 1 .5-.5h4.775a.75.75 0 0 1 .53.22l5.92 5.92a.75.75 0 0 1 0 1.06l-4.775 4.775a.75.75 0 0 1-1.06 0l-5.92-5.92a.75.75 0 0 1-.22-.53zM5 5.5a.5.5 0 1 0 1 0 .5.5 0 0 0-1 0z" />
+								</svg>
+							) : (
+								<ReviewsIcon
+									size={12}
+									strokeWidth={2}
+									className="text-muted-foreground"
+								/>
+							);
+						return (
+							<div
+								key={`${item.type}-${group.createdAt}`}
+								className={cn(
+									"flex items-center gap-1.5",
+									index === 0 ? "pt-5" : isConsecutiveEvent ? "pt-2" : "pt-5",
+									isLastInEventRun ? "pb-5" : "pb-2",
+								)}
+							>
+								{hasActorAvatar ? (
+									<img
+										src={group.actor?.avatarUrl}
+										alt={group.actor?.login}
+										className="size-5 shrink-0 rounded-full border border-border"
+									/>
+								) : (
+									<div className="flex size-5 shrink-0 items-center justify-center rounded-full border border-border bg-surface-1">
+										{icon}
+									</div>
+								)}
+								<span className="min-w-0 text-[13px] text-muted-foreground">
+									{item.type === "label_group" ? (
+										<GroupedLabelDescription
+											group={item.data as GroupedLabelEvent}
+										/>
+									) : (
+										<GroupedReviewRequestDescription
+											group={item.data as GroupedReviewRequestEvent}
+										/>
+									)}
+								</span>
+								<span className="ml-auto shrink-0 text-[13px] text-muted-foreground">
+									{formatRelativeTime(group.createdAt)}
 								</span>
 							</div>
 						);

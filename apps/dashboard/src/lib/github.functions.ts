@@ -282,6 +282,7 @@ type GitHubGraphQLPullPageResponse = {
 			} | null;
 			headRefName: string;
 			headRefOid: string;
+			headRepositoryOwner: { login: string } | null;
 			baseRefName: string;
 			merged: boolean;
 			mergeCommit: { oid: string } | null;
@@ -868,6 +869,7 @@ function mapPullDetail(
 		reviewComments: pull.review_comments,
 		headRefName: pull.head.ref,
 		headSha: pull.head.sha,
+		headRepoOwner: pull.head.repo?.owner?.login ?? null,
 		baseRefName: pull.base.ref,
 		isMerged: pull.merged,
 		mergeCommitSha: pull.merge_commit_sha ?? null,
@@ -1113,6 +1115,7 @@ function mapGraphQLPullDetail(
 		reviewComments: pull.reviewThreads.totalCount,
 		headRefName: pull.headRefName,
 		headSha: pull.headRefOid,
+		headRepoOwner: pull.headRepositoryOwner?.login ?? null,
 		baseRefName: pull.baseRefName,
 		isMerged: pull.merged,
 		mergeCommitSha: pull.mergeCommit?.oid ?? null,
@@ -3148,14 +3151,38 @@ async function computePullStatus(
 	}
 
 	let behindBy: number | null = null;
+	let conflictingFiles: string[] = [];
+	const hasConflicts =
+		pull.mergeable_state === "dirty" || pull.mergeable === false;
 	try {
-		const comparison = await context.octokit.rest.repos.compareCommits({
-			owner: data.owner,
-			repo: data.repo,
-			base: pull.head.sha,
-			head: pull.base.ref,
-		});
+		const [comparison, prFiles] = await Promise.all([
+			context.octokit.rest.repos.compareCommits({
+				owner: data.owner,
+				repo: data.repo,
+				base: pull.head.sha,
+				head: pull.base.ref,
+			}),
+			hasConflicts
+				? context.octokit.rest.pulls
+						.listFiles({
+							owner: data.owner,
+							repo: data.repo,
+							pull_number: data.pullNumber,
+							per_page: 100,
+						})
+						.catch(() => null)
+				: null,
+		]);
 		behindBy = comparison.data.ahead_by;
+
+		if (hasConflicts && prFiles && comparison.data.files) {
+			const baseChangedFiles = new Set(
+				comparison.data.files.map((f) => f.filename),
+			);
+			conflictingFiles = prFiles.data
+				.map((f) => f.filename)
+				.filter((f) => baseChangedFiles.has(f));
+		}
 	} catch {
 		behindBy = null;
 	}
@@ -3192,6 +3219,7 @@ async function computePullStatus(
 		mergeable: pull.mergeable,
 		mergeableState:
 			typeof pull.mergeable_state === "string" ? pull.mergeable_state : null,
+		conflictingFiles,
 		behindBy,
 		baseRefName: pull.base.ref,
 		canUpdateBranch,
@@ -3288,6 +3316,7 @@ async function getPullPageDataViaGraphQL(
 								}
 								headRefName
 								headRefOid
+								headRepositoryOwner { login }
 								baseRefName
 								merged
 								mergeCommit { oid }

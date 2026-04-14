@@ -16,6 +16,11 @@ import {
 	DetailActivityHeader,
 	DetailCommentBox,
 } from "#/components/details/detail-activity";
+import {
+	GroupedLabelDescription,
+	GroupedReviewRequestDescription,
+	groupTimelineEvents,
+} from "#/components/details/grouped-label-event";
 import { LabelPill } from "#/components/details/label-pill";
 import { formatRelativeTime } from "#/lib/format-relative-time";
 import { getCommentPage, getTimelineEventPage } from "#/lib/github.functions";
@@ -24,6 +29,8 @@ import type {
 	CommentPagination,
 	EventPagination,
 	GitHubActor,
+	GroupedLabelEvent,
+	GroupedReviewRequestEvent,
 	IssueComment,
 	IssuePageData,
 	TimelineEvent,
@@ -35,7 +42,13 @@ const LOAD_MORE_CHUNK = 20;
 
 type IssueTimelineItem =
 	| { type: "comment"; date: string; data: IssueComment }
-	| { type: "event"; date: string; data: TimelineEvent };
+	| { type: "event"; date: string; data: TimelineEvent }
+	| { type: "label_group"; date: string; data: GroupedLabelEvent }
+	| {
+			type: "review_request_group";
+			date: string;
+			data: GroupedReviewRequestEvent;
+	  };
 
 function useWindowedTimeline<T>(
 	items: T[],
@@ -254,18 +267,20 @@ export function IssueDetailActivitySection({
 	issueAuthor: GitHubActor | null;
 	viewerLogin?: string;
 }) {
-	const allItems: IssueTimelineItem[] = [
-		...(comments ?? []).map((comment) => ({
-			type: "comment" as const,
-			date: comment.createdAt,
-			data: comment,
-		})),
-		...(events ?? []).map((event) => ({
-			type: "event" as const,
-			date: event.createdAt,
-			data: event,
-		})),
-	].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+	const allItems = groupTimelineEvents(
+		[
+			...(comments ?? []).map((comment) => ({
+				type: "comment" as const,
+				date: comment.createdAt,
+				data: comment,
+			})),
+			...(events ?? []).map((event) => ({
+				type: "event" as const,
+				date: event.createdAt,
+				data: event,
+			})),
+		].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()),
+	) as IssueTimelineItem[];
 
 	const totalCount = (comments?.length ?? 0) + (events?.length ?? 0);
 
@@ -331,10 +346,18 @@ export function IssueDetailActivitySection({
 							index < visibleItems.length - 1
 								? visibleItems[index + 1].type
 								: null;
-						const isConsecutiveEvent =
-							item.type === "event" && previousType === "event";
-						const isLastInEventRun =
-							item.type === "event" && nextType !== "event";
+						const eventLikeTypes = new Set([
+							"event",
+							"label_group",
+							"review_request_group",
+						]);
+						const isEventLike = eventLikeTypes.has(item.type);
+						const prevIsEventLike =
+							previousType !== null && eventLikeTypes.has(previousType);
+						const nextIsEventLike =
+							nextType !== null && eventLikeTypes.has(nextType);
+						const isConsecutiveEvent = isEventLike && prevIsEventLike;
+						const isLastInEventRun = isEventLike && !nextIsEventLike;
 
 						const row = (() => {
 							if (item.type === "comment") {
@@ -381,6 +404,71 @@ export function IssueDetailActivitySection({
 										<Markdown className="text-muted-foreground">
 											{comment.body}
 										</Markdown>
+									</div>
+								);
+							}
+
+							if (
+								item.type === "label_group" ||
+								item.type === "review_request_group"
+							) {
+								const group = item.data;
+								const hasActorAvatar = group.actor?.avatarUrl;
+								const icon =
+									item.type === "label_group" ? (
+										<svg
+											viewBox="0 0 16 16"
+											className="size-3 text-muted-foreground"
+											fill="currentColor"
+											aria-hidden="true"
+										>
+											<path d="M2.5 7.775V3a.5.5 0 0 1 .5-.5h4.775a.75.75 0 0 1 .53.22l5.92 5.92a.75.75 0 0 1 0 1.06l-4.775 4.775a.75.75 0 0 1-1.06 0l-5.92-5.92a.75.75 0 0 1-.22-.53zM5 5.5a.5.5 0 1 0 1 0 .5.5 0 0 0-1 0z" />
+										</svg>
+									) : (
+										<ReviewsIcon
+											size={12}
+											strokeWidth={2}
+											className="text-muted-foreground"
+										/>
+									);
+								return (
+									<div
+										key={`${item.type}-${group.createdAt}`}
+										className={cn(
+											"flex items-center gap-1.5",
+											index === 0
+												? "pt-5"
+												: isConsecutiveEvent
+													? "pt-2"
+													: "pt-5",
+											isLastInEventRun ? "pb-5" : "pb-2",
+										)}
+									>
+										{hasActorAvatar ? (
+											<img
+												src={group.actor?.avatarUrl}
+												alt={group.actor?.login}
+												className="size-5 shrink-0 rounded-full border border-border"
+											/>
+										) : (
+											<div className="flex size-5 shrink-0 items-center justify-center rounded-full border border-border bg-surface-1">
+												{icon}
+											</div>
+										)}
+										<span className="min-w-0 text-[13px] text-muted-foreground">
+											{item.type === "label_group" ? (
+												<GroupedLabelDescription
+													group={item.data as GroupedLabelEvent}
+												/>
+											) : (
+												<GroupedReviewRequestDescription
+													group={item.data as GroupedReviewRequestEvent}
+												/>
+											)}
+										</span>
+										<span className="ml-auto shrink-0 text-[13px] text-muted-foreground">
+											{formatRelativeTime(group.createdAt)}
+										</span>
 									</div>
 								);
 							}
