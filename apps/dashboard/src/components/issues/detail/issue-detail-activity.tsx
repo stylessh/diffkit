@@ -427,10 +427,10 @@ export function IssueDetailActivitySection({
 											<img
 												src={group.actor?.avatarUrl}
 												alt={group.actor?.login}
-												className="size-5 shrink-0 rounded-full border border-border"
+												className="size-5 shrink-0 rounded-full border border-border self-start"
 											/>
 										) : (
-											<div className="flex size-5 shrink-0 items-center justify-center rounded-full border border-border bg-surface-1">
+											<div className="flex size-5 shrink-0 items-center justify-center rounded-full border border-border bg-surface-1 self-start">
 												{icon}
 											</div>
 										)}
@@ -475,10 +475,10 @@ export function IssueDetailActivitySection({
 										<img
 											src={event.actor?.avatarUrl}
 											alt={event.actor?.login}
-											className="size-5 shrink-0 rounded-full border border-border"
+											className="size-5 shrink-0 rounded-full border border-border self-start"
 										/>
 									) : (
-										<div className="flex size-5 shrink-0 items-center justify-center rounded-full border border-border bg-surface-1">
+										<div className="flex size-5 shrink-0 items-center justify-center rounded-full border border-border bg-surface-1 self-start">
 											{icon}
 										</div>
 									)}
@@ -859,7 +859,7 @@ function ActorMention({
 				<img
 					src={actor.avatarUrl}
 					alt={login}
-					className="inline-block size-3.5 rounded-full border border-border align-text-bottom self-start"
+					className="inline-block size-3.5 rounded-full border border-border align-text-bottom"
 				/>
 			)}
 			{login}
