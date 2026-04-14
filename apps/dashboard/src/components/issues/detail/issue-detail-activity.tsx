@@ -11,6 +11,7 @@ import { Markdown } from "@diffkit/ui/components/markdown";
 import { cn } from "@diffkit/ui/lib/utils";
 import { useQueryClient } from "@tanstack/react-query";
 import { useCallback, useRef, useState } from "react";
+import { CommentMoreMenu } from "#/components/details/comment-more-menu";
 import {
 	DetailActivityHeader,
 	DetailCommentBox,
@@ -238,6 +239,7 @@ export function IssueDetailActivitySection({
 	issueNumber,
 	scope,
 	issueAuthor,
+	viewerLogin,
 }: {
 	comments?: IssueComment[];
 	events?: TimelineEvent[];
@@ -250,6 +252,7 @@ export function IssueDetailActivitySection({
 	issueNumber: number;
 	scope: GitHubQueryScope;
 	issueAuthor: GitHubActor | null;
+	viewerLogin?: string;
 }) {
 	const allItems: IssueTimelineItem[] = [
 		...(comments ?? []).map((comment) => ({
@@ -340,7 +343,7 @@ export function IssueDetailActivitySection({
 									<div
 										key={`comment-${comment.id}`}
 										className={cn(
-											"flex flex-col gap-1 py-4",
+											"group/comment relative flex flex-col gap-1 py-4",
 											index === 0 && "pt-5",
 										)}
 									>
@@ -360,6 +363,20 @@ export function IssueDetailActivitySection({
 											<span className="text-[13px] text-muted-foreground">
 												{formatRelativeTime(comment.createdAt)}
 											</span>
+											<div className="ml-auto">
+												<CommentMoreMenu
+													commentId={comment.id}
+													body={comment.body}
+													owner={owner}
+													repo={repo}
+													number={issueNumber}
+													commentType="issue"
+													isAuthor={
+														viewerLogin != null &&
+														comment.author?.login === viewerLogin
+													}
+												/>
+											</div>
 										</div>
 										<Markdown className="text-muted-foreground">
 											{comment.body}

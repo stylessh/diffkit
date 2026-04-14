@@ -31,6 +31,7 @@ import type {
 	PullReviewComment,
 	PullStatus,
 	PullSummary,
+	ReplyToReviewCommentInput,
 	RepoBranch,
 	RepoCollaborator,
 	RepoContributorsResult,
@@ -39,6 +40,7 @@ import type {
 	RepoTreeEntry,
 	RequestedTeam,
 	RequestReviewersInput,
+	ReviewThreadInfo,
 	SetLabelsInput,
 	SubmitReviewInput,
 	TimelineEvent,
@@ -2778,7 +2780,11 @@ function mapTimelineEvents(rawEvents: unknown[]): TimelineEvent[] {
 		})
 		.map((e) => {
 			const raw = e as Record<string, unknown>;
-			const actor = raw.actor as Record<string, unknown> | null | undefined;
+			// "reviewed" events use `user` instead of `actor`
+			const actor = (raw.actor ?? raw.user) as
+				| Record<string, unknown>
+				| null
+				| undefined;
 			const label = raw.label as Record<string, unknown> | null | undefined;
 			const assignee = raw.assignee as
 				| Record<string, unknown>
@@ -5099,9 +5105,12 @@ async function getPullReviewCommentsResult(
 		mapData: (comments) =>
 			comments.map((comment) => ({
 				id: comment.id,
+				nodeId: comment.node_id,
+				pullRequestReviewId: comment.pull_request_review_id ?? null,
 				body: comment.body,
 				path: comment.path,
 				line: comment.line ?? null,
+				startLine: comment.start_line ?? null,
 				side: (comment.side?.toUpperCase() as "LEFT" | "RIGHT") ?? "RIGHT",
 				createdAt: comment.created_at,
 				updatedAt: comment.updated_at,
@@ -5128,6 +5137,141 @@ export const getPullReviewComments = createServerFn({ method: "GET" })
 		}
 
 		return getPullReviewCommentsResult(context, data);
+	});
+
+// ── Get review thread resolution statuses ────────────────────────
+
+type GraphQLReviewThread = {
+	id: string;
+	isResolved: boolean;
+	comments: {
+		nodes: Array<{ databaseId: number }>;
+	};
+};
+
+type GraphQLReviewThreadsResponse = {
+	repository: {
+		pullRequest: {
+			reviewThreads: {
+				nodes: GraphQLReviewThread[];
+				pageInfo: { hasNextPage: boolean; endCursor: string | null };
+			};
+		};
+	};
+};
+
+export const getReviewThreadStatuses = createServerFn({ method: "GET" })
+	.inputValidator(identityValidator<PullFromRepoInput>)
+	.handler(async ({ data }): Promise<ReviewThreadInfo[]> => {
+		const context = await getGitHubContextForRepository(data);
+		if (!context) return [];
+
+		try {
+			const threads: ReviewThreadInfo[] = [];
+			let cursor: string | null = null;
+			let hasNext = true;
+
+			while (hasNext) {
+				const response: GraphQLReviewThreadsResponse =
+					await context.octokit.graphql<GraphQLReviewThreadsResponse>(
+						`query($owner: String!, $repo: String!, $number: Int!, $cursor: String) {
+							repository(owner: $owner, name: $repo) {
+								pullRequest(number: $number) {
+									reviewThreads(first: 100, after: $cursor) {
+										nodes {
+											id
+											isResolved
+											comments(first: 1) {
+												nodes { databaseId }
+											}
+										}
+										pageInfo { hasNextPage endCursor }
+									}
+								}
+							}
+						}`,
+						{
+							owner: data.owner,
+							repo: data.repo,
+							number: data.pullNumber,
+							cursor,
+						},
+					);
+
+				const page = response.repository.pullRequest.reviewThreads;
+				for (const thread of page.nodes) {
+					const firstCommentId = thread.comments.nodes[0]?.databaseId;
+					if (firstCommentId != null) {
+						threads.push({
+							threadId: thread.id,
+							isResolved: thread.isResolved,
+							firstCommentId,
+						});
+					}
+				}
+
+				hasNext = page.pageInfo.hasNextPage;
+				cursor = page.pageInfo.endCursor;
+			}
+
+			return threads;
+		} catch {
+			return [];
+		}
+	});
+
+// ── Resolve / unresolve review thread ────────────────────────────
+
+export type ResolveThreadInput = {
+	owner: string;
+	repo: string;
+	threadId: string;
+};
+
+export const resolveReviewThread = createServerFn({ method: "POST" })
+	.inputValidator(identityValidator<ResolveThreadInput>)
+	.handler(async ({ data }): Promise<MutationResult> => {
+		const context = await getGitHubUserContextForRepository(data);
+		if (!context) {
+			return { ok: false, error: "Not authenticated" };
+		}
+
+		try {
+			await context.octokit.graphql(
+				`mutation($threadId: ID!) {
+					resolveReviewThread(input: { threadId: $threadId }) {
+						thread { isResolved }
+					}
+				}`,
+				{ threadId: data.threadId },
+			);
+			return { ok: true };
+		} catch (error) {
+			return toMutationError("resolve thread", error);
+		}
+	});
+
+export const unresolveReviewThread = createServerFn({ method: "POST" })
+	.inputValidator(identityValidator<ResolveThreadInput>)
+	.handler(async ({ data }): Promise<MutationResult> => {
+		const context = await getGitHubUserContextForRepository(data);
+		if (!context) {
+			return { ok: false, error: "Not authenticated" };
+		}
+
+		try {
+			await context.octokit.graphql(
+				`mutation($threadId: ID!) {
+					unresolveReviewThread(input: { threadId: $threadId }) {
+						thread { isResolved }
+					}
+				}`,
+				{ threadId: data.threadId },
+			);
+			return { ok: true };
+		} catch (error) {
+			return toMutationError("unresolve thread", error);
+		}
 	});
 
 export const submitPullReview = createServerFn({ method: "POST" })
@@ -5197,9 +5341,64 @@ export const createReviewComment = createServerFn({ method: "POST" })
 
 			return {
 				id: comment.id,
+				nodeId: comment.node_id,
+				pullRequestReviewId: comment.pull_request_review_id ?? null,
 				body: comment.body,
 				path: comment.path,
 				line: comment.line ?? null,
+				startLine: comment.start_line ?? null,
+				side: (comment.side?.toUpperCase() as "LEFT" | "RIGHT") ?? "RIGHT",
+				createdAt: comment.created_at,
+				updatedAt: comment.updated_at,
+				author: comment.user
+					? {
+							login: comment.user.login,
+							avatarUrl: comment.user.avatar_url,
+							url: comment.user.html_url,
+							type: comment.user.type ?? "User",
+						}
+					: null,
+				inReplyToId: comment.in_reply_to_id ?? null,
+				diffHunk: comment.diff_hunk,
+			};
+		} catch {
+			return null;
+		}
+	});
+
+export const replyToReviewComment = createServerFn({ method: "POST" })
+	.inputValidator(identityValidator<ReplyToReviewCommentInput>)
+	.handler(async ({ data }): Promise<PullReviewComment | null> => {
+		const context = await getGitHubUserContextForRepository(data);
+		if (!context) {
+			return null;
+		}
+
+		try {
+			const response =
+				await context.octokit.rest.pulls.createReplyForReviewComment({
+					owner: data.owner,
+					repo: data.repo,
+					pull_number: data.pullNumber,
+					comment_id: data.commentId,
+					body: data.body,
+				});
+
+			const comment = response.data;
+			await bustPullReviewCaches(context.session.user.id, {
+				owner: data.owner,
+				repo: data.repo,
+				pullNumber: data.pullNumber,
+			});
+
+			return {
+				id: comment.id,
+				nodeId: comment.node_id,
+				pullRequestReviewId: comment.pull_request_review_id ?? null,
+				body: comment.body,
+				path: comment.path,
+				line: comment.line ?? null,
+				startLine: comment.start_line ?? null,
 				side: (comment.side?.toUpperCase() as "LEFT" | "RIGHT") ?? "RIGHT",
 				createdAt: comment.created_at,
 				updatedAt: comment.updated_at,
@@ -5275,6 +5474,175 @@ export const createComment = createServerFn({ method: "POST" })
 			return { ok: true };
 		} catch (error) {
 			return toMutationError("create comment", error);
+		}
+	});
+
+// ── Edit issue/PR comment ─────────────────────────────────────────
+
+export type EditCommentInput = {
+	owner: string;
+	repo: string;
+	commentId: number;
+	body: string;
+};
+
+export const editComment = createServerFn({ method: "POST" })
+	.inputValidator(identityValidator<EditCommentInput>)
+	.handler(async ({ data }): Promise<MutationResult> => {
+		const context = await getGitHubUserContextForRepository(data);
+		if (!context) {
+			return { ok: false, error: "Not authenticated" };
+		}
+
+		try {
+			await context.octokit.rest.issues.updateComment({
+				owner: data.owner,
+				repo: data.repo,
+				comment_id: data.commentId,
+				body: data.body,
+			});
+			return { ok: true };
+		} catch (error) {
+			return toMutationError("edit comment", error);
+		}
+	});
+
+// ── Delete issue/PR comment ──────────────────────────────────────
+
+export type DeleteCommentInput = {
+	owner: string;
+	repo: string;
+	commentId: number;
+};
+
+export const deleteComment = createServerFn({ method: "POST" })
+	.inputValidator(identityValidator<DeleteCommentInput>)
+	.handler(async ({ data }): Promise<MutationResult> => {
+		const context = await getGitHubUserContextForRepository(data);
+		if (!context) {
+			return { ok: false, error: "Not authenticated" };
+		}
+
+		try {
+			await context.octokit.rest.issues.deleteComment({
+				owner: data.owner,
+				repo: data.repo,
+				comment_id: data.commentId,
+			});
+			return { ok: true };
+		} catch (error) {
+			return toMutationError("delete comment", error);
+		}
+	});
+
+// ── Edit review comment ──────────────────────────────────────────
+
+export type EditReviewCommentInput = {
+	owner: string;
+	repo: string;
+	commentId: number;
+	body: string;
+};
+
+export const editReviewComment = createServerFn({ method: "POST" })
+	.inputValidator(identityValidator<EditReviewCommentInput>)
+	.handler(async ({ data }): Promise<MutationResult> => {
+		const context = await getGitHubUserContextForRepository(data);
+		if (!context) {
+			return { ok: false, error: "Not authenticated" };
+		}
+
+		try {
+			await context.octokit.rest.pulls.updateReviewComment({
+				owner: data.owner,
+				repo: data.repo,
+				comment_id: data.commentId,
+				body: data.body,
+			});
+			return { ok: true };
+		} catch (error) {
+			return toMutationError("edit review comment", error);
+		}
+	});
+
+// ── Delete review comment ────────────────────────────────────────
+
+export type DeleteReviewCommentInput = {
+	owner: string;
+	repo: string;
+	commentId: number;
+};
+
+export const deleteReviewComment = createServerFn({ method: "POST" })
+	.inputValidator(identityValidator<DeleteReviewCommentInput>)
+	.handler(async ({ data }): Promise<MutationResult> => {
+		const context = await getGitHubUserContextForRepository(data);
+		if (!context) {
+			return { ok: false, error: "Not authenticated" };
+		}
+
+		try {
+			await context.octokit.rest.pulls.deleteReviewComment({
+				owner: data.owner,
+				repo: data.repo,
+				comment_id: data.commentId,
+			});
+			return { ok: true };
+		} catch (error) {
+			return toMutationError("delete review comment", error);
+		}
+	});
+
+// ── Minimize (hide) comment ──────────────────────────────────────
+
+export type MinimizeCommentInput = {
+	owner: string;
+	repo: string;
+	commentId: number;
+	commentType: "issue" | "review";
+};
+
+export const minimizeComment = createServerFn({ method: "POST" })
+	.inputValidator(identityValidator<MinimizeCommentInput>)
+	.handler(async ({ data }): Promise<MutationResult> => {
+		const context = await getGitHubUserContextForRepository(data);
+		if (!context) {
+			return { ok: false, error: "Not authenticated" };
+		}
+
+		try {
+			// GitHub's minimize API requires the GraphQL node_id.
+			// Fetch the comment first to get the node_id, then minimize via GraphQL.
+			let nodeId: string;
+			if (data.commentType === "review") {
+				const { data: comment } =
+					await context.octokit.rest.pulls.getReviewComment({
+						owner: data.owner,
+						repo: data.repo,
+						comment_id: data.commentId,
+					});
+				nodeId = comment.node_id;
+			} else {
+				const { data: comment } = await context.octokit.rest.issues.getComment({
+					owner: data.owner,
+					repo: data.repo,
+					comment_id: data.commentId,
+				});
+				nodeId = comment.node_id;
+			}
+
+			await context.octokit.graphql(
+				`mutation($id: ID!, $classifier: ReportedContentClassifiers!) {
+					minimizeComment(input: { subjectId: $id, classifier: $classifier }) {
+						minimizedComment { isMinimized }
+					}
+				}`,
+				{ id: nodeId, classifier: "OFF_TOPIC" },
+			);
+
+			return { ok: true };
+		} catch (error) {
+			return toMutationError("minimize comment", error);
 		}
 	});
 

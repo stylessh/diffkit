@@ -28,6 +28,7 @@ import {
 	getRepoLabels,
 	getRepoOverview,
 	getRepoTree,
+	getReviewThreadStatuses,
 	getTimelineEventPage,
 	getUserActivity,
 	getUserContributions,
@@ -150,6 +151,8 @@ export const githubQueryKeys = {
 			["github", scope.userId, "pulls", "files", input] as const,
 		reviewComments: (scope: GitHubQueryScope, input: PullFromRepoQueryInput) =>
 			["github", scope.userId, "pulls", "reviewComments", input] as const,
+		reviewThreads: (scope: GitHubQueryScope, input: PullFromRepoQueryInput) =>
+			["github", scope.userId, "pulls", "reviewThreads", input] as const,
 	},
 	collaborators: (
 		scope: GitHubQueryScope,
@@ -378,6 +381,19 @@ export function githubPullReviewCommentsQueryOptions(
 	return queryOptions({
 		queryKey: githubQueryKeys.pulls.reviewComments(scope, input),
 		queryFn: () => getPullReviewComments({ data: input }),
+		staleTime: githubCachePolicy.activity.staleTimeMs,
+		gcTime: githubCachePolicy.activity.gcTimeMs,
+		meta: tabPersistedMeta,
+	});
+}
+
+export function githubReviewThreadStatusesQueryOptions(
+	scope: GitHubQueryScope,
+	input: PullFromRepoQueryInput,
+) {
+	return queryOptions({
+		queryKey: githubQueryKeys.pulls.reviewThreads(scope, input),
+		queryFn: () => getReviewThreadStatuses({ data: input }),
 		staleTime: githubCachePolicy.activity.staleTimeMs,
 		gcTime: githubCachePolicy.activity.gcTimeMs,
 		meta: tabPersistedMeta,

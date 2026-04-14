@@ -4,10 +4,13 @@ import {
 	MarkdownEditor,
 	type MentionConfig,
 } from "@diffkit/ui/components/markdown-editor";
-import { vercelDark, vercelLight } from "@diffkit/ui/lib/shiki-themes";
+import { toast } from "@diffkit/ui/components/sonner";
+import { Spinner } from "@diffkit/ui/components/spinner";
+import { quickhubDark, quickhubLight } from "@diffkit/ui/lib/diffs-themes";
 import { cn } from "@diffkit/ui/lib/utils";
 import type { SelectedLineRange } from "@pierre/diffs";
 import type { DiffLineAnnotation, PatchDiffProps } from "@pierre/diffs/react";
+import { useQueryClient } from "@tanstack/react-query";
 import { useTheme } from "next-themes";
 import {
 	type ComponentType,
@@ -19,7 +22,14 @@ import {
 	useMemo,
 	useState,
 } from "react";
+import { CommentMoreMenu } from "#/components/details/comment-more-menu";
 import { formatRelativeTime } from "#/lib/format-relative-time";
+import {
+	replyToReviewComment,
+	resolveReviewThread,
+	unresolveReviewThread,
+} from "#/lib/github.functions";
+import { githubQueryKeys } from "#/lib/github.query";
 import type { PullFile, PullReviewComment } from "#/lib/github.types";
 import type {
 	ActiveCommentForm,
@@ -63,8 +73,8 @@ let themesRegistered = false;
 if (!import.meta.env.SSR && !themesRegistered) {
 	themesRegistered = true;
 	import("@pierre/diffs").then(({ registerCustomTheme }) => {
-		registerCustomTheme("vercel-light", () => Promise.resolve(vercelLight));
-		registerCustomTheme("vercel-dark", () => Promise.resolve(vercelDark));
+		registerCustomTheme("quickhub-light", () => Promise.resolve(quickhubLight));
+		registerCustomTheme("quickhub-dark", () => Promise.resolve(quickhubDark));
 	});
 }
 
@@ -74,6 +84,10 @@ export const ReviewFileDiffBlock = memo(function ReviewFileDiffBlock({
 	diffStyle,
 	isNearViewport,
 	annotations,
+	repliesByCommentId,
+	owner,
+	repo,
+	pullNumber,
 	pendingComments,
 	activeCommentForm,
 	selectedLines,
@@ -82,12 +96,18 @@ export const ReviewFileDiffBlock = memo(function ReviewFileDiffBlock({
 	onAddComment,
 	onEditComment,
 	mentionConfig,
+	viewerLogin,
+	threadInfoByCommentId,
 }: {
 	id: string;
 	file: PullFile;
 	diffStyle: "unified" | "split";
 	isNearViewport: boolean;
 	annotations: DiffLineAnnotation<PullReviewComment>[];
+	repliesByCommentId: ReadonlyMap<number, PullReviewComment[]>;
+	owner: string;
+	repo: string;
+	pullNumber: number;
 	pendingComments: PendingComment[];
 	activeCommentForm: ActiveCommentForm | null;
 	selectedLines: SelectedLineRange | null;
@@ -96,6 +116,11 @@ export const ReviewFileDiffBlock = memo(function ReviewFileDiffBlock({
 	onAddComment: (comment: PendingComment) => void;
 	onEditComment: (original: PendingComment, newBody: string) => void;
 	mentionConfig?: MentionConfig;
+	viewerLogin?: string;
+	threadInfoByCommentId?: ReadonlyMap<
+		number,
+		{ threadId: string; isResolved: boolean }
+	>;
 }) {
 	const [isCollapsed, setIsCollapsed] = useState(false);
 	const { resolvedTheme } = useTheme();
@@ -134,9 +159,6 @@ export const ReviewFileDiffBlock = memo(function ReviewFileDiffBlock({
 		return result;
 	}, [annotations, pendingComments, activeCommentForm]);
 
-	const mutedFg = isDark
-		? "oklch(0.705 0.015 286.067)"
-		: "oklch(0.552 0.016 285.938)";
 	const useWordDiff =
 		file.changes <= LARGE_PATCH_CHANGE_THRESHOLD &&
 		(file.patch?.length ?? 0) <= LARGE_PATCH_CHAR_THRESHOLD;
@@ -145,8 +167,8 @@ export const ReviewFileDiffBlock = memo(function ReviewFileDiffBlock({
 		() => ({
 			diffStyle,
 			theme: {
-				dark: "vercel-dark" as const,
-				light: "vercel-light" as const,
+				dark: "quickhub-dark" as const,
+				light: "quickhub-light" as const,
 			},
 			lineDiffType: useWordDiff ? ("word" as const) : ("none" as const),
 			maxLineDiffLength: useWordDiff ? 1_000 : 200,
@@ -157,19 +179,15 @@ export const ReviewFileDiffBlock = memo(function ReviewFileDiffBlock({
 			enableLineSelection: true,
 			onGutterUtilityClick: handleGutterUtilityClick,
 			unsafeCSS: [
-				`:host { color-scheme: ${isDark ? "dark" : "light"}; ${isDark ? "" : "--diffs-light-bg: oklch(0.967 0.001 286.375);"} }`,
+				`:host { color-scheme: ${isDark ? "dark" : "light"}; }`,
 				`:host { --diffs-font-family: 'Geist Mono Variable', 'SF Mono', ui-monospace, 'Cascadia Code', monospace; }`,
-				`:host { --diffs-selection-base: ${mutedFg}; }`,
-				`[data-utility-button] { background-color: ${mutedFg}; }`,
 				`[data-line-annotation] { font-family: 'Inter Variable', 'Inter', 'Avenir Next', ui-sans-serif, system-ui, sans-serif; }`,
 				`[data-line-annotation] code { font-family: var(--diffs-font-family, var(--diffs-font-fallback)); }`,
-				`[data-diff] { border: 1px solid var(--border); border-top: 0; border-radius: 4px; border-bottom-left-radius: 4px; border-bottom-right-radius: 4px; overflow: hidden; }`,
-				isDark
-					? `:host { --diffs-bg-addition-override: color-mix(in lab, var(--diffs-bg) 92%, var(--diffs-addition-base)); --diffs-bg-addition-number-override: color-mix(in lab, var(--diffs-bg) 88%, var(--diffs-addition-base)); --diffs-bg-addition-emphasis-override: color-mix(in lab, var(--diffs-bg) 75%, var(--diffs-addition-base)); --diffs-bg-deletion-override: color-mix(in lab, var(--diffs-bg) 92%, var(--diffs-deletion-base)); --diffs-bg-deletion-number-override: color-mix(in lab, var(--diffs-bg) 88%, var(--diffs-deletion-base)); --diffs-bg-deletion-emphasis-override: color-mix(in lab, var(--diffs-bg) 75%, var(--diffs-deletion-base)); }`
-					: `:host { --diffs-bg-addition-override: color-mix(in lab, var(--diffs-bg) 82%, var(--diffs-addition-base)); --diffs-bg-addition-number-override: color-mix(in lab, var(--diffs-bg) 78%, var(--diffs-addition-base)); --diffs-bg-deletion-override: color-mix(in lab, var(--diffs-bg) 82%, var(--diffs-deletion-base)); --diffs-bg-deletion-number-override: color-mix(in lab, var(--diffs-bg) 78%, var(--diffs-deletion-base)); }`,
+				`[data-annotation-content] { background-color: transparent; }`,
+				`[data-diff] { border: 1px solid var(--border); border-top: 0; border-radius: 0 0 4px 4px; overflow: hidden; }`,
 			].join("\n"),
 		}),
-		[diffStyle, handleGutterUtilityClick, isDark, mutedFg, useWordDiff],
+		[diffStyle, handleGutterUtilityClick, isDark, useWordDiff],
 	);
 	const patchString = useMemo(() => buildPatchString(file), [file]);
 
@@ -261,8 +279,18 @@ export const ReviewFileDiffBlock = memo(function ReviewFileDiffBlock({
 								}
 
 								if ("id" in data) {
+									const c = data as PullReviewComment;
+									const replies = repliesByCommentId.get(c.id);
 									return (
-										<ReviewCommentBubble comment={data as PullReviewComment} />
+										<ReviewCommentThread
+											comment={c}
+											replies={replies}
+											owner={owner}
+											repo={repo}
+											pullNumber={pullNumber}
+											viewerLogin={viewerLogin}
+											threadInfo={threadInfoByCommentId?.get(c.id)}
+										/>
 									);
 								}
 
@@ -412,9 +440,21 @@ function InlineCommentForm({
 	);
 }
 
-function ReviewCommentBubble({ comment }: { comment: PullReviewComment }) {
+function ReviewCommentBubble({
+	comment,
+	owner,
+	repo,
+	pullNumber,
+	viewerLogin,
+}: {
+	comment: PullReviewComment;
+	owner: string;
+	repo: string;
+	pullNumber: number;
+	viewerLogin?: string;
+}) {
 	return (
-		<div className="mx-2 my-1 rounded-lg border bg-surface-0 px-3 py-2.5">
+		<div className="group/comment relative px-3 py-2.5">
 			<div className="mb-1.5 flex items-center gap-1.5">
 				{comment.author ? (
 					<img
@@ -431,8 +471,187 @@ function ReviewCommentBubble({ comment }: { comment: PullReviewComment }) {
 				<span className="text-[13px] text-muted-foreground">
 					{formatRelativeTime(comment.createdAt)}
 				</span>
+				<div className="ml-auto">
+					<CommentMoreMenu
+						commentId={comment.id}
+						body={comment.body}
+						owner={owner}
+						repo={repo}
+						number={pullNumber}
+						commentType="review"
+						isAuthor={
+							viewerLogin != null && comment.author?.login === viewerLogin
+						}
+					/>
+				</div>
 			</div>
 			<Markdown className="text-muted-foreground">{comment.body}</Markdown>
+		</div>
+	);
+}
+
+function ReviewCommentThread({
+	comment,
+	replies,
+	owner,
+	repo,
+	pullNumber,
+	viewerLogin,
+	threadInfo,
+}: {
+	comment: PullReviewComment;
+	replies?: PullReviewComment[];
+	owner: string;
+	repo: string;
+	pullNumber: number;
+	viewerLogin?: string;
+	threadInfo?: { threadId: string; isResolved: boolean };
+}) {
+	const queryClient = useQueryClient();
+	const [showReplyForm, setShowReplyForm] = useState(false);
+	const [replyBody, setReplyBody] = useState("");
+	const [isSending, setIsSending] = useState(false);
+	const [isResolving, setIsResolving] = useState(false);
+
+	const handleReply = async () => {
+		if (!replyBody.trim()) return;
+		setIsSending(true);
+		try {
+			const result = await replyToReviewComment({
+				data: {
+					owner,
+					repo,
+					pullNumber,
+					commentId: comment.id,
+					body: replyBody.trim(),
+				},
+			});
+			if (result) {
+				setReplyBody("");
+				setShowReplyForm(false);
+				void queryClient.invalidateQueries({
+					queryKey: githubQueryKeys.all,
+				});
+			} else {
+				toast.error("Failed to send reply");
+			}
+		} catch {
+			toast.error("Failed to send reply");
+		} finally {
+			setIsSending(false);
+		}
+	};
+
+	const handleResolve = async () => {
+		if (!threadInfo) return;
+		setIsResolving(true);
+		try {
+			const fn = threadInfo.isResolved
+				? unresolveReviewThread
+				: resolveReviewThread;
+			const result = await fn({
+				data: { owner, repo, threadId: threadInfo.threadId },
+			});
+			if (result.ok) {
+				void queryClient.invalidateQueries({ queryKey: githubQueryKeys.all });
+			} else {
+				toast.error(result.error);
+			}
+		} catch {
+			toast.error("Failed to update thread");
+		} finally {
+			setIsResolving(false);
+		}
+	};
+
+	return (
+		<div className="m-2 divide-y rounded-lg border bg-surface-0">
+			{threadInfo?.isResolved && (
+				<div className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-green-600 dark:text-green-400">
+					<CheckIcon size={12} strokeWidth={2} />
+					Resolved
+				</div>
+			)}
+			<ReviewCommentBubble
+				comment={comment}
+				owner={owner}
+				repo={repo}
+				pullNumber={pullNumber}
+				viewerLogin={viewerLogin}
+			/>
+			{replies?.map((reply) => (
+				<ReviewCommentBubble
+					key={reply.id}
+					comment={reply}
+					owner={owner}
+					repo={repo}
+					pullNumber={pullNumber}
+					viewerLogin={viewerLogin}
+				/>
+			))}
+			<div className="flex items-center gap-2 px-3 py-2">
+				{showReplyForm ? (
+					<div className="flex w-full flex-col gap-2">
+						<MarkdownEditor
+							value={replyBody}
+							onChange={setReplyBody}
+							placeholder="Write a reply..."
+							compact
+						/>
+						<div className="flex items-center justify-end gap-2">
+							<button
+								type="button"
+								onClick={() => {
+									setShowReplyForm(false);
+									setReplyBody("");
+								}}
+								className="rounded-md px-3 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:text-foreground"
+							>
+								Cancel
+							</button>
+							<button
+								type="button"
+								onClick={() => void handleReply()}
+								disabled={!replyBody.trim() || isSending}
+								className="flex items-center gap-1.5 rounded-md bg-foreground px-3 py-1.5 text-xs font-medium text-background transition-opacity disabled:opacity-50"
+							>
+								{isSending ? (
+									<Spinner className="size-3" />
+								) : (
+									<CommentIcon size={12} strokeWidth={2} />
+								)}
+								Reply
+							</button>
+						</div>
+					</div>
+				) : (
+					<>
+						<button
+							type="button"
+							onClick={() => setShowReplyForm(true)}
+							className="flex items-center gap-1.5 text-xs text-muted-foreground transition-colors hover:text-foreground"
+						>
+							<CommentIcon size={12} strokeWidth={2} />
+							Reply
+						</button>
+						{threadInfo && (
+							<button
+								type="button"
+								onClick={() => void handleResolve()}
+								disabled={isResolving}
+								className="ml-auto flex items-center gap-1.5 text-xs text-muted-foreground transition-colors hover:text-foreground"
+							>
+								{isResolving ? (
+									<Spinner className="size-3" />
+								) : (
+									<CheckIcon size={12} strokeWidth={2} />
+								)}
+								{threadInfo.isResolved ? "Unresolve" : "Resolve"}
+							</button>
+						)}
+					</>
+				)}
+			</div>
 		</div>
 	);
 }

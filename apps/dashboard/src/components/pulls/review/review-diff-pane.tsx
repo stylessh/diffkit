@@ -34,6 +34,10 @@ type ReviewDiffPaneProps = {
 		string,
 		DiffLineAnnotation<PullReviewComment>[]
 	>;
+	repliesByCommentId: ReadonlyMap<number, PullReviewComment[]>;
+	owner: string;
+	repo: string;
+	pullNumber: number;
 	pendingCommentsByFile: ReadonlyMap<string, PendingComment[]>;
 	hasNextPage: boolean;
 	isFetchingNextPage: boolean;
@@ -46,6 +50,11 @@ type ReviewDiffPaneProps = {
 	onAddComment: (comment: PendingComment) => void;
 	onEditComment: (original: PendingComment, newBody: string) => void;
 	mentionConfig?: MentionConfig;
+	viewerLogin?: string;
+	threadInfoByCommentId?: ReadonlyMap<
+		number,
+		{ threadId: string; isResolved: boolean }
+	>;
 };
 
 export const ReviewDiffPane = memo(
@@ -55,6 +64,10 @@ export const ReviewDiffPane = memo(
 			totalFileCount,
 			diffStyle,
 			annotationsByFile,
+			repliesByCommentId,
+			owner,
+			repo,
+			pullNumber,
 			pendingCommentsByFile,
 			hasNextPage,
 			isFetchingNextPage,
@@ -67,6 +80,8 @@ export const ReviewDiffPane = memo(
 			onAddComment,
 			onEditComment,
 			mentionConfig,
+			viewerLogin,
+			threadInfoByCommentId,
 		},
 		ref,
 	) {
@@ -278,6 +293,17 @@ export const ReviewDiffPane = memo(
 			() => new Set(),
 		);
 
+		// Seed the first visible files as near-viewport immediately.
+		// During client-side navigation the scroll container may not have its
+		// final dimensions when the IntersectionObserver first checks, causing
+		// all diffs to remain as empty placeholders until a hard refresh.
+		useEffect(() => {
+			if (visibleFiles.length === 0 || nearViewportFiles.size > 0) return;
+			setNearViewportFiles(
+				new Set(visibleFiles.slice(0, 4).map((f) => f.filename)),
+			);
+		}, [visibleFiles, nearViewportFiles.size]);
+
 		useEffect(() => {
 			const panel = diffPanelRef.current;
 			if (!panel || visibleFiles.length === 0) return;
@@ -338,6 +364,10 @@ export const ReviewDiffPane = memo(
 							annotations={
 								annotationsByFile.get(file.filename) ?? EMPTY_ANNOTATIONS
 							}
+							repliesByCommentId={repliesByCommentId}
+							owner={owner}
+							repo={repo}
+							pullNumber={pullNumber}
 							pendingComments={
 								pendingCommentsByFile.get(file.filename) ??
 								EMPTY_PENDING_COMMENTS
@@ -355,6 +385,8 @@ export const ReviewDiffPane = memo(
 							onAddComment={onAddComment}
 							onEditComment={onEditComment}
 							mentionConfig={mentionConfig}
+							viewerLogin={viewerLogin}
+							threadInfoByCommentId={threadInfoByCommentId}
 						/>
 					))}
 

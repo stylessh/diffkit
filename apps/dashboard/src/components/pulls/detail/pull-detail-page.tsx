@@ -9,7 +9,9 @@ import {
 } from "#/components/details/detail-page";
 import {
 	githubPullPageQueryOptions,
+	githubPullReviewCommentsQueryOptions,
 	githubQueryKeys,
+	githubReviewThreadStatusesQueryOptions,
 	githubViewerQueryOptions,
 } from "#/lib/github.query";
 import { githubRevalidationSignalKeys } from "#/lib/github-revalidation";
@@ -59,7 +61,26 @@ export function PullDetailPage() {
 		...githubViewerQueryOptions(scope),
 		enabled: hasMounted,
 	});
+	const reviewCommentsQuery = useQuery({
+		...githubPullReviewCommentsQueryOptions(scope, input),
+		enabled: hasMounted && !!pageQuery.data,
+	});
+	const threadStatusesQuery = useQuery({
+		...githubReviewThreadStatusesQueryOptions(scope, input),
+		enabled: hasMounted && !!pageQuery.data,
+	});
 	useGitHubSignalStream(webhookRefreshTargets);
+
+	const threadInfoByCommentId = useMemo(() => {
+		const map = new Map<number, { threadId: string; isResolved: boolean }>();
+		for (const t of threadStatusesQuery.data ?? []) {
+			map.set(t.firstCommentId, {
+				threadId: t.threadId,
+				isResolved: t.isResolved,
+			});
+		}
+		return map;
+	}, [threadStatusesQuery.data]);
 
 	const pr = pageQuery.data?.detail;
 	const comments = pageQuery.data?.comments;
@@ -111,6 +132,7 @@ export function PullDetailPage() {
 						comments={comments}
 						commits={commits}
 						events={events}
+						reviewComments={reviewCommentsQuery.data}
 						commentPagination={commentPagination}
 						eventPagination={eventPagination}
 						pageQueryKey={pageQueryKey}
@@ -121,6 +143,8 @@ export function PullDetailPage() {
 						pullNumber={pullNumber}
 						scope={scope}
 						headRefDeleted={headRefDeleted}
+						viewerLogin={viewer?.login}
+						threadInfoByCommentId={threadInfoByCommentId}
 					/>
 				</>
 			}

@@ -3,6 +3,7 @@ import {
 	ChevronDownIcon,
 	ChevronUpIcon,
 	CircleIcon,
+	CommentIcon,
 	Delete01Icon,
 	EditIcon,
 	GitBranchIcon,
@@ -29,12 +30,26 @@ import {
 	DropdownMenuTrigger,
 } from "@diffkit/ui/components/dropdown-menu";
 import { Markdown } from "@diffkit/ui/components/markdown";
+import { MarkdownEditor } from "@diffkit/ui/components/markdown-editor";
 import { Skeleton } from "@diffkit/ui/components/skeleton";
 import { toast } from "@diffkit/ui/components/sonner";
 import { Spinner } from "@diffkit/ui/components/spinner";
+import { quickhubDark, quickhubLight } from "@diffkit/ui/lib/diffs-themes";
 import { cn } from "@diffkit/ui/lib/utils";
+import type { DiffLineAnnotation, PatchDiffProps } from "@pierre/diffs/react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useCallback, useRef, useState } from "react";
+import { useTheme } from "next-themes";
+import {
+	type ComponentType,
+	type LazyExoticComponent,
+	lazy,
+	Suspense,
+	useCallback,
+	useMemo,
+	useRef,
+	useState,
+} from "react";
+import { CommentMoreMenu } from "#/components/details/comment-more-menu";
 import {
 	DetailActivityHeader,
 	DetailCommentBox,
@@ -47,12 +62,16 @@ import {
 	getCommentPage,
 	getTimelineEventPage,
 	mergePullRequest,
+	replyToReviewComment,
 	requestPullReviewers,
+	resolveReviewThread,
+	unresolveReviewThread,
 	updatePullBranch,
 } from "#/lib/github.functions";
 import {
 	type GitHubQueryScope,
 	githubPullStatusQueryOptions,
+	githubQueryKeys,
 } from "#/lib/github.query";
 import type {
 	CommentPagination,
@@ -63,15 +82,40 @@ import type {
 	PullCommit,
 	PullDetail,
 	PullPageData,
+	PullReviewComment,
 	PullStatus,
 	TimelineEvent,
 } from "#/lib/github.types";
 import { checkPermissionWarning } from "#/lib/warning-store";
 
+// Lazy-load PatchDiff for review comment diff hunks
+type ActivityPatchDiffProps = PatchDiffProps<PullReviewComment>;
+
+const PatchDiff: LazyExoticComponent<ComponentType<ActivityPatchDiffProps>> =
+	lazy(() =>
+		import.meta.env.SSR
+			? Promise.resolve({
+					default: (() => null) as ComponentType<ActivityPatchDiffProps>,
+				})
+			: import("@pierre/diffs/react").then((mod) => ({
+					default: mod.PatchDiff as ComponentType<ActivityPatchDiffProps>,
+				})),
+	);
+
+let themesRegistered = false;
+if (!import.meta.env.SSR && !themesRegistered) {
+	themesRegistered = true;
+	import("@pierre/diffs").then(({ registerCustomTheme }) => {
+		registerCustomTheme("quickhub-light", () => Promise.resolve(quickhubLight));
+		registerCustomTheme("quickhub-dark", () => Promise.resolve(quickhubDark));
+	});
+}
+
 export function PullDetailActivitySection({
 	comments,
 	commits,
 	events,
+	reviewComments,
 	commentPagination,
 	eventPagination,
 	pageQueryKey,
@@ -82,10 +126,13 @@ export function PullDetailActivitySection({
 	pullNumber,
 	scope,
 	headRefDeleted,
+	viewerLogin,
+	threadInfoByCommentId,
 }: {
 	comments?: PullComment[];
 	commits?: PullCommit[];
 	events?: TimelineEvent[];
+	reviewComments?: PullReviewComment[];
 	commentPagination?: CommentPagination;
 	eventPagination?: EventPagination;
 	pageQueryKey: readonly unknown[];
@@ -96,6 +143,11 @@ export function PullDetailActivitySection({
 	pullNumber: number;
 	scope: GitHubQueryScope;
 	headRefDeleted: boolean;
+	viewerLogin?: string;
+	threadInfoByCommentId?: ReadonlyMap<
+		number,
+		{ threadId: string; isResolved: boolean }
+	>;
 }) {
 	return (
 		<div className="flex flex-col">
@@ -146,6 +198,7 @@ export function PullDetailActivitySection({
 				comments={comments ?? []}
 				commits={commits ?? []}
 				events={events ?? []}
+				reviewComments={reviewComments ?? []}
 				pr={pr}
 				commentPagination={commentPagination}
 				eventPagination={eventPagination}
@@ -153,6 +206,8 @@ export function PullDetailActivitySection({
 				owner={owner}
 				repo={repo}
 				pullNumber={pullNumber}
+				viewerLogin={viewerLogin}
+				threadInfoByCommentId={threadInfoByCommentId}
 			/>
 
 			{!pr.isMerged && pr.state !== "closed" && (
@@ -1330,6 +1385,7 @@ function ActivityTimeline({
 	comments,
 	commits,
 	events,
+	reviewComments,
 	pr,
 	commentPagination,
 	eventPagination,
@@ -1337,10 +1393,13 @@ function ActivityTimeline({
 	owner,
 	repo,
 	pullNumber,
+	viewerLogin,
+	threadInfoByCommentId,
 }: {
 	comments: PullComment[];
 	commits: PullCommit[];
 	events: TimelineEvent[];
+	reviewComments: PullReviewComment[];
 	pr: PullDetail;
 	commentPagination?: CommentPagination;
 	eventPagination?: EventPagination;
@@ -1348,7 +1407,31 @@ function ActivityTimeline({
 	owner: string;
 	repo: string;
 	pullNumber: number;
+	viewerLogin?: string;
+	threadInfoByCommentId?: ReadonlyMap<
+		number,
+		{ threadId: string; isResolved: boolean }
+	>;
 }) {
+	// Group review comments by their review ID for rendering under reviewed events
+	// Also build a replies map keyed by parent comment ID
+	const { reviewCommentsByReviewId, repliesByCommentId } = useMemo(() => {
+		const byReview = new Map<number, PullReviewComment[]>();
+		const replies = new Map<number, PullReviewComment[]>();
+		for (const comment of reviewComments) {
+			if (comment.inReplyToId != null) {
+				const existing = replies.get(comment.inReplyToId) ?? [];
+				existing.push(comment);
+				replies.set(comment.inReplyToId, existing);
+				continue;
+			}
+			if (comment.pullRequestReviewId == null) continue;
+			const existing = byReview.get(comment.pullRequestReviewId) ?? [];
+			existing.push(comment);
+			byReview.set(comment.pullRequestReviewId, existing);
+		}
+		return { reviewCommentsByReviewId: byReview, repliesByCommentId: replies };
+	}, [reviewComments]);
 	const allItems: TimelineItem[] = [
 		...comments.map((comment) => ({
 			type: "comment" as const,
@@ -1411,7 +1494,7 @@ function ActivityTimeline({
 							<div
 								key={`comment-${comment.id}`}
 								className={cn(
-									"flex flex-col gap-1 py-5",
+									"group/comment relative flex flex-col gap-1 py-5",
 									index === 0 && "pt-5",
 								)}
 							>
@@ -1431,6 +1514,20 @@ function ActivityTimeline({
 									<span className="text-[13px] text-muted-foreground">
 										{formatRelativeTime(comment.createdAt)}
 									</span>
+									<div className="ml-auto">
+										<CommentMoreMenu
+											commentId={comment.id}
+											body={comment.body}
+											owner={owner}
+											repo={repo}
+											number={pullNumber}
+											commentType="issue"
+											isAuthor={
+												viewerLogin != null &&
+												comment.author?.login === viewerLogin
+											}
+										/>
+									</div>
 								</div>
 								<Markdown className="text-muted-foreground">
 									{comment.body}
@@ -1533,6 +1630,17 @@ function ActivityTimeline({
 							isConsecutive={isConsecutiveEvent}
 							isLastInRun={isLastInEventRun}
 							headRefName={pr.headRefName}
+							reviewComments={
+								event.event === "reviewed"
+									? reviewCommentsByReviewId.get(event.id)
+									: undefined
+							}
+							repliesByCommentId={repliesByCommentId}
+							owner={owner}
+							repo={repo}
+							pullNumber={pullNumber}
+							viewerLogin={viewerLogin}
+							threadInfoByCommentId={threadInfoByCommentId}
 						/>
 					);
 				})();
@@ -1626,12 +1734,29 @@ function TimelineEventRow({
 	isConsecutive,
 	isLastInRun,
 	headRefName,
+	reviewComments,
+	repliesByCommentId,
+	owner,
+	repo,
+	pullNumber,
+	viewerLogin,
+	threadInfoByCommentId,
 }: {
 	event: TimelineEvent;
 	isFirst: boolean;
 	isConsecutive: boolean;
 	isLastInRun: boolean;
 	headRefName: string;
+	reviewComments?: PullReviewComment[];
+	repliesByCommentId?: ReadonlyMap<number, PullReviewComment[]>;
+	owner?: string;
+	repo?: string;
+	pullNumber?: number;
+	viewerLogin?: string;
+	threadInfoByCommentId?: ReadonlyMap<
+		number,
+		{ threadId: string; isResolved: boolean }
+	>;
 }) {
 	const icon = getEventIcon(event);
 	const description = getEventDescription(event, headRefName);
@@ -1640,6 +1765,49 @@ function TimelineEventRow({
 	const hasActorAvatar = !isCrossRef && event.actor?.avatarUrl;
 
 	if (!description) return null;
+
+	const hasReviewBody = event.body?.trim();
+	const hasReviewComments = reviewComments && reviewComments.length > 0;
+
+	// Reviewed events with a body or inline comments get a richer layout
+	if (event.event === "reviewed" && (hasReviewBody || hasReviewComments)) {
+		return (
+			<div className={cn("flex flex-col gap-2 py-5", isFirst && "pt-5")}>
+				<div className="flex items-center gap-1.5">
+					{icon}
+					<span className="min-w-0 text-[13px] text-muted-foreground">
+						{description}
+					</span>
+					{event.createdAt && (
+						<span className="ml-auto shrink-0 text-[13px] text-muted-foreground">
+							{formatRelativeTime(event.createdAt)}
+						</span>
+					)}
+				</div>
+				{hasReviewBody && (
+					<Markdown className="text-muted-foreground">
+						{event.body as string}
+					</Markdown>
+				)}
+				{hasReviewComments && (
+					<div className="flex flex-col gap-2">
+						{reviewComments.map((comment) => (
+							<ReviewCommentBlock
+								key={comment.id}
+								comment={comment}
+								replies={repliesByCommentId?.get(comment.id)}
+								owner={owner}
+								repo={repo}
+								pullNumber={pullNumber}
+								viewerLogin={viewerLogin}
+								threadInfo={threadInfoByCommentId?.get(comment.id)}
+							/>
+						))}
+					</div>
+				)}
+			</div>
+		);
+	}
 
 	return (
 		<div
@@ -1667,6 +1835,424 @@ function TimelineEventRow({
 				<span className="ml-auto shrink-0 text-[13px] text-muted-foreground">
 					{formatRelativeTime(event.createdAt)}
 				</span>
+			)}
+		</div>
+	);
+}
+
+const CONTEXT_LINES_ABOVE = 3;
+
+/**
+ * Trim a diff hunk to only show the lines relevant to a review comment.
+ * For single-line comments: show CONTEXT_LINES_ABOVE lines above the comment line.
+ * For ranged comments: show the full range plus CONTEXT_LINES_ABOVE above the start.
+ * The hunk from GitHub always ends at the comment's `line` (the last line of the range).
+ */
+function trimDiffHunk(
+	diffHunk: string,
+	commentLine: number | null,
+	startLine: number | null,
+	side: "LEFT" | "RIGHT",
+): string {
+	const lines = diffHunk.split("\n");
+	const headerIdx = lines.findIndex((l) => l.startsWith("@@"));
+	if (headerIdx === -1 || commentLine == null) return diffHunk;
+
+	const header = lines[headerIdx];
+	const body = lines.slice(headerIdx + 1);
+
+	const match = header.match(
+		/^@@ -(\d+)(?:,(\d+))? \+(\d+)(?:,(\d+))? @@(.*)$/,
+	);
+	if (!match) return diffHunk;
+
+	const oldStart = Number(match[1]);
+	const newStart = Number(match[3]);
+
+	// Walk the body to build a mapping of hunk-index → source line number
+	// so we can find where `startLine` appears.
+	const targetStart = startLine ?? commentLine;
+	let oldLine = oldStart;
+	let newLine = newStart;
+	let firstKeepIdx = body.length; // default: keep nothing extra
+
+	for (let i = 0; i < body.length; i++) {
+		const l = body[i];
+		const currentLine = side === "LEFT" ? oldLine : newLine;
+
+		if (currentLine >= targetStart && firstKeepIdx === body.length) {
+			firstKeepIdx = i;
+		}
+
+		if (l.startsWith("-")) {
+			oldLine++;
+		} else if (l.startsWith("+")) {
+			newLine++;
+		} else {
+			oldLine++;
+			newLine++;
+		}
+	}
+
+	// Add context lines above the range start
+	const sliceStart = Math.max(0, firstKeepIdx - CONTEXT_LINES_ABOVE);
+	const trimmed = body.slice(sliceStart);
+
+	if (sliceStart === 0) return diffHunk;
+
+	// Count how many old/new lines were dropped to rewrite the header
+	let droppedOld = 0;
+	let droppedNew = 0;
+	for (const line of body.slice(0, sliceStart)) {
+		if (line.startsWith("-")) droppedOld++;
+		else if (line.startsWith("+")) droppedNew++;
+		else {
+			droppedOld++;
+			droppedNew++;
+		}
+	}
+
+	const oldCount = Number(match[2] ?? 1);
+	const newCount = Number(match[4] ?? 1);
+	const newHeader = `@@ -${oldStart + droppedOld},${oldCount - droppedOld} +${newStart + droppedNew},${newCount - droppedNew} @@${match[5]}`;
+	return [newHeader, ...trimmed].join("\n");
+}
+
+function ReviewCommentBubble({
+	comment,
+	owner,
+	repo,
+	pullNumber,
+	viewerLogin,
+}: {
+	comment: PullReviewComment;
+	owner?: string;
+	repo?: string;
+	pullNumber?: number;
+	viewerLogin?: string;
+}) {
+	return (
+		<div className="group/comment relative px-3 py-2.5">
+			<div className="mb-1.5 flex items-center gap-1.5">
+				{comment.author ? (
+					<img
+						src={comment.author.avatarUrl}
+						alt={comment.author.login}
+						className="size-4 rounded-full border border-border"
+					/>
+				) : (
+					<div className="size-4 rounded-full bg-surface-2" />
+				)}
+				<span className="text-[13px] font-medium">
+					{comment.author?.login ?? "Unknown"}
+				</span>
+				<span className="text-[13px] text-muted-foreground">
+					{formatRelativeTime(comment.createdAt)}
+				</span>
+				{owner && repo && pullNumber != null && (
+					<div className="ml-auto">
+						<CommentMoreMenu
+							commentId={comment.id}
+							body={comment.body}
+							owner={owner}
+							repo={repo}
+							number={pullNumber}
+							commentType="review"
+							isAuthor={
+								viewerLogin != null && comment.author?.login === viewerLogin
+							}
+						/>
+					</div>
+				)}
+			</div>
+			<Markdown className="text-muted-foreground">{comment.body}</Markdown>
+		</div>
+	);
+}
+
+function ReviewCommentBlock({
+	comment,
+	replies,
+	owner,
+	repo,
+	pullNumber,
+	viewerLogin,
+	threadInfo,
+}: {
+	comment: PullReviewComment;
+	replies?: PullReviewComment[];
+	owner?: string;
+	repo?: string;
+	pullNumber?: number;
+	viewerLogin?: string;
+	threadInfo?: { threadId: string; isResolved: boolean };
+}) {
+	const { resolvedTheme } = useTheme();
+	const isDark = resolvedTheme === "dark";
+	const queryClient = useQueryClient();
+	const [showReplyForm, setShowReplyForm] = useState(false);
+	const [replyBody, setReplyBody] = useState("");
+	const [isSending, setIsSending] = useState(false);
+	const [isCollapsed, setIsCollapsed] = useState(
+		threadInfo?.isResolved ?? false,
+	);
+	const [isResolving, setIsResolving] = useState(false);
+
+	const diffOptions = useMemo(
+		() => ({
+			diffStyle: "unified" as const,
+			theme: {
+				dark: "quickhub-dark" as const,
+				light: "quickhub-light" as const,
+			},
+			lineDiffType: "none" as const,
+			hunkSeparators: "line-info" as const,
+			overflow: "scroll" as const,
+			disableFileHeader: true,
+			unsafeCSS: [
+				`:host { color-scheme: ${isDark ? "dark" : "light"}; }`,
+				`:host { --diffs-font-family: 'Geist Mono Variable', 'SF Mono', ui-monospace, 'Cascadia Code', monospace; }`,
+				`[data-diff] { border: none; border-radius: 0; overflow: hidden; }`,
+				`[data-line-annotation] { font-family: 'Inter Variable', 'Inter', 'Avenir Next', ui-sans-serif, system-ui, sans-serif; }`,
+				`[data-line-annotation] code { font-family: var(--diffs-font-family, var(--diffs-font-fallback)); }`,
+				`[data-annotation-content] { background-color: transparent; }`,
+			].join("\n"),
+		}),
+		[isDark],
+	);
+
+	const patch = useMemo(() => {
+		const trimmed = trimDiffHunk(
+			comment.diffHunk,
+			comment.line,
+			comment.startLine,
+			comment.side,
+		);
+		return `--- a/${comment.path}\n+++ b/${comment.path}\n${trimmed}`;
+	}, [
+		comment.diffHunk,
+		comment.line,
+		comment.startLine,
+		comment.side,
+		comment.path,
+	]);
+
+	const lineAnnotations = useMemo(() => {
+		if (comment.line == null) return [];
+		return [
+			{
+				side:
+					comment.side === "LEFT"
+						? ("deletions" as const)
+						: ("additions" as const),
+				lineNumber: comment.line,
+				metadata: comment,
+			},
+		];
+	}, [comment]);
+
+	const handleReply = useCallback(async () => {
+		if (!replyBody.trim() || !owner || !repo || pullNumber == null) return;
+		setIsSending(true);
+		try {
+			const result = await replyToReviewComment({
+				data: {
+					owner,
+					repo,
+					pullNumber,
+					commentId: comment.id,
+					body: replyBody.trim(),
+				},
+			});
+			if (result) {
+				setReplyBody("");
+				setShowReplyForm(false);
+				void queryClient.invalidateQueries({
+					queryKey: githubQueryKeys.all,
+				});
+			} else {
+				toast.error("Failed to send reply");
+			}
+		} catch {
+			toast.error("Failed to send reply");
+		} finally {
+			setIsSending(false);
+		}
+	}, [replyBody, owner, repo, pullNumber, comment.id, queryClient]);
+
+	const handleResolve = useCallback(async () => {
+		if (!threadInfo || !owner || !repo) return;
+		setIsResolving(true);
+		try {
+			const fn = threadInfo.isResolved
+				? unresolveReviewThread
+				: resolveReviewThread;
+			const result = await fn({
+				data: { owner, repo, threadId: threadInfo.threadId },
+			});
+			if (result.ok) {
+				if (!threadInfo.isResolved) setIsCollapsed(true);
+				void queryClient.invalidateQueries({ queryKey: githubQueryKeys.all });
+			} else {
+				toast.error(result.error);
+			}
+		} catch {
+			toast.error("Failed to update thread");
+		} finally {
+			setIsResolving(false);
+		}
+	}, [threadInfo, owner, repo, queryClient]);
+
+	const canReply = owner && repo && pullNumber != null;
+
+	const renderAnnotation = useCallback(
+		(annotation: DiffLineAnnotation<PullReviewComment>) => {
+			const data = annotation.metadata;
+			if (!data) return null;
+			return (
+				<div className="m-2 divide-y rounded-lg border bg-surface-0">
+					<ReviewCommentBubble
+						comment={data}
+						owner={owner}
+						repo={repo}
+						pullNumber={pullNumber}
+						viewerLogin={viewerLogin}
+					/>
+					{replies?.map((reply) => (
+						<ReviewCommentBubble
+							key={reply.id}
+							comment={reply}
+							owner={owner}
+							repo={repo}
+							pullNumber={pullNumber}
+							viewerLogin={viewerLogin}
+						/>
+					))}
+					<div className="flex items-center gap-2 px-3 py-2">
+						{showReplyForm ? (
+							<div className="flex w-full flex-col gap-2">
+								<MarkdownEditor
+									value={replyBody}
+									onChange={setReplyBody}
+									placeholder="Write a reply..."
+									compact
+								/>
+								<div className="flex items-center justify-end gap-2">
+									<button
+										type="button"
+										onClick={() => {
+											setShowReplyForm(false);
+											setReplyBody("");
+										}}
+										className="rounded-md px-3 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:text-foreground"
+									>
+										Cancel
+									</button>
+									<button
+										type="button"
+										onClick={() => void handleReply()}
+										disabled={!replyBody.trim() || isSending}
+										className="flex items-center gap-1.5 rounded-md bg-foreground px-3 py-1.5 text-xs font-medium text-background transition-opacity disabled:opacity-50"
+									>
+										{isSending ? (
+											<Spinner className="size-3" />
+										) : (
+											<CommentIcon size={12} strokeWidth={2} />
+										)}
+										Reply
+									</button>
+								</div>
+							</div>
+						) : (
+							<>
+								{canReply && (
+									<button
+										type="button"
+										onClick={() => setShowReplyForm(true)}
+										className="flex items-center gap-1.5 text-xs text-muted-foreground transition-colors hover:text-foreground"
+									>
+										<CommentIcon size={12} strokeWidth={2} />
+										Reply
+									</button>
+								)}
+								{threadInfo && (
+									<button
+										type="button"
+										onClick={() => void handleResolve()}
+										disabled={isResolving}
+										className={cn(
+											"ml-auto flex items-center gap-1.5 text-xs transition-colors",
+											threadInfo.isResolved
+												? "text-muted-foreground hover:text-foreground"
+												: "text-muted-foreground hover:text-foreground",
+										)}
+									>
+										{isResolving ? (
+											<Spinner className="size-3" />
+										) : (
+											<CheckIcon size={12} strokeWidth={2} />
+										)}
+										{threadInfo.isResolved ? "Unresolve" : "Resolve"}
+									</button>
+								)}
+							</>
+						)}
+					</div>
+				</div>
+			);
+		},
+		// eslint-disable-next-line react-hooks/exhaustive-deps
+		[
+			replies,
+			showReplyForm,
+			replyBody,
+			isSending,
+			canReply,
+			owner,
+			repo,
+			pullNumber,
+			viewerLogin,
+			threadInfo,
+			isResolving,
+			handleReply,
+			handleResolve,
+		],
+	);
+
+	return (
+		<div className="overflow-hidden rounded-lg border">
+			<div className="flex items-center gap-1.5 bg-surface-1 px-3 py-2 text-[13px] text-muted-foreground">
+				{threadInfo?.isResolved && (
+					<span className="flex items-center gap-1 text-xs font-medium text-green-600 dark:text-green-400">
+						<CheckIcon size={12} strokeWidth={2} />
+						Resolved
+					</span>
+				)}
+				<span className="min-w-0 truncate font-mono text-xs font-medium text-foreground">
+					{comment.path}
+				</span>
+				<button
+					type="button"
+					onClick={() => setIsCollapsed(!isCollapsed)}
+					className="ml-auto shrink-0 text-muted-foreground transition-colors hover:text-foreground"
+					aria-label={isCollapsed ? "Expand thread" : "Collapse thread"}
+				>
+					{isCollapsed ? (
+						<ChevronDownIcon size={14} strokeWidth={2} />
+					) : (
+						<ChevronUpIcon size={14} strokeWidth={2} />
+					)}
+				</button>
+			</div>
+			{!isCollapsed && comment.diffHunk && (
+				<Suspense>
+					<PatchDiff
+						patch={patch}
+						options={diffOptions}
+						lineAnnotations={lineAnnotations}
+						renderAnnotation={renderAnnotation}
+					/>
+				</Suspense>
 			)}
 		</div>
 	);

@@ -272,15 +272,25 @@ export type PullFilesPage = {
 
 export type PullReviewComment = {
 	id: number;
+	nodeId: string;
+	pullRequestReviewId: number | null;
 	body: string;
 	path: string;
 	line: number | null;
+	startLine: number | null;
 	side: "LEFT" | "RIGHT";
 	createdAt: string;
 	updatedAt: string;
 	author: GitHubActor | null;
 	inReplyToId: number | null;
 	diffHunk: string;
+};
+
+export type ReviewThreadInfo = {
+	threadId: string;
+	isResolved: boolean;
+	/** The database ID of the first comment in this thread */
+	firstCommentId: number;
 };
 
 export type SubmitReviewInput = {
@@ -347,6 +357,14 @@ export type CreateReviewCommentInput = {
 	path: string;
 	line: number;
 	side: "LEFT" | "RIGHT";
+};
+
+export type ReplyToReviewCommentInput = {
+	owner: string;
+	repo: string;
+	pullNumber: number;
+	commentId: number;
+	body: string;
 };
 
 export type GitHubUserProfile = {
