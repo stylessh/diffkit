@@ -30,5 +30,8 @@
 	"display": "standalone",
 	"categories": ["developer tools", "productivity"],
 	"theme_color": "#00C943",
-	"background_color": "#ffffff"
+	"background_color": "#ffffff",
+	"launch_handler": {
+		"client_mode": "focus-existing"
+	}
 }

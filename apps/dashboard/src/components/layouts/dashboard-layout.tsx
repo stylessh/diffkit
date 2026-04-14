@@ -7,6 +7,7 @@ import {
 	githubMyPullsQueryOptions,
 } from "#/lib/github.query";
 import { useHasMounted } from "#/lib/use-has-mounted";
+import { useLaunchQueueConsumer } from "#/lib/use-launch-queue-consumer";
 import { useMediaQuery } from "#/lib/use-media-query";
 import {
 	surfaceForbiddenOrgWarnings,
@@ -45,6 +46,7 @@ export function DashboardLayout() {
 	const { user } = routeApi.useRouteContext();
 	const scope = { userId: user.id };
 	const hasMounted = useHasMounted();
+	useLaunchQueueConsumer();
 
 	const pullsQuery = useQuery({
 		...githubMyPullsQueryOptions(scope),
