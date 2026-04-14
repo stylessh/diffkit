@@ -161,7 +161,7 @@ export function DashboardMobileNav({
 					<DropdownMenuGroup>
 						<DropdownMenuItem>
 							Profile
-							<DropdownMenuShortcut keys={["G", "P"]} />
+							<DropdownMenuShortcut keys={["G", "U"]} />
 						</DropdownMenuItem>
 						<DropdownMenuItem asChild>
 							<Link to="/settings">

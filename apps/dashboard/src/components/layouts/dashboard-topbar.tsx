@@ -30,7 +30,7 @@ import { DashboardTabs } from "#/components/layouts/dashboard-tabs";
 import { signOutToLogin } from "#/lib/auth-actions";
 import { githubViewerQueryOptions } from "#/lib/github.query";
 import { useGlobalShortcuts } from "#/lib/shortcuts";
-import { type Tab, useTabs } from "#/lib/tab-store";
+import { removeTab, type Tab, useTabs } from "#/lib/tab-store";
 import { useHasMounted } from "#/lib/use-has-mounted";
 
 interface DashboardTopbarProps {
@@ -149,6 +149,27 @@ export function DashboardTopbar({
 			}),
 		),
 		{
+			shortcut: [{ key: "g" }, { key: "u" }],
+			enabled: tabsReady && Boolean(viewerLogin),
+			onTrigger: () => {
+				void routerRef.current.navigate({
+					to: "/$owner",
+					params: { owner: viewerLogin ?? "" },
+				});
+			},
+		},
+		{
+			shortcut: { key: "w", shift: true },
+			enabled: tabsReady && openTabs.length > 0,
+			onTrigger: () => {
+				const currentPath = routerRef.current.state.location.pathname;
+				const currentTab = openTabs.find((tab) => tab.url === currentPath);
+				if (!currentTab) return;
+				removeTab(currentTab.id);
+				void routerRef.current.navigate({ to: "/" });
+			},
+		},
+		{
 			shortcut: { key: "ArrowLeft", shift: true },
 			enabled: tabsReady && openTabs.length > 1,
 			onTrigger: () => {
@@ -235,7 +256,7 @@ export function DashboardTopbar({
 								<Link to="/$owner" params={{ owner: viewerLogin ?? "" }}>
 									<UserCircleIcon size={16} strokeWidth={2} />
 									Profile
-									<DropdownMenuShortcut keys={["G", "P"]} />
+									<DropdownMenuShortcut keys={["G", "U"]} />
 								</Link>
 							</DropdownMenuItem>
 							<DropdownMenuItem asChild>
