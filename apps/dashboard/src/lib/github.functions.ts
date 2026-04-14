@@ -3131,7 +3131,18 @@ async function computePullStatus(
 		});
 	}
 
-	const checkRuns = checksResponse?.data.check_runs ?? [];
+	const allCheckRuns = checksResponse?.data.check_runs ?? [];
+
+	// Deduplicate by name — keep the most recent run (highest id) per check name
+	const latestByName = new Map<string, (typeof allCheckRuns)[number]>();
+	for (const check of allCheckRuns) {
+		const existing = latestByName.get(check.name);
+		if (!existing || check.id > existing.id) {
+			latestByName.set(check.name, check);
+		}
+	}
+	const checkRuns = Array.from(latestByName.values());
+
 	let passed = 0;
 	let failed = 0;
 	let pending = 0;
