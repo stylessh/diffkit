@@ -2827,7 +2827,8 @@ function mapTimelineEvents(rawEvents: unknown[]): TimelineEvent[] {
 			return {
 				id: (raw.id as number) ?? 0,
 				event: raw.event as string,
-				createdAt: (raw.created_at as string) ?? "",
+				createdAt:
+					(raw.created_at as string) ?? (raw.submitted_at as string) ?? "",
 				actor: actor
 					? {
 							login: (actor.login as string) ?? "",

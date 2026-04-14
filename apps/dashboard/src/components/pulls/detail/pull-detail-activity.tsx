@@ -50,6 +50,8 @@ import {
 	useState,
 } from "react";
 import { CommentMoreMenu } from "#/components/details/comment-more-menu";
+import { CommentReplyForm } from "#/components/details/comment-reply-form";
+import { buildCommentThreads } from "#/components/details/comment-threads";
 import {
 	DetailActivityHeader,
 	DetailCommentBox,
@@ -1506,13 +1508,21 @@ function ActivityTimeline({
 		}
 		return { reviewCommentsByReviewId: byReview, repliesByCommentId: replies };
 	}, [reviewComments]);
+
+	const {
+		repliesByCommentId: issueCommentReplies,
+		replyIds: issueCommentReplyIds,
+	} = useMemo(() => buildCommentThreads(comments), [comments]);
+
 	const allItems = groupTimelineEvents(
 		[
-			...comments.map((comment) => ({
-				type: "comment" as const,
-				date: comment.createdAt,
-				data: comment,
-			})),
+			...comments
+				.filter((c) => !issueCommentReplyIds.has(c.id))
+				.map((comment) => ({
+					type: "comment" as const,
+					date: comment.createdAt,
+					data: comment,
+				})),
 			...commits.map((commit) => ({
 				type: "commit" as const,
 				date: commit.createdAt,
@@ -1575,49 +1585,18 @@ function ActivityTimeline({
 				const row = (() => {
 					if (item.type === "comment") {
 						const comment = item.data;
+						const commentReplies = issueCommentReplies.get(comment.id);
 						return (
-							<div
+							<PullCommentWithThread
 								key={`comment-${comment.id}`}
-								className={cn(
-									"group/comment relative flex flex-col gap-1 py-5",
-									index === 0 && "pt-5",
-								)}
-							>
-								<div className="flex items-center gap-1.5">
-									{comment.author ? (
-										<img
-											src={comment.author.avatarUrl}
-											alt={comment.author.login}
-											className="size-4 rounded-full border border-border"
-										/>
-									) : (
-										<div className="size-4 rounded-full bg-surface-2" />
-									)}
-									<span className="text-[13px] font-medium">
-										{comment.author?.login ?? "Unknown"}
-									</span>
-									<span className="text-[13px] text-muted-foreground">
-										{formatRelativeTime(comment.createdAt)}
-									</span>
-									<div className="ml-auto">
-										<CommentMoreMenu
-											commentId={comment.id}
-											body={comment.body}
-											owner={owner}
-											repo={repo}
-											number={pullNumber}
-											commentType="issue"
-											isAuthor={
-												viewerLogin != null &&
-												comment.author?.login === viewerLogin
-											}
-										/>
-									</div>
-								</div>
-								<Markdown className="text-muted-foreground">
-									{comment.body}
-								</Markdown>
-							</div>
+								comment={comment}
+								replies={commentReplies}
+								isFirst={index === 0}
+								owner={owner}
+								repo={repo}
+								pullNumber={pullNumber}
+								viewerLogin={viewerLogin}
+							/>
 						);
 					}
 
@@ -2062,6 +2041,154 @@ function trimDiffHunk(
 	const newCount = Number(match[4] ?? 1);
 	const newHeader = `@@ -${oldStart + droppedOld},${oldCount - droppedOld} +${newStart + droppedNew},${newCount - droppedNew} @@${match[5]}`;
 	return [newHeader, ...trimmed].join("\n");
+}
+
+function PullCommentBubble({
+	comment,
+	owner,
+	repo,
+	pullNumber,
+	viewerLogin,
+	onReply,
+	isReply,
+}: {
+	comment: PullComment;
+	owner: string;
+	repo: string;
+	pullNumber: number;
+	viewerLogin?: string;
+	onReply?: () => void;
+	isReply?: boolean;
+}) {
+	return (
+		<div
+			className={cn(
+				"group/comment relative flex flex-col gap-1",
+				isReply ? "py-2" : "py-5",
+			)}
+		>
+			<div className="flex items-center gap-1.5">
+				{comment.author ? (
+					<img
+						src={comment.author.avatarUrl}
+						alt={comment.author.login}
+						className={cn(
+							"rounded-full border border-border",
+							isReply ? "size-3.5" : "size-4",
+						)}
+					/>
+				) : (
+					<div
+						className={cn(
+							"rounded-full bg-surface-2",
+							isReply ? "size-3.5" : "size-4",
+						)}
+					/>
+				)}
+				<span
+					className={cn("font-medium", isReply ? "text-xs" : "text-[13px]")}
+				>
+					{comment.author?.login ?? "Unknown"}
+				</span>
+				<span
+					className={cn(
+						"text-muted-foreground",
+						isReply ? "text-xs" : "text-[13px]",
+					)}
+				>
+					{formatRelativeTime(comment.createdAt)}
+				</span>
+				<div className="ml-auto flex items-center gap-1">
+					{onReply && (
+						<button
+							type="button"
+							onClick={onReply}
+							className="rounded-md p-0.5 text-muted-foreground opacity-0 transition-all hover:bg-surface-2 hover:text-foreground group-hover/comment:opacity-100"
+						>
+							<CommentIcon size={14} strokeWidth={2} />
+						</button>
+					)}
+					<CommentMoreMenu
+						commentId={comment.id}
+						body={comment.body}
+						owner={owner}
+						repo={repo}
+						number={pullNumber}
+						commentType="issue"
+						isAuthor={
+							viewerLogin != null && comment.author?.login === viewerLogin
+						}
+					/>
+				</div>
+			</div>
+			<Markdown className="text-muted-foreground">{comment.body}</Markdown>
+		</div>
+	);
+}
+
+function PullCommentWithThread({
+	comment,
+	replies,
+	isFirst,
+	owner,
+	repo,
+	pullNumber,
+	viewerLogin,
+}: {
+	comment: PullComment;
+	replies?: PullComment[];
+	isFirst: boolean;
+	owner: string;
+	repo: string;
+	pullNumber: number;
+	viewerLogin?: string;
+}) {
+	const [showReplyForm, setShowReplyForm] = useState(false);
+	const hasReplies = replies && replies.length > 0;
+
+	return (
+		<div className={cn("relative flex flex-col", isFirst && "pt-0")}>
+			<PullCommentBubble
+				comment={comment}
+				owner={owner}
+				repo={repo}
+				pullNumber={pullNumber}
+				viewerLogin={viewerLogin}
+				onReply={() => setShowReplyForm(true)}
+			/>
+
+			{hasReplies && (
+				<div className="ml-4 border-l-2 border-border pl-4">
+					{replies.map((reply) => (
+						<PullCommentBubble
+							key={reply.id}
+							comment={reply}
+							owner={owner}
+							repo={repo}
+							pullNumber={pullNumber}
+							viewerLogin={viewerLogin}
+							onReply={() => setShowReplyForm(true)}
+							isReply
+						/>
+					))}
+				</div>
+			)}
+
+			{showReplyForm && (
+				<div className={cn(hasReplies && "ml-4 border-l-2 border-border pl-4")}>
+					<CommentReplyForm
+						owner={owner}
+						repo={repo}
+						issueNumber={pullNumber}
+						parentAuthor={comment.author?.login ?? "Unknown"}
+						parentBody={comment.body}
+						parentCommentId={comment.id}
+						onClose={() => setShowReplyForm(false)}
+					/>
+				</div>
+			)}
+		</div>
+	);
 }
 
 function ReviewCommentBubble({
