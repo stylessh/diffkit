@@ -615,7 +615,11 @@ const InboxPreview = memo(function InboxPreview({
 			<div className="flex h-12 items-center justify-between border-b border-border px-4">
 				<div className="flex items-center gap-2 text-xs text-muted-foreground">
 					<Link
-						to={`/${notification.repository.owner.login}/${notification.repository.name}`}
+						to="/$owner/$repo"
+						params={{
+							owner: notification.repository.owner.login,
+							repo: notification.repository.name,
+						}}
 						className="flex items-center gap-2 transition-colors hover:text-foreground"
 					>
 						<img
