@@ -8,6 +8,7 @@ import type {
 	CreateLabelInput,
 	CreateReviewCommentInput,
 	DiscussionsResult,
+	FileLastCommit,
 	GitHubActor,
 	GitHubContributionCalendar,
 	GitHubLabel,
@@ -6869,6 +6870,64 @@ export const getRepoFileContent = createServerFn({ method: "GET" })
 			mapData: (content) => {
 				if (Array.isArray(content) || !("content" in content)) return null;
 				return Buffer.from(content.content, "base64").toString("utf-8");
+			},
+		}).catch(() => null);
+	});
+
+// ---------------------------------------------------------------------------
+// File last commit
+// ---------------------------------------------------------------------------
+
+type FileLastCommitInput = {
+	owner: string;
+	repo: string;
+	path: string;
+	ref: string;
+};
+
+export const getFileLastCommit = createServerFn({ method: "GET" })
+	.inputValidator(identityValidator<FileLastCommitInput>)
+	.handler(async ({ data }): Promise<FileLastCommit | null> => {
+		const context = await getGitHubContextForRepository(data);
+		if (!context) return null;
+
+		return getCachedGitHubRequest<
+			Awaited<ReturnType<GitHubClient["rest"]["repos"]["listCommits"]>>["data"],
+			FileLastCommit | null
+		>({
+			context,
+			resource: "repo.fileLastCommit.v1",
+			params: data,
+			freshForMs: githubCachePolicy.detail.staleTimeMs,
+			signalKeys: [githubRevalidationSignalKeys.repoCode(data)],
+			namespaceKeys: [githubRevalidationSignalKeys.repoCode(data)],
+			cacheMode: "split",
+			request: (headers) =>
+				context.octokit.rest.repos.listCommits({
+					owner: data.owner,
+					repo: data.repo,
+					sha: data.ref,
+					path: data.path,
+					per_page: 1,
+					headers,
+				}),
+			mapData: (commits) => {
+				const commit = commits[0];
+				if (!commit) return null;
+				return {
+					sha: commit.sha,
+					message: commit.commit.message,
+					date:
+						commit.commit.committer?.date ?? commit.commit.author?.date ?? "",
+					author: commit.author
+						? {
+								login: commit.author.login,
+								avatarUrl: commit.author.avatar_url,
+								url: commit.author.html_url,
+								type: commit.author.type,
+							}
+						: null,
+				};
 			},
 		}).catch(() => null);
 	});
