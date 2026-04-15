@@ -13,8 +13,10 @@ import {
 	useRepoListFilters,
 } from "#/components/filters";
 import { DashboardContentLoading } from "#/components/layouts/dashboard-content-loading";
+import { SidePanelPortal } from "#/components/layouts/dashboard-side-panel";
 import { Pagination } from "#/components/pagination";
 import { PullRequestRow } from "#/components/pulls/pull-request-row";
+import { RepoActivityCards } from "#/components/repo/repo-activity-cards";
 import {
 	githubPullsFromRepoQueryOptions,
 	githubRepoOverviewQueryOptions,
@@ -99,61 +101,74 @@ function RepoPullsPage() {
 	);
 
 	const totalLabel = overviewQuery.data?.openPullCount;
+	const repoData = overviewQuery.data;
 
 	return (
-		<div className="h-full overflow-auto py-10">
-			<div className="mx-auto flex min-h-full max-w-4xl flex-col gap-6 px-3 md:px-6">
-				<div className="flex flex-col gap-2">
-					<h1 className="text-2xl font-semibold tracking-tight">
-						Pull Requests
-					</h1>
-					<p className="text-sm text-muted-foreground">
-						{totalLabel != null ? (
-							<span className="tabular-nums">{totalLabel} open · </span>
-						) : null}
-						<Link
-							to="/$owner/$repo"
-							params={{ owner, repo }}
-							className="text-muted-foreground underline-offset-2 hover:underline"
-						>
-							{owner}/{repo}
-						</Link>
-					</p>
-				</div>
-
-				<FilterBar state={filterState} />
-
-				{query.isLoading ? (
-					<div className="flex flex-1 items-center justify-center">
-						<DashboardContentLoading />
-					</div>
-				) : (
-					<div className="flex flex-col gap-1">
-						{filtered.length === 0 && (
-							<p className="py-12 text-center text-sm text-muted-foreground">
-								No pull requests found.
-							</p>
-						)}
-						{filtered.map((pr) => (
-							<div
-								key={pr.id}
-								style={{
-									contentVisibility: "auto",
-									containIntrinsicSize: "auto 52px",
-								}}
+		<>
+			<div className="h-full overflow-auto py-10">
+				<div className="mx-auto flex min-h-full max-w-4xl flex-col gap-6 px-3 md:px-6">
+					<div className="flex flex-col gap-2">
+						<h1 className="text-2xl font-semibold tracking-tight">
+							Pull Requests
+						</h1>
+						<p className="text-sm text-muted-foreground">
+							{totalLabel != null ? (
+								<span className="tabular-nums">{totalLabel} open · </span>
+							) : null}
+							<Link
+								to="/$owner/$repo"
+								params={{ owner, repo }}
+								className="text-muted-foreground underline-offset-2 hover:underline"
 							>
-								<PullRequestRow pr={pr} scope={scope} />
-							</div>
-						))}
+								{owner}/{repo}
+							</Link>
+						</p>
 					</div>
-				)}
 
-				<Pagination
-					page={filterState.page}
-					hasNextPage={hasNextPage}
-					onPageChange={filterState.setPage}
-				/>
+					<FilterBar state={filterState} />
+
+					{query.isLoading ? (
+						<div className="flex flex-1 items-center justify-center">
+							<DashboardContentLoading />
+						</div>
+					) : (
+						<div className="flex flex-col gap-1">
+							{filtered.length === 0 && (
+								<p className="py-12 text-center text-sm text-muted-foreground">
+									No pull requests found.
+								</p>
+							)}
+							{filtered.map((pr) => (
+								<div
+									key={pr.id}
+									style={{
+										contentVisibility: "auto",
+										containIntrinsicSize: "auto 52px",
+									}}
+								>
+									<PullRequestRow pr={pr} scope={scope} />
+								</div>
+							))}
+						</div>
+					)}
+
+					<Pagination
+						page={filterState.page}
+						hasNextPage={hasNextPage}
+						onPageChange={filterState.setPage}
+					/>
+				</div>
 			</div>
-		</div>
+			{repoData && (
+				<SidePanelPortal>
+					<RepoActivityCards
+						owner={owner}
+						repo={repo}
+						scope={scope}
+						repoData={repoData}
+					/>
+				</SidePanelPortal>
+			)}
+		</>
 	);
 }

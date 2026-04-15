@@ -158,13 +158,15 @@ function ActivityCard<T>({
 			<div className="flex flex-col">
 				{!items ? (
 					<ActivityCardSkeleton />
-				) : items.length === 0 ? (
-					<p className="px-4 pb-3 text-xs text-muted-foreground">
-						No open {title.toLowerCase()}
-					</p>
 				) : (
 					<>
-						{items.map(renderItem)}
+						{items.length === 0 ? (
+							<p className="px-4 pb-3 text-xs text-muted-foreground">
+								No open {title.toLowerCase()}
+							</p>
+						) : (
+							items.map(renderItem)
+						)}
 						<Link
 							to={viewAllHref}
 							className="border-t px-4 py-2.5 text-center text-xs font-medium text-muted-foreground transition-colors hover:text-foreground"
