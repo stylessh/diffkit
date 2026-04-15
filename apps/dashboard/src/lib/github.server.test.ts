@@ -30,10 +30,13 @@ const octokitConstructor = vi.fn((options: Record<string, unknown>) => {
 		log: instance.log,
 	};
 });
+const octokitDefaults = vi.fn(() => octokitConstructor);
+Object.assign(octokitConstructor, { defaults: octokitDefaults });
 const appConstructor = vi.fn();
 const getGitHubAccessTokenByUserId = vi.fn(async () => "github-token");
 const getGitHubAppId = vi.fn(() => "12345");
 const getGitHubAppPrivateKey = vi.fn(() => "private-key");
+const configureGitHubRequestPolicies = vi.fn();
 
 vi.mock("octokit", () => ({
 	App: appConstructor,
@@ -46,6 +49,10 @@ vi.mock("./github-app.server", () => ({
 	getGitHubAppPrivateKey,
 }));
 
+vi.mock("./github-request-policy", () => ({
+	configureGitHubRequestPolicies,
+}));
+
 beforeEach(() => {
 	vi.resetModules();
 	octokitInstances.length = 0;
@@ -54,10 +61,12 @@ beforeEach(() => {
 	getGitHubAccessTokenByUserId.mockClear();
 	getGitHubAppId.mockClear();
 	getGitHubAppPrivateKey.mockClear();
+	octokitDefaults.mockClear();
+	configureGitHubRequestPolicies.mockClear();
 });
 
 describe("getGitHubClient", () => {
-	it("configures Octokit throttling, bounded retries, and request timeouts", async () => {
+	it("creates an Octokit client with user token and request policies", async () => {
 		const { getGitHubClient } = await import("./github.server");
 
 		await getGitHubClient("user-123");
@@ -70,100 +79,18 @@ describe("getGitHubClient", () => {
 			auth: string;
 			userAgent: string;
 			retry: { enabled: boolean };
-			throttle: {
-				enabled: boolean;
-				id: string;
-				fallbackSecondaryRateRetryAfter: number;
-				onRateLimit: (
-					retryAfter: number,
-					options: { method?: string; url: string },
-					octokit: {
-						log: {
-							warn: (message: string) => void;
-							info: (message: string) => void;
-						};
-					},
-					retryCount: number,
-				) => boolean;
-				onSecondaryRateLimit: (
-					retryAfter: number,
-					options: { method?: string; url: string },
-					octokit: {
-						log: {
-							warn: (message: string) => void;
-							info: (message: string) => void;
-						};
-					},
-					retryCount: number,
-				) => boolean;
-			};
+			throttle: { enabled: boolean };
 		};
 
 		expect(options.auth).toBe("github-token");
 		expect(options.userAgent).toBe("diffkit-dashboard");
-		expect(options.retry).toEqual({ enabled: true });
-		expect(options.throttle.enabled).toBe(true);
-		expect(options.throttle.id).toBe("github-user:user-123");
-		expect(options.throttle.fallbackSecondaryRateRetryAfter).toBe(60);
+		expect(options.retry).toEqual({ enabled: false });
+		expect(options.throttle).toEqual({ enabled: false });
 
-		expect(instance.hookBefore).toHaveBeenCalledTimes(1);
-		expect(instance.hookAfter).toHaveBeenCalledTimes(1);
-		expect(instance.hookError).toHaveBeenCalledTimes(1);
-		const [hookEvent, hookHandler] = instance.hookBefore.mock.calls[0] as [
-			string,
-			(options: {
-				method?: string;
-				request?: { retries?: number; signal?: AbortSignal };
-			}) => void,
-		];
-		expect(hookEvent).toBe("request");
-
-		const getOptions = { method: "GET" } as {
-			method?: string;
-			request?: { retries?: number; signal?: AbortSignal };
-		};
-		hookHandler(getOptions);
-		expect(getOptions.request?.retries).toBe(1);
-		expect(getOptions.request?.signal).toBeInstanceOf(AbortSignal);
-
-		const postOptions = { method: "POST" } as {
-			method?: string;
-			request?: { retries?: number; signal?: AbortSignal };
-		};
-		hookHandler(postOptions);
-		expect(postOptions.request?.retries).toBe(0);
-		expect(postOptions.request?.signal).toBeInstanceOf(AbortSignal);
-
-		expect(
-			options.throttle.onRateLimit(
-				30,
-				{ method: "GET", url: "/repos" },
-				{
-					log: instance.log,
-				},
-				0,
-			),
-		).toBe(false);
-		expect(
-			options.throttle.onRateLimit(
-				30,
-				{ method: "POST", url: "/repos" },
-				{
-					log: instance.log,
-				},
-				0,
-			),
-		).toBe(false);
-		expect(
-			options.throttle.onSecondaryRateLimit(
-				30,
-				{ method: "GET", url: "/search/issues" },
-				{ log: instance.log },
-				1,
-			),
-		).toBe(false);
-		expect(instance.log.warn).toHaveBeenCalled();
-		expect(instance.log.info).not.toHaveBeenCalled();
+		expect(configureGitHubRequestPolicies).toHaveBeenCalledTimes(1);
+		expect(configureGitHubRequestPolicies.mock.calls[0][1]).toEqual({
+			tokenLabel: "oauth:user:user-123",
+		});
 	});
 
 	it("creates GitHub App installation clients from app credentials", async () => {
@@ -206,24 +133,23 @@ describe("getGitHubClient", () => {
 			auth: string;
 			userAgent: string;
 			retry: { enabled: boolean };
-			throttle: {
-				enabled: boolean;
-				id: string;
-				fallbackSecondaryRateRetryAfter: number;
-			};
+			throttle: { enabled: boolean };
 		};
 		expect(options.auth).toBe("installation-token");
 		expect(options.userAgent).toBe("diffkit-dashboard");
-		expect(options.retry).toEqual({ enabled: true });
-		expect(options.throttle.enabled).toBe(true);
-		expect(options.throttle.id).toBe("github-installation:987");
-		expect(options.throttle.fallbackSecondaryRateRetryAfter).toBe(60);
-		expect(appOctokit.hook.before).toHaveBeenCalledTimes(1);
-		expect(appOctokit.hook.after).toHaveBeenCalledTimes(1);
-		expect(appOctokit.hook.error).toHaveBeenCalledTimes(1);
-		expect(installationInstance.hookBefore).toHaveBeenCalledTimes(1);
-		expect(installationInstance.hookAfter).toHaveBeenCalledTimes(1);
-		expect(installationInstance.hookError).toHaveBeenCalledTimes(1);
+		expect(options.retry).toEqual({ enabled: false });
+		expect(options.throttle).toEqual({ enabled: false });
+		expect(octokitDefaults).toHaveBeenCalledWith({
+			retry: { enabled: false },
+			throttle: { enabled: false },
+		});
+		expect(configureGitHubRequestPolicies).toHaveBeenCalledTimes(2);
+		expect(configureGitHubRequestPolicies.mock.calls[0][1]).toEqual({
+			tokenLabel: "app-auth:installation:987",
+		});
+		expect(configureGitHubRequestPolicies.mock.calls[1][1]).toEqual({
+			tokenLabel: "installation:987",
+		});
 	});
 
 	it("reuses fresh installation tokens and remints after invalidation", async () => {
