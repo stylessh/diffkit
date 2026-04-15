@@ -1,10 +1,12 @@
 import {
 	DashboardIcon,
+	ExternalLinkIcon,
 	GitPullRequestIcon,
 	IssuesIcon,
 	ReviewsIcon,
 	SettingsIcon,
 } from "@diffkit/icons";
+import { buildCurrentGitHubUrl } from "#/lib/github-current-url";
 import type { CommandItem } from "./types";
 
 let commands: CommandItem[] = [];
@@ -80,5 +82,19 @@ registerCommands([
 		keywords: ["settings", "preferences", "config"],
 		shortcut: ["G", "S"],
 		action: { type: "navigate", to: "/settings" },
+	},
+	{
+		id: "action:open-current-page-on-github",
+		label: "Open Current Page on GitHub",
+		group: "Actions",
+		icon: ExternalLinkIcon,
+		keywords: ["github", "redirect", "current page", "open"],
+		shortcut: ["G", "G"],
+		action: {
+			type: "execute",
+			fn: () => {
+				window.location.href = buildCurrentGitHubUrl(window.location.href);
+			},
+		},
 	},
 ]);

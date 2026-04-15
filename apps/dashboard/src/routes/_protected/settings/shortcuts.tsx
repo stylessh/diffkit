@@ -200,6 +200,7 @@ const shortcutGroups: ShortcutGroup[] = [
 		title: "Navigation",
 		shortcuts: [
 			{ keys: ["G", "H"], description: "Go to Overview" },
+			{ keys: ["G", "G"], description: "Open Current Page on GitHub" },
 			{ keys: ["G", "P"], description: "Go to Pull Requests" },
 			{ keys: ["G", "I"], description: "Go to Issues" },
 			{ keys: ["G", "R"], description: "Go to Reviews" },
@@ -266,7 +267,7 @@ function ShortcutsPage() {
 										i > 0 && "border-t border-border/70",
 									)}
 								>
-									<span className="text-sm">{shortcut.description}</span>
+									<span className="pr-4 text-sm">{shortcut.description}</span>
 									<kbd className="flex items-center gap-1">
 										{shortcut.keys.map((key) => {
 											const token = resolveKey(key);
