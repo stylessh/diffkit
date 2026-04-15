@@ -28,8 +28,34 @@ const routeApi = getRouteApi("/_protected/$owner/$repo/pull/$pullId");
 export function PullDetailPage() {
 	const { user } = routeApi.useRouteContext();
 	const { owner, repo, pullId } = routeApi.useParams();
-	const pullNumber = Number(pullId);
-	const scope = useMemo(() => ({ userId: user.id }), [user.id]);
+
+	return (
+		<PullDetailContent
+			owner={owner}
+			repo={repo}
+			pullNumber={Number(pullId)}
+			userId={user.id}
+			registerTab
+		/>
+	);
+}
+
+export type PullDetailContentProps = {
+	owner: string;
+	repo: string;
+	pullNumber: number;
+	userId: string;
+	registerTab?: boolean;
+};
+
+export function PullDetailContent({
+	owner,
+	repo,
+	pullNumber,
+	userId,
+	registerTab = false,
+}: PullDetailContentProps) {
+	const scope = useMemo(() => ({ userId }), [userId]);
 	const input = useMemo(
 		() => ({ owner, repo, pullNumber }),
 		[owner, repo, pullNumber],
@@ -92,12 +118,12 @@ export function PullDetailPage() {
 	const viewer = viewerQuery.data ?? null;
 
 	useRegisterTab(
-		pr
+		registerTab && pr
 			? {
 					type: "pull",
 					title: pr.title,
 					number: pr.number,
-					url: `/${owner}/${repo}/pull/${pullId}`,
+					url: `/${owner}/${repo}/pull/${pullNumber}`,
 					repo: `${owner}/${repo}`,
 					iconColor: getPrStateConfig(pr).color,
 				}
@@ -114,7 +140,7 @@ export function PullDetailPage() {
 					<PullDetailHeader
 						owner={owner}
 						repo={repo}
-						pullId={pullId}
+						pullId={String(pullNumber)}
 						pr={pr}
 						viewerLogin={viewer?.login}
 					/>

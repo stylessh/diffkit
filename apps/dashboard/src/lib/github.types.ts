@@ -537,3 +537,61 @@ export type DiscussionsResult = {
 	discussions: DiscussionSummary[];
 	totalCount: number;
 };
+
+export type NotificationSubject = {
+	title: string;
+	url: string | null;
+	latestCommentUrl: string | null;
+	type:
+		| "CheckSuite"
+		| "Commit"
+		| "Discussion"
+		| "Issue"
+		| "PullRequest"
+		| "Release"
+		| "RepositoryVulnerabilityAlert"
+		| "RepositoryDependabotAlertsThread"
+		| "RepositoryAdvisory"
+		| (string & {});
+};
+
+export type NotificationParticipant = {
+	login: string;
+	avatarUrl: string;
+};
+
+export type NotificationItem = {
+	id: string;
+	unread: boolean;
+	reason:
+		| "assign"
+		| "author"
+		| "comment"
+		| "ci_activity"
+		| "invitation"
+		| "manual"
+		| "mention"
+		| "review_requested"
+		| "security_alert"
+		| "state_change"
+		| "subscribed"
+		| "team_mention"
+		| (string & {});
+	subject: NotificationSubject;
+	repository: {
+		id: number;
+		name: string;
+		fullName: string;
+		owner: GitHubActor;
+		private: boolean;
+	};
+	participants: NotificationParticipant[];
+	subjectState: "open" | "closed" | "merged" | null;
+	updatedAt: string;
+	lastReadAt: string | null;
+	url: string;
+};
+
+export type NotificationsResult = {
+	notifications: NotificationItem[];
+};

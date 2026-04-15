@@ -18,6 +18,9 @@ import type {
 	IssueSummary,
 	MyIssuesResult,
 	MyPullsResult,
+	NotificationItem,
+	NotificationParticipant,
+	NotificationsResult,
 	OrgTeam,
 	PinnedRepo,
 	PullComment,
@@ -6949,6 +6952,195 @@ export const getRepoContributors = createServerFn({ method: "GET" })
 			},
 		});
 	});
+
+// ── Notifications ──────────────────────────────────────────────────────
+
+type GetNotificationsInput = {
+	all?: boolean;
+	participating?: boolean;
+};
+
+export const getNotifications = createServerFn({ method: "GET" })
+	.inputValidator(identityValidator<GetNotificationsInput>)
+	.handler(async ({ data }): Promise<NotificationsResult> => {
+		const context = await getGitHubContext();
+		if (!context) {
+			return { notifications: [] };
+		}
+
+		const response =
+			await context.octokit.rest.activity.listNotificationsForAuthenticatedUser(
+				{
+					all: data.all ?? false,
+					participating: data.participating ?? false,
+					per_page: 50,
+				},
+			);
+
+		// Batch-fetch participants for PR/Issue notifications in parallel
+		const participantMap = new Map<string, NotificationParticipant[]>();
+		const stateMap = new Map<string, "open" | "closed" | "merged">();
+		const fetchable = response.data.filter(
+			(n) =>
+				n.subject.url &&
+				(n.subject.type === "PullRequest" || n.subject.type === "Issue"),
+		);
+
+		await Promise.allSettled(
+			fetchable.map(async (n) => {
+				try {
+					const seen = new Set<string>();
+					const participants: NotificationParticipant[] = [];
+					const add = (login: string, avatarUrl: string) => {
+						if (seen.has(login)) return;
+						seen.add(login);
+						participants.push({ login, avatarUrl });
+					};
+
+					// Fetch subject detail + comments (and reviews for PRs) in parallel
+					const subjectUrl = n.subject.url!;
+					const commentsUrl = `${subjectUrl}/comments`;
+					const isPR = n.subject.type === "PullRequest";
+					const reviewsUrl = isPR ? `${subjectUrl}/reviews` : null;
+
+					const [subjectRes, commentsRes, reviewsRes] = await Promise.all([
+						context.octokit.request("GET {url}", { url: subjectUrl }),
+						context.octokit
+							.request("GET {url}", { url: commentsUrl, per_page: 100 })
+							.catch(() => null),
+						reviewsUrl
+							? context.octokit
+									.request("GET {url}", { url: reviewsUrl, per_page: 100 })
+									.catch(() => null)
+							: null,
+					]);
+
+					const d = subjectRes.data as {
+						user?: { login: string; avatar_url: string };
+						assignees?: Array<{ login: string; avatar_url: string }>;
+						requested_reviewers?: Array<{ login: string; avatar_url: string }>;
+						state?: string;
+						merged?: boolean;
+					};
+
+					// Extract subject state (open/closed/merged)
+					if (d.state) {
+						const state = d.merged
+							? "merged"
+							: d.state === "closed"
+								? "closed"
+								: "open";
+						stateMap.set(n.id, state);
+					}
+
+					if (d.user) add(d.user.login, d.user.avatar_url);
+					for (const a of d.assignees ?? []) add(a.login, a.avatar_url);
+					for (const r of d.requested_reviewers ?? [])
+						add(r.login, r.avatar_url);
+
+					// Add commenters
+					if (commentsRes?.data && Array.isArray(commentsRes.data)) {
+						for (const c of commentsRes.data as Array<{
+							user?: { login: string; avatar_url: string };
+						}>) {
+							if (c.user) add(c.user.login, c.user.avatar_url);
+						}
+					}
+
+					// Add reviewers (PRs only)
+					if (reviewsRes?.data && Array.isArray(reviewsRes.data)) {
+						for (const r of reviewsRes.data as Array<{
+							user?: { login: string; avatar_url: string };
+						}>) {
+							if (r.user) add(r.user.login, r.user.avatar_url);
+						}
+					}
+
+					participantMap.set(n.id, participants);
+				} catch {
+					// Silently skip — participant data is best-effort
+				}
+			}),
+		);
+
+		const notifications: NotificationItem[] = response.data.map((n) => ({
+			id: n.id,
+			unread: n.unread,
+			reason: n.reason as NotificationItem["reason"],
+			subject: {
+				title: n.subject.title,
+				url: n.subject.url ?? null,
+				latestCommentUrl: n.subject.latest_comment_url ?? null,
+				type: n.subject.type as NotificationItem["subject"]["type"],
+			},
+			repository: {
+				id: n.repository.id,
+				name: n.repository.name,
+				fullName: n.repository.full_name,
+				owner: {
+					login: n.repository.owner.login,
+					avatarUrl: n.repository.owner.avatar_url,
+					url: n.repository.owner.html_url ?? n.repository.owner.url,
+					type: n.repository.owner.type ?? "User",
+				},
+				private: n.repository.private,
+			},
+			participants: participantMap.get(n.id) ?? [],
+			subjectState: stateMap.get(n.id) ?? null,
+			updatedAt: n.updated_at,
+			lastReadAt: n.last_read_at ?? null,
+			url: n.url,
+		}));
+
+		return { notifications };
+	});
+
+type MarkNotificationReadInput = { threadId: string };
+
+export const markNotificationRead = createServerFn({ method: "POST" })
+	.inputValidator(identityValidator<MarkNotificationReadInput>)
+	.handler(async ({ data }): Promise<{ ok: boolean }> => {
+		const context = await getGitHubContext();
+		if (!context) {
+			return { ok: false };
+		}
+
+		await context.octokit.rest.activity.markThreadAsRead({
+			thread_id: Number.parseInt(data.threadId, 10),
+		});
+
+		return { ok: true };
+	});
+
+export const markNotificationDone = createServerFn({ method: "POST" })
+	.inputValidator(identityValidator<MarkNotificationReadInput>)
+	.handler(async ({ data }): Promise<{ ok: boolean }> => {
+		const context = await getGitHubContext();
+		if (!context) {
+			return { ok: false };
+		}
+
+		await context.octokit.rest.activity.markThreadAsDone({
+			thread_id: Number.parseInt(data.threadId, 10),
+		});
+
+		return { ok: true };
+	});
+
+export const markAllNotificationsRead = createServerFn({
+	method: "POST",
+}).handler(async (): Promise<{ ok: boolean }> => {
+	const context = await getGitHubContext();
+	if (!context) {
+		return { ok: false };
+	}
+
+	await context.octokit.rest.activity.markNotificationsAsRead({
+		last_read_at: new Date().toISOString(),
+	});
+
+	return { ok: true };
+});
 
 type RevalidationSignalTimestampsInput = { signalKeys: string[] };
 
