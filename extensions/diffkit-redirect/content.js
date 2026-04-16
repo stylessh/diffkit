@@ -1,4 +1,17 @@
 (async function runRedirect() {
+  const ignoreReferrers = [
+    "https://github.com/",
+    "https://diff-kit.com",
+    "http://localhost:3000",
+    "http://127.0.0.1:3000",
+  ];
+
+  if (
+    ignoreReferrers.some((referrer) => document.referrer.startsWith(referrer))
+  ) {
+    return;
+  }
+
   const shared = globalThis.DiffKitRedirect;
   if (!shared) {
     return;

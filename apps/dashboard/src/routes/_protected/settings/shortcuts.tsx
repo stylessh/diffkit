@@ -200,6 +200,7 @@ const shortcutGroups: ShortcutGroup[] = [
 		title: "Navigation",
 		shortcuts: [
 			{ keys: ["G", "H"], description: "Go to Overview" },
+			{ keys: ["G", "G"], description: "Open Current Page on GitHub" },
 			{ keys: ["G", "U"], description: "Go to Profile" },
 			{ keys: ["G", "P"], description: "Go to Pull Requests" },
 			{ keys: ["G", "I"], description: "Go to Issues" },

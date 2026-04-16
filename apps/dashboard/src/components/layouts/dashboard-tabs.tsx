@@ -93,7 +93,6 @@ interface DashboardTabsProps {
 
 export function DashboardTabs({ tabsReady, routerRef }: DashboardTabsProps) {
 	const openTabs = useTabs();
-	const pathname = useRouterState({ select: (s) => s.location.pathname });
 	const dragTabRef = useRef<string | null>(null);
 	const [contextTab, setContextTab] = useState<{
 		tab: Tab;
@@ -130,25 +129,12 @@ export function DashboardTabs({ tabsReady, routerRef }: DashboardTabsProps) {
 		dragTabRef.current = null;
 	}, []);
 
-	// biome-ignore lint/correctness/useExhaustiveDependencies: pathname is intentionally used as a trigger to re-run when the route changes
-	useEffect(() => {
-		const container = scrollRef.current;
-		if (!container) return;
-		const activeTab = container.querySelector<HTMLElement>(".active");
-		if (!activeTab) return;
-
-		const { left: cLeft, right: cRight } = container.getBoundingClientRect();
-		const { left: tLeft, right: tRight } = activeTab.getBoundingClientRect();
-
-		if (tLeft < cLeft || tRight > cRight) {
-			activeTab.scrollIntoView({ inline: "nearest", block: "nearest" });
-			updateScrollState();
-		}
-	}, [pathname, scrollRef, updateScrollState]);
-
+	// Read pathname imperatively in event handlers (rerender-defer-reads)
+	// so the callbacks are stable and don't bust memo on DetailTab.
 	const handleCloseTab = useCallback(
 		(id: string, tabUrl: string) => {
-			const isActive = pathname === tabUrl;
+			const currentPath = routerRef.current.state.location.pathname;
+			const isActive = currentPath === tabUrl;
 			const index = openTabs.findIndex((tab) => tab.id === id);
 			const nextTab =
 				index === -1 ? undefined : (openTabs[index + 1] ?? openTabs[index - 1]);
@@ -157,7 +143,7 @@ export function DashboardTabs({ tabsReady, routerRef }: DashboardTabsProps) {
 				void routerRef.current.navigate({ to: nextTab?.url ?? "/" });
 			}
 		},
-		[openTabs, pathname, routerRef],
+		[openTabs, routerRef],
 	);
 
 	const handleContextClose = useCallback(() => {
@@ -167,11 +153,12 @@ export function DashboardTabs({ tabsReady, routerRef }: DashboardTabsProps) {
 
 	const handleContextCloseOthers = useCallback(() => {
 		if (!contextTab) return;
-		if (pathname !== contextTab.tab.url) {
+		const currentPath = routerRef.current.state.location.pathname;
+		if (currentPath !== contextTab.tab.url) {
 			void routerRef.current.navigate({ to: contextTab.tab.url });
 		}
 		removeOtherTabs(contextTab.tab.id);
-	}, [contextTab, pathname, routerRef]);
+	}, [contextTab, routerRef]);
 
 	const handleContextCloseRight = useCallback(() => {
 		if (!contextTab) return;
@@ -179,8 +166,9 @@ export function DashboardTabs({ tabsReady, routerRef }: DashboardTabsProps) {
 	}, [contextTab]);
 
 	const handleContextCloseMerged = useCallback(() => {
+		const currentPath = routerRef.current.state.location.pathname;
 		const activeTabWillClose = openTabs.find(
-			(t) => pathname === t.url && isMergedTab(t),
+			(t) => currentPath === t.url && isMergedTab(t),
 		);
 		removeMergedTabs();
 		if (activeTabWillClose) {
@@ -189,7 +177,7 @@ export function DashboardTabs({ tabsReady, routerRef }: DashboardTabsProps) {
 				to: remaining[0]?.url ?? "/",
 			});
 		}
-	}, [openTabs, pathname, routerRef]);
+	}, [openTabs, routerRef]);
 
 	const hasMergedTabs = openTabs.some(isMergedTab);
 
@@ -229,6 +217,10 @@ export function DashboardTabs({ tabsReady, routerRef }: DashboardTabsProps) {
 							onMouseEnter={updateScrollState}
 							className="no-scrollbar flex w-0 min-w-full items-center gap-0.5 overflow-x-auto"
 						>
+							<ScrollActiveTabIntoView
+								scrollRef={scrollRef}
+								updateScrollState={updateScrollState}
+							/>
 							{openTabs.map((tab, index) => {
 								const Icon = tabIconMap[tab.type];
 								return (
@@ -284,6 +276,39 @@ export function DashboardTabs({ tabsReady, routerRef }: DashboardTabsProps) {
 			</ContextMenu>
 		</div>
 	);
+}
+
+/**
+ * Isolated component that subscribes to pathname changes to scroll the active
+ * tab into view. Extracted so the parent DashboardTabs doesn't re-render on
+ * every navigation — only this tiny renderless component does.
+ */
+function ScrollActiveTabIntoView({
+	scrollRef,
+	updateScrollState,
+}: {
+	scrollRef: React.RefObject<HTMLDivElement | null>;
+	updateScrollState: () => void;
+}) {
+	const pathname = useRouterState({ select: (s) => s.location.pathname });
+
+	// biome-ignore lint/correctness/useExhaustiveDependencies: pathname triggers scroll-into-view on route change
+	useEffect(() => {
+		const container = scrollRef.current;
+		if (!container) return;
+		const activeTab = container.querySelector<HTMLElement>(".active");
+		if (!activeTab) return;
+
+		const { left: cLeft, right: cRight } = container.getBoundingClientRect();
+		const { left: tLeft, right: tRight } = activeTab.getBoundingClientRect();
+
+		if (tLeft < cLeft || tRight > cRight) {
+			activeTab.scrollIntoView({ inline: "nearest", block: "nearest" });
+			updateScrollState();
+		}
+	}, [pathname, scrollRef, updateScrollState]);
+
+	return null;
 }
 
 const DetailTab = memo(function DetailTab({
