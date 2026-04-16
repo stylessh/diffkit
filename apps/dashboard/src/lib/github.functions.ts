@@ -1609,10 +1609,15 @@ async function getInstallationAccessIndex(
 				namespaceKeys: [githubRevalidationSignalKeys.installationAccess],
 				cacheMode: "split",
 				fetcher: async () => {
+					debug("installation-access", "fetching access index (cache miss)");
 					const { installations, installationsAvailable } =
 						await getGitHubAppUserInstallations(context.session.user.id);
 
 					if (!installationsAvailable) {
+						debug(
+							"installation-access",
+							"app-user token unavailable, index not available (fail-open)",
+						);
 						return {
 							kind: "success",
 							data: {
@@ -1624,15 +1629,30 @@ async function getInstallationAccessIndex(
 						};
 					}
 
+					debug("installation-access", "processing installations", {
+						count: installations.length,
+						owners: installations.map((i) => i.account.login),
+					});
+
 					const allAccessOwners: string[] = [];
 					const selectedRepos: string[] = [];
 
 					for (const installation of installations) {
-						if (installation.suspendedAt) continue;
+						if (installation.suspendedAt) {
+							debug("installation-access", "skipping suspended installation", {
+								owner: installation.account.login,
+								installationId: installation.id,
+							});
+							continue;
+						}
 
 						const ownerLogin = installation.account.login.toLowerCase();
 
 						if (installation.repositorySelection === "all") {
+							debug(
+								"installation-access",
+								`owner "${ownerLogin}" has "all" repo access`,
+							);
 							allAccessOwners.push(ownerLogin);
 							continue;
 						}
@@ -1656,6 +1676,7 @@ async function getInstallationAccessIndex(
 									label: `installation-access repos ${installation.id}`,
 								});
 
+								const repoNames: string[] = [];
 								for (const repo of repos) {
 									const fullName =
 										repo.full_name ??
@@ -1663,9 +1684,21 @@ async function getInstallationAccessIndex(
 											? `${repo.owner.login}/${repo.name}`
 											: null);
 									if (fullName) {
-										selectedRepos.push(fullName.toLowerCase());
+										const normalized = fullName.toLowerCase();
+										selectedRepos.push(normalized);
+										repoNames.push(normalized);
 									}
 								}
+
+								debug(
+									"installation-access",
+									`owner "${ownerLogin}" has "selected" repo access`,
+									{
+										installationId: installation.id,
+										repoCount: repoNames.length,
+										repos: repoNames,
+									},
+								);
 							} catch (error) {
 								console.error(
 									`[installation-access] failed to list repos for installation ${installation.id}`,
@@ -1674,6 +1707,12 @@ async function getInstallationAccessIndex(
 							}
 						}
 					}
+
+					debug("installation-access", "access index built", {
+						allAccessOwners,
+						selectedRepoCount: selectedRepos.length,
+						selectedRepos,
+					});
 
 					return {
 						kind: "success",
@@ -1686,6 +1725,13 @@ async function getInstallationAccessIndex(
 					};
 				},
 			});
+
+		debug("installation-access", "resolved access index", {
+			available: serializable.available,
+			allAccessOwners: serializable.allAccessOwners,
+			selectedRepoCount: serializable.selectedRepos.length,
+			selectedRepos: serializable.selectedRepos,
+		});
 
 		return {
 			available: serializable.available,
@@ -4689,7 +4735,7 @@ export const getUserRepos = createServerFn({ method: "GET" }).handler(
 			getInstallationAccessIndex(context),
 		]);
 
-		return repos.filter((repo) =>
+		const filtered = repos.filter((repo) =>
 			isRepoVisibleWithInstallationAccess(
 				accessIndex,
 				repo.owner,
@@ -4697,6 +4743,28 @@ export const getUserRepos = createServerFn({ method: "GET" }).handler(
 				repo.isPrivate,
 			),
 		);
+
+		const removedCount = repos.length - filtered.length;
+		if (removedCount > 0) {
+			debug("installation-access", "getUserRepos filtered", {
+				total: repos.length,
+				kept: filtered.length,
+				removed: removedCount,
+				removedRepos: repos
+					.filter(
+						(repo) =>
+							!isRepoVisibleWithInstallationAccess(
+								accessIndex,
+								repo.owner,
+								repo.name,
+								repo.isPrivate,
+							),
+					)
+					.map((repo) => repo.fullName),
+			});
+		}
+
+		return filtered;
 	},
 );
 
@@ -4766,7 +4834,7 @@ export const searchCommandPaletteGitHub = createServerFn({ method: "GET" })
 function filterItemsByInstallationAccess<
 	T extends { repository: RepositoryRef },
 >(items: T[], accessIndex: GitHubInstallationAccessIndex): T[] {
-	return items.filter((item) =>
+	const filtered = items.filter((item) =>
 		isRepoVisibleWithInstallationAccess(
 			accessIndex,
 			item.repository.owner,
@@ -4774,6 +4842,30 @@ function filterItemsByInstallationAccess<
 			item.repository.isPrivate,
 		),
 	);
+
+	const removedCount = items.length - filtered.length;
+	if (removedCount > 0) {
+		const removed = items
+			.filter(
+				(item) =>
+					!isRepoVisibleWithInstallationAccess(
+						accessIndex,
+						item.repository.owner,
+						item.repository.name,
+						item.repository.isPrivate,
+					),
+			)
+			.map((item) => item.repository.fullName);
+
+		debug("installation-access", "filtered items by access scope", {
+			total: items.length,
+			kept: filtered.length,
+			removed: removedCount,
+			removedRepos: [...new Set(removed)],
+		});
+	}
+
+	return filtered;
 }
 
 function filterMyPullsResult(
@@ -6495,26 +6587,47 @@ export const getUserPinnedRepos = createServerFn({ method: "GET" })
 				{ username: data.username },
 			);
 
-			return response.user.pinnedItems.nodes
-				.filter((repo) =>
-					isRepoVisibleWithInstallationAccess(
-						accessIndex,
-						repo.owner.login,
-						repo.name,
-						repo.isPrivate,
-					),
-				)
-				.map((repo) => ({
-					name: repo.name,
-					description: repo.description,
-					stars: repo.stargazerCount,
-					language: repo.primaryLanguage?.name ?? null,
-					languageColor: repo.primaryLanguage?.color ?? null,
-					url: repo.url,
-					owner: repo.owner.login,
-					isPrivate: repo.isPrivate,
-					forks: repo.forkCount,
-				}));
+			const allPinned = response.user.pinnedItems.nodes;
+			const visiblePinned = allPinned.filter((repo) =>
+				isRepoVisibleWithInstallationAccess(
+					accessIndex,
+					repo.owner.login,
+					repo.name,
+					repo.isPrivate,
+				),
+			);
+
+			const removedCount = allPinned.length - visiblePinned.length;
+			if (removedCount > 0) {
+				debug("installation-access", "getUserPinnedRepos filtered", {
+					total: allPinned.length,
+					kept: visiblePinned.length,
+					removed: removedCount,
+					removedRepos: allPinned
+						.filter(
+							(repo) =>
+								!isRepoVisibleWithInstallationAccess(
+									accessIndex,
+									repo.owner.login,
+									repo.name,
+									repo.isPrivate,
+								),
+						)
+						.map((repo) => `${repo.owner.login}/${repo.name}`),
+				});
+			}
+
+			return visiblePinned.map((repo) => ({
+				name: repo.name,
+				description: repo.description,
+				stars: repo.stargazerCount,
+				language: repo.primaryLanguage?.name ?? null,
+				languageColor: repo.primaryLanguage?.color ?? null,
+				url: repo.url,
+				owner: repo.owner.login,
+				isPrivate: repo.isPrivate,
+				forks: repo.forkCount,
+			}));
 		} catch {
 			return [];
 		}
@@ -7330,16 +7443,40 @@ export const getNotifications = createServerFn({ method: "GET" })
 			url: n.url,
 		}));
 
-		return {
-			notifications: notifications.filter((notification) =>
-				isRepoVisibleWithInstallationAccess(
-					accessIndex,
-					notification.repository.owner.login,
-					notification.repository.name,
-					notification.repository.private,
-				),
+		const filteredNotifications = notifications.filter((notification) =>
+			isRepoVisibleWithInstallationAccess(
+				accessIndex,
+				notification.repository.owner.login,
+				notification.repository.name,
+				notification.repository.private,
 			),
-		};
+		);
+
+		const removedCount = notifications.length - filteredNotifications.length;
+		if (removedCount > 0) {
+			debug("installation-access", "getNotifications filtered", {
+				total: notifications.length,
+				kept: filteredNotifications.length,
+				removed: removedCount,
+				removedRepos: [
+					...new Set(
+						notifications
+							.filter(
+								(n) =>
+									!isRepoVisibleWithInstallationAccess(
+										accessIndex,
+										n.repository.owner.login,
+										n.repository.name,
+										n.repository.private,
+									),
+							)
+							.map((n) => n.repository.fullName),
+					),
+				],
+			});
+		}
+
+		return { notifications: filteredNotifications };
 	});
 
 type MarkNotificationReadInput = { threadId: string };
