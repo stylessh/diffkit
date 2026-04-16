@@ -53,10 +53,13 @@ import type {
 import {
 	buildGitHubAppAuthorizePath,
 	buildGitHubAppInstallUrl,
+	emptyInstallationAccessIndex,
 	type GitHubAppAccessState,
 	type GitHubAppInstallation,
+	type GitHubInstallationAccessIndex,
 	type GitHubInstallationTargetType,
 	type GitHubOrganization,
+	isRepoVisibleWithInstallationAccess,
 } from "./github-access";
 import { getGitHubAppSlug } from "./github-app.server";
 import {
@@ -1563,6 +1566,129 @@ async function getGitHubAuthenticatedOrganizations(
 	} catch (error) {
 		console.error("[github-access] failed to load organizations", error);
 		return [];
+	}
+}
+
+// ---------------------------------------------------------------------------
+// Installation access index — cached list of repos accessible via the app
+// ---------------------------------------------------------------------------
+
+type SerializableInstallationAccessIndex = {
+	available: boolean;
+	allAccessOwners: string[];
+	selectedRepos: string[];
+};
+
+function syntheticGitHubResponseMetadata() {
+	return {
+		etag: null,
+		lastModified: null,
+		rateLimitRemaining: null,
+		rateLimitReset: null,
+		statusCode: 200,
+	};
+}
+
+async function getInstallationAccessIndex(
+	context: GitHubContext,
+): Promise<GitHubInstallationAccessIndex> {
+	try {
+		const serializable =
+			await getOrRevalidateGitHubResource<SerializableInstallationAccessIndex>({
+				userId: context.session.user.id,
+				resource: "installationAccess",
+				params: null,
+				freshForMs: githubCachePolicy.installationAccess.staleTimeMs,
+				signalKeys: [githubRevalidationSignalKeys.installationAccess],
+				namespaceKeys: [githubRevalidationSignalKeys.installationAccess],
+				cacheMode: "split",
+				fetcher: async () => {
+					const { installations, installationsAvailable } =
+						await getGitHubAppUserInstallations(context.session.user.id);
+
+					if (!installationsAvailable) {
+						return {
+							kind: "success",
+							data: {
+								available: false,
+								allAccessOwners: [],
+								selectedRepos: [],
+							},
+							metadata: syntheticGitHubResponseMetadata(),
+						};
+					}
+
+					const allAccessOwners: string[] = [];
+					const selectedRepos: string[] = [];
+
+					for (const installation of installations) {
+						if (installation.suspendedAt) continue;
+
+						const ownerLogin = installation.account.login.toLowerCase();
+
+						if (installation.repositorySelection === "all") {
+							allAccessOwners.push(ownerLogin);
+							continue;
+						}
+
+						if (installation.repositorySelection === "selected") {
+							try {
+								const repos = await listPaginatedGitHubItems({
+									request: (page) =>
+										context.octokit.rest.apps.listInstallationReposForAuthenticatedUser(
+											{
+												installation_id: installation.id,
+												page,
+												per_page: 100,
+											},
+										),
+									getItems: (payload) =>
+										((payload as GitHubInstallationRepositoriesPayload)
+											.repositories ?? []) as NonNullable<
+											GitHubInstallationRepositoriesPayload["repositories"]
+										>,
+									label: `installation-access repos ${installation.id}`,
+								});
+
+								for (const repo of repos) {
+									const fullName =
+										repo.full_name ??
+										(repo.owner?.login && repo.name
+											? `${repo.owner.login}/${repo.name}`
+											: null);
+									if (fullName) {
+										selectedRepos.push(fullName.toLowerCase());
+									}
+								}
+							} catch (error) {
+								console.error(
+									`[installation-access] failed to list repos for installation ${installation.id}`,
+									error,
+								);
+							}
+						}
+					}
+
+					return {
+						kind: "success",
+						data: {
+							available: true,
+							allAccessOwners,
+							selectedRepos,
+						},
+						metadata: syntheticGitHubResponseMetadata(),
+					};
+				},
+			});
+
+		return {
+			available: serializable.available,
+			allAccessOwners: new Set(serializable.allAccessOwners),
+			selectedRepos: new Set(serializable.selectedRepos),
+		};
+	} catch (error) {
+		console.error("[installation-access] failed to build access index", error);
+		return emptyInstallationAccessIndex();
 	}
 }
 
@@ -4491,6 +4617,28 @@ export const getGitHubAppAccessState = createServerFn({
 	};
 });
 
+export type SerializedInstallationAccessIndex = {
+	available: boolean;
+	allAccessOwners: string[];
+	selectedRepos: string[];
+};
+
+export const getInstallationAccess = createServerFn({
+	method: "GET",
+}).handler(async (): Promise<SerializedInstallationAccessIndex> => {
+	const context = await getGitHubContext();
+	if (!context) {
+		return { available: false, allAccessOwners: [], selectedRepos: [] };
+	}
+
+	const index = await getInstallationAccessIndex(context);
+	return {
+		available: index.available,
+		allAccessOwners: [...index.allAccessOwners],
+		selectedRepos: [...index.selectedRepos],
+	};
+});
+
 export const getUserRepos = createServerFn({ method: "GET" }).handler(
 	async (): Promise<UserRepoSummary[]> => {
 		const context = await getGitHubContext();
@@ -4498,35 +4646,47 @@ export const getUserRepos = createServerFn({ method: "GET" }).handler(
 			return [];
 		}
 
-		return getCachedGitHubRequest<AuthenticatedUserRepo[], UserRepoSummary[]>({
-			context,
-			resource: "repos.list",
-			params: { sort: "updated", perPage: 10 },
-			freshForMs: githubCachePolicy.reposList.staleTimeMs,
-			namespaceKeys: ["repos.list"],
-			cacheMode: "split",
-			request: (headers) =>
-				context.octokit.rest.repos.listForAuthenticatedUser({
-					sort: "updated",
-					per_page: 10,
-					headers,
-				}),
-			mapData: (repos) =>
-				repos.map(
-					(repo: AuthenticatedUserRepo): UserRepoSummary => ({
-						id: repo.id,
-						name: repo.name,
-						fullName: repo.full_name,
-						description: repo.description,
-						stars: repo.stargazers_count,
-						language: repo.language,
-						updatedAt: repo.updated_at,
-						isPrivate: repo.private,
-						url: repo.html_url,
-						owner: repo.owner.login,
+		const [repos, accessIndex] = await Promise.all([
+			getCachedGitHubRequest<AuthenticatedUserRepo[], UserRepoSummary[]>({
+				context,
+				resource: "repos.list",
+				params: { sort: "updated", perPage: 10 },
+				freshForMs: githubCachePolicy.reposList.staleTimeMs,
+				namespaceKeys: ["repos.list"],
+				cacheMode: "split",
+				request: (headers) =>
+					context.octokit.rest.repos.listForAuthenticatedUser({
+						sort: "updated",
+						per_page: 10,
+						headers,
 					}),
-				),
-		});
+				mapData: (repos) =>
+					repos.map(
+						(repo: AuthenticatedUserRepo): UserRepoSummary => ({
+							id: repo.id,
+							name: repo.name,
+							fullName: repo.full_name,
+							description: repo.description,
+							stars: repo.stargazers_count,
+							language: repo.language,
+							updatedAt: repo.updated_at,
+							isPrivate: repo.private,
+							url: repo.html_url,
+							owner: repo.owner.login,
+						}),
+					),
+			}),
+			getInstallationAccessIndex(context),
+		]);
+
+		return repos.filter((repo) =>
+			isRepoVisibleWithInstallationAccess(
+				accessIndex,
+				repo.owner,
+				repo.name,
+				repo.isPrivate,
+			),
+		);
 	},
 );
 
