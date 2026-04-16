@@ -80,13 +80,12 @@ export function invalidateTargets(
 	return invalidatedCount;
 }
 
-function getLatestLocalDataTimestampForSignal(
+function hasStaleLocalDataForSignal(
 	queryClient: ReturnType<typeof useQueryClient>,
 	targets: readonly GitHubSignalStreamTarget[],
 	signalKey: string,
+	signalUpdatedAt: number,
 ) {
-	let latestLocalDataTimestamp = 0;
-
 	for (const target of targets) {
 		if (!target.signalKeys.includes(signalKey)) {
 			continue;
@@ -94,16 +93,15 @@ function getLatestLocalDataTimestampForSignal(
 
 		const queryState = queryClient.getQueryState(target.queryKey);
 		if (!queryState || queryState.dataUpdatedAt === 0) {
-			continue;
+			return true;
 		}
 
-		latestLocalDataTimestamp = Math.max(
-			latestLocalDataTimestamp,
-			queryState.dataUpdatedAt,
-		);
+		if (queryState.dataUpdatedAt < signalUpdatedAt) {
+			return true;
+		}
 	}
 
-	return latestLocalDataTimestamp;
+	return false;
 }
 
 function useGitHubSignalStreamWebSocket(
@@ -261,16 +259,13 @@ function useGitHubSignalPoll(
 					const lastSeen = lastSeenTimestamps.get(signal.signalKey);
 					if (lastSeen === undefined) {
 						lastSeenTimestamps.set(signal.signalKey, signal.updatedAt);
-						const latestLocalDataTimestamp =
-							getLatestLocalDataTimestampForSignal(
-								queryClient,
-								currentTargets,
-								signal.signalKey,
-							);
-						if (
-							latestLocalDataTimestamp > 0 &&
-							signal.updatedAt > latestLocalDataTimestamp
-						) {
+						const hasStaleLocalData = hasStaleLocalDataForSignal(
+							queryClient,
+							currentTargets,
+							signal.signalKey,
+							signal.updatedAt,
+						);
+						if (hasStaleLocalData) {
 							updatedKeys.add(signal.signalKey);
 						}
 					} else if (signal.updatedAt > lastSeen) {

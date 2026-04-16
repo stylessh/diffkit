@@ -214,6 +214,11 @@ function persistGitHubQueryCache(queryClient: QueryClient) {
 				JSON.stringify(payload),
 			);
 		} catch {
+			try {
+				window.localStorage.removeItem(GITHUB_QUERY_CACHE_STORAGE_KEY);
+			} catch {
+				// Ignore cleanup failures.
+			}
 			// Best effort: disable persistence for this session if storage is unavailable.
 			persistenceDisabled = true;
 		}

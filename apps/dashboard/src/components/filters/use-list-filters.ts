@@ -244,24 +244,17 @@ export function applyFilters<T extends FilterableItem>(
 	// Text search
 	if (query) {
 		result = result.filter((item) => {
-			if (isHashNumberQuery) {
-				if (normalizedNumberQuery.length === 0) {
-					return true;
-				}
-				if (!isNumericQuery || typeof item.number !== "number") {
-					return false;
-				}
-				return String(item.number).startsWith(normalizedNumberQuery);
-			}
-
-			return (
+			const textMatch =
 				item.title.toLowerCase().includes(query) ||
 				item.repository.fullName.toLowerCase().includes(query) ||
-				(item.author?.login.toLowerCase().includes(query) ?? false) ||
-				(typeof item.number === "number" &&
-					isNumericQuery &&
-					String(item.number).startsWith(normalizedNumberQuery))
-			);
+				(item.author?.login.toLowerCase().includes(query) ?? false);
+
+			const numberMatch =
+				typeof item.number === "number" &&
+				isNumericQuery &&
+				String(item.number).startsWith(normalizedNumberQuery);
+
+			return textMatch || numberMatch;
 		});
 	}
 

@@ -25,7 +25,9 @@ export const IssueRow = memo(function IssueRow({
 	const href = `/${issue.repository.owner}/${issue.repository.name}/issues/${issue.number}`;
 	const router = useRouter();
 	const preloadDetail = () => {
-		void preloadRouteOnce(router, href);
+		void preloadRouteOnce(router, href).catch((error) => {
+			console.error("[issue-row] failed to preload issue route", error);
+		});
 	};
 
 	return (
