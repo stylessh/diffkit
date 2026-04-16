@@ -11,7 +11,12 @@ export {
 	pullSortOptions,
 	repoPullFilterDefs,
 } from "./pull-filters";
-export type { FilterableItem, ListFilterState } from "./use-list-filters";
+export type {
+	FilterableItem,
+	FilterDefinition,
+	ListFilterState,
+	SortOption,
+} from "./use-list-filters";
 export { applyFilters, useListFilters } from "./use-list-filters";
 export {
 	applyRepoFilters,

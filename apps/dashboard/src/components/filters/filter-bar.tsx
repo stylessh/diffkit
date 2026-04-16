@@ -22,8 +22,10 @@ import type {
 
 export const FilterBar = memo(function FilterBar<T extends FilterableItem>({
 	state,
+	searchPlaceholder = "Search by title, author, repo, or #…",
 }: {
 	state: ListFilterState<T>;
+	searchPlaceholder?: string;
 }) {
 	return (
 		<div className="mb-6 flex flex-col gap-3">
@@ -31,6 +33,7 @@ export const FilterBar = memo(function FilterBar<T extends FilterableItem>({
 				<SearchInput
 					value={state.searchQuery}
 					onChange={state.setSearchQuery}
+					placeholder={searchPlaceholder}
 				/>
 				<SortDropdown
 					options={state.sortOptions}
@@ -78,6 +81,7 @@ export const FilterBar = memo(function FilterBar<T extends FilterableItem>({
 	);
 }) as <T extends FilterableItem>(props: {
 	state: ListFilterState<T>;
+	searchPlaceholder?: string;
 }) => React.ReactNode;
 
 // ── Search Input ───────────────────────────────────────────────────────
@@ -85,9 +89,11 @@ export const FilterBar = memo(function FilterBar<T extends FilterableItem>({
 function SearchInput({
 	value,
 	onChange,
+	placeholder,
 }: {
 	value: string;
 	onChange: (v: string) => void;
+	placeholder: string;
 }) {
 	return (
 		<div className="flex w-[280px] items-center gap-2 rounded-lg border border-border/50 bg-surface-1 px-3 py-1.5 transition-colors focus-within:border-border">
@@ -96,7 +102,7 @@ function SearchInput({
 				type="text"
 				value={value}
 				onChange={(e) => onChange(e.target.value)}
-				placeholder="Search by title, author, repo…"
+				placeholder={placeholder}
 				className="min-w-0 flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground/60"
 			/>
 			{value && (
@@ -274,17 +280,19 @@ function AddFilterButton({
 	const [open, setOpen] = useState(false);
 	const [selectedFieldId, setSelectedFieldId] = useState<string | null>(null);
 	const ref = useRef<HTMLDivElement>(null);
+	const directFilterDef = filterDefs.length === 1 ? filterDefs[0] : null;
 	const close = () => {
 		setOpen(false);
 		setSelectedFieldId(null);
 	};
 
 	const activeFieldIds = new Set(activeFilters.map((f) => f.fieldId));
-	const selectedOptions = selectedFieldId
-		? (availableOptions.get(selectedFieldId) ?? [])
+	const activeFieldId = directFilterDef?.id ?? selectedFieldId;
+	const selectedOptions = activeFieldId
+		? (availableOptions.get(activeFieldId) ?? [])
 		: [];
 	const selectedValues =
-		activeFilters.find((f) => f.fieldId === selectedFieldId)?.values ??
+		activeFilters.find((f) => f.fieldId === activeFieldId)?.values ??
 		new Set<string>();
 
 	return (
@@ -306,13 +314,27 @@ function AddFilterButton({
 					{/* biome-ignore lint/a11y/noStaticElementInteractions: backdrop dismiss */}
 					<div className="fixed inset-0 z-40" onClick={close} />
 					<div className="absolute left-0 top-full z-50 mt-1.5 flex gap-1">
-						<FieldPickerInline
-							filterDefs={filterDefs}
-							activeFieldIds={activeFieldIds}
-							selectedFieldId={selectedFieldId}
-							onSelect={setSelectedFieldId}
-						/>
-						{selectedFieldId && (
+						{directFilterDef ? (
+							<ValuePickerInline
+								options={selectedOptions}
+								selectedValues={selectedValues}
+								onToggle={(value) => {
+									if (selectedValues.has(value)) {
+										onRemoveValue(directFilterDef.id, value);
+									} else {
+										onAdd(directFilterDef.id, value);
+									}
+								}}
+							/>
+						) : (
+							<FieldPickerInline
+								filterDefs={filterDefs}
+								activeFieldIds={activeFieldIds}
+								selectedFieldId={selectedFieldId}
+								onSelect={setSelectedFieldId}
+							/>
+						)}
+						{!directFilterDef && selectedFieldId && (
 							<ValuePickerInline
 								key={selectedFieldId}
 								options={selectedOptions}

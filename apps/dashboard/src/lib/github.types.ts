@@ -36,6 +36,7 @@ export type UserRepoSummary = {
 	stars: number;
 	language: string | null;
 	updatedAt: string | null;
+	createdAt: string | null;
 	isPrivate: boolean;
 	url: string;
 	owner: string;

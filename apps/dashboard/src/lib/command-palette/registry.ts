@@ -1,6 +1,7 @@
 import {
 	DashboardIcon,
 	ExternalLinkIcon,
+	FolderLibraryIcon,
 	GitPullRequestIcon,
 	IssuesIcon,
 	ReviewsIcon,
@@ -46,6 +47,15 @@ registerCommands([
 		keywords: ["home", "dashboard"],
 		shortcut: ["G", "H"],
 		action: { type: "navigate", to: "/" },
+	},
+	{
+		id: "nav:repos",
+		label: "Go to Repositories",
+		group: "Pages",
+		icon: FolderLibraryIcon,
+		keywords: ["repos", "code"],
+		shortcut: ["G", "O"],
+		action: { type: "navigate", to: "/repos" },
 	},
 	{
 		id: "nav:pulls",

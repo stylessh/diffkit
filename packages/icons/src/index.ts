@@ -29,6 +29,7 @@ export {
   Download02Icon as DownloadIcon,
   DragDropVerticalIcon as GripVerticalIcon,
   File02Icon as FileIcon,
+  FilterIcon,
   Folder01Icon as FolderIcon,
   FolderLibraryIcon,
   GitBranchIcon,
