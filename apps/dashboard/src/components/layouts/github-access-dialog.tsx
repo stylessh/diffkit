@@ -24,6 +24,7 @@ import {
 	useGitHubAccessPrompt,
 } from "#/lib/github-access-modal-store";
 import { useHasMounted } from "#/lib/use-has-mounted";
+import { useRefreshOnReturn } from "#/lib/use-refresh-on-return";
 
 function getExternalLinkProps(href: string) {
 	if (href.startsWith("http://") || href.startsWith("https://")) {
@@ -39,6 +40,8 @@ export function GitHubAccessDialog({ userId }: { userId: string }) {
 	const [showOrgSetup, setShowOrgSetup] = useShowOrgSetupQueryState();
 
 	const isOpen = showOrgSetup;
+	useRefreshOnReturn({ enabled: isOpen });
+
 	const accessQuery = useQuery({
 		queryKey: ["github-app-access-state", userId],
 		queryFn: () => getGitHubAppAccessState(),

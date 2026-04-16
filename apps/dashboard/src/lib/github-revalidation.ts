@@ -22,6 +22,7 @@ export const githubRevalidationSignalKeys = {
 		`workflowJob:${input.owner}/${input.repo}#${input.jobId}`,
 	repoCode: (input: { owner: string; repo: string }) =>
 		`repoCode:${input.owner}/${input.repo}`,
+	installationAccess: "installationAccess",
 } as const;
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -161,6 +162,14 @@ export function getGitHubWebhookRevalidationSignalKeys(
 	event: string,
 	payload: unknown,
 ) {
+	if (
+		event === "installation" ||
+		event === "installation_repositories" ||
+		event === "github_app_authorization"
+	) {
+		return [githubRevalidationSignalKeys.installationAccess];
+	}
+
 	const repository = getRepositoryIdentity(payload);
 	if (!repository) {
 		return [];

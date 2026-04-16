@@ -99,3 +99,57 @@ export function getAccessHrefForOwner(
 
 	return state.publicInstallUrl ?? fallbackHref ?? null;
 }
+
+// ---------------------------------------------------------------------------
+// Installation access index
+// ---------------------------------------------------------------------------
+
+/**
+ * A pre-computed index of which repos/owners are accessible via the GitHub App
+ * installations. Used to filter private repos so the OAuth token doesn't leak
+ * access beyond what the user configured in their App installation.
+ */
+export type GitHubInstallationAccessIndex = {
+	/** `false` when the app-user token isn't available (no app auth yet). */
+	available: boolean;
+	/** Normalized owner logins with `repositorySelection: "all"`. */
+	allAccessOwners: Set<string>;
+	/** Normalized `owner/repo` strings for `repositorySelection: "selected"`. */
+	selectedRepos: Set<string>;
+};
+
+const EMPTY_INSTALLATION_ACCESS_INDEX: GitHubInstallationAccessIndex = {
+	available: false,
+	allAccessOwners: new Set(),
+	selectedRepos: new Set(),
+};
+
+export function emptyInstallationAccessIndex(): GitHubInstallationAccessIndex {
+	return EMPTY_INSTALLATION_ACCESS_INDEX;
+}
+
+/**
+ * Returns `true` when a repo should be visible given the current installation
+ * access index.
+ *
+ * Rules:
+ * - Public repos always pass.
+ * - When the index isn't available (no app setup), all repos pass (fail-open).
+ * - Private repos pass only when the owning account has an "all" installation
+ *   **or** the specific repo is in the "selected" set.
+ */
+export function isRepoVisibleWithInstallationAccess(
+	index: GitHubInstallationAccessIndex,
+	owner: string,
+	repo: string,
+	isPrivate: boolean | null,
+): boolean {
+	// Only skip the check when the repo is *explicitly* public.
+	// `null` (unknown visibility) is treated as potentially private.
+	if (isPrivate === false) return true;
+	if (!index.available) return true;
+
+	const normalizedOwner = normalizeLogin(owner);
+	if (index.allAccessOwners.has(normalizedOwner)) return true;
+	return index.selectedRepos.has(`${normalizedOwner}/${repo.toLowerCase()}`);
+}
