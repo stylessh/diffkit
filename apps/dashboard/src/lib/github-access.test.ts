@@ -172,6 +172,18 @@ describe("isRepoVisibleWithInstallationAccess", () => {
 		).toBe(true);
 	});
 
+	it("treats unknown visibility (null) as potentially private", () => {
+		expect(
+			isRepoVisibleWithInstallationAccess(index, "adn", "private-app", null),
+		).toBe(true);
+		expect(
+			isRepoVisibleWithInstallationAccess(index, "adn", "other-private", null),
+		).toBe(false);
+		expect(
+			isRepoVisibleWithInstallationAccess(index, "vercel", "some-repo", null),
+		).toBe(false);
+	});
+
 	it("is case-insensitive for owner and repo matching", () => {
 		expect(
 			isRepoVisibleWithInstallationAccess(

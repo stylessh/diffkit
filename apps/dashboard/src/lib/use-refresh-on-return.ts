@@ -21,14 +21,17 @@ export function useRefreshOnReturn({
 	const wasHiddenRef = useRef(false);
 
 	const refresh = useCallback(async () => {
-		await refreshInstallationAccess();
-		void queryClient.invalidateQueries({
-			queryKey: githubQueryKeys.all,
-		});
-		void queryClient.invalidateQueries({
-			queryKey: ["github-app-access-state"],
-		});
-		void router.invalidate();
+		try {
+			await refreshInstallationAccess();
+		} finally {
+			void queryClient.invalidateQueries({
+				queryKey: githubQueryKeys.all,
+			});
+			void queryClient.invalidateQueries({
+				queryKey: ["github-app-access-state"],
+			});
+			void router.invalidate();
+		}
 	}, [queryClient, router]);
 
 	useEffect(() => {

@@ -493,6 +493,7 @@ type GitHubUserInstallationPayload = {
 };
 
 type GitHubUserInstallationsPayload = {
+	total_count?: number;
 	installations?: GitHubUserInstallationPayload[];
 };
 
@@ -673,7 +674,7 @@ function buildRepositoryRef(
 	owner: string,
 	repo: string,
 	url?: string | null,
-	isPrivate = false,
+	isPrivate: boolean | null = null,
 ): RepositoryRef {
 	return {
 		name: repo,
@@ -686,7 +687,7 @@ function buildRepositoryRef(
 
 function parseRepositoryRef(
 	repositoryUrl?: string | null,
-	isPrivate = false,
+	isPrivate: boolean | null = null,
 ): RepositoryRef | null {
 	if (!repositoryUrl) {
 		return null;
@@ -1512,37 +1513,64 @@ function mapGitHubAppInstallations(
 
 async function getGitHubAppUserInstallations(userId: string): Promise<{
 	installations: GitHubAppInstallation[];
+	/** `true` when the app-user token is configured and the API responded. */
 	installationsAvailable: boolean;
+	/** The app-user Octokit instance (for follow-up calls like listing repos). */
+	appUserOctokit: GitHubClient | null;
 }> {
-	try {
-		const { getGitHubAppUserClientByUserId } = await import("./auth-runtime");
-		const appUserOctokit = await getGitHubAppUserClientByUserId(userId);
-		if (!appUserOctokit) {
-			debug("github-access", "no app user client, skipping installations");
-			return { installations: [], installationsAvailable: false };
-		}
-
-		const installationsResponse = await appUserOctokit.request(
-			"GET /user/installations",
-			{
-				per_page: 100,
-			},
-		);
-		const installations = mapGitHubAppInstallations(
-			installationsResponse.data as GitHubUserInstallationsPayload,
-		);
-		debug("github-access", "loaded app installations", {
-			count: installations.length,
-			owners: installations.map((i) => i.account.login),
-		});
+	const { getGitHubAppUserClientByUserId } = await import("./auth-runtime");
+	const appUserOctokit = await getGitHubAppUserClientByUserId(userId);
+	if (!appUserOctokit) {
+		debug("github-access", "no app user client, skipping installations");
 		return {
-			installations,
-			installationsAvailable: true,
+			installations: [],
+			installationsAvailable: false,
+			appUserOctokit: null,
 		};
-	} catch (error) {
-		console.error("[github-access] failed to load app installations", error);
-		return { installations: [], installationsAvailable: false };
 	}
+
+	// The app-user token exists — any failures from here on are transient
+	// and should propagate so the cache layer can serve stale data or the
+	// outer catch handles them (rather than silently failing open).
+	const PAGE_SIZE = 100;
+	const firstResponse = await appUserOctokit.request(
+		"GET /user/installations",
+		{ per_page: PAGE_SIZE },
+	);
+	const firstPayload = firstResponse.data as GitHubUserInstallationsPayload;
+	const firstPage = firstPayload.installations ?? [];
+	const allRawInstallations = [...firstPage];
+
+	if (firstPage.length >= PAGE_SIZE) {
+		let page = 2;
+		while (true) {
+			const response = await appUserOctokit.request("GET /user/installations", {
+				per_page: PAGE_SIZE,
+				page,
+			});
+			const payload = response.data as GitHubUserInstallationsPayload;
+			const pageItems = payload.installations ?? [];
+			allRawInstallations.push(...pageItems);
+
+			if (pageItems.length < PAGE_SIZE) {
+				break;
+			}
+			page += 1;
+		}
+	}
+
+	const installations = mapGitHubAppInstallations({
+		installations: allRawInstallations,
+	});
+	debug("github-access", "loaded app installations", {
+		count: installations.length,
+		owners: installations.map((i) => i.account.login),
+	});
+	return {
+		installations,
+		installationsAvailable: true,
+		appUserOctokit,
+	};
 }
 
 async function getGitHubAuthenticatedOrganizations(
@@ -1611,7 +1639,7 @@ async function getInstallationAccessIndex(
 				cacheMode: "split",
 				fetcher: async () => {
 					debug("installation-access", "fetching access index (cache miss)");
-					const { installations, installationsAvailable } =
+					const { installations, installationsAvailable, appUserOctokit } =
 						await getGitHubAppUserInstallations(context.session.user.id);
 
 					if (!installationsAvailable) {
@@ -1660,9 +1688,11 @@ async function getInstallationAccessIndex(
 
 						if (installation.repositorySelection === "selected") {
 							try {
+								// Use the app-user client (not the OAuth client) —
+								// this endpoint requires a GitHub App user-to-server token.
 								const repos = await listPaginatedGitHubItems({
 									request: (page) =>
-										context.octokit.rest.apps.listInstallationReposForAuthenticatedUser(
+										appUserOctokit!.rest.apps.listInstallationReposForAuthenticatedUser(
 											{
 												installation_id: installation.id,
 												page,
@@ -1740,6 +1770,13 @@ async function getInstallationAccessIndex(
 			selectedRepos: new Set(serializable.selectedRepos),
 		};
 	} catch (error) {
+		// Transient failure (network, 500, etc.) — not cached, so the next
+		// request will retry.  Fail-open so the current request doesn't block
+		// all private repos for the user.
+		debug(
+			"installation-access",
+			"transient error building access index, failing open",
+		);
 		console.error("[installation-access] failed to build access index", error);
 		return emptyInstallationAccessIndex();
 	}

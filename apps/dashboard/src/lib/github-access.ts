@@ -142,9 +142,11 @@ export function isRepoVisibleWithInstallationAccess(
 	index: GitHubInstallationAccessIndex,
 	owner: string,
 	repo: string,
-	isPrivate: boolean,
+	isPrivate: boolean | null,
 ): boolean {
-	if (!isPrivate) return true;
+	// Only skip the check when the repo is *explicitly* public.
+	// `null` (unknown visibility) is treated as potentially private.
+	if (isPrivate === false) return true;
 	if (!index.available) return true;
 
 	const normalizedOwner = normalizeLogin(owner);
