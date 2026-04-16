@@ -133,7 +133,9 @@ export function DashboardMobileNav({
 					>
 						<Avatar className="size-6 border border-border">
 							<AvatarImage src={user.image ?? undefined} alt={displayName} />
-							<AvatarFallback className="text-[8px]">{initials}</AvatarFallback>
+							<AvatarFallback delayMs={400} className="text-[8px]">
+								{initials}
+							</AvatarFallback>
 						</Avatar>
 					</button>
 				</DropdownMenuTrigger>

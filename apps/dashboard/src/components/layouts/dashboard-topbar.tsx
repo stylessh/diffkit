@@ -236,7 +236,9 @@ export function DashboardTopbar({
 						>
 							<Avatar className="size-7 border border-border">
 								<AvatarImage src={user.image ?? undefined} alt={displayName} />
-								<AvatarFallback className="text-xs">{initials}</AvatarFallback>
+								<AvatarFallback delayMs={400} className="text-xs">
+									{initials}
+								</AvatarFallback>
 							</Avatar>
 						</button>
 					</DropdownMenuTrigger>
@@ -244,7 +246,9 @@ export function DashboardTopbar({
 						<DropdownMenuLabel className="flex items-center gap-3 py-2">
 							<Avatar className="size-8 border border-border">
 								<AvatarImage src={user.image ?? undefined} alt={displayName} />
-								<AvatarFallback className="text-xs">{initials}</AvatarFallback>
+								<AvatarFallback delayMs={400} className="text-xs">
+									{initials}
+								</AvatarFallback>
 							</Avatar>
 							<div className="flex flex-col">
 								<span className="text-sm font-medium text-foreground">
