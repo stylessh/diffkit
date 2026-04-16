@@ -4,6 +4,11 @@ settings:
   autoInstallPeers: true
   excludeLinksFromLockfile: false
 
+patchedDependencies:
+  miniflare@4.20260409.0:
+    hash: 61d4e1e1d19037db6a859a4cf0924920d09bfb6ed5101cc328bfb2e9e790fb68
+    path: patches/miniflare@4.20260409.0.patch
+
 importers:
 
   .:
@@ -5253,7 +5258,7 @@ snapshots:
   '@cloudflare/vite-plugin@1.31.2(vite@7.3.2(@types/node@22.19.17)(jiti@2.6.1)(lightningcss@1.32.0)(tsx@4.21.0)(yaml@2.8.3))(workerd@1.20260409.1)(wrangler@4.81.1(@cloudflare/workers-types@4.20260413.1))':
     dependencies:
       '@cloudflare/unenv-preset': 2.16.0(unenv@2.0.0-rc.24)(workerd@1.20260409.1)
-      miniflare: 4.20260409.0
+      miniflare: 4.20260409.0(patch_hash=61d4e1e1d19037db6a859a4cf0924920d09bfb6ed5101cc328bfb2e9e790fb68)
       unenv: 2.0.0-rc.24
       vite: 7.3.2(@types/node@22.19.17)(jiti@2.6.1)(lightningcss@1.32.0)(tsx@4.21.0)(yaml@2.8.3)
       wrangler: 4.81.1(@cloudflare/workers-types@4.20260413.1)
@@ -8676,7 +8681,7 @@ snapshots:
 
   mimic-function@5.0.1: {}
 
-  miniflare@4.20260409.0:
+  miniflare@4.20260409.0(patch_hash=61d4e1e1d19037db6a859a4cf0924920d09bfb6ed5101cc328bfb2e9e790fb68):
     dependencies:
       '@cspotcode/source-map-support': 0.8.1
       sharp: 0.34.5
@@ -9553,7 +9558,7 @@ snapshots:
       '@cloudflare/unenv-preset': 2.16.0(unenv@2.0.0-rc.24)(workerd@1.20260409.1)
       blake3-wasm: 2.1.5
       esbuild: 0.27.3
-      miniflare: 4.20260409.0
+      miniflare: 4.20260409.0(patch_hash=61d4e1e1d19037db6a859a4cf0924920d09bfb6ed5101cc328bfb2e9e790fb68)
       path-to-regexp: 6.3.0
       unenv: 2.0.0-rc.24
       workerd: 1.20260409.1

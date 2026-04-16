@@ -29,6 +29,9 @@
       "lightningcss",
       "sharp",
       "workerd"
-    ]
+    ],
+    "patchedDependencies": {
+      "miniflare@4.20260409.0": "patches/miniflare@4.20260409.0.patch"
+    }
   }
 }
