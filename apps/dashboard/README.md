@@ -22,7 +22,7 @@ OAuth App:
 GitHub App:
 
 - Callback URL: `http://localhost:3000/api/github/app/callback`
-- Setup URL: `http://localhost:3000/?show-org-setup=true`
+- Setup URL: `http://localhost:3000/setup`
 - Enable **Redirect on update**
 - Leave **Request user authorization (OAuth) during installation** unchecked
 - Environment variables: `GITHUB_APP_CLIENT_ID`, `GITHUB_APP_CLIENT_SECRET`, `GITHUB_APP_ID`, `GITHUB_APP_PRIVATE_KEY`, `GITHUB_APP_SLUG`, `GITHUB_WEBHOOK_SECRET`

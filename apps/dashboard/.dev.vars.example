@@ -33,7 +33,7 @@ GITHUB_CLIENT_SECRET=
 # How to get these:
 #   1. Go to https://github.com/settings/apps → New GitHub App
 #   2. Set "Callback URL" to http://localhost:3000/api/github/app/callback
-#   3. Set "Setup URL" to http://localhost:3000/?show-org-setup=true
+#   3. Set "Setup URL" to http://localhost:3000/setup
 #   4. Check "Redirect on update"
 #   5. Leave "Request user authorization (OAuth) during installation" UNCHECKED
 #   6. Grant the permissions listed in the README
@@ -55,7 +55,8 @@ GITHUB_APP_ID=
 #   GITHUB_APP_PRIVATE_KEY="-----BEGIN RSA PRIVATE KEY-----\nMIIE...\n-----END RSA PRIVATE KEY-----\n"
 #
 # Quick conversion from the downloaded .pem file:
-#   awk 'NF {printf "%s\\n", $0}' /path/to/key.pem
+#   macOS / Linux:  awk 'NF {printf "%s\\n", $0}' /path/to/key.pem
+#   PowerShell:     (Get-Content key.pem -Raw) -replace "`r`n","\n" -replace "`n","\n"
 #
 # GitHub downloads PKCS#1 keys ("BEGIN RSA PRIVATE KEY"); DiffKit auto-converts
 # to PKCS#8 at runtime — no manual conversion needed.
@@ -70,7 +71,9 @@ GITHUB_APP_SLUG=
 # Secret used to verify webhook payloads from GitHub (HMAC-SHA256).
 # Set the same value in your GitHub App settings under "Webhook secret".
 #
-# Generate one with: openssl rand -hex 20
+# Generate one with:
+#   macOS / Linux:  openssl rand -hex 20
+#   PowerShell:     -join ((1..20) | ForEach-Object { '{0:x2}' -f (Get-Random -Max 256) })
 GITHUB_WEBHOOK_SECRET=
 
 # -----------------------------------------------------------------------------
@@ -79,7 +82,9 @@ GITHUB_WEBHOOK_SECRET=
 # Random secret used by Better Auth to encrypt session cookies.
 # Must be at least 32 characters.
 #
-# Generate one with: openssl rand -base64 32
+# Generate one with:
+#   macOS / Linux:  openssl rand -base64 32
+#   PowerShell:     [Convert]::ToBase64String((1..32 | ForEach-Object { Get-Random -Max 256 }))
 BETTER_AUTH_SECRET=
 
 # Base URL where DiffKit is running. Used by Better Auth for redirects.
