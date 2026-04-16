@@ -3,7 +3,7 @@ export const CHROME_EXTENSION_STORE_URL =
 	"https://chromewebstore.google.com/detail/celjddfjncnnkgfgldobcahfiimlebll/" as const;
 
 export const FIREFOX_EXTENSION_STORE_URL =
-	"https://addons.mozilla.org/en-US/firefox/addon/diffkit/" as const;
+	"https://addons.mozilla.org/addon/diffkit/" as const;
 
 function isFirefoxFamilyUserAgent(ua: string): boolean {
 	// Desktop Firefox: "Firefox/123"; Firefox iOS: "FxiOS/123"; avoid relying on siteConfig.

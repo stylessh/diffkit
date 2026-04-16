@@ -63,17 +63,23 @@ export function PullDetailHeader({
 								<span className="shrink-0 font-medium text-foreground">
 									{pr.author.login}
 								</span>
-								<span className="shrink-0">wants to merge into</span>
-								<CopyBadge value={pr.baseRefName} />
-								<span className="shrink-0">from</span>
-								<CopyBadge
-									value={
-										pr.headRepoOwner && pr.headRepoOwner !== owner
-											? `${pr.headRepoOwner}:${pr.headRefName}`
-											: pr.headRefName
-									}
-									canTruncate
-								/>
+								{(pr.isMerged || pr.state !== "closed") && (
+									<>
+										<span className="shrink-0">
+											{pr.isMerged ? "merged into" : "wants to merge into"}
+										</span>
+										<CopyBadge value={pr.baseRefName} />
+										<span className="shrink-0">from</span>
+										<CopyBadge
+											value={
+												pr.headRepoOwner && pr.headRepoOwner !== owner
+													? `${pr.headRepoOwner}:${pr.headRefName}`
+													: pr.headRefName
+											}
+											canTruncate
+										/>
+									</>
+								)}
 							</>
 						)}
 					</div>

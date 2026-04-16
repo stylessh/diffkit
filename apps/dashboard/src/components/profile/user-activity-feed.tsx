@@ -484,7 +484,7 @@ function PrCard({
 					</span>
 				)}
 			</div>
-			{pr.headRef && pr.baseRef && (
+			{pr.headRef && pr.baseRef && pr.state !== "closed" && (
 				<div className="mt-auto flex min-w-0 items-center gap-1 text-[11px] text-muted-foreground">
 					<span className="min-w-0 shrink truncate rounded bg-surface-2 px-1.5 py-0.5 font-mono text-[11px] font-[550]">
 						{pr.headRef}

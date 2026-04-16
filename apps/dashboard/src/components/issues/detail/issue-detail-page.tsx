@@ -25,8 +25,34 @@ const routeApi = getRouteApi("/_protected/$owner/$repo/issues/$issueId");
 export function IssueDetailPage() {
 	const { user } = routeApi.useRouteContext();
 	const { owner, repo, issueId } = routeApi.useParams();
-	const issueNumber = Number(issueId);
-	const scope = useMemo(() => ({ userId: user.id }), [user.id]);
+
+	return (
+		<IssueDetailContent
+			owner={owner}
+			repo={repo}
+			issueNumber={Number(issueId)}
+			userId={user.id}
+			registerTab
+		/>
+	);
+}
+
+export type IssueDetailContentProps = {
+	owner: string;
+	repo: string;
+	issueNumber: number;
+	userId: string;
+	registerTab?: boolean;
+};
+
+export function IssueDetailContent({
+	owner,
+	repo,
+	issueNumber,
+	userId,
+	registerTab = false,
+}: IssueDetailContentProps) {
+	const scope = useMemo(() => ({ userId }), [userId]);
 	const input = useMemo(
 		() => ({ owner, repo, issueNumber }),
 		[owner, repo, issueNumber],
@@ -63,12 +89,12 @@ export function IssueDetailPage() {
 	const eventPagination = pageQuery.data?.eventPagination;
 
 	useRegisterTab(
-		issue
+		registerTab && issue
 			? {
 					type: "issue",
 					title: issue.title,
 					number: issue.number,
-					url: `/${owner}/${repo}/issues/${issueId}`,
+					url: `/${owner}/${repo}/issues/${issueNumber}`,
 					repo: `${owner}/${repo}`,
 					iconColor: getIssueStateConfig(issue).color,
 				}

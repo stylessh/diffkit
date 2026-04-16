@@ -18,9 +18,12 @@ import { Link, type useRouter, useRouterState } from "@tanstack/react-router";
 import { memo, useCallback, useEffect, useRef, useState } from "react";
 import { preloadRouteOnce } from "#/lib/route-preload";
 import {
+	isMergedTab,
+	removeMergedTabs,
 	removeOtherTabs,
 	removeTab,
 	removeTabsToRight,
+	reorderTabs,
 	type Tab,
 	useTabs,
 } from "#/lib/tab-store";
@@ -90,7 +93,11 @@ interface DashboardTabsProps {
 
 export function DashboardTabs({ tabsReady, routerRef }: DashboardTabsProps) {
 	const openTabs = useTabs();
-	const contextTabRef = useRef<{ tab: Tab; index: number } | null>(null);
+	const dragTabRef = useRef<string | null>(null);
+	const [contextTab, setContextTab] = useState<{
+		tab: Tab;
+		index: number;
+	} | null>(null);
 	const {
 		scrollRef,
 		canScrollLeft,
@@ -99,40 +106,80 @@ export function DashboardTabs({ tabsReady, routerRef }: DashboardTabsProps) {
 		handleWheel,
 	} = useScrollShadows(openTabs.length);
 
+	const handleDragStart = useCallback((id: string) => {
+		dragTabRef.current = id;
+	}, []);
+
+	const handleDragOver = useCallback(
+		(targetId: string) => {
+			const dragId = dragTabRef.current;
+			if (!dragId || dragId === targetId) return;
+			const fromIndex = openTabs.findIndex((t) => t.id === dragId);
+			const toIndex = openTabs.findIndex((t) => t.id === targetId);
+			if (fromIndex === -1 || toIndex === -1) return;
+			const next = [...openTabs];
+			const [moved] = next.splice(fromIndex, 1);
+			next.splice(toIndex, 0, moved);
+			reorderTabs(next);
+		},
+		[openTabs],
+	);
+
+	const handleDragEnd = useCallback(() => {
+		dragTabRef.current = null;
+	}, []);
+
 	// Read pathname imperatively in event handlers (rerender-defer-reads)
 	// so the callbacks are stable and don't bust memo on DetailTab.
 	const handleCloseTab = useCallback(
 		(id: string, tabUrl: string) => {
 			const currentPath = routerRef.current.state.location.pathname;
+			const isActive = currentPath === tabUrl;
+			const index = openTabs.findIndex((tab) => tab.id === id);
+			const nextTab =
+				index === -1 ? undefined : (openTabs[index + 1] ?? openTabs[index - 1]);
 			removeTab(id);
-			if (currentPath === tabUrl) {
-				void routerRef.current.navigate({ to: "/" });
+			if (isActive) {
+				void routerRef.current.navigate({ to: nextTab?.url ?? "/" });
 			}
 		},
-		[routerRef],
+		[openTabs, routerRef],
 	);
 
 	const handleContextClose = useCallback(() => {
-		const ctx = contextTabRef.current;
-		if (!ctx) return;
-		handleCloseTab(ctx.tab.id, ctx.tab.url);
-	}, [handleCloseTab]);
+		if (!contextTab) return;
+		handleCloseTab(contextTab.tab.id, contextTab.tab.url);
+	}, [contextTab, handleCloseTab]);
 
 	const handleContextCloseOthers = useCallback(() => {
-		const ctx = contextTabRef.current;
-		if (!ctx) return;
+		if (!contextTab) return;
 		const currentPath = routerRef.current.state.location.pathname;
-		if (currentPath !== ctx.tab.url) {
-			void routerRef.current.navigate({ to: ctx.tab.url });
+		if (currentPath !== contextTab.tab.url) {
+			void routerRef.current.navigate({ to: contextTab.tab.url });
 		}
-		removeOtherTabs(ctx.tab.id);
-	}, [routerRef]);
+		removeOtherTabs(contextTab.tab.id);
+	}, [contextTab, routerRef]);
 
 	const handleContextCloseRight = useCallback(() => {
-		const ctx = contextTabRef.current;
-		if (!ctx) return;
-		removeTabsToRight(ctx.tab.id);
-	}, []);
+		if (!contextTab) return;
+		removeTabsToRight(contextTab.tab.id);
+	}, [contextTab]);
+
+	const handleContextCloseMerged = useCallback(() => {
+		const currentPath = routerRef.current.state.location.pathname;
+		const activeTabWillClose = openTabs.find(
+			(t) => currentPath === t.url && isMergedTab(t),
+		);
+		removeMergedTabs();
+		if (activeTabWillClose) {
+			const remaining = openTabs.filter((t) => !isMergedTab(t));
+			void routerRef.current.navigate({
+				to: remaining[0]?.url ?? "/",
+			});
+		}
+	}, [openTabs, routerRef]);
+
+	const hasMergedTabs = openTabs.some(isMergedTab);
 
 	if (openTabs.length === 0) return null;
 
@@ -182,8 +229,11 @@ export function DashboardTabs({ tabsReady, routerRef }: DashboardTabsProps) {
 										tab={tab}
 										icon={Icon}
 										onClose={handleCloseTab}
+										onDragStart={handleDragStart}
+										onDragOver={handleDragOver}
+										onDragEnd={handleDragEnd}
 										onContextMenu={() => {
-											contextTabRef.current = { tab, index };
+											setContextTab({ tab, index });
 										}}
 										routerRef={routerRef}
 									/>
@@ -206,10 +256,21 @@ export function DashboardTabs({ tabsReady, routerRef }: DashboardTabsProps) {
 					</ContextMenuItem>
 					<ContextMenuItem
 						onSelect={handleContextCloseRight}
-						disabled={contextTabRef.current?.index === openTabs.length - 1}
+						disabled={!contextTab || contextTab.index === openTabs.length - 1}
 					>
 						<ChevronRightIcon size={14} strokeWidth={2} />
 						Close tabs to the right
+					</ContextMenuItem>
+					<ContextMenuItem
+						onSelect={handleContextCloseMerged}
+						disabled={!hasMergedTabs}
+					>
+						<GitPullRequestIcon
+							size={14}
+							strokeWidth={2}
+							className="text-purple-500"
+						/>
+						Close merged
 					</ContextMenuItem>
 				</ContextMenuContent>
 			</ContextMenu>
@@ -254,12 +315,18 @@ const DetailTab = memo(function DetailTab({
 	tab,
 	icon: Icon,
 	onClose,
+	onDragStart,
+	onDragOver,
+	onDragEnd,
 	onContextMenu,
 	routerRef,
 }: {
 	tab: Tab;
 	icon: typeof GitPullRequestIcon;
 	onClose: (id: string, tabUrl: string) => void;
+	onDragStart: (id: string) => void;
+	onDragOver: (id: string) => void;
+	onDragEnd: () => void;
 	onContextMenu: () => void;
 	routerRef: React.RefObject<ReturnType<typeof useRouter>>;
 }) {
@@ -270,6 +337,17 @@ const DetailTab = memo(function DetailTab({
 	return (
 		<Link
 			to={tab.url}
+			draggable
+			onDragStart={(e) => {
+				e.dataTransfer.effectAllowed = "move";
+				onDragStart(tab.id);
+			}}
+			onDragOver={(e) => {
+				e.preventDefault();
+				e.dataTransfer.dropEffect = "move";
+				onDragOver(tab.id);
+			}}
+			onDragEnd={onDragEnd}
 			preload={false}
 			onMouseEnter={preloadTab}
 			onFocus={preloadTab}

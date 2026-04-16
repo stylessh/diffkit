@@ -3,6 +3,7 @@ import {
 	ExternalLinkIcon,
 	GitPullRequestIcon,
 	HomeIcon,
+	InboxIcon,
 	IssuesIcon,
 	LogOutIcon,
 	MoreHorizontalIcon,
@@ -28,9 +29,12 @@ import { Link, useRouter } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { DashboardTabs } from "#/components/layouts/dashboard-tabs";
 import { signOutToLogin } from "#/lib/auth-actions";
-import { githubViewerQueryOptions } from "#/lib/github.query";
+import {
+	githubNotificationsQueryOptions,
+	githubViewerQueryOptions,
+} from "#/lib/github.query";
 import { useGlobalShortcuts } from "#/lib/shortcuts";
-import { type Tab, useTabs } from "#/lib/tab-store";
+import { removeTab, type Tab, useTabs } from "#/lib/tab-store";
 import { useHasMounted } from "#/lib/use-has-mounted";
 
 interface DashboardTopbarProps {
@@ -53,9 +57,16 @@ type NavItem = {
 	label: string;
 	icon: typeof HomeIcon;
 	count?: number;
+	dot?: boolean;
 };
 
-const primaryNavRoutes = ["/", "/pulls", "/issues", "/reviews"] as const;
+const primaryNavRoutes = [
+	"/",
+	"/inbox",
+	"/pulls",
+	"/issues",
+	"/reviews",
+] as const;
 const MAX_TAB_SHORTCUTS = 9;
 
 export function DashboardTopbar({
@@ -71,6 +82,11 @@ export function DashboardTopbar({
 		enabled: hasMounted,
 	});
 	const viewerLogin = viewerQuery.data?.login;
+	const notificationsQuery = useQuery({
+		...githubNotificationsQueryOptions({ userId: user.id }, { all: false }),
+		enabled: hasMounted,
+	});
+	const hasUnread = (notificationsQuery.data?.notifications?.length ?? 0) > 0;
 	// Store router in a ref — only used imperatively (navigate, preload),
 	// never read during render, so we avoid subscribing to state changes.
 	const router = useRouter();
@@ -88,6 +104,7 @@ export function DashboardTopbar({
 	const navItems = useMemo<NavItem[]>(
 		() => [
 			{ to: "/", label: "Overview", icon: HomeIcon },
+			{ to: "/inbox", label: "Inbox", icon: InboxIcon, dot: hasUnread },
 			{
 				to: "/pulls",
 				label: "Pull Requests",
@@ -107,7 +124,7 @@ export function DashboardTopbar({
 				count: counts.reviews,
 			},
 		],
-		[counts.pulls, counts.issues, counts.reviews],
+		[counts.pulls, counts.issues, counts.reviews, hasUnread],
 	);
 
 	useEffect(() => {
@@ -137,6 +154,13 @@ export function DashboardTopbar({
 		void routerRef.current.navigate({ to: tab.url });
 	}
 
+	function getNeighborTab(tab: Tab | undefined) {
+		if (!tab) return undefined;
+		const index = openTabs.findIndex((item) => item.id === tab.id);
+		if (index === -1) return undefined;
+		return openTabs[index + 1] ?? openTabs[index - 1];
+	}
+
 	useGlobalShortcuts([
 		...Array.from(
 			{ length: Math.min(openTabs.length, MAX_TAB_SHORTCUTS) },
@@ -148,6 +172,28 @@ export function DashboardTopbar({
 				},
 			}),
 		),
+		{
+			shortcut: [{ key: "g" }, { key: "u" }],
+			enabled: tabsReady && Boolean(viewerLogin),
+			onTrigger: () => {
+				void routerRef.current.navigate({
+					to: "/$owner",
+					params: { owner: viewerLogin ?? "" },
+				});
+			},
+		},
+		{
+			shortcut: { key: "w", shift: true },
+			enabled: tabsReady && openTabs.length > 0,
+			onTrigger: () => {
+				const currentPath = routerRef.current.state.location.pathname;
+				const currentTab = openTabs.find((tab) => tab.url === currentPath);
+				if (!currentTab) return;
+				const nextTab = getNeighborTab(currentTab);
+				removeTab(currentTab.id);
+				void routerRef.current.navigate({ to: nextTab?.url ?? "/" });
+			},
+		},
 		{
 			shortcut: { key: "ArrowLeft", shift: true },
 			enabled: tabsReady && openTabs.length > 1,
@@ -235,7 +281,7 @@ export function DashboardTopbar({
 								<Link to="/$owner" params={{ owner: viewerLogin ?? "" }}>
 									<UserCircleIcon size={16} strokeWidth={2} />
 									Profile
-									<DropdownMenuShortcut keys={["G", "P"]} />
+									<DropdownMenuShortcut keys={["G", "U"]} />
 								</Link>
 							</DropdownMenuItem>
 							<DropdownMenuItem asChild>
@@ -284,7 +330,9 @@ export function DashboardTopbar({
 						>
 							<span className="flex items-center gap-2">
 								<span>{item.label}</span>
-								{typeof item.count === "number" ? (
+								{item.dot ? (
+									<span className="size-1.5 rounded-full bg-blue-500 translate-y-px" />
+								) : typeof item.count === "number" ? (
 									<span
 										data-slot="tab-count"
 										className="tabular-nums text-muted-foreground"

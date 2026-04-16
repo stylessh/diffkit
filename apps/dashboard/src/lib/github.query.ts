@@ -11,6 +11,7 @@ import {
 	getIssuesFromUser,
 	getMyIssues,
 	getMyPulls,
+	getNotifications,
 	getOrgTeams,
 	getPullComments,
 	getPullFileSummaries,
@@ -231,6 +232,12 @@ export const githubQueryKeys = {
 			["github", scope.userId, "issues", "detail", input] as const,
 		comments: (scope: GitHubQueryScope, input: IssueFromRepoQueryInput) =>
 			["github", scope.userId, "issues", "comments", input] as const,
+	},
+	notifications: {
+		list: (
+			scope: GitHubQueryScope,
+			input: { all?: boolean; participating?: boolean },
+		) => ["github", scope.userId, "notifications", "list", input] as const,
 	},
 };
 
@@ -716,6 +723,19 @@ export function githubRepoDiscussionsQueryOptions(
 	return queryOptions({
 		queryKey: githubQueryKeys.repo.discussions(scope, input),
 		queryFn: () => getRepoDiscussions({ data: input }),
+		staleTime: githubCachePolicy.list.staleTimeMs,
+		gcTime: githubCachePolicy.list.gcTimeMs,
+		meta: persistedMeta,
+	});
+}
+
+export function githubNotificationsQueryOptions(
+	scope: GitHubQueryScope,
+	input: { all?: boolean; participating?: boolean } = {},
+) {
+	return queryOptions({
+		queryKey: githubQueryKeys.notifications.list(scope, input),
+		queryFn: () => getNotifications({ data: input }),
 		staleTime: githubCachePolicy.list.staleTimeMs,
 		gcTime: githubCachePolicy.list.gcTimeMs,
 		meta: persistedMeta,

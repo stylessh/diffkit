@@ -1,9 +1,19 @@
-import { MoonIcon, SunIcon, SystemIcon } from "@diffkit/icons";
+import {
+	CheckIcon,
+	DownloadIcon,
+	MoonIcon,
+	SunIcon,
+	SystemIcon,
+} from "@diffkit/icons";
 import { Button } from "@diffkit/ui/components/button";
+import { Logo } from "@diffkit/ui/components/logo";
 import { cn } from "@diffkit/ui/lib/utils";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useTheme } from "next-themes";
+import { useEffect, useState } from "react";
 import { signOutToLogin } from "#/lib/auth-actions";
+import { isDiffKitExtensionPresent } from "#/lib/diffkit-extension-detect";
+import { getExtensionStoreInstallUrl } from "#/lib/extension-store-url";
 import { useHasMounted } from "#/lib/use-has-mounted";
 
 const themeOptions = [
@@ -38,6 +48,13 @@ function GeneralSettingsPage() {
 				description="Choose how DiffKit looks to you."
 			>
 				<ThemePicker />
+			</SettingsSection>
+
+			<SettingsSection
+				title="Browser extension"
+				description="Automatically redirect GitHub pages to DiffKit."
+			>
+				<ExtensionCard />
 			</SettingsSection>
 
 			<SettingsSection
@@ -226,6 +243,63 @@ function SystemThemePreview() {
 			>
 				<LayoutPreview mode="dark" />
 			</div>
+		</div>
+	);
+}
+
+function ExtensionCard() {
+	const hasMounted = useHasMounted();
+	const [installed, setInstalled] = useState(false);
+
+	useEffect(() => {
+		if (!hasMounted) return;
+
+		setInstalled(isDiffKitExtensionPresent());
+
+		if (isDiffKitExtensionPresent()) return;
+
+		const el = document.documentElement;
+		const observer = new MutationObserver(() => {
+			if (isDiffKitExtensionPresent()) {
+				setInstalled(true);
+				observer.disconnect();
+			}
+		});
+		observer.observe(el, {
+			attributes: true,
+			attributeFilter: ["data-diffkit-extension"],
+		});
+		return () => observer.disconnect();
+	}, [hasMounted]);
+
+	const installHref = getExtensionStoreInstallUrl();
+
+	return (
+		<div className="flex items-center justify-between gap-4 rounded-xl border border-border/70 px-4 py-3.5">
+			<div className="flex min-w-0 items-center gap-3">
+				<Logo className="size-5 shrink-0" aria-hidden />
+				<div className="min-w-0">
+					<p className="text-sm font-medium">DiffKit Extension</p>
+					<p className="text-sm text-muted-foreground">
+						{installed
+							? "The extension is installed and active."
+							: "Redirect GitHub PRs, issues, and matching pages to DiffKit."}
+					</p>
+				</div>
+			</div>
+			{installed ? (
+				<span className="flex shrink-0 items-center gap-1.5 text-sm text-emerald-600 dark:text-emerald-400">
+					<CheckIcon size={14} strokeWidth={2} />
+					Installed
+				</span>
+			) : (
+				<Button asChild variant="outline" size="sm" className="shrink-0">
+					<a href={installHref} target="_blank" rel="noopener noreferrer">
+						<DownloadIcon size={14} strokeWidth={2} />
+						Install
+					</a>
+				</Button>
+			)}
 		</div>
 	);
 }

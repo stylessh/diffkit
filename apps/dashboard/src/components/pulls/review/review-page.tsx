@@ -270,6 +270,7 @@ export function ReviewPage() {
 					iconColor: getPrStateConfig(pr).color,
 					additions: pr.additions,
 					deletions: pr.deletions,
+					merged: pr.isMerged,
 				}
 			: null,
 	);

@@ -5,6 +5,7 @@ import {
 	GitPullRequestDraftIcon,
 	GitPullRequestIcon,
 	IssuesIcon,
+	UserCircleIcon,
 } from "@diffkit/icons";
 import { type QueryClient, useQueryClient } from "@tanstack/react-query";
 import { getRouteApi } from "@tanstack/react-router";
@@ -70,8 +71,26 @@ export function useCommandItems(): CommandItem[] {
 	const issues = queryClient.getQueryData<MyIssuesResult>(
 		githubQueryKeys.issues.mine(scope),
 	);
+	const viewer = queryClient.getQueryData<{ login: string } | null>(
+		githubQueryKeys.viewer(scope),
+	);
 
 	const dynamicItems: CommandItem[] = [];
+
+	if (viewer) {
+		dynamicItems.push({
+			id: "nav:profile",
+			label: "Go to Profile",
+			group: "Pages",
+			icon: UserCircleIcon,
+			keywords: ["user", "me", viewer.login],
+			shortcut: ["G", "U"],
+			action: {
+				type: "navigate",
+				to: `/${viewer.login}`,
+			},
+		});
+	}
 
 	if (repos) {
 		for (const repo of repos) {
