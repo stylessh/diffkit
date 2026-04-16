@@ -18,6 +18,7 @@ import { Route as SplatRouteImport } from './routes/$'
 import { Route as ProtectedIndexRouteImport } from './routes/_protected/index'
 import { Route as ProtectedSettingsRouteImport } from './routes/_protected/settings'
 import { Route as ProtectedReviewsRouteImport } from './routes/_protected/reviews'
+import { Route as ProtectedReposRouteImport } from './routes/_protected/repos'
 import { Route as ProtectedPullsRouteImport } from './routes/_protected/pulls'
 import { Route as ProtectedIssuesRouteImport } from './routes/_protected/issues'
 import { Route as ProtectedInboxRouteImport } from './routes/_protected/inbox'
@@ -80,6 +81,11 @@ const ProtectedSettingsRoute = ProtectedSettingsRouteImport.update({
 const ProtectedReviewsRoute = ProtectedReviewsRouteImport.update({
   id: '/reviews',
   path: '/reviews',
+  getParentRoute: () => ProtectedRoute,
+} as any)
+const ProtectedReposRoute = ProtectedReposRouteImport.update({
+  id: '/repos',
+  path: '/repos',
   getParentRoute: () => ProtectedRoute,
 } as any)
 const ProtectedPullsRoute = ProtectedPullsRouteImport.update({
@@ -196,6 +202,7 @@ export interface FileRoutesByFullPath {
   '/inbox': typeof ProtectedInboxRoute
   '/issues': typeof ProtectedIssuesRoute
   '/pulls': typeof ProtectedPullsRoute
+  '/repos': typeof ProtectedReposRoute
   '/reviews': typeof ProtectedReviewsRoute
   '/settings': typeof ProtectedSettingsRouteWithChildren
   '/settings/shortcuts': typeof ProtectedSettingsShortcutsRoute
@@ -224,6 +231,7 @@ export interface FileRoutesByTo {
   '/inbox': typeof ProtectedInboxRoute
   '/issues': typeof ProtectedIssuesRoute
   '/pulls': typeof ProtectedPullsRoute
+  '/repos': typeof ProtectedReposRoute
   '/reviews': typeof ProtectedReviewsRoute
   '/': typeof ProtectedIndexRoute
   '/settings/shortcuts': typeof ProtectedSettingsShortcutsRoute
@@ -254,6 +262,7 @@ export interface FileRoutesById {
   '/_protected/inbox': typeof ProtectedInboxRoute
   '/_protected/issues': typeof ProtectedIssuesRoute
   '/_protected/pulls': typeof ProtectedPullsRoute
+  '/_protected/repos': typeof ProtectedReposRoute
   '/_protected/reviews': typeof ProtectedReviewsRoute
   '/_protected/settings': typeof ProtectedSettingsRouteWithChildren
   '/_protected/': typeof ProtectedIndexRoute
@@ -286,6 +295,7 @@ export interface FileRouteTypes {
     | '/inbox'
     | '/issues'
     | '/pulls'
+    | '/repos'
     | '/reviews'
     | '/settings'
     | '/settings/shortcuts'
@@ -314,6 +324,7 @@ export interface FileRouteTypes {
     | '/inbox'
     | '/issues'
     | '/pulls'
+    | '/repos'
     | '/reviews'
     | '/'
     | '/settings/shortcuts'
@@ -343,6 +354,7 @@ export interface FileRouteTypes {
     | '/_protected/inbox'
     | '/_protected/issues'
     | '/_protected/pulls'
+    | '/_protected/repos'
     | '/_protected/reviews'
     | '/_protected/settings'
     | '/_protected/'
@@ -440,6 +452,13 @@ declare module '@tanstack/react-router' {
       path: '/reviews'
       fullPath: '/reviews'
       preLoaderRoute: typeof ProtectedReviewsRouteImport
+      parentRoute: typeof ProtectedRoute
+    }
+    '/_protected/repos': {
+      id: '/_protected/repos'
+      path: '/repos'
+      fullPath: '/repos'
+      preLoaderRoute: typeof ProtectedReposRouteImport
       parentRoute: typeof ProtectedRoute
     }
     '/_protected/pulls': {
@@ -595,6 +614,7 @@ interface ProtectedRouteChildren {
   ProtectedInboxRoute: typeof ProtectedInboxRoute
   ProtectedIssuesRoute: typeof ProtectedIssuesRoute
   ProtectedPullsRoute: typeof ProtectedPullsRoute
+  ProtectedReposRoute: typeof ProtectedReposRoute
   ProtectedReviewsRoute: typeof ProtectedReviewsRoute
   ProtectedSettingsRoute: typeof ProtectedSettingsRouteWithChildren
   ProtectedIndexRoute: typeof ProtectedIndexRoute
@@ -614,6 +634,7 @@ const ProtectedRouteChildren: ProtectedRouteChildren = {
   ProtectedInboxRoute: ProtectedInboxRoute,
   ProtectedIssuesRoute: ProtectedIssuesRoute,
   ProtectedPullsRoute: ProtectedPullsRoute,
+  ProtectedReposRoute: ProtectedReposRoute,
   ProtectedReviewsRoute: ProtectedReviewsRoute,
   ProtectedSettingsRoute: ProtectedSettingsRouteWithChildren,
   ProtectedIndexRoute: ProtectedIndexRoute,

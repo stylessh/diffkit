@@ -1,6 +1,7 @@
 import {
 	BugIcon,
 	ExternalLinkIcon,
+	FolderLibraryIcon,
 	GitPullRequestIcon,
 	HomeIcon,
 	InboxIcon,
@@ -108,6 +109,7 @@ export function DashboardTopbar({
 		() => [
 			{ to: "/", label: "Overview", icon: HomeIcon },
 			{ to: "/inbox", label: "Inbox", icon: InboxIcon, dot: hasUnread },
+			{ to: "/repos", label: "Repositories", icon: FolderLibraryIcon },
 			{
 				to: "/pulls",
 				label: "Pull Requests",

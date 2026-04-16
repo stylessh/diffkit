@@ -2000,7 +2000,100 @@ async function getGitHubContextForRepository(input: {
 	owner: string;
 	repo: string;
 }) {
-	return getGitHubContextForOwner(input.owner);
+	return getOrCreateCachedContext(
+		`repo:${input.owner}/${input.repo}`,
+		async () => {
+			const context = await getGitHubContext();
+			if (!context) {
+				return null;
+			}
+
+			const { installations } = await getGitHubAppUserInstallations(
+				context.session.user.id,
+			);
+			const installation = findGitHubAppInstallationForOwner(
+				installations,
+				input.owner,
+			);
+			if (!installation) {
+				debug("github-access", "no installation for repo owner, using OAuth", {
+					owner: input.owner,
+					repo: input.repo,
+				});
+				return context;
+			}
+
+			if (
+				installation.repositorySelection === "selected" &&
+				!(await appInstallationHasRepositoryAccess(
+					context,
+					installation,
+					input,
+				))
+			) {
+				debug(
+					"github-access",
+					"installation does not include repo, using OAuth",
+					{
+						owner: input.owner,
+						repo: input.repo,
+						installationId: installation.id,
+					},
+				);
+				return context;
+			}
+
+			const installationContext = await getGitHubContextForInstallation(
+				context,
+				installation,
+			);
+			if (!installationContext) {
+				console.error(
+					"[github-access] installation client failed, falling back to OAuth token",
+					input.owner,
+				);
+				return context;
+			}
+
+			return installationContext;
+		},
+	);
+}
+
+async function appInstallationHasRepositoryAccess(
+	context: GitHubContext,
+	installation: GitHubAppInstallation,
+	params: RepoCollaboratorsInput,
+) {
+	if (installation.repositorySelection === "all") {
+		return true;
+	}
+
+	if (installation.repositorySelection !== "selected") {
+		return false;
+	}
+
+	try {
+		const repositories = await listPaginatedGitHubItems({
+			request: (page) =>
+				context.octokit.rest.apps.listInstallationReposForAuthenticatedUser({
+					installation_id: installation.id,
+					page,
+					per_page: 100,
+				}),
+			getItems: (payload) =>
+				((payload as GitHubInstallationRepositoriesPayload).repositories ??
+					[]) as NonNullable<
+					GitHubInstallationRepositoriesPayload["repositories"]
+				>,
+		});
+
+		return repositories.some((repository) =>
+			repositoryMatchesInstallationRepository(repository, params),
+		);
+	} catch {
+		return false;
+	}
 }
 
 function findGitHubAppInstallationForOwner(
@@ -5047,19 +5140,23 @@ export const getUserRepos = createServerFn({ method: "GET" }).handler(
 		}
 
 		const [repos, accessIndex] = await Promise.all([
-			getCachedGitHubRequest<AuthenticatedUserRepo[], UserRepoSummary[]>({
+			getCachedPaginatedGitHubRequest<
+				AuthenticatedUserRepo,
+				UserRepoSummary[]
+			>({
 				context,
 				resource: "repos.list",
-				params: { sort: "updated", perPage: 10 },
+				params: { sort: "updated", perPage: 100 },
 				freshForMs: githubCachePolicy.reposList.staleTimeMs,
 				signalKeys: [githubRevalidationSignalKeys.installationAccess],
 				namespaceKeys: ["repos.list"],
 				cacheMode: "split",
-				request: (headers) =>
+				pageSize: 100,
+				request: (page) =>
 					context.octokit.rest.repos.listForAuthenticatedUser({
 						sort: "updated",
-						per_page: 10,
-						headers,
+						per_page: 100,
+						page,
 					}),
 				mapData: (repos) =>
 					repos.map(
@@ -5071,6 +5168,7 @@ export const getUserRepos = createServerFn({ method: "GET" }).handler(
 							stars: repo.stargazers_count,
 							language: repo.language,
 							updatedAt: repo.updated_at,
+							createdAt: repo.created_at,
 							isPrivate: repo.private,
 							url: repo.html_url,
 							owner: repo.owner.login,
