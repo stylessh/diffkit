@@ -91,7 +91,10 @@ interface DashboardTabsProps {
 export function DashboardTabs({ tabsReady, routerRef }: DashboardTabsProps) {
 	const openTabs = useTabs();
 	const pathname = useRouterState({ select: (s) => s.location.pathname });
-	const contextTabRef = useRef<{ tab: Tab; index: number } | null>(null);
+	const [contextTab, setContextTab] = useState<{
+		tab: Tab;
+		index: number;
+	} | null>(null);
 	const {
 		scrollRef,
 		canScrollLeft,
@@ -119,34 +122,34 @@ export function DashboardTabs({ tabsReady, routerRef }: DashboardTabsProps) {
 	const handleCloseTab = useCallback(
 		(id: string, tabUrl: string) => {
 			const isActive = pathname === tabUrl;
+			const index = openTabs.findIndex((tab) => tab.id === id);
+			const nextTab =
+				index === -1 ? undefined : (openTabs[index + 1] ?? openTabs[index - 1]);
 			removeTab(id);
 			if (isActive) {
-				void routerRef.current.navigate({ to: "/" });
+				void routerRef.current.navigate({ to: nextTab?.url ?? "/" });
 			}
 		},
-		[pathname, routerRef],
+		[openTabs, pathname, routerRef],
 	);
 
 	const handleContextClose = useCallback(() => {
-		const ctx = contextTabRef.current;
-		if (!ctx) return;
-		handleCloseTab(ctx.tab.id, ctx.tab.url);
-	}, [handleCloseTab]);
+		if (!contextTab) return;
+		handleCloseTab(contextTab.tab.id, contextTab.tab.url);
+	}, [contextTab, handleCloseTab]);
 
 	const handleContextCloseOthers = useCallback(() => {
-		const ctx = contextTabRef.current;
-		if (!ctx) return;
-		if (pathname !== ctx.tab.url) {
-			void routerRef.current.navigate({ to: ctx.tab.url });
+		if (!contextTab) return;
+		if (pathname !== contextTab.tab.url) {
+			void routerRef.current.navigate({ to: contextTab.tab.url });
 		}
-		removeOtherTabs(ctx.tab.id);
-	}, [pathname, routerRef]);
+		removeOtherTabs(contextTab.tab.id);
+	}, [contextTab, pathname, routerRef]);
 
 	const handleContextCloseRight = useCallback(() => {
-		const ctx = contextTabRef.current;
-		if (!ctx) return;
-		removeTabsToRight(ctx.tab.id);
-	}, []);
+		if (!contextTab) return;
+		removeTabsToRight(contextTab.tab.id);
+	}, [contextTab]);
 
 	if (openTabs.length === 0) return null;
 
@@ -193,7 +196,7 @@ export function DashboardTabs({ tabsReady, routerRef }: DashboardTabsProps) {
 										icon={Icon}
 										onClose={handleCloseTab}
 										onContextMenu={() => {
-											contextTabRef.current = { tab, index };
+											setContextTab({ tab, index });
 										}}
 										routerRef={routerRef}
 									/>
@@ -216,7 +219,7 @@ export function DashboardTabs({ tabsReady, routerRef }: DashboardTabsProps) {
 					</ContextMenuItem>
 					<ContextMenuItem
 						onSelect={handleContextCloseRight}
-						disabled={contextTabRef.current?.index === openTabs.length - 1}
+						disabled={!contextTab || contextTab.index === openTabs.length - 1}
 					>
 						<ChevronRightIcon size={14} strokeWidth={2} />
 						Close tabs to the right

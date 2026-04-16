@@ -7,6 +7,7 @@ import {
 	ReviewsIcon,
 	SunIcon,
 	SystemIcon,
+	UserCircleIcon,
 } from "@diffkit/icons";
 import { Avatar, AvatarFallback } from "@diffkit/ui/components/avatar";
 import {
@@ -20,10 +21,13 @@ import {
 	DropdownMenuTrigger,
 } from "@diffkit/ui/components/dropdown-menu";
 import { cn } from "@diffkit/ui/lib/utils";
+import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import { useTheme } from "next-themes";
 import { useState } from "react";
 import { signOutToLogin } from "#/lib/auth-actions";
+import { githubViewerQueryOptions } from "#/lib/github.query";
+import { useHasMounted } from "#/lib/use-has-mounted";
 
 const themeOptions = [
 	{ value: "light", icon: SunIcon, label: "Light" },
@@ -40,6 +44,7 @@ interface MobileNavItem {
 
 interface DashboardMobileNavProps {
 	user: {
+		id: string;
 		name?: string | null;
 		email: string;
 		image?: string | null;
@@ -59,6 +64,12 @@ export function DashboardMobileNav({
 }: DashboardMobileNavProps) {
 	const { theme, setTheme } = useTheme();
 	const [avatarLoadFailed, setAvatarLoadFailed] = useState(false);
+	const hasMounted = useHasMounted();
+	const viewerQuery = useQuery({
+		...githubViewerQueryOptions({ userId: user.id }),
+		enabled: hasMounted,
+	});
+	const viewerLogin = viewerQuery.data?.login;
 
 	const displayName = user.name ?? user.email;
 	const initials = displayName
@@ -161,9 +172,12 @@ export function DashboardMobileNav({
 					</DropdownMenuLabel>
 					<DropdownMenuSeparator />
 					<DropdownMenuGroup>
-						<DropdownMenuItem>
-							Profile
-							<DropdownMenuShortcut keys={["G", "P"]} />
+						<DropdownMenuItem asChild disabled={!viewerLogin}>
+							<Link to="/$owner" params={{ owner: viewerLogin ?? "" }}>
+								<UserCircleIcon size={16} strokeWidth={2} />
+								Profile
+								<DropdownMenuShortcut keys={["G", "U"]} />
+							</Link>
 						</DropdownMenuItem>
 						<DropdownMenuItem asChild>
 							<Link to="/settings">
