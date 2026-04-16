@@ -33,6 +33,7 @@ import {
 	githubRepoBranchesQueryOptions,
 } from "#/lib/github.query";
 import type { RepoOverview } from "#/lib/github.types";
+import { useRepoCloneProtocol } from "#/lib/repo-clone-protocol-storage";
 
 export function CodeExplorerToolbar({
 	repo,
@@ -177,11 +178,19 @@ function BranchSelector({
 }
 
 function CodePopover({ repo }: { repo: RepoOverview }) {
+	const [selectedProtocol, setSelectedProtocol] = useRepoCloneProtocol();
 	const [copied, setCopied] = useState(false);
 	const httpsUrl = `https://github.com/${repo.fullName}.git`;
 	const sshUrl = `git@github.com:${repo.fullName}.git`;
 	const cliCommand = `gh repo clone ${repo.fullName}`;
 	const zipUrl = `https://github.com/${repo.fullName}/archive/refs/heads/${repo.defaultBranch}.zip`;
+
+	const handleProtocolChange = useCallback(
+		(protocol: string) => {
+			setSelectedProtocol(protocol);
+		},
+		[setSelectedProtocol],
+	);
 
 	const handleCopy = useCallback((text: string) => {
 		void navigator.clipboard.writeText(text);
@@ -203,7 +212,11 @@ function CodePopover({ repo }: { repo: RepoOverview }) {
 					<span className="text-sm font-semibold">Clone {repo.fullName}</span>
 				</div>
 
-				<Tabs defaultValue="cli" className="gap-0">
+				<Tabs
+					value={selectedProtocol}
+					onValueChange={handleProtocolChange}
+					className="gap-0"
+				>
 					<TabsList className="mx-4 mt-3 h-8 w-fit">
 						<TabsTrigger value="https" className="text-xs">
 							HTTPS
