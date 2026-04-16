@@ -1,8 +1,13 @@
 import { FileIcon, FolderIcon } from "@diffkit/icons";
+import { Skeleton } from "@diffkit/ui/components/skeleton";
 import { cn } from "@diffkit/ui/lib/utils";
+import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import { formatRelativeTime } from "#/lib/format-relative-time";
-import type { GitHubQueryScope } from "#/lib/github.query";
+import {
+	type GitHubQueryScope,
+	githubFileLastCommitQueryOptions,
+} from "#/lib/github.query";
 import type { RepoOverview, RepoTreeEntry } from "#/lib/github.types";
 import { LatestCommitBar } from "./latest-commit-bar";
 import { RepoMarkdownFiles } from "./repo-markdown-files";
@@ -37,6 +42,7 @@ export function FolderView({
 							repoName={repoName}
 							currentRef={currentRef}
 							currentPath={currentPath}
+							scope={scope}
 							isLast={index === entries.length - 1}
 						/>
 					))}
@@ -60,6 +66,7 @@ function FolderViewRow({
 	repoName,
 	currentRef,
 	currentPath,
+	scope,
 	isLast,
 }: {
 	entry: RepoTreeEntry;
@@ -67,11 +74,24 @@ function FolderViewRow({
 	repoName: string;
 	currentRef: string;
 	currentPath: string;
+	scope: GitHubQueryScope;
 	isLast: boolean;
 }) {
 	const Icon = entry.type === "dir" ? FolderIcon : FileIcon;
 	const isDir = entry.type === "dir";
 	const entryPath = currentPath ? `${currentPath}/${entry.name}` : entry.name;
+
+	const commitQuery = useQuery(
+		githubFileLastCommitQueryOptions(scope, {
+			owner,
+			repo: repoName,
+			ref: currentRef,
+			path: entryPath,
+		}),
+	);
+
+	const commit = commitQuery.data;
+
 	return (
 		<Link
 			to={isDir ? "/$owner/$repo/tree/$" : "/$owner/$repo/blob/$"}
@@ -104,12 +124,18 @@ function FolderViewRow({
 				</span>
 			</div>
 			<span className="truncate text-muted-foreground">
-				{entry.lastCommit?.message ?? ""}
+				{commit ? (
+					commit.message.split("\n")[0]
+				) : commitQuery.isLoading ? (
+					<Skeleton className="h-3.5 w-48 rounded" />
+				) : null}
 			</span>
 			<span className="text-right text-xs text-muted-foreground">
-				{entry.lastCommit?.date
-					? formatRelativeTime(entry.lastCommit.date)
-					: ""}
+				{commit?.date ? (
+					formatRelativeTime(commit.date)
+				) : commitQuery.isLoading ? (
+					<Skeleton className="ml-auto h-3.5 w-12 rounded" />
+				) : null}
 			</span>
 		</Link>
 	);

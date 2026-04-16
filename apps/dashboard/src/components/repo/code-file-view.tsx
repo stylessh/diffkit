@@ -1,8 +1,10 @@
 import {
+	CodeIcon,
 	CopyIcon,
 	DownloadIcon,
 	FileIcon,
 	GitCommitIcon,
+	ViewIcon,
 } from "@diffkit/icons";
 import { highlightCode } from "@diffkit/ui/components/markdown";
 import { Skeleton } from "@diffkit/ui/components/skeleton";
@@ -11,6 +13,7 @@ import {
 	TooltipContent,
 	TooltipTrigger,
 } from "@diffkit/ui/components/tooltip";
+import { cn } from "@diffkit/ui/lib/utils";
 import { useQuery } from "@tanstack/react-query";
 import { Suspense, use, useCallback, useMemo, useRef, useState } from "react";
 import { formatRelativeTime } from "#/lib/format-relative-time";
@@ -21,6 +24,23 @@ import {
 	githubRepoTreeQueryOptions,
 } from "#/lib/github.query";
 import type { FileLastCommit } from "#/lib/github.types";
+
+const IMAGE_EXTENSIONS = new Set([
+	"png",
+	"jpg",
+	"jpeg",
+	"avif",
+	"gif",
+	"webp",
+	"svg",
+	"ico",
+	"bmp",
+]);
+
+function isImageFile(path: string): boolean {
+	const ext = path.split(".").pop()?.toLowerCase() ?? "";
+	return IMAGE_EXTENSIONS.has(ext);
+}
 
 const EXT_TO_LANG: Record<string, string> = {
 	ts: "typescript",
@@ -187,6 +207,37 @@ export function CodeFileView({
 		[parentTreeQuery.data, fileName],
 	);
 
+	const commit = fileCommitQuery.data;
+	const isImage = isImageFile(path);
+	const isSvg = path.toLowerCase().endsWith(".svg");
+
+	// Non-SVG images — no code content needed
+	if (isImage && !isSvg) {
+		const rawUrl = `https://raw.githubusercontent.com/${owner}/${repo}/${currentRef}/${path}`;
+		return (
+			<div className="flex flex-col gap-4">
+				<FileCommitBar commit={commit} />
+				<div className="overflow-hidden rounded-lg border">
+					<FileViewHeader
+						fileName={fileName}
+						size={fileEntry?.size ?? null}
+						owner={owner}
+						repo={repo}
+						currentRef={currentRef}
+						path={path}
+					/>
+					<div className="flex items-center justify-center bg-surface-0 p-8">
+						<img
+							src={rawUrl}
+							alt={fileName}
+							className="max-h-[70vh] max-w-full object-contain"
+						/>
+					</div>
+				</div>
+			</div>
+		);
+	}
+
 	if (contentQuery.isLoading) {
 		return <CodeFileViewSkeleton fileName={fileName} />;
 	}
@@ -205,7 +256,24 @@ export function CodeFileView({
 	const code = contentQuery.data.replace(/\n$/, "");
 	const lang = detectLang(path);
 	const lineCount = code.split("\n").length;
-	const commit = fileCommitQuery.data;
+
+	// SVG — toggle between preview and code
+	if (isSvg) {
+		return (
+			<SvgFileView
+				code={code}
+				lang={lang}
+				lineCount={lineCount}
+				fileName={fileName}
+				size={fileEntry?.size ?? null}
+				commit={commit}
+				owner={owner}
+				repo={repo}
+				currentRef={currentRef}
+				path={path}
+			/>
+		);
+	}
 
 	return (
 		<div className="flex flex-col gap-4">
@@ -231,6 +299,95 @@ export function CodeFileView({
 	);
 }
 
+function SvgFileView({
+	code,
+	lang,
+	lineCount,
+	fileName,
+	size,
+	commit,
+	owner,
+	repo,
+	currentRef,
+	path,
+}: {
+	code: string;
+	lang: string;
+	lineCount: number;
+	fileName: string;
+	size: number | null;
+	commit: FileLastCommit | null | undefined;
+	owner: string;
+	repo: string;
+	currentRef: string;
+	path: string;
+}) {
+	const [mode, setMode] = useState<"preview" | "code">("preview");
+	const rawUrl = `https://raw.githubusercontent.com/${owner}/${repo}/${currentRef}/${path}`;
+
+	return (
+		<div className="flex flex-col gap-4">
+			<FileCommitBar commit={commit} />
+			<div className="overflow-hidden rounded-lg border">
+				<FileViewHeader
+					fileName={fileName}
+					lineCount={mode === "code" ? lineCount : undefined}
+					size={size}
+					code={code}
+					owner={owner}
+					repo={repo}
+					currentRef={currentRef}
+					path={path}
+				>
+					<div className="flex items-center rounded-md border border-border/60">
+						<button
+							type="button"
+							onClick={() => setMode("preview")}
+							className={cn(
+								"flex items-center gap-1.5 rounded-l-md px-2 py-1 text-xs transition-colors",
+								mode === "preview"
+									? "bg-surface-1 text-foreground"
+									: "text-muted-foreground hover:text-foreground",
+							)}
+						>
+							<ViewIcon size={13} />
+							Preview
+						</button>
+						<button
+							type="button"
+							onClick={() => setMode("code")}
+							className={cn(
+								"flex items-center gap-1.5 rounded-r-md border-l border-border/60 px-2 py-1 text-xs transition-colors",
+								mode === "code"
+									? "bg-surface-1 text-foreground"
+									: "text-muted-foreground hover:text-foreground",
+							)}
+						>
+							<CodeIcon size={13} />
+							Code
+						</button>
+					</div>
+				</FileViewHeader>
+				{mode === "preview" ? (
+					<div className="flex items-center justify-center bg-surface-0 p-8">
+						<img
+							src={rawUrl}
+							alt={fileName}
+							className="max-h-[70vh] max-w-full object-contain"
+						/>
+					</div>
+				) : (
+					<div className="overflow-x-auto">
+						<Suspense fallback={<PlainCode code={code} />}>
+							<HighlightedCode code={code} lang={lang} />
+						</Suspense>
+					</div>
+				)}
+			</div>
+		</div>
+	);
+}
+
 function FileViewHeader({
 	fileName,
 	lineCount,
@@ -240,6 +397,7 @@ function FileViewHeader({
 	repo,
 	currentRef,
 	path,
+	children,
 }: {
 	fileName: string;
 	lineCount?: number;
@@ -249,6 +407,7 @@ function FileViewHeader({
 	repo?: string;
 	currentRef?: string;
 	path?: string;
+	children?: React.ReactNode;
 }) {
 	const [copied, setCopied] = useState(false);
 	const timeoutRef = useRef<ReturnType<typeof setTimeout>>(undefined);
@@ -276,7 +435,8 @@ function FileViewHeader({
 				)}
 				{size != null && <span>{formatFileSize(size)}</span>}
 			</div>
-			<div className="ml-auto flex items-center gap-1">
+			<div className="ml-auto flex items-center gap-2">
+				{children}
 				{code && (
 					<button
 						type="button"
@@ -362,7 +522,7 @@ function FileCommitBar({
 
 function LineNumbers({ count }: { count: number }) {
 	return (
-		<div className="flex flex-col items-end border-r bg-surface-0 px-3 py-3 text-muted-foreground select-none">
+		<div className="sticky left-0 z-10 flex flex-col items-end border-r bg-surface-0 px-3 py-3 text-muted-foreground select-none">
 			{Array.from({ length: count }, (_, i) => (
 				// biome-ignore lint/suspicious/noArrayIndexKey: line numbers are stable indices
 				<span key={i} className="leading-5">
@@ -377,11 +537,13 @@ function PlainCode({ code }: { code: string }) {
 	const lineCount = code.split("\n").length;
 
 	return (
-		<div className="flex text-xs">
-			<LineNumbers count={lineCount} />
-			<pre className="flex-1 overflow-x-auto p-3">
-				<code className="leading-5 text-foreground">{code}</code>
-			</pre>
+		<div className="overflow-x-auto text-xs">
+			<div className="flex min-w-fit">
+				<LineNumbers count={lineCount} />
+				<pre className="flex-1 p-3">
+					<code className="leading-5 text-foreground">{code}</code>
+				</pre>
+			</div>
 		</div>
 	);
 }
@@ -391,13 +553,15 @@ function HighlightedCode({ code, lang }: { code: string; lang: string }) {
 	const lineCount = code.split("\n").length;
 
 	return (
-		<div className="flex text-xs">
-			<LineNumbers count={lineCount} />
-			<div
-				className="flex-1 overflow-x-auto [&_pre]:p-3 [&_pre]:leading-5 [&_code]:text-xs"
-				// biome-ignore lint/security/noDangerouslySetInnerHtml: shiki output is trusted
-				dangerouslySetInnerHTML={{ __html: html }}
-			/>
+		<div className="overflow-x-auto text-xs">
+			<div className="flex min-w-fit">
+				<LineNumbers count={lineCount} />
+				<div
+					className="flex-1 [&_pre]:p-3 [&_pre]:leading-5 [&_code]:text-xs"
+					// biome-ignore lint/security/noDangerouslySetInnerHtml: shiki output is trusted
+					dangerouslySetInnerHTML={{ __html: html }}
+				/>
+			</div>
 		</div>
 	);
 }

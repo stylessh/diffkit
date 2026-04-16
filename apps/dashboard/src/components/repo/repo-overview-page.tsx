@@ -82,6 +82,7 @@ export function RepoOverviewPage() {
 									owner={owner}
 									repo={repo}
 									currentRef={activeRef}
+									scope={scope}
 								/>
 							) : (
 								<FileTreeSkeleton />
