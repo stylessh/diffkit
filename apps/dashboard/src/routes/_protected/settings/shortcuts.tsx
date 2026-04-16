@@ -201,6 +201,7 @@ const shortcutGroups: ShortcutGroup[] = [
 		shortcuts: [
 			{ keys: ["G", "H"], description: "Go to Overview" },
 			{ keys: ["G", "G"], description: "Open Current Page on GitHub" },
+			{ keys: ["G", "U"], description: "Go to Profile" },
 			{ keys: ["G", "P"], description: "Go to Pull Requests" },
 			{ keys: ["G", "I"], description: "Go to Issues" },
 			{ keys: ["G", "R"], description: "Go to Reviews" },
@@ -211,6 +212,7 @@ const shortcutGroups: ShortcutGroup[] = [
 		title: "Tabs",
 		shortcuts: [
 			{ keys: ["Shift", "1\u20139"], description: "Switch to tab by position" },
+			{ keys: ["Shift", "W"], description: "Close current tab" },
 			{ keys: ["Shift", "\u2190"], description: "Previous tab" },
 			{ keys: ["Shift", "\u2192"], description: "Next tab" },
 		],

@@ -34,7 +34,7 @@ import {
 	githubViewerQueryOptions,
 } from "#/lib/github.query";
 import { useGlobalShortcuts } from "#/lib/shortcuts";
-import { type Tab, useTabs } from "#/lib/tab-store";
+import { removeTab, type Tab, useTabs } from "#/lib/tab-store";
 import { useHasMounted } from "#/lib/use-has-mounted";
 
 interface DashboardTopbarProps {
@@ -154,6 +154,13 @@ export function DashboardTopbar({
 		void routerRef.current.navigate({ to: tab.url });
 	}
 
+	function getNeighborTab(tab: Tab | undefined) {
+		if (!tab) return undefined;
+		const index = openTabs.findIndex((item) => item.id === tab.id);
+		if (index === -1) return undefined;
+		return openTabs[index + 1] ?? openTabs[index - 1];
+	}
+
 	useGlobalShortcuts([
 		...Array.from(
 			{ length: Math.min(openTabs.length, MAX_TAB_SHORTCUTS) },
@@ -165,6 +172,28 @@ export function DashboardTopbar({
 				},
 			}),
 		),
+		{
+			shortcut: [{ key: "g" }, { key: "u" }],
+			enabled: tabsReady && Boolean(viewerLogin),
+			onTrigger: () => {
+				void routerRef.current.navigate({
+					to: "/$owner",
+					params: { owner: viewerLogin ?? "" },
+				});
+			},
+		},
+		{
+			shortcut: { key: "w", shift: true },
+			enabled: tabsReady && openTabs.length > 0,
+			onTrigger: () => {
+				const currentPath = routerRef.current.state.location.pathname;
+				const currentTab = openTabs.find((tab) => tab.url === currentPath);
+				if (!currentTab) return;
+				const nextTab = getNeighborTab(currentTab);
+				removeTab(currentTab.id);
+				void routerRef.current.navigate({ to: nextTab?.url ?? "/" });
+			},
+		},
 		{
 			shortcut: { key: "ArrowLeft", shift: true },
 			enabled: tabsReady && openTabs.length > 1,
@@ -252,7 +281,7 @@ export function DashboardTopbar({
 								<Link to="/$owner" params={{ owner: viewerLogin ?? "" }}>
 									<UserCircleIcon size={16} strokeWidth={2} />
 									Profile
-									<DropdownMenuShortcut keys={["G", "P"]} />
+									<DropdownMenuShortcut keys={["G", "U"]} />
 								</Link>
 							</DropdownMenuItem>
 							<DropdownMenuItem asChild>
