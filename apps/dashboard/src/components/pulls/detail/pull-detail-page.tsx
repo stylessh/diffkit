@@ -126,6 +126,7 @@ export function PullDetailContent({
 					url: `/${owner}/${repo}/pull/${pullNumber}`,
 					repo: `${owner}/${repo}`,
 					iconColor: getPrStateConfig(pr).color,
+					merged: pr.isMerged,
 				}
 			: null,
 	);

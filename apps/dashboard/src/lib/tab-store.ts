@@ -13,6 +13,7 @@ export interface Tab {
 	avatarUrl?: string;
 	additions?: number;
 	deletions?: number;
+	merged?: boolean;
 }
 
 export const TABS_STORAGE_KEY = "diffkit:tabs";
@@ -88,7 +89,8 @@ export function addTab(tab: Tab) {
 			existing.title === tab.title &&
 			existing.iconColor === tab.iconColor &&
 			existing.additions === tab.additions &&
-			existing.deletions === tab.deletions
+			existing.deletions === tab.deletions &&
+			existing.merged === tab.merged
 		)
 			return;
 		tabs = tabs.map((t) => (t.id === tab.id ? tab : t));
@@ -113,6 +115,26 @@ export function removeTabsToRight(id: string) {
 	const index = tabs.findIndex((t) => t.id === id);
 	if (index === -1) return;
 	tabs = tabs.slice(0, index + 1);
+	emitChange();
+}
+
+export function isMergedTab(t: Tab): boolean {
+	return (
+		t.merged === true ||
+		((t.type === "pull" || t.type === "review") &&
+			t.iconColor === "text-purple-500")
+	);
+}
+
+export function removeMergedTabs() {
+	const next = tabs.filter((t) => !isMergedTab(t));
+	if (next.length === tabs.length) return;
+	tabs = next;
+	emitChange();
+}
+
+export function reorderTabs(newOrder: Tab[]) {
+	tabs = newOrder;
 	emitChange();
 }
 
