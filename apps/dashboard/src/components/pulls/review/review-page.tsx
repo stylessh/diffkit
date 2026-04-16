@@ -1,9 +1,4 @@
-import {
-	FileIcon,
-	GitPullRequestIcon,
-	PanelLeftIcon,
-	SearchIcon,
-} from "@diffkit/icons";
+import { FileIcon, GitPullRequestIcon, PanelLeftIcon } from "@diffkit/icons";
 import {
 	Drawer,
 	DrawerContent,
@@ -30,13 +25,13 @@ import {
 	memo,
 	Suspense,
 	useCallback,
-	useDeferredValue,
 	useMemo,
 	useRef,
 	useState,
 	useSyncExternalStore,
 } from "react";
 import { getPrStateConfig } from "#/components/pulls/detail/pull-detail-header";
+import { FileSearchCard } from "#/components/shared/file-search-card";
 import { getPullFiles, submitPullReview } from "#/lib/github.functions";
 import {
 	githubPullFileSummariesQueryOptions,
@@ -66,11 +61,10 @@ import {
 import { ReviewSubmitPopover } from "./review-submit-popover";
 import type {
 	ActiveCommentForm,
-	FileTreeNode,
 	PendingComment,
 	ReviewEvent,
 } from "./review-types";
-import { buildFileTree } from "./review-utils";
+import { buildFileTree, encodeFileId } from "./review-utils";
 
 const routeApi = getRouteApi("/_protected/$owner/$repo/review/$pullId");
 const PULL_FILES_PAGE_SIZE = 25;
@@ -736,54 +730,46 @@ const ReviewSidebar = memo(function ReviewSidebar({
 	activeFileStore: ActiveFileStore;
 	onFileClick: (path: string) => void;
 }) {
-	const [fileFilter, setFileFilter] = useState("");
-	const deferredFileFilter = useDeferredValue(fileFilter);
-
 	const fileTree = useMemo(() => buildFileTree(sidebarFiles), [sidebarFiles]);
 
-	const filteredTree = useMemo(() => {
-		if (!deferredFileFilter) return fileTree;
-		const lower = deferredFileFilter.toLowerCase();
+	const searchEntries = useMemo(
+		() =>
+			sidebarFiles.map((f) => ({
+				path: f.filename,
+				name: f.filename.split("/").pop() ?? f.filename,
+				type: "file" as const,
+			})),
+		[sidebarFiles],
+	);
 
-		function filterNodes(nodes: FileTreeNode[]): FileTreeNode[] {
-			return nodes
-				.map((node) => {
-					if (node.type === "file") {
-						return node.name.toLowerCase().includes(lower) ? node : null;
-					}
+	const activeFile = useSyncExternalStore(
+		activeFileStore.subscribe,
+		activeFileStore.get,
+	);
 
-					const filteredChildren = filterNodes(node.children);
-					return filteredChildren.length > 0
-						? { ...node, children: filteredChildren }
-						: null;
-				})
-				.filter(Boolean) as FileTreeNode[];
-		}
-
-		return filterNodes(fileTree);
-	}, [deferredFileFilter, fileTree]);
+	const handleSearchSelect = useCallback(
+		(entry: { path: string }) => {
+			onFileClick(entry.path);
+			const hash = `#${encodeFileId(entry.path)}`;
+			if (window.location.hash !== hash) {
+				history.replaceState(null, "", hash);
+			}
+		},
+		[onFileClick],
+	);
 
 	return (
 		<div className="flex h-full flex-col">
-			<div className="px-3 py-2">
-				<div className="relative flex items-center rounded-md border bg-surface-0 px-2.5 py-1.5">
-					<SearchIcon
-						size={13}
-						strokeWidth={2}
-						className="shrink-0 text-muted-foreground"
-					/>
-					<input
-						type="text"
-						placeholder="Filter files..."
-						value={fileFilter}
-						onChange={(event) => setFileFilter(event.target.value)}
-						className="ml-2 w-full bg-transparent text-xs outline-none placeholder:text-muted-foreground"
-					/>
-				</div>
-			</div>
+			<FileSearchCard
+				entries={searchEntries}
+				onSelect={handleSearchSelect}
+				activePath={activeFile ?? undefined}
+				placeholder="Search files..."
+				shortcutKey="f"
+			/>
 
 			<div className="flex-1 overflow-auto py-1">
-				{filteredTree.map((node) => (
+				{fileTree.map((node) => (
 					<ReviewFileTreeNode
 						key={node.path}
 						node={node}

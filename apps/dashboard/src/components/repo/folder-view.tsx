@@ -9,19 +9,29 @@ import {
 	type GitHubQueryScope,
 	githubTreeEntryCommitsQueryOptions,
 } from "#/lib/github.query";
-import type { FileLastCommit, RepoTreeEntry } from "#/lib/github.types";
+import type {
+	FileLastCommit,
+	RepoOverview,
+	RepoTreeEntry,
+} from "#/lib/github.types";
+import { LatestCommitBar } from "./latest-commit-bar";
+import { RepoMarkdownFiles } from "./repo-markdown-files";
 
-export function FileTree({
+export function FolderView({
 	entries,
-	owner,
 	repo,
+	owner,
+	repoName,
 	currentRef,
+	currentPath,
 	scope,
 }: {
 	entries: RepoTreeEntry[];
+	repo: RepoOverview;
 	owner: string;
-	repo: string;
+	repoName: string;
 	currentRef: string;
+	currentPath: string;
 	scope: GitHubQueryScope;
 }) {
 	const entryNames = useMemo(() => entries.map((e) => e.name), [entries]);
@@ -29,61 +39,78 @@ export function FileTree({
 	const commitsQuery = useQuery(
 		githubTreeEntryCommitsQueryOptions(scope, {
 			owner,
-			repo,
+			repo: repoName,
 			ref: currentRef,
-			dirPath: "",
+			dirPath: currentPath,
 			entries: entryNames,
 		}),
 	);
 
 	return (
-		<div className="overflow-hidden rounded-b-lg border">
-			{entries.map((entry, index) => (
-				<FileTreeRow
-					key={entry.sha}
-					entry={entry}
-					owner={owner}
-					repo={repo}
-					currentRef={currentRef}
-					commit={commitsQuery.data?.[entry.name] ?? null}
-					isCommitLoading={commitsQuery.isLoading}
-					isLast={index === entries.length - 1}
-				/>
-			))}
+		<div className="flex flex-col gap-6">
+			<div>
+				<LatestCommitBar repo={repo} />
+				<div className="overflow-hidden rounded-b-lg border">
+					{entries.map((entry, index) => (
+						<FolderViewRow
+							key={entry.sha}
+							entry={entry}
+							owner={owner}
+							repoName={repoName}
+							currentRef={currentRef}
+							currentPath={currentPath}
+							commit={commitsQuery.data?.[entry.name] ?? null}
+							isCommitLoading={commitsQuery.isLoading}
+							isLast={index === entries.length - 1}
+						/>
+					))}
+				</div>
+			</div>
+
+			<RepoMarkdownFiles
+				entries={entries}
+				owner={owner}
+				repo={repoName}
+				currentRef={currentRef}
+				scope={scope}
+			/>
 		</div>
 	);
 }
 
-function FileTreeRow({
+function FolderViewRow({
 	entry,
 	owner,
-	repo,
+	repoName,
 	currentRef,
+	currentPath,
 	commit,
 	isCommitLoading,
 	isLast,
 }: {
 	entry: RepoTreeEntry;
 	owner: string;
-	repo: string;
+	repoName: string;
 	currentRef: string;
+	currentPath: string;
 	commit: FileLastCommit | null;
 	isCommitLoading: boolean;
 	isLast: boolean;
 }) {
 	const Icon = entry.type === "dir" ? FolderIcon : FileIcon;
 	const isDir = entry.type === "dir";
+	const entryPath = currentPath ? `${currentPath}/${entry.name}` : entry.name;
 
 	return (
 		<Link
 			to={isDir ? "/$owner/$repo/tree/$" : "/$owner/$repo/blob/$"}
 			params={{
 				owner,
-				repo,
-				_splat: `${currentRef}/${entry.name}`,
+				repo: repoName,
+				_splat: `${currentRef}/${entryPath}`,
 			}}
 			className={cn(
-				"grid grid-cols-[200px_minmax(0,1fr)_80px] items-center gap-4 px-4 py-2 text-sm hover:bg-surface-1",
+				"grid grid-cols-[minmax(0,1fr)_minmax(0,2fr)_80px] items-center gap-4 px-4 py-2 text-sm hover:bg-surface-1",
 				!isLast && "border-b",
 			)}
 		>
@@ -120,5 +147,24 @@ function FileTreeRow({
 				) : null}
 			</span>
 		</Link>
+	);
+}
+
+export function FolderViewSkeleton() {
+	const rows = Array.from({ length: 8 }, (_, i) => i);
+	return (
+		<div className="overflow-hidden rounded-lg border">
+			{rows.map((key) => (
+				<div
+					key={key}
+					className="flex items-center gap-4 border-b px-4 py-2.5 last:border-b-0"
+				>
+					<div className="size-4 shrink-0 animate-pulse rounded bg-surface-1" />
+					<div className="h-4 w-32 animate-pulse rounded-md bg-surface-1" />
+					<div className="h-4 flex-1 animate-pulse rounded-md bg-surface-1" />
+					<div className="h-4 w-12 shrink-0 animate-pulse rounded-md bg-surface-1" />
+				</div>
+			))}
+		</div>
 	);
 }

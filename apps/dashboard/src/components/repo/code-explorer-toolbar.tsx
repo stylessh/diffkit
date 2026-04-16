@@ -93,7 +93,7 @@ function BranchSelector({
 					size="sm"
 					onMouseEnter={prefetchBranches}
 					onFocus={prefetchBranches}
-					className="max-w-[220px]"
+					className="max-w-[220px] border border-border dark:border-transparent"
 				>
 					<GitPullRequestIcon size={14} />
 					<span className="truncate">{currentRef}</span>

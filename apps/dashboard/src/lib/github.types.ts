@@ -470,6 +470,13 @@ export type RepoTreeEntry = {
 	} | null;
 };
 
+export type FileLastCommit = {
+	sha: string;
+	message: string;
+	date: string;
+	author: GitHubActor | null;
+};
+
 export type RepoBranch = {
 	name: string;
 	isProtected: boolean;

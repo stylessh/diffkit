@@ -8,6 +8,7 @@ import type {
 	CreateLabelInput,
 	CreateReviewCommentInput,
 	DiscussionsResult,
+	FileLastCommit,
 	GitHubActor,
 	GitHubContributionCalendar,
 	GitHubLabel,
@@ -6874,6 +6875,201 @@ export const getRepoFileContent = createServerFn({ method: "GET" })
 				return Buffer.from(content.content, "base64").toString("utf-8");
 			},
 		}).catch(() => null);
+	});
+
+// ---------------------------------------------------------------------------
+// File last commit
+// ---------------------------------------------------------------------------
+
+type FileLastCommitInput = {
+	owner: string;
+	repo: string;
+	path: string;
+	ref: string;
+};
+
+export const getFileLastCommit = createServerFn({ method: "GET" })
+	.inputValidator(identityValidator<FileLastCommitInput>)
+	.handler(async ({ data }): Promise<FileLastCommit | null> => {
+		const context = await getGitHubContextForRepository(data);
+		if (!context) return null;
+
+		return getCachedGitHubRequest<
+			Awaited<ReturnType<GitHubClient["rest"]["repos"]["listCommits"]>>["data"],
+			FileLastCommit | null
+		>({
+			context,
+			resource: "repo.fileLastCommit.v1",
+			params: data,
+			freshForMs: githubCachePolicy.detail.staleTimeMs,
+			signalKeys: [githubRevalidationSignalKeys.repoCode(data)],
+			namespaceKeys: [githubRevalidationSignalKeys.repoCode(data)],
+			cacheMode: "split",
+			request: (headers) =>
+				context.octokit.rest.repos.listCommits({
+					owner: data.owner,
+					repo: data.repo,
+					sha: data.ref,
+					path: data.path,
+					per_page: 1,
+					headers,
+				}),
+			mapData: (commits) => {
+				const commit = commits[0];
+				if (!commit) return null;
+				return {
+					sha: commit.sha,
+					message: commit.commit.message,
+					date:
+						commit.commit.committer?.date ?? commit.commit.author?.date ?? "",
+					author: commit.author
+						? {
+								login: commit.author.login,
+								avatarUrl: commit.author.avatar_url,
+								url: commit.author.html_url,
+								type: commit.author.type,
+							}
+						: null,
+				};
+			},
+		}).catch(() => null);
+	});
+
+// ---------------------------------------------------------------------------
+// Batch tree entry commits (single GraphQL query for all entries in a dir)
+// ---------------------------------------------------------------------------
+
+type TreeEntryCommitsInput = {
+	owner: string;
+	repo: string;
+	ref: string;
+	/** Directory path (empty string for root). */
+	dirPath: string;
+	/** Entry names within the directory. */
+	entries: string[];
+};
+
+type TreeEntryCommitsResult = Record<string, FileLastCommit | null>;
+
+export const getTreeEntryCommits = createServerFn({ method: "GET" })
+	.inputValidator(identityValidator<TreeEntryCommitsInput>)
+	.handler(async ({ data }): Promise<TreeEntryCommitsResult> => {
+		const context = await getGitHubContextForRepository(data);
+		if (!context) return {};
+
+		const repoCodeKey = githubRevalidationSignalKeys.repoCode(data);
+
+		return getOrRevalidateGitHubResource<TreeEntryCommitsResult>({
+			userId: context.session.user.id,
+			resource: "repo.treeEntryCommits.v1",
+			params: {
+				owner: data.owner,
+				repo: data.repo,
+				ref: data.ref,
+				dirPath: data.dirPath,
+			},
+			freshForMs: githubCachePolicy.detail.staleTimeMs,
+			signalKeys: [repoCodeKey],
+			namespaceKeys: [repoCodeKey],
+			cacheMode: "split",
+			fetcher: async () => {
+				// Build aliased history fields — one per entry
+				const aliases = data.entries.map((name, i) => {
+					const entryPath = data.dirPath ? `${data.dirPath}/${name}` : name;
+					return `e${i}: history(first: 1, path: ${JSON.stringify(entryPath)}) {
+						nodes {
+							oid
+							message
+							committedDate
+							author {
+								user {
+									login
+									avatarUrl
+									url
+								}
+							}
+						}
+					}`;
+				});
+
+				const query = `query($owner: String!, $repo: String!, $ref: String!) {
+					repository(owner: $owner, name: $repo) {
+						object(expression: $ref) {
+							... on Commit {
+								${aliases.join("\n")}
+							}
+						}
+					}
+					rateLimit { cost remaining resetAt }
+				}`;
+
+				const response = await executeGitHubGraphQL<{
+					repository: {
+						object: Record<
+							string,
+							{
+								nodes: Array<{
+									oid: string;
+									message: string;
+									committedDate: string;
+									author: {
+										user: {
+											login: string;
+											avatarUrl: string;
+											url: string;
+										} | null;
+									} | null;
+								}>;
+							}
+						> | null;
+					} | null;
+					rateLimit: GitHubGraphQLRateLimit | null;
+				}>(
+					context,
+					`github tree entry commits ${data.owner}/${data.repo}`,
+					query,
+					{
+						owner: data.owner,
+						repo: data.repo,
+						ref: data.ref,
+					},
+				);
+
+				const commitObj = response.repository?.object;
+				const result: TreeEntryCommitsResult = {};
+
+				for (let i = 0; i < data.entries.length; i++) {
+					const alias = `e${i}`;
+					const node = commitObj?.[alias]?.nodes?.[0];
+					const name = data.entries[i];
+					if (!name) continue;
+					if (!node) {
+						result[name] = null;
+						continue;
+					}
+					const user = node.author?.user;
+					result[name] = {
+						sha: node.oid,
+						message: node.message,
+						date: node.committedDate,
+						author: user
+							? {
+									login: user.login,
+									avatarUrl: user.avatarUrl,
+									url: user.url,
+									type: "User",
+								}
+							: null,
+					};
+				}
+
+				return {
+					kind: "success",
+					data: result,
+					metadata: createGraphQLResponseMetadata(response.rateLimit),
+				};
+			},
+		});
 	});
 
 // ---------------------------------------------------------------------------

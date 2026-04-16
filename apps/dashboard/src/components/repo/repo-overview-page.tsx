@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { getRouteApi } from "@tanstack/react-router";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { SidePanelPortal } from "#/components/layouts/dashboard-side-panel";
 import {
 	githubRepoOverviewQueryOptions,
@@ -22,7 +22,7 @@ const routeApi = getRouteApi("/_protected/$owner/$repo/");
 export function RepoOverviewPage() {
 	const { user } = routeApi.useRouteContext();
 	const { owner, repo } = routeApi.useParams();
-	const scope = { userId: user.id };
+	const scope = useMemo(() => ({ userId: user.id }), [user.id]);
 	const hasMounted = useHasMounted();
 
 	const overviewQuery = useQuery({
@@ -77,7 +77,13 @@ export function RepoOverviewPage() {
 						<div>
 							<LatestCommitBar repo={repoData} />
 							{treeQuery.data ? (
-								<FileTree entries={treeQuery.data} />
+								<FileTree
+									entries={treeQuery.data}
+									owner={owner}
+									repo={repo}
+									currentRef={activeRef}
+									scope={scope}
+								/>
 							) : (
 								<FileTreeSkeleton />
 							)}
