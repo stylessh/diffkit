@@ -69,6 +69,7 @@ import {
 	type GitHubConditionalHeaders,
 	type GitHubFetchResult,
 	getOrRevalidateGitHubResource,
+	markGitHubRevalidationSignals,
 } from "./github-cache";
 import { githubCachePolicy } from "./github-cache-policy";
 import { githubRevalidationSignalKeys } from "./github-revalidation";
@@ -4693,6 +4694,24 @@ export const getInstallationAccess = createServerFn({
 		allAccessOwners: [...index.allAccessOwners],
 		selectedRepos: [...index.selectedRepos],
 	};
+});
+
+/**
+ * Invalidates the server-side installation access cache so the next request
+ * fetches fresh data from GitHub. Called when the user returns from changing
+ * permissions on GitHub (e.g. from /setup or the access dialog).
+ */
+export const refreshInstallationAccess = createServerFn({
+	method: "POST",
+}).handler(async () => {
+	await markGitHubRevalidationSignals([
+		githubRevalidationSignalKeys.installationAccess,
+	]);
+	debug(
+		"refreshInstallationAccess",
+		"marked installationAccess for revalidation",
+	);
+	return { ok: true };
 });
 
 export const getUserRepos = createServerFn({ method: "GET" }).handler(
