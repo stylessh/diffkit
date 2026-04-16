@@ -8,6 +8,12 @@ import {
 	getOrRevalidateGitHubResource,
 } from "./github-cache";
 
+vi.mock("@tanstack/react-start/server", () => ({
+	getRequest: () => {
+		throw new Error("Not in request context");
+	},
+}));
+
 function createMemoryStore(
 	initialEntries: GitHubCacheStoreEntry[] = [],
 ): GitHubCacheStore {
