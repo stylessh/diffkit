@@ -19,6 +19,9 @@
     "check-types": {
       "dependsOn": ["^check-types"]
     },
+    "test": {
+      "dependsOn": ["^build"]
+    },
     "format": {}
   }
 }

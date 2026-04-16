@@ -8,6 +8,7 @@
     "lint": "turbo run lint",
     "check": "turbo run check",
     "check-types": "turbo run check-types",
+    "test": "turbo run test",
     "format": "turbo run format",
     "prepare": "husky"
   },

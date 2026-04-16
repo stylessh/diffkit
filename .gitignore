@@ -15,3 +15,5 @@ dist-ssr
 __unconfig*
 .turbo
 .zed
+
+.claude
