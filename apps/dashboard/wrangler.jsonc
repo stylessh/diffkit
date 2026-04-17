@@ -1,3 +1,4 @@
+
 {
 	"$schema": "node_modules/wrangler/config-schema.json",
 	"name": "diffkit",
@@ -20,7 +21,7 @@
 		{
 			"binding": "DB",
 			"database_name": "diffkit-db",
-			"database_id": "7a94a843-0906-416c-9908-4c9fe5339db7",
+			"database_id": "adf06029-e74f-4a61-8d3d-ea505b637611",
 			"migrations_dir": "drizzle"
 		}
 	],
@@ -41,8 +42,8 @@
 	"kv_namespaces": [
 		{
 			"binding": "GITHUB_CACHE_KV",
-			"id": "2e46aa8dd4554072a64e1aad955d6adc",
-			"preview_id": "373842a94f694ce48f5f5376ab622b18"
+			"id": "804b58636dd8472c8adc76418a083aaa",
+			"preview_id": "3460d7db52ef4729a6b00e3b3bd157ce"
 		}
 	],
 	"r2_buckets": [
