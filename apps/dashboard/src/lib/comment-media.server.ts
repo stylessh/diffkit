@@ -22,6 +22,91 @@ export function classifyCommentMedia(
 	return null;
 }
 
+export const COMMENT_MEDIA_SIGNATURE_PROBE_BYTES = 16;
+
+/**
+ * Identify comment media by its file signature (magic bytes). Returned content
+ * type is authoritative for storage/response — never trust the client MIME.
+ */
+export function detectCommentMediaFromBytes(
+	bytes: Uint8Array,
+): { kind: CommentMediaKind; contentType: string } | null {
+	// PNG: 89 50 4E 47 0D 0A 1A 0A
+	if (
+		bytes.length >= 8 &&
+		bytes[0] === 0x89 &&
+		bytes[1] === 0x50 &&
+		bytes[2] === 0x4e &&
+		bytes[3] === 0x47 &&
+		bytes[4] === 0x0d &&
+		bytes[5] === 0x0a &&
+		bytes[6] === 0x1a &&
+		bytes[7] === 0x0a
+	) {
+		return { kind: "image", contentType: "image/png" };
+	}
+	// JPEG: FF D8 FF
+	if (
+		bytes.length >= 3 &&
+		bytes[0] === 0xff &&
+		bytes[1] === 0xd8 &&
+		bytes[2] === 0xff
+	) {
+		return { kind: "image", contentType: "image/jpeg" };
+	}
+	// GIF: 47 49 46 38 (37|39) 61 ("GIF87a" or "GIF89a")
+	if (
+		bytes.length >= 6 &&
+		bytes[0] === 0x47 &&
+		bytes[1] === 0x49 &&
+		bytes[2] === 0x46 &&
+		bytes[3] === 0x38 &&
+		(bytes[4] === 0x37 || bytes[4] === 0x39) &&
+		bytes[5] === 0x61
+	) {
+		return { kind: "image", contentType: "image/gif" };
+	}
+	// WEBP: "RIFF" ....  "WEBP"
+	if (
+		bytes.length >= 12 &&
+		bytes[0] === 0x52 &&
+		bytes[1] === 0x49 &&
+		bytes[2] === 0x46 &&
+		bytes[3] === 0x46 &&
+		bytes[8] === 0x57 &&
+		bytes[9] === 0x45 &&
+		bytes[10] === 0x42 &&
+		bytes[11] === 0x50
+	) {
+		return { kind: "image", contentType: "image/webp" };
+	}
+	// ISO BMFF (MP4/MOV): "ftyp" box at offset 4 with a 4-char brand.
+	if (
+		bytes.length >= 12 &&
+		bytes[4] === 0x66 &&
+		bytes[5] === 0x74 &&
+		bytes[6] === 0x79 &&
+		bytes[7] === 0x70
+	) {
+		const brand = String.fromCharCode(bytes[8], bytes[9], bytes[10], bytes[11]);
+		if (brand === "qt  ") {
+			return { kind: "video", contentType: "video/quicktime" };
+		}
+		return { kind: "video", contentType: "video/mp4" };
+	}
+	// WEBM / Matroska: EBML header 1A 45 DF A3
+	if (
+		bytes.length >= 4 &&
+		bytes[0] === 0x1a &&
+		bytes[1] === 0x45 &&
+		bytes[2] === 0xdf &&
+		bytes[3] === 0xa3
+	) {
+		return { kind: "video", contentType: "video/webm" };
+	}
+	return null;
+}
+
 export function maxBytesForCommentMediaKind(kind: CommentMediaKind): number {
 	return kind === "image"
 		? COMMENT_MEDIA_MAX_IMAGE_BYTES
@@ -38,7 +123,7 @@ export function buildCommentMediaObjectKey(
 	filename: string,
 ): string {
 	const safe = sanitizeCommentMediaFilename(filename);
-	return `comment-media/${userId}/${Date.now()}-${safe}`;
+	return `comment-media/${userId}/${Date.now()}-${crypto.randomUUID()}-${safe}`;
 }
 
 export function verifyCommentMediaKeyForUser(
@@ -119,7 +204,15 @@ export async function verifyCommentMediaObject(
 	| { ok: true; size: number; contentType?: string }
 	| { ok: false; reason: string }
 > {
-	const head = await bucket.head(key);
+	// R2Bucket.head only returns null for NoSuchKey; transient service/network
+	// errors surface as exceptions, so catch them to keep the discriminated-union
+	// contract (no thrown errors).
+	let head: R2Object | null;
+	try {
+		head = await bucket.head(key);
+	} catch {
+		return { ok: false, reason: "Failed to verify object" };
+	}
 	if (!head) {
 		return { ok: false, reason: "Object not found" };
 	}

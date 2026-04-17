@@ -34,8 +34,12 @@ export function CommentReplyForm({
 	const queryClient = useQueryClient();
 	const editorRef = useRef<MarkdownEditorHandle>(null);
 	const commentActionsRef = useRef<HTMLDivElement>(null);
-	const { media: mediaUpload, onPaste: onMediaPaste } =
-		useCommentMediaUpload(editorRef);
+	const {
+		media: mediaUpload,
+		onPaste: onMediaPaste,
+		pendingUploads,
+	} = useCommentMediaUpload(editorRef);
+	const hasPendingUploads = pendingUploads > 0;
 
 	const handleSend = useCallback(async () => {
 		if (!value.trim()) return;
@@ -113,7 +117,7 @@ export function CommentReplyForm({
 				<button
 					type="button"
 					onClick={() => void handleSend()}
-					disabled={!value.trim() || isSending}
+					disabled={!value.trim() || isSending || hasPendingUploads}
 					className="flex items-center gap-1.5 rounded-md bg-foreground px-3 py-1.5 text-xs font-medium text-background transition-opacity disabled:opacity-50"
 				>
 					{isSending ? (

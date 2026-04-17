@@ -12,10 +12,6 @@ import {
 	verifyCommentMediaObject,
 } from "#/lib/comment-media.server";
 
-function identityValidator<TInput>(data: TInput) {
-	return data;
-}
-
 export type FinalizeCommentMediaInput = {
 	key: string;
 	width: number;
@@ -28,8 +24,55 @@ export type FinalizeCommentMediaResult =
 	| { ok: true; html: string }
 	| { ok: false; error: string };
 
+const MAX_KEY_LENGTH = 512;
+const MAX_FILENAME_LENGTH = 512;
+const MAX_DIMENSION = 100_000;
+
+function validateFinalizeCommentMediaInput(
+	raw: unknown,
+): FinalizeCommentMediaInput {
+	if (!raw || typeof raw !== "object") {
+		throw new Error("Invalid payload");
+	}
+	const { key, width, height, kind, fileName } = raw as Record<string, unknown>;
+	if (
+		typeof key !== "string" ||
+		key.length === 0 ||
+		key.length > MAX_KEY_LENGTH
+	) {
+		throw new Error("Invalid key");
+	}
+	if (
+		typeof width !== "number" ||
+		!Number.isFinite(width) ||
+		width <= 0 ||
+		width > MAX_DIMENSION
+	) {
+		throw new Error("Invalid width");
+	}
+	if (
+		typeof height !== "number" ||
+		!Number.isFinite(height) ||
+		height <= 0 ||
+		height > MAX_DIMENSION
+	) {
+		throw new Error("Invalid height");
+	}
+	if (kind !== "image" && kind !== "video") {
+		throw new Error("Invalid kind");
+	}
+	if (
+		typeof fileName !== "string" ||
+		fileName.length === 0 ||
+		fileName.length > MAX_FILENAME_LENGTH
+	) {
+		throw new Error("Invalid fileName");
+	}
+	return { key, width, height, kind, fileName };
+}
+
 export const finalizeCommentMediaUpload = createServerFn({ method: "POST" })
-	.inputValidator(identityValidator<FinalizeCommentMediaInput>)
+	.inputValidator(validateFinalizeCommentMediaInput)
 	.handler(async ({ data }): Promise<FinalizeCommentMediaResult> => {
 		const session = await getRequestSession();
 		if (!session) {

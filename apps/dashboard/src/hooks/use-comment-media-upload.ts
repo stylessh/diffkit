@@ -4,7 +4,7 @@ import {
 	type MarkdownEditorMediaUpload,
 } from "@diffkit/ui/components/markdown-editor";
 import { toast } from "@diffkit/ui/components/sonner";
-import { useCallback } from "react";
+import { useCallback, useState } from "react";
 import { useDropzone } from "react-dropzone";
 import type { CommentMediaKind } from "#/lib/comment-media.server";
 import {
@@ -80,6 +80,8 @@ type UploadJson = {
 export function useCommentMediaUpload(
 	editorRef: React.RefObject<MarkdownEditorHandle | null>,
 ) {
+	const [pendingUploads, setPendingUploads] = useState(0);
+
 	const uploadAndInsert = useCallback(
 		async (file: File) => {
 			const id = crypto.randomUUID();
@@ -89,6 +91,7 @@ export function useCommentMediaUpload(
 			const formData = new FormData();
 			formData.append("file", file);
 
+			setPendingUploads((count) => count + 1);
 			try {
 				const response = await fetch("/api/comment-media/upload", {
 					method: "POST",
@@ -134,6 +137,8 @@ export function useCommentMediaUpload(
 					id,
 					`*Could not upload "${file.name}": ${message}*\n`,
 				);
+			} finally {
+				setPendingUploads((count) => count - 1);
 			}
 		},
 		[editorRef],
@@ -202,5 +207,5 @@ export function useCommentMediaUpload(
 		},
 	};
 
-	return { media, onPaste };
+	return { media, onPaste, pendingUploads };
 }

@@ -1,7 +1,8 @@
 import { getAuth } from "#/lib/auth.server";
 import {
 	buildCommentMediaObjectKey,
-	classifyCommentMedia,
+	COMMENT_MEDIA_SIGNATURE_PROBE_BYTES,
+	detectCommentMediaFromBytes,
 	maxBytesForCommentMediaKind,
 	publicUrlForR2Key,
 	sanitizeCommentMediaFilename,
@@ -45,12 +46,16 @@ export async function handleCommentMediaUpload(
 		return Response.json({ error: "Missing file" }, { status: 400 });
 	}
 
-	const kind = classifyCommentMedia(file.type);
-	if (!kind) {
+	// Client-declared MIME (file.type) is not trusted — identify by signature.
+	const headerBytes = new Uint8Array(
+		await file.slice(0, COMMENT_MEDIA_SIGNATURE_PROBE_BYTES).arrayBuffer(),
+	);
+	const detected = detectCommentMediaFromBytes(headerBytes);
+	if (!detected) {
 		return Response.json({ error: "Unsupported file type" }, { status: 415 });
 	}
 
-	const maxBytes = maxBytesForCommentMediaKind(kind);
+	const maxBytes = maxBytesForCommentMediaKind(detected.kind);
 	if (file.size > maxBytes) {
 		return Response.json({ error: "File is too large" }, { status: 413 });
 	}
@@ -60,7 +65,7 @@ export async function handleCommentMediaUpload(
 
 	await bucket.put(key, file.stream(), {
 		httpMetadata: {
-			contentType: file.type,
+			contentType: detected.contentType,
 			cacheControl: "public, max-age=31536000, immutable",
 		},
 	});
@@ -70,7 +75,7 @@ export async function handleCommentMediaUpload(
 	return Response.json({
 		key,
 		publicUrl,
-		kind,
-		contentType: file.type,
+		kind: detected.kind,
+		contentType: detected.contentType,
 	});
 }

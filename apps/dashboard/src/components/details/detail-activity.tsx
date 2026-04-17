@@ -64,8 +64,12 @@ export function DetailCommentBox({
 	const queryClient = useQueryClient();
 	const editorRef = useRef<MarkdownEditorHandle>(null);
 	const commentActionsRef = useRef<HTMLDivElement>(null);
-	const { media: mediaUpload, onPaste: onMediaPaste } =
-		useCommentMediaUpload(editorRef);
+	const {
+		media: mediaUpload,
+		onPaste: onMediaPaste,
+		pendingUploads,
+	} = useCommentMediaUpload(editorRef);
+	const hasPendingUploads = pendingUploads > 0;
 
 	const viewerQuery = useQuery(githubViewerQueryOptions(scope));
 	const viewerLogin = viewerQuery.data?.login;
@@ -194,7 +198,7 @@ export function DetailCommentBox({
 				{pullState && (
 					<button
 						type="button"
-						disabled={isTogglingState}
+						disabled={isTogglingState || hasPendingUploads}
 						onClick={handleTogglePullState}
 						className="flex items-center gap-1.5 rounded-lg border bg-secondary px-3 py-1.5 text-xs font-medium text-secondary-foreground transition-opacity hover:bg-secondary/80 disabled:opacity-40"
 					>
@@ -210,7 +214,7 @@ export function DetailCommentBox({
 				)}
 				<button
 					type="button"
-					disabled={!value.trim() || isSending}
+					disabled={!value.trim() || isSending || hasPendingUploads}
 					onClick={handleSend}
 					className="flex items-center gap-1.5 rounded-lg bg-foreground px-3 py-1.5 text-xs font-medium text-background transition-opacity disabled:opacity-40"
 				>
