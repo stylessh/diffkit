@@ -120,6 +120,10 @@ export default {};`;
 	};
 }
 
+// Remote R2/KV/D1 bindings require `wrangler login`; Vitest and PR CI use local Miniflare only.
+const useCloudflareRemoteBindings =
+	process.env.CI !== "true" && process.env.VITEST !== "true";
+
 const config = defineConfig(({ command }) => ({
 	server: command === "serve" ? getTunnelServerConfig() : undefined,
 	plugins: [
@@ -128,6 +132,7 @@ const config = defineConfig(({ command }) => ({
 		cloudflare({
 			viteEnvironment: { name: "ssr" },
 			...worktreePersistState,
+			remoteBindings: useCloudflareRemoteBindings,
 		}),
 		tsconfigPaths({ projects: ["./tsconfig.json"] }),
 		tailwindcss(),

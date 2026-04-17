@@ -12,6 +12,7 @@ export function useRegisterTab(
 		avatarUrl?: string;
 		additions?: number;
 		deletions?: number;
+		merged?: boolean;
 	} | null,
 ) {
 	useEffect(() => {
@@ -31,6 +32,7 @@ export function useRegisterTab(
 			avatarUrl: tab.avatarUrl,
 			additions: tab.additions,
 			deletions: tab.deletions,
+			merged: tab.merged,
 		});
 	}, [
 		tab?.type,
@@ -42,5 +44,6 @@ export function useRegisterTab(
 		tab?.avatarUrl,
 		tab?.additions,
 		tab?.deletions,
+		tab?.merged,
 	]);
 }

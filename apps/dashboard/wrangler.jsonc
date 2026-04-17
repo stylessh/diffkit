@@ -44,5 +44,16 @@
 			"id": "2e46aa8dd4554072a64e1aad955d6adc",
 			"preview_id": "373842a94f694ce48f5f5376ab622b18"
 		}
+	],
+	"r2_buckets": [
+		{
+			"binding": "COMMENT_MEDIA",
+			// Without remote: true, Miniflare stores objects only under .wrangler/state — they will
+			// not appear in the Cloudflare dashboard, and pub r2.dev URLs will 404. Remote sends
+			// put/get/head to the real bucket named below (must match R2_PUBLIC_BASE_URL’s bucket).
+			"bucket_name": "diffkit-comment-media",
+			"preview_bucket_name": "diffkit-comment-media-preview",
+			"remote": true
+		}
 	]
 }

@@ -12,7 +12,11 @@ import {
 	UserCircleIcon,
 	XLogo,
 } from "@diffkit/icons";
-import { Avatar, AvatarFallback } from "@diffkit/ui/components/avatar";
+import {
+	Avatar,
+	AvatarFallback,
+	AvatarImage,
+} from "@diffkit/ui/components/avatar";
 import { Button } from "@diffkit/ui/components/button";
 import {
 	DropdownMenu,
@@ -26,7 +30,7 @@ import {
 } from "@diffkit/ui/components/dropdown-menu";
 import { useQuery } from "@tanstack/react-query";
 import { Link, useRouter } from "@tanstack/react-router";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import { DashboardTabs } from "#/components/layouts/dashboard-tabs";
 import { signOutToLogin } from "#/lib/auth-actions";
 import {
@@ -74,7 +78,6 @@ export function DashboardTopbar({
 	tabsReady,
 	counts,
 }: DashboardTopbarProps) {
-	const [avatarLoadFailed, setAvatarLoadFailed] = useState(false);
 	const openTabs = useTabs();
 	const hasMounted = useHasMounted();
 	const viewerQuery = useQuery({
@@ -232,37 +235,26 @@ export function DashboardTopbar({
 							className="flex size-8 items-center justify-center rounded-full"
 						>
 							<Avatar className="size-7 border border-border">
-								{user.image && !avatarLoadFailed ? (
-									<img
-										src={user.image}
-										alt={displayName}
-										className="size-full object-cover"
-										onError={() => {
-											setAvatarLoadFailed(true);
-										}}
-									/>
-								) : (
-									<AvatarFallback className="text-xs">
-										{initials}
-									</AvatarFallback>
-								)}
+								<AvatarImage src={user.image ?? undefined} alt={displayName} />
+								<AvatarFallback
+									delayMs={user.image ? 400 : 0}
+									className="text-xs"
+								>
+									{initials}
+								</AvatarFallback>
 							</Avatar>
 						</button>
 					</DropdownMenuTrigger>
 					<DropdownMenuContent align="start" className="w-56">
 						<DropdownMenuLabel className="flex items-center gap-3 py-2">
 							<Avatar className="size-8 border border-border">
-								{user.image && !avatarLoadFailed ? (
-									<img
-										src={user.image}
-										alt={displayName}
-										className="size-full object-cover"
-									/>
-								) : (
-									<AvatarFallback className="text-xs">
-										{initials}
-									</AvatarFallback>
-								)}
+								<AvatarImage src={user.image ?? undefined} alt={displayName} />
+								<AvatarFallback
+									delayMs={user.image ? 400 : 0}
+									className="text-xs"
+								>
+									{initials}
+								</AvatarFallback>
 							</Avatar>
 							<div className="flex flex-col">
 								<span className="text-sm font-medium text-foreground">

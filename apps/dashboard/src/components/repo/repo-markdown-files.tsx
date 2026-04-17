@@ -180,7 +180,7 @@ function MarkdownFileContent({
 	}
 
 	return (
-		<div className="p-6">
+		<div className="px-6 py-16">
 			<Suspense
 				fallback={
 					<div className="flex flex-col gap-3">
@@ -191,7 +191,7 @@ function MarkdownFileContent({
 				}
 			>
 				<Markdown
-					className="prose prose-sm dark:prose-invert max-w-none"
+					className="prose prose-sm dark:prose-invert mx-auto max-w-3xl"
 					resolveAssetUrl={resolveAssetUrl}
 				>
 					{contentQuery.data}

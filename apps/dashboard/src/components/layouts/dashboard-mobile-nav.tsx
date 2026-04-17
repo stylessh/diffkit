@@ -9,7 +9,11 @@ import {
 	SystemIcon,
 	UserCircleIcon,
 } from "@diffkit/icons";
-import { Avatar, AvatarFallback } from "@diffkit/ui/components/avatar";
+import {
+	Avatar,
+	AvatarFallback,
+	AvatarImage,
+} from "@diffkit/ui/components/avatar";
 import {
 	DropdownMenu,
 	DropdownMenuContent,
@@ -24,7 +28,6 @@ import { cn } from "@diffkit/ui/lib/utils";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import { useTheme } from "next-themes";
-import { useState } from "react";
 import { signOutToLogin } from "#/lib/auth-actions";
 import { githubViewerQueryOptions } from "#/lib/github.query";
 import { useHasMounted } from "#/lib/use-has-mounted";
@@ -63,7 +66,6 @@ export function DashboardMobileNav({
 	counts,
 }: DashboardMobileNavProps) {
 	const { theme, setTheme } = useTheme();
-	const [avatarLoadFailed, setAvatarLoadFailed] = useState(false);
 	const hasMounted = useHasMounted();
 	const viewerQuery = useQuery({
 		...githubViewerQueryOptions({ userId: user.id }),
@@ -130,18 +132,13 @@ export function DashboardMobileNav({
 						className="flex flex-1 items-center justify-center py-3 text-muted-foreground"
 					>
 						<Avatar className="size-6 border border-border">
-							{user.image && !avatarLoadFailed ? (
-								<img
-									src={user.image}
-									alt={displayName}
-									className="size-full object-cover"
-									onError={() => setAvatarLoadFailed(true)}
-								/>
-							) : (
-								<AvatarFallback className="text-[8px]">
-									{initials}
-								</AvatarFallback>
-							)}
+							<AvatarImage src={user.image ?? undefined} alt={displayName} />
+							<AvatarFallback
+								delayMs={user.image ? 400 : 0}
+								className="text-[8px]"
+							>
+								{initials}
+							</AvatarFallback>
 						</Avatar>
 					</button>
 				</DropdownMenuTrigger>

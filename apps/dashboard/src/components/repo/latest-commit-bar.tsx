@@ -15,7 +15,7 @@ export function LatestCommitBar({ repo }: { repo: RepoOverview }) {
 	const firstLine = commit.message.split("\n")[0];
 
 	return (
-		<div className="flex items-center gap-3 rounded-t-lg border border-b-0 bg-surface-0 px-4 py-2.5 text-sm">
+		<div className="flex items-center gap-3 rounded-t-lg border border-b-0 bg-surface-1 px-4 py-2.5 text-sm">
 			{commit.author && (
 				<img
 					src={commit.author.avatarUrl}

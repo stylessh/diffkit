@@ -1,5 +1,16 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+	type Dispatch,
+	forwardRef,
+	type SetStateAction,
+	useCallback,
+	useEffect,
+	useImperativeHandle,
+	useMemo,
+	useRef,
+	useState,
+} from "react";
 import { createPortal } from "react-dom";
+import { useTextareaContentFieldSizing } from "../hooks/use-textarea-content-field-sizing";
 import { getCaretCoordinates } from "../lib/get-caret-coordinates";
 import { cn } from "../lib/utils";
 import { highlightCode, Markdown } from "./markdown";
@@ -28,15 +39,37 @@ export type MentionConfig = {
 
 // ── Editor props ──────────────────────────────────────────────────
 
+export type MarkdownEditorHandle = {
+	insertAtCaret: (snippet: string) => void;
+	/** Swap a pending upload line (see `getCommentMediaUploadPlaceholderText`) for final HTML or an error line. */
+	replaceUploadPlaceholder: (id: string, replacement: string) => void;
+};
+
+/** Machine-readable token embedded in the composer; replaced when the upload finishes. */
+export function getCommentMediaUploadPlaceholderText(id: string): string {
+	return `⏳ Uploading asset… [[DIFFKIT_UPLOAD:${id}]]`;
+}
+
+export type MarkdownEditorMediaUpload = {
+	isDragActive: boolean;
+	rootProps: React.HTMLAttributes<HTMLDivElement>;
+	inputProps: React.InputHTMLAttributes<HTMLInputElement>;
+	onToolbarAttach: () => void;
+};
+
 type MarkdownEditorProps = {
 	value: string;
-	onChange: (value: string) => void;
+	onChange: Dispatch<SetStateAction<string>>;
 	placeholder?: string;
 	/** Compact mode for comment boxes — shorter height, no syntax highlight overlay */
 	compact?: boolean;
 	onKeyDown?: React.KeyboardEventHandler<HTMLTextAreaElement>;
+	onPaste?: React.ClipboardEventHandler<HTMLTextAreaElement>;
 	textareaRef?: React.RefObject<HTMLTextAreaElement | null>;
 	mentions?: MentionConfig;
+	media?: MarkdownEditorMediaUpload;
+	/** Scroll into view when typing at end — e.g. ref on the row below the editor (Send / Close PR). */
+	scrollAnchorRef?: React.RefObject<HTMLElement | null>;
 };
 
 // ── Mention hook ──────────────────────────────────────────────────
@@ -180,17 +213,82 @@ function useMentions(
 	};
 }
 
-// ── Main component ────────────────────────────────────────────────
+// ── Compact write surface (comment box) ────────────────────────────
 
-export function MarkdownEditor({
+function CompactWriteSurface({
 	value,
 	onChange,
-	placeholder = "Leave a comment...",
-	compact,
-	onKeyDown: externalOnKeyDown,
-	textareaRef: externalRef,
-	mentions: mentionConfig,
-}: MarkdownEditorProps) {
+	editorRef,
+	onKeyDown,
+	onPaste,
+	placeholder,
+	scrollAnchorRef,
+}: {
+	value: string;
+	onChange: (next: string) => void;
+	editorRef: React.RefObject<HTMLTextAreaElement | null>;
+	onKeyDown: React.KeyboardEventHandler<HTMLTextAreaElement>;
+	onPaste?: React.ClipboardEventHandler<HTMLTextAreaElement>;
+	placeholder: string;
+	scrollAnchorRef?: React.RefObject<HTMLElement | null>;
+}) {
+	const contentSizingOpts = useMemo(
+		() => ({
+			minHeightPx: 88,
+			maxHeightPx:
+				typeof window !== "undefined"
+					? Math.min(Math.floor(window.innerHeight * 0.85), 40 * 16)
+					: 640,
+		}),
+		[],
+	);
+
+	const contentSizing = useTextareaContentFieldSizing(
+		value,
+		editorRef,
+		contentSizingOpts,
+		scrollAnchorRef,
+	);
+
+	return (
+		<textarea
+			ref={editorRef}
+			value={value}
+			onChange={(event) => onChange(event.target.value)}
+			onKeyDown={onKeyDown}
+			onPaste={onPaste}
+			onPointerDown={contentSizing.onPointerDown}
+			style={contentSizing.heightStyle}
+			placeholder={placeholder}
+			rows={4}
+			className={cn(
+				"min-h-[5.5rem] max-h-[min(85vh,40rem)] w-full resize-y overflow-y-auto bg-transparent p-3 text-sm outline-none placeholder:text-muted-foreground",
+				contentSizing.sizingClassName,
+			)}
+		/>
+	);
+}
+
+// ── Main component ────────────────────────────────────────────────
+
+export const MarkdownEditor = forwardRef<
+	MarkdownEditorHandle,
+	MarkdownEditorProps
+>(function MarkdownEditor(
+	{
+		value,
+		onChange,
+		placeholder = "Leave a comment...",
+		compact,
+		onKeyDown: externalOnKeyDown,
+		onPaste,
+		textareaRef: externalRef,
+		mentions: mentionConfig,
+		media: mediaUpload,
+		scrollAnchorRef,
+	},
+	ref,
+) {
 	const [tab, setTab] = useState<"write" | "preview">("write");
 	const internalRef = useRef<HTMLTextAreaElement>(null);
 	const editorRef = externalRef || internalRef;
@@ -224,6 +322,39 @@ export function MarkdownEditor({
 			});
 		},
 		[value, onChange, editorRef],
+	);
+
+	const insertAtCaret = useCallback(
+		(snippet: string) => {
+			const textarea = editorRef.current;
+			if (!textarea) return;
+			const start = textarea.selectionStart;
+			const end = textarea.selectionEnd;
+			onChange((prev) => `${prev.slice(0, start)}${snippet}${prev.slice(end)}`);
+			requestAnimationFrame(() => {
+				textarea.focus();
+				const pos = start + snippet.length;
+				textarea.setSelectionRange(pos, pos);
+			});
+		},
+		[onChange, editorRef],
+	);
+
+	const replaceUploadPlaceholder = useCallback(
+		(id: string, replacement: string) => {
+			const needle = getCommentMediaUploadPlaceholderText(id);
+			onChange((prev) => {
+				if (!prev.includes(needle)) return prev;
+				return prev.replace(needle, replacement);
+			});
+		},
+		[onChange],
+	);
+
+	useImperativeHandle(
+		ref,
+		() => ({ insertAtCaret, replaceUploadPlaceholder }),
+		[insertAtCaret, replaceUploadPlaceholder],
 	);
 
 	const handleKeyDown = useCallback(
@@ -275,8 +406,25 @@ export function MarkdownEditor({
 		}
 	}, [value, tab, mentionConfig, detectMention]);
 
+	const rootProps = mediaUpload?.rootProps;
+	const rootClassName = cn(
+		"flex flex-col rounded-lg border bg-surface-0 overflow-hidden",
+		mediaUpload?.isDragActive && "ring-2 ring-primary/45 ring-inset",
+		rootProps?.className,
+	);
+
 	return (
-		<div className="flex flex-col rounded-lg border bg-surface-0 overflow-hidden">
+		<div
+			{...(rootProps ?? {})}
+			className={cn(rootClassName, mediaUpload && "relative")}
+		>
+			{mediaUpload ? (
+				<input
+					{...mediaUpload.inputProps}
+					className="sr-only"
+					aria-label="Attach images or videos"
+				/>
+			) : null}
 			{/* Tabs + Toolbar */}
 			<div className="flex items-center justify-between border-b px-2 py-1.5 bg-surface-1">
 				<div className="flex items-center gap-0.5">
@@ -350,6 +498,14 @@ export function MarkdownEditor({
 							<path d="M10 14a3.5 3.5 0 0 0 5 0l4-4a3.5 3.5 0 0 0-5-5l-.5.5" />
 							<path d="M14 10a3.5 3.5 0 0 0-5 0l-4 4a3.5 3.5 0 0 0 5 5l.5-.5" />
 						</MdToolbarButton>
+						{mediaUpload ? (
+							<MdToolbarButton
+								label="Attach images or videos"
+								onClick={mediaUpload.onToolbarAttach}
+							>
+								<path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48" />
+							</MdToolbarButton>
+						) : null}
 						<MdToolbarButton
 							label="Quote"
 							shortcut="⌘⇧."
@@ -388,22 +544,24 @@ export function MarkdownEditor({
 			{tab === "write" ? (
 				<div className="relative">
 					{compact ? (
-						<textarea
-							ref={editorRef}
+						<CompactWriteSurface
+							editorRef={editorRef}
+							scrollAnchorRef={scrollAnchorRef}
 							value={value}
-							onChange={(event) => handleChange(event.target.value)}
+							onChange={handleChange}
 							onKeyDown={handleKeyDown}
+							onPaste={onPaste}
 							placeholder={placeholder}
-							rows={4}
-							className="w-full resize-none bg-transparent p-3 text-sm outline-none placeholder:text-muted-foreground"
 						/>
 					) : (
 						<HighlightedMarkdownEditor
 							value={value}
 							onChange={handleChange}
 							placeholder={placeholder}
+							scrollAnchorRef={scrollAnchorRef}
 							textareaRef={editorRef}
 							onKeyDown={handleKeyDown}
+							onPaste={onPaste}
 						/>
 					)}
 					{mentionState && dropdownPos && (
@@ -430,7 +588,7 @@ export function MarkdownEditor({
 			)}
 		</div>
 	);
-}
+});
 
 // ── Mention dropdown ──────────────────────────────────────────────
 
@@ -582,18 +740,37 @@ function HighlightedMarkdownEditor({
 	onChange,
 	placeholder,
 	textareaRef: externalRef,
+	scrollAnchorRef,
 	onKeyDown,
+	onPaste,
 }: {
 	value: string;
 	onChange: (value: string) => void;
 	placeholder?: string;
 	textareaRef?: React.RefObject<HTMLTextAreaElement | null>;
+	scrollAnchorRef?: React.RefObject<HTMLElement | null>;
 	onKeyDown?: React.KeyboardEventHandler<HTMLTextAreaElement>;
+	onPaste?: React.ClipboardEventHandler<HTMLTextAreaElement>;
 }) {
 	const [highlightedHtml, setHighlightedHtml] = useState("");
 	const internalRef = useRef<HTMLTextAreaElement>(null);
 	const textareaRef = externalRef || internalRef;
 	const highlightRef = useRef<HTMLDivElement>(null);
+
+	const fullContentSizingOpts = useMemo(
+		() => ({
+			minHeightPx: 640,
+			maxHeightPx: 1200,
+		}),
+		[],
+	);
+
+	const fullContentSizing = useTextareaContentFieldSizing(
+		value,
+		textareaRef,
+		fullContentSizingOpts,
+		scrollAnchorRef,
+	);
 
 	useEffect(() => {
 		let cancelled = false;
@@ -619,7 +796,7 @@ function HighlightedMarkdownEditor({
 	};
 
 	return (
-		<div className="relative" style={{ height: 640, maxHeight: 1200 }}>
+		<div className="relative w-full min-h-[640px]">
 			<div
 				ref={highlightRef}
 				aria-hidden
@@ -632,9 +809,14 @@ function HighlightedMarkdownEditor({
 				value={value}
 				onChange={(event) => onChange(event.target.value)}
 				onKeyDown={onKeyDown}
+				onPaste={onPaste}
+				onPointerDown={fullContentSizing.onPointerDown}
 				onScroll={syncScroll}
-				className="relative w-full resize-y whitespace-pre-wrap break-words bg-transparent p-5 font-mono text-sm leading-[1.625] text-transparent caret-foreground outline-none [word-break:break-all] placeholder:text-muted-foreground"
-				style={{ height: 640, maxHeight: 1200 }}
+				style={fullContentSizing.heightStyle}
+				className={cn(
+					"relative box-border min-h-[640px] max-h-[1200px] w-full resize-y overflow-y-auto whitespace-pre-wrap break-words bg-transparent p-5 font-mono text-sm leading-[1.625] text-transparent caret-foreground outline-none [word-break:break-all] placeholder:text-muted-foreground",
+					fullContentSizing.sizingClassName,
+				)}
 				placeholder={placeholder}
 				spellCheck={false}
 			/>

@@ -3,6 +3,8 @@
 
 declare namespace Cloudflare {
 	interface Env {
+		/** Public base URL for R2 comment media (custom domain or r2.dev). */
+		R2_PUBLIC_BASE_URL?: string;
 		GITHUB_OAUTH_CLIENT_ID?: string;
 		GITHUB_OAUTH_CLIENT_SECRET?: string;
 		GITHUB_APP_CLIENT_ID?: string;

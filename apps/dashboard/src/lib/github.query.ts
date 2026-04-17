@@ -2,6 +2,7 @@ import { infiniteQueryOptions, queryOptions } from "@tanstack/react-query";
 import {
 	type CommandPaletteSearchInput,
 	getCommentPage,
+	getFileLastCommit,
 	getGitHubViewer,
 	getIssueComments,
 	getIssueFromRepo,
@@ -31,6 +32,7 @@ import {
 	getRepoTree,
 	getReviewThreadStatuses,
 	getTimelineEventPage,
+	getTreeEntryCommits,
 	getUserActivity,
 	getUserContributions,
 	getUserPinnedRepos,
@@ -200,6 +202,14 @@ export const githubQueryKeys = {
 			scope: GitHubQueryScope,
 			input: { owner: string; repo: string; ref: string; path: string },
 		) => ["github", scope.userId, "repo", "fileContent", input] as const,
+		fileLastCommit: (
+			scope: GitHubQueryScope,
+			input: { owner: string; repo: string; ref: string; path: string },
+		) => ["github", scope.userId, "repo", "fileLastCommit", input] as const,
+		treeEntryCommits: (
+			scope: GitHubQueryScope,
+			input: { owner: string; repo: string; ref: string; dirPath: string },
+		) => ["github", scope.userId, "repo", "treeEntryCommits", input] as const,
 		contributors: (
 			scope: GitHubQueryScope,
 			input: { owner: string; repo: string },
@@ -665,6 +675,44 @@ export function githubRepoFileContentQueryOptions(
 		staleTime: githubCachePolicy.repoMeta.staleTimeMs,
 		gcTime: githubCachePolicy.repoMeta.gcTimeMs,
 		meta: persistedMeta,
+	});
+}
+
+export function githubFileLastCommitQueryOptions(
+	scope: GitHubQueryScope,
+	input: { owner: string; repo: string; ref: string; path: string },
+) {
+	return queryOptions({
+		queryKey: githubQueryKeys.repo.fileLastCommit(scope, input),
+		queryFn: () => getFileLastCommit({ data: input }),
+		staleTime: githubCachePolicy.detail.staleTimeMs,
+		gcTime: githubCachePolicy.detail.gcTimeMs,
+		meta: tabPersistedMeta,
+	});
+}
+
+export function githubTreeEntryCommitsQueryOptions(
+	scope: GitHubQueryScope,
+	input: {
+		owner: string;
+		repo: string;
+		ref: string;
+		dirPath: string;
+		entries: string[];
+	},
+) {
+	return queryOptions({
+		queryKey: githubQueryKeys.repo.treeEntryCommits(scope, {
+			owner: input.owner,
+			repo: input.repo,
+			ref: input.ref,
+			dirPath: input.dirPath,
+		}),
+		queryFn: () => getTreeEntryCommits({ data: input }),
+		staleTime: githubCachePolicy.detail.staleTimeMs,
+		gcTime: githubCachePolicy.detail.gcTimeMs,
+		meta: tabPersistedMeta,
+		enabled: input.entries.length > 0,
 	});
 }
 
