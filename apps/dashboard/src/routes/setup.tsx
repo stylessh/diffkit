@@ -11,7 +11,6 @@ import {
 	getAccessHrefForOwner,
 } from "#/lib/github-access";
 import { buildSeo, formatPageTitle, PRIVATE_ROUTE_HEADERS } from "#/lib/seo";
-import { useRefreshOnReturn } from "#/lib/use-refresh-on-return";
 
 function SetupPageLoading() {
 	return (
@@ -53,7 +52,6 @@ export const Route = createFileRoute("/setup")({
 
 function SetupPage() {
 	const { accessState: state } = Route.useLoaderData();
-	useRefreshOnReturn();
 
 	const hasInstallations =
 		state?.installationsAvailable === true &&

@@ -3,8 +3,6 @@ export type RepositoryRef = {
 	owner: string;
 	fullName: string;
 	url: string;
-	/** `null` means the visibility is unknown (e.g. REST search doesn't return it). */
-	isPrivate: boolean | null;
 };
 
 export type GitHubActor = {
