@@ -4258,10 +4258,7 @@ async function getMyPullsResult({
 		resource: "pulls.mine.graphql.v2",
 		params: { username },
 		freshForMs: githubCachePolicy.list.staleTimeMs,
-		signalKeys: [
-			githubRevalidationSignalKeys.pullsMine,
-			githubRevalidationSignalKeys.installationAccess,
-		],
+		signalKeys: [githubRevalidationSignalKeys.pullsMine],
 		namespaceKeys: [githubRevalidationSignalKeys.pullsMine],
 		cacheMode: "split",
 		merge: (existing, fresh) => mergeMyPullsResults([existing, fresh]),
@@ -4449,10 +4446,7 @@ async function getMyIssuesResult({
 		resource: "issues.mine.graphql.v2",
 		params: { username },
 		freshForMs: githubCachePolicy.list.staleTimeMs,
-		signalKeys: [
-			githubRevalidationSignalKeys.issuesMine,
-			githubRevalidationSignalKeys.installationAccess,
-		],
+		signalKeys: [githubRevalidationSignalKeys.issuesMine],
 		namespaceKeys: [githubRevalidationSignalKeys.issuesMine],
 		cacheMode: "split",
 		merge: (existing, fresh) => mergeMyIssuesResults([existing, fresh]),
@@ -4748,18 +4742,12 @@ export const getInstallationAccess = createServerFn({
 export const refreshInstallationAccess = createServerFn({
 	method: "POST",
 }).handler(async () => {
-	const context = await getGitHubContext();
-	if (!context) {
-		return { ok: false as const };
-	}
-
 	await markGitHubRevalidationSignals([
 		githubRevalidationSignalKeys.installationAccess,
 	]);
-	await bustGitHubCache(context.session.user.id, "installationAccess", null);
 	debug(
 		"refreshInstallationAccess",
-		"marked installationAccess for revalidation and busted cache row",
+		"marked installationAccess for revalidation",
 	);
 	return { ok: true };
 });
@@ -4777,7 +4765,6 @@ export const getUserRepos = createServerFn({ method: "GET" }).handler(
 				resource: "repos.list",
 				params: { sort: "updated", perPage: 10 },
 				freshForMs: githubCachePolicy.reposList.staleTimeMs,
-				signalKeys: [githubRevalidationSignalKeys.installationAccess],
 				namespaceKeys: ["repos.list"],
 				cacheMode: "split",
 				request: (headers) =>
