@@ -1,0 +1,60 @@
+{
+	"$schema": "node_modules/wrangler/config-schema.json",
+	"name": "diffkit",
+	"account_id": "YOUR_ACCOUNT_ID",
+	"compatibility_date": "2025-09-02",
+	"compatibility_flags": [
+		"nodejs_compat",
+		"no_handle_cross_request_promise_resolution"
+	],
+	"main": "src/entry-worker.ts",
+	"observability": {
+		"logs": {
+			"enabled": true,
+			"invocation_logs": true
+		},
+		"traces": {
+			"enabled": false
+		}
+	},
+	"d1_databases": [
+		{
+			"binding": "DB",
+			"database_name": "diffkit-db",
+			"database_id": "YOUR_D1_DATABASE_ID",
+			"migrations_dir": "drizzle"
+		}
+	],
+	"durable_objects": {
+		"bindings": [
+			{
+				"name": "SIGNAL_RELAY",
+				"class_name": "SignalRelay"
+			}
+		]
+	},
+	"migrations": [
+		{
+			"tag": "v1",
+			"new_classes": ["SignalRelay"]
+		}
+	],
+	"kv_namespaces": [
+		{
+			"binding": "GITHUB_CACHE_KV",
+			"id": "YOUR_KV_NAMESPACE_ID",
+			"preview_id": "YOUR_KV_PREVIEW_NAMESPACE_ID"
+		}
+	],
+	"r2_buckets": [
+		{
+			"binding": "COMMENT_MEDIA",
+			// Without remote: true, Miniflare stores objects only under .wrangler/state — they will
+			// not appear in the Cloudflare dashboard, and pub r2.dev URLs will 404. Remote sends
+			// put/get/head to the real bucket named below (must match R2_PUBLIC_BASE_URL’s bucket).
+			"bucket_name": "YOUR_COMMENT_MEDIA_BUCKET_NAME",
+			"preview_bucket_name": "YOUR_COMMENT_MEDIA_PREVIEW_BUCKET_NAME",
+			"remote": true
+		}
+	]
+}

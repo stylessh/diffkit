@@ -31,6 +31,19 @@ GitHub App:
 
 Copy `.dev.vars.example` to `.dev.vars` and fill in the real values. GitHub commonly downloads a PKCS#1 private key with `BEGIN RSA PRIVATE KEY`; the dashboard normalizes it for Octokit at runtime. Never commit `.dev.vars` or private keys.
 
+## Cloudflare Wrangler Configuration
+
+The live `wrangler.jsonc` is ignored by git, so copy `wrangler.jsonc.example` to `wrangler.jsonc` before you deploy or connect to Cloudflare resources locally.
+
+Fill in the Cloudflare-specific values in `wrangler.jsonc`:
+
+- `account_id`
+- `d1_databases[].database_id`
+- `kv_namespaces[].id` and `kv_namespaces[].preview_id`
+- `r2_buckets[].bucket_name` and `r2_buckets[].preview_bucket_name`
+
+Keep the `DB`, `GITHUB_CACHE_KV`, `COMMENT_MEDIA`, and `SignalRelay` names aligned with the codebase. Deployments are manual and use `pnpm run deploy`.
+
 # Building For Production
 
 To build this application for production:
