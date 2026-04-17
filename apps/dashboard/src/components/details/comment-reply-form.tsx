@@ -1,9 +1,13 @@
 import { CommentIcon } from "@diffkit/icons";
-import { MarkdownEditor } from "@diffkit/ui/components/markdown-editor";
+import {
+	MarkdownEditor,
+	type MarkdownEditorHandle,
+} from "@diffkit/ui/components/markdown-editor";
 import { toast } from "@diffkit/ui/components/sonner";
 import { Spinner } from "@diffkit/ui/components/spinner";
 import { useQueryClient } from "@tanstack/react-query";
-import { useCallback, useState } from "react";
+import { useCallback, useRef, useState } from "react";
+import { useCommentMediaUpload } from "#/hooks/use-comment-media-upload";
 import { createComment } from "#/lib/github.functions";
 import { githubQueryKeys } from "#/lib/github.query";
 import { checkPermissionWarning } from "#/lib/warning-store";
@@ -28,6 +32,10 @@ export function CommentReplyForm({
 	const [value, setValue] = useState("");
 	const [isSending, setIsSending] = useState(false);
 	const queryClient = useQueryClient();
+	const editorRef = useRef<MarkdownEditorHandle>(null);
+	const commentActionsRef = useRef<HTMLDivElement>(null);
+	const { media: mediaUpload, onPaste: onMediaPaste } =
+		useCommentMediaUpload(editorRef);
 
 	const handleSend = useCallback(async () => {
 		if (!value.trim()) return;
@@ -79,12 +87,19 @@ export function CommentReplyForm({
 	return (
 		<div className="flex w-full flex-col gap-2 pt-2">
 			<MarkdownEditor
+				ref={editorRef}
+				scrollAnchorRef={commentActionsRef}
 				value={value}
 				onChange={setValue}
 				placeholder={`Reply to @${parentAuthor}...`}
 				compact
+				media={mediaUpload}
+				onPaste={onMediaPaste}
 			/>
-			<div className="flex items-center justify-end gap-2">
+			<div
+				ref={commentActionsRef}
+				className="flex items-center justify-end gap-2"
+			>
 				<button
 					type="button"
 					onClick={() => {

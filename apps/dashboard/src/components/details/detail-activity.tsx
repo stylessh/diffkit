@@ -5,12 +5,14 @@ import {
 } from "@diffkit/icons";
 import {
 	MarkdownEditor,
+	type MarkdownEditorHandle,
 	type MentionCandidate,
 } from "@diffkit/ui/components/markdown-editor";
 import { toast } from "@diffkit/ui/components/sonner";
 import { Spinner } from "@diffkit/ui/components/spinner";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
+import { useCommentMediaUpload } from "#/hooks/use-comment-media-upload";
 import { createComment, updatePullState } from "#/lib/github.functions";
 import {
 	type GitHubQueryScope,
@@ -60,6 +62,10 @@ export function DetailCommentBox({
 	const [isTogglingState, setIsTogglingState] = useState(false);
 	const [mentionActivated, setMentionActivated] = useState(false);
 	const queryClient = useQueryClient();
+	const editorRef = useRef<MarkdownEditorHandle>(null);
+	const commentActionsRef = useRef<HTMLDivElement>(null);
+	const { media: mediaUpload, onPaste: onMediaPaste } =
+		useCommentMediaUpload(editorRef);
 
 	const viewerQuery = useQuery(githubViewerQueryOptions(scope));
 	const viewerLogin = viewerQuery.data?.login;
@@ -167,17 +173,24 @@ export function DetailCommentBox({
 	return (
 		<div className="flex flex-col gap-2">
 			<MarkdownEditor
+				ref={editorRef}
+				scrollAnchorRef={commentActionsRef}
 				value={value}
 				onChange={setValue}
 				placeholder="Leave a comment..."
 				compact
+				media={mediaUpload}
+				onPaste={onMediaPaste}
 				mentions={{
 					candidates: mentionCandidates,
 					onActivate: () => setMentionActivated(true),
 					isLoading: collaboratorsQuery.isLoading && mentionActivated,
 				}}
 			/>
-			<div className="flex items-center justify-end gap-2">
+			<div
+				ref={commentActionsRef}
+				className="flex items-center justify-end gap-2 pb-3"
+			>
 				{pullState && (
 					<button
 						type="button"

@@ -317,6 +317,15 @@ const components: Record<string, React.FC<any>> = {
 			{...props}
 		/>
 	),
+	video: ({ node: _, src, className, ...props }) => (
+		<video
+			className={cn("my-2 max-w-full rounded-lg", className)}
+			{...props}
+			controls
+			preload="metadata"
+			src={useResolvedAssetUrl(src)}
+		/>
+	),
 	source: ({ node: _, src, srcSet, srcset, ...props }) => {
 		const resolveAssetUrl = useContext(MarkdownAssetUrlResolverContext);
 		const resolvedSrcSet = resolveAssetSrcSet(

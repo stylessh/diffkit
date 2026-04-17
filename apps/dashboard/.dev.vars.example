@@ -99,3 +99,18 @@ BETTER_AUTH_URL=http://localhost:3000
 #   3. Set the same URL as the webhook URL in your GitHub App settings,
 #      appending /api/webhooks/github
 DEV_TUNNEL_URL=
+
+# -----------------------------------------------------------------------------
+# 6. R2 comment media (optional)
+# -----------------------------------------------------------------------------
+# Not required for the app to run. Without it, comment image/video uploads stay disabled
+# (upload and finalize endpoints return a configuration error).
+#
+# Set to the public base URL for the SAME bucket Wrangler writes to (custom domain or r2.dev),
+# no trailing slash. Example: https://pub-xxxxxxxxxxxxxxxx.r2.dev
+#
+# Local dev uses Miniflare by default: objects stay under .wrangler/state and do not show in the
+# Cloudflare dashboard. wrangler.jsonc enables "remote": true on COMMENT_MEDIA so puts go to the
+# real bucket named there (see bucket_name). Your pub URL must be for that bucket — not only
+# preview_bucket_name (that name is for local simulation naming when not remote).
+R2_PUBLIC_BASE_URL=

@@ -53,6 +53,16 @@ export default {
 			return handleWebSocketUpgrade(request, env);
 		}
 
+		if (
+			url.pathname === "/api/comment-media/upload" &&
+			request.method === "POST"
+		) {
+			const { handleCommentMediaUpload } = await import(
+				"#/lib/comment-media-upload.handler"
+			);
+			return handleCommentMediaUpload(request);
+		}
+
 		// TanStack Start's type only declares (request, env?) but the runtime
 		// handler created by @cloudflare/vite-plugin passes (request, env, ctx)
 		// through to the underlying Worker fetch signature.
