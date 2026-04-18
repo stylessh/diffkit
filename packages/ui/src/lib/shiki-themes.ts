@@ -1,6 +1,6 @@
 import type { ThemeRegistrationRaw } from "shiki";
 
-const vercelLightTokens: ThemeRegistrationRaw["tokenColors"] = [
+const diffkitLightTokens: ThemeRegistrationRaw["tokenColors"] = [
 	{
 		scope: ["comment", "punctuation.definition.comment"],
 		settings: { foreground: "#666666", fontStyle: "italic" },
@@ -132,7 +132,7 @@ const vercelLightTokens: ThemeRegistrationRaw["tokenColors"] = [
 	},
 ];
 
-const vercelDarkTokens: ThemeRegistrationRaw["tokenColors"] = [
+const diffkitDarkTokens: ThemeRegistrationRaw["tokenColors"] = [
 	{
 		scope: ["comment", "punctuation.definition.comment"],
 		settings: { foreground: "#a1a1a1", fontStyle: "italic" },
@@ -264,24 +264,24 @@ const vercelDarkTokens: ThemeRegistrationRaw["tokenColors"] = [
 	},
 ];
 
-export const vercelLight: ThemeRegistrationRaw = {
-	name: "vercel-light",
+export const diffkitLight: ThemeRegistrationRaw = {
+	name: "diffkit-light",
 	type: "light",
-	settings: vercelLightTokens as ThemeRegistrationRaw["settings"],
+	settings: diffkitLightTokens as ThemeRegistrationRaw["settings"],
 	colors: {
 		"editor.background": "#ffffff",
 		"editor.foreground": "#171717",
 	},
-	tokenColors: vercelLightTokens,
+	tokenColors: diffkitLightTokens,
 };
 
-export const vercelDark: ThemeRegistrationRaw = {
-	name: "vercel-dark",
+export const diffkitDark: ThemeRegistrationRaw = {
+	name: "diffkit-dark",
 	type: "dark",
-	settings: vercelDarkTokens as ThemeRegistrationRaw["settings"],
+	settings: diffkitDarkTokens as ThemeRegistrationRaw["settings"],
 	colors: {
 		"editor.background": "#1a1a1a",
 		"editor.foreground": "#ededed",
 	},
-	tokenColors: vercelDarkTokens,
+	tokenColors: diffkitDarkTokens,
 };

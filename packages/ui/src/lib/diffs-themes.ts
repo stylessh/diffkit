@@ -8,8 +8,8 @@ import type { ThemeRegistrationRaw } from "shiki";
 // addition/deletion colors, etc.).
 //
 // The `colors` object drives the diff chrome; `tokenColors` drives syntax
-// highlighting. We reuse the same Vercel-inspired token palette from
-// shiki-themes.ts but pair it with our own editor/UI chrome colors so the
+// highlighting. We reuse the same token palette as shiki-themes.ts (diffkit
+// light/dark) but pair it with our own editor/UI chrome colors so the
 // diff viewer feels native to the app.
 // ---------------------------------------------------------------------------
 
