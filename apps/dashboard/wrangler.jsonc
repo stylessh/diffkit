@@ -1,0 +1,56 @@
+{
+	"$schema": "node_modules/wrangler/config-schema.json",
+	"name": "diffkit",
+	"compatibility_date": "2025-09-02",
+	"compatibility_flags": [
+		"nodejs_compat",
+		"no_handle_cross_request_promise_resolution"
+	],
+	"main": "src/entry-worker.ts",
+	"observability": {
+		"logs": {
+			"enabled": true,
+			"invocation_logs": true
+		},
+		"traces": {
+			"enabled": false
+		}
+	},
+	"d1_databases": [
+		{
+			"binding": "DB",
+			"database_name": "diffkit-db",
+			"database_id": "7a94a843-0906-416c-9908-4c9fe5339db7",
+			"migrations_dir": "drizzle"
+		}
+	],
+	"durable_objects": {
+		"bindings": [
+			{
+				"name": "SIGNAL_RELAY",
+				"class_name": "SignalRelay"
+			}
+		]
+	},
+	"migrations": [
+		{
+			"tag": "v1",
+			"new_classes": ["SignalRelay"]
+		}
+	],
+	"kv_namespaces": [
+		{
+			"binding": "GITHUB_CACHE_KV",
+			"id": "2e46aa8dd4554072a64e1aad955d6adc",
+			"preview_id": "373842a94f694ce48f5f5376ab622b18"
+		}
+	],
+	"r2_buckets": [
+		{
+			"binding": "COMMENT_MEDIA",
+			"bucket_name": "diffkit-comment-media",
+			"preview_bucket_name": "diffkit-comment-media-preview",
+			"remote": true
+		}
+	]
+}
