@@ -13,7 +13,7 @@ import {
 import { Markdown } from "@diffkit/ui/components/markdown";
 import { cn } from "@diffkit/ui/lib/utils";
 import { useQueryClient } from "@tanstack/react-query";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 import { CommentMoreMenu } from "#/components/details/comment-more-menu";
 import { IssueCommentReactionBar } from "#/components/details/comment-reaction-bar";
 import { CommentReplyForm } from "#/components/details/comment-reply-form";
@@ -47,6 +47,7 @@ import {
 	mergeIssueStateIntoCloseEvent,
 	parseCloseReason,
 } from "#/lib/timeline-close-reason";
+import { usePrefersNoHover } from "#/lib/use-prefers-no-hover";
 
 const WINDOW_THRESHOLD = 25;
 const EDGE_SIZE = 10;
@@ -634,14 +635,7 @@ function IssueCommentBubble({
 	isReply?: boolean;
 }) {
 	const [commentActive, setCommentActive] = useState(false);
-	const [coarsePointerNoHover, setCoarsePointerNoHover] = useState(false);
-	useEffect(() => {
-		const mq = window.matchMedia("(hover: none)");
-		const sync = () => setCoarsePointerNoHover(mq.matches);
-		sync();
-		mq.addEventListener("change", sync);
-		return () => mq.removeEventListener("change", sync);
-	}, []);
+	const prefersNoHover = usePrefersNoHover();
 
 	return (
 		<div
@@ -717,7 +711,7 @@ function IssueCommentBubble({
 				{comment.graphqlId ? (
 					<IssueCommentReactionBar
 						className="absolute left-0 right-0 top-full z-10 mt-1.5"
-						revealZeroCount={commentActive || coarsePointerNoHover}
+						revealZeroCount={commentActive || prefersNoHover}
 						viewerLogin={viewerLogin}
 						owner={owner}
 						repo={repo}
