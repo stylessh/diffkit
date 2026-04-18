@@ -133,44 +133,52 @@ export function invalidateTargets(
 	return invalidatedCount;
 }
 
-/** Sync server signal timestamps with local query ages; mutates lastSeenTimestamps. */
+function signalStreamCompositeKey(
+	queryKey: QueryKey,
+	signalKey: string,
+): string {
+	return `${JSON.stringify(queryKey)}\0${signalKey}`;
+}
+
+/** Sync server signal timestamps with local query ages; mutates lastSeenTimestamps (per queryKey+signalKey). */
 function collectKeysToInvalidateAfterServerSync(
 	queryClient: ReturnType<typeof useQueryClient>,
 	targets: readonly GitHubSignalStreamTarget[],
 	signals: Array<{ signalKey: string; updatedAt: number }>,
 	lastSeenTimestamps: Map<string, number>,
 ): string[] {
-	const updatedKeys: string[] = [];
+	const updatedKeys = new Set<string>();
 
 	for (const signal of signals) {
-		const lastSeen = lastSeenTimestamps.get(signal.signalKey);
-		if (lastSeen === undefined) {
-			let needsCatchUp = false;
-			for (const target of targets) {
-				if (!target.signalKeys.includes(signal.signalKey)) {
-					continue;
-				}
-				const qs = queryClient.getQueryState(target.queryKey);
+		for (const target of targets) {
+			if (!target.signalKeys.includes(signal.signalKey)) {
+				continue;
+			}
+
+			const compositeKey = signalStreamCompositeKey(
+				target.queryKey,
+				signal.signalKey,
+			);
+			const lastSeen = lastSeenTimestamps.get(compositeKey);
+			const qs = queryClient.getQueryState(target.queryKey);
+
+			if (lastSeen === undefined) {
 				if (
 					qs &&
 					qs.dataUpdatedAt > 0 &&
 					signal.updatedAt > qs.dataUpdatedAt
 				) {
-					needsCatchUp = true;
-					break;
+					updatedKeys.add(signal.signalKey);
 				}
+				lastSeenTimestamps.set(compositeKey, signal.updatedAt);
+			} else if (signal.updatedAt > lastSeen) {
+				lastSeenTimestamps.set(compositeKey, signal.updatedAt);
+				updatedKeys.add(signal.signalKey);
 			}
-			if (needsCatchUp) {
-				updatedKeys.push(signal.signalKey);
-			}
-			lastSeenTimestamps.set(signal.signalKey, signal.updatedAt);
-		} else if (signal.updatedAt > lastSeen) {
-			lastSeenTimestamps.set(signal.signalKey, signal.updatedAt);
-			updatedKeys.push(signal.signalKey);
 		}
 	}
 
-	return updatedKeys;
+	return Array.from(updatedKeys);
 }
 
 function useGitHubSignalStreamWebSocket(
@@ -433,11 +441,23 @@ export function useGitHubSignalStream(
 	// not when the array reference changes.
 	const signalKeysKey = allSignalKeys.join(",");
 
+	const mergedTargetsIdentity = useMemo(
+		() =>
+			mergedTargets
+				.map(
+					(t) =>
+						`${JSON.stringify(t.queryKey)}\0${[...t.signalKeys].sort().join(",")}`,
+				)
+				.sort()
+				.join("|"),
+		[mergedTargets],
+	);
+
 	const lastSeenTimestampsRef = useRef(new Map<string, number>());
 
 	useEffect(() => {
 		lastSeenTimestampsRef.current = new Map();
-	}, [signalKeysKey]);
+	}, [signalKeysKey, mergedTargetsIdentity]);
 
 	useGitHubSignalStreamWebSocket(
 		mergedTargets,
