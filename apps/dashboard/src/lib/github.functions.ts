@@ -2902,9 +2902,17 @@ async function installationHasRepositoryAccess(
 	}
 
 	try {
+		const { getGitHubAppUserClientByUserId } = await import("./auth-runtime");
+		const appUserOctokit = await getGitHubAppUserClientByUserId(
+			context.session.user.id,
+		);
+		if (!appUserOctokit) {
+			return false;
+		}
+
 		const repositories = await listPaginatedGitHubItems({
 			request: (page) =>
-				context.octokit.rest.apps.listInstallationReposForAuthenticatedUser({
+				appUserOctokit.rest.apps.listInstallationReposForAuthenticatedUser({
 					installation_id: installation.id as number,
 					page,
 					per_page: 100,
