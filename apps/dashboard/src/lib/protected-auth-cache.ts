@@ -19,15 +19,24 @@ export type ProtectedRouteCachedAuth = {
 let cachedAuth: ProtectedRouteCachedAuth | null = null;
 
 export function getProtectedRouteCachedAuth(): ProtectedRouteCachedAuth | null {
+	if (typeof window === "undefined") {
+		return null;
+	}
 	return cachedAuth;
 }
 
 export function setProtectedRouteCachedAuth(
 	next: ProtectedRouteCachedAuth,
 ): void {
+	if (typeof window === "undefined") {
+		return;
+	}
 	cachedAuth = next;
 }
 
 export function clearProtectedRouteCachedAuth(): void {
+	if (typeof window === "undefined") {
+		return;
+	}
 	cachedAuth = null;
 }
