@@ -7,7 +7,7 @@ import { tanstackStart } from "@tanstack/react-start/plugin/vite";
 import viteReact from "@vitejs/plugin-react";
 import { defineConfig } from "vite";
 import tsconfigPaths from "vite-tsconfig-paths";
-import { resolveWranglerConfigPath } from "../../scripts/resolve-wrangler-config-path.mjs";
+import { resolveWranglerConfigPath } from "../../scripts/resolve-wrangler-config-path.mts";
 import {
 	getSharedWranglerStatePath,
 	isWorktreeCheckout,

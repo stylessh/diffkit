@@ -1,6 +1,10 @@
 {
 	"extends": "@diffkit/typescript-config/start-app.json",
-	"include": ["**/*.ts", "**/*.tsx"],
+	"include": [
+		"**/*.ts",
+		"**/*.tsx",
+		"../../scripts/resolve-wrangler-config-path.mts"
+	],
 	"compilerOptions": {
 		"baseUrl": ".",
 		"paths": {

@@ -1,5 +1,5 @@
 import { spawnSync } from "node:child_process";
-import { resolveWranglerConfigPath } from "./resolve-wrangler-config-path.mjs";
+import { resolveWranglerConfigPath } from "./resolve-wrangler-config-path.mts";
 import {
   getSharedWranglerStatePath,
   isWorktreeCheckout,

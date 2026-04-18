@@ -4,10 +4,14 @@ import path from "node:path";
 /**
  * Same resolution Vite uses for the Cloudflare plugin in dev / Vitest (`serve` + non-production).
  *
- * @param {{ command: string; mode: string; rootDir: string }} opts
- * @returns {string | undefined} Relative filename for `wrangler -c`, or undefined for default discovery.
+ * @returns Relative filename for `wrangler -c`, or undefined for default discovery.
  */
-export function resolveWranglerConfigPath({ command, mode, rootDir }) {
+export function resolveWranglerConfigPath(opts: {
+  command: string;
+  mode: string;
+  rootDir: string;
+}): string | undefined {
+  const { command, mode, rootDir } = opts;
   if (command !== "serve" || mode === "production") {
     return undefined;
   }

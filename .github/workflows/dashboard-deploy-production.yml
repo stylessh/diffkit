@@ -57,7 +57,7 @@ jobs:
           WRANGLER_CONFIG: wrangler.deploy.json
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-        run: node ../../scripts/run-d1-migrations.mjs DB --remote
+        run: node --experimental-strip-types ../../scripts/run-d1-migrations.mjs DB --remote
 
       - name: Build and deploy Worker
         working-directory: apps/dashboard

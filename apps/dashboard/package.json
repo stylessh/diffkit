@@ -16,8 +16,8 @@
 		"check": "biome check",
 		"check-types": "tsc --noEmit",
 		"migrate": "pnpm run migrate:local",
-		"migrate:local": "node ../../scripts/run-d1-migrations.mjs DB --local",
-		"migrate:remote": "node ../../scripts/run-d1-migrations.mjs DB --remote",
+		"migrate:local": "node --experimental-strip-types ../../scripts/run-d1-migrations.mjs DB --local",
+		"migrate:remote": "node --experimental-strip-types ../../scripts/run-d1-migrations.mjs DB --remote",
 		"deploy": "pnpm run build && wrangler deploy",
 		"deploy:ci": "pnpm run build && wrangler deploy --config wrangler.deploy.json"
 	},

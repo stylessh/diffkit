@@ -1,11 +1,14 @@
 // When this repo is opened through Git worktrees, only the main checkout usually
-// keeps the real `.dev.vars` file. This script links that file into each worktree
-// so every Conductor workspace sees the same local env vars during development.
+// keeps the real `.dev.vars` and `wrangler.dev.jsonc`. This script links those files
+// into each worktree so every workspace sees the same local config during development.
 import { execSync } from "node:child_process";
 import fs from "node:fs/promises";
 import path from "node:path";
 
-const REQUIRED_ENV_PATHS = ["apps/dashboard/.dev.vars"];
+const PRIMARY_WORKTREE_LINK_PATHS = [
+  "apps/dashboard/.dev.vars",
+  "apps/dashboard/wrangler.dev.jsonc",
+];
 
 function safeExec(command, cwd) {
   return execSync(command, { cwd, stdio: ["ignore", "pipe", "pipe"] })
@@ -24,7 +27,10 @@ async function fileExists(filePath) {
 
 function resolveRoots() {
   const repoRoot = safeExec("git rev-parse --show-toplevel", process.cwd());
-  const commonDirRaw = safeExec("git rev-parse --git-common-dir", process.cwd());
+  const commonDirRaw = safeExec(
+    "git rev-parse --git-common-dir",
+    process.cwd()
+  );
   const commonDir = path.isAbsolute(commonDirRaw)
     ? commonDirRaw
     : path.resolve(repoRoot, commonDirRaw);
@@ -33,7 +39,7 @@ function resolveRoots() {
   return { repoRoot, primaryRoot };
 }
 
-async function linkDevVars(relPath, primaryRoot, repoRoot) {
+async function linkFromPrimaryWorktree(relPath, primaryRoot, repoRoot) {
   const source = path.join(primaryRoot, relPath);
   const target = path.join(repoRoot, relPath);
   const targetDir = path.dirname(target);
@@ -74,7 +80,7 @@ async function linkDevVars(relPath, primaryRoot, repoRoot) {
 
 function printResults(linked, skipped) {
   if (linked.length > 0) {
-    console.log("Linked dev vars:");
+    console.log("Linked from primary worktree:");
     for (const file of linked) {
       console.log(`  - ${file}`);
     }
@@ -98,8 +104,12 @@ async function main() {
   const linked = [];
   const skipped = [];
 
-  for (const relPath of REQUIRED_ENV_PATHS) {
-    const result = await linkDevVars(relPath, primaryRoot, repoRoot);
+  for (const relPath of PRIMARY_WORKTREE_LINK_PATHS) {
+    const result = await linkFromPrimaryWorktree(
+      relPath,
+      primaryRoot,
+      repoRoot
+    );
 
     if (result.status === "linked") {
       linked.push(result.reason);
@@ -114,6 +124,6 @@ async function main() {
 }
 
 main().catch((error) => {
-  console.error("dev vars link failed:", error.message);
+  console.error("worktree dev file link failed:", error.message);
   process.exit(1);
 });
