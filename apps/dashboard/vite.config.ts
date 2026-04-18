@@ -126,6 +126,13 @@ const useCloudflareRemoteBindings =
 
 const config = defineConfig(({ command }) => ({
 	server: command === "serve" ? getTunnelServerConfig() : undefined,
+	build: {
+		rollupOptions: {
+			// TanStack Start server-fn splits can be bundled in a pass where Rollup
+			// does not apply the Workers virtual module resolver; keep runtime imports external.
+			external: ["cloudflare:workers"],
+		},
+	},
 	plugins: [
 		devtools(),
 		shikiSSRStub(),
