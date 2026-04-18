@@ -48,6 +48,7 @@ import {
 	lazy,
 	Suspense,
 	useCallback,
+	useEffect,
 	useMemo,
 	useRef,
 	useState,
@@ -2258,6 +2259,14 @@ function PullCommentBubble({
 	isReply?: boolean;
 }) {
 	const [commentActive, setCommentActive] = useState(false);
+	const [coarsePointerNoHover, setCoarsePointerNoHover] = useState(false);
+	useEffect(() => {
+		const mq = window.matchMedia("(hover: none)");
+		const sync = () => setCoarsePointerNoHover(mq.matches);
+		sync();
+		mq.addEventListener("change", sync);
+		return () => mq.removeEventListener("change", sync);
+	}, []);
 
 	return (
 		<div
@@ -2333,7 +2342,7 @@ function PullCommentBubble({
 				{comment.graphqlId ? (
 					<IssueCommentReactionBar
 						className="absolute left-0 right-0 top-full z-10 mt-1.5"
-						revealZeroCount={commentActive}
+						revealZeroCount={commentActive || coarsePointerNoHover}
 						viewerLogin={viewerLogin}
 						owner={owner}
 						repo={repo}

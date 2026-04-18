@@ -2988,19 +2988,27 @@ async function getPullCommentsResult(
 				headers,
 			}),
 		mapData: (comments) =>
-			comments.map((comment) => ({
-				id: comment.id,
-				body: comment.body ?? "",
-				createdAt: comment.created_at,
-				author: comment.user
-					? {
-							login: comment.user.login,
-							avatarUrl: comment.user.avatar_url,
-							url: comment.user.html_url,
-							type: comment.user.type ?? "User",
-						}
-					: null,
-			})),
+			comments.map((comment) => {
+				const nodeId =
+					"node_id" in comment &&
+					typeof (comment as { node_id?: unknown }).node_id === "string"
+						? (comment as { node_id: string }).node_id
+						: undefined;
+				return {
+					id: comment.id,
+					...(nodeId ? { graphqlId: nodeId } : {}),
+					body: comment.body ?? "",
+					createdAt: comment.created_at,
+					author: comment.user
+						? {
+								login: comment.user.login,
+								avatarUrl: comment.user.avatar_url,
+								url: comment.user.html_url,
+								type: comment.user.type ?? "User",
+							}
+						: null,
+				};
+			}),
 	});
 }
 
@@ -3063,12 +3071,7 @@ async function getCommentsPageResult(
 	context: GitHubContext,
 	data: CommentPageInput,
 ): Promise<{
-	comments: Array<{
-		id: number;
-		body: string;
-		createdAt: string;
-		author: GitHubActor | null;
-	}>;
+	comments: IssueComment[];
 	total: number;
 }> {
 	const response = await context.octokit.rest.issues.listComments({
@@ -3087,19 +3090,27 @@ async function getCommentsPageResult(
 	}
 
 	return {
-		comments: response.data.map((c) => ({
-			id: c.id,
-			body: c.body ?? "",
-			createdAt: c.created_at,
-			author: c.user
-				? {
-						login: c.user.login,
-						avatarUrl: c.user.avatar_url,
-						url: c.user.html_url,
-						type: c.user.type ?? "User",
-					}
-				: null,
-		})),
+		comments: response.data.map((c) => {
+			const nodeId =
+				"node_id" in c &&
+				typeof (c as { node_id?: unknown }).node_id === "string"
+					? (c as { node_id: string }).node_id
+					: undefined;
+			return {
+				id: c.id,
+				...(nodeId ? { graphqlId: nodeId } : {}),
+				body: c.body ?? "",
+				createdAt: c.created_at,
+				author: c.user
+					? {
+							login: c.user.login,
+							avatarUrl: c.user.avatar_url,
+							url: c.user.html_url,
+							type: c.user.type ?? "User",
+						}
+					: null,
+			};
+		}),
 		total,
 	};
 }
@@ -3671,13 +3682,18 @@ async function getPullPageDataViaGraphQL(
 
 	return getOrRevalidateGitHubResource<PullPageData>({
 		userId: context.session.user.id,
-		resource: "pulls.pageData.graphql.v1",
+		resource: "pulls.pageData.graphql.v2",
 		params: data,
 		freshForMs: githubCachePolicy.detail.staleTimeMs,
 		signalKeys: [pullNamespaceKey],
 		namespaceKeys: [pullNamespaceKey],
 		cacheMode: "split",
 		fetcher: async () => {
+			const viewerPromise = getGitHubUserContextForRepository({
+				owner: data.owner,
+				repo: data.repo,
+			}).then((userCtx) => (userCtx ? getViewer(userCtx) : null));
+
 			const [response, timelineResult, viewer] = await Promise.all([
 				executeGitHubGraphQL<GitHubGraphQLPullPageResponse>(
 					context,
@@ -3800,7 +3816,7 @@ async function getPullPageDataViaGraphQL(
 					repo: data.repo,
 					issueNumber: data.pullNumber,
 				}),
-				getViewer(context),
+				viewerPromise,
 			]);
 
 			const pull = response.repository.pullRequest;
@@ -3820,7 +3836,7 @@ async function getPullPageDataViaGraphQL(
 				data: {
 					detail,
 					comments: mapGraphQLComments(
-						viewer.login,
+						viewer?.login,
 						pull.firstComments,
 						pull.lastComments,
 					),
@@ -3999,13 +4015,18 @@ async function getIssuePageDataViaGraphQL(
 
 	return getOrRevalidateGitHubResource<IssuePageData>({
 		userId: context.session.user.id,
-		resource: "issues.pageData.graphql.v1",
+		resource: "issues.pageData.graphql.v2",
 		params: data,
 		freshForMs: githubCachePolicy.detail.staleTimeMs,
 		signalKeys: [issueNamespaceKey],
 		namespaceKeys: [issueNamespaceKey],
 		cacheMode: "split",
 		fetcher: async () => {
+			const viewerPromise = getGitHubUserContextForRepository({
+				owner: data.owner,
+				repo: data.repo,
+			}).then((userCtx) => (userCtx ? getViewer(userCtx) : null));
+
 			const [response, timelineResult, viewer] = await Promise.all([
 				executeGitHubGraphQL<GitHubGraphQLIssuePageResponse>(
 					context,
@@ -4093,7 +4114,7 @@ async function getIssuePageDataViaGraphQL(
 					repo: data.repo,
 					issueNumber: data.issueNumber,
 				}),
-				getViewer(context),
+				viewerPromise,
 			]);
 
 			const issue = response.repository.issue;
@@ -4110,7 +4131,7 @@ async function getIssuePageDataViaGraphQL(
 				data: {
 					detail: mapGraphQLIssueDetail(issue),
 					comments: mapGraphQLComments(
-						viewer.login,
+						viewer?.login,
 						issue.firstComments,
 						issue.lastComments,
 					),
@@ -5559,6 +5580,10 @@ export const updateIssueState = createServerFn({ method: "POST" })
 						repo: data.repo,
 						issueNumber: data.issueNumber,
 					}),
+					githubRevalidationSignalKeys.repoMeta({
+						owner: data.owner,
+						repo: data.repo,
+					}),
 				]),
 			]);
 
@@ -6284,12 +6309,22 @@ export const forkRepository = createServerFn({ method: "POST" })
 				repo: data.repo,
 			});
 
-			await bumpGitHubCacheNamespaces([
+			const namespaces = [
 				githubRevalidationSignalKeys.repoMeta({
 					owner: response.data.owner.login,
 					repo: response.data.name,
 				}),
-			]);
+			];
+			const parent = response.data.parent;
+			if (parent?.owner?.login && parent?.name) {
+				namespaces.push(
+					githubRevalidationSignalKeys.repoMeta({
+						owner: parent.owner.login,
+						repo: parent.name,
+					}),
+				);
+			}
+			await bumpGitHubCacheNamespaces(namespaces);
 
 			return {
 				ok: true,
@@ -7386,7 +7421,7 @@ export const getRepoOverview = createServerFn({ method: "GET" })
 
 		return getOrRevalidateGitHubResource<RepoOverview>({
 			userId: context.session.user.id,
-			resource: "repo.overview.v1",
+			resource: "repo.overview.v2",
 			params: data,
 			freshForMs: githubCachePolicy.repoMeta.staleTimeMs,
 			signalKeys: [repoMetaKey, repoCodeKey],

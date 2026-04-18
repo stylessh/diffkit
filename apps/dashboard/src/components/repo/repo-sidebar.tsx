@@ -135,12 +135,9 @@ function ContributorsSection({
 					</div>
 				</div>
 				{data.totalCount > data.contributors.length && (
-					<button
-						type="button"
-						className="text-xs text-muted-foreground transition-colors hover:text-foreground"
-					>
+					<span className="text-xs text-muted-foreground">
 						+ {formatCount(data.totalCount - data.contributors.length)} more
-					</button>
+					</span>
 				)}
 			</div>
 		</DetailSidebarSection>

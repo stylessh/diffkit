@@ -151,9 +151,14 @@ export function DetailCommentBox({
 		setIsTogglingState(true);
 		try {
 			if (value.trim()) {
-				await createComment({
+				const commentResult = await createComment({
 					data: { owner, repo, issueNumber, body: value.trim() },
 				});
+				if (!commentResult.ok) {
+					toast.error(commentResult.error);
+					checkPermissionWarning(commentResult, `${owner}/${repo}`);
+					return;
+				}
 				setValue("");
 			}
 			const result = await updatePullState({
@@ -188,9 +193,14 @@ export function DetailCommentBox({
 		setIsTogglingIssueState(true);
 		try {
 			if (value.trim()) {
-				await createComment({
+				const commentResult = await createComment({
 					data: { owner, repo, issueNumber, body: value.trim() },
 				});
+				if (!commentResult.ok) {
+					toast.error(commentResult.error);
+					checkPermissionWarning(commentResult, `${owner}/${repo}`);
+					return;
+				}
 				setValue("");
 			}
 			const result = await updateIssueState({

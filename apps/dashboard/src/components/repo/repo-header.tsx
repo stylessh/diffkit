@@ -52,12 +52,14 @@ export function RepoHeader({
 						<Link
 							to="/$owner"
 							params={{ owner: repo.owner }}
-							className="font-medium text-accent-foreground transition-colors hover:underline"
+							className="inline-block min-w-0 max-w-[min(100%,14rem)] truncate font-medium text-accent-foreground transition-colors hover:underline"
 						>
 							{repo.owner}
 						</Link>
 						<span className="text-muted-foreground">/</span>
-						<span className="truncate font-semibold">{repo.name}</span>
+						<span className="min-w-0 max-w-[min(100%,20rem)] truncate font-semibold">
+							{repo.name}
+						</span>
 					</div>
 					<Badge
 						variant="outline"
@@ -95,7 +97,7 @@ export function RepoHeader({
 							<Link
 								to="/$owner"
 								params={{ owner: forkLink.owner }}
-								className="shrink-0 font-medium text-foreground transition-colors hover:underline"
+								className="inline-block min-w-0 max-w-[min(100%,12rem)] shrink-0 truncate font-medium text-foreground transition-colors hover:underline"
 							>
 								{forkLink.owner}
 							</Link>
@@ -106,7 +108,7 @@ export function RepoHeader({
 									owner: forkLink.owner,
 									repo: forkLink.repo,
 								}}
-								className="min-w-0 truncate font-semibold text-foreground transition-colors hover:underline"
+								className="min-w-0 max-w-[min(100%,18rem)] truncate font-semibold text-foreground transition-colors hover:underline"
 							>
 								{forkLink.repo}
 							</Link>
