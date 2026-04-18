@@ -2,6 +2,8 @@ import { type QueryKey, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useMemo, useRef } from "react";
 import { debug } from "./debug";
 import { getRevalidationSignalTimestamps } from "./github.functions";
+import { type GitHubQueryScope, githubQueryKeys } from "./github.query";
+import { githubRevalidationSignalKeys } from "./github-revalidation";
 
 export type GitHubSignalStreamTarget = {
 	queryKey: QueryKey;
@@ -27,6 +29,56 @@ function isSignalMessage(data: unknown): data is SignalMessage {
 const RECONNECT_DELAY_MS = 3_000;
 /** Fallback when WebSocket misses — keep "My" lists reasonably fresh */
 const POLL_INTERVAL_MS = 90 * 1_000;
+
+function tryGitHubQueryScopeFromTargets(
+	targets: readonly GitHubSignalStreamTarget[],
+): GitHubQueryScope | null {
+	for (const target of targets) {
+		const key = target.queryKey;
+		if (
+			Array.isArray(key) &&
+			key.length >= 2 &&
+			key[0] === "github" &&
+			typeof key[1] === "string"
+		) {
+			return { userId: key[1] };
+		}
+	}
+	return null;
+}
+
+/** Ensures MyPulls, MyIssues, and MyReviews (same query as MyPulls) stay subscribed and invalidatable on every tab. */
+function mergeTargetsWithMyGitHubLists(
+	targets: readonly GitHubSignalStreamTarget[],
+): GitHubSignalStreamTarget[] {
+	const scope = tryGitHubQueryScopeFromTargets(targets);
+	if (!scope) {
+		return [...targets];
+	}
+
+	const extras: GitHubSignalStreamTarget[] = [
+		{
+			queryKey: githubQueryKeys.pulls.mine(scope),
+			signalKeys: [githubRevalidationSignalKeys.pullsMine],
+		},
+		{
+			queryKey: githubQueryKeys.issues.mine(scope),
+			signalKeys: [githubRevalidationSignalKeys.issuesMine],
+		},
+	];
+
+	const seen = new Set<string>();
+	const out: GitHubSignalStreamTarget[] = [];
+
+	for (const target of [...targets, ...extras]) {
+		const sig = `${JSON.stringify(target.queryKey)}\0${[...target.signalKeys].sort().join(",")}`;
+		if (seen.has(sig)) continue;
+		seen.add(sig);
+		out.push(target);
+	}
+
+	return out;
+}
 
 function getWebSocketUrl() {
 	const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
@@ -289,16 +341,21 @@ function useGitHubSignalPoll(
 export function useGitHubSignalStream(
 	targets: readonly GitHubSignalStreamTarget[],
 ) {
+	const mergedTargets = useMemo(
+		() => mergeTargetsWithMyGitHubLists(targets),
+		[targets],
+	);
+
 	const allSignalKeys = useMemo(() => {
 		return Array.from(
-			new Set(targets.flatMap((target) => [...target.signalKeys])),
+			new Set(mergedTargets.flatMap((target) => [...target.signalKeys])),
 		).sort();
-	}, [targets]);
+	}, [mergedTargets]);
 
 	// Stable string so the effects only re-run when the actual keys change,
 	// not when the array reference changes.
 	const signalKeysKey = allSignalKeys.join(",");
 
-	useGitHubSignalStreamWebSocket(targets, signalKeysKey);
-	useGitHubSignalPoll(targets, signalKeysKey);
+	useGitHubSignalStreamWebSocket(mergedTargets, signalKeysKey);
+	useGitHubSignalPoll(mergedTargets, signalKeysKey);
 }
