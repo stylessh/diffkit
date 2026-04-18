@@ -25,7 +25,8 @@ function isSignalMessage(data: unknown): data is SignalMessage {
 }
 
 const RECONNECT_DELAY_MS = 3_000;
-const POLL_INTERVAL_MS = 5 * 60 * 1_000;
+/** Fallback when WebSocket misses — keep "My" lists reasonably fresh */
+const POLL_INTERVAL_MS = 90 * 1_000;
 
 function getWebSocketUrl() {
 	const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
@@ -273,7 +274,7 @@ function useGitHubSignalPoll(
 			pollTimer = setTimeout(pollSignals, POLL_INTERVAL_MS);
 		}
 
-		// Seed timestamps immediately, then poll every 5 minutes
+		// Seed timestamps immediately, then poll on POLL_INTERVAL_MS
 		void pollSignals();
 
 		return () => {
