@@ -30,6 +30,13 @@
       "lightningcss",
       "sharp",
       "workerd"
-    ]
+    ],
+    "overrides": {
+      "@pierre/diffs>shiki": "4.0.2",
+      "@pierre/diffs>@shikijs/transformers": "4.0.2"
+    },
+    "patchedDependencies": {
+      "@pierre/diffs@1.1.12": "patches/@pierre__diffs@1.1.12.patch"
+    }
   }
 }

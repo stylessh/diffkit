@@ -1,0 +1,199 @@
+diff --git a/dist/highlighter/languages/resolveLanguage.js b/dist/highlighter/languages/resolveLanguage.js
+index f5dff39f418566d009c46b31601d39f7a1e9c19b..03dc7c8c83f2391694485d1363db7ee89bf5f79a 100644
+--- a/dist/highlighter/languages/resolveLanguage.js
++++ b/dist/highlighter/languages/resolveLanguage.js
+@@ -1,19 +1,89 @@
+-import { RegisteredCustomLanguages, ResolvedLanguages, ResolvingLanguages } from "./constants.js";
+ import { isWorkerContext } from "../../utils/isWorkerContext.js";
+-import { bundledLanguages } from "shiki";
++import { RegisteredCustomLanguages, ResolvedLanguages, ResolvingLanguages } from "./constants.js";
+ 
+ //#region src/highlighter/languages/resolveLanguage.ts
++/** Fine-grained language loaders only — avoids `import { bundledLanguages } from "shiki"` (pulls every grammar chunk). */
++const trimmedBundledLanguages = {
++	javascript: () => import("@shikijs/langs/javascript"),
++	typescript: () => import("@shikijs/langs/typescript"),
++	jsx: () => import("@shikijs/langs/jsx"),
++	tsx: () => import("@shikijs/langs/tsx"),
++	json: () => import("@shikijs/langs/json"),
++	html: () => import("@shikijs/langs/html"),
++	css: () => import("@shikijs/langs/css"),
++	bash: () => import("@shikijs/langs/bash"),
++	shellscript: () => import("@shikijs/langs/shellscript"),
++	zsh: () => import("@shikijs/langs/shellscript"),
++	python: () => import("@shikijs/langs/python"),
++	go: () => import("@shikijs/langs/go"),
++	rust: () => import("@shikijs/langs/rust"),
++	yaml: () => import("@shikijs/langs/yaml"),
++	markdown: () => import("@shikijs/langs/markdown"),
++	diff: () => import("@shikijs/langs/diff"),
++	sql: () => import("@shikijs/langs/sql"),
++	graphql: () => import("@shikijs/langs/graphql"),
++	ruby: () => import("@shikijs/langs/ruby"),
++	java: () => import("@shikijs/langs/java"),
++	c: () => import("@shikijs/langs/c"),
++	cpp: () => import("@shikijs/langs/cpp"),
++	swift: () => import("@shikijs/langs/swift"),
++	kotlin: () => import("@shikijs/langs/kotlin"),
++	dockerfile: () => import("@shikijs/langs/dockerfile"),
++	toml: () => import("@shikijs/langs/toml"),
++	vue: () => import("@shikijs/langs/vue"),
++	svelte: () => import("@shikijs/langs/svelte"),
++	php: () => import("@shikijs/langs/php"),
++	csharp: () => import("@shikijs/langs/csharp"),
++	ini: () => import("@shikijs/langs/ini"),
++};
++
++/** Map common short ids / aliases to keys in trimmedBundledLanguages (before ini fallback). */
++const LANG_ALIASES = {
++	js: "javascript",
++	mjs: "javascript",
++	cjs: "javascript",
++	ts: "typescript",
++	mts: "typescript",
++	cts: "typescript",
++	py: "python",
++	pyw: "python",
++	rb: "ruby",
++	erb: "ruby",
++	gql: "graphql",
++	md: "markdown",
++	mdx: "markdown",
++	yml: "yaml",
++	eyaml: "yaml",
++	"c++": "cpp",
++	cxx: "cpp",
++	cc: "cpp",
++	hpp: "cpp",
++	hh: "cpp",
++	sh: "shellscript",
++	shell: "shellscript",
++	docker: "dockerfile",
++};
++
++function canonicalLangId(lang) {
++	const mapped = LANG_ALIASES[lang];
++	if (mapped != null) return mapped;
++	return lang;
++}
++
++const FALLBACK_LANG = "ini";
++
+ async function resolveLanguage(lang) {
+ 	if (isWorkerContext()) throw new Error(`resolveLanguage("${lang}") cannot be called from a worker context. Languages must be pre-resolved on the main thread and passed to the worker via the resolvedLanguages parameter.`);
+ 	const resolver = ResolvingLanguages.get(lang);
+ 	if (resolver != null) return resolver;
+ 	try {
++		const id = canonicalLangId(lang);
+ 		let loader = RegisteredCustomLanguages.get(lang);
+-		if (loader == null && Object.prototype.hasOwnProperty.call(bundledLanguages, lang)) loader = bundledLanguages[lang];
+-		if (loader == null) throw new Error(`resolveLanguage: "${lang}" not found in bundled or custom languages`);
++		if (loader == null && Object.prototype.hasOwnProperty.call(trimmedBundledLanguages, id)) loader = trimmedBundledLanguages[id];
++		if (loader == null) loader = trimmedBundledLanguages[FALLBACK_LANG];
+ 		const resolver$1 = loader().then(({ default: data }) => {
+ 			const resolvedLang = {
+-				name: lang,
++				name: id,
+ 				data
+ 			};
+ 			if (!ResolvedLanguages.has(lang)) ResolvedLanguages.set(lang, resolvedLang);
+diff --git a/dist/highlighter/shared_highlighter.js b/dist/highlighter/shared_highlighter.js
+index ae0e90172df19fddd8ae8bcb7feef9fb92d5c3a6..c817426868f0d6b52cf62ad58b06665779be0a04 100644
+--- a/dist/highlighter/shared_highlighter.js
++++ b/dist/highlighter/shared_highlighter.js
+@@ -5,14 +5,16 @@ import { attachResolvedThemes } from "./themes/attachResolvedThemes.js";
+ import { cleanUpResolvedThemes } from "./themes/cleanUpResolvedThemes.js";
+ import { getResolvedOrResolveTheme } from "./themes/getResolvedOrResolveTheme.js";
+ import { registerCustomTheme } from "./themes/registerCustomTheme.js";
+-import { createHighlighter, createJavaScriptRegexEngine, createOnigurumaEngine } from "shiki";
++import { createHighlighterCore } from "shiki/core";
++import { createJavaScriptRegexEngine } from "shiki/engine/javascript";
++import { createOnigurumaEngine } from "shiki/engine/oniguruma";
+ 
+ //#region src/highlighter/shared_highlighter.ts
+ let highlighter;
+ async function getSharedHighlighter({ themes, langs, preferredHighlighter = "shiki-js" }) {
+-	highlighter ??= createHighlighter({
++	highlighter ??= createHighlighterCore({
+ 		themes: [],
+-		langs: ["text"],
++		langs: [],
+ 		engine: preferredHighlighter === "shiki-wasm" ? createOnigurumaEngine(import("shiki/wasm")) : createJavaScriptRegexEngine()
+ 	});
+ 	const instance = isHighlighterLoading(highlighter) ? await highlighter : highlighter;
+diff --git a/dist/highlighter/themes/registerCustomCSSVariableTheme.js b/dist/highlighter/themes/registerCustomCSSVariableTheme.js
+index d5991ef17e121ea578a00badb4bd10cfdc34bde8..656f0ff670e45b840c5b5a6bb0488db7c4377bac 100644
+--- a/dist/highlighter/themes/registerCustomCSSVariableTheme.js
++++ b/dist/highlighter/themes/registerCustomCSSVariableTheme.js
+@@ -1,6 +1,6 @@
+ import { registerCustomTheme } from "./registerCustomTheme.js";
+ import { formatCSSVariablePrefix } from "../../utils/formatCSSVariablePrefix.js";
+-import { createCssVariablesTheme } from "shiki";
++import { createCssVariablesTheme } from "@shikijs/core";
+ 
+ //#region src/highlighter/themes/registerCustomCSSVariableTheme.ts
+ function registerCustomCSSVariableTheme(name, variableDefaults, fontStyle = false) {
+diff --git a/dist/highlighter/themes/resolveTheme.js b/dist/highlighter/themes/resolveTheme.js
+index 47d44c5dfc723de564b26ad55c6faf9761c81d4f..459225b88d0af753a53b092dea3e60973be5630c 100644
+--- a/dist/highlighter/themes/resolveTheme.js
++++ b/dist/highlighter/themes/resolveTheme.js
+@@ -1,6 +1,6 @@
+ import { isWorkerContext } from "../../utils/isWorkerContext.js";
+ import { RegisteredCustomThemes, ResolvedThemes, ResolvingThemes } from "./constants.js";
+-import { bundledThemes, normalizeTheme } from "shiki";
++import { normalizeTheme } from "@shikijs/core";
+ 
+ //#region src/highlighter/themes/resolveTheme.ts
+ async function resolveTheme(themeName) {
+@@ -8,7 +8,7 @@ async function resolveTheme(themeName) {
+ 	const resolver = ResolvingThemes.get(themeName);
+ 	if (resolver != null) return resolver;
+ 	try {
+-		const loader = RegisteredCustomThemes.get(themeName) ?? bundledThemes[themeName];
++		const loader = RegisteredCustomThemes.get(themeName);
+ 		if (loader == null) throw new Error(`resolveTheme: No valid loader for ${themeName}`);
+ 		const resolver$1 = loader().then((result) => {
+ 			return normalizeAndCacheResolvedTheme(themeName, "default" in result ? result.default : result);
+diff --git a/dist/index.js b/dist/index.js
+index d7cd0c20598c4ed718439601c022ebd997d844ae..9d39686e46ed636c99dc3698a685ef742306e737 100644
+--- a/dist/index.js
++++ b/dist/index.js
+@@ -97,6 +97,6 @@ import { getLineEndingType } from "./utils/getLineEndingType.js";
+ import { getSingularPatch } from "./utils/getSingularPatch.js";
+ import { setLanguageOverride } from "./utils/setLanguageOverride.js";
+ import { trimPatchContext } from "./utils/trimPatchContext.js";
+-import { codeToHtml, createCssVariablesTheme as createCSSVariablesTheme } from "shiki";
++import { codeToHtml, createCssVariablesTheme as createCSSVariablesTheme } from "@shikijs/core";
+ 
+ export { ALTERNATE_FILE_NAMES_GIT, AttachedLanguages, AttachedThemes, COMMIT_METADATA_SPLIT, CORE_CSS_ATTRIBUTE, CUSTOM_EXTENSION_TO_FILE_FORMAT, CUSTOM_HEADER_SLOT_ID, CodeToTokenTransformStream, DEFAULT_COLLAPSED_CONTEXT_THRESHOLD, DEFAULT_EXPANDED_REGION, DEFAULT_RENDER_RANGE, DEFAULT_THEMES, DEFAULT_VIRTUAL_FILE_METRICS, DIFFS_TAG_NAME, DiffHunksRenderer, EMPTY_RENDER_RANGE, EXTENSION_TO_FILE_FORMAT, FILENAME_HEADER_REGEX, FILENAME_HEADER_REGEX_GIT, FILE_CONTEXT_BLOB, File, FileDiff, FileRenderer, FileStream, GIT_DIFF_FILE_BREAK_REGEX, HEADER_METADATA_SLOT_ID, HEADER_PREFIX_SLOT_ID, HUNK_HEADER, INDEX_LINE_METADATA, InteractionManager, MERGE_CONFLICT_BASE_MARKER_REGEX, MERGE_CONFLICT_END_MARKER_REGEX, MERGE_CONFLICT_SEPARATOR_MARKER_REGEX, MERGE_CONFLICT_START_MARKER_REGEX, RegisteredCustomLanguages, RegisteredCustomThemes, ResizeManager, ResolvedLanguages, ResolvedThemes, ResolvingLanguages, ResolvingThemes, SPLIT_WITH_NEWLINES, SVGSpriteSheet, ScrollSyncManager, ShikiStreamTokenizer, THEME_CSS_ATTRIBUTE, UNIFIED_DIFF_FILE_BREAK_REGEX, UNSAFE_CSS_ATTRIBUTE, UnresolvedFile, VirtualizedFile, VirtualizedFileDiff, Virtualizer, areDiffLineAnnotationsEqual, areDiffRenderOptionsEqual, areFilesEqual, areHunkDataEqual, areLanguagesAttached, areLineAnnotationsEqual, areObjectsEqual, areOptionsEqual, arePrePropertiesEqual, areRenderRangesEqual, areSelectionsEqual, areThemesAttached, areThemesEqual, areVirtualWindowSpecsEqual, areWorkerStatsEqual, attachResolvedLanguages, attachResolvedThemes, cleanLastNewline, cleanUpResolvedLanguages, cleanUpResolvedThemes, codeToHtml, createAnnotationElement, createAnnotationWrapperNode, createCSSVariablesTheme, createDiffSpanDecoration, createEmptyRowBuffer, createFileHeaderElement, createGutterGap, createGutterItem, createGutterUtilityContentNode, createGutterUtilityElement, createGutterWrapper, createHastElement, createIconElement, createNoNewlineElement, createPreElement, createPreWrapperProperties, createRowNodes, createSeparator, createSpanFromToken, createStyleElement, createTextNodeElement, createThemeStyleElement, createTransformerWithState, createUnsafeCSSStyleNode, createWindowFromScrollPosition, diffAcceptRejectHunk, disposeHighlighter, extendFileFormatMap, findCodeElement, formatCSSVariablePrefix, getFiletypeFromFileName, getHighlighterIfLoaded, getHighlighterOptions, getHighlighterThemeStyles, getHunkSeparatorSlotName, getIconForType, getLineAnnotationName, getLineEndingType, getLineNodes, getOrCreateCodeNode, getResolvedLanguages, getResolvedOrResolveLanguage, getResolvedOrResolveTheme, getResolvedThemes, getSharedHighlighter, getSingularPatch, getThemes, getTotalLineCountFromHunks, getUnresolvedDiffHunksRendererOptions, hasResolvedLanguages, hasResolvedThemes, isDefaultRenderRange, isHighlighterLoaded, isHighlighterLoading, isHighlighterNull, isWorkerContext, parseDiffFromFile, parseLineType, parsePatchFiles, pluckInteractionOptions, preloadHighlighter, prerenderHTMLIfNecessary, processFile, processLine, processPatch, pushOrJoinSpan, queueRender, registerCustomCSSVariableTheme, registerCustomLanguage, registerCustomTheme, renderDiffWithHighlighter, renderFileWithHighlighter, resolveConflict, resolveLanguage, resolveLanguages, resolveRegion, resolveTheme, resolveThemes, setLanguageOverride, setPreNodeProperties, trimPatchContext, wrapCoreCSS, wrapThemeCSS, wrapUnsafeCSS };
+\ No newline at end of file
+diff --git a/dist/utils/createSpanNodeFromToken.js b/dist/utils/createSpanNodeFromToken.js
+index f7de46b0a1611e6b90d8c647f99867ad3388b6ae..c25ee86344ad875414044a86ee7d9dbb0ba0806c 100644
+--- a/dist/utils/createSpanNodeFromToken.js
++++ b/dist/utils/createSpanNodeFromToken.js
+@@ -1,4 +1,4 @@
+-import { getTokenStyleObject, stringifyTokenStyle } from "shiki";
++import { getTokenStyleObject, stringifyTokenStyle } from "@shikijs/core";
+ 
+ //#region src/utils/createSpanNodeFromToken.ts
+ function createSpanFromToken(token) {
+diff --git a/package.json b/package.json
+index e86a735b6fb4cc07048ba30517caced51ec5ec3c..681560dbd5a8d7d1cd93120cd0ef8d84e6343617 100644
+--- a/package.json
++++ b/package.json
+@@ -63,11 +63,13 @@
+   },
+   "dependencies": {
+     "@pierre/theme": "0.0.28",
+-    "@shikijs/transformers": "^3.0.0",
++    "@shikijs/core": "4.0.2",
++    "@shikijs/langs": "4.0.2",
++    "@shikijs/transformers": "^4.0.0",
+     "diff": "8.0.3",
+     "hast-util-to-html": "9.0.5",
+     "lru_map": "0.4.1",
+-    "shiki": "^3.0.0"
++    "shiki": "^4.0.2"
+   },
+   "devDependencies": {
+     "@arethetypeswrong/core": "0.18.2",

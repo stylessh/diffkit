@@ -5,6 +5,9 @@ on:
     branches: [main]
     paths:
       - "apps/dashboard/**"
+      - "packages/ui/**"
+      - "packages/icons/**"
+      - "packages/typescript-config/**"
       - "scripts/generate-wrangler-dashboard-config.mjs"
       - "scripts/run-d1-migrations.mjs"
       - ".github/workflows/dashboard-deploy-production.yml"

@@ -11,49 +11,37 @@ import {
 import rehypeRaw from "rehype-raw";
 import remarkGfm from "remark-gfm";
 import { remarkAlert } from "remark-github-blockquote-alert";
-import type { BundledLanguage, Highlighter } from "shiki";
-import { vercelDark, vercelLight } from "../lib/shiki-themes";
+import {
+	createMarkdownHighlighter,
+	type MarkdownHighlighter,
+	type ShikiBundledLang,
+	shikiBundledLangSet,
+} from "../lib/shiki-bundle";
 import { cn } from "../lib/utils";
 
-const PRELOADED_LANGS: BundledLanguage[] = [
-	"javascript",
-	"typescript",
-	"jsx",
-	"tsx",
-	"json",
-	"html",
-	"css",
-	"bash",
-	"shell",
-	"python",
-	"go",
-	"rust",
-	"yaml",
-	"markdown",
-	"diff",
-	"sql",
-	"graphql",
-	"ruby",
-	"java",
-	"c",
-	"cpp",
-	"swift",
-	"kotlin",
-	"dockerfile",
-	"toml",
-];
+const FENCE_LANG_ALIASES: Record<string, ShikiBundledLang> = {
+	shell: "shellscript",
+	sh: "shellscript",
+	zsh: "shellscript",
+	console: "shellscript",
+	js: "javascript",
+	ts: "typescript",
+	py: "python",
+	rs: "rust",
+	rb: "ruby",
+	kt: "kotlin",
+	cs: "csharp",
+	yml: "yaml",
+	gql: "graphql",
+	md: "markdown",
+};
 
 // Eagerly start loading the highlighter at module level (client-only to avoid
 // bundling all shiki language grammars into the server bundle for CF Workers).
-const highlighterPromise: Promise<Highlighter> =
+const highlighterPromise: Promise<MarkdownHighlighter> =
 	typeof window !== "undefined"
-		? import("shiki").then((shiki) =>
-				shiki.createHighlighter({
-					themes: [vercelLight, vercelDark],
-					langs: PRELOADED_LANGS,
-				}),
-			)
-		: new Promise<Highlighter>(() => {}); // Never resolves on server → Suspense fallback
+		? createMarkdownHighlighter()
+		: new Promise<MarkdownHighlighter>(() => {}); // Never resolves on server → Suspense fallback
 
 const htmlCache = new Map<string, Promise<string>>();
 
@@ -96,18 +84,14 @@ export function highlightCode(code: string, lang: string): Promise<string> {
 	const cached = htmlCache.get(key);
 	if (cached) return cached;
 
-	const promise = highlighterPromise.then(async (highlighter) => {
-		let effectiveLang = lang;
-		if (!highlighter.getLoadedLanguages().includes(lang)) {
-			try {
-				await highlighter.loadLanguage(lang as BundledLanguage);
-			} catch {
-				effectiveLang = "text";
-			}
-		}
+	const promise = highlighterPromise.then((highlighter) => {
+		const normalized =
+			FENCE_LANG_ALIASES[lang] ??
+			(shikiBundledLangSet.has(lang) ? (lang as ShikiBundledLang) : null);
+		const effectiveLang = normalized ?? "text";
 		return highlighter.codeToHtml(code, {
 			lang: effectiveLang,
-			themes: { light: "vercel-light", dark: "vercel-dark" },
+			themes: { light: "diffkit-light", dark: "diffkit-dark" },
 			defaultColor: false,
 		});
 	});

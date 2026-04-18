@@ -91,7 +91,7 @@ function getTunnelServerConfig(): import("vite").UserConfig["server"] {
 // client-side so the server never needs the real implementation.
 function shikiSSRStub(): import("vite").Plugin {
 	const SHIKI_RE = /^(shiki|@shikijs\/)/;
-	const STUB = `
+	const DEFAULT_STUB = `
 export const bundledLanguages = {};
 export const bundledThemes = {};
 export const createHighlighter = () => Promise.resolve({});
@@ -105,6 +105,36 @@ export const stringifyTokenStyle = () => "";
 export const transformerStyleToClass = () => ({});
 export default {};`;
 
+	// "shiki/core" re-exports "@shikijs/core" (fine-grained / createHighlighterCore).
+	// "@shikijs/rehype" imports isSpecialLang from "shiki/core" during SSR analysis.
+	const CORE_STUB = `
+const mockHighlighter = {};
+export async function createHighlighterCore() {
+	return mockHighlighter;
+}
+export function createHighlighterCoreSync() {
+	return mockHighlighter;
+}
+export const getSingletonHighlighterCore = createHighlighterCore;
+export function makeSingletonHighlighterCore(fn) {
+	return (opts) => fn(opts);
+}
+export function isPlainLang(lang) {
+	return !lang || ["plaintext", "txt", "text", "plain"].includes(lang);
+}
+export function isSpecialLang(lang) {
+	return lang === "ansi" || isPlainLang(lang);
+}
+export function isNoneTheme(theme) {
+	return theme === "none";
+}
+export function isSpecialTheme(theme) {
+	return isNoneTheme(theme);
+}`;
+
+	const LANG_STUB = "export default [];";
+	const THEME_STUB = "export default Object.freeze({});";
+
 	return {
 		name: "shiki-ssr-stub",
 		enforce: "pre",
@@ -116,9 +146,24 @@ export default {};`;
 			},
 		},
 		load(id) {
-			if (id.startsWith("\0shiki-stub:")) {
-				return STUB;
+			if (!id.startsWith("\0shiki-stub:")) {
+				return;
 			}
+			const source = id.slice("\0shiki-stub:".length);
+			if (
+				source === "shiki/core" ||
+				source === "@shikijs/core" ||
+				source.startsWith("@shikijs/core/")
+			) {
+				return CORE_STUB;
+			}
+			if (source.startsWith("@shikijs/langs/")) {
+				return LANG_STUB;
+			}
+			if (source.startsWith("@shikijs/themes/")) {
+				return THEME_STUB;
+			}
+			return DEFAULT_STUB;
 		},
 	};
 }
