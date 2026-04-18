@@ -19,7 +19,7 @@
 		"migrate:local": "node --experimental-strip-types ../../scripts/run-d1-migrations.mjs DB --local",
 		"migrate:remote": "node --experimental-strip-types ../../scripts/run-d1-migrations.mjs DB --remote",
 		"deploy": "pnpm run build && wrangler deploy",
-		"deploy:ci": "pnpm run build && wrangler deploy --config wrangler.deploy.json"
+		"deploy:ci": "pnpm run build && wrangler deploy"
 	},
 	"dependencies": {
 		"@cloudflare/vite-plugin": "^1.31.2",
