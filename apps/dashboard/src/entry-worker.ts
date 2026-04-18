@@ -10,6 +10,13 @@ const SECURITY_HEADERS: Record<string, string> = {
 	"Permissions-Policy": "camera=(), microphone=(), geolocation=(), payment=()",
 };
 
+function applySecurityHeaders(response: Response): Response {
+	for (const [key, value] of Object.entries(SECURITY_HEADERS)) {
+		response.headers.set(key, value);
+	}
+	return response;
+}
+
 async function handleWebSocketUpgrade(
 	request: Request,
 	env: Record<string, unknown>,
@@ -53,6 +60,17 @@ export default {
 			return handleWebSocketUpgrade(request, env);
 		}
 
+		if (
+			url.pathname === "/api/comment-media/upload" &&
+			request.method === "POST"
+		) {
+			const { handleCommentMediaUpload } = await import(
+				"#/lib/comment-media-upload.handler"
+			);
+			const uploadResponse = await handleCommentMediaUpload(request);
+			return applySecurityHeaders(uploadResponse);
+		}
+
 		// TanStack Start's type only declares (request, env?) but the runtime
 		// handler created by @cloudflare/vite-plugin passes (request, env, ctx)
 		// through to the underlying Worker fetch signature.
@@ -67,10 +85,6 @@ export default {
 			ctx,
 		);
 
-		for (const [key, value] of Object.entries(SECURITY_HEADERS)) {
-			response.headers.set(key, value);
-		}
-
-		return response;
+		return applySecurityHeaders(response);
 	},
 };
