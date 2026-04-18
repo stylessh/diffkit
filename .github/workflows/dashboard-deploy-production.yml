@@ -64,4 +64,4 @@ jobs:
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
         run: |
           pnpm run build
-          wrangler deploy --message "$(git -C "$GITHUB_WORKSPACE" log -1 --pretty=format:'%h %s')"
+          pnpm exec wrangler deploy --message "$(git -C "$GITHUB_WORKSPACE" log -1 --pretty=format:'%h %s')"
