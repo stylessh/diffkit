@@ -121,6 +121,9 @@ export function IssueDetailContent({
 						issueNumber={issueNumber}
 						scope={scope}
 						issueAuthor={issue.author}
+						issueState={issue.state === "closed" ? "closed" : "open"}
+						issueClosedAt={issue.closedAt}
+						issueStateReason={issue.stateReason}
 						viewerLogin={viewerQuery.data?.login}
 					/>
 				</>

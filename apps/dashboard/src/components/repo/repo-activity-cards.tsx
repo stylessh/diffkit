@@ -161,7 +161,7 @@ function ActivityCard<T>({
 				) : (
 					<>
 						{items.length === 0 ? (
-							<p className="px-4 pb-3 text-xs text-muted-foreground">
+							<p className="px-4 pb-8 pt-6 text-center text-xs text-muted-foreground">
 								No open {title.toLowerCase()}
 							</p>
 						) : (

@@ -3,6 +3,8 @@ import { type Octokit as OctokitType, RequestError } from "octokit";
 import { debug } from "./debug";
 import type {
 	CommandPaletteSearchResult,
+	CommentReactionContent,
+	CommentReactionSummary,
 	ContributionDay,
 	ContributionWeek,
 	CreateLabelInput,
@@ -139,6 +141,12 @@ type GitHubGraphQLCommentNode = {
 	body: string;
 	createdAt: string;
 	author: GitHubGraphQLActor;
+	reactions?: {
+		nodes: Array<{
+			content: string;
+			user: { login: string } | null;
+		} | null> | null;
+	} | null;
 };
 type GitHubGraphQLCommentConnection = {
 	totalCount: number;
@@ -248,6 +256,12 @@ type GitHubGraphQLRepoOverviewResponse = {
 			totalCount: number;
 		};
 		hasDiscussionsEnabled: boolean;
+		parent: {
+			nameWithOwner: string;
+			owner: {
+				avatarUrl: string;
+			};
+		} | null;
 	} | null;
 	rateLimit: GitHubGraphQLRateLimit;
 };
@@ -1049,7 +1063,62 @@ function numericIdFromGraphQLId(id: string) {
 	return Math.abs(hash);
 }
 
+function gqlReactionContentToRest(
+	content: string,
+): CommentReactionContent | null {
+	switch (content) {
+		case "THUMBS_UP":
+			return "+1";
+		case "THUMBS_DOWN":
+			return "-1";
+		case "LAUGH":
+			return "laugh";
+		case "CONFUSED":
+			return "confused";
+		case "HEART":
+			return "heart";
+		case "HOORAY":
+			return "hooray";
+		case "ROCKET":
+			return "rocket";
+		case "EYES":
+			return "eyes";
+		default:
+			return null;
+	}
+}
+
+function buildCommentReactionSummary(
+	nodes:
+		| Array<{ content: string; user: { login: string } | null } | null>
+		| null
+		| undefined,
+	viewerLogin: string | undefined,
+): CommentReactionSummary | undefined {
+	const list = nodes?.filter((n): n is NonNullable<typeof n> => n != null);
+	if (!list?.length) {
+		return undefined;
+	}
+
+	const counts: Partial<Record<CommentReactionContent, number>> = {};
+	const viewerReacted: CommentReactionContent[] = [];
+
+	for (const node of list) {
+		const rest = gqlReactionContentToRest(node.content);
+		if (!rest) {
+			continue;
+		}
+		counts[rest] = (counts[rest] ?? 0) + 1;
+		if (viewerLogin && node.user?.login === viewerLogin) {
+			viewerReacted.push(rest);
+		}
+	}
+
+	return { counts, viewerReacted };
+}
+
 function mapGraphQLComments(
+	viewerLogin: string | undefined,
 	...connections: GitHubGraphQLCommentConnection[]
 ): IssueComment[] {
 	const byId = new Map<number, IssueComment>();
@@ -1063,9 +1132,14 @@ function mapGraphQLComments(
 			const id = node.databaseId ?? numericIdFromGraphQLId(node.id);
 			byId.set(id, {
 				id,
+				graphqlId: node.id,
 				body: node.body,
 				createdAt: node.createdAt,
 				author: mapGraphQLActor(node.author),
+				reactions: buildCommentReactionSummary(
+					node.reactions?.nodes ?? undefined,
+					viewerLogin,
+				),
 			});
 		}
 	}
@@ -1232,6 +1306,7 @@ function mapGraphQLRepoOverview(
 		description: repository.description,
 		isPrivate: repository.isPrivate,
 		isFork: repository.isFork,
+		viewerHasStarred: false,
 		defaultBranch: repository.defaultBranchRef?.name ?? "main",
 		stars: repository.stargazerCount,
 		forks: repository.forkCount,
@@ -1249,6 +1324,8 @@ function mapGraphQLRepoOverview(
 		openPullCount: repository.pullRequests.totalCount,
 		openIssueCount: repository.issues.totalCount,
 		hasDiscussions: repository.hasDiscussionsEnabled,
+		forkParentFullName: repository.parent?.nameWithOwner ?? null,
+		forkParentOwnerAvatarUrl: repository.parent?.owner.avatarUrl ?? null,
 		latestCommit,
 	};
 }
@@ -1942,6 +2019,50 @@ async function getGitHubUserContextForRepository(input: {
 	repo: string;
 }) {
 	return getGitHubUserContextForOwner(input.owner);
+}
+
+/**
+ * `viewerHasStarred` on the main repo overview query is wrong when that query runs
+ * with an **installation** token. We resolve it separately using the **user** client
+ * (OAuth or user-to-server) so it reflects the signed-in account.
+ *
+ * Note: `GET /user/starred/{owner}/{repo}` can incorrectly 404 for some GitHub App
+ * user tokens even when the repo is starred; GraphQL `repository.viewerHasStarred`
+ * with the same user client matches what the star/unstar REST calls use.
+ */
+async function resolveViewerHasStarredForRepo(data: {
+	owner: string;
+	repo: string;
+}): Promise<boolean> {
+	const userContext = await getGitHubUserContextForRepository(data);
+	if (!userContext) {
+		debug("github-star", "resolveViewerHasStarred: no user context", {
+			repo: `${data.owner}/${data.repo}`,
+		});
+		return false;
+	}
+
+	try {
+		const response = await executeGitHubGraphQL<{
+			repository: { viewerHasStarred: boolean } | null;
+		}>(
+			userContext,
+			`github repo viewerHasStarred ${data.owner}/${data.repo}`,
+			`query($owner: String!, $name: String!) {
+				repository(owner: $owner, name: $name) {
+					viewerHasStarred
+				}
+			}`,
+			{ owner: data.owner, name: data.repo },
+		);
+		return response.repository?.viewerHasStarred ?? false;
+	} catch (error) {
+		debug("github-star", "resolveViewerHasStarred: GraphQL failed", {
+			repo: `${data.owner}/${data.repo}`,
+			status: error instanceof RequestError ? error.status : undefined,
+		});
+		return false;
+	}
 }
 
 function isBypassableRulesetMode(
@@ -3027,6 +3148,8 @@ function mapTimelineEvents(rawEvents: unknown[]): TimelineEvent[] {
 				| null
 				| undefined;
 			const source = raw.source as Record<string, unknown> | null | undefined;
+			const issueSnapshot = raw.issue as Record<string, unknown> | undefined;
+			const eventType = raw.event as string;
 
 			let mappedSource: TimelineEvent["source"] = null;
 			if (source) {
@@ -3095,7 +3218,25 @@ function mapTimelineEvents(rawEvents: unknown[]): TimelineEvent[] {
 					? { title: (milestone.title as string) ?? "" }
 					: undefined,
 				source: mappedSource,
-				reviewState: (raw.state as string) ?? undefined,
+				reviewState:
+					eventType === "reviewed"
+						? ((raw.state as string) ?? undefined)
+						: undefined,
+				stateReason: (() => {
+					const top =
+						(raw.state_reason as string) ?? (raw.stateReason as string);
+					if (top) {
+						return top;
+					}
+					if (eventType === "closed" && issueSnapshot) {
+						return (
+							(issueSnapshot.state_reason as string) ??
+							(issueSnapshot.stateReason as string) ??
+							undefined
+						);
+					}
+					return undefined;
+				})(),
 				body: (raw.body as string) ?? undefined,
 			};
 		});
@@ -3528,7 +3669,7 @@ async function getPullPageDataViaGraphQL(
 		namespaceKeys: [pullNamespaceKey],
 		cacheMode: "split",
 		fetcher: async () => {
-			const [response, timelineResult] = await Promise.all([
+			const [response, timelineResult, viewer] = await Promise.all([
 				executeGitHubGraphQL<GitHubGraphQLPullPageResponse>(
 					context,
 					`github pull page ${data.owner}/${data.repo}#${data.pullNumber}`,
@@ -3613,6 +3754,9 @@ async function getPullPageDataViaGraphQL(
 										body
 										createdAt
 										author { __typename login avatarUrl url }
+										reactions(first: 100) {
+											nodes { content user { login } }
+										}
 									}
 								}
 								lastComments: comments(last: 30) {
@@ -3623,6 +3767,9 @@ async function getPullPageDataViaGraphQL(
 										body
 										createdAt
 										author { __typename login avatarUrl url }
+										reactions(first: 100) {
+											nodes { content user { login } }
+										}
 									}
 								}
 							}
@@ -3644,6 +3791,7 @@ async function getPullPageDataViaGraphQL(
 					repo: data.repo,
 					issueNumber: data.pullNumber,
 				}),
+				getViewer(context),
 			]);
 
 			const pull = response.repository.pullRequest;
@@ -3662,7 +3810,11 @@ async function getPullPageDataViaGraphQL(
 				kind: "success",
 				data: {
 					detail,
-					comments: mapGraphQLComments(pull.firstComments, pull.lastComments),
+					comments: mapGraphQLComments(
+						viewer.login,
+						pull.firstComments,
+						pull.lastComments,
+					),
 					commits: mapGraphQLPullCommits(pull),
 					events,
 					commentPagination: {
@@ -3845,7 +3997,7 @@ async function getIssuePageDataViaGraphQL(
 		namespaceKeys: [issueNamespaceKey],
 		cacheMode: "split",
 		fetcher: async () => {
-			const [response, timelineResult] = await Promise.all([
+			const [response, timelineResult, viewer] = await Promise.all([
 				executeGitHubGraphQL<GitHubGraphQLIssuePageResponse>(
 					context,
 					`github issue page ${data.owner}/${data.repo}#${data.issueNumber}`,
@@ -3895,6 +4047,9 @@ async function getIssuePageDataViaGraphQL(
 										body
 										createdAt
 										author { __typename login avatarUrl url }
+										reactions(first: 100) {
+											nodes { content user { login } }
+										}
 									}
 								}
 								lastComments: comments(last: 30) {
@@ -3905,6 +4060,9 @@ async function getIssuePageDataViaGraphQL(
 										body
 										createdAt
 										author { __typename login avatarUrl url }
+										reactions(first: 100) {
+											nodes { content user { login } }
+										}
 									}
 								}
 							}
@@ -3926,6 +4084,7 @@ async function getIssuePageDataViaGraphQL(
 					repo: data.repo,
 					issueNumber: data.issueNumber,
 				}),
+				getViewer(context),
 			]);
 
 			const issue = response.repository.issue;
@@ -3941,7 +4100,11 @@ async function getIssuePageDataViaGraphQL(
 				kind: "success",
 				data: {
 					detail: mapGraphQLIssueDetail(issue),
-					comments: mapGraphQLComments(issue.firstComments, issue.lastComments),
+					comments: mapGraphQLComments(
+						viewer.login,
+						issue.firstComments,
+						issue.lastComments,
+					),
 					events: timelineResult.events,
 					commentPagination: {
 						totalCount: totalComments,
@@ -5343,6 +5506,59 @@ export const updatePullState = createServerFn({ method: "POST" })
 		}
 	});
 
+type UpdateIssueStateInput = {
+	owner: string;
+	repo: string;
+	issueNumber: number;
+	state: "open" | "closed";
+	/** Required when `state` is `closed` (GitHub “close as”) */
+	closeReason?: "completed" | "not_planned";
+};
+
+export const updateIssueState = createServerFn({ method: "POST" })
+	.inputValidator(identityValidator<UpdateIssueStateInput>)
+	.handler(async ({ data }): Promise<MutationResult> => {
+		const context = await getGitHubUserContextForRepository(data);
+		if (!context) {
+			return { ok: false, error: "Not authenticated" };
+		}
+
+		if (data.state === "closed" && !data.closeReason) {
+			return { ok: false, error: "Close reason is required" };
+		}
+
+		try {
+			await context.octokit.rest.issues.update({
+				owner: data.owner,
+				repo: data.repo,
+				issue_number: data.issueNumber,
+				state: data.state,
+				state_reason:
+					data.state === "closed" ? data.closeReason : ("reopened" as const),
+			});
+
+			const userId = context.session.user.id;
+			await Promise.all([
+				bustIssueCaches(userId, {
+					owner: data.owner,
+					repo: data.repo,
+					issueNumber: data.issueNumber,
+				}),
+				bumpGitHubCacheNamespaces([
+					githubRevalidationSignalKeys.issueEntity({
+						owner: data.owner,
+						repo: data.repo,
+						issueNumber: data.issueNumber,
+					}),
+				]),
+			]);
+
+			return { ok: true };
+		} catch (error) {
+			return toMutationError("update issue", error);
+		}
+	});
+
 export const updatePullBranch = createServerFn({ method: "POST" })
 	.inputValidator(identityValidator<PullFromRepoInput>)
 	.handler(async ({ data }): Promise<MutationResult> => {
@@ -5935,6 +6151,254 @@ export const createComment = createServerFn({ method: "POST" })
 			return { ok: true };
 		} catch (error) {
 			return toMutationError("create comment", error);
+		}
+	});
+
+// ── Star / fork repository ───────────────────────────────────────
+
+export type SetRepoStarredInput = {
+	owner: string;
+	repo: string;
+	starred: boolean;
+};
+
+export const setRepoStarred = createServerFn({ method: "POST" })
+	.inputValidator(identityValidator<SetRepoStarredInput>)
+	.handler(async ({ data }): Promise<MutationResult> => {
+		const target = `${data.owner}/${data.repo}`;
+		debug("github-star", "setRepoStarred called", {
+			target,
+			starred: data.starred,
+		});
+		console.info("[github-star] request", {
+			target,
+			starred: data.starred,
+		});
+
+		const context = await getGitHubUserContextForRepository(data);
+		if (!context) {
+			debug("github-star", "no GitHub user context (OAuth token?)", {
+				target,
+			});
+			console.warn("[github-star] aborted: no user context", { target });
+			return { ok: false, error: "Not authenticated" };
+		}
+
+		try {
+			debug("github-star", "calling GitHub activity API", {
+				target,
+				action: data.starred ? "star" : "unstar",
+			});
+			console.info("[github-star] calling octokit.rest.activity", {
+				target,
+				action: data.starred
+					? "starRepoForAuthenticatedUser"
+					: "unstarRepoForAuthenticatedUser",
+			});
+
+			if (data.starred) {
+				await context.octokit.rest.activity.starRepoForAuthenticatedUser({
+					owner: data.owner,
+					repo: data.repo,
+				});
+			} else {
+				await context.octokit.rest.activity.unstarRepoForAuthenticatedUser({
+					owner: data.owner,
+					repo: data.repo,
+				});
+			}
+
+			await bumpGitHubCacheNamespaces([
+				githubRevalidationSignalKeys.repoMeta({
+					owner: data.owner,
+					repo: data.repo,
+				}),
+			]);
+
+			debug("github-star", "success + cache namespace bumped", { target });
+			console.info("[github-star] ok", { target, starred: data.starred });
+
+			return { ok: true };
+		} catch (error) {
+			const errMeta =
+				error instanceof RequestError
+					? {
+							status: error.status,
+							message: error.message,
+							request: error.request?.url,
+						}
+					: { message: error instanceof Error ? error.message : String(error) };
+			debug("github-star", "GitHub API error", {
+				target,
+				...errMeta,
+			});
+			console.error("[github-star] GitHub API error", {
+				target,
+				starred: data.starred,
+				...errMeta,
+			});
+			return toMutationError(
+				data.starred ? "star repository" : "unstar repository",
+				error,
+			);
+		}
+	});
+
+export type ForkRepoInput = {
+	owner: string;
+	repo: string;
+};
+
+export type ForkRepoResult =
+	| { ok: true; forkOwner: string; forkName: string; htmlUrl: string }
+	| { ok: false; error: string; installUrl?: string };
+
+function toForkRepoError(error: unknown): ForkRepoResult {
+	const result = toMutationError("fork repository", error);
+	if (result.ok) {
+		return { ok: false, error: "Failed to fork repository" };
+	}
+	return { ok: false, error: result.error, installUrl: result.installUrl };
+}
+
+export const forkRepository = createServerFn({ method: "POST" })
+	.inputValidator(identityValidator<ForkRepoInput>)
+	.handler(async ({ data }): Promise<ForkRepoResult> => {
+		const context = await getGitHubUserContextForRepository(data);
+		if (!context) {
+			return { ok: false, error: "Not authenticated" };
+		}
+
+		try {
+			const response = await context.octokit.rest.repos.createFork({
+				owner: data.owner,
+				repo: data.repo,
+			});
+
+			await bumpGitHubCacheNamespaces([
+				githubRevalidationSignalKeys.repoMeta({
+					owner: response.data.owner.login,
+					repo: response.data.name,
+				}),
+			]);
+
+			return {
+				ok: true,
+				forkOwner: response.data.owner.login,
+				forkName: response.data.name,
+				htmlUrl: response.data.html_url,
+			};
+		} catch (error) {
+			return toForkRepoError(error);
+		}
+	});
+
+// ── Issue/PR comment reactions ───────────────────────────────────
+
+export type ToggleIssueCommentReactionInput = {
+	owner: string;
+	repo: string;
+	/** Issue or pull request number (conversation thread) */
+	issueNumber: number;
+	commentId: number;
+	/** GitHub GraphQL node id — numeric REST id can be wrong when GraphQL `databaseId` was absent */
+	commentGraphqlId: string;
+	content: CommentReactionContent;
+	/** True = remove; false = add (from UI before toggle) */
+	remove: boolean;
+};
+
+function restReactionContentToGraphQL(content: CommentReactionContent): string {
+	switch (content) {
+		case "+1":
+			return "THUMBS_UP";
+		case "-1":
+			return "THUMBS_DOWN";
+		case "laugh":
+			return "LAUGH";
+		case "confused":
+			return "CONFUSED";
+		case "heart":
+			return "HEART";
+		case "hooray":
+			return "HOORAY";
+		case "rocket":
+			return "ROCKET";
+		case "eyes":
+			return "EYES";
+		default:
+			return "THUMBS_UP";
+	}
+}
+
+export const toggleIssueCommentReaction = createServerFn({ method: "POST" })
+	.inputValidator(identityValidator<ToggleIssueCommentReactionInput>)
+	.handler(async ({ data }): Promise<MutationResult> => {
+		const context = await getGitHubUserContextForRepository(data);
+		if (!context) {
+			return { ok: false, error: "Not authenticated" };
+		}
+
+		if (!data.commentGraphqlId) {
+			return { ok: false, error: "Missing comment node id" };
+		}
+
+		try {
+			const gqlContent = restReactionContentToGraphQL(data.content);
+			const mutation = data.remove
+				? `mutation($subjectId: ID!, $content: ReactionContent!) {
+					removeReaction(input: { subjectId: $subjectId, content: $content }) {
+						subject { id }
+					}
+				}`
+				: `mutation($subjectId: ID!, $content: ReactionContent!) {
+					addReaction(input: { subjectId: $subjectId, content: $content }) {
+						subject { id }
+					}
+				}`;
+
+			await executeGitHubGraphQL<{
+				addReaction?: { subject: { id: string } | null } | null;
+				removeReaction?: { subject: { id: string } | null } | null;
+			}>(
+				context,
+				`github reaction ${data.remove ? "remove" : "add"}`,
+				mutation,
+				{
+					subjectId: data.commentGraphqlId,
+					content: gqlContent,
+				},
+			);
+
+			const userId = context.session.user.id;
+			await Promise.all([
+				bustGitHubCache(userId, "issues.comments", {
+					owner: data.owner,
+					repo: data.repo,
+					issueNumber: data.issueNumber,
+				}),
+				bustGitHubCache(userId, "pulls.comments", {
+					owner: data.owner,
+					repo: data.repo,
+					pullNumber: data.issueNumber,
+				}),
+				bumpGitHubCacheNamespaces([
+					githubRevalidationSignalKeys.pullEntity({
+						owner: data.owner,
+						repo: data.repo,
+						pullNumber: data.issueNumber,
+					}),
+					githubRevalidationSignalKeys.issueEntity({
+						owner: data.owner,
+						repo: data.repo,
+						issueNumber: data.issueNumber,
+					}),
+				]),
+			]);
+
+			return { ok: true };
+		} catch (error) {
+			return toMutationError("toggle comment reaction", error);
 		}
 	});
 
@@ -6986,6 +7450,12 @@ export const getRepoOverview = createServerFn({ method: "GET" })
 									totalCount
 								}
 								hasDiscussionsEnabled
+								parent {
+									nameWithOwner
+									owner {
+										avatarUrl
+									}
+								}
 							}
 							rateLimit {
 								cost
@@ -7005,9 +7475,12 @@ export const getRepoOverview = createServerFn({ method: "GET" })
 					);
 				}
 
+				const overview = mapGraphQLRepoOverview(response.repository);
+				overview.viewerHasStarred = await resolveViewerHasStarredForRepo(data);
+
 				return {
 					kind: "success",
-					data: mapGraphQLRepoOverview(response.repository),
+					data: overview,
 					metadata: createGraphQLResponseMetadata(response.rateLimit),
 				};
 			},
