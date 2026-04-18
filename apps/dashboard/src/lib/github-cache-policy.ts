@@ -11,6 +11,11 @@ export const githubCachePolicy = {
 		staleTimeMs: 2 * 60 * 1000,
 		gcTimeMs: 60 * 60 * 1000,
 	},
+	/** User-scoped "My pulls/issues/reviews" aggregates — shorter TTL + faster webhook alignment */
+	mine: {
+		staleTimeMs: 30 * 1000,
+		gcTimeMs: 15 * 60 * 1000,
+	},
 	detail: {
 		staleTimeMs: 30 * 1000,
 		gcTimeMs: 10 * 60 * 1000,

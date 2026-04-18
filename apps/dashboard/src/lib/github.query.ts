@@ -277,8 +277,8 @@ export function githubMyPullsQueryOptions(scope: GitHubQueryScope) {
 	return queryOptions({
 		queryKey: githubQueryKeys.pulls.mine(scope),
 		queryFn: () => getMyPulls(),
-		staleTime: githubCachePolicy.list.staleTimeMs,
-		gcTime: githubCachePolicy.list.gcTimeMs,
+		staleTime: githubCachePolicy.mine.staleTimeMs,
+		gcTime: githubCachePolicy.mine.gcTimeMs,
 		meta: persistedMeta,
 	});
 }
@@ -457,8 +457,8 @@ export function githubMyIssuesQueryOptions(scope: GitHubQueryScope) {
 	return queryOptions({
 		queryKey: githubQueryKeys.issues.mine(scope),
 		queryFn: () => getMyIssues(),
-		staleTime: githubCachePolicy.list.staleTimeMs,
-		gcTime: githubCachePolicy.list.gcTimeMs,
+		staleTime: githubCachePolicy.mine.staleTimeMs,
+		gcTime: githubCachePolicy.mine.gcTimeMs,
 		meta: persistedMeta,
 	});
 }
