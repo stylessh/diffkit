@@ -63,6 +63,56 @@ function reactionActorTooltipText(
 	return rest > 0 ? `${shown.join(", ")} +${rest}` : shown.join(", ");
 }
 
+function applyReactionToggleToSummary(
+	base: CommentReactionSummary | undefined,
+	content: CommentReactionContent,
+	remove: boolean,
+	viewerLogin: string | undefined,
+): CommentReactionSummary {
+	const b = base ?? { counts: {}, viewerReacted: [] };
+	const counts = { ...b.counts };
+	const viewerReacted = [...b.viewerReacted];
+	const userLoginsByContent: Partial<Record<CommentReactionContent, string[]>> =
+		{ ...(b.userLoginsByContent ?? {}) };
+	const loginsFor = [...(userLoginsByContent[content] ?? [])];
+
+	if (remove) {
+		counts[content] = Math.max(0, (counts[content] ?? 0) - 1);
+		const i = viewerReacted.indexOf(content);
+		if (i >= 0) {
+			viewerReacted.splice(i, 1);
+		}
+		if (viewerLogin) {
+			const li = loginsFor.lastIndexOf(viewerLogin);
+			if (li >= 0) {
+				loginsFor.splice(li, 1);
+			}
+		}
+	} else {
+		counts[content] = (counts[content] ?? 0) + 1;
+		if (!viewerReacted.includes(content)) {
+			viewerReacted.push(content);
+		}
+		if (viewerLogin && !loginsFor.includes(viewerLogin)) {
+			loginsFor.push(viewerLogin);
+		}
+	}
+
+	if (loginsFor.length === 0) {
+		delete userLoginsByContent[content];
+	} else {
+		userLoginsByContent[content] = loginsFor;
+	}
+
+	return {
+		counts,
+		viewerReacted,
+		...(Object.keys(userLoginsByContent).length > 0
+			? { userLoginsByContent }
+			: {}),
+	};
+}
+
 function patchCommentReactions(
 	prev: IssuePageData | PullPageData | undefined,
 	commentId: number,
@@ -80,51 +130,14 @@ function patchCommentReactions(
 			return c;
 		}
 		changed = true;
-		const base = c.reactions ?? { counts: {}, viewerReacted: [] };
-		const counts = { ...base.counts };
-		const viewerReacted = [...base.viewerReacted];
-		const userLoginsByContent: Partial<
-			Record<CommentReactionContent, string[]>
-		> = { ...(base.userLoginsByContent ?? {}) };
-		const loginsFor = [...(userLoginsByContent[content] ?? [])];
-
-		if (remove) {
-			counts[content] = Math.max(0, (counts[content] ?? 0) - 1);
-			const i = viewerReacted.indexOf(content);
-			if (i >= 0) {
-				viewerReacted.splice(i, 1);
-			}
-			if (viewerLogin) {
-				const li = loginsFor.lastIndexOf(viewerLogin);
-				if (li >= 0) {
-					loginsFor.splice(li, 1);
-				}
-			}
-		} else {
-			counts[content] = (counts[content] ?? 0) + 1;
-			if (!viewerReacted.includes(content)) {
-				viewerReacted.push(content);
-			}
-			if (viewerLogin && !loginsFor.includes(viewerLogin)) {
-				loginsFor.push(viewerLogin);
-			}
-		}
-
-		if (loginsFor.length === 0) {
-			delete userLoginsByContent[content];
-		} else {
-			userLoginsByContent[content] = loginsFor;
-		}
-
 		return {
 			...c,
-			reactions: {
-				counts,
-				viewerReacted,
-				...(Object.keys(userLoginsByContent).length > 0
-					? { userLoginsByContent }
-					: {}),
-			},
+			reactions: applyReactionToggleToSummary(
+				c.reactions,
+				content,
+				remove,
+				viewerLogin,
+			),
 		};
 	});
 
@@ -134,30 +147,68 @@ function patchCommentReactions(
 	return { ...prev, comments };
 }
 
-export function IssueCommentReactionBar({
-	owner,
-	repo,
-	issueNumber,
-	commentId,
-	commentGraphqlId,
-	scope,
-	reactions,
-	className,
-	/** When true, show reactions that have zero total count (hover / focus-within). */
-	revealZeroCount,
-	viewerLogin,
-}: {
+function patchDetailReactions<T extends IssuePageData | PullPageData>(
+	prev: T | undefined,
+	content: CommentReactionContent,
+	remove: boolean,
+	viewerLogin: string | undefined,
+): T | undefined {
+	if (!prev?.detail) {
+		return prev;
+	}
+	return {
+		...prev,
+		detail: {
+			...prev.detail,
+			reactions: applyReactionToggleToSummary(
+				prev.detail.reactions,
+				content,
+				remove,
+				viewerLogin,
+			),
+		},
+	};
+}
+
+type IssueCommentReactionBarSharedProps = {
 	owner: string;
 	repo: string;
 	issueNumber: number;
-	commentId: number;
 	commentGraphqlId: string;
 	scope: GitHubQueryScope;
 	reactions?: CommentReactionSummary;
 	className?: string;
+	/** When true, show reactions that have zero total count (hover / focus-within). */
 	revealZeroCount: boolean;
 	viewerLogin?: string | null;
-}) {
+};
+
+export type IssueCommentReactionBarProps =
+	| (IssueCommentReactionBarSharedProps & {
+			variant?: "comment";
+			commentId: number;
+	  })
+	| (IssueCommentReactionBarSharedProps & {
+			variant: "detail";
+			detailPage: "issue" | "pull";
+	  });
+
+export function IssueCommentReactionBar(props: IssueCommentReactionBarProps) {
+	const {
+		owner,
+		repo,
+		issueNumber,
+		commentGraphqlId,
+		scope,
+		reactions,
+		className,
+		revealZeroCount,
+		viewerLogin,
+	} = props;
+	const isDetail = props.variant === "detail";
+	const detailPage = isDetail ? props.detailPage : undefined;
+	const commentId = !isDetail ? props.commentId : undefined;
+
 	const queryClient = useQueryClient();
 	const flight = useRef(false);
 
@@ -177,17 +228,37 @@ export function IssueCommentReactionBar({
 			const prevIssue = queryClient.getQueryData<IssuePageData>(issuePageKey);
 			const prevPull = queryClient.getQueryData<PullPageData>(pullPageKey);
 			const viewer = viewerLogin ?? undefined;
-			queryClient.setQueryData(
-				issuePageKey,
-				patchCommentReactions(prevIssue, commentId, content, remove, viewer),
-			);
-			queryClient.setQueryData(
-				pullPageKey,
-				patchCommentReactions(prevPull, commentId, content, remove, viewer),
-			);
+			if (isDetail && detailPage === "issue") {
+				queryClient.setQueryData(
+					issuePageKey,
+					patchDetailReactions(prevIssue, content, remove, viewer),
+				);
+			} else if (isDetail && detailPage === "pull") {
+				queryClient.setQueryData(
+					pullPageKey,
+					patchDetailReactions(prevPull, content, remove, viewer),
+				);
+			} else if (!isDetail && commentId != null) {
+				queryClient.setQueryData(
+					issuePageKey,
+					patchCommentReactions(prevIssue, commentId, content, remove, viewer),
+				);
+				queryClient.setQueryData(
+					pullPageKey,
+					patchCommentReactions(prevPull, commentId, content, remove, viewer),
+				);
+			}
 			return { prevIssue, prevPull };
 		},
-		[commentId, issuePageKey, pullPageKey, queryClient, viewerLogin],
+		[
+			commentId,
+			detailPage,
+			isDetail,
+			issuePageKey,
+			pullPageKey,
+			queryClient,
+			viewerLogin,
+		],
 	);
 
 	const rollback = useCallback(
@@ -214,7 +285,7 @@ export function IssueCommentReactionBar({
 					owner,
 					repo,
 					issueNumber,
-					commentId,
+					commentId: props.variant === "detail" ? 0 : props.commentId,
 					commentGraphqlId,
 					content,
 					remove,
@@ -249,7 +320,7 @@ export function IssueCommentReactionBar({
 				transition={reactionSpring}
 			>
 				<AnimatePresence initial={false} mode="popLayout">
-					{orderedReactions.flatMap(({ content, emoji }) => {
+					{orderedReactions.map(({ content, emoji }) => {
 						const count = counts[content] ?? 0;
 						const active = reactions?.viewerReacted.includes(content) ?? false;
 						const tooltipText = reactionActorTooltipText(
@@ -298,21 +369,19 @@ export function IssueCommentReactionBar({
 								</AnimatePresence>
 							</motion.button>
 						);
-						return [
-							count > 0 ? (
-								<Tooltip key={content} delayDuration={300}>
-									<TooltipTrigger asChild>{chip}</TooltipTrigger>
-									<TooltipContent
-										side="top"
-										className="max-w-xs text-xs leading-snug"
-									>
-										{tooltipText}
-									</TooltipContent>
-								</Tooltip>
-							) : (
-								<Fragment key={content}>{chip}</Fragment>
-							),
-						];
+						return count > 0 ? (
+							<Tooltip key={content} delayDuration={300}>
+								<TooltipTrigger asChild>{chip}</TooltipTrigger>
+								<TooltipContent
+									side="top"
+									className="max-w-xs text-xs leading-snug"
+								>
+									{tooltipText}
+								</TooltipContent>
+							</Tooltip>
+						) : (
+							<Fragment key={content}>{chip}</Fragment>
+						);
 					})}
 				</AnimatePresence>
 			</motion.div>

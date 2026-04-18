@@ -284,6 +284,7 @@ type GitHubGraphQLReviewRequestNode = {
 type GitHubGraphQLPullPageResponse = {
 	repository: {
 		pullRequest: {
+			id: string;
 			databaseId: number | null;
 			number: number;
 			title: string;
@@ -295,6 +296,12 @@ type GitHubGraphQLPullPageResponse = {
 			mergedAt: string | null;
 			url: string;
 			body: string;
+			reactions: {
+				nodes: Array<{
+					content: string;
+					user: { login: string } | null;
+				} | null> | null;
+			} | null;
 			additions: number;
 			deletions: number;
 			changedFiles: number;
@@ -343,6 +350,7 @@ type GitHubGraphQLPullPageResponse = {
 type GitHubGraphQLIssuePageResponse = {
 	repository: {
 		issue: {
+			id: string;
 			databaseId: number | null;
 			number: number;
 			title: string;
@@ -353,6 +361,12 @@ type GitHubGraphQLIssuePageResponse = {
 			closedAt: string | null;
 			url: string;
 			body: string;
+			reactions: {
+				nodes: Array<{
+					content: string;
+					user: { login: string } | null;
+				} | null> | null;
+			} | null;
 			comments: { totalCount: number };
 			author: GitHubGraphQLActor;
 			labels: {
@@ -890,6 +904,10 @@ function mapPullDetail(
 ): PullDetail {
 	return {
 		...mapPullSummary(pull, repository),
+		graphqlId:
+			"node_id" in pull && typeof pull.node_id === "string"
+				? pull.node_id
+				: undefined,
 		body: pull.body ?? "",
 		additions: pull.additions,
 		deletions: pull.deletions,
@@ -960,6 +978,10 @@ function mapIssueDetail(
 ): IssueDetail {
 	return {
 		...mapIssueSummary(issue, repository),
+		graphqlId:
+			"node_id" in issue && typeof issue.node_id === "string"
+				? issue.node_id
+				: undefined,
 		body: issue.body ?? "",
 		assignees: (issue.assignees ?? [])
 			.map((assignee) => mapActor(assignee))
@@ -1165,6 +1187,7 @@ function getLoadedCommentPages(totalComments: number) {
 
 function mapGraphQLPullDetail(
 	pull: NonNullable<GitHubGraphQLPullPageResponse["repository"]["pullRequest"]>,
+	viewerLogin: string | undefined,
 ): PullDetail {
 	const requestedReviewers: GitHubActor[] = [];
 	const requestedTeams: RequestedTeam[] = [];
@@ -1192,6 +1215,7 @@ function mapGraphQLPullDetail(
 
 	return {
 		id: pull.databaseId ?? 0,
+		graphqlId: pull.id,
 		number: pull.number,
 		title: pull.title,
 		state: pull.state.toLowerCase(),
@@ -1205,6 +1229,10 @@ function mapGraphQLPullDetail(
 		author: mapGraphQLActor(pull.author),
 		labels: mapGraphQLLabels(pull.labels),
 		repository: mapGraphQLRepositoryRef(pull.repository),
+		reactions: buildCommentReactionSummary(
+			pull.reactions?.nodes ?? undefined,
+			viewerLogin,
+		),
 		body: pull.body,
 		additions: pull.additions,
 		deletions: pull.deletions,
@@ -1258,9 +1286,11 @@ function mapGraphQLPullCommits(
 
 function mapGraphQLIssueDetail(
 	issue: NonNullable<GitHubGraphQLIssuePageResponse["repository"]["issue"]>,
+	viewerLogin: string | undefined,
 ): IssueDetail {
 	return {
 		id: issue.databaseId ?? 0,
+		graphqlId: issue.id,
 		number: issue.number,
 		title: issue.title,
 		state: issue.state.toLowerCase(),
@@ -1273,6 +1303,10 @@ function mapGraphQLIssueDetail(
 		author: mapGraphQLActor(issue.author),
 		labels: mapGraphQLLabels(issue.labels),
 		repository: mapGraphQLRepositoryRef(issue.repository),
+		reactions: buildCommentReactionSummary(
+			issue.reactions?.nodes ?? undefined,
+			viewerLogin,
+		),
 		body: issue.body,
 		assignees: (issue.assignees?.nodes ?? [])
 			.map((assignee) => mapGraphQLActor(assignee))
@@ -3701,6 +3735,7 @@ async function getPullPageDataViaGraphQL(
 					`query($owner: String!, $repo: String!, $number: Int!) {
 						repository(owner: $owner, name: $repo) {
 							pullRequest(number: $number) {
+								id
 								databaseId
 								number
 								title
@@ -3712,6 +3747,9 @@ async function getPullPageDataViaGraphQL(
 								mergedAt
 								url
 								body
+								reactions(first: 100) {
+									nodes { content user { login } }
+								}
 								additions
 								deletions
 								changedFiles
@@ -3828,7 +3866,7 @@ async function getPullPageDataViaGraphQL(
 
 			const totalComments = pull.comments.totalCount;
 			const loadedPages = getLoadedCommentPages(totalComments);
-			const detail = mapGraphQLPullDetail(pull);
+			const detail = mapGraphQLPullDetail(pull, viewer?.login);
 			const events = timelineResult.events;
 
 			return {
@@ -4034,6 +4072,7 @@ async function getIssuePageDataViaGraphQL(
 					`query($owner: String!, $repo: String!, $number: Int!) {
 						repository(owner: $owner, name: $repo) {
 							issue(number: $number) {
+								id
 								databaseId
 								number
 								title
@@ -4044,6 +4083,9 @@ async function getIssuePageDataViaGraphQL(
 								closedAt
 								url
 								body
+								reactions(first: 100) {
+									nodes { content user { login } }
+								}
 								comments { totalCount }
 								author { __typename login avatarUrl url }
 								labels(first: 20) {
@@ -4129,7 +4171,7 @@ async function getIssuePageDataViaGraphQL(
 			return {
 				kind: "success",
 				data: {
-					detail: mapGraphQLIssueDetail(issue),
+					detail: mapGraphQLIssueDetail(issue, viewer?.login),
 					comments: mapGraphQLComments(
 						viewer?.login,
 						issue.firstComments,

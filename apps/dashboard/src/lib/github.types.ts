@@ -65,6 +65,9 @@ export type RequestedTeam = {
 };
 
 export type PullDetail = PullSummary & {
+	/** GraphQL node id (`I_kwD...` / `PR_kwD...`); required for reactions API */
+	graphqlId?: string;
+	reactions?: CommentReactionSummary;
 	body: string;
 	additions: number;
 	deletions: number;
@@ -101,6 +104,9 @@ export type IssueSummary = {
 };
 
 export type IssueDetail = IssueSummary & {
+	/** GraphQL node id (`I_kwD...`); required for reactions API */
+	graphqlId?: string;
+	reactions?: CommentReactionSummary;
 	body: string;
 	assignees: GitHubActor[];
 	milestone: {

@@ -1,9 +1,13 @@
 import { IssuesIcon } from "@diffkit/icons";
 import { Markdown } from "@diffkit/ui/components/markdown";
 import { cn } from "@diffkit/ui/lib/utils";
+import { useState } from "react";
+import { IssueCommentReactionBar } from "#/components/details/comment-reaction-bar";
 import { DetailPageTitle } from "#/components/details/detail-page";
 import { formatRelativeTime } from "#/lib/format-relative-time";
+import type { GitHubQueryScope } from "#/lib/github.query";
 import type { IssueDetail } from "#/lib/github.types";
+import { usePrefersNoHover } from "#/lib/use-prefers-no-hover";
 
 type IssueStateConfig = {
 	color: string;
@@ -37,11 +41,17 @@ export function IssueDetailHeader({
 	owner,
 	repo,
 	issue,
+	scope,
+	viewerLogin,
 }: {
 	owner: string;
 	repo: string;
 	issue: IssueDetail;
+	scope: GitHubQueryScope;
+	viewerLogin?: string | null;
 }) {
+	const [descActive, setDescActive] = useState(false);
+	const prefersNoHover = usePrefersNoHover();
 	const stateConfig = getIssueStateConfig(issue);
 
 	return (
@@ -82,17 +92,42 @@ export function IssueDetailHeader({
 				}
 			/>
 
-			{issue.body ? (
-				<div className="rounded-lg border bg-surface-0 p-5">
-					<Markdown>{issue.body}</Markdown>
+			<div className="rounded-lg border bg-surface-0 p-5">
+				<div
+					className="group/description flex flex-col"
+					onPointerEnter={() => setDescActive(true)}
+					onPointerLeave={() => setDescActive(false)}
+					onFocusCapture={() => setDescActive(true)}
+					onBlurCapture={(e) => {
+						if (!e.currentTarget.contains(e.relatedTarget as Node | null)) {
+							setDescActive(false);
+						}
+					}}
+				>
+					{issue.body ? (
+						<Markdown>{issue.body}</Markdown>
+					) : (
+						<p className="text-sm italic text-muted-foreground">
+							No description provided.
+						</p>
+					)}
+					{issue.graphqlId ? (
+						<IssueCommentReactionBar
+							className="mt-3 justify-start"
+							revealZeroCount={descActive || prefersNoHover}
+							viewerLogin={viewerLogin}
+							owner={owner}
+							repo={repo}
+							issueNumber={issue.number}
+							commentGraphqlId={issue.graphqlId}
+							scope={scope}
+							reactions={issue.reactions}
+							variant="detail"
+							detailPage="issue"
+						/>
+					) : null}
 				</div>
-			) : (
-				<div className="rounded-lg border bg-surface-0 p-5">
-					<p className="text-sm italic text-muted-foreground">
-						No description provided.
-					</p>
-				</div>
-			)}
+			</div>
 		</>
 	);
 }

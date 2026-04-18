@@ -153,6 +153,7 @@ export function PullDetailContent({
 						pullNumber={pullNumber}
 						isAuthor={viewer?.login === pr.author?.login}
 						scope={scope}
+						viewerLogin={viewer?.login}
 					/>
 
 					<PullDetailActivitySection
