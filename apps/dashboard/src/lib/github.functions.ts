@@ -4472,12 +4472,12 @@ function mergeMyIssuesResults(results: MyIssuesResult[]): MyIssuesResult {
 	};
 }
 
-/** Full refresh replaces cache so merged/closed items drop off; union only on partial timeout. */
+/** Full refresh replaces cache so merged/closed items drop off; union only when this fetch missed sources (`partial`). */
 function mergeMyPullsCachedWithFresh(
 	existing: MyPullsResult,
 	fresh: MyPullsResult,
 ): MyPullsResult {
-	if (fresh.timedOut) {
+	if (fresh.partial) {
 		return mergeMyPullsResults([existing, fresh]);
 	}
 	return fresh;
@@ -4487,7 +4487,7 @@ function mergeMyIssuesCachedWithFresh(
 	existing: MyIssuesResult,
 	fresh: MyIssuesResult,
 ): MyIssuesResult {
-	if (fresh.timedOut) {
+	if (fresh.partial) {
 		return mergeMyIssuesResults([existing, fresh]);
 	}
 	return fresh;
@@ -4691,6 +4691,9 @@ async function getMyPullsResult({
 			if (forbiddenOrgs.length > 0) {
 				data.forbiddenOrgs = [...new Set(forbiddenOrgs)];
 			}
+			if (results.length < sources.length) {
+				data.partial = true;
+			}
 			if (timedOut || hasRecentGitHubTimeouts()) {
 				data.timedOut = true;
 			}
@@ -4856,6 +4859,9 @@ async function getMyIssuesResult({
 			const data = mergeMyIssuesResults(results);
 			if (forbiddenOrgs.length > 0) {
 				data.forbiddenOrgs = [...new Set(forbiddenOrgs)];
+			}
+			if (results.length < sources.length) {
+				data.partial = true;
 			}
 			if (timedOut || hasRecentGitHubTimeouts()) {
 				data.timedOut = true;

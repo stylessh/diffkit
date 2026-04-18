@@ -123,6 +123,7 @@ export type MyPullsResult = {
 	mentioned: PullSummary[];
 	involved: PullSummary[];
 	forbiddenOrgs?: string[];
+	partial?: boolean;
 	timedOut?: boolean;
 };
 
@@ -131,6 +132,7 @@ export type MyIssuesResult = {
 	authored: IssueSummary[];
 	mentioned: IssueSummary[];
 	forbiddenOrgs?: string[];
+	partial?: boolean;
 	timedOut?: boolean;
 };
 
