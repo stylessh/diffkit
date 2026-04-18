@@ -9,7 +9,10 @@ import {
 	GitBranchIcon,
 	GitCommitIcon,
 	GitMergeIcon,
+	GitPullRequestClosedIcon,
 	GitPullRequestIcon,
+	IssueClosedCompletedIcon,
+	IssueClosedNotPlannedIcon,
 	MoreHorizontalIcon,
 	RefreshCwIcon,
 	ReviewsIcon,
@@ -50,6 +53,7 @@ import {
 	useState,
 } from "react";
 import { CommentMoreMenu } from "#/components/details/comment-more-menu";
+import { IssueCommentReactionBar } from "#/components/details/comment-reaction-bar";
 import { CommentReplyForm } from "#/components/details/comment-reply-form";
 import { buildCommentThreads } from "#/components/details/comment-threads";
 import {
@@ -57,6 +61,7 @@ import {
 	DetailCommentBox,
 } from "#/components/details/detail-activity";
 import {
+	GroupedIssueStateToggleDescription,
 	GroupedLabelDescription,
 	GroupedReviewRequestDescription,
 	groupTimelineEvents,
@@ -85,6 +90,7 @@ import type {
 	CommentPagination,
 	EventPagination,
 	GitHubActor,
+	GroupedIssueStateToggleEvent,
 	GroupedLabelEvent,
 	GroupedReviewRequestEvent,
 	PullCheckRun,
@@ -96,6 +102,11 @@ import type {
 	PullStatus,
 	TimelineEvent,
 } from "#/lib/github.types";
+import {
+	mergeIssueStateIntoCloseEvent,
+	parseCloseReason,
+} from "#/lib/timeline-close-reason";
+import { usePrefersNoHover } from "#/lib/use-prefers-no-hover";
 import { checkPermissionWarning } from "#/lib/warning-store";
 
 // Lazy-load PatchDiff for review comment diff hunks
@@ -216,6 +227,7 @@ export function PullDetailActivitySection({
 				owner={owner}
 				repo={repo}
 				pullNumber={pullNumber}
+				scope={scope}
 				viewerLogin={viewerLogin}
 				threadInfoByCommentId={threadInfoByCommentId}
 			/>
@@ -1376,6 +1388,11 @@ type TimelineItem =
 			date: string;
 			data: GroupedReviewRequestEvent;
 	  }
+	| {
+			type: "issue_state_toggle_group";
+			date: string;
+			data: GroupedIssueStateToggleEvent;
+	  }
 	| { type: "merged"; date: string; data: PullDetail };
 
 const WINDOW_THRESHOLD = 25;
@@ -1585,6 +1602,7 @@ function ActivityTimeline({
 	owner,
 	repo,
 	pullNumber,
+	scope,
 	viewerLogin,
 	threadInfoByCommentId,
 }: {
@@ -1599,6 +1617,7 @@ function ActivityTimeline({
 	owner: string;
 	repo: string;
 	pullNumber: number;
+	scope: GitHubQueryScope;
 	viewerLogin?: string;
 	threadInfoByCommentId?: ReadonlyMap<
 		number,
@@ -1689,6 +1708,7 @@ function ActivityTimeline({
 					"event",
 					"label_group",
 					"review_request_group",
+					"issue_state_toggle_group",
 				]);
 				const isEventLike = eventLikeTypes.has(item.type);
 				const prevIsEventLike =
@@ -1711,6 +1731,7 @@ function ActivityTimeline({
 								owner={owner}
 								repo={repo}
 								pullNumber={pullNumber}
+								scope={scope}
 								viewerLogin={viewerLogin}
 							/>
 						);
@@ -1854,6 +1875,65 @@ function ActivityTimeline({
 											group={item.data as GroupedReviewRequestEvent}
 										/>
 									)}
+								</span>
+								<span className="ml-auto shrink-0 text-[13px] text-muted-foreground">
+									{formatRelativeTime(group.createdAt)}
+								</span>
+							</div>
+						);
+					}
+
+					if (item.type === "issue_state_toggle_group") {
+						const group = item.data as GroupedIssueStateToggleEvent;
+						const hasActorAvatar = group.actor?.avatarUrl;
+						const prClosed =
+							pr.state === "closed" && !pr.isMerged ? "closed" : undefined;
+						const mergedForIcon = group.events.map((e) =>
+							e.event === "closed"
+								? mergeIssueStateIntoCloseEvent(e, {
+										issueState: prClosed,
+										issueClosedAt: pr.closedAt,
+										issueStateReason: null,
+									})
+								: e,
+						);
+						const lastEvent = mergedForIcon[mergedForIcon.length - 1];
+						const icon = lastEvent ? getEventIcon(lastEvent) : null;
+						const toggleKey = group.events.map((e) => e.id).join("-");
+						return (
+							<div
+								key={`issue_state_toggle_group-${toggleKey}-${group.createdAt}`}
+								className={cn(
+									"flex items-center gap-1.5",
+									index === 0 ? "pt-5" : isConsecutiveEvent ? "pt-2" : "pt-5",
+									isLastInEventRun ? "pb-5" : "pb-2",
+								)}
+							>
+								{hasActorAvatar ? (
+									<img
+										src={group.actor?.avatarUrl}
+										alt={group.actor?.login}
+										className="size-5 shrink-0 rounded-full border border-border self-start"
+									/>
+								) : (
+									<div className="flex size-5 shrink-0 items-center justify-center rounded-full border border-border bg-surface-1 self-start">
+										{icon}
+									</div>
+								)}
+								<span className="min-w-0 text-[13px] text-muted-foreground">
+									<GroupedIssueStateToggleDescription
+										group={group}
+										subject="pull"
+										mergeCloseReason={(e) =>
+											e.event === "closed"
+												? mergeIssueStateIntoCloseEvent(e, {
+														issueState: prClosed,
+														issueClosedAt: pr.closedAt,
+														issueStateReason: null,
+													})
+												: e
+										}
+									/>
 								</span>
 								<span className="ml-auto shrink-0 text-[13px] text-muted-foreground">
 									{formatRelativeTime(group.createdAt)}
@@ -2164,6 +2244,7 @@ function PullCommentBubble({
 	owner,
 	repo,
 	pullNumber,
+	scope,
 	viewerLogin,
 	onReply,
 	isReply,
@@ -2172,16 +2253,28 @@ function PullCommentBubble({
 	owner: string;
 	repo: string;
 	pullNumber: number;
+	scope: GitHubQueryScope;
 	viewerLogin?: string;
 	onReply?: () => void;
 	isReply?: boolean;
 }) {
+	const [commentActive, setCommentActive] = useState(false);
+	const prefersNoHover = usePrefersNoHover();
+
 	return (
 		<div
 			className={cn(
 				"group/comment relative flex flex-col gap-1",
 				isReply ? "py-2" : "py-5",
 			)}
+			onPointerEnter={() => setCommentActive(true)}
+			onPointerLeave={() => setCommentActive(false)}
+			onFocusCapture={() => setCommentActive(true)}
+			onBlurCapture={(e) => {
+				if (!e.currentTarget.contains(e.relatedTarget as Node | null)) {
+					setCommentActive(false);
+				}
+			}}
 		>
 			<div className="flex items-center gap-1.5">
 				{comment.author ? (
@@ -2237,7 +2330,23 @@ function PullCommentBubble({
 					/>
 				</div>
 			</div>
-			<Markdown className="text-muted-foreground">{comment.body}</Markdown>
+			<div className={cn("relative", comment.graphqlId != null && "mb-14")}>
+				<Markdown className="text-muted-foreground">{comment.body}</Markdown>
+				{comment.graphqlId ? (
+					<IssueCommentReactionBar
+						className="absolute left-0 right-0 top-full z-10 mt-1.5"
+						revealZeroCount={commentActive || prefersNoHover}
+						viewerLogin={viewerLogin}
+						owner={owner}
+						repo={repo}
+						issueNumber={pullNumber}
+						commentId={comment.id}
+						commentGraphqlId={comment.graphqlId}
+						scope={scope}
+						reactions={comment.reactions}
+					/>
+				) : null}
+			</div>
 		</div>
 	);
 }
@@ -2249,6 +2358,7 @@ function PullCommentWithThread({
 	owner,
 	repo,
 	pullNumber,
+	scope,
 	viewerLogin,
 }: {
 	comment: PullComment;
@@ -2257,6 +2367,7 @@ function PullCommentWithThread({
 	owner: string;
 	repo: string;
 	pullNumber: number;
+	scope: GitHubQueryScope;
 	viewerLogin?: string;
 }) {
 	const [showReplyForm, setShowReplyForm] = useState(false);
@@ -2269,6 +2380,7 @@ function PullCommentWithThread({
 				owner={owner}
 				repo={repo}
 				pullNumber={pullNumber}
+				scope={scope}
 				viewerLogin={viewerLogin}
 				onReply={() => setShowReplyForm(true)}
 			/>
@@ -2282,6 +2394,7 @@ function PullCommentWithThread({
 							owner={owner}
 							repo={repo}
 							pullNumber={pullNumber}
+							scope={scope}
 							viewerLogin={viewerLogin}
 							onReply={() => setShowReplyForm(true)}
 							isReply
@@ -2679,28 +2792,54 @@ function getEventIcon(event: TimelineEvent) {
 					className="text-muted-foreground"
 				/>
 			);
-		case "reviewed":
+		case "reviewed": {
+			const s = event.reviewState?.toLowerCase();
+			let reviewIconClass = "text-muted-foreground";
+			if (s === "approved") {
+				reviewIconClass = "text-green-600 dark:text-green-400";
+			} else if (s === "changes_requested") {
+				reviewIconClass = "text-red-600 dark:text-red-400";
+			} else if (s === "commented") {
+				reviewIconClass = "text-sky-600 dark:text-sky-400";
+			} else if (s === "dismissed") {
+				reviewIconClass = "text-muted-foreground";
+			}
 			return (
-				<ReviewsIcon
-					size={12}
-					strokeWidth={2}
-					className={cn(
-						event.reviewState === "approved"
-							? "text-green-600 dark:text-green-400"
-							: event.reviewState === "changes_requested"
-								? "text-red-600 dark:text-red-400"
-								: "text-muted-foreground",
-					)}
-				/>
+				<ReviewsIcon size={12} strokeWidth={2} className={reviewIconClass} />
 			);
+		}
 		case "renamed":
 			return (
 				<EditIcon size={12} strokeWidth={2} className="text-muted-foreground" />
 			);
-		case "closed":
+		case "closed": {
+			const kind = parseCloseReason(event.stateReason);
+			if (kind === "completed") {
+				return (
+					<IssueClosedCompletedIcon
+						size={12}
+						strokeWidth={2}
+						className="text-violet-500"
+					/>
+				);
+			}
+			if (kind === "not_planned") {
+				return (
+					<IssueClosedNotPlannedIcon
+						size={12}
+						strokeWidth={2}
+						className="text-muted-foreground"
+					/>
+				);
+			}
 			return (
-				<GitMergeIcon size={12} strokeWidth={2} className="text-purple-500" />
+				<GitPullRequestClosedIcon
+					size={12}
+					strokeWidth={2}
+					className="text-rose-600 dark:text-rose-400"
+				/>
 			);
+		}
 		case "reopened":
 			return (
 				<GitPullRequestIcon
@@ -2859,16 +2998,41 @@ function getEventDescription(
 			);
 		case "reviewed": {
 			const state = event.reviewState?.toLowerCase();
-			const stateLabel =
-				state === "approved"
-					? "approved"
-					: state === "changes_requested"
-						? "requested changes"
-						: "reviewed";
+			let action: React.ReactNode;
+			if (state === "approved") {
+				action = (
+					<>
+						<span className="font-medium text-green-600 dark:text-green-400">
+							approved
+						</span>
+						{" this pull request"}
+					</>
+				);
+			} else if (state === "changes_requested") {
+				action = (
+					<span className="font-medium text-red-600 dark:text-red-400">
+						requested changes
+					</span>
+				);
+			} else if (state === "commented") {
+				action = (
+					<span className="font-medium text-sky-600 dark:text-sky-400">
+						left a review
+					</span>
+				);
+			} else if (state === "dismissed") {
+				action = (
+					<span className="font-medium text-muted-foreground">
+						dismissed their review
+					</span>
+				);
+			} else {
+				action = "reviewed";
+			}
 			return (
-				<span className="inline-flex items-center gap-1">
+				<span className="inline-flex items-center gap-1 flex-wrap">
 					<ActorMention actor={event.actor} hideAvatar />
-					{` ${stateLabel}`}
+					{action}
 				</span>
 			);
 		}
@@ -2884,18 +3048,37 @@ function getEventDescription(
 					</span>
 				</span>
 			);
-		case "closed":
+		case "closed": {
+			const kind = parseCloseReason(event.stateReason);
 			return (
-				<span className="inline-flex items-center gap-1">
+				<span className="inline-flex items-center gap-1 flex-wrap">
 					<ActorMention actor={event.actor} hideAvatar />
-					{" closed this"}
+					{" closed this pull request"}
+					{kind === "completed" && (
+						<>
+							{" as "}
+							<span className="font-medium text-violet-500">completed</span>
+						</>
+					)}
+					{kind === "not_planned" && (
+						<>
+							{" as "}
+							<span className="font-medium text-muted-foreground">
+								not planned
+							</span>
+						</>
+					)}
 				</span>
 			);
+		}
 		case "reopened":
 			return (
-				<span className="inline-flex items-center gap-1">
+				<span className="inline-flex items-center gap-1 flex-wrap">
 					<ActorMention actor={event.actor} hideAvatar />
-					{" reopened this"}
+					<span className="font-medium text-green-600 dark:text-green-400">
+						reopened
+					</span>
+					{" this pull request"}
 				</span>
 			);
 		case "cross-referenced":

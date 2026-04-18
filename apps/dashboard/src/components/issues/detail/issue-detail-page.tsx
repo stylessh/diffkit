@@ -83,6 +83,7 @@ export function IssueDetailContent({
 	useGitHubSignalStream(webhookRefreshTargets);
 
 	const issue = pageQuery.data?.detail;
+	const viewerLogin = viewerQuery.data?.login;
 	const comments = pageQuery.data?.comments;
 	const events = pageQuery.data?.events;
 	const commentPagination = pageQuery.data?.commentPagination;
@@ -108,7 +109,13 @@ export function IssueDetailContent({
 		<DetailPageLayout
 			main={
 				<>
-					<IssueDetailHeader owner={owner} repo={repo} issue={issue} />
+					<IssueDetailHeader
+						owner={owner}
+						repo={repo}
+						issue={issue}
+						scope={scope}
+						viewerLogin={viewerLogin}
+					/>
 					<IssueDetailActivitySection
 						comments={comments}
 						events={events}
@@ -121,6 +128,9 @@ export function IssueDetailContent({
 						issueNumber={issueNumber}
 						scope={scope}
 						issueAuthor={issue.author}
+						issueState={issue.state === "closed" ? "closed" : "open"}
+						issueClosedAt={issue.closedAt}
+						issueStateReason={issue.stateReason}
 						viewerLogin={viewerQuery.data?.login}
 					/>
 				</>

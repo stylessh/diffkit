@@ -21,16 +21,25 @@ export function DetailSidebar({ children }: { children: React.ReactNode }) {
 
 export function DetailSidebarSection({
 	title,
+	titleRight,
 	children,
 }: {
 	title: string;
+	titleRight?: React.ReactNode;
 	children: React.ReactNode;
 }) {
 	return (
 		<div className="flex flex-col gap-2.5">
-			<h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-				{title}
-			</h3>
+			<div className="flex items-baseline justify-between gap-2">
+				<h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+					{title}
+				</h3>
+				{titleRight != null ? (
+					<span className="shrink-0 text-xs font-normal tabular-nums tracking-normal text-muted-foreground">
+						{titleRight}
+					</span>
+				) : null}
+			</div>
 			{children}
 		</div>
 	);

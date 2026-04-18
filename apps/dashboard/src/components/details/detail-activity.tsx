@@ -1,8 +1,18 @@
 import {
+	ChevronDownIcon,
 	CommentIcon,
 	GitPullRequestClosedIcon,
 	GitPullRequestIcon,
+	IssueClosedCompletedIcon,
+	IssueClosedNotPlannedIcon,
+	IssuesIcon,
 } from "@diffkit/icons";
+import {
+	DropdownMenu,
+	DropdownMenuContent,
+	DropdownMenuItem,
+	DropdownMenuTrigger,
+} from "@diffkit/ui/components/dropdown-menu";
 import {
 	MarkdownEditor,
 	type MarkdownEditorHandle,
@@ -13,7 +23,11 @@ import { Spinner } from "@diffkit/ui/components/spinner";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMemo, useRef, useState } from "react";
 import { useCommentMediaUpload } from "#/hooks/use-comment-media-upload";
-import { createComment, updatePullState } from "#/lib/github.functions";
+import {
+	createComment,
+	updateIssueState,
+	updatePullState,
+} from "#/lib/github.functions";
 import {
 	type GitHubQueryScope,
 	githubQueryKeys,
@@ -49,6 +63,7 @@ export function DetailCommentBox({
 	scope,
 	involvedUsers,
 	pullState,
+	issueState,
 }: {
 	owner: string;
 	repo: string;
@@ -56,10 +71,12 @@ export function DetailCommentBox({
 	scope: GitHubQueryScope;
 	involvedUsers?: GitHubActor[];
 	pullState?: "open" | "closed";
+	issueState?: "open" | "closed";
 }) {
 	const [value, setValue] = useState("");
 	const [isSending, setIsSending] = useState(false);
 	const [isTogglingState, setIsTogglingState] = useState(false);
+	const [isTogglingIssueState, setIsTogglingIssueState] = useState(false);
 	const [mentionActivated, setMentionActivated] = useState(false);
 	const queryClient = useQueryClient();
 	const editorRef = useRef<MarkdownEditorHandle>(null);
@@ -144,9 +161,14 @@ export function DetailCommentBox({
 		setIsTogglingState(true);
 		try {
 			if (value.trim()) {
-				await createComment({
+				const commentResult = await createComment({
 					data: { owner, repo, issueNumber, body: value.trim() },
 				});
+				if (!commentResult.ok) {
+					toast.error(commentResult.error);
+					checkPermissionWarning(commentResult, `${owner}/${repo}`);
+					return;
+				}
 				setValue("");
 			}
 			const result = await updatePullState({
@@ -174,6 +196,47 @@ export function DetailCommentBox({
 		}
 	};
 
+	const runIssueStateChange = async (
+		next: "open" | "closed",
+		closeReason?: "completed" | "not_planned",
+	) => {
+		setIsTogglingIssueState(true);
+		try {
+			if (value.trim()) {
+				const commentResult = await createComment({
+					data: { owner, repo, issueNumber, body: value.trim() },
+				});
+				if (!commentResult.ok) {
+					toast.error(commentResult.error);
+					checkPermissionWarning(commentResult, `${owner}/${repo}`);
+					return;
+				}
+				setValue("");
+			}
+			const result = await updateIssueState({
+				data: {
+					owner,
+					repo,
+					issueNumber,
+					state: next,
+					...(next === "closed" && closeReason ? { closeReason } : {}),
+				},
+			});
+			if (result.ok) {
+				void queryClient.invalidateQueries({
+					queryKey: githubQueryKeys.all,
+				});
+			} else {
+				toast.error(result.error);
+				checkPermissionWarning(result, `${owner}/${repo}`);
+			}
+		} catch {
+			toast.error(`Failed to ${next === "closed" ? "close" : "reopen"} issue`);
+		} finally {
+			setIsTogglingIssueState(false);
+		}
+	};
+
 	return (
 		<div className="flex flex-col gap-2">
 			<MarkdownEditor
@@ -195,6 +258,76 @@ export function DetailCommentBox({
 				ref={commentActionsRef}
 				className="flex items-center justify-end gap-2 pb-3"
 			>
+				{issueState &&
+					(issueState === "open" ? (
+						<DropdownMenu>
+							<DropdownMenuTrigger asChild>
+								<button
+									type="button"
+									disabled={isTogglingIssueState}
+									className="flex items-center gap-1.5 rounded-lg border bg-secondary px-3 py-1.5 text-xs font-medium text-secondary-foreground transition-opacity hover:bg-secondary/80 disabled:opacity-40"
+								>
+									{isTogglingIssueState ? (
+										<Spinner size={12} />
+									) : (
+										<>
+											<IssuesIcon size={12} strokeWidth={2} />
+											<span>Close issue as</span>
+											<ChevronDownIcon
+												size={12}
+												strokeWidth={2}
+												className="opacity-70"
+											/>
+										</>
+									)}
+								</button>
+							</DropdownMenuTrigger>
+							<DropdownMenuContent align="end" className="min-w-[12rem]">
+								<DropdownMenuItem
+									disabled={isTogglingIssueState}
+									className="text-violet-500 focus:bg-violet-500/15 focus:text-violet-500 data-[highlighted]:bg-violet-500/15 data-[highlighted]:text-violet-500"
+									onClick={() =>
+										void runIssueStateChange("closed", "completed")
+									}
+								>
+									<IssueClosedCompletedIcon
+										className="size-4 shrink-0 text-violet-500"
+										size={16}
+										strokeWidth={2}
+									/>
+									Close as completed
+								</DropdownMenuItem>
+								<DropdownMenuItem
+									disabled={isTogglingIssueState}
+									className="text-muted-foreground focus:bg-muted focus:text-muted-foreground data-[highlighted]:bg-muted data-[highlighted]:text-muted-foreground"
+									onClick={() =>
+										void runIssueStateChange("closed", "not_planned")
+									}
+								>
+									<IssueClosedNotPlannedIcon
+										className="size-4 shrink-0 text-muted-foreground"
+										size={16}
+										strokeWidth={2}
+									/>
+									Close as not planned
+								</DropdownMenuItem>
+							</DropdownMenuContent>
+						</DropdownMenu>
+					) : (
+						<button
+							type="button"
+							disabled={isTogglingIssueState}
+							onClick={() => void runIssueStateChange("open")}
+							className="flex items-center gap-1.5 rounded-lg border bg-secondary px-3 py-1.5 text-xs font-medium text-secondary-foreground transition-opacity hover:bg-secondary/80 disabled:opacity-40"
+						>
+							{isTogglingIssueState ? (
+								<Spinner size={12} />
+							) : (
+								<IssuesIcon size={12} strokeWidth={2} />
+							)}
+							Re-open issue
+						</button>
+					))}
 				{pullState && (
 					<button
 						type="button"

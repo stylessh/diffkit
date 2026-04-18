@@ -14,10 +14,12 @@ import { Markdown } from "@diffkit/ui/components/markdown";
 import { MarkdownEditor } from "@diffkit/ui/components/markdown-editor";
 import { Spinner } from "@diffkit/ui/components/spinner";
 import { useState } from "react";
+import { IssueCommentReactionBar } from "#/components/details/comment-reaction-bar";
 import { updatePullBody } from "#/lib/github.functions";
 import { type GitHubQueryScope, githubQueryKeys } from "#/lib/github.query";
 import type { PullDetail, PullPageData } from "#/lib/github.types";
 import { useOptimisticMutation } from "#/lib/use-optimistic-mutation";
+import { usePrefersNoHover } from "#/lib/use-prefers-no-hover";
 
 export function PullBodySection({
 	pr,
@@ -26,6 +28,7 @@ export function PullBodySection({
 	pullNumber,
 	isAuthor,
 	scope,
+	viewerLogin,
 }: {
 	pr: PullDetail;
 	owner: string;
@@ -33,8 +36,11 @@ export function PullBodySection({
 	pullNumber: number;
 	isAuthor: boolean;
 	scope: GitHubQueryScope;
+	viewerLogin?: string | null;
 }) {
 	const { mutate } = useOptimisticMutation();
+	const [bodyActive, setBodyActive] = useState(false);
+	const prefersNoHover = usePrefersNoHover();
 	const [isEditing, setIsEditing] = useState(false);
 	const [draft, setDraft] = useState(pr.body);
 	const [isSaving, setIsSaving] = useState(false);
@@ -120,7 +126,7 @@ export function PullBodySection({
 					<DropdownMenuTrigger asChild>
 						<button
 							type="button"
-							className="absolute right-3 top-3 flex size-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-surface-1 hover:text-foreground"
+							className="absolute right-3 top-3 z-20 flex size-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-surface-1 hover:text-foreground"
 						>
 							<MoreHorizontalIcon size={15} strokeWidth={2} />
 						</button>
@@ -145,13 +151,40 @@ export function PullBodySection({
 					</DropdownMenuContent>
 				</DropdownMenu>
 			)}
-			{pr.body ? (
-				<Markdown>{pr.body}</Markdown>
-			) : (
-				<p className="text-sm italic text-muted-foreground">
-					No description provided.
-				</p>
-			)}
+			<div
+				className="flex flex-col"
+				onPointerEnter={() => setBodyActive(true)}
+				onPointerLeave={() => setBodyActive(false)}
+				onFocusCapture={() => setBodyActive(true)}
+				onBlurCapture={(e) => {
+					if (!e.currentTarget.contains(e.relatedTarget as Node | null)) {
+						setBodyActive(false);
+					}
+				}}
+			>
+				{pr.body ? (
+					<Markdown>{pr.body}</Markdown>
+				) : (
+					<p className="text-sm italic text-muted-foreground">
+						No description provided.
+					</p>
+				)}
+				{pr.graphqlId ? (
+					<IssueCommentReactionBar
+						className="mt-3 justify-start"
+						revealZeroCount={bodyActive || prefersNoHover}
+						viewerLogin={viewerLogin}
+						owner={owner}
+						repo={repo}
+						issueNumber={pullNumber}
+						commentGraphqlId={pr.graphqlId}
+						scope={scope}
+						reactions={pr.reactions}
+						variant="detail"
+						detailPage="pull"
+					/>
+				) : null}
+			</div>
 		</div>
 	);
 }

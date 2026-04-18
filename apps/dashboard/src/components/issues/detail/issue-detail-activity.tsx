@@ -4,6 +4,8 @@ import {
 	CommentIcon,
 	EditIcon,
 	GitPullRequestIcon,
+	IssueClosedCompletedIcon,
+	IssueClosedNotPlannedIcon,
 	IssuesIcon,
 	ReviewsIcon,
 	UserAddIcon,
@@ -13,6 +15,7 @@ import { cn } from "@diffkit/ui/lib/utils";
 import { useQueryClient } from "@tanstack/react-query";
 import { useCallback, useMemo, useRef, useState } from "react";
 import { CommentMoreMenu } from "#/components/details/comment-more-menu";
+import { IssueCommentReactionBar } from "#/components/details/comment-reaction-bar";
 import { CommentReplyForm } from "#/components/details/comment-reply-form";
 import { buildCommentThreads } from "#/components/details/comment-threads";
 import {
@@ -20,6 +23,7 @@ import {
 	DetailCommentBox,
 } from "#/components/details/detail-activity";
 import {
+	GroupedIssueStateToggleDescription,
 	GroupedLabelDescription,
 	GroupedReviewRequestDescription,
 	groupTimelineEvents,
@@ -32,12 +36,18 @@ import type {
 	CommentPagination,
 	EventPagination,
 	GitHubActor,
+	GroupedIssueStateToggleEvent,
 	GroupedLabelEvent,
 	GroupedReviewRequestEvent,
 	IssueComment,
 	IssuePageData,
 	TimelineEvent,
 } from "#/lib/github.types";
+import {
+	mergeIssueStateIntoCloseEvent,
+	parseCloseReason,
+} from "#/lib/timeline-close-reason";
+import { usePrefersNoHover } from "#/lib/use-prefers-no-hover";
 
 const WINDOW_THRESHOLD = 25;
 const EDGE_SIZE = 10;
@@ -51,6 +61,11 @@ type IssueTimelineItem =
 			type: "review_request_group";
 			date: string;
 			data: GroupedReviewRequestEvent;
+	  }
+	| {
+			type: "issue_state_toggle_group";
+			date: string;
+			data: GroupedIssueStateToggleEvent;
 	  };
 
 function useWindowedTimeline<T>(
@@ -255,6 +270,9 @@ export function IssueDetailActivitySection({
 	issueNumber,
 	scope,
 	issueAuthor,
+	issueState,
+	issueClosedAt,
+	issueStateReason,
 	viewerLogin,
 }: {
 	comments?: IssueComment[];
@@ -268,6 +286,10 @@ export function IssueDetailActivitySection({
 	issueNumber: number;
 	scope: GitHubQueryScope;
 	issueAuthor: GitHubActor | null;
+	issueState?: "open" | "closed";
+	/** Fallback when timeline omits `state_reason` on the close event */
+	issueClosedAt?: string | null;
+	issueStateReason?: string | null;
 	viewerLogin?: string;
 }) {
 	const { repliesByCommentId, replyIds } = useMemo(
@@ -360,6 +382,7 @@ export function IssueDetailActivitySection({
 							"event",
 							"label_group",
 							"review_request_group",
+							"issue_state_toggle_group",
 						]);
 						const isEventLike = eventLikeTypes.has(item.type);
 						const prevIsEventLike =
@@ -382,6 +405,7 @@ export function IssueDetailActivitySection({
 										owner={owner}
 										repo={repo}
 										issueNumber={issueNumber}
+										scope={scope}
 										viewerLogin={viewerLogin}
 									/>
 								);
@@ -452,7 +476,72 @@ export function IssueDetailActivitySection({
 								);
 							}
 
-							const event = item.data;
+							if (item.type === "issue_state_toggle_group") {
+								const group = item.data as GroupedIssueStateToggleEvent;
+								const hasActorAvatar = group.actor?.avatarUrl;
+								const mergedForIcon = group.events.map((e) =>
+									e.event === "closed"
+										? mergeIssueStateIntoCloseEvent(e, {
+												issueState,
+												issueClosedAt,
+												issueStateReason,
+											})
+										: e,
+								);
+								const lastEvent = mergedForIcon[mergedForIcon.length - 1];
+								const icon = lastEvent ? getIssueEventIcon(lastEvent) : null;
+								const toggleKey = group.events.map((e) => e.id).join("-");
+								return (
+									<div
+										key={`issue_state_toggle_group-${toggleKey}-${group.createdAt}`}
+										className={cn(
+											"flex items-center gap-1.5",
+											index === 0
+												? "pt-5"
+												: isConsecutiveEvent
+													? "pt-2"
+													: "pt-5",
+											isLastInEventRun ? "pb-5" : "pb-2",
+										)}
+									>
+										{hasActorAvatar ? (
+											<img
+												src={group.actor?.avatarUrl}
+												alt={group.actor?.login}
+												className="size-5 shrink-0 rounded-full border border-border self-start"
+											/>
+										) : (
+											<div className="flex size-5 shrink-0 items-center justify-center rounded-full border border-border bg-surface-1 self-start">
+												{icon}
+											</div>
+										)}
+										<span className="min-w-0 text-[13px] text-muted-foreground">
+											<GroupedIssueStateToggleDescription
+												group={group}
+												subject="issue"
+												mergeCloseReason={(e) =>
+													e.event === "closed"
+														? mergeIssueStateIntoCloseEvent(e, {
+																issueState,
+																issueClosedAt,
+																issueStateReason,
+															})
+														: e
+												}
+											/>
+										</span>
+										<span className="ml-auto shrink-0 text-[13px] text-muted-foreground">
+											{formatRelativeTime(group.createdAt)}
+										</span>
+									</div>
+								);
+							}
+
+							const event = mergeIssueStateIntoCloseEvent(item.data, {
+								issueState,
+								issueClosedAt,
+								issueStateReason,
+							});
 							const icon = getIssueEventIcon(event);
 							const description = getIssueEventDescription(event);
 							const isCrossRef =
@@ -519,6 +608,7 @@ export function IssueDetailActivitySection({
 					issueNumber={issueNumber}
 					scope={scope}
 					involvedUsers={getInvolvedUsers(issueAuthor, comments)}
+					issueState={issueState}
 				/>
 			</div>
 		</div>
@@ -530,6 +620,7 @@ function IssueCommentBubble({
 	owner,
 	repo,
 	issueNumber,
+	scope,
 	viewerLogin,
 	onReply,
 	isReply,
@@ -538,16 +629,28 @@ function IssueCommentBubble({
 	owner: string;
 	repo: string;
 	issueNumber: number;
+	scope: GitHubQueryScope;
 	viewerLogin?: string;
 	onReply?: () => void;
 	isReply?: boolean;
 }) {
+	const [commentActive, setCommentActive] = useState(false);
+	const prefersNoHover = usePrefersNoHover();
+
 	return (
 		<div
 			className={cn(
 				"group/comment relative flex flex-col gap-1",
 				isReply ? "py-2" : "py-4",
 			)}
+			onPointerEnter={() => setCommentActive(true)}
+			onPointerLeave={() => setCommentActive(false)}
+			onFocusCapture={() => setCommentActive(true)}
+			onBlurCapture={(e) => {
+				if (!e.currentTarget.contains(e.relatedTarget as Node | null)) {
+					setCommentActive(false);
+				}
+			}}
 		>
 			<div className="flex items-center gap-1.5">
 				{comment.author ? (
@@ -603,7 +706,23 @@ function IssueCommentBubble({
 					/>
 				</div>
 			</div>
-			<Markdown className="text-muted-foreground">{comment.body}</Markdown>
+			<div className={cn("relative", comment.graphqlId != null && "mb-14")}>
+				<Markdown className="text-muted-foreground">{comment.body}</Markdown>
+				{comment.graphqlId ? (
+					<IssueCommentReactionBar
+						className="absolute left-0 right-0 top-full z-10 mt-1.5"
+						revealZeroCount={commentActive || prefersNoHover}
+						viewerLogin={viewerLogin}
+						owner={owner}
+						repo={repo}
+						issueNumber={issueNumber}
+						commentId={comment.id}
+						commentGraphqlId={comment.graphqlId}
+						scope={scope}
+						reactions={comment.reactions}
+					/>
+				) : null}
+			</div>
 		</div>
 	);
 }
@@ -615,6 +734,7 @@ function IssueCommentWithThread({
 	owner,
 	repo,
 	issueNumber,
+	scope,
 	viewerLogin,
 }: {
 	comment: IssueComment;
@@ -623,6 +743,7 @@ function IssueCommentWithThread({
 	owner: string;
 	repo: string;
 	issueNumber: number;
+	scope: GitHubQueryScope;
 	viewerLogin?: string;
 }) {
 	const [showReplyForm, setShowReplyForm] = useState(false);
@@ -635,6 +756,7 @@ function IssueCommentWithThread({
 				owner={owner}
 				repo={repo}
 				issueNumber={issueNumber}
+				scope={scope}
 				viewerLogin={viewerLogin}
 				onReply={() => setShowReplyForm(true)}
 			/>
@@ -648,6 +770,7 @@ function IssueCommentWithThread({
 							owner={owner}
 							repo={repo}
 							issueNumber={issueNumber}
+							scope={scope}
 							viewerLogin={viewerLogin}
 							onReply={() => setShowReplyForm(true)}
 							isReply
@@ -792,10 +915,30 @@ function getIssueEventIcon(event: TimelineEvent) {
 			return (
 				<EditIcon size={12} strokeWidth={2} className="text-muted-foreground" />
 			);
-		case "closed":
+		case "closed": {
+			const kind = parseCloseReason(event.stateReason);
+			if (kind === "completed") {
+				return (
+					<IssueClosedCompletedIcon
+						size={12}
+						strokeWidth={2}
+						className="text-violet-500"
+					/>
+				);
+			}
+			if (kind === "not_planned") {
+				return (
+					<IssueClosedNotPlannedIcon
+						size={12}
+						strokeWidth={2}
+						className="text-muted-foreground"
+					/>
+				);
+			}
 			return (
-				<IssuesIcon size={12} strokeWidth={2} className="text-purple-500" />
+				<IssuesIcon size={12} strokeWidth={2} className="text-violet-500" />
 			);
+		}
 		case "reopened":
 			return (
 				<IssuesIcon
@@ -929,18 +1072,37 @@ function getIssueEventDescription(event: TimelineEvent): React.ReactNode {
 					</span>
 				</span>
 			);
-		case "closed":
+		case "closed": {
+			const kind = parseCloseReason(event.stateReason);
 			return (
 				<span className="inline-flex items-center gap-1 flex-wrap">
 					<ActorMention actor={event.actor} hideAvatar />
 					{" closed this"}
+					{kind === "completed" && (
+						<>
+							{" as "}
+							<span className="font-medium text-violet-500">completed</span>
+						</>
+					)}
+					{kind === "not_planned" && (
+						<>
+							{" as "}
+							<span className="font-medium text-muted-foreground">
+								not planned
+							</span>
+						</>
+					)}
 				</span>
 			);
+		}
 		case "reopened":
 			return (
 				<span className="inline-flex items-center gap-1 flex-wrap">
 					<ActorMention actor={event.actor} hideAvatar />
-					{" reopened this"}
+					<span className="font-medium text-green-600 dark:text-green-400">
+						reopened
+					</span>
+					{" this issue"}
 				</span>
 			);
 		case "cross-referenced":

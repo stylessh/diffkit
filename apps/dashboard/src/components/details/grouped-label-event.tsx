@@ -1,10 +1,14 @@
+import { cn } from "@diffkit/ui/lib/utils";
+import { Fragment, type ReactNode } from "react";
 import { LabelPill } from "#/components/details/label-pill";
 import type {
 	GitHubActor,
+	GroupedIssueStateToggleEvent,
 	GroupedLabelEvent,
 	GroupedReviewRequestEvent,
 	TimelineEvent,
 } from "#/lib/github.types";
+import { parseCloseReason } from "#/lib/timeline-close-reason";
 
 const GROUP_THRESHOLD_MS = 60_000;
 
@@ -15,11 +19,16 @@ type GroupedItem<T> =
 			type: "review_request_group";
 			date: string;
 			data: GroupedReviewRequestEvent;
+	  }
+	| {
+			type: "issue_state_toggle_group";
+			date: string;
+			data: GroupedIssueStateToggleEvent;
 	  };
 
 /**
- * Groups consecutive label and review-request events by the same actor
- * that occur within a short time window into single grouped items.
+ * Groups consecutive timeline events by the same actor within a short window:
+ * label changes, review requests, and reopen/close toggles.
  */
 export function groupTimelineEvents<
 	T extends { type: string; date: string; data: unknown },
@@ -38,59 +47,36 @@ export function groupTimelineEvents<
 
 		const event = item.data as TimelineEvent;
 
-		const isLabel = event.event === "labeled" || event.event === "unlabeled";
-		const isReviewRequest =
-			event.event === "review_requested" ||
-			event.event === "review_request_removed";
+		if (event.event === "labeled" || event.event === "unlabeled") {
+			const actor = event.actor;
+			const events: TimelineEvent[] = [event];
+			let j = i + 1;
+			while (j < items.length) {
+				const next = items[j];
+				if (next.type !== "event") break;
 
-		if (!isLabel && !isReviewRequest) {
-			result.push(item);
-			i++;
-			continue;
-		}
+				const nextEvent = next.data as TimelineEvent;
+				const nextIsLabel =
+					nextEvent.event === "labeled" || nextEvent.event === "unlabeled";
+				if (!nextIsLabel) break;
+				if (nextEvent.actor?.login !== actor?.login) break;
 
-		// Collect consecutive events of the same kind by the same actor
-		const actor = event.actor;
-		const eventKind = isLabel ? "label" : "review_request";
-		const events: TimelineEvent[] = [event];
+				const timeDiff = Math.abs(
+					new Date(nextEvent.createdAt).getTime() -
+						new Date(event.createdAt).getTime(),
+				);
+				if (timeDiff > GROUP_THRESHOLD_MS) break;
 
-		let j = i + 1;
-		while (j < items.length) {
-			const next = items[j];
-			if (next.type !== "event") break;
+				events.push(nextEvent);
+				j++;
+			}
 
-			const nextEvent = next.data as TimelineEvent;
-			const nextIsLabel =
-				nextEvent.event === "labeled" || nextEvent.event === "unlabeled";
-			const nextIsReviewRequest =
-				nextEvent.event === "review_requested" ||
-				nextEvent.event === "review_request_removed";
-			const nextKind = nextIsLabel
-				? "label"
-				: nextIsReviewRequest
-					? "review_request"
-					: null;
+			if (events.length === 1) {
+				result.push(item);
+				i++;
+				continue;
+			}
 
-			if (nextKind !== eventKind) break;
-			if (nextEvent.actor?.login !== actor?.login) break;
-
-			const timeDiff = Math.abs(
-				new Date(nextEvent.createdAt).getTime() -
-					new Date(event.createdAt).getTime(),
-			);
-			if (timeDiff > GROUP_THRESHOLD_MS) break;
-
-			events.push(nextEvent);
-			j++;
-		}
-
-		if (events.length === 1) {
-			result.push(item);
-			i++;
-			continue;
-		}
-
-		if (eventKind === "label") {
 			const added: { name: string; color: string }[] = [];
 			const removed: { name: string; color: string }[] = [];
 			for (const e of events) {
@@ -103,7 +89,44 @@ export function groupTimelineEvents<
 				date: item.date,
 				data: { actor, added, removed, createdAt: item.date },
 			});
-		} else {
+			i = j;
+			continue;
+		}
+
+		if (
+			event.event === "review_requested" ||
+			event.event === "review_request_removed"
+		) {
+			const actor = event.actor;
+			const events: TimelineEvent[] = [event];
+			let j = i + 1;
+			while (j < items.length) {
+				const next = items[j];
+				if (next.type !== "event") break;
+
+				const nextEvent = next.data as TimelineEvent;
+				const nextIsReviewRequest =
+					nextEvent.event === "review_requested" ||
+					nextEvent.event === "review_request_removed";
+				if (!nextIsReviewRequest) break;
+				if (nextEvent.actor?.login !== actor?.login) break;
+
+				const timeDiff = Math.abs(
+					new Date(nextEvent.createdAt).getTime() -
+						new Date(event.createdAt).getTime(),
+				);
+				if (timeDiff > GROUP_THRESHOLD_MS) break;
+
+				events.push(nextEvent);
+				j++;
+			}
+
+			if (events.length === 1) {
+				result.push(item);
+				i++;
+				continue;
+			}
+
 			const requested: (GitHubActor | { login: string })[] = [];
 			const removed: (GitHubActor | { login: string })[] = [];
 			for (const e of events) {
@@ -119,9 +142,54 @@ export function groupTimelineEvents<
 				date: item.date,
 				data: { actor, requested, removed, createdAt: item.date },
 			});
+			i = j;
+			continue;
 		}
 
-		i = j;
+		if (event.event === "reopened" || event.event === "closed") {
+			const actor = event.actor;
+			const events: TimelineEvent[] = [event];
+			const firstTs = new Date(event.createdAt).getTime();
+			let j = i + 1;
+			while (j < items.length) {
+				const next = items[j];
+				if (next.type !== "event") break;
+
+				const nextEvent = next.data as TimelineEvent;
+				if (nextEvent.event !== "reopened" && nextEvent.event !== "closed") {
+					break;
+				}
+				if (nextEvent.actor?.login !== actor?.login) break;
+
+				const timeDiff = Math.abs(
+					new Date(nextEvent.createdAt).getTime() - firstTs,
+				);
+				if (timeDiff > GROUP_THRESHOLD_MS) break;
+
+				events.push(nextEvent);
+				j++;
+			}
+
+			if (events.length >= 2) {
+				result.push({
+					type: "issue_state_toggle_group" as const,
+					date: item.date,
+					data: {
+						actor,
+						events,
+						createdAt: item.date,
+					},
+				});
+				i = j;
+			} else {
+				result.push(item);
+				i++;
+			}
+			continue;
+		}
+
+		result.push(item);
+		i++;
 	}
 
 	return result;
@@ -198,6 +266,84 @@ export function GroupedReviewRequestDescription({
 					))}
 				</>
 			)}
+		</span>
+	);
+}
+
+export function GroupedIssueStateToggleDescription({
+	group,
+	subject,
+	mergeCloseReason,
+}: {
+	group: GroupedIssueStateToggleEvent;
+	subject: "issue" | "pull";
+	mergeCloseReason: (e: TimelineEvent) => TimelineEvent;
+}) {
+	const merged = group.events.map(mergeCloseReason);
+	const noun = subject === "issue" ? "this issue" : "this pull request";
+
+	const segments: ReactNode[] = [];
+	for (let idx = 0; idx < merged.length; idx++) {
+		const ev = merged[idx];
+		const isFirst = idx === 0;
+
+		if (ev.event === "reopened") {
+			segments.push(
+				<Fragment key={`r-${ev.id}-${idx}`}>
+					<span className="font-medium text-green-600 dark:text-green-400">
+						reopened
+					</span>
+					{isFirst ? ` ${noun}` : " it"}
+				</Fragment>,
+			);
+		} else {
+			const kind = parseCloseReason(ev.stateReason);
+			segments.push(
+				<Fragment key={`c-${ev.id}-${idx}`}>
+					<span
+						className={cn(
+							"font-medium",
+							kind === "completed" && "text-violet-500",
+							kind === "not_planned" && "text-muted-foreground",
+							kind === "other" &&
+								(subject === "pull"
+									? "text-rose-600 dark:text-rose-400"
+									: "text-violet-500"),
+						)}
+					>
+						closed
+					</span>
+					{isFirst ? ` ${noun}` : " it"}
+					{kind === "completed" && (
+						<>
+							{" as "}
+							<span className="font-medium text-violet-500">completed</span>
+						</>
+					)}
+					{kind === "not_planned" && (
+						<>
+							{" as "}
+							<span className="font-medium text-muted-foreground">
+								not planned
+							</span>
+						</>
+					)}
+				</Fragment>,
+			);
+		}
+	}
+
+	return (
+		<span className="inline-flex flex-wrap items-baseline gap-x-0">
+			<ActorMention actor={group.actor} />{" "}
+			{segments.map((seg, idx) => (
+				<Fragment
+					key={`${group.events[idx]?.id ?? "x"}-${group.events[idx]?.event ?? idx}`}
+				>
+					{idx > 0 && (idx === segments.length - 1 ? " and " : ", ")}
+					{seg}
+				</Fragment>
+			))}
 		</span>
 	);
 }

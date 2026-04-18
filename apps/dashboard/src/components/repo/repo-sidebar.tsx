@@ -109,35 +109,37 @@ function ContributorsSection({
 	if (!data) return null;
 
 	return (
-		<DetailSidebarSection title="Contributors">
-			<div className="flex items-center gap-2">
-				<div className="flex flex-wrap gap-1">
-					{data.contributors.map((c) => (
-						<Tooltip key={c.login}>
-							<TooltipTrigger asChild>
-								<Link to="/$owner" params={{ owner: c.login }}>
-									<img
-										src={c.avatarUrl}
-										alt={c.login}
-										className="size-7 rounded-full transition-opacity hover:opacity-80"
-									/>
-								</Link>
-							</TooltipTrigger>
-							<TooltipContent>
-								{c.login} · {formatCount(c.contributions)} commits
-							</TooltipContent>
-						</Tooltip>
-					))}
+		<DetailSidebarSection
+			title="Contributors"
+			titleRight={formatCount(data.totalCount)}
+		>
+			<div className="flex flex-col gap-1 pt-1.5">
+				<div className="flex items-center gap-2">
+					<div className="flex flex-wrap gap-1">
+						{data.contributors.map((c) => (
+							<Tooltip key={c.login}>
+								<TooltipTrigger asChild>
+									<Link to="/$owner" params={{ owner: c.login }}>
+										<img
+											src={c.avatarUrl}
+											alt={c.login}
+											className="size-7 rounded-full transition-opacity hover:opacity-80"
+										/>
+									</Link>
+								</TooltipTrigger>
+								<TooltipContent>
+									{c.login} · {formatCount(c.contributions)} commits
+								</TooltipContent>
+							</Tooltip>
+						))}
+					</div>
 				</div>
+				{data.totalCount > data.contributors.length && (
+					<span className="text-xs text-muted-foreground">
+						+ {formatCount(data.totalCount - data.contributors.length)} more
+					</span>
+				)}
 			</div>
-			{data.totalCount > data.contributors.length && (
-				<button
-					type="button"
-					className="text-xs text-muted-foreground transition-colors hover:text-foreground"
-				>
-					+ {formatCount(data.totalCount - data.contributors.length)} more
-				</button>
-			)}
 		</DetailSidebarSection>
 	);
 }
