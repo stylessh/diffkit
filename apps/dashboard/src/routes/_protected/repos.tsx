@@ -1,14 +1,16 @@
 import {
+	ArchiveIcon,
+	ChevronDownIcon,
 	FilterIcon,
-	FolderLibraryIcon,
 	LockIcon,
 	ViewIcon,
 } from "@diffkit/icons";
-import { useQuery } from "@tanstack/react-query";
+import { Button } from "@diffkit/ui/components/button";
+import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
-import { createElement, useMemo } from "react";
+import { useQueryState } from "nuqs";
+import { createElement, useEffect, useMemo, useRef } from "react";
 import {
-	applyFilters,
 	type FilterableItem,
 	FilterBar,
 	type FilterDefinition,
@@ -18,17 +20,49 @@ import {
 } from "#/components/filters";
 import { DashboardContentLoading } from "#/components/layouts/dashboard-content-loading";
 import { RepositoryRow } from "#/components/repo/repository-row";
-import { githubUserReposQueryOptions } from "#/lib/github.query";
+import {
+	githubReposHubQueryOptions,
+	githubUserReposQueryOptions,
+} from "#/lib/github.query";
 import type { UserRepoSummary } from "#/lib/github.types";
+import {
+	REPO_LIST_PAGE_SIZE,
+	repoListHasNextPage,
+	repoListPageQueryParser,
+	safeRepoListPage,
+} from "#/lib/repo-list-page";
+import { buildReposHubPrefetchInput } from "#/lib/repos-hub-filter";
 import { buildSeo, formatPageTitle } from "#/lib/seo";
-import { useHasMounted } from "#/lib/use-has-mounted";
+import { useDebouncedValue } from "#/lib/use-debounced-value";
 
 export const Route = createFileRoute("/_protected/repos")({
 	ssr: false,
-	loader: async ({ context }) => {
+	validateSearch: (raw: Record<string, unknown>): { page?: number } => {
+		const pageRaw = raw.page;
+		if (
+			typeof pageRaw === "number" &&
+			Number.isFinite(pageRaw) &&
+			pageRaw > 0
+		) {
+			return { page: Math.floor(pageRaw) };
+		}
+		if (typeof pageRaw === "string" && pageRaw.length > 0) {
+			const n = Number.parseInt(pageRaw, 10);
+			if (Number.isFinite(n) && n > 0) return { page: n };
+		}
+		return {};
+	},
+	loader: async ({ context, location }) => {
 		const scope = { userId: context.user.id };
-		void context.queryClient.prefetchQuery(githubUserReposQueryOptions(scope));
 		const filterStore = await getFilterCookie();
+		const search = location.search as { page?: number };
+		const urlPage =
+			typeof search.page === "number" && search.page > 0 ? search.page : 1;
+		const hubPrefetchInput = buildReposHubPrefetchInput(filterStore, urlPage);
+		await context.queryClient.prefetchQuery(
+			githubReposHubQueryOptions(scope, hubPrefetchInput),
+		);
+		await context.queryClient.prefetchQuery(githubUserReposQueryOptions(scope));
 		return { filterStore };
 	},
 	pendingComponent: DashboardContentLoading,
@@ -52,32 +86,24 @@ const repositoryFilterDefs: FilterDefinition[] = [
 		id: "visibility",
 		label: "Visibility",
 		icon: FilterIcon,
-		extractOptions: (items) => {
-			const hasPublic = items.some((item) => !asRepo(item).isPrivate);
-			const hasPrivate = items.some((item) => asRepo(item).isPrivate);
-			return [
-				hasPublic
-					? {
-							value: "public",
-							label: "Public",
-							icon: createElement(ViewIcon, {
-								size: 14,
-								className: "text-muted-foreground",
-							}),
-						}
-					: null,
-				hasPrivate
-					? {
-							value: "private",
-							label: "Private",
-							icon: createElement(LockIcon, {
-								size: 14,
-								className: "text-muted-foreground",
-							}),
-						}
-					: null,
-			].filter((option) => option !== null);
-		},
+		extractOptions: () => [
+			{
+				value: "public",
+				label: "Public",
+				icon: createElement(ViewIcon, {
+					size: 14,
+					className: "text-muted-foreground",
+				}),
+			},
+			{
+				value: "private",
+				label: "Private",
+				icon: createElement(LockIcon, {
+					size: 14,
+					className: "text-muted-foreground",
+				}),
+			},
+		],
 		match: (item, values) =>
 			values.has(asRepo(item).isPrivate ? "private" : "public"),
 	},
@@ -106,42 +132,83 @@ const repositorySortOptions: SortOption[] = [
 	},
 ];
 
+const EMPTY_REPO_ITEMS: RepositoryFilterItem[] = [];
+
 function RepositoriesPage() {
 	const { filterStore } = Route.useLoaderData();
 	const { user } = Route.useRouteContext();
 	const scope = useMemo(() => ({ userId: user.id }), [user.id]);
-	const hasMounted = useHasMounted();
-	const reposQuery = useQuery({
-		...githubUserReposQueryOptions(scope),
-		enabled: hasMounted,
-	});
+	const [page, setPage] = useQueryState("page", repoListPageQueryParser);
 
-	const filterItems = useMemo(
-		() => reposQuery.data?.map(toRepositoryFilterItem) ?? [],
-		[reposQuery.data],
-	);
 	const filterState = useListFilters({
 		pageId: "repos",
-		items: filterItems,
+		items: EMPTY_REPO_ITEMS,
 		filterDefs: repositoryFilterDefs,
 		sortOptions: repositorySortOptions,
 		defaultSortId: "updated",
 		initialStore: filterStore,
 	});
-	const filteredRepos = useMemo(
-		() => applyFilters(filterItems, filterState).map((item) => item.repo),
-		[filterItems, filterState],
+
+	const debouncedSearch = useDebouncedValue(filterState.searchQuery, 300);
+
+	const visibilityValues = useMemo(() => {
+		const f = filterState.activeFilters.find((x) => x.fieldId === "visibility");
+		return f ? [...f.values].sort() : [];
+	}, [filterState.activeFilters]);
+
+	const limit = (page ?? 1) * REPO_LIST_PAGE_SIZE;
+
+	const hubInput = useMemo(
+		() => ({
+			searchQuery: debouncedSearch,
+			visibility: visibilityValues,
+			sortId: filterState.sortId,
+			limit,
+		}),
+		[debouncedSearch, visibilityValues, filterState.sortId, limit],
 	);
 
-	if (reposQuery.error) throw reposQuery.error;
+	const hubQuery = useQuery({
+		...githubReposHubQueryOptions(scope, hubInput),
+		placeholderData: keepPreviousData,
+	});
 
-	if (!reposQuery.data) {
+	const reposFilterSignature = useMemo(() => {
+		const filterParts = filterState.activeFilters
+			.map((f) => `${f.fieldId}:${[...f.values].sort().join(",")}`)
+			.sort()
+			.join("|");
+		return `${debouncedSearch}\0${filterState.sortId}\0${filterParts}`;
+	}, [debouncedSearch, filterState.sortId, filterState.activeFilters]);
+
+	const prevFilterSignature = useRef(reposFilterSignature);
+	useEffect(() => {
+		if (prevFilterSignature.current !== reposFilterSignature) {
+			prevFilterSignature.current = reposFilterSignature;
+			void setPage(null);
+		}
+	}, [reposFilterSignature, setPage]);
+
+	const matchingCount = hubQuery.data?.matchingCount ?? 0;
+	const safePage = safeRepoListPage(page ?? 1, matchingCount);
+
+	useEffect(() => {
+		if (!hubQuery.isSuccess || hubQuery.data === undefined) return;
+		const safe = safeRepoListPage(page ?? 1, hubQuery.data.matchingCount);
+		if ((page ?? 1) !== safe) {
+			void setPage(safe === 1 ? null : safe);
+		}
+	}, [hubQuery.isSuccess, hubQuery.data, page, setPage]);
+
+	if (hubQuery.error) throw hubQuery.error;
+
+	if (!hubQuery.data && hubQuery.isPending) {
 		return <DashboardContentLoading />;
 	}
 
-	const repos = reposQuery.data;
-	const publicCount = repos.filter((repo) => !repo.isPrivate).length;
-	const privateCount = repos.length - publicCount;
+	const hub = hubQuery.data;
+	const totals = hub?.totals ?? { all: 0, public: 0, private: 0 };
+	const displayedRepos = hub?.repos ?? [];
 
 	return (
 		<div className="overflow-stable h-full overflow-auto py-10">
@@ -158,19 +225,19 @@ function RepositoriesPage() {
 
 					<div className="flex flex-col gap-2">
 						<RepositoryMetricCard
-							icon={FolderLibraryIcon}
+							icon={ArchiveIcon}
 							label="All repositories"
-							value={repos.length}
+							value={totals.all}
 						/>
 						<RepositoryMetricCard
 							icon={ViewIcon}
 							label="Public"
-							value={publicCount}
+							value={totals.public}
 						/>
 						<RepositoryMetricCard
 							icon={LockIcon}
 							label="Private"
-							value={privateCount}
+							value={totals.private}
 						/>
 					</div>
 				</aside>
@@ -178,28 +245,44 @@ function RepositoriesPage() {
 				<div className="flex flex-col gap-2">
 					<FilterBar state={filterState} searchPlaceholder="Search by title…" />
 
-					{repos.length === 0 ? (
+					{totals.all === 0 ? (
 						<p className="py-12 text-center text-sm text-muted-foreground">
 							No repositories found.
 						</p>
-					) : filteredRepos.length === 0 ? (
+					) : matchingCount === 0 ? (
 						<p className="py-12 text-center text-sm text-muted-foreground">
 							No repositories match these filters.
 						</p>
 					) : (
-						<div className="divide-y divide-border overflow-hidden rounded-xl border border-border bg-surface-1">
-							{filteredRepos.map((repo) => (
-								<div
-									key={repo.id}
-									style={{
-										contentVisibility: "auto",
-										containIntrinsicSize: "auto 72px",
+						<>
+							<div className="divide-y divide-border overflow-hidden rounded-xl border border-border bg-surface-1">
+								{displayedRepos.map((repo) => (
+									<div
+										key={repo.id}
+										style={{
+											contentVisibility: "auto",
+											containIntrinsicSize: "auto 72px",
+										}}
+									>
+										<RepositoryRow repo={repo} scope={scope} />
+									</div>
+								))}
+							</div>
+							{repoListHasNextPage(safePage, matchingCount) ? (
+								<Button
+									type="button"
+									variant="secondary"
+									size="sm"
+									className="mx-auto mt-6 rounded-full"
+									onClick={() => {
+										void setPage(safePage + 1);
 									}}
 								>
-									<RepositoryRow repo={repo} scope={scope} />
-								</div>
-							))}
-						</div>
+									<ChevronDownIcon size={14} strokeWidth={2} />
+									Load more
+								</Button>
+							) : null}
+						</>
 					)}
 				</div>
 			</div>
@@ -235,18 +318,4 @@ function asRepo(item: FilterableItem) {
 
 function getTime(value: unknown) {
 	return typeof value === "string" ? Date.parse(value) || 0 : 0;
-}
-
-function toRepositoryFilterItem(repo: UserRepoSummary): RepositoryFilterItem {
-	return {
-		...repo,
-		repo,
-		title: repo.name,
-		updatedAt: repo.updatedAt ?? "",
-		createdAt: repo.createdAt ?? "",
-		comments: 0,
-		author: null,
-		repository: { fullName: repo.fullName },
-		state: repo.isPrivate ? "private" : "public",
-	};
 }

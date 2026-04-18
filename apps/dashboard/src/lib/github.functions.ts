@@ -77,6 +77,11 @@ import {
 } from "./github-cache";
 import { githubCachePolicy } from "./github-cache-policy";
 import { githubRevalidationSignalKeys } from "./github-revalidation";
+import {
+	filterUserRepoSummaries,
+	type ReposHubInput,
+	type ReposHubResult,
+} from "./repos-hub-filter";
 
 type GitHubClient = OctokitType;
 type AuthSession = {
@@ -391,13 +396,33 @@ type GitHubGraphQLIssuePageResponse = {
 type AuthenticatedUserRepo = Awaited<
 	ReturnType<GitHubClient["rest"]["repos"]["listForAuthenticatedUser"]>
 >["data"][number];
+type ListForUserRepo = Awaited<
+	ReturnType<GitHubClient["rest"]["repos"]["listForUser"]>
+>["data"][number];
 
-function mapUserRepoVisibility(
-	repo: AuthenticatedUserRepo,
-): "public" | "private" | "internal" {
-	if (repo.visibility === "internal") return "internal";
-	if (repo.visibility === "private" || repo.private) return "private";
-	return "public";
+function mapGithubRestRepoToUserRepoSummary(
+	repo: AuthenticatedUserRepo | ListForUserRepo,
+): UserRepoSummary {
+	const visibility: UserRepoSummary["visibility"] =
+		repo.visibility === "internal"
+			? "internal"
+			: repo.visibility === "private" || repo.private
+				? "private"
+				: "public";
+	return {
+		id: repo.id!,
+		name: repo.name ?? "",
+		fullName: repo.full_name ?? "",
+		description: repo.description ?? null,
+		stars: repo.stargazers_count ?? 0,
+		language: repo.language ?? null,
+		updatedAt: repo.updated_at ?? null,
+		createdAt: repo.created_at ?? null,
+		isPrivate: Boolean(repo.private),
+		visibility,
+		url: repo.html_url ?? "",
+		owner: repo.owner.login ?? "",
+	};
 }
 
 type RepoPullDetail = Awaited<
@@ -5142,64 +5167,45 @@ export const refreshInstallationAccess = createServerFn({
 	return { ok: true };
 });
 
-export const getUserRepos = createServerFn({ method: "GET" }).handler(
-	async (): Promise<UserRepoSummary[]> => {
-		const context = await getGitHubContext();
-		if (!context) {
-			return [];
-		}
+async function fetchInstallationFilteredAuthenticatedRepos(
+	context: GitHubContext,
+): Promise<UserRepoSummary[]> {
+	const [repos, accessIndex] = await Promise.all([
+		getCachedPaginatedGitHubRequest<AuthenticatedUserRepo, UserRepoSummary[]>({
+			context,
+			resource: "repos.list",
+			params: { sort: "updated", perPage: 100 },
+			freshForMs: githubCachePolicy.reposList.staleTimeMs,
+			signalKeys: [githubRevalidationSignalKeys.installationAccess],
+			namespaceKeys: ["repos.list"],
+			cacheMode: "split",
+			pageSize: 100,
+			request: (page) =>
+				context.octokit.rest.repos.listForAuthenticatedUser({
+					sort: "updated",
+					per_page: 100,
+					page,
+				}),
+			mapData: (items) => items.map(mapGithubRestRepoToUserRepoSummary),
+		}),
+		getInstallationAccessIndex(context),
+	]);
 
-		const [repos, accessIndex] = await Promise.all([
-			getCachedPaginatedGitHubRequest<AuthenticatedUserRepo, UserRepoSummary[]>(
-				{
-					context,
-					resource: "repos.list",
-					params: { sort: "updated", perPage: 100 },
-					freshForMs: githubCachePolicy.reposList.staleTimeMs,
-					signalKeys: [githubRevalidationSignalKeys.installationAccess],
-					namespaceKeys: ["repos.list"],
-					cacheMode: "split",
-					pageSize: 100,
-					request: (page) =>
-						context.octokit.rest.repos.listForAuthenticatedUser({
-							sort: "updated",
-							per_page: 100,
-							page,
-						}),
-					mapData: (repos) =>
-						repos.map(
-							(repo: AuthenticatedUserRepo): UserRepoSummary => ({
-								id: repo.id,
-								name: repo.name,
-								fullName: repo.full_name,
-								description: repo.description,
-								stars: repo.stargazers_count,
-								language: repo.language,
-								updatedAt: repo.updated_at,
-								createdAt: repo.created_at,
-								isPrivate: repo.private,
-								visibility: mapUserRepoVisibility(repo),
-								url: repo.html_url,
-								owner: repo.owner.login,
-							}),
-						),
-				},
-			),
-			getInstallationAccessIndex(context),
-		]);
+	const filtered = repos.filter((repo) =>
+		isRepoVisibleWithInstallationAccess(
+			accessIndex,
+			repo.owner,
+			repo.name,
+			repo.isPrivate,
+		),
+	);
 
-		const filtered = repos.filter((repo) =>
-			isRepoVisibleWithInstallationAccess(
-				accessIndex,
-				repo.owner,
-				repo.name,
-				repo.isPrivate,
-			),
-		);
-
-		const removedCount = repos.length - filtered.length;
-		if (removedCount > 0) {
-			debug("installation-access", "getUserRepos filtered", {
+	const removedCount = repos.length - filtered.length;
+	if (removedCount > 0) {
+		debug(
+			"installation-access",
+			"fetchInstallationFilteredAuthenticatedRepos",
+			{
 				total: repos.length,
 				kept: filtered.length,
 				removed: removedCount,
@@ -5214,12 +5220,104 @@ export const getUserRepos = createServerFn({ method: "GET" }).handler(
 							),
 					)
 					.map((repo) => repo.fullName),
-			});
-		}
+			},
+		);
+	}
 
-		return filtered;
+	return filtered;
+}
+
+async function fetchPublicReposForUser(
+	context: GitHubContext,
+	username: string,
+): Promise<UserRepoSummary[]> {
+	return getCachedPaginatedGitHubRequest<ListForUserRepo, UserRepoSummary[]>({
+		context,
+		resource: "repos.listForUser",
+		params: { username, sort: "updated", perPage: 100 },
+		freshForMs: githubCachePolicy.reposList.staleTimeMs,
+		namespaceKeys: ["repos.listForUser"],
+		cacheMode: "split",
+		pageSize: 100,
+		request: (page, signal) =>
+			context.octokit.rest.repos.listForUser({
+				username,
+				sort: "updated",
+				per_page: 100,
+				page,
+				request: { signal },
+			}),
+		mapData: (items) => items.map(mapGithubRestRepoToUserRepoSummary),
+	});
+}
+
+export const getUserRepos = createServerFn({ method: "GET" }).handler(
+	async (): Promise<UserRepoSummary[]> => {
+		const context = await getGitHubContext();
+		if (!context) {
+			return [];
+		}
+		return fetchInstallationFilteredAuthenticatedRepos(context);
 	},
 );
+
+export const getReposHub = createServerFn({ method: "GET" })
+	.inputValidator(identityValidator<ReposHubInput>)
+	.handler(async ({ data }): Promise<ReposHubResult> => {
+		const context = await getGitHubContext();
+		if (!context) {
+			return {
+				totals: { all: 0, public: 0, private: 0 },
+				matchingCount: 0,
+				repos: [],
+			};
+		}
+
+		const limit = Math.min(Math.max(1, data.limit), 10_000);
+		const all = await fetchInstallationFilteredAuthenticatedRepos(context);
+		const totals = {
+			all: all.length,
+			public: all.filter((r) => !r.isPrivate).length,
+			private: all.filter((r) => r.isPrivate).length,
+		};
+		const filtered = filterUserRepoSummaries(all, {
+			searchQuery: data.searchQuery,
+			visibility: data.visibility,
+			sortId: data.sortId,
+		});
+
+		return {
+			totals,
+			matchingCount: filtered.length,
+			repos: filtered.slice(0, limit),
+		};
+	});
+
+export const getProfileRepos = createServerFn({ method: "GET" })
+	.inputValidator(identityValidator<UserProfileInput>)
+	.handler(async ({ data }): Promise<UserRepoSummary[]> => {
+		const context = await getGitHubContext();
+		if (!context) {
+			return [];
+		}
+
+		const viewer = await getViewer(context);
+		const isOwnProfile =
+			viewer.login.toLowerCase() === data.username.toLowerCase();
+
+		if (isOwnProfile) {
+			return fetchInstallationFilteredAuthenticatedRepos(context);
+		}
+
+		try {
+			return await fetchPublicReposForUser(context, data.username);
+		} catch (error) {
+			if (error instanceof RequestError && error.status === 404) {
+				return [];
+			}
+			throw error;
+		}
+	});
 
 export const searchCommandPaletteGitHub = createServerFn({ method: "GET" })
 	.inputValidator(identityValidator<CommandPaletteSearchInput>)

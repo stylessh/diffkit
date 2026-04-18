@@ -26,7 +26,7 @@ function TabsList({
 		<TabsPrimitive.List
 			data-slot="tabs-list"
 			className={cn(
-				"inline-flex w-fit items-center rounded-md border bg-surface-1",
+				"inline-flex w-fit items-center rounded-[var(--radius-md)] border bg-surface-1 p-px",
 				className,
 			)}
 			{...props}
@@ -44,7 +44,8 @@ function TabsTrigger({
 			className={cn(
 				"inline-flex h-full items-center justify-center gap-1.5 px-2.5 py-1 text-xs font-medium whitespace-nowrap transition-colors",
 				"text-muted-foreground hover:text-foreground",
-				"first:rounded-l-[calc(var(--radius)-3px)] last:rounded-r-[calc(var(--radius)-3px)]",
+				// Concentric with list: outer --radius-md, 1px border + 1px inset (p-px) → inner --radius-sm
+				"first:rounded-l-[var(--radius-sm)] last:rounded-r-[var(--radius-sm)]",
 				"data-[state=active]:bg-surface-0 data-[state=active]:text-foreground data-[state=active]:shadow-sm",
 				"focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px] focus-visible:outline-none",
 				"disabled:pointer-events-none disabled:opacity-50",

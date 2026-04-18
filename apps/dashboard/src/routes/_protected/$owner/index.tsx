@@ -14,12 +14,17 @@ import {
 import { Button } from "@diffkit/ui/components/button";
 import { Skeleton } from "@diffkit/ui/components/skeleton";
 import { Spinner } from "@diffkit/ui/components/spinner";
+import { Tabs, TabsList, TabsTrigger } from "@diffkit/ui/components/tabs";
 import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
+import { parseAsStringLiteral, useQueryState } from "nuqs";
+import { useEffect, useMemo, useRef } from "react";
 import { ContributionGraph } from "#/components/profile/contribution-graph";
 import { PinnedRepoCard } from "#/components/profile/pinned-repo-card";
 import { UserActivityFeed } from "#/components/profile/user-activity-feed";
+import { RepositoryRow } from "#/components/repo/repository-row";
 import {
+	githubProfileReposQueryOptions,
 	githubUserActivityQueryOptions,
 	githubUserContributionsQueryOptions,
 	githubUserPinnedReposQueryOptions,
@@ -27,6 +32,12 @@ import {
 	githubViewerQueryOptions,
 } from "#/lib/github.query";
 import type { GitHubUserProfile } from "#/lib/github.types";
+import {
+	repoListHasNextPage,
+	repoListPageQueryParser,
+	safeRepoListPage,
+	sliceReposForPage,
+} from "#/lib/repo-list-page";
 import { buildSeo, formatPageTitle } from "#/lib/seo";
 import { useHasMounted } from "#/lib/use-has-mounted";
 
@@ -55,11 +66,33 @@ export const Route = createFileRoute("/_protected/$owner/")({
 	component: ProfilePage,
 });
 
+/** GitHub-style profile tabs: `?tab=repositories` */
+const profileTabSearchParser = parseAsStringLiteral([
+	"repositories",
+] as const).withOptions({ history: "push" });
+
 function ProfilePage() {
 	const { owner } = Route.useParams();
 	const { user } = Route.useRouteContext();
 	const scope = { userId: user.id };
 	const hasMounted = useHasMounted();
+	const [tabSearchParam, setTabSearchParam] = useQueryState(
+		"tab",
+		profileTabSearchParser,
+	);
+	const [reposPage, setReposPage] = useQueryState(
+		"page",
+		repoListPageQueryParser,
+	);
+	const profileTab = tabSearchParam === "repositories" ? "repos" : "overview";
+
+	const prevOwnerRef = useRef(owner);
+	useEffect(() => {
+		if (prevOwnerRef.current !== owner) {
+			prevOwnerRef.current = owner;
+			void setReposPage(null);
+		}
+	}, [owner, setReposPage]);
 
 	// Server-side: available immediately from loader
 	const profileQuery = useQuery(githubUserProfileQueryOptions(scope, owner));
@@ -81,12 +114,36 @@ function ProfilePage() {
 
 	const activityQuery = useInfiniteQuery({
 		...githubUserActivityQueryOptions(scope, owner, isOwnProfile),
-		enabled: hasMounted && viewerQuery.data !== undefined,
+		enabled:
+			hasMounted && viewerQuery.data !== undefined && profileTab === "overview",
 	});
 	const activity = activityQuery.data?.pages.flat();
 
+	const profileReposQuery = useQuery({
+		...githubProfileReposQueryOptions(scope, owner),
+		enabled: hasMounted && profileTab === "repos",
+	});
+
+	const profileRepos =
+		profileTab === "repos" ? (profileReposQuery.data ?? []) : [];
+	const safeReposPage = safeRepoListPage(reposPage ?? 1, profileRepos.length);
+	useEffect(() => {
+		if (profileTab !== "repos") return;
+		if ((reposPage ?? 1) !== safeReposPage) {
+			void setReposPage(safeReposPage === 1 ? null : safeReposPage);
+		}
+	}, [profileTab, reposPage, safeReposPage, setReposPage]);
+
+	const paginatedProfileRepos = useMemo(
+		() => sliceReposForPage(profileRepos, safeReposPage),
+		[profileRepos, safeReposPage],
+	);
+
 	if (profileQuery.error) throw profileQuery.error;
 	if (profileQuery.data === null) throw new Error("Not found");
+	if (profileTab === "repos" && profileReposQuery.error) {
+		throw profileReposQuery.error;
+	}
 
 	return (
 		<div className="overflow-stable h-full">
@@ -141,21 +198,50 @@ function ProfilePage() {
 				{/* User info */}
 				{profile ? (
 					<div className="mt-3 flex flex-col gap-3 pb-8">
-						<div className="flex flex-col gap-0.5">
-							<h1 className="text-2xl font-semibold tracking-tight">
-								{profile.name ?? profile.login}
-							</h1>
-							<div className="flex items-center gap-2 text-base text-muted-foreground">
-								<span>@{profile.login}</span>
-								<span className="text-border">·</span>
-								<span className="text-sm">
-									Joined{" "}
-									{new Date(profile.createdAt).toLocaleDateString("en-US", {
-										month: "long",
-										year: "numeric",
-									})}
-								</span>
+						<div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
+							<div className="flex min-w-0 flex-1 flex-col gap-0.5">
+								<h1 className="text-2xl font-semibold tracking-tight">
+									{profile.name ?? profile.login}
+								</h1>
+								<div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-base text-muted-foreground">
+									<span>@{profile.login}</span>
+									<span className="text-border">·</span>
+									<span className="text-sm">
+										Joined{" "}
+										{new Date(profile.createdAt).toLocaleDateString("en-US", {
+											month: "long",
+											year: "numeric",
+										})}
+									</span>
+								</div>
 							</div>
+							<Tabs
+								value={profileTab}
+								onValueChange={(value) => {
+									void setTabSearchParam(
+										value === "repos" ? "repositories" : null,
+									);
+									if (value !== "repos") {
+										void setReposPage(null);
+									}
+								}}
+								className="w-full sm:w-auto sm:shrink-0"
+							>
+								<TabsList className="h-7 gap-0 w-full justify-start sm:w-auto">
+									<TabsTrigger
+										value="overview"
+										className="h-6 px-2.5 py-0 text-[11px] font-medium leading-none"
+									>
+										Overview
+									</TabsTrigger>
+									<TabsTrigger
+										value="repos"
+										className="h-6 px-2.5 py-0 text-[11px] font-medium leading-none"
+									>
+										Repositories
+									</TabsTrigger>
+								</TabsList>
+							</Tabs>
 						</div>
 
 						{profile.bio && (
@@ -195,46 +281,98 @@ function ProfilePage() {
 							</a>
 						</div>
 
-						{/* Pinned Repos */}
-						{pinnedRepos && pinnedRepos.length > 0 && (
-							<section className="flex flex-col gap-2 pt-6">
-								<h2 className="text-sm font-medium text-muted-foreground">
-									Pinned
-								</h2>
-								<div className="grid grid-cols-2 gap-3">
-									{pinnedRepos.map((repo) => (
-										<PinnedRepoCard key={repo.name} repo={repo} />
-									))}
-								</div>
-							</section>
-						)}
-
-						{/* Activity */}
-						{activity && activity.length > 0 && (
-							<section className="flex flex-col pt-6">
-								<div className="flex items-center justify-between gap-2 rounded-lg bg-surface-1 px-4 py-2.5">
-									<h2 className="text-xs font-medium">Recent activity</h2>
-									<span className="text-xs tabular-nums text-muted-foreground">
-										{activity.length}
-									</span>
-								</div>
-								<UserActivityFeed events={activity} />
-								{activityQuery.hasNextPage && (
-									<Button
-										variant="secondary"
-										size="sm"
-										className="mx-auto mt-2 rounded-full"
-										disabled={activityQuery.isFetchingNextPage}
-										onClick={() => activityQuery.fetchNextPage()}
-									>
-										{activityQuery.isFetchingNextPage ? (
-											<Spinner className="size-3.5" />
-										) : (
-											<ChevronDownIcon size={14} strokeWidth={2} />
-										)}
-										Load more
-									</Button>
+						{profileTab === "overview" ? (
+							<>
+								{/* Pinned Repos */}
+								{pinnedRepos && pinnedRepos.length > 0 && (
+									<section className="flex flex-col gap-2 pt-6">
+										<h2 className="text-sm font-medium text-muted-foreground">
+											Pinned
+										</h2>
+										<div className="grid grid-cols-2 gap-3">
+											{pinnedRepos.map((repo) => (
+												<PinnedRepoCard key={repo.name} repo={repo} />
+											))}
+										</div>
+									</section>
 								)}
+
+								{/* Activity */}
+								{activity && activity.length > 0 && (
+									<section className="flex flex-col pt-6">
+										<div className="flex items-center justify-between gap-2 rounded-lg bg-surface-1 px-4 py-2.5">
+											<h2 className="text-xs font-medium">Recent activity</h2>
+											<span className="text-xs tabular-nums text-muted-foreground">
+												{activity.length}
+											</span>
+										</div>
+										<UserActivityFeed events={activity} />
+										{activityQuery.hasNextPage && (
+											<Button
+												variant="secondary"
+												size="sm"
+												className="mx-auto mt-6 rounded-full"
+												disabled={activityQuery.isFetchingNextPage}
+												onClick={() => activityQuery.fetchNextPage()}
+											>
+												{activityQuery.isFetchingNextPage ? (
+													<Spinner className="size-3.5" />
+												) : (
+													<ChevronDownIcon size={14} strokeWidth={2} />
+												)}
+												Load more
+											</Button>
+										)}
+									</section>
+								)}
+							</>
+						) : (
+							<section className="-mx-[max(0rem,calc((100vw-100%)/2))] flex flex-col pt-20">
+								<div className="mx-auto w-full max-w-4xl px-3 md:px-6">
+									{profileReposQuery.isLoading ? (
+										<div className="flex justify-center py-12">
+											<Spinner className="size-6 text-muted-foreground" />
+										</div>
+									) : !profileReposQuery.data ||
+										profileReposQuery.data.length === 0 ? (
+										<p className="py-8 text-center text-sm text-muted-foreground">
+											No repositories to show.
+										</p>
+									) : (
+										<>
+											<div className="divide-y divide-border overflow-hidden rounded-xl border border-border bg-surface-1">
+												{paginatedProfileRepos.map((repo) => (
+													<div
+														key={repo.id}
+														style={{
+															contentVisibility: "auto",
+															containIntrinsicSize: "auto 72px",
+														}}
+													>
+														<RepositoryRow repo={repo} scope={scope} />
+													</div>
+												))}
+											</div>
+											{repoListHasNextPage(
+												safeReposPage,
+												profileRepos.length,
+											) ? (
+												<Button
+													type="button"
+													variant="secondary"
+													size="sm"
+													className="mx-auto mt-6 rounded-full"
+													onClick={() => {
+														void setReposPage(safeReposPage + 1);
+													}}
+												>
+													<ChevronDownIcon size={14} strokeWidth={2} />
+													Load more
+												</Button>
+											) : null}
+										</>
+									)}
+								</div>
 							</section>
 						)}
 					</div>

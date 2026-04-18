@@ -1,7 +1,7 @@
 import {
+	ArchiveIcon,
 	DashboardIcon,
 	ExternalLinkIcon,
-	FolderLibraryIcon,
 	GitPullRequestIcon,
 	IssuesIcon,
 	ReviewsIcon,
@@ -52,7 +52,7 @@ registerCommands([
 		id: "nav:repos",
 		label: "Go to Repositories",
 		group: "Pages",
-		icon: FolderLibraryIcon,
+		icon: ArchiveIcon,
 		keywords: ["repos", "code"],
 		shortcut: ["G", "O"],
 		action: { type: "navigate", to: "/repos" },

@@ -1,7 +1,7 @@
 import {
+	ArchiveIcon,
 	BugIcon,
 	ExternalLinkIcon,
-	FolderLibraryIcon,
 	GitPullRequestIcon,
 	HomeIcon,
 	InboxIcon,
@@ -279,7 +279,7 @@ export function DashboardTopbar({
 							</DropdownMenuItem>
 							<DropdownMenuItem asChild>
 								<Link to="/repos">
-									<FolderLibraryIcon size={16} strokeWidth={2} />
+									<ArchiveIcon size={16} strokeWidth={2} />
 									Repositories
 								</Link>
 							</DropdownMenuItem>
