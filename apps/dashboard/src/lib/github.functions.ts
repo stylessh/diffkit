@@ -641,6 +641,19 @@ function toMutationError(action: string, error: unknown): MutationResult {
 	return { ok: false, error: `Failed to ${action}: Unknown error` };
 }
 
+/** When search is scoped to one repo, webhook `repoMeta` invalidates this cache; otherwise TTL only (global mine signals would misfire). */
+function revalidationSignalKeysForUserItemSearch(input: {
+	owner?: string;
+	repo?: string;
+}): string[] {
+	const owner = input.owner?.trim();
+	const repo = input.repo?.trim();
+	if (owner && repo) {
+		return [githubRevalidationSignalKeys.repoMeta({ owner, repo })];
+	}
+	return [];
+}
+
 export type PullFromRepoInput = {
 	owner: string;
 	repo: string;
@@ -4459,6 +4472,27 @@ function mergeMyIssuesResults(results: MyIssuesResult[]): MyIssuesResult {
 	};
 }
 
+/** Full refresh replaces cache so merged/closed items drop off; union only on partial timeout. */
+function mergeMyPullsCachedWithFresh(
+	existing: MyPullsResult,
+	fresh: MyPullsResult,
+): MyPullsResult {
+	if (fresh.timedOut) {
+		return mergeMyPullsResults([existing, fresh]);
+	}
+	return fresh;
+}
+
+function mergeMyIssuesCachedWithFresh(
+	existing: MyIssuesResult,
+	fresh: MyIssuesResult,
+): MyIssuesResult {
+	if (fresh.timedOut) {
+		return mergeMyIssuesResults([existing, fresh]);
+	}
+	return fresh;
+}
+
 function buildSourceSearchQuery({
 	itemType,
 	role,
@@ -4492,14 +4526,14 @@ async function getMyPullsResult({
 		userId: context.session.user.id,
 		resource: "pulls.mine.graphql.v2",
 		params: { username },
-		freshForMs: githubCachePolicy.list.staleTimeMs,
+		freshForMs: githubCachePolicy.mine.staleTimeMs,
 		signalKeys: [
 			githubRevalidationSignalKeys.pullsMine,
 			githubRevalidationSignalKeys.installationAccess,
 		],
 		namespaceKeys: [githubRevalidationSignalKeys.pullsMine],
 		cacheMode: "split",
-		merge: (existing, fresh) => mergeMyPullsResults([existing, fresh]),
+		merge: mergeMyPullsCachedWithFresh,
 		fetcher: async () => {
 			const deadlineAt = Date.now() + MY_SEARCH_TOTAL_TIMEOUT_MS;
 			const sources = await getMySearchSources(context, username, deadlineAt);
@@ -4683,14 +4717,14 @@ async function getMyIssuesResult({
 		userId: context.session.user.id,
 		resource: "issues.mine.graphql.v2",
 		params: { username },
-		freshForMs: githubCachePolicy.list.staleTimeMs,
+		freshForMs: githubCachePolicy.mine.staleTimeMs,
 		signalKeys: [
 			githubRevalidationSignalKeys.issuesMine,
 			githubRevalidationSignalKeys.installationAccess,
 		],
 		namespaceKeys: [githubRevalidationSignalKeys.issuesMine],
 		cacheMode: "split",
-		merge: (existing, fresh) => mergeMyIssuesResults([existing, fresh]),
+		merge: mergeMyIssuesCachedWithFresh,
 		fetcher: async () => {
 			const deadlineAt = Date.now() + MY_SEARCH_TOTAL_TIMEOUT_MS;
 			const sources = await getMySearchSources(context, username, deadlineAt);
@@ -5257,7 +5291,10 @@ export const getPullsFromUser = createServerFn({ method: "GET" })
 				repo: data.repo,
 			},
 			freshForMs: githubCachePolicy.list.staleTimeMs,
-			signalKeys: [githubRevalidationSignalKeys.pullsMine],
+			signalKeys: revalidationSignalKeysForUserItemSearch({
+				owner: data.owner,
+				repo: data.repo,
+			}),
 			request: (headers) =>
 				context.octokit.rest.search.issuesAndPullRequests({
 					q: buildUserSearchQuery({
@@ -5302,7 +5339,12 @@ export const getPullsFromRepo = createServerFn({ method: "GET" })
 				direction: data.direction ?? "desc",
 			},
 			freshForMs: githubCachePolicy.list.staleTimeMs,
-			signalKeys: [githubRevalidationSignalKeys.pullsMine],
+			signalKeys: [
+				githubRevalidationSignalKeys.repoMeta({
+					owner: data.owner,
+					repo: data.repo,
+				}),
+			],
 			request: (headers) =>
 				context.octokit.rest.pulls.list({
 					owner: data.owner,
@@ -5415,7 +5457,10 @@ export const getIssuesFromUser = createServerFn({ method: "GET" })
 				repo: data.repo,
 			},
 			freshForMs: githubCachePolicy.list.staleTimeMs,
-			signalKeys: [githubRevalidationSignalKeys.issuesMine],
+			signalKeys: revalidationSignalKeysForUserItemSearch({
+				owner: data.owner,
+				repo: data.repo,
+			}),
 			request: (headers) =>
 				context.octokit.rest.search.issuesAndPullRequests({
 					q: buildUserSearchQuery({
@@ -5462,7 +5507,12 @@ export const getIssuesFromRepo = createServerFn({ method: "GET" })
 				direction: data.direction ?? "desc",
 			},
 			freshForMs: githubCachePolicy.list.staleTimeMs,
-			signalKeys: [githubRevalidationSignalKeys.issuesMine],
+			signalKeys: [
+				githubRevalidationSignalKeys.repoMeta({
+					owner: data.owner,
+					repo: data.repo,
+				}),
+			],
 			request: (headers) =>
 				context.octokit.rest.issues.listForRepo({
 					owner: data.owner,
