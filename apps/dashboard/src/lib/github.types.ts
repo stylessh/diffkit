@@ -251,6 +251,7 @@ export type PullCheckRun = {
 	appAvatarUrl: string | null;
 	outputTitle: string | null;
 	startedAt: string | null;
+	htmlUrl: string | null;
 };
 
 export type PullReview = {
