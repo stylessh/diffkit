@@ -6,6 +6,7 @@ import {
 	CommentIcon,
 	Delete01Icon,
 	EditIcon,
+	ExternalLinkIcon,
 	GitBranchIcon,
 	GitCommitIcon,
 	GitMergeIcon,
@@ -77,6 +78,7 @@ import {
 	mergePullRequest,
 	replyToReviewComment,
 	requestPullReviewers,
+	rerunChecks,
 	resolveReviewThread,
 	unresolveReviewThread,
 	updatePullBranch,
@@ -495,6 +497,9 @@ function MergeStatusCard({
 					checkRuns={checkRuns}
 					allChecksPassed={allChecksPassed}
 					hasCheckFailures={hasCheckFailures}
+					owner={owner}
+					repo={repo}
+					pullNumber={pullNumber}
 				/>
 			)}
 
@@ -739,13 +744,21 @@ function ChecksSection({
 	checkRuns,
 	allChecksPassed,
 	hasCheckFailures,
+	owner,
+	repo,
+	pullNumber,
 }: {
 	checks: PullStatus["checks"];
 	checkRuns: PullCheckRun[];
 	allChecksPassed: boolean;
 	hasCheckFailures: boolean;
+	owner: string;
+	repo: string;
+	pullNumber: number;
 }) {
 	const [open, setOpen] = useState(true);
+	const [isRerunning, setIsRerunning] = useState(false);
+	const queryClient = useQueryClient();
 
 	const checkStatus: StatusType = allChecksPassed
 		? "success"
@@ -784,6 +797,25 @@ function ChecksSection({
 		return order(a) - order(b);
 	});
 
+	const handleRerun = async (failedOnly: boolean) => {
+		setIsRerunning(true);
+		try {
+			const result = await rerunChecks({
+				data: { owner, repo, pullNumber, failedOnly },
+			});
+			if (result.ok) {
+				await queryClient.invalidateQueries({ queryKey: ["github"] });
+			} else {
+				toast.error(result.error);
+				checkPermissionWarning(result, `${owner}/${repo}`);
+			}
+		} catch {
+			toast.error("Failed to rerun checks");
+		} finally {
+			setIsRerunning(false);
+		}
+	};
+
 	return (
 		<Collapsible open={open} onOpenChange={setOpen}>
 			<CollapsibleTrigger asChild>
@@ -814,7 +846,7 @@ function ChecksSection({
 						return (
 							<div
 								key={run.id}
-								className="flex items-center gap-2 px-4 py-1.5 pl-11"
+								className="group/run flex items-center gap-2 px-4 py-1.5 pl-11"
 							>
 								<CheckRunIcon status={runStatus} />
 								{run.appAvatarUrl && (
@@ -853,10 +885,53 @@ function ChecksSection({
 												? "Pending"
 												: "Skipped"}
 								</span>
+								{run.htmlUrl && (
+									<a
+										href={run.htmlUrl}
+										target="_blank"
+										rel="noopener noreferrer"
+										className="shrink-0 text-muted-foreground opacity-0 transition-opacity hover:text-foreground group-hover/run:opacity-100"
+									>
+										<ExternalLinkIcon size={12} strokeWidth={2} />
+									</a>
+								)}
 							</div>
 						);
 					})}
 				</div>
+				{(hasCheckFailures || checks.total > 0) && (
+					<div className="flex items-center gap-2 border-b border-border/50 bg-surface-1/50 px-4 py-1.5 pl-11">
+						{hasCheckFailures && (
+							<Button
+								variant="ghost"
+								size="xs"
+								disabled={isRerunning}
+								className="h-6 text-xs text-muted-foreground"
+								iconLeft={
+									isRerunning ? (
+										<Spinner size={12} />
+									) : (
+										<RefreshCwIcon size={12} strokeWidth={2} />
+									)
+								}
+								onClick={() => void handleRerun(true)}
+							>
+								Re-run failed checks
+							</Button>
+						)}
+						{checks.total > 0 && (
+							<Button
+								variant="ghost"
+								size="xs"
+								disabled={isRerunning}
+								className="h-6 text-xs text-muted-foreground"
+								onClick={() => void handleRerun(false)}
+							>
+								Re-run all checks
+							</Button>
+						)}
+					</div>
+				)}
 			</CollapsibleContent>
 		</Collapsible>
 	);
