@@ -722,6 +722,42 @@ export type CommandPaletteSearchInput = {
 	perPage?: number;
 };
 
+// ---------------------------------------------------------------------------
+// Check run helpers — shared between computePullStatus and rerunChecks
+// ---------------------------------------------------------------------------
+
+type CheckRunPayload = {
+	id: number;
+	name: string;
+	status: string;
+	conclusion: string | null;
+};
+
+/** Deduplicate check runs by name — keep the most recent run (highest id) per name. */
+export function deduplicateCheckRuns<T extends CheckRunPayload>(
+	checkRuns: T[],
+): T[] {
+	const latestByName = new Map<string, T>();
+	for (const check of checkRuns) {
+		const existing = latestByName.get(check.name);
+		if (!existing || check.id > existing.id) {
+			latestByName.set(check.name, check);
+		}
+	}
+	return Array.from(latestByName.values());
+}
+
+/** Whether a completed check run counts as failed (mirrors the UI's `getCheckRunStatus`). */
+export function isFailedCheckRun(run: CheckRunPayload): boolean {
+	return (
+		run.status === "completed" &&
+		run.conclusion !== "success" &&
+		run.conclusion !== "neutral" &&
+		run.conclusion !== "skipped" &&
+		run.conclusion !== null
+	);
+}
+
 function clampPerPage(value: number | undefined, fallback = 30) {
 	if (!Number.isFinite(value)) {
 		return fallback;
@@ -3712,14 +3748,7 @@ async function computePullStatus(
 	const allCheckRuns = checksResponse?.data.check_runs ?? [];
 
 	// Deduplicate by name — keep the most recent run (highest id) per check name
-	const latestByName = new Map<string, (typeof allCheckRuns)[number]>();
-	for (const check of allCheckRuns) {
-		const existing = latestByName.get(check.name);
-		if (!existing || check.id > existing.id) {
-			latestByName.set(check.name, check);
-		}
-	}
-	const checkRuns = Array.from(latestByName.values());
+	const checkRuns = deduplicateCheckRuns(allCheckRuns);
 
 	let passed = 0;
 	let failed = 0;
@@ -3812,6 +3841,7 @@ async function computePullStatus(
 			appAvatarUrl: check.app?.owner?.avatar_url ?? null,
 			outputTitle: check.output?.title ?? null,
 			startedAt: check.started_at ?? null,
+			htmlUrl: check.html_url ?? null,
 		})),
 		mergeable: pull.mergeable,
 		mergeableState:
@@ -6031,6 +6061,67 @@ export const deleteBranch = createServerFn({ method: "POST" })
 			return { ok: true };
 		} catch (error) {
 			return toMutationError("delete branch", error);
+		}
+	});
+
+export type RerunChecksInput = PullFromRepoInput & {
+	/** Rerun only failed checks. When false, rerun all checks. */
+	failedOnly: boolean;
+};
+
+export const rerunChecks = createServerFn({ method: "POST" })
+	.inputValidator(identityValidator<RerunChecksInput>)
+	.handler(async ({ data }): Promise<MutationResult> => {
+		const context = await getGitHubUserContextForRepository(data);
+		if (!context) {
+			return { ok: false, error: "Not authenticated" };
+		}
+
+		try {
+			// Fetch the PR to get the head SHA
+			const pr = await context.octokit.rest.pulls.get({
+				owner: data.owner,
+				repo: data.repo,
+				pull_number: data.pullNumber,
+			});
+
+			// List check runs for the head SHA
+			const checksResponse = await context.octokit.rest.checks.listForRef({
+				owner: data.owner,
+				repo: data.repo,
+				ref: pr.data.head.sha,
+				per_page: 100,
+			});
+
+			const checkRuns = checksResponse.data.check_runs ?? [];
+
+			// Deduplicate: keep the latest run per check name
+			const dedupedRuns = deduplicateCheckRuns(checkRuns);
+
+			// Determine which checks to rerun
+			const runsToRerun = data.failedOnly
+				? dedupedRuns.filter(isFailedCheckRun)
+				: dedupedRuns;
+
+			if (runsToRerun.length === 0) {
+				return { ok: true };
+			}
+
+			// Rerequest each check run in parallel
+			await Promise.all(
+				runsToRerun.map((run) =>
+					context.octokit.rest.checks.rerequestRun({
+						owner: data.owner,
+						repo: data.repo,
+						check_run_id: run.id,
+					}),
+				),
+			);
+
+			await bustPullDetailCaches(context.session.user.id, data);
+			return { ok: true };
+		} catch (error) {
+			return toMutationError("rerun checks", error);
 		}
 	});
 
