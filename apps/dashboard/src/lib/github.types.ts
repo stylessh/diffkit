@@ -252,6 +252,13 @@ export type PullCheckRun = {
 	outputTitle: string | null;
 	startedAt: string | null;
 	htmlUrl: string | null;
+	required: boolean;
+};
+
+export type PullWorkflowApproval = {
+	workflowRunId: number;
+	name: string;
+	event: string;
 };
 
 export type PullReview = {
@@ -268,8 +275,10 @@ export type PullStatus = {
 		failed: number;
 		pending: number;
 		skipped: number;
+		expected: number;
 	};
 	checkRuns: PullCheckRun[];
+	pendingWorkflowApprovals: PullWorkflowApproval[];
 	mergeable: boolean | null;
 	mergeableState: string | null;
 	conflictingFiles: string[];

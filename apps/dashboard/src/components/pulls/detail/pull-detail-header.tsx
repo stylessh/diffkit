@@ -1,4 +1,5 @@
 import { FileIcon, GitCommitIcon, ReviewsIcon } from "@diffkit/icons";
+import { StatePill } from "@diffkit/ui/components/state-pill";
 import {
 	Tooltip,
 	TooltipContent,
@@ -45,14 +46,7 @@ export function PullDetailHeader({
 				title={pr.title}
 				subtitle={
 					<div className="flex min-w-0 items-center gap-1.5 text-sm text-muted-foreground">
-						<span
-							className={cn(
-								"shrink-0 inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium",
-								stateConfig.badgeClass,
-							)}
-						>
-							{stateConfig.label}
-						</span>
+						<StatePill tone={stateConfig.tone}>{stateConfig.label}</StatePill>
 						{pr.author && (
 							<>
 								<img

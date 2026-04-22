@@ -110,4 +110,58 @@ describe("getGitHubWebhookRevalidationSignalKeys", () => {
 			"workflowJob:stylessh/havana#202",
 		]);
 	});
+
+	it("maps repository_ruleset events to repo protection signal", () => {
+		expect(
+			getGitHubWebhookRevalidationSignalKeys("repository_ruleset", {
+				repository: {
+					name: "havana",
+					owner: { login: "stylessh" },
+				},
+			}),
+		).toEqual(["repoProtection:stylessh/havana"]);
+	});
+
+	it("maps branch_protection_rule events to repo protection signal", () => {
+		expect(
+			getGitHubWebhookRevalidationSignalKeys("branch_protection_rule", {
+				repository: {
+					name: "havana",
+					owner: { login: "stylessh" },
+				},
+			}),
+		).toEqual(["repoProtection:stylessh/havana"]);
+	});
+
+	it("maps status events to repo statuses signal", () => {
+		expect(
+			getGitHubWebhookRevalidationSignalKeys("status", {
+				repository: {
+					name: "havana",
+					owner: { login: "stylessh" },
+				},
+				sha: "abc123",
+			}),
+		).toEqual(["repoStatuses:stylessh/havana"]);
+	});
+
+	it("extracts pull signals from workflow_run payloads alongside run entity", () => {
+		expect(
+			getGitHubWebhookRevalidationSignalKeys("workflow_run", {
+				repository: {
+					name: "havana",
+					owner: { login: "stylessh" },
+				},
+				workflow_run: {
+					id: 55,
+					pull_requests: [{ number: 17 }, { number: 19 }],
+				},
+			}),
+		).toEqual([
+			"actions:stylessh/havana",
+			"workflowRun:stylessh/havana#55",
+			"pull:stylessh/havana#17",
+			"pull:stylessh/havana#19",
+		]);
+	});
 });

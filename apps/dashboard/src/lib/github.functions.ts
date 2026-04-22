@@ -26,6 +26,7 @@ import type {
 	NotificationsResult,
 	OrgTeam,
 	PinnedRepo,
+	PullCheckRun,
 	PullComment,
 	PullCommit,
 	PullDetail,
@@ -39,6 +40,7 @@ import type {
 	PullReviewComment,
 	PullStatus,
 	PullSummary,
+	PullWorkflowApproval,
 	ReplyToReviewCommentInput,
 	RepoBranch,
 	RepoCollaborator,
@@ -652,10 +654,25 @@ export type MutationResult =
 	| { ok: true }
 	| { ok: false; error: string; installUrl?: string };
 
+/** GitHub sometimes returns 403 for resource-shape errors rather than auth — don't show the "install app" nudge for these. */
+function is403ResourceError(message: string): boolean {
+	return (
+		/invalid check_run_id/i.test(message) ||
+		/cannot be rerequested/i.test(message) ||
+		/not eligible/i.test(message)
+	);
+}
+
 function toMutationError(action: string, error: unknown): MutationResult {
 	console.error(`[${action}]`, error);
 	if (error instanceof RequestError) {
+		const msg =
+			(error.response?.data as { message?: string } | undefined)?.message ??
+			error.message;
 		if (error.status === 403) {
+			if (is403ResourceError(msg)) {
+				return { ok: false, error: `Failed to ${action}: ${msg}` };
+			}
 			return {
 				ok: false,
 				error: `Failed to ${action}: Insufficient permissions`,
@@ -674,9 +691,6 @@ function toMutationError(action: string, error: unknown): MutationResult {
 				error: `Failed to ${action}: Conflict — head branch may have been modified`,
 			};
 		}
-		const msg =
-			(error.response?.data as { message?: string } | undefined)?.message ??
-			error.message;
 		return { ok: false, error: `Failed to ${action}: ${msg}` };
 	}
 	return { ok: false, error: `Failed to ${action}: Unknown error` };
@@ -754,8 +768,67 @@ export function isFailedCheckRun(run: CheckRunPayload): boolean {
 		run.conclusion !== "success" &&
 		run.conclusion !== "neutral" &&
 		run.conclusion !== "skipped" &&
+		run.conclusion !== "stale" &&
 		run.conclusion !== null
 	);
+}
+
+/**
+ * Fetch the set of required status check contexts for a branch, via GitHub's
+ * unified branch-rules endpoint (covers both rulesets and classic protection).
+ * Cached per repo — invalidated by repository_ruleset / branch_protection_rule webhooks.
+ */
+async function getRequiredStatusContexts(
+	context: GitHubContext,
+	params: { owner: string; repo: string; branch: string },
+): Promise<string[]> {
+	return getOrRevalidateGitHubResource<string[]>({
+		userId: context.session.user.id,
+		resource: "repos.requiredStatusContexts",
+		params,
+		freshForMs: githubCachePolicy.repoProtection.staleTimeMs,
+		signalKeys: [
+			githubRevalidationSignalKeys.repoProtection({
+				owner: params.owner,
+				repo: params.repo,
+			}),
+		],
+		fetcher: async () => {
+			const contexts = new Set<string>();
+			try {
+				const { data: rules } = await context.octokit.rest.repos.getBranchRules(
+					{
+						owner: params.owner,
+						repo: params.repo,
+						branch: params.branch,
+					},
+				);
+				for (const rule of rules) {
+					if (rule.type !== "required_status_checks") continue;
+					const parameters = (rule as { parameters?: unknown }).parameters;
+					if (!parameters || typeof parameters !== "object") continue;
+					const required = (
+						parameters as {
+							required_status_checks?: Array<{ context?: unknown }>;
+						}
+					).required_status_checks;
+					if (!Array.isArray(required)) continue;
+					for (const entry of required) {
+						if (entry && typeof entry.context === "string") {
+							contexts.add(entry.context);
+						}
+					}
+				}
+			} catch {
+				// Missing permission or unavailable — treat as no required contexts.
+			}
+			return {
+				kind: "success" as const,
+				data: Array.from(contexts),
+				metadata: createGitHubResponseMetadata(200, {}),
+			};
+		},
+	});
 }
 
 function clampPerPage(value: number | undefined, fallback = 30) {
@@ -3700,25 +3773,53 @@ async function computePullStatus(
 	data: PullFromRepoInput,
 	pull: RepoPullDetail,
 ): Promise<PullStatus> {
-	const [reviewsResponse, checksResponse, userContext, oauthContext] =
-		await Promise.all([
-			context.octokit.rest.pulls.listReviews({
+	const [
+		reviewsResponse,
+		checksResponse,
+		combinedStatusResponse,
+		workflowRunsResponse,
+		requiredContexts,
+		userContext,
+		oauthContext,
+	] = await Promise.all([
+		context.octokit.rest.pulls.listReviews({
+			owner: data.owner,
+			repo: data.repo,
+			pull_number: data.pullNumber,
+			per_page: 100,
+		}),
+		context.octokit.rest.checks
+			.listForRef({
 				owner: data.owner,
 				repo: data.repo,
-				pull_number: data.pullNumber,
+				ref: pull.head.sha,
 				per_page: 100,
-			}),
-			context.octokit.rest.checks
-				.listForRef({
-					owner: data.owner,
-					repo: data.repo,
-					ref: pull.head.sha,
-					per_page: 100,
-				})
-				.catch(() => null),
-			getGitHubUserContextForRepository(data),
-			getGitHubContext(),
-		]);
+			})
+			.catch(() => null),
+		context.octokit.rest.repos
+			.getCombinedStatusForRef({
+				owner: data.owner,
+				repo: data.repo,
+				ref: pull.head.sha,
+				per_page: 100,
+			})
+			.catch(() => null),
+		context.octokit.rest.actions
+			.listWorkflowRunsForRepo({
+				owner: data.owner,
+				repo: data.repo,
+				head_sha: pull.head.sha,
+				per_page: 100,
+			})
+			.catch(() => null),
+		getRequiredStatusContexts(context, {
+			owner: data.owner,
+			repo: data.repo,
+			branch: pull.base.ref,
+		}).catch(() => []),
+		getGitHubUserContextForRepository(data),
+		getGitHubContext(),
+	]);
 	const permissions = mergeRepositoryPermissions(
 		await getRepositoryPermissions(
 			userContext ?? context,
@@ -3749,25 +3850,111 @@ async function computePullStatus(
 
 	// Deduplicate by name — keep the most recent run (highest id) per check name
 	const checkRuns = deduplicateCheckRuns(allCheckRuns);
+	const requiredContextSet = new Set(requiredContexts);
+
+	const mappedCheckRuns: PullCheckRun[] = checkRuns.map((check) => ({
+		id: check.id,
+		name: check.name,
+		status: check.status,
+		conclusion: check.conclusion,
+		appAvatarUrl: check.app?.owner?.avatar_url ?? null,
+		outputTitle: check.output?.title ?? null,
+		startedAt: check.started_at ?? null,
+		htmlUrl: check.html_url ?? null,
+		required: requiredContextSet.has(check.name),
+	}));
+
+	// Commit statuses (e.g. CodeRabbit, CircleCI) — separate from Check Runs.
+	// getCombinedStatusForRef already returns the latest status per context.
+	const combinedStatuses = combinedStatusResponse?.data.statuses ?? [];
+	const checkRunNames = new Set(mappedCheckRuns.map((run) => run.name));
+	const mappedStatuses: PullCheckRun[] = combinedStatuses
+		.filter((status) => !checkRunNames.has(status.context))
+		.map((status) => {
+			const state = status.state;
+			const isPending = state === "pending";
+			return {
+				id: status.id,
+				name: status.context,
+				status: isPending ? "in_progress" : "completed",
+				conclusion: isPending
+					? null
+					: state === "success"
+						? "success"
+						: "failure",
+				appAvatarUrl: status.avatar_url ?? null,
+				outputTitle: status.description ?? null,
+				startedAt: status.created_at ?? null,
+				htmlUrl: status.target_url ?? null,
+				required: requiredContextSet.has(status.context),
+			};
+		});
+
+	// Required contexts that haven't been reported yet → synthesize "expected" rows.
+	const reportedNames = new Set([
+		...mappedCheckRuns.map((run) => run.name),
+		...mappedStatuses.map((run) => run.name),
+	]);
+	const expectedChecks: PullCheckRun[] = requiredContexts
+		.filter((context) => !reportedNames.has(context))
+		.map((contextName, index) => ({
+			id: -1 - index,
+			name: contextName,
+			status: "expected",
+			conclusion: null,
+			appAvatarUrl: null,
+			outputTitle: null,
+			startedAt: null,
+			htmlUrl: null,
+			required: true,
+		}));
+
+	const combinedChecks: PullCheckRun[] = [
+		...mappedCheckRuns,
+		...mappedStatuses,
+		...expectedChecks,
+	];
 
 	let passed = 0;
 	let failed = 0;
 	let pending = 0;
 	let skipped = 0;
-	for (const check of checkRuns) {
-		if (check.status !== "completed") {
+	let expected = 0;
+	for (const check of combinedChecks) {
+		if (check.status === "expected") {
+			expected += 1;
+		} else if (check.status !== "completed") {
 			pending += 1;
 		} else if (
 			check.conclusion === "success" ||
 			check.conclusion === "neutral"
 		) {
 			passed += 1;
-		} else if (check.conclusion === "skipped") {
+		} else if (check.conclusion === "skipped" || check.conclusion === "stale") {
 			skipped += 1;
-		} else if (isFailedCheckRun(check)) {
+		} else if (check.conclusion !== null) {
 			failed += 1;
 		}
 	}
+
+	// Workflow runs awaiting approval — three shapes GitHub uses:
+	//   - status=waiting              → deployment environment awaits approval
+	//   - status=action_required      → run is blocked pre-start (e.g. during re-run)
+	//   - status=completed, conclusion=action_required → first-time contributor gate
+	const pendingWorkflowApprovals: PullWorkflowApproval[] = (
+		workflowRunsResponse?.data.workflow_runs ?? []
+	)
+		.filter(
+			(run) =>
+				run.status === "waiting" ||
+				run.status === "action_required" ||
+				(run.status === "completed" && run.conclusion === "action_required"),
+		)
+		.map((run) => ({
+			workflowRunId: run.id,
+			name: run.name ?? `Workflow #${run.id}`,
+			event: run.event,
+		}));
 
 	let behindBy: number | null = null;
 	let conflictingFiles: string[] = [];
@@ -3827,22 +4014,15 @@ async function computePullStatus(
 	return {
 		reviews: Array.from(latestReviews.values()),
 		checks: {
-			total: checkRuns.length,
+			total: combinedChecks.length,
 			passed,
 			failed,
 			pending,
 			skipped,
+			expected,
 		},
-		checkRuns: checkRuns.map((check) => ({
-			id: check.id,
-			name: check.name,
-			status: check.status,
-			conclusion: check.conclusion,
-			appAvatarUrl: check.app?.owner?.avatar_url ?? null,
-			outputTitle: check.output?.title ?? null,
-			startedAt: check.started_at ?? null,
-			htmlUrl: check.html_url ?? null,
-		})),
+		checkRuns: combinedChecks,
+		pendingWorkflowApprovals,
 		mergeable: pull.mergeable,
 		mergeableState:
 			typeof pull.mergeable_state === "string" ? pull.mergeable_state : null,
@@ -3865,13 +4045,17 @@ async function getPullStatusResult(
 		repo: data.repo,
 		pullNumber: data.pullNumber,
 	});
+	const repoStatusesKey = githubRevalidationSignalKeys.repoStatuses({
+		owner: data.owner,
+		repo: data.repo,
+	});
 
 	return getOrRevalidateGitHubResource<PullStatus>({
 		userId: context.session.user.id,
 		resource: "pulls.status.v3",
 		params: data,
 		freshForMs: githubCachePolicy.status.staleTimeMs,
-		signalKeys: [pullNamespaceKey],
+		signalKeys: [pullNamespaceKey, repoStatusesKey],
 		namespaceKeys: [pullNamespaceKey],
 		cacheMode: "split",
 		fetcher: async () => {
@@ -6069,9 +6253,16 @@ export type RerunChecksInput = PullFromRepoInput & {
 	failedOnly: boolean;
 };
 
+export type RerunChecksResult = MutationResult & {
+	/** Number of checks that were successfully re-requested. */
+	rerun?: number;
+	/** Number of checks GitHub refused to rerun because they're not eligible. */
+	skipped?: number;
+};
+
 export const rerunChecks = createServerFn({ method: "POST" })
 	.inputValidator(identityValidator<RerunChecksInput>)
-	.handler(async ({ data }): Promise<MutationResult> => {
+	.handler(async ({ data }): Promise<RerunChecksResult> => {
 		const context = await getGitHubUserContextForRepository(data);
 		if (!context) {
 			return { ok: false, error: "Not authenticated" };
@@ -6113,24 +6304,147 @@ export const rerunChecks = createServerFn({ method: "POST" })
 				: dedupedRuns;
 
 			if (runsToRerun.length === 0) {
-				return { ok: true };
+				return { ok: true, rerun: 0, skipped: 0 };
 			}
 
-			// Rerequest each check run in parallel
-			await Promise.all(
-				runsToRerun.map((run) =>
-					context.octokit.rest.checks.rerequestRun({
+			// Route each check run to the correct rerun endpoint:
+			// - GitHub Actions jobs: use actions.reRunWorkflow / reRunWorkflowFailedJobs
+			//   (checks.rerequestRun requires the check to belong to the calling GitHub App)
+			// - Third-party apps (GitGuardian, CodeRabbit, etc.): can't be rerun by us —
+			//   GitHub returns 403 because we're not the owning app. Mark as skipped.
+			const actionsRunIdByCheck = new Map<number, number>();
+			const actionsRunIds = new Set<number>();
+			const otherCheckRunIds: number[] = [];
+
+			for (const run of runsToRerun) {
+				if (run.app?.slug === "github-actions") {
+					const match = run.html_url?.match(/\/actions\/runs\/(\d+)\//);
+					if (match) {
+						const workflowRunId = Number(match[1]);
+						actionsRunIdByCheck.set(run.id, workflowRunId);
+						actionsRunIds.add(workflowRunId);
+						continue;
+					}
+				}
+				otherCheckRunIds.push(run.id);
+			}
+
+			type Task = {
+				/** Which run ids this task covers — for reporting counts back to UI. */
+				coveredCheckRunIds: number[];
+				promise: Promise<unknown>;
+			};
+			const tasks: Task[] = [];
+
+			for (const workflowRunId of actionsRunIds) {
+				const coveredCheckRunIds = runsToRerun
+					.filter((r) => actionsRunIdByCheck.get(r.id) === workflowRunId)
+					.map((r) => r.id);
+				tasks.push({
+					coveredCheckRunIds,
+					promise: data.failedOnly
+						? context.octokit.rest.actions.reRunWorkflowFailedJobs({
+								owner: data.owner,
+								repo: data.repo,
+								run_id: workflowRunId,
+							})
+						: context.octokit.rest.actions.reRunWorkflow({
+								owner: data.owner,
+								repo: data.repo,
+								run_id: workflowRunId,
+							}),
+				});
+			}
+
+			for (const checkRunId of otherCheckRunIds) {
+				tasks.push({
+					coveredCheckRunIds: [checkRunId],
+					promise: context.octokit.rest.checks.rerequestRun({
 						owner: data.owner,
 						repo: data.repo,
-						check_run_id: run.id,
+						check_run_id: checkRunId,
+					}),
+				});
+			}
+
+			const results = await Promise.allSettled(tasks.map((t) => t.promise));
+
+			let rerun = 0;
+			let skipped = 0;
+			const hardFailures: PromiseRejectedResult[] = [];
+			for (let i = 0; i < results.length; i++) {
+				const result = results[i];
+				const covered = tasks[i].coveredCheckRunIds.length;
+				if (result.status === "fulfilled") {
+					rerun += covered;
+					continue;
+				}
+				const reason = result.reason;
+				const msg =
+					reason instanceof RequestError
+						? ((reason.response?.data as { message?: string } | undefined)
+								?.message ?? reason.message)
+						: "";
+				if (
+					reason instanceof RequestError &&
+					reason.status === 403 &&
+					is403ResourceError(msg)
+				) {
+					skipped += covered;
+				} else {
+					hardFailures.push(result);
+				}
+			}
+
+			if (rerun === 0 && hardFailures.length > 0) {
+				return toMutationError("rerun checks", hardFailures[0].reason);
+			}
+
+			await bustPullDetailCaches(context.session.user.id, data);
+			return { ok: true, rerun, skipped };
+		} catch (error) {
+			return toMutationError("rerun checks", error);
+		}
+	});
+
+export type ApproveWorkflowRunsInput = PullFromRepoInput & {
+	workflowRunIds: number[];
+};
+
+export const approveWorkflowRuns = createServerFn({ method: "POST" })
+	.inputValidator(identityValidator<ApproveWorkflowRunsInput>)
+	.handler(async ({ data }): Promise<MutationResult> => {
+		const context = await getGitHubUserContextForRepository(data);
+		if (!context) {
+			return { ok: false, error: "Not authenticated" };
+		}
+
+		if (data.workflowRunIds.length === 0) {
+			return { ok: true };
+		}
+
+		try {
+			const results = await Promise.allSettled(
+				data.workflowRunIds.map((runId) =>
+					context.octokit.rest.actions.approveWorkflowRun({
+						owner: data.owner,
+						repo: data.repo,
+						run_id: runId,
 					}),
 				),
 			);
 
+			const rejected = results.filter(
+				(r): r is PromiseRejectedResult => r.status === "rejected",
+			);
+			if (rejected.length === data.workflowRunIds.length) {
+				return toMutationError("approve workflow runs", rejected[0].reason);
+			}
+
 			await bustPullDetailCaches(context.session.user.id, data);
 			return { ok: true };
 		} catch (error) {
-			return toMutationError("rerun checks", error);
+			return toMutationError("approve workflow runs", error);
 		}
 	});
 

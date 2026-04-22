@@ -244,7 +244,10 @@ Expanding permissions after users have installed the app will require those inst
 | Pull request review | Yes | Review state and PR detail |
 | Pull request review comment | Yes | Diff discussion and review comments |
 | Pull request review thread | Yes | Review thread state changes |
-| Workflow run | Later | For Actions dashboard (workflow-run updates) |
+| Status | Yes | Commit statuses (CodeRabbit, CircleCI, etc.) on PR pages |
+| Repository ruleset | Yes | Required status checks & "Expected" check rendering |
+| Branch protection rule | Yes | Required status checks (legacy protection) |
+| Workflow run | Yes | Workflow approval state + Actions dashboard |
 | Workflow job | Later | For Actions dashboard (job-level logs) |
 | Push | Later | Branch-aware activity features |
 | Repository | Later | Repo settings and metadata changes |

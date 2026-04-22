@@ -1,6 +1,9 @@
 import { IssuesIcon } from "@diffkit/icons";
 import { Markdown } from "@diffkit/ui/components/markdown";
-import { cn } from "@diffkit/ui/lib/utils";
+import {
+	StatePill,
+	type StatePillTone,
+} from "@diffkit/ui/components/state-pill";
 import { useState } from "react";
 import { IssueCommentReactionBar } from "#/components/details/comment-reaction-bar";
 import { DetailPageTitle } from "#/components/details/detail-page";
@@ -12,7 +15,7 @@ import { usePrefersNoHover } from "#/lib/use-prefers-no-hover";
 type IssueStateConfig = {
 	color: string;
 	label: string;
-	badgeClass: string;
+	tone: StatePillTone;
 };
 
 export function getIssueStateConfig(issue: IssueDetail): IssueStateConfig {
@@ -21,19 +24,19 @@ export function getIssueStateConfig(issue: IssueDetail): IssueStateConfig {
 			return {
 				color: "text-muted-foreground",
 				label: "Closed",
-				badgeClass: "bg-muted text-muted-foreground",
+				tone: "muted",
 			};
 		}
 		return {
 			color: "text-purple-500",
 			label: "Closed",
-			badgeClass: "bg-purple-500/10 text-purple-500",
+			tone: "merged",
 		};
 	}
 	return {
 		color: "text-green-500",
 		label: "Open",
-		badgeClass: "bg-green-500/10 text-green-500",
+		tone: "open",
 	};
 }
 
@@ -67,14 +70,7 @@ export function IssueDetailHeader({
 				title={issue.title}
 				subtitle={
 					<div className="flex flex-wrap items-center gap-2">
-						<span
-							className={cn(
-								"inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium",
-								stateConfig.badgeClass,
-							)}
-						>
-							{stateConfig.label}
-						</span>
+						<StatePill tone={stateConfig.tone}>{stateConfig.label}</StatePill>
 						{issue.author && (
 							<span className="flex items-center gap-1.5 text-sm text-muted-foreground">
 								<img

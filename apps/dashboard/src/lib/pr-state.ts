@@ -4,6 +4,7 @@ import {
 	GitPullRequestDraftIcon,
 	GitPullRequestIcon,
 } from "@diffkit/icons";
+import type { StatePillTone } from "@diffkit/ui/components/state-pill";
 
 export type PrStateConfig = {
 	icon: React.ComponentType<{
@@ -13,7 +14,7 @@ export type PrStateConfig = {
 	}>;
 	color: string;
 	label: string;
-	badgeClass: string;
+	tone: StatePillTone;
 };
 
 export function getPrStateConfig(pr: {
@@ -27,7 +28,7 @@ export function getPrStateConfig(pr: {
 			icon: GitPullRequestDraftIcon,
 			color: "text-muted-foreground",
 			label: "Draft",
-			badgeClass: "bg-muted text-muted-foreground",
+			tone: "muted",
 		};
 	}
 	if (pr.isMerged || pr.mergedAt || pr.state === "merged") {
@@ -35,7 +36,7 @@ export function getPrStateConfig(pr: {
 			icon: GitMergeIcon,
 			color: "text-purple-500",
 			label: "Merged",
-			badgeClass: "bg-purple-500/10 text-purple-500",
+			tone: "merged",
 		};
 	}
 	if (pr.state === "closed") {
@@ -43,13 +44,13 @@ export function getPrStateConfig(pr: {
 			icon: GitPullRequestClosedIcon,
 			color: "text-red-500",
 			label: "Closed",
-			badgeClass: "bg-red-500/10 text-red-500",
+			tone: "closed",
 		};
 	}
 	return {
 		icon: GitPullRequestIcon,
 		color: "text-green-500",
 		label: "Open",
-		badgeClass: "bg-green-500/10 text-green-500",
+		tone: "open",
 	};
 }

@@ -22,6 +22,10 @@ export const githubRevalidationSignalKeys = {
 		`workflowJob:${input.owner}/${input.repo}#${input.jobId}`,
 	repoCode: (input: { owner: string; repo: string }) =>
 		`repoCode:${input.owner}/${input.repo}`,
+	repoProtection: (input: { owner: string; repo: string }) =>
+		`repoProtection:${input.owner}/${input.repo}`,
+	repoStatuses: (input: { owner: string; repo: string }) =>
+		`repoStatuses:${input.owner}/${input.repo}`,
 	installationAccess: "installationAccess",
 } as const;
 
@@ -144,6 +148,32 @@ function getCheckSuitePullSignals(payload: unknown) {
 	}
 
 	return checkSuite.pull_requests.flatMap((pull) => {
+		if (!isRecord(pull) || typeof pull.number !== "number") {
+			return [];
+		}
+
+		return [
+			githubRevalidationSignalKeys.pullEntity({
+				owner: repository.owner,
+				repo: repository.repo,
+				pullNumber: pull.number,
+			}),
+		];
+	});
+}
+
+function getWorkflowRunPullSignals(payload: unknown) {
+	const repository = getRepositoryIdentity(payload);
+	if (!repository || !isRecord(payload) || !isRecord(payload.workflow_run)) {
+		return [];
+	}
+
+	const prs = payload.workflow_run.pull_requests;
+	if (!Array.isArray(prs)) {
+		return [];
+	}
+
+	return prs.flatMap((pull) => {
 		if (!isRecord(pull) || typeof pull.number !== "number") {
 			return [];
 		}
@@ -306,8 +336,34 @@ export function getGitHubWebhookRevalidationSignalKeys(
 		return getCheckSuitePullSignals(payload);
 	}
 
+	if (
+		event === "repository_ruleset" ||
+		event === "branch_protection_rule" ||
+		event === "branch_protection_configuration"
+	) {
+		return [
+			githubRevalidationSignalKeys.repoProtection({
+				owner: repository.owner,
+				repo: repository.repo,
+			}),
+		];
+	}
+
+	// GitHub's `status` webhook payload has no pull_requests field, so we fan
+	// out to a repo-scoped signal. Any open PR page in the repo subscribes to
+	// this and re-fetches its status — captures CodeRabbit/CircleCI updates.
+	if (event === "status") {
+		return [
+			githubRevalidationSignalKeys.repoStatuses({
+				owner: repository.owner,
+				repo: repository.repo,
+			}),
+		];
+	}
+
 	if (event === "workflow_run") {
 		const runId = getWorkflowRunId(payload);
+		const pullSignals = getWorkflowRunPullSignals(payload);
 		return typeof runId === "number"
 			? [
 					githubRevalidationSignalKeys.actionsRepo({
@@ -319,12 +375,14 @@ export function getGitHubWebhookRevalidationSignalKeys(
 						repo: repository.repo,
 						runId,
 					}),
+					...pullSignals,
 				]
 			: [
 					githubRevalidationSignalKeys.actionsRepo({
 						owner: repository.owner,
 						repo: repository.repo,
 					}),
+					...pullSignals,
 				];
 	}
 
