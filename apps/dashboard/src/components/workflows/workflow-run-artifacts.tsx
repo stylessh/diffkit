@@ -12,7 +12,7 @@ import {
 	TooltipContent,
 	TooltipTrigger,
 } from "@diffkit/ui/components/tooltip";
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type { WorkflowRunArtifact } from "#/lib/github.types";
 
 export function WorkflowRunArtifacts({
@@ -123,6 +123,8 @@ function DigestCell({ digest }: { digest: string }) {
 		clearTimeout(timeoutRef.current);
 		timeoutRef.current = setTimeout(() => setCopied(false), 1500);
 	}, [digest]);
+
+	useEffect(() => () => clearTimeout(timeoutRef.current), []);
 
 	return (
 		<Tooltip open={copied}>

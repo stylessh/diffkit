@@ -17,8 +17,7 @@ export type DefGraphLayout = {
 export function buildLayoutFromDefinition(
 	jobs: WorkflowRunJob[],
 	definition: WorkflowDefinition,
-	collapsedNodes: Set<string>,
-	toggleCollapsed: (nodeId: string) => void,
+	collapsedIds: Set<string>,
 ): DefGraphLayout | null {
 	const matchedJobsByKey = new Map<string, WorkflowRunJob[]>();
 	const claimedJobIds = new Set<number>();
@@ -103,8 +102,7 @@ export function buildLayoutFromDefinition(
 						baseName: node.key,
 						jobs: node.matched,
 						aggregate: getAggregateState(node.matched),
-						collapsed: collapsedNodes.has(nodeId),
-						onToggleCollapsed: () => toggleCollapsed(nodeId),
+						collapsed: collapsedIds.has(nodeId),
 					},
 				} satisfies Node<MatrixNodeData, "matrix">;
 			} else {
@@ -116,8 +114,7 @@ export function buildLayoutFromDefinition(
 					position: { x, y: currentY },
 					data: {
 						job,
-						collapsed: collapsedNodes.has(nodeId),
-						onToggleCollapsed: () => toggleCollapsed(nodeId),
+						collapsed: collapsedIds.has(nodeId),
 					},
 				} satisfies Node<JobNodeData, "job">;
 			}

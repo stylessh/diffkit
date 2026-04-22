@@ -6,9 +6,8 @@ import {
 	getCheckState,
 } from "#/components/checks/check-state-icon";
 import type { WorkflowRunJob, WorkflowRunStep } from "#/lib/github.types";
-import { useNow } from "#/lib/use-now";
 import { NODE_CARD_CLASS, NODE_HEADER_CLASS, NODE_WIDTH } from "./constants";
-import { formatJobDuration } from "./format";
+import { JobDuration } from "./job-duration";
 
 export function getJobCardRingClass(state: CheckState): string {
 	if (state === "success") return "ring-4 ring-muted/80 dark:ring-muted/50";
@@ -51,9 +50,7 @@ export function JobCard({
 	expanded: boolean;
 	onToggle?: () => void;
 }) {
-	const now = useNow();
 	const state = getCheckState(job);
-	const duration = formatJobDuration(job, now);
 	const name = displayName ?? job.name;
 	return (
 		<div
@@ -70,11 +67,10 @@ export function JobCard({
 				<span className="min-w-0 flex-1 truncate font-medium text-sm">
 					{name}
 				</span>
-				{duration ? (
-					<span className="shrink-0 text-muted-foreground text-xs tabular-nums">
-						{duration}
-					</span>
-				) : null}
+				<JobDuration
+					job={job}
+					className="shrink-0 text-muted-foreground text-xs tabular-nums"
+				/>
 				{onToggle ? <NodeChevron open={expanded} /> : null}
 			</button>
 			{expanded ? (

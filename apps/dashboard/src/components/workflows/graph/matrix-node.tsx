@@ -1,10 +1,10 @@
 import { cn } from "@diffkit/ui/lib/utils";
 import { Handle, type Node, type NodeProps, Position } from "@xyflow/react";
+import { useCallback, useMemo } from "react";
 import {
 	CheckStateIcon,
 	getCheckState,
 } from "#/components/checks/check-state-icon";
-import { useNow } from "#/lib/use-now";
 import {
 	MATRIX_SUFFIX_RE,
 	NODE_CARD_CLASS,
@@ -12,18 +12,23 @@ import {
 	NODE_HEADER_CLASS,
 	NODE_WIDTH,
 } from "./constants";
-import { formatJobDuration } from "./format";
 import { NodeChevron } from "./job-card";
+import { JobDuration } from "./job-duration";
+import { useNodeToggle } from "./toggle-context";
 import type { MatrixNodeData } from "./types";
 
 export function MatrixNode({
+	id,
 	data,
 }: NodeProps<Node<MatrixNodeData, "matrix">>) {
-	const now = useNow();
+	const toggle = useNodeToggle();
+	const onToggle = useCallback(() => toggle(id), [id, toggle]);
+	const canToggle = data.toggleable !== false;
 	const expanded = !data.collapsed;
-	const completedCount = data.jobs.filter(
-		(j) => j.status === "completed",
-	).length;
+	const completedCount = useMemo(
+		() => data.jobs.filter((j) => j.status === "completed").length,
+		[data.jobs],
+	);
 	return (
 		<>
 			<Handle
@@ -41,8 +46,8 @@ export function MatrixNode({
 				>
 					<button
 						type="button"
-						onClick={data.onToggleCollapsed}
-						disabled={!data.onToggleCollapsed}
+						onClick={canToggle ? onToggle : undefined}
+						disabled={!canToggle}
 						className={NODE_HEADER_CLASS}
 					>
 						<CheckStateIcon state={data.aggregate} />
@@ -52,7 +57,7 @@ export function MatrixNode({
 						<span className="inline-flex shrink-0 items-center rounded-full bg-muted px-1.5 py-0.5 font-medium text-[10px] text-muted-foreground tabular-nums">
 							{data.jobs.length}
 						</span>
-						{data.onToggleCollapsed ? <NodeChevron open={expanded} /> : null}
+						{canToggle ? <NodeChevron open={expanded} /> : null}
 					</button>
 					{expanded ? (
 						<div className="flex items-center justify-between gap-3 border-t px-3 py-1.5 text-xs">
@@ -67,7 +72,6 @@ export function MatrixNode({
 					? data.jobs.map((job) => {
 							const match = MATRIX_SUFFIX_RE.exec(job.name);
 							const variant = match ? `(${match[2]})` : job.name;
-							const jobDuration = formatJobDuration(job, now);
 							return (
 								<div
 									key={job.id}
@@ -78,11 +82,10 @@ export function MatrixNode({
 									<span className="min-w-0 flex-1 truncate font-medium">
 										{variant}
 									</span>
-									{jobDuration ? (
-										<span className="shrink-0 text-muted-foreground tabular-nums">
-											{jobDuration}
-										</span>
-									) : null}
+									<JobDuration
+										job={job}
+										className="shrink-0 text-muted-foreground tabular-nums"
+									/>
 								</div>
 							);
 						})

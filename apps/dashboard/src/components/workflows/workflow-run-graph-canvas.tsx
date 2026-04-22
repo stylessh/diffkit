@@ -26,6 +26,7 @@ import {
 import { estimateNodeHeight } from "./graph/height";
 import { JobNode } from "./graph/job-node";
 import { MatrixNode } from "./graph/matrix-node";
+import { NodeToggleProvider } from "./graph/toggle-context";
 import type {
 	FlowNode,
 	GraphEdge,
@@ -37,6 +38,14 @@ const nodeTypes = {
 	job: JobNode,
 	matrix: MatrixNode,
 };
+
+const FIT_VIEW_OPTIONS = { padding: 0.25, maxZoom: 1 };
+const PRO_OPTIONS = { hideAttribution: true };
+const DEFAULT_EDGE_OPTIONS = { type: "smoothstep" as const };
+
+function getPopupNodeId(matrixId: string, jobId: number): string {
+	return `variant-${matrixId}-${jobId}`;
+}
 
 export function WorkflowRunGraphCanvas({
 	run,
@@ -52,11 +61,16 @@ export function WorkflowRunGraphCanvas({
 		return segments[segments.length - 1] || run.path;
 	}, [run.path]);
 
-	const [collapsedNodes, setCollapsedNodes] = useState<Set<string>>(() => {
+	const [collapsedIds, setCollapsedIds] = useState<Set<string>>(() => {
 		const initial = new Set<string>();
 		for (const job of jobs) {
 			const match = MATRIX_SUFFIX_RE.exec(job.name);
-			if (!match) initial.add(`job-${job.id}`);
+			if (match) {
+				initial.add(getPopupNodeId(`matrix-${match[1]}`, job.id));
+				initial.add(getPopupNodeId(`def-${match[1]}`, job.id));
+			} else {
+				initial.add(`job-${job.id}`);
+			}
 		}
 		if (definition) {
 			for (const yamlJob of definition.jobs) {
@@ -66,48 +80,36 @@ export function WorkflowRunGraphCanvas({
 		return initial;
 	});
 
-	const toggleCollapsed = useCallback((nodeId: string) => {
-		setCollapsedNodes((prev) => {
-			const next = new Set(prev);
-			if (next.has(nodeId)) next.delete(nodeId);
-			else next.add(nodeId);
-			return next;
-		});
-	}, []);
-
-	const [collapsedPopupIds, setCollapsedPopupIds] = useState<Set<number>>(
-		() => {
-			const initial = new Set<number>();
-			for (const job of jobs) {
-				if (MATRIX_SUFFIX_RE.exec(job.name)) initial.add(job.id);
-			}
-			return initial;
-		},
-	);
-	const autoCollapsedPopupIdsRef = useRef<Set<number>>(
-		new Set(collapsedPopupIds),
-	);
+	const autoCollapsedRef = useRef<Set<string>>(new Set(collapsedIds));
 	useEffect(() => {
-		const toAdd: number[] = [];
+		const toAdd: string[] = [];
 		for (const job of jobs) {
-			if (!MATRIX_SUFFIX_RE.exec(job.name)) continue;
-			if (!autoCollapsedPopupIdsRef.current.has(job.id)) {
-				toAdd.push(job.id);
-				autoCollapsedPopupIdsRef.current.add(job.id);
+			const match = MATRIX_SUFFIX_RE.exec(job.name);
+			if (!match) continue;
+			const matrixPopup = getPopupNodeId(`matrix-${match[1]}`, job.id);
+			const defPopup = getPopupNodeId(`def-${match[1]}`, job.id);
+			if (!autoCollapsedRef.current.has(matrixPopup)) {
+				toAdd.push(matrixPopup);
+				autoCollapsedRef.current.add(matrixPopup);
+			}
+			if (!autoCollapsedRef.current.has(defPopup)) {
+				toAdd.push(defPopup);
+				autoCollapsedRef.current.add(defPopup);
 			}
 		}
 		if (toAdd.length === 0) return;
-		setCollapsedPopupIds((prev) => {
+		setCollapsedIds((prev) => {
 			const next = new Set(prev);
 			for (const id of toAdd) next.add(id);
 			return next;
 		});
 	}, [jobs]);
-	const togglePopupCollapsed = useCallback((jobId: number) => {
-		setCollapsedPopupIds((prev) => {
+
+	const toggleCollapsed = useCallback((nodeId: string) => {
+		setCollapsedIds((prev) => {
 			const next = new Set(prev);
-			if (next.has(jobId)) next.delete(jobId);
-			else next.add(jobId);
+			if (next.has(nodeId)) next.delete(nodeId);
+			else next.add(nodeId);
 			return next;
 		});
 	}, []);
@@ -119,12 +121,7 @@ export function WorkflowRunGraphCanvas({
 		let builtEdges: GraphEdge[] = [];
 
 		if (definition) {
-			const layout = buildLayoutFromDefinition(
-				jobs,
-				definition,
-				collapsedNodes,
-				toggleCollapsed,
-			);
+			const layout = buildLayoutFromDefinition(jobs, definition, collapsedIds);
 			if (layout) {
 				builtNodes = layout.nodes;
 				builtEdges = layout.edges;
@@ -150,8 +147,7 @@ export function WorkflowRunGraphCanvas({
 								baseName: group.baseName,
 								jobs: group.jobs,
 								aggregate: getAggregateState(group.jobs),
-								collapsed: collapsedNodes.has(nodeId),
-								onToggleCollapsed: () => toggleCollapsed(nodeId),
+								collapsed: collapsedIds.has(nodeId),
 							},
 						} satisfies Node<MatrixNodeData, "matrix">;
 					} else {
@@ -161,8 +157,7 @@ export function WorkflowRunGraphCanvas({
 							position: { x, y: currentY },
 							data: {
 								job: group.job,
-								collapsed: collapsedNodes.has(nodeId),
-								onToggleCollapsed: () => toggleCollapsed(nodeId),
+								collapsed: collapsedIds.has(nodeId),
 							},
 						} satisfies Node<JobNodeData, "job">;
 					}
@@ -197,15 +192,14 @@ export function WorkflowRunGraphCanvas({
 				matrix.position.x + NODE_WIDTH + COLUMN_GAP + VARIANT_POPUP_GAP;
 			let popupY = matrix.position.y;
 			for (const job of matrix.data.jobs) {
-				const popupId = `variant-${matrix.id}-${job.id}`;
+				const popupId = getPopupNodeId(matrix.id, job.id);
 				const popupNode = {
 					id: popupId,
 					type: "job",
 					position: { x: popupX, y: popupY },
 					data: {
 						job,
-						collapsed: collapsedPopupIds.has(job.id),
-						onToggleCollapsed: () => togglePopupCollapsed(job.id),
+						collapsed: collapsedIds.has(popupId),
 					},
 				} satisfies Node<JobNodeData, "job">;
 				builtNodes.push(popupNode);
@@ -220,14 +214,7 @@ export function WorkflowRunGraphCanvas({
 		}
 
 		return { nodes: builtNodes, baseEdges: builtEdges };
-	}, [
-		jobs,
-		definition,
-		collapsedNodes,
-		toggleCollapsed,
-		collapsedPopupIds,
-		togglePopupCollapsed,
-	]);
+	}, [jobs, definition, collapsedIds]);
 
 	const edges = useMemo(() => {
 		if (!hoveredNodeId) {
@@ -272,6 +259,12 @@ export function WorkflowRunGraphCanvas({
 		}
 	}, []);
 
+	const onNodeMouseEnter = useCallback(
+		(_e: React.MouseEvent, node: Node) => setHoveredNodeId(node.id),
+		[],
+	);
+	const onNodeMouseLeave = useCallback(() => setHoveredNodeId(null), []);
+
 	return (
 		<div
 			ref={containerRef}
@@ -289,27 +282,29 @@ export function WorkflowRunGraphCanvas({
 				{nodes.length === 0 ? (
 					<p className="p-6 text-muted-foreground text-sm">No jobs yet.</p>
 				) : (
-					<ReactFlow
-						nodes={nodes}
-						edges={edges}
-						nodeTypes={nodeTypes}
-						fitView
-						fitViewOptions={{ padding: 0.25, maxZoom: 1 }}
-						proOptions={{ hideAttribution: true }}
-						nodesConnectable={false}
-						nodesDraggable={false}
-						edgesFocusable={false}
-						defaultEdgeOptions={{ type: "smoothstep" }}
-						onNodeMouseEnter={(_e, node) => setHoveredNodeId(node.id)}
-						onNodeMouseLeave={() => setHoveredNodeId(null)}
-						className="!bg-surface-1 [&_.react-flow__node]:!cursor-default"
-					>
-						<Background color="var(--color-border)" gap={20} size={1} />
-						<GraphControls
-							isFullscreen={isFullscreen}
-							onToggleFullscreen={toggleFullscreen}
-						/>
-					</ReactFlow>
+					<NodeToggleProvider value={toggleCollapsed}>
+						<ReactFlow
+							nodes={nodes}
+							edges={edges}
+							nodeTypes={nodeTypes}
+							fitView
+							fitViewOptions={FIT_VIEW_OPTIONS}
+							proOptions={PRO_OPTIONS}
+							nodesConnectable={false}
+							nodesDraggable={false}
+							edgesFocusable={false}
+							defaultEdgeOptions={DEFAULT_EDGE_OPTIONS}
+							onNodeMouseEnter={onNodeMouseEnter}
+							onNodeMouseLeave={onNodeMouseLeave}
+							className="!bg-surface-1 [&_.react-flow__node]:!cursor-default"
+						>
+							<Background color="var(--color-border)" gap={20} size={1} />
+							<GraphControls
+								isFullscreen={isFullscreen}
+								onToggleFullscreen={toggleFullscreen}
+							/>
+						</ReactFlow>
+					</NodeToggleProvider>
 				)}
 			</div>
 

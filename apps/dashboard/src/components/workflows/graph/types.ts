@@ -9,7 +9,7 @@ export type JobGroup =
 export type JobNodeData = {
 	job: WorkflowRunJob;
 	collapsed?: boolean;
-	onToggleCollapsed?: () => void;
+	toggleable?: boolean;
 };
 
 export type MatrixNodeData = {
@@ -17,7 +17,7 @@ export type MatrixNodeData = {
 	jobs: WorkflowRunJob[];
 	aggregate: CheckState;
 	collapsed?: boolean;
-	onToggleCollapsed?: () => void;
+	toggleable?: boolean;
 };
 
 export type FlowNode =

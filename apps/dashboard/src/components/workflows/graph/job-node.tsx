@@ -1,9 +1,14 @@
 import { Handle, type Node, type NodeProps, Position } from "@xyflow/react";
+import { useCallback } from "react";
 import { NODE_HANDLE_CLASS } from "./constants";
 import { JobCard } from "./job-card";
+import { useNodeToggle } from "./toggle-context";
 import type { JobNodeData } from "./types";
 
-export function JobNode({ data }: NodeProps<Node<JobNodeData, "job">>) {
+export function JobNode({ id, data }: NodeProps<Node<JobNodeData, "job">>) {
+	const toggle = useNodeToggle();
+	const onToggle = useCallback(() => toggle(id), [id, toggle]);
+	const canToggle = data.toggleable !== false;
 	const expanded = !data.collapsed;
 	return (
 		<>
@@ -15,7 +20,7 @@ export function JobNode({ data }: NodeProps<Node<JobNodeData, "job">>) {
 			<JobCard
 				job={data.job}
 				expanded={expanded}
-				onToggle={data.onToggleCollapsed}
+				onToggle={canToggle ? onToggle : undefined}
 			/>
 			<Handle
 				type="source"
