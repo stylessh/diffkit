@@ -30,15 +30,15 @@ export function WorkflowRunSummary({
 	artifacts: WorkflowRunArtifact[];
 	isJobsLoading: boolean;
 }) {
-	const now = useNow();
 	const triggerTime = run.runStartedAt ?? run.createdAt;
-	const totalDurationMs = getTotalDurationMs(run, jobs, now);
+	const isRunLive = run.status !== "completed";
+	const staticDurationMs = isRunLive ? null : getCompletedDurationMs(run, jobs);
 
 	return (
 		<div className="flex flex-wrap items-center gap-x-8 gap-y-3 rounded-lg bg-surface-1 px-4 py-3 text-sm">
 			<div className="flex min-w-0 flex-1 flex-col gap-1">
 				<span className="text-xs text-muted-foreground">
-					Triggered via {run.event} {formatRelativeTime(triggerTime, now)}
+					Triggered via {run.event} <RelativeTime dateStr={triggerTime} />
 				</span>
 				<div className="flex min-w-0 items-center gap-2">
 					{run.triggeringActor ? (
@@ -79,10 +79,12 @@ export function WorkflowRunSummary({
 				label="Total duration"
 				icon={ClockIcon}
 				value={
-					isJobsLoading && totalDurationMs == null ? (
+					isRunLive ? (
+						<LiveTotalDuration run={run} />
+					) : staticDurationMs == null && isJobsLoading ? (
 						<Skeleton className="h-4 w-12" />
 					) : (
-						formatDuration(totalDurationMs)
+						formatDuration(staticDurationMs)
 					)
 				}
 			/>
@@ -105,6 +107,20 @@ export function WorkflowRunSummary({
 			/>
 		</div>
 	);
+}
+
+function RelativeTime({ dateStr }: { dateStr: string }) {
+	const now = useNow();
+	return <>{formatRelativeTime(dateStr, now)}</>;
+}
+
+function LiveTotalDuration({ run }: { run: WorkflowRun }) {
+	const now = useNow();
+	const start = run.runStartedAt ?? run.createdAt;
+	if (!start) return <>—</>;
+	const startMs = new Date(start).getTime();
+	if (Number.isNaN(startMs)) return <>—</>;
+	return <>{formatDuration(Math.max(0, now - startMs))}</>;
 }
 
 type IconComponent = ComponentType<
@@ -163,19 +179,14 @@ function formatStatus(run: WorkflowRun): string {
 	return run.status;
 }
 
-function getTotalDurationMs(
+function getCompletedDurationMs(
 	run: WorkflowRun,
 	jobs: WorkflowRunJob[],
-	now: number,
 ): number | null {
 	const start = run.runStartedAt ?? run.createdAt;
 	if (!start) return null;
 	const startMs = new Date(start).getTime();
 	if (Number.isNaN(startMs)) return null;
-
-	if (run.status !== "completed") {
-		return now - startMs;
-	}
 
 	const jobEndTimes = jobs
 		.map((j) =>
