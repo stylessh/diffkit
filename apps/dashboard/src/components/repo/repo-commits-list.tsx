@@ -71,6 +71,7 @@ export function RepoCommitsPage({
 	);
 	const groups = useMemo(() => groupCommitsByDay(commits), [commits]);
 	const repoData = overviewQuery.data;
+	const pathSegments = currentPath ? currentPath.split("/") : [];
 
 	const handleBranchChange = useCallback(
 		(branch: string) => {
@@ -99,9 +100,7 @@ export function RepoCommitsPage({
 						: `/${owner}/${repo}/commits/${currentRef}`,
 					repo: `${owner}/${repo}`,
 					iconColor: "text-muted-foreground",
-					tabId: currentPath
-						? `commits:${owner}/${repo}:${currentPath}`
-						: `commits:${owner}/${repo}`,
+					tabId: `commits:${owner}/${repo}`,
 				}
 			: null,
 	);
@@ -137,37 +136,62 @@ export function RepoCommitsPage({
 	return (
 		<div className="h-full overflow-auto">
 			<div className="mx-auto flex w-full max-w-5xl flex-col gap-6 px-3 py-10 md:px-6">
-				<header className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-					<div className="min-w-0 space-y-2">
-						<Link
-							to="/$owner/$repo"
-							params={{ owner, repo }}
-							className="text-sm font-medium text-muted-foreground transition-colors hover:text-foreground hover:underline"
-						>
-							{owner}/{repo}
-						</Link>
-						<h1 className="text-2xl font-semibold tracking-tight">Commits</h1>
-						{currentPath && (
-							<p className="break-all text-sm text-muted-foreground">
-								{currentPath}
+				<header className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+					<div className="flex min-w-0 items-start gap-3">
+						<div className="mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-md bg-surface-1 text-muted-foreground">
+							<GitCommitIcon size={15} strokeWidth={2} />
+						</div>
+						<div className="min-w-0 space-y-1">
+							<h1 className="flex min-w-0 flex-wrap items-center gap-x-1.5 gap-y-1 text-lg font-semibold tracking-tight">
+								<Link
+									to="/$owner/$repo"
+									params={{ owner, repo }}
+									className="text-accent-foreground transition-colors hover:underline"
+								>
+									{owner}
+								</Link>
+								<span className="text-muted-foreground">/</span>
+								<Link
+									to="/$owner/$repo"
+									params={{ owner, repo }}
+									className="text-accent-foreground transition-colors hover:underline"
+								>
+									{repo}
+								</Link>
+								{pathSegments.map((segment, index) => (
+									<span
+										key={pathSegments.slice(0, index + 1).join("/")}
+										className="contents"
+									>
+										<span className="text-muted-foreground">/</span>
+										<span className="break-all">{segment}</span>
+									</span>
+								))}
+							</h1>
+							<p className="text-sm text-muted-foreground">
+								{currentPath
+									? "Commits that touched this path."
+									: "Commits on this repository."}
 							</p>
+						</div>
+					</div>
+					<div className="shrink-0">
+						{repoData ? (
+							<BranchSelector
+								repo={repoData}
+								currentRef={currentRef}
+								scope={scope}
+								onBranchChange={handleBranchChange}
+							/>
+						) : (
+							<div className="flex min-w-0 items-center gap-2 rounded-lg border bg-surface-0 px-3 py-2 text-sm text-muted-foreground">
+								<GitBranchIcon size={15} className="shrink-0" />
+								<span className="truncate font-medium text-foreground">
+									{currentRef}
+								</span>
+							</div>
 						)}
 					</div>
-					{repoData ? (
-						<BranchSelector
-							repo={repoData}
-							currentRef={currentRef}
-							scope={scope}
-							onBranchChange={handleBranchChange}
-						/>
-					) : (
-						<div className="flex min-w-0 items-center gap-2 rounded-lg border bg-surface-0 px-3 py-2 text-sm text-muted-foreground">
-							<GitBranchIcon size={15} className="shrink-0" />
-							<span className="truncate font-medium text-foreground">
-								{currentRef}
-							</span>
-						</div>
-					)}
 				</header>
 
 				<section className="overflow-hidden rounded-lg border bg-surface-0">

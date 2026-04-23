@@ -23,6 +23,7 @@ export function LatestCommitBar({
 	defaultBranch,
 	defaultBranchTip,
 	path,
+	historyLabel = "Commits",
 }: {
 	owner: string;
 	repoName: string;
@@ -31,6 +32,7 @@ export function LatestCommitBar({
 	defaultBranch: string;
 	defaultBranchTip: RepoOverview["latestCommit"];
 	path?: string;
+	historyLabel?: string;
 }) {
 	const pathCommitQuery = useQuery({
 		...githubFileLastCommitQueryOptions(scope, {
@@ -122,7 +124,7 @@ export function LatestCommitBar({
 					className="-my-1 -mr-1 flex items-center gap-1 rounded-md px-2 py-1.5 font-medium text-foreground transition-colors hover:bg-surface-2"
 				>
 					<GitCommitIcon size={14} />
-					<span className="hidden sm:inline">Commits</span>
+					<span className="hidden sm:inline">{historyLabel}</span>
 				</Link>
 			</div>
 		</div>
