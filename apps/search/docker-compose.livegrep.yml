@@ -12,7 +12,7 @@ services:
         "0.0.0.0:9999"
       ]
     volumes:
-      - ./search-data:/data
+      - ./.local:/data
     networks:
       - diffkit-search
     restart: unless-stopped
@@ -53,7 +53,7 @@ services:
     ports:
       - "8910:8910"
     volumes:
-      - ./search-data:/var/lib/diffkit-search
+      - ./.local:/var/lib/diffkit-search
     depends_on:
       - livegrep-frontend
     networks:
