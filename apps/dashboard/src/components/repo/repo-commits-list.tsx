@@ -38,11 +38,13 @@ export function RepoCommitsPage({
 	owner,
 	repo,
 	currentRef,
+	currentPath,
 	scope,
 }: {
 	owner: string;
 	repo: string;
 	currentRef: string;
+	currentPath: string;
 	scope: GitHubQueryScope;
 }) {
 	const navigate = useNavigate();
@@ -58,6 +60,7 @@ export function RepoCommitsPage({
 			owner,
 			repo,
 			ref: currentRef,
+			...(currentPath ? { path: currentPath } : {}),
 			perPage: COMMITS_PAGE_SIZE,
 		}),
 	);
@@ -74,21 +77,31 @@ export function RepoCommitsPage({
 			if (branch === currentRef) return;
 			void navigate({
 				to: "/$owner/$repo/commits/$",
-				params: { owner, repo, _splat: branch },
+				params: {
+					owner,
+					repo,
+					_splat: currentPath ? `${branch}/${currentPath}` : branch,
+				},
 			});
 		},
-		[currentRef, navigate, owner, repo],
+		[currentPath, currentRef, navigate, owner, repo],
 	);
 
 	useRegisterTab(
 		repoData
 			? {
 					type: "commits",
-					title: `${repoData.name} commits`,
-					url: `/${owner}/${repo}/commits/${currentRef}`,
+					title: currentPath
+						? `${currentPath.split("/").pop()} commits`
+						: `${repoData.name} commits`,
+					url: currentPath
+						? `/${owner}/${repo}/commits/${currentRef}/${currentPath}`
+						: `/${owner}/${repo}/commits/${currentRef}`,
 					repo: `${owner}/${repo}`,
 					iconColor: "text-muted-foreground",
-					tabId: `commits:${owner}/${repo}`,
+					tabId: currentPath
+						? `commits:${owner}/${repo}:${currentPath}`
+						: `commits:${owner}/${repo}`,
 				}
 			: null,
 	);
@@ -134,6 +147,11 @@ export function RepoCommitsPage({
 							{owner}/{repo}
 						</Link>
 						<h1 className="text-2xl font-semibold tracking-tight">Commits</h1>
+						{currentPath && (
+							<p className="break-all text-sm text-muted-foreground">
+								{currentPath}
+							</p>
+						)}
 					</div>
 					{repoData ? (
 						<BranchSelector

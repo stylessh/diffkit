@@ -249,7 +249,13 @@ export const githubQueryKeys = {
 		) => ["github", scope.userId, "repo", "refHeadCommit", input] as const,
 		commits: (
 			scope: GitHubQueryScope,
-			input: { owner: string; repo: string; ref: string; perPage?: number },
+			input: {
+				owner: string;
+				repo: string;
+				ref: string;
+				path?: string;
+				perPage?: number;
+			},
 		) => ["github", scope.userId, "repo", "commits", input] as const,
 		treeEntryCommits: (
 			scope: GitHubQueryScope,
@@ -861,7 +867,13 @@ export function githubRefHeadCommitQueryOptions(
 
 export function githubRepoCommitsQueryOptions(
 	scope: GitHubQueryScope,
-	input: { owner: string; repo: string; ref: string; perPage?: number },
+	input: {
+		owner: string;
+		repo: string;
+		ref: string;
+		path?: string;
+		perPage?: number;
+	},
 ) {
 	return infiniteQueryOptions({
 		queryKey: githubQueryKeys.repo.commits(scope, input),

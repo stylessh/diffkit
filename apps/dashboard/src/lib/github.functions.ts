@@ -9568,6 +9568,7 @@ type RepoCommitsInput = {
 	owner: string;
 	repo: string;
 	ref: string;
+	path?: string;
 	page?: number;
 	perPage?: number;
 };
@@ -9597,6 +9598,7 @@ export const getRepoCommits = createServerFn({ method: "GET" })
 					owner: data.owner,
 					repo: data.repo,
 					sha: data.ref,
+					...(data.path ? { path: data.path } : {}),
 					page,
 					per_page: perPage,
 					headers,

@@ -27,7 +27,7 @@ export const Route = createFileRoute("/_protected/$owner/$repo/commits/$")({
 			context.queryClient.ensureQueryData(overviewOptions),
 			context.queryClient.ensureQueryData(branchesOptions),
 		]);
-		const { ref } = parseRepoRef(splat, {
+		const { ref, path } = parseRepoRef(splat, {
 			branches: branches ?? undefined,
 			defaultBranch: overview?.defaultBranch,
 		});
@@ -37,11 +37,12 @@ export const Route = createFileRoute("/_protected/$owner/$repo/commits/$")({
 				owner: params.owner,
 				repo: params.repo,
 				ref,
+				...(path ? { path } : {}),
 				perPage: 30,
 			}),
 		);
 
-		return { ref };
+		return { ref, path };
 	},
 	head: ({ match, params }) =>
 		buildSeo({
@@ -56,10 +57,16 @@ export const Route = createFileRoute("/_protected/$owner/$repo/commits/$")({
 function CommitsRoute() {
 	const { user } = Route.useRouteContext();
 	const { owner, repo } = Route.useParams();
-	const { ref } = Route.useLoaderData();
+	const { ref, path } = Route.useLoaderData();
 	const scope = useMemo(() => ({ userId: user.id }), [user.id]);
 
 	return (
-		<RepoCommitsPage owner={owner} repo={repo} currentRef={ref} scope={scope} />
+		<RepoCommitsPage
+			owner={owner}
+			repo={repo}
+			currentRef={ref}
+			currentPath={path}
+			scope={scope}
+		/>
 	);
 }
