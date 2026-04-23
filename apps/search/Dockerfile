@@ -10,6 +10,7 @@ RUN corepack enable && corepack prepare pnpm@10.15.0 --activate
 
 # Copy only workspace manifests first so dependency install can be cached.
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml /app/
+COPY patches /app/patches
 COPY apps/search/package.json /app/apps/search/package.json
 
 # Install only dependencies required by the search service.
