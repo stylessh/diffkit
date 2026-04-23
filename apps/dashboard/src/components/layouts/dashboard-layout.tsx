@@ -2,6 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { getRouteApi, Outlet } from "@tanstack/react-router";
 import { motion } from "motion/react";
 import { lazy, Suspense, useEffect } from "react";
+import { countUniqueById } from "#/lib/count-unique";
 import {
 	githubMyIssuesQueryOptions,
 	githubMyPullsQueryOptions,
@@ -68,17 +69,21 @@ export function DashboardLayout() {
 
 	const pullCount =
 		hasMounted && pullsQuery.data
-			? pullsQuery.data.reviewRequested.length +
-				pullsQuery.data.assigned.length +
-				pullsQuery.data.authored.length +
-				pullsQuery.data.mentioned.length +
-				pullsQuery.data.involved.length
+			? countUniqueById([
+					...pullsQuery.data.reviewRequested,
+					...pullsQuery.data.assigned,
+					...pullsQuery.data.authored,
+					...pullsQuery.data.mentioned,
+					...pullsQuery.data.involved,
+				])
 			: undefined;
 	const issueCount =
 		hasMounted && issuesQuery.data
-			? issuesQuery.data.assigned.length +
-				issuesQuery.data.authored.length +
-				issuesQuery.data.mentioned.length
+			? countUniqueById([
+					...issuesQuery.data.assigned,
+					...issuesQuery.data.authored,
+					...issuesQuery.data.mentioned,
+				])
 			: undefined;
 	const tabsReady = hasMounted && Boolean(pullsQuery.data && issuesQuery.data);
 
