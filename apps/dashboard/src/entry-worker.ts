@@ -1,4 +1,9 @@
 import startEntry from "@tanstack/react-start/server-entry";
+import {
+	handleSearchQueue,
+	handleSearchScheduled,
+	maybeHandleSearchRequest,
+} from "#/lib/search-worker";
 
 export { SignalRelay } from "./lib/signal-relay.server";
 
@@ -53,6 +58,14 @@ export default {
 	): Promise<Response> {
 		const url = new URL(request.url);
 
+		const searchResponse = await maybeHandleSearchRequest({
+			request,
+			env: env as unknown as Cloudflare.Env,
+		});
+		if (searchResponse) {
+			return applySecurityHeaders(searchResponse);
+		}
+
 		if (
 			url.pathname === "/api/ws/signals" &&
 			request.headers.get("Upgrade") === "websocket"
@@ -86,5 +99,28 @@ export default {
 		);
 
 		return applySecurityHeaders(response);
+	},
+	async queue(
+		batch: MessageBatch<unknown>,
+		env: Record<string, unknown>,
+		ctx: ExecutionContext,
+	) {
+		await handleSearchQueue({
+			batch: batch as MessageBatch<
+				import("#/lib/search-worker").SearchQueueMessage
+			>,
+			env: env as unknown as Cloudflare.Env,
+			ctx,
+		});
+	},
+	async scheduled(
+		_controller: ScheduledController,
+		env: Record<string, unknown>,
+		ctx: ExecutionContext,
+	) {
+		await handleSearchScheduled({
+			env: env as unknown as Cloudflare.Env,
+			ctx,
+		});
 	},
 };

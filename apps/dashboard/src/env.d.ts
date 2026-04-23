@@ -5,6 +5,10 @@ declare namespace Cloudflare {
 	interface Env {
 		/** Public base URL for R2 comment media (custom domain or r2.dev). */
 		R2_PUBLIC_BASE_URL?: string;
+		LIVEGREP_BASE_URL?: string;
+		LIVEGREP_API_TOKEN?: string;
+		SEARCH_CONTROL_BASE_URL?: string;
+		SEARCH_CONTROL_TOKEN?: string;
 		GITHUB_OAUTH_CLIENT_ID?: string;
 		GITHUB_OAUTH_CLIENT_SECRET?: string;
 		GITHUB_APP_CLIENT_ID?: string;
@@ -18,5 +22,8 @@ declare namespace Cloudflare {
 		BETTER_AUTH_SECRET: string;
 		BETTER_AUTH_URL: string;
 		SIGNAL_RELAY: DurableObjectNamespace;
+		REPO_SYNC_QUEUE?: Queue<import("#/lib/search-worker").SearchQueueMessage>;
+		INDEX_BUILD_QUEUE?: Queue<import("#/lib/search-worker").SearchQueueMessage>;
+		SEARCH_INDEX_ARTIFACTS?: R2Bucket;
 	}
 }
