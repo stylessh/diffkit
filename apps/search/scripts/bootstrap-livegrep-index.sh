@@ -17,7 +17,7 @@ fi
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 APP_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
-DATA_DIR="$APP_DIR/search-data"
+DATA_DIR="$APP_DIR/.local"
 
 mkdir -p "$DATA_DIR"
 
