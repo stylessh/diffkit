@@ -1,4 +1,5 @@
 import { createFileRoute, redirect } from "@tanstack/react-router";
+import { DashboardViewportLoading } from "#/components/layouts/dashboard-content-loading";
 import { DashboardLayout } from "#/components/layouts/dashboard-layout";
 import { ErrorScreen } from "#/components/layouts/error-screen";
 import { getSession } from "#/lib/auth.functions";
@@ -67,5 +68,6 @@ export const Route = createFileRoute("/_protected")({
 		});
 	},
 	component: DashboardLayout,
+	pendingComponent: DashboardViewportLoading,
 	errorComponent: ErrorScreen,
 });

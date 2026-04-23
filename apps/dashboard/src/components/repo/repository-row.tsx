@@ -135,8 +135,21 @@ export const RepositoryRow = memo(function RepositoryRow({
 		>
 			<div className="flex min-w-0 flex-col gap-0.5">
 				<div className="flex min-w-0 max-w-full items-center gap-x-2">
-					<p className="min-w-0 truncate text-sm font-medium">
-						{repo.fullName}
+					{/*
+					 * Split owner/name so a long owner login doesn't consume all the
+					 * space and hide the repo name. The owner takes flexible space and
+					 * truncates first; the repo name stays readable at its natural
+					 * size. See diffkit#154.
+					 */}
+					<p
+						className="flex min-w-0 items-baseline text-sm font-medium"
+						title={repo.fullName}
+					>
+						<span className="min-w-0 flex-1 truncate text-muted-foreground">
+							{repo.owner}
+						</span>
+						<span className="shrink-0 text-muted-foreground">/</span>
+						<span className="shrink-0 truncate">{repo.name}</span>
 					</p>
 					<VisibilityBadge visibility={repo.visibility} />
 				</div>
