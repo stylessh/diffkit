@@ -46,20 +46,18 @@ function extractByGroup(
 	stepName: string,
 	range?: StepLogRange,
 ): LogEntry[] {
-	const matches = findStepGroupMatches(lines, stepName);
-	if (matches.length === 0) return [];
+	const groups = findTopLevelGroups(lines);
+	if (groups.length === 0) return [];
 
-	const chosen = pickMatchByRange(matches, range);
+	const chosen = pickBestGroup(groups, stepName, range);
+	if (!chosen) return [];
 	return buildGroupEntries(lines, chosen.start);
 }
 
-type StepGroupMatch = { start: number; ts: string | null };
+type TopLevelGroup = { start: number; ts: string | null; name: string };
 
-function findStepGroupMatches(
-	lines: string[],
-	stepName: string,
-): StepGroupMatch[] {
-	const out: StepGroupMatch[] = [];
+function findTopLevelGroups(lines: string[]): TopLevelGroup[] {
+	const out: TopLevelGroup[] = [];
 	let depth = 0;
 	for (let i = 0; i < lines.length; i++) {
 		const raw = lines[i];
@@ -67,8 +65,8 @@ function findStepGroupMatches(
 		const { text, ts } = stripTimestamp(raw);
 		const gm = text.match(GROUP_RE);
 		if (gm) {
-			if (depth === 0 && matchesStep(gm[1] ?? "", stepName)) {
-				out.push({ start: i, ts });
+			if (depth === 0) {
+				out.push({ start: i, ts, name: gm[1] ?? "" });
 			}
 			depth++;
 			continue;
@@ -80,24 +78,51 @@ function findStepGroupMatches(
 	return out;
 }
 
-function pickMatchByRange(
-	matches: StepGroupMatch[],
-	range?: StepLogRange,
-): StepGroupMatch {
-	if (!range || matches.length === 1) return matches[0] as StepGroupMatch;
-	const startMs = range.startedAt ? Date.parse(range.startedAt) : null;
-	const endMs = range.completedAt ? Date.parse(range.completedAt) : null;
-	if (startMs == null && endMs == null) return matches[0] as StepGroupMatch;
+const GROUP_TS_TOLERANCE_MS = 3000;
 
-	for (const m of matches) {
-		if (!m.ts) continue;
-		const t = Date.parse(m.ts);
-		if (!Number.isFinite(t)) continue;
-		if (startMs != null && t < startMs) continue;
-		if (endMs != null && t > endMs) continue;
-		return m;
+function pickBestGroup(
+	groups: TopLevelGroup[],
+	stepName: string,
+	range?: StepLogRange,
+): TopLevelGroup | null {
+	const startMs = range?.startedAt ? Date.parse(range.startedAt) : null;
+	const endMs = range?.completedAt ? Date.parse(range.completedAt) : null;
+
+	const inRange =
+		startMs != null || endMs != null
+			? groups.filter((g) => {
+					if (!g.ts) return false;
+					const t = Date.parse(g.ts);
+					if (!Number.isFinite(t)) return false;
+					if (startMs != null && t < startMs - GROUP_TS_TOLERANCE_MS) {
+						return false;
+					}
+					if (endMs != null && t > endMs + GROUP_TS_TOLERANCE_MS) return false;
+					return true;
+				})
+			: null;
+
+	if (inRange && inRange.length > 0) {
+		const named = inRange.find((g) => matchesStep(g.name, stepName));
+		if (named) return named;
+		if (startMs != null) {
+			let best = inRange[0] as TopLevelGroup;
+			let bestDelta = Number.POSITIVE_INFINITY;
+			for (const g of inRange) {
+				const t = g.ts ? Date.parse(g.ts) : Number.NaN;
+				if (!Number.isFinite(t)) continue;
+				const delta = Math.abs(t - startMs);
+				if (delta < bestDelta) {
+					bestDelta = delta;
+					best = g;
+				}
+			}
+			return best;
+		}
+		return inRange[0] ?? null;
 	}
-	return matches[0] as StepGroupMatch;
+
+	return groups.find((g) => matchesStep(g.name, stepName)) ?? null;
 }
 
 function buildGroupEntries(lines: string[], startIdx: number): LogEntry[] {
