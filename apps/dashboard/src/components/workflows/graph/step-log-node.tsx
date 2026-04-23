@@ -149,6 +149,7 @@ export function StepLogNode({
 							runId: String(runId),
 							jobId: String(data.jobId),
 						}}
+						hash={`step-${data.stepNumber}`}
 						aria-label="Open job page"
 						className="rounded-md p-1 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
 					>
