@@ -36,7 +36,8 @@
       "@pierre/diffs>@shikijs/transformers": "4.0.2"
     },
     "patchedDependencies": {
-      "@pierre/diffs@1.1.12": "patches/@pierre__diffs@1.1.12.patch"
+      "@pierre/diffs@1.1.12": "patches/@pierre__diffs@1.1.12.patch",
+      "miniflare@4.20260409.0": "patches/miniflare@4.20260409.0.patch"
     }
   }
 }
