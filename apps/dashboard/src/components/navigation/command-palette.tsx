@@ -10,23 +10,49 @@ import {
 } from "@diffkit/ui/components/command";
 import { cn } from "@diffkit/ui/lib/utils";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { getRouteApi, useRouter } from "@tanstack/react-router";
+import { getRouteApi, useMatches, useRouter } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { CommandItem, CommandItemMeta } from "#/lib/command-palette/types";
 import {
 	cacheSearchResults,
 	getCommandSearchItems,
+	getSearchCodeCommandItems,
 	useCommandItems,
 } from "#/lib/command-palette/use-command-items";
 import { useCommandPalette } from "#/lib/command-palette/use-command-palette";
 import { formatRelativeTime } from "#/lib/format-relative-time";
-import { githubCommandPaletteSearchQueryOptions } from "#/lib/github.query";
+import {
+	codeSearchQueryOptions,
+	githubCommandPaletteSearchQueryOptions,
+} from "#/lib/github.query";
 
 const routeApi = getRouteApi("/_protected");
+
+function getActiveRepoFromMatches(
+	matches: ReturnType<typeof useMatches>,
+): string | undefined {
+	for (let index = matches.length - 1; index >= 0; index--) {
+		const params = matches[index]?.params;
+		if (!params || typeof params !== "object") {
+			continue;
+		}
+		const ownerCandidate = (params as Record<string, unknown>).owner;
+		const repoCandidate = (params as Record<string, unknown>).repo;
+		if (
+			typeof ownerCandidate !== "string" ||
+			typeof repoCandidate !== "string"
+		) {
+			continue;
+		}
+		return `${ownerCandidate}/${repoCandidate}`;
+	}
+	return undefined;
+}
 
 export function CommandPalette() {
 	const { open, setOpen, close } = useCommandPalette();
 	const router = useRouter();
+	const matches = useMatches();
 	const queryClient = useQueryClient();
 	const { user } = routeApi.useRouteContext();
 	const scope = useMemo(() => ({ userId: user.id }), [user.id]);
@@ -42,13 +68,44 @@ export function CommandPalette() {
 		),
 		enabled: shouldSearchGitHub,
 	});
+	const activeRepo = useMemo(
+		() => getActiveRepoFromMatches(matches),
+		[matches],
+	);
+	const codeSearchQuery = useQuery({
+		...codeSearchQueryOptions(scope, {
+			q: trimmedDebouncedSearch,
+			repo: activeRepo,
+			page: "1",
+		}),
+		enabled: shouldSearchGitHub,
+	});
 	const searchItems = useMemo(
 		() => getCommandSearchItems(githubSearchQuery.data),
 		[githubSearchQuery.data],
 	);
+	const codeSearchItems = useMemo(
+		() =>
+			getSearchCodeCommandItems(codeSearchQuery.data, async (item) => {
+				const [owner, repo, ...rest] = item.repo.split("/");
+				if (!(owner && repo) || rest.length > 0) {
+					return;
+				}
+				const routeSplat = `main/${item.path}`;
+				await router.navigate({
+					to: "/$owner/$repo/blob/$",
+					params: {
+						owner,
+						repo,
+						_splat: routeSplat,
+					},
+				});
+			}),
+		[codeSearchQuery.data, router],
+	);
 	const allItems = useMemo(
-		() => mergeCommandItems(items, searchItems),
-		[items, searchItems],
+		() => mergeCommandItems(items, searchItems, codeSearchItems),
+		[items, searchItems, codeSearchItems],
 	);
 
 	const cachedSearchDataRef = useRef(githubSearchQuery.data);
@@ -94,7 +151,8 @@ export function CommandPalette() {
 				<CommandEmpty>
 					{getEmptyMessage(
 						search,
-						shouldSearchGitHub && githubSearchQuery.isFetching,
+						shouldSearchGitHub &&
+							(githubSearchQuery.isFetching || codeSearchQuery.isFetching),
 					)}
 				</CommandEmpty>
 				{Array.from(groups.entries()).map(([groupName, groupItems]) => (
@@ -147,10 +205,11 @@ function useDebouncedValue(value: string, delayMs: number) {
 function mergeCommandItems(
 	localItems: CommandItem[],
 	searchItems: CommandItem[],
+	codeItems: CommandItem[],
 ) {
 	const itemsById = new Map<string, CommandItem>();
 
-	for (const item of [...localItems, ...searchItems]) {
+	for (const item of [...localItems, ...searchItems, ...codeItems]) {
 		if (!itemsById.has(item.id)) {
 			itemsById.set(item.id, item);
 		}

@@ -1,5 +1,6 @@
 import {
 	CodeIcon,
+	FileIcon,
 	GitMergeIcon,
 	GitPullRequestClosedIcon,
 	GitPullRequestDraftIcon,
@@ -20,6 +21,10 @@ import type {
 	PullSummary,
 	UserRepoSummary,
 } from "#/lib/github.types";
+import type {
+	SearchCodeResponse,
+	SearchCodeResultItem,
+} from "#/lib/search.types";
 import { getRegisteredCommands, subscribeCommands } from "./registry";
 import type { CommandItem } from "./types";
 
@@ -258,6 +263,30 @@ export function getCommandSearchItems(
 	}
 
 	return items;
+}
+
+export function getSearchCodeCommandItems(
+	result: SearchCodeResponse | undefined,
+	onOpenResult: (item: SearchCodeResultItem) => void | Promise<void>,
+): CommandItem[] {
+	if (!result) {
+		return [];
+	}
+
+	return result.results.slice(0, 20).map((item, index) => ({
+		id: `code-search:${item.repo}:${item.path}:${item.line_number}:${index}`,
+		label: `${item.path}:${item.line_number}`,
+		group: "Code Search",
+		icon: FileIcon,
+		keywords: [item.repo, item.path, item.line].filter(Boolean),
+		action: {
+			type: "execute",
+			fn: () => onOpenResult(item),
+		},
+		meta: {
+			repo: item.repo,
+		},
+	}));
 }
 
 export function cacheSearchResults(

@@ -53,6 +53,8 @@ import {
 import { githubCachePolicy } from "./github-cache-policy";
 import { ensureDefinedQueryData } from "./query-data";
 import type { ReposHubInput } from "./repos-hub-filter";
+import { searchCode } from "./search.functions";
+import type { SearchCodeInput } from "./search.types";
 
 type RepoState = "all" | "closed" | "open";
 type PullSort = "created" | "long-running" | "popularity" | "updated";
@@ -145,6 +147,8 @@ export const githubQueryKeys = {
 			scope: GitHubQueryScope,
 			input: CommandPaletteSearchInput,
 		) => ["github", scope.userId, "search", "commandPalette", input] as const,
+		code: (scope: GitHubQueryScope, input: SearchCodeInput) =>
+			["github", scope.userId, "search", "code", input] as const,
 	},
 	pulls: {
 		mine: (scope: GitHubQueryScope) =>
@@ -338,6 +342,18 @@ export function githubCommandPaletteSearchQueryOptions(
 	return queryOptions({
 		queryKey: githubQueryKeys.search.commandPalette(scope, input),
 		queryFn: () => searchCommandPaletteGitHub({ data: input }),
+		staleTime: 30 * 1000,
+		gcTime: 5 * 60 * 1000,
+	});
+}
+
+export function codeSearchQueryOptions(
+	scope: GitHubQueryScope,
+	input: SearchCodeInput,
+) {
+	return queryOptions({
+		queryKey: githubQueryKeys.search.code(scope, input),
+		queryFn: () => searchCode({ data: input }),
 		staleTime: 30 * 1000,
 		gcTime: 5 * 60 * 1000,
 	});
