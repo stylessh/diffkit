@@ -119,7 +119,8 @@ export function RepoCommitsPage({
 				if (
 					entry?.isIntersecting &&
 					commitsQuery.hasNextPage &&
-					!commitsQuery.isFetchingNextPage
+					!commitsQuery.isFetchingNextPage &&
+					!commitsQuery.isFetchNextPageError
 				) {
 					void commitsQuery.fetchNextPage();
 				}
@@ -132,11 +133,14 @@ export function RepoCommitsPage({
 	}, [
 		commitsQuery.hasNextPage,
 		commitsQuery.isFetchingNextPage,
+		commitsQuery.isFetchNextPageError,
 		commitsQuery.fetchNextPage,
 	]);
 
 	if (overviewQuery.error) throw overviewQuery.error;
-	if (commitsQuery.error) throw commitsQuery.error;
+	if (commitsQuery.isError && !commitsQuery.isFetchNextPageError) {
+		throw commitsQuery.error;
+	}
 
 	return (
 		<div className="h-full overflow-auto">
@@ -240,6 +244,19 @@ export function RepoCommitsPage({
 					{commitsQuery.isFetchingNextPage ? (
 						<div className="w-full overflow-hidden rounded-lg border bg-surface-0">
 							<RepoCommitsRowsSkeleton />
+						</div>
+					) : commitsQuery.isFetchNextPageError ? (
+						<div className="flex flex-col items-center gap-2 py-3 text-center">
+							<p className="text-sm text-muted-foreground">
+								Couldn't load more commits.
+							</p>
+							<Button
+								type="button"
+								variant="outline"
+								onClick={() => commitsQuery.fetchNextPage()}
+							>
+								Retry
+							</Button>
 						</div>
 					) : commitsQuery.hasNextPage ? (
 						<Button

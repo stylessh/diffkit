@@ -7,8 +7,8 @@
 	},
 	"scripts": {
 		"predev": "node ../../scripts/link-worktree-dev-vars.mjs",
-		"dev": "NODE_OPTIONS='--max-old-space-size=4096' vite dev --port 3000",
-		"build": "NODE_OPTIONS='--max-old-space-size=4096' vite build",
+		"dev": "cross-env NODE_OPTIONS=--max-old-space-size=4096 vite dev --port 3000",
+		"build": "cross-env NODE_OPTIONS=--max-old-space-size=4096 vite build",
 		"preview": "vite preview",
 		"test": "vitest run",
 		"format": "biome format",
@@ -60,6 +60,7 @@
 		"@types/react": "^19.2.0",
 		"@types/react-dom": "^19.2.0",
 		"@vitejs/plugin-react": "^5.1.4",
+		"cross-env": "^10.1.0",
 		"drizzle-kit": "^0.31.10",
 		"jsdom": "^28.1.0",
 		"react-scan": "^0.5.3",
