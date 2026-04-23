@@ -352,12 +352,28 @@ function parseSearchResultItem(item: unknown) {
 		return null;
 	}
 	const row = item as Record<string, unknown>;
-	const repo = typeof row.repo === "string" ? row.repo : null;
+	const repo =
+		typeof row.repo === "string"
+			? row.repo
+			: typeof row.tree === "string"
+				? row.tree
+				: null;
 	const path = typeof row.path === "string" ? row.path : null;
 	const line = typeof row.line === "string" ? row.line : "";
-	const lineNumber = row.line_number;
+	const lineNumberRaw = row.line_number ?? row.lno;
+	const lineNumber =
+		typeof lineNumberRaw === "number"
+			? lineNumberRaw
+			: typeof lineNumberRaw === "string"
+				? Number.parseInt(lineNumberRaw, 10)
+				: Number.NaN;
 
-	if (!repo || !path || typeof lineNumber !== "number") {
+	if (
+		!repo ||
+		!path ||
+		!Number.isFinite(lineNumber) ||
+		(lineNumber as number) <= 0
+	) {
 		return null;
 	}
 
@@ -366,8 +382,16 @@ function parseSearchResultItem(item: unknown) {
 		path,
 		line_number: lineNumber,
 		line,
-		context_before: Array.isArray(row.context_before) ? row.context_before : [],
-		context_after: Array.isArray(row.context_after) ? row.context_after : [],
+		context_before: Array.isArray(row.context_before)
+			? row.context_before.filter(
+					(entry): entry is string => typeof entry === "string",
+				)
+			: [],
+		context_after: Array.isArray(row.context_after)
+			? row.context_after.filter(
+					(entry): entry is string => typeof entry === "string",
+				)
+			: [],
 	};
 }
 

@@ -44,7 +44,7 @@ services:
     environment:
       PORT: "8910"
       HOST: "0.0.0.0"
-      SEARCH_CONTROL_TOKEN: "change-me"
+      SEARCH_CONTROL_TOKEN: "${SEARCH_CONTROL_TOKEN:?set SEARCH_CONTROL_TOKEN in your shell or .env}"
       LIVEGREP_UPSTREAM_BASE_URL: "http://livegrep-frontend:8910"
       LIVEGREP_SEARCH_PATH: "/api/v1/search"
       SEARCH_STORAGE_ROOT: "/var/lib/diffkit-search"

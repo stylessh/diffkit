@@ -11,26 +11,50 @@ interface UpstreamSearchResponse {
   results?: unknown;
 }
 
+function normalizeStringArray(value: unknown): string[] {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+  return value.filter((entry): entry is string => typeof entry === "string");
+}
+
+function normalizeLineNumber(value: unknown): number | null {
+  if (typeof value === "number" && Number.isFinite(value) && value > 0) {
+    return value;
+  }
+  if (typeof value === "string") {
+    const parsed = Number.parseInt(value, 10);
+    if (Number.isFinite(parsed) && parsed > 0) {
+      return parsed;
+    }
+  }
+  return null;
+}
+
 function asSearchResultItem(item: unknown): LivegrepSearchItem | null {
   if (!item || typeof item !== "object") {
     return null;
   }
   const row = item as Record<string, unknown>;
-  if (
-    typeof row.repo !== "string" ||
-    typeof row.path !== "string" ||
-    typeof row.line_number !== "number"
-  ) {
+  let repo: string | null = null;
+  if (typeof row.repo === "string") {
+    repo = row.repo;
+  } else if (typeof row.tree === "string") {
+    repo = row.tree;
+  }
+  const path = typeof row.path === "string" ? row.path : null;
+  const lineNumber = normalizeLineNumber(row.line_number ?? row.lno);
+  if (!(repo && path) || lineNumber === null) {
     return null;
   }
 
   return {
-    repo: row.repo,
-    path: row.path,
-    line_number: row.line_number,
+    repo,
+    path,
+    line_number: lineNumber,
     line: typeof row.line === "string" ? row.line : "",
-    context_before: Array.isArray(row.context_before) ? row.context_before : [],
-    context_after: Array.isArray(row.context_after) ? row.context_after : [],
+    context_before: normalizeStringArray(row.context_before),
+    context_after: normalizeStringArray(row.context_after),
   };
 }
 

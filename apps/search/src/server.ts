@@ -106,8 +106,20 @@ async function handleSearchRequest(request: RequestLike) {
     lang: url.searchParams.get("lang") ?? undefined,
     page: url.searchParams.get("page") ?? undefined,
   };
-  const response: LivegrepSearchResponse = await searchCode(query);
-  return jsonResponse(200, response);
+  try {
+    const response: LivegrepSearchResponse = await searchCode(query);
+    return jsonResponse(200, response);
+  } catch (error) {
+    // Keep palette/search UX stable when upstream livegrep is down.
+    return jsonResponse(200, {
+      results: [],
+      partial: true,
+      upstream_error:
+        error instanceof Error
+          ? error.message
+          : "Livegrep upstream unavailable",
+    });
+  }
 }
 
 function parseString(value: unknown) {
