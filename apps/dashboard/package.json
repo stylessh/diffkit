@@ -7,7 +7,7 @@
 	},
 	"scripts": {
 		"predev": "node ../../scripts/link-worktree-dev-vars.mjs",
-		"dev": "vite dev --port 3000",
+		"dev": "NODE_OPTIONS='--max-old-space-size=4096' vite dev --port 3000",
 		"build": "NODE_OPTIONS='--max-old-space-size=4096' vite build",
 		"preview": "vite preview",
 		"test": "vitest run",
