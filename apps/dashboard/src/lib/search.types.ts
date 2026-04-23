@@ -26,6 +26,7 @@ export type SearchCodeResponse = {
 	repo_status: Record<string, SearchRepoStatus>;
 	partial: boolean;
 	trace_id: string;
+	code_search_disabled?: boolean;
 };
 
 export type SearchCodeInput = {

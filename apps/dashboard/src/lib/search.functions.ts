@@ -11,6 +11,7 @@ import type {
 type SearchFetchErrorPayload = {
 	error?: string;
 	message?: string;
+	trace_id?: string;
 };
 
 function getRequestBaseUrl(request: Request) {
@@ -33,6 +34,10 @@ async function parseSearchResponse<T>(response: Response): Promise<T> {
 	throw new Error(message);
 }
 
+function isLivegrepBaseUrlUnsetMessage(message: string) {
+	return message.includes("LIVEGREP_BASE_URL is not configured");
+}
+
 export const searchCode = createServerFn({ method: "GET" })
 	.inputValidator(identityValidator<SearchCodeInput>)
 	.handler(async ({ data }): Promise<SearchCodeResponse> => {
@@ -52,7 +57,30 @@ export const searchCode = createServerFn({ method: "GET" })
 				Accept: "application/json",
 			},
 		});
-		return parseSearchResponse<SearchCodeResponse>(response);
+
+		if (response.ok) {
+			return (await response.json()) as SearchCodeResponse;
+		}
+
+		let payload: SearchFetchErrorPayload | null = null;
+		try {
+			payload = (await response.json()) as SearchFetchErrorPayload;
+		} catch {
+			payload = null;
+		}
+		const message =
+			payload?.error || payload?.message || "Search request failed";
+		if (response.status >= 500 && isLivegrepBaseUrlUnsetMessage(message)) {
+			return {
+				results: [],
+				repo_status: {},
+				partial: false,
+				trace_id: payload?.trace_id ?? "code-search-disabled",
+				code_search_disabled: true,
+			};
+		}
+
+		throw new Error(message);
 	});
 
 export const onboardSearchRepo = createServerFn({ method: "POST" })

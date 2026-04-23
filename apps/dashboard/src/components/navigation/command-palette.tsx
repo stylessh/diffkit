@@ -36,6 +36,7 @@ export function CommandPalette() {
 	const { user } = routeApi.useRouteContext();
 	const scope = useMemo(() => ({ userId: user.id }), [user.id]);
 	const [search, setSearch] = useState("");
+	const [isCodeSearchDisabled, setIsCodeSearchDisabled] = useState(false);
 	const debouncedSearch = useDebouncedValue(search, 250);
 	const trimmedDebouncedSearch = debouncedSearch.trim();
 	const shouldSearchGitHub = open && trimmedDebouncedSearch.length >= 2;
@@ -52,7 +53,7 @@ export function CommandPalette() {
 			q: trimmedDebouncedSearch,
 			page: "1",
 		}),
-		enabled: shouldSearchGitHub,
+		enabled: shouldSearchGitHub && !isCodeSearchDisabled,
 	});
 	const searchItems = useMemo(
 		() => getCommandSearchItems(githubSearchQuery.data),
@@ -90,6 +91,12 @@ export function CommandPalette() {
 		cacheSearchResults(queryClient, scope, data);
 	}, [githubSearchQuery.data, queryClient, scope]);
 
+	useEffect(() => {
+		if (codeSearchQuery.data?.code_search_disabled) {
+			setIsCodeSearchDisabled(true);
+		}
+	}, [codeSearchQuery.data?.code_search_disabled]);
+
 	const groups = new Map<string, CommandItem[]>();
 	for (const item of allItems) {
 		const list = groups.get(item.group) ?? [];
@@ -126,7 +133,8 @@ export function CommandPalette() {
 					{getEmptyMessage(
 						search,
 						shouldSearchGitHub &&
-							(githubSearchQuery.isFetching || codeSearchQuery.isFetching),
+							(githubSearchQuery.isFetching ||
+								(!isCodeSearchDisabled && codeSearchQuery.isFetching)),
 					)}
 				</CommandEmpty>
 				{Array.from(groups.entries()).map(([groupName, groupItems]) => (
