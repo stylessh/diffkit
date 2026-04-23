@@ -33,6 +33,7 @@ import {
 	countEntryLines,
 	extractStepLog,
 	type LogEntry,
+	splitLogLines,
 } from "./graph/parse-step-log";
 import { StepLogContent } from "./graph/step-log-content";
 import { getStepHashId } from "./step-hash";
@@ -205,6 +206,11 @@ function JobContainer({
 		onRefresh();
 	}, [queryClient, scope, owner, repo, jobId, onRefresh]);
 
+	const logLines = useMemo(
+		() => (rawLogs ? splitLogLines(rawLogs) : null),
+		[rawLogs],
+	);
+
 	if (!job) {
 		return (
 			<div className="overflow-hidden rounded-xl border bg-surface-1">
@@ -239,7 +245,7 @@ function JobContainer({
 						<JobStepRow
 							key={step.number}
 							step={step}
-							rawLogs={rawLogs}
+							logLines={logLines}
 							notAvailable={notAvailable}
 							isLogsLoading={isLogsLoading}
 							isLogsError={isLogsError}
@@ -352,13 +358,13 @@ function JobFooter({
 
 const JobStepRow = memo(function JobStepRow({
 	step,
-	rawLogs,
+	logLines,
 	notAvailable,
 	isLogsLoading,
 	isLogsError,
 }: {
 	step: WorkflowRunStep;
-	rawLogs: string | null;
+	logLines: string[] | null;
 	notAvailable: boolean;
 	isLogsLoading: boolean;
 	isLogsError: boolean;
@@ -402,12 +408,12 @@ const JobStepRow = memo(function JobStepRow({
 	}, [hashId]);
 
 	const entries = useMemo<LogEntry[]>(() => {
-		if (!rawLogs) return [];
-		return extractStepLog(rawLogs, step.name, {
+		if (!logLines) return [];
+		return extractStepLog(logLines, step.name, {
 			startedAt: step.startedAt,
 			completedAt: step.completedAt,
 		}).entries;
-	}, [rawLogs, step.name, step.startedAt, step.completedAt]);
+	}, [logLines, step.name, step.startedAt, step.completedAt]);
 
 	const totalLineCount = useMemo(() => countEntryLines(entries), [entries]);
 	const state = getCheckState({

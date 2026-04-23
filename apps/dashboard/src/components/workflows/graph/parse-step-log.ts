@@ -41,105 +41,29 @@ export type StepLogRange = {
 	completedAt?: string | null;
 };
 
-function extractByGroup(
-	lines: string[],
-	stepName: string,
-	range?: StepLogRange,
-): LogEntry[] {
-	const groups = findTopLevelGroups(lines);
-	if (groups.length === 0) return [];
-
-	const chosen = pickBestGroup(groups, stepName, range);
-	if (!chosen) return [];
-	return buildGroupEntries(lines, chosen.start);
-}
-
-type TopLevelGroup = { start: number; ts: string | null; name: string };
-
-function findTopLevelGroups(lines: string[]): TopLevelGroup[] {
-	const out: TopLevelGroup[] = [];
-	let depth = 0;
-	for (let i = 0; i < lines.length; i++) {
-		const raw = lines[i];
-		if (raw == null) continue;
-		const { text, ts } = stripTimestamp(raw);
-		const gm = text.match(GROUP_RE);
-		if (gm) {
-			if (depth === 0) {
-				out.push({ start: i, ts, name: gm[1] ?? "" });
-			}
-			depth++;
-			continue;
-		}
-		if (ENDGROUP_RE.test(text) && depth > 0) {
-			depth--;
-		}
-	}
-	return out;
-}
-
-const GROUP_TS_TOLERANCE_MS = 3000;
-
-function pickBestGroup(
-	groups: TopLevelGroup[],
-	stepName: string,
-	range?: StepLogRange,
-): TopLevelGroup | null {
-	const startMs = range?.startedAt ? Date.parse(range.startedAt) : null;
-	const endMs = range?.completedAt ? Date.parse(range.completedAt) : null;
-
-	const inRange =
-		startMs != null || endMs != null
-			? groups.filter((g) => {
-					if (!g.ts) return false;
-					const t = Date.parse(g.ts);
-					if (!Number.isFinite(t)) return false;
-					if (startMs != null && t < startMs - GROUP_TS_TOLERANCE_MS) {
-						return false;
-					}
-					if (endMs != null && t > endMs + GROUP_TS_TOLERANCE_MS) return false;
-					return true;
-				})
-			: null;
-
-	if (inRange && inRange.length > 0) {
-		const named = inRange.find((g) => matchesStep(g.name, stepName));
-		if (named) return named;
-		if (startMs != null) {
-			let best = inRange[0] as TopLevelGroup;
-			let bestDelta = Number.POSITIVE_INFINITY;
-			for (const g of inRange) {
-				const t = g.ts ? Date.parse(g.ts) : Number.NaN;
-				if (!Number.isFinite(t)) continue;
-				const delta = Math.abs(t - startMs);
-				if (delta < bestDelta) {
-					bestDelta = delta;
-					best = g;
-				}
-			}
-			return best;
-		}
-		return inRange[0] ?? null;
-	}
-
-	return groups.find((g) => matchesStep(g.name, stepName)) ?? null;
-}
-
-function buildGroupEntries(lines: string[], startIdx: number): LogEntry[] {
+function extractByGroup(lines: string[], stepName: string): LogEntry[] {
 	const root: LogEntry[] = [];
 	const stack: LogEntry[][] = [root];
+	let capturing = false;
 	let depth = 0;
 	let groupCounter = 0;
 
-	for (let i = startIdx; i < lines.length; i++) {
-		const raw = lines[i];
-		if (raw == null) continue;
-		const { text, ts } = stripTimestamp(raw);
+	for (const raw of lines) {
+		const parsed = stripTimestamp(raw);
+		const { text, ts } = parsed;
+
+		if (!capturing) {
+			const gm = text.match(GROUP_RE);
+			if (gm && matchesStep(gm[1] ?? "", stepName)) {
+				capturing = true;
+				depth = 1;
+			}
+			continue;
+		}
 
 		const gm = text.match(GROUP_RE);
 		if (gm) {
 			depth++;
-			if (depth === 1) continue;
 			groupCounter++;
 			const group: LogEntry = {
 				kind: "group",
@@ -155,7 +79,10 @@ function buildGroupEntries(lines: string[], startIdx: number): LogEntry[] {
 		}
 		if (ENDGROUP_RE.test(text)) {
 			depth--;
-			if (depth <= 0) return root;
+			if (depth <= 0) {
+				capturing = false;
+				continue;
+			}
 			if (stack.length > 1) stack.pop();
 			continue;
 		}
@@ -215,14 +142,25 @@ export type ExtractResult = {
 	strategy: ExtractStrategy;
 };
 
+export function splitLogLines(fullLog: string): string[] {
+	return fullLog.split(/\r?\n/);
+}
+
 export function extractStepLog(
-	fullLog: string,
+	source: string | string[],
 	stepName: string,
 	range?: StepLogRange,
 ): ExtractResult {
-	if (!fullLog) return { entries: [], strategy: "empty" };
-	const lines = fullLog.split(/\r?\n/);
-	const byGroup = extractByGroup(lines, stepName, range);
+	const lines =
+		typeof source === "string"
+			? source.length === 0
+				? null
+				: splitLogLines(source)
+			: source.length === 0
+				? null
+				: source;
+	if (!lines) return { entries: [], strategy: "empty" };
+	const byGroup = extractByGroup(lines, stepName);
 	if (byGroup.length > 0) return { entries: byGroup, strategy: "group" };
 	if (range) {
 		const byTime = extractByTimeRange(lines, range);
