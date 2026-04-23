@@ -1,4 +1,9 @@
-import { CommentIcon, InboxIcon, IssuesIcon } from "@diffkit/icons";
+import {
+	ChevronRightIcon,
+	CommentIcon,
+	InboxIcon,
+	IssuesIcon,
+} from "@diffkit/icons";
 import { cn } from "@diffkit/ui/lib/utils";
 import { useQuery } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
@@ -21,6 +26,7 @@ import {
 } from "#/components/filters";
 import { IssueRow } from "#/components/issues/issue-row";
 import { DashboardContentLoading } from "#/components/layouts/dashboard-content-loading";
+import { useCollapsedGroups } from "#/lib/collapsible-groups-storage";
 import {
 	githubMyIssuesQueryOptions,
 	githubQueryKeys,
@@ -86,6 +92,9 @@ function IssuesPage() {
 		defaultSortId: "updated",
 		initialStore: filterStore,
 	});
+	const { collapsedGroups, setGroupCollapsed } = useCollapsedGroups(
+		ISSUES_GROUP_COLLAPSED_STORAGE_KEY,
+	);
 
 	if (query.error) throw query.error;
 	if (query.data) {
@@ -149,6 +158,10 @@ function IssuesPage() {
 								title={group.title}
 								icon={group.icon}
 								issues={group.issues}
+								isCollapsed={collapsedGroups[group.id] ?? false}
+								onCollapsedChange={(isCollapsed) =>
+									setGroupCollapsed(group.id, isCollapsed)
+								}
 								scrollContainerRef={scrollContainerRef}
 							/>
 						))}
@@ -168,6 +181,7 @@ type IssueGroupData = {
 };
 
 const ISSUE_GROUP_STICKY_TOP = -32;
+const ISSUES_GROUP_COLLAPSED_STORAGE_KEY = "diffkit:issues:collapsed-groups";
 
 const IssueMetricCard = memo(function IssueMetricCard({
 	href,
@@ -218,12 +232,16 @@ const IssueGroup = memo(function IssueGroup({
 	title,
 	icon,
 	issues,
+	isCollapsed,
+	onCollapsedChange,
 	scrollContainerRef,
 }: {
 	id: string;
 	title: string;
 	icon: ComponentType<{ size?: number; strokeWidth?: number }>;
 	issues: IssueSummary[];
+	isCollapsed: boolean;
+	onCollapsedChange: (isCollapsed: boolean) => void;
 	scrollContainerRef: RefObject<HTMLDivElement | null>;
 }) {
 	const sectionRef = useRef<HTMLElement>(null);
@@ -242,8 +260,10 @@ const IssueGroup = memo(function IssueGroup({
 				title={title}
 				count={issues.length}
 				isEmpty={issues.length === 0}
+				isCollapsed={isCollapsed}
+				onCollapsedChange={onCollapsedChange}
 			/>
-			{issues.length > 0 && (
+			{!isCollapsed && issues.length > 0 && (
 				<div className="mt-2 flex flex-col gap-1">
 					{issues.map((issue) => (
 						<IssueRow key={issue.id} issue={issue} />
@@ -262,6 +282,8 @@ function StickyGroupHeader({
 	title,
 	count,
 	isEmpty,
+	isCollapsed,
+	onCollapsedChange,
 }: {
 	sectionRef: RefObject<HTMLElement | null>;
 	scrollContainerRef: RefObject<HTMLDivElement | null>;
@@ -270,8 +292,10 @@ function StickyGroupHeader({
 	title: string;
 	count: number;
 	isEmpty: boolean;
+	isCollapsed: boolean;
+	onCollapsedChange: (isCollapsed: boolean) => void;
 }) {
-	const headerRef = useRef<HTMLDivElement>(null);
+	const headerRef = useRef<HTMLButtonElement>(null);
 	const [isStickyActive, setIsStickyActive] = useState(false);
 
 	useEffect(() => {
@@ -308,23 +332,34 @@ function StickyGroupHeader({
 	}, [scrollContainerRef, sectionRef, stickyTopOffset]);
 
 	return (
-		<div
+		<button
+			type="button"
 			ref={headerRef}
+			aria-expanded={!isCollapsed}
+			onClick={() => onCollapsedChange(!isCollapsed)}
 			className={cn(
-				"sticky -top-8 z-10 flex items-center justify-between gap-3 rounded-lg bg-surface-1 px-3 py-2 transition-shadow",
+				"sticky -top-8 z-10 flex w-full items-center justify-between gap-3 rounded-lg bg-surface-1 px-3 py-2 text-left transition-shadow hover:bg-surface-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
 				isStickyActive && "shadow-lg",
 				isEmpty && "opacity-70",
 			)}
 		>
 			<div className="flex min-w-0 items-center gap-2">
+				<ChevronRightIcon
+					size={14}
+					strokeWidth={2}
+					className={cn(
+						"shrink-0 text-muted-foreground transition-transform",
+						!isCollapsed && "rotate-90",
+					)}
+				/>
 				<div className="shrink-0 text-muted-foreground">
 					<Icon size={15} strokeWidth={1.9} />
 				</div>
-				<h2 className="truncate text-sm font-medium">{title}</h2>
+				<span className="truncate text-sm font-medium">{title}</span>
 			</div>
 			<span className="text-sm tabular-nums text-muted-foreground">
 				{count}
 			</span>
-		</div>
+		</button>
 	);
 }

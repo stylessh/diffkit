@@ -9,9 +9,11 @@ import {
 	useState,
 } from "react";
 import { createPortal } from "react-dom";
+import { useLocalStorageState } from "#/lib/use-local-storage-state";
 
 // w-72 (288px) + pl-2 (8px)
 export const SIDE_PANEL_WIDTH = 296;
+const SIDE_PANEL_COLLAPSED_STORAGE_KEY = "diffkit:side-panel-collapsed";
 
 type SidePanelState = {
 	node: HTMLDivElement | null;
@@ -27,11 +29,22 @@ const SidePanelContext = createContext<SidePanelState>({
 	toggle: () => {},
 });
 
+function isBoolean(value: unknown): value is boolean {
+	return typeof value === "boolean";
+}
+
 export function useSidePanelSlot() {
 	const [node, setNode] = useState<HTMLDivElement | null>(null);
-	const [collapsed, setCollapsed] = useState(false);
+	const [collapsed, setCollapsed] = useLocalStorageState(
+		SIDE_PANEL_COLLAPSED_STORAGE_KEY,
+		{
+			defaultValue: false,
+			parse: (raw) => raw === "true",
+			validate: isBoolean,
+		},
+	);
 	const [hasContent, setHasContent] = useState(false);
-	const toggle = useCallback(() => setCollapsed((c) => !c), []);
+	const toggle = useCallback(() => setCollapsed((c) => !c), [setCollapsed]);
 	return {
 		node,
 		setNode,
