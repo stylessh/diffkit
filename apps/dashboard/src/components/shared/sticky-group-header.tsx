@@ -76,8 +76,9 @@ export function StickyGroupHeader({
 			aria-expanded={!isCollapsed}
 			disabled={isEmpty}
 			onClick={() => onCollapsedChange(!isCollapsed)}
+			style={{ top: stickyTopOffset }}
 			className={cn(
-				"sticky -top-8 z-10 flex w-full items-center justify-between gap-3 rounded-lg bg-surface-1 px-3 py-2 text-left transition-shadow focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring enabled:hover:bg-surface-2",
+				"sticky z-10 flex w-full items-center justify-between gap-3 rounded-lg bg-surface-1 px-3 py-2 text-left transition-shadow focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring enabled:hover:bg-surface-2",
 				isStickyActive && "shadow-lg",
 				isEmpty && "cursor-default opacity-70",
 			)}
