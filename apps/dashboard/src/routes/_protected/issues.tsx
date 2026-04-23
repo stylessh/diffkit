@@ -7,6 +7,7 @@ import {
 import { cn } from "@diffkit/ui/lib/utils";
 import { useQuery } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
+import { AnimatePresence, motion } from "motion/react";
 import {
 	type ComponentType,
 	memo,
@@ -265,13 +266,23 @@ const IssueGroup = memo(function IssueGroup({
 				isCollapsed={isGroupCollapsed}
 				onCollapsedChange={onCollapsedChange}
 			/>
-			{!isGroupCollapsed && hasIssues && (
-				<div className="mt-2 flex flex-col gap-1">
-					{issues.map((issue) => (
-						<IssueRow key={issue.id} issue={issue} />
-					))}
-				</div>
-			)}
+			<AnimatePresence initial={false}>
+				{!isGroupCollapsed && hasIssues && (
+					<motion.div
+						initial={{ height: 0, opacity: 0, y: -6 }}
+						animate={{ height: "auto", opacity: 1, y: 0 }}
+						exit={{ height: 0, opacity: 0, y: -6 }}
+						transition={{ duration: 0.26, ease: [0.22, 1, 0.36, 1] }}
+						className="overflow-hidden"
+					>
+						<div className="mt-2 flex flex-col gap-1">
+							{issues.map((issue) => (
+								<IssueRow key={issue.id} issue={issue} />
+							))}
+						</div>
+					</motion.div>
+				)}
+			</AnimatePresence>
 		</section>
 	);
 });
