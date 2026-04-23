@@ -35,6 +35,7 @@ const tabIconMap = {
 	review: ReviewsIcon,
 	repo: ArchiveIcon,
 	commit: GitCommitIcon,
+	commits: GitCommitIcon,
 } as const;
 
 function useScrollShadows(tabCount: number) {

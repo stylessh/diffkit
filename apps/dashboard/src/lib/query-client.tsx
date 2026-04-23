@@ -135,6 +135,18 @@ function matchesTabQuery(queryKey: readonly unknown[], tab: Tab) {
 		);
 	}
 
+	if (tab.type === "commits") {
+		return (
+			resourceType === "repo" &&
+			(resourceName === "overview" ||
+				resourceName === "branches" ||
+				resourceName === "commits") &&
+			isRepoQueryKeyInput(input) &&
+			input.owner === owner &&
+			input.repo === repo
+		);
+	}
+
 	return (
 		resourceType === "issues" &&
 		(resourceName === "page" ||

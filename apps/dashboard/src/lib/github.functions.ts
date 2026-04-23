@@ -47,6 +47,7 @@ import type {
 	RepoCollaborator,
 	RepoCommitDetail,
 	RepoCommitInput,
+	RepoCommitsPage,
 	RepoContributorsResult,
 	RepoOverview,
 	RepoParticipationStats,
@@ -9561,6 +9562,65 @@ export const getRefHeadCommit = createServerFn({ method: "GET" })
 				};
 			},
 		}).catch(() => null);
+	});
+
+type RepoCommitsInput = {
+	owner: string;
+	repo: string;
+	ref: string;
+	page?: number;
+	perPage?: number;
+};
+
+export const getRepoCommits = createServerFn({ method: "GET" })
+	.inputValidator(identityValidator<RepoCommitsInput>)
+	.handler(async ({ data }): Promise<RepoCommitsPage> => {
+		const context = await getGitHubContextForRepository(data);
+		if (!context) return { commits: [], nextPage: null };
+
+		const perPage = Math.min(Math.max(data.perPage ?? 15, 1), 30);
+		const page = Math.max(data.page ?? 1, 1);
+
+		return getCachedGitHubRequest<
+			Awaited<ReturnType<GitHubClient["rest"]["repos"]["listCommits"]>>["data"],
+			RepoCommitsPage
+		>({
+			context,
+			resource: "repo.commits.v1",
+			params: { ...data, page, perPage },
+			freshForMs: githubCachePolicy.detail.staleTimeMs,
+			signalKeys: [githubRevalidationSignalKeys.repoCode(data)],
+			namespaceKeys: [githubRevalidationSignalKeys.repoCode(data)],
+			cacheMode: "split",
+			request: (headers) =>
+				context.octokit.rest.repos.listCommits({
+					owner: data.owner,
+					repo: data.repo,
+					sha: data.ref,
+					page,
+					per_page: perPage,
+					headers,
+				}),
+			mapData: (commits) => ({
+				commits: commits.map((commit) => ({
+					sha: commit.sha,
+					message: commit.commit.message,
+					date:
+						commit.commit.committer?.date ?? commit.commit.author?.date ?? "",
+					authorName:
+						commit.commit.author?.name ?? commit.commit.committer?.name ?? null,
+					author: commit.author
+						? {
+								login: commit.author.login,
+								avatarUrl: commit.author.avatar_url,
+								url: commit.author.html_url,
+								type: commit.author.type,
+							}
+						: null,
+				})),
+				nextPage: commits.length === perPage ? page + 1 : null,
+			}),
+		}).catch(() => ({ commits: [], nextPage: null }));
 	});
 
 // ---------------------------------------------------------------------------

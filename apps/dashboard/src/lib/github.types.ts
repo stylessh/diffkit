@@ -572,6 +572,19 @@ export type FileLastCommit = {
 	author: GitHubActor | null;
 };
 
+export type RepoCommitSummary = {
+	sha: string;
+	message: string;
+	date: string;
+	authorName: string | null;
+	author: GitHubActor | null;
+};
+
+export type RepoCommitsPage = {
+	commits: RepoCommitSummary[];
+	nextPage: number | null;
+};
+
 export type RepoBranch = {
 	name: string;
 	isProtected: boolean;

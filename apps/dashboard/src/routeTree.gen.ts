@@ -38,6 +38,7 @@ import { Route as ProtectedOwnerRepoPullPullIdRouteImport } from './routes/_prot
 import { Route as ProtectedOwnerRepoIssuesNewRouteImport } from './routes/_protected/$owner/$repo/issues.new'
 import { Route as ProtectedOwnerRepoIssuesIssueIdRouteImport } from './routes/_protected/$owner/$repo/issues.$issueId'
 import { Route as ProtectedOwnerRepoCompareSplatRouteImport } from './routes/_protected/$owner/$repo/compare.$'
+import { Route as ProtectedOwnerRepoCommitsSplatRouteImport } from './routes/_protected/$owner/$repo/commits.$'
 import { Route as ProtectedOwnerRepoCommitShaRouteImport } from './routes/_protected/$owner/$repo/commit.$sha'
 import { Route as ProtectedOwnerRepoBlobSplatRouteImport } from './routes/_protected/$owner/$repo/blob.$'
 
@@ -193,6 +194,12 @@ const ProtectedOwnerRepoCompareSplatRoute =
     path: '/$owner/$repo/compare/$',
     getParentRoute: () => ProtectedRoute,
   } as any)
+const ProtectedOwnerRepoCommitsSplatRoute =
+  ProtectedOwnerRepoCommitsSplatRouteImport.update({
+    id: '/$owner/$repo/commits/$',
+    path: '/$owner/$repo/commits/$',
+    getParentRoute: () => ProtectedRoute,
+  } as any)
 const ProtectedOwnerRepoCommitShaRoute =
   ProtectedOwnerRepoCommitShaRouteImport.update({
     id: '/$owner/$repo/commit/$sha',
@@ -230,6 +237,7 @@ export interface FileRoutesByFullPath {
   '/$owner/$repo/': typeof ProtectedOwnerRepoIndexRoute
   '/$owner/$repo/blob/$': typeof ProtectedOwnerRepoBlobSplatRoute
   '/$owner/$repo/commit/$sha': typeof ProtectedOwnerRepoCommitShaRoute
+  '/$owner/$repo/commits/$': typeof ProtectedOwnerRepoCommitsSplatRoute
   '/$owner/$repo/compare/$': typeof ProtectedOwnerRepoCompareSplatRoute
   '/$owner/$repo/issues/$issueId': typeof ProtectedOwnerRepoIssuesIssueIdRoute
   '/$owner/$repo/issues/new': typeof ProtectedOwnerRepoIssuesNewRoute
@@ -261,6 +269,7 @@ export interface FileRoutesByTo {
   '/$owner/$repo': typeof ProtectedOwnerRepoIndexRoute
   '/$owner/$repo/blob/$': typeof ProtectedOwnerRepoBlobSplatRoute
   '/$owner/$repo/commit/$sha': typeof ProtectedOwnerRepoCommitShaRoute
+  '/$owner/$repo/commits/$': typeof ProtectedOwnerRepoCommitsSplatRoute
   '/$owner/$repo/compare/$': typeof ProtectedOwnerRepoCompareSplatRoute
   '/$owner/$repo/issues/$issueId': typeof ProtectedOwnerRepoIssuesIssueIdRoute
   '/$owner/$repo/issues/new': typeof ProtectedOwnerRepoIssuesNewRoute
@@ -295,6 +304,7 @@ export interface FileRoutesById {
   '/_protected/$owner/$repo/': typeof ProtectedOwnerRepoIndexRoute
   '/_protected/$owner/$repo/blob/$': typeof ProtectedOwnerRepoBlobSplatRoute
   '/_protected/$owner/$repo/commit/$sha': typeof ProtectedOwnerRepoCommitShaRoute
+  '/_protected/$owner/$repo/commits/$': typeof ProtectedOwnerRepoCommitsSplatRoute
   '/_protected/$owner/$repo/compare/$': typeof ProtectedOwnerRepoCompareSplatRoute
   '/_protected/$owner/$repo/issues/$issueId': typeof ProtectedOwnerRepoIssuesIssueIdRoute
   '/_protected/$owner/$repo/issues/new': typeof ProtectedOwnerRepoIssuesNewRoute
@@ -329,6 +339,7 @@ export interface FileRouteTypes {
     | '/$owner/$repo/'
     | '/$owner/$repo/blob/$'
     | '/$owner/$repo/commit/$sha'
+    | '/$owner/$repo/commits/$'
     | '/$owner/$repo/compare/$'
     | '/$owner/$repo/issues/$issueId'
     | '/$owner/$repo/issues/new'
@@ -360,6 +371,7 @@ export interface FileRouteTypes {
     | '/$owner/$repo'
     | '/$owner/$repo/blob/$'
     | '/$owner/$repo/commit/$sha'
+    | '/$owner/$repo/commits/$'
     | '/$owner/$repo/compare/$'
     | '/$owner/$repo/issues/$issueId'
     | '/$owner/$repo/issues/new'
@@ -393,6 +405,7 @@ export interface FileRouteTypes {
     | '/_protected/$owner/$repo/'
     | '/_protected/$owner/$repo/blob/$'
     | '/_protected/$owner/$repo/commit/$sha'
+    | '/_protected/$owner/$repo/commits/$'
     | '/_protected/$owner/$repo/compare/$'
     | '/_protected/$owner/$repo/issues/$issueId'
     | '/_protected/$owner/$repo/issues/new'
@@ -620,6 +633,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ProtectedOwnerRepoCompareSplatRouteImport
       parentRoute: typeof ProtectedRoute
     }
+    '/_protected/$owner/$repo/commits/$': {
+      id: '/_protected/$owner/$repo/commits/$'
+      path: '/$owner/$repo/commits/$'
+      fullPath: '/$owner/$repo/commits/$'
+      preLoaderRoute: typeof ProtectedOwnerRepoCommitsSplatRouteImport
+      parentRoute: typeof ProtectedRoute
+    }
     '/_protected/$owner/$repo/commit/$sha': {
       id: '/_protected/$owner/$repo/commit/$sha'
       path: '/$owner/$repo/commit/$sha'
@@ -663,6 +683,7 @@ interface ProtectedRouteChildren {
   ProtectedOwnerRepoIndexRoute: typeof ProtectedOwnerRepoIndexRoute
   ProtectedOwnerRepoBlobSplatRoute: typeof ProtectedOwnerRepoBlobSplatRoute
   ProtectedOwnerRepoCommitShaRoute: typeof ProtectedOwnerRepoCommitShaRoute
+  ProtectedOwnerRepoCommitsSplatRoute: typeof ProtectedOwnerRepoCommitsSplatRoute
   ProtectedOwnerRepoCompareSplatRoute: typeof ProtectedOwnerRepoCompareSplatRoute
   ProtectedOwnerRepoIssuesIssueIdRoute: typeof ProtectedOwnerRepoIssuesIssueIdRoute
   ProtectedOwnerRepoIssuesNewRoute: typeof ProtectedOwnerRepoIssuesNewRoute
@@ -685,6 +706,7 @@ const ProtectedRouteChildren: ProtectedRouteChildren = {
   ProtectedOwnerRepoIndexRoute: ProtectedOwnerRepoIndexRoute,
   ProtectedOwnerRepoBlobSplatRoute: ProtectedOwnerRepoBlobSplatRoute,
   ProtectedOwnerRepoCommitShaRoute: ProtectedOwnerRepoCommitShaRoute,
+  ProtectedOwnerRepoCommitsSplatRoute: ProtectedOwnerRepoCommitsSplatRoute,
   ProtectedOwnerRepoCompareSplatRoute: ProtectedOwnerRepoCompareSplatRoute,
   ProtectedOwnerRepoIssuesIssueIdRoute: ProtectedOwnerRepoIssuesIssueIdRoute,
   ProtectedOwnerRepoIssuesNewRoute: ProtectedOwnerRepoIssuesNewRoute,

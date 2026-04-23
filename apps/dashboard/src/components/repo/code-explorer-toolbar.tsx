@@ -59,7 +59,7 @@ export function CodeExplorerToolbar({
 	);
 }
 
-function BranchSelector({
+export function BranchSelector({
 	repo,
 	currentRef,
 	scope,

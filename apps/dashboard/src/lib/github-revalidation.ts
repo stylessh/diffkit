@@ -422,7 +422,7 @@ export function getGitHubWebhookRevalidationSignalKeys(
 export function getGitHubRevalidationSignalKeysForTab(tab: Tab) {
 	const [owner, repo] = tab.repo.split("/");
 
-	if (tab.type === "repo") {
+	if (tab.type === "repo" || tab.type === "commits") {
 		return [
 			githubRevalidationSignalKeys.repoCode({
 				owner,
