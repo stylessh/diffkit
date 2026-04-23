@@ -111,6 +111,7 @@ You can use `apps/search/docker-compose.livegrep.yml`:
 ```bash
 ./apps/search/scripts/bootstrap-livegrep-index.sh stylessh/diffkit
 ```
+This creates `apps/search/.local/livegrep.idx` and `apps/search/.local/livegrep.json`.
 2. Start services:
 ```bash
 docker compose -f apps/search/docker-compose.livegrep.yml up --build -d
