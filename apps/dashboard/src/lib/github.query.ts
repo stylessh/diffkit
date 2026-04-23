@@ -48,6 +48,7 @@ import {
 	getUserProfile,
 	getUserRepos,
 	getWorkflowDefinition,
+	getWorkflowJobLogs,
 	getWorkflowRun,
 	listWorkflowRunArtifacts,
 	listWorkflowRunJobs,
@@ -137,6 +138,12 @@ export type WorkflowDefinitionQueryInput = {
 	repo: string;
 	path: string;
 	ref: string;
+};
+
+export type WorkflowJobLogsQueryInput = {
+	owner: string;
+	repo: string;
+	jobId: number;
 };
 
 const persistedMeta = {
@@ -321,6 +328,10 @@ export const githubQueryKeys = {
 			input: WorkflowDefinitionQueryInput,
 		) =>
 			["github", scope.userId, "actions", "workflowDefinition", input] as const,
+		workflowJobLogs: (
+			scope: GitHubQueryScope,
+			input: WorkflowJobLogsQueryInput,
+		) => ["github", scope.userId, "actions", "workflowJobLogs", input] as const,
 	},
 };
 
@@ -992,6 +1003,19 @@ export function githubWorkflowDefinitionQueryOptions(
 		queryFn: () => getWorkflowDefinition({ data: input }),
 		staleTime: githubCachePolicy.detail.staleTimeMs,
 		gcTime: githubCachePolicy.detail.gcTimeMs,
+		meta: tabPersistedMeta,
+	});
+}
+
+export function githubWorkflowJobLogsQueryOptions(
+	scope: GitHubQueryScope,
+	input: WorkflowJobLogsQueryInput,
+) {
+	return queryOptions({
+		queryKey: githubQueryKeys.actions.workflowJobLogs(scope, input),
+		queryFn: () => getWorkflowJobLogs({ data: input }),
+		staleTime: 2 * 1000,
+		gcTime: 60 * 1000,
 		meta: tabPersistedMeta,
 	});
 }

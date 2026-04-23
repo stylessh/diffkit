@@ -1,7 +1,8 @@
-import { Background, type Node, ReactFlow } from "@xyflow/react";
+import { Background, type Node, ReactFlow, useNodesState } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
 import { cn } from "@diffkit/ui/lib/utils";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import type { GitHubQueryScope } from "#/lib/github.query";
 import type {
 	WorkflowDefinition,
 	WorkflowRun,
@@ -13,9 +14,15 @@ import {
 	MATRIX_SUFFIX_RE,
 	NODE_WIDTH,
 	ROW_GAP,
+	STEP_LOG_GAP,
+	STEP_LOG_HEIGHT,
 	VARIANT_POPUP_GAP,
 } from "./graph/constants";
 import { collectConnectedEdgeIds } from "./graph/edges";
+import {
+	type GraphConfig,
+	GraphConfigProvider,
+} from "./graph/graph-config-context";
 import { GraphControls } from "./graph/graph-controls";
 import {
 	buildColumns,
@@ -24,19 +31,29 @@ import {
 	groupJobs,
 } from "./graph/grouping";
 import { estimateNodeHeight } from "./graph/height";
+import { NodeHoverProvider } from "./graph/hover-context";
 import { JobNode } from "./graph/job-node";
 import { MatrixNode } from "./graph/matrix-node";
+import {
+	getStepLogNodeId,
+	type OpenStepLogInput,
+	type StepLogActions,
+	StepLogProvider,
+} from "./graph/step-log-context";
+import { StepLogNode } from "./graph/step-log-node";
 import { NodeToggleProvider } from "./graph/toggle-context";
 import type {
 	FlowNode,
 	GraphEdge,
 	JobNodeData,
 	MatrixNodeData,
+	StepLogNodeData,
 } from "./graph/types";
 
 const nodeTypes = {
 	job: JobNode,
 	matrix: MatrixNode,
+	stepLog: StepLogNode,
 };
 
 const FIT_VIEW_OPTIONS = { padding: 0.25, maxZoom: 1 };
@@ -51,15 +68,28 @@ export function WorkflowRunGraphCanvas({
 	run,
 	jobs,
 	definition,
+	scope,
+	owner,
+	repo,
+	runId,
 }: {
 	run: WorkflowRun;
 	jobs: WorkflowRunJob[];
 	definition: WorkflowDefinition | null;
+	scope: GitHubQueryScope;
+	owner: string;
+	repo: string;
+	runId: number;
 }) {
 	const workflowFilename = useMemo(() => {
 		const segments = run.path.split("/");
 		return segments[segments.length - 1] || run.path;
 	}, [run.path]);
+
+	const graphConfig = useMemo<GraphConfig>(
+		() => ({ scope, owner, repo, runId }),
+		[scope, owner, repo, runId],
+	);
 
 	const [collapsedIds, setCollapsedIds] = useState<Set<string>>(() => {
 		const initial = new Set<string>();
@@ -114,9 +144,66 @@ export function WorkflowRunGraphCanvas({
 		});
 	}, []);
 
-	const [hoveredNodeId, setHoveredNodeId] = useState<string | null>(null);
+	const [openStepLogs, setOpenStepLogs] = useState<OpenStepLogInput[]>([]);
+	const stepLogActions = useMemo<StepLogActions>(
+		() => ({
+			open: (input) => {
+				setOpenStepLogs((prev) => {
+					if (
+						prev.some(
+							(l) =>
+								l.jobId === input.jobId && l.stepNumber === input.stepNumber,
+						)
+					) {
+						return prev;
+					}
+					return [...prev, input];
+				});
+			},
+			close: (nodeId) => {
+				setOpenStepLogs((prev) =>
+					prev.filter(
+						(l) => getStepLogNodeId(l.jobId, l.stepNumber) !== nodeId,
+					),
+				);
+			},
+		}),
+		[],
+	);
 
-	const { nodes, baseEdges } = useMemo(() => {
+	useEffect(() => {
+		setOpenStepLogs((prev) => {
+			const jobById = new Map(jobs.map((j) => [j.id, j]));
+			const next = prev.filter((l) => {
+				const job = jobById.get(l.jobId);
+				if (!job) return false;
+				return job.steps.some((s) => s.number === l.stepNumber);
+			});
+			return next.length === prev.length ? prev : next;
+		});
+	}, [jobs]);
+
+	const [hoveredNodeId, setHoveredNodeId] = useState<string | null>(null);
+	const [stepLogPositions, setStepLogPositions] = useState<
+		Record<string, { x: number; y: number }>
+	>({});
+
+	useEffect(() => {
+		setStepLogPositions((prev) => {
+			const active = new Set(
+				openStepLogs.map((l) => getStepLogNodeId(l.jobId, l.stepNumber)),
+			);
+			let changed = false;
+			const next: typeof prev = {};
+			for (const [key, value] of Object.entries(prev)) {
+				if (active.has(key)) next[key] = value;
+				else changed = true;
+			}
+			return changed ? next : prev;
+		});
+	}, [openStepLogs]);
+
+	const { nodes: computedNodes, baseEdges } = useMemo(() => {
 		let builtNodes: FlowNode[] = [];
 		let builtEdges: GraphEdge[] = [];
 
@@ -213,8 +300,73 @@ export function WorkflowRunGraphCanvas({
 			}
 		}
 
+		if (openStepLogs.length > 0) {
+			let maxRight = 0;
+			for (const n of builtNodes) {
+				maxRight = Math.max(maxRight, n.position.x + NODE_WIDTH);
+			}
+			const stepLogX = maxRight + COLUMN_GAP + STEP_LOG_GAP;
+			const logsByNodeId = new Map<string, OpenStepLogInput[]>();
+			for (const log of openStepLogs) {
+				const arr = logsByNodeId.get(log.sourceNodeId) ?? [];
+				arr.push(log);
+				logsByNodeId.set(log.sourceNodeId, arr);
+			}
+			let currentY = 0;
+			for (const [sourceNodeId, logs] of logsByNodeId) {
+				for (const log of logs) {
+					const nodeId = getStepLogNodeId(log.jobId, log.stepNumber);
+					const job = jobs.find((j) => j.id === log.jobId);
+					const step = job?.steps.find((s) => s.number === log.stepNumber);
+					if (!job || !step) continue;
+					const persisted = stepLogPositions[nodeId];
+					const stepLogNode = {
+						id: nodeId,
+						type: "stepLog",
+						position: persisted ?? { x: stepLogX, y: currentY },
+						draggable: true,
+						data: {
+							jobId: job.id,
+							jobStatus: job.status,
+							stepNumber: step.number,
+							stepName: step.name,
+							stepStatus: step.status,
+							stepConclusion: step.conclusion,
+							stepStartedAt: step.startedAt,
+							stepCompletedAt: step.completedAt,
+						},
+					} satisfies Node<StepLogNodeData, "stepLog">;
+					builtNodes.push(stepLogNode);
+					builtEdges.push({
+						id: `${sourceNodeId}->${nodeId}`,
+						source: sourceNodeId,
+						target: nodeId,
+						type: "smoothstep",
+					});
+					currentY += STEP_LOG_HEIGHT + ROW_GAP;
+				}
+			}
+		}
+
 		return { nodes: builtNodes, baseEdges: builtEdges };
-	}, [jobs, definition, collapsedIds]);
+	}, [jobs, definition, collapsedIds, openStepLogs, stepLogPositions]);
+
+	const [internalNodes, setInternalNodes, onNodesChange] =
+		useNodesState<FlowNode>([]);
+
+	useEffect(() => {
+		setInternalNodes((prev) => {
+			const prevById = new Map(prev.map((n) => [n.id, n]));
+			return computedNodes.map((node) => {
+				if (node.type !== "stepLog") return node;
+				const prevNode = prevById.get(node.id);
+				if (prevNode && prevNode.type === "stepLog") {
+					return { ...node, position: prevNode.position };
+				}
+				return node;
+			});
+		});
+	}, [computedNodes, setInternalNodes]);
 
 	const edges = useMemo(() => {
 		if (!hoveredNodeId) {
@@ -265,6 +417,14 @@ export function WorkflowRunGraphCanvas({
 	);
 	const onNodeMouseLeave = useCallback(() => setHoveredNodeId(null), []);
 
+	const onNodeDragStop = useCallback((_e: React.MouseEvent, node: Node) => {
+		if (node.type !== "stepLog") return;
+		setStepLogPositions((prev) => ({
+			...prev,
+			[node.id]: { x: node.position.x, y: node.position.y },
+		}));
+	}, []);
+
 	return (
 		<div
 			ref={containerRef}
@@ -279,32 +439,40 @@ export function WorkflowRunGraphCanvas({
 					isFullscreen ? "flex-1" : "h-[620px] rounded-b-xl",
 				)}
 			>
-				{nodes.length === 0 ? (
+				{internalNodes.length === 0 ? (
 					<p className="p-6 text-muted-foreground text-sm">No jobs yet.</p>
 				) : (
-					<NodeToggleProvider value={toggleCollapsed}>
-						<ReactFlow
-							nodes={nodes}
-							edges={edges}
-							nodeTypes={nodeTypes}
-							fitView
-							fitViewOptions={FIT_VIEW_OPTIONS}
-							proOptions={PRO_OPTIONS}
-							nodesConnectable={false}
-							nodesDraggable={false}
-							edgesFocusable={false}
-							defaultEdgeOptions={DEFAULT_EDGE_OPTIONS}
-							onNodeMouseEnter={onNodeMouseEnter}
-							onNodeMouseLeave={onNodeMouseLeave}
-							className="!bg-surface-1 [&_.react-flow__node]:!cursor-default"
-						>
-							<Background color="var(--color-border)" gap={20} size={1} />
-							<GraphControls
-								isFullscreen={isFullscreen}
-								onToggleFullscreen={toggleFullscreen}
-							/>
-						</ReactFlow>
-					</NodeToggleProvider>
+					<GraphConfigProvider value={graphConfig}>
+						<StepLogProvider value={stepLogActions}>
+							<NodeToggleProvider value={toggleCollapsed}>
+								<NodeHoverProvider value={hoveredNodeId}>
+									<ReactFlow
+										nodes={internalNodes}
+										edges={edges}
+										onNodesChange={onNodesChange}
+										nodeTypes={nodeTypes}
+										fitView
+										fitViewOptions={FIT_VIEW_OPTIONS}
+										proOptions={PRO_OPTIONS}
+										nodesConnectable={false}
+										nodesDraggable={false}
+										edgesFocusable={false}
+										defaultEdgeOptions={DEFAULT_EDGE_OPTIONS}
+										onNodeMouseEnter={onNodeMouseEnter}
+										onNodeMouseLeave={onNodeMouseLeave}
+										onNodeDragStop={onNodeDragStop}
+										className="!bg-surface-1 [&_.react-flow__node]:!cursor-default"
+									>
+										<Background color="var(--color-border)" gap={20} size={1} />
+										<GraphControls
+											isFullscreen={isFullscreen}
+											onToggleFullscreen={toggleFullscreen}
+										/>
+									</ReactFlow>
+								</NodeHoverProvider>
+							</NodeToggleProvider>
+						</StepLogProvider>
+					</GraphConfigProvider>
 				)}
 			</div>
 

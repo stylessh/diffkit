@@ -1,5 +1,6 @@
-import { ChevronDownIcon } from "@diffkit/icons";
+import { ChevronDownIcon, ExternalLinkIcon } from "@diffkit/icons";
 import { cn } from "@diffkit/ui/lib/utils";
+import { useCallback } from "react";
 import {
 	type CheckState,
 	CheckStateIcon,
@@ -7,7 +8,9 @@ import {
 } from "#/components/checks/check-state-icon";
 import type { WorkflowRunJob, WorkflowRunStep } from "#/lib/github.types";
 import { NODE_CARD_CLASS, NODE_HEADER_CLASS, NODE_WIDTH } from "./constants";
+import { useGraphConfig } from "./graph-config-context";
 import { JobDuration } from "./job-duration";
+import { useStepLogActions } from "./step-log-context";
 
 export function getJobCardRingClass(state: CheckState): string {
 	if (state === "success") return "ring-4 ring-muted/80 dark:ring-muted/50";
@@ -29,56 +32,98 @@ export function NodeChevron({ open }: { open: boolean }) {
 	);
 }
 
-export function StepRow({ step }: { step: WorkflowRunStep }) {
+function StepRow({
+	step,
+	job,
+	sourceNodeId,
+}: {
+	step: WorkflowRunStep;
+	job: WorkflowRunJob;
+	sourceNodeId: string;
+}) {
 	const state = getCheckState(step);
+	const { open } = useStepLogActions();
+	const onClick = useCallback(() => {
+		open({
+			jobId: job.id,
+			jobStatus: job.status,
+			stepNumber: step.number,
+			stepName: step.name,
+			sourceNodeId,
+		});
+	}, [open, job.id, job.status, step.number, step.name, sourceNodeId]);
 	return (
-		<div className="flex items-center gap-2 px-3 py-1.5 first:pt-2 last:pb-2">
+		<button
+			type="button"
+			onClick={onClick}
+			className="flex items-center gap-2 px-3 py-1.5 text-left transition-colors first:pt-2 last:pb-2 hover:bg-muted/40"
+		>
 			<CheckStateIcon state={state} />
 			<span className="min-w-0 flex-1 truncate">{step.name}</span>
-		</div>
+		</button>
 	);
 }
 
 export function JobCard({
 	job,
+	nodeId,
 	displayName,
 	expanded,
 	onToggle,
 }: {
 	job: WorkflowRunJob;
+	nodeId: string;
 	displayName?: string;
 	expanded: boolean;
 	onToggle?: () => void;
 }) {
 	const state = getCheckState(job);
 	const name = displayName ?? job.name;
+	const { owner, repo, runId } = useGraphConfig();
 	return (
 		<div
-			className={cn(NODE_CARD_CLASS, getJobCardRingClass(state))}
+			className={cn("group/card", NODE_CARD_CLASS, getJobCardRingClass(state))}
 			style={{ width: NODE_WIDTH }}
 		>
-			<button
-				type="button"
-				onClick={onToggle}
-				disabled={!onToggle}
-				className={NODE_HEADER_CLASS}
-			>
-				<CheckStateIcon state={state} />
-				<span className="min-w-0 flex-1 truncate font-medium text-sm">
-					{name}
-				</span>
-				<JobDuration
-					job={job}
-					className="shrink-0 text-muted-foreground text-xs tabular-nums"
-				/>
-				{onToggle ? <NodeChevron open={expanded} /> : null}
-			</button>
+			<div className="relative flex items-stretch">
+				<button
+					type="button"
+					onClick={onToggle}
+					disabled={!onToggle}
+					className={cn(NODE_HEADER_CLASS, "flex-1")}
+				>
+					<CheckStateIcon state={state} />
+					<span className="min-w-0 flex-1 truncate font-medium text-sm">
+						{name}
+					</span>
+					<JobDuration
+						job={job}
+						className="shrink-0 text-muted-foreground text-xs tabular-nums"
+					/>
+					{onToggle ? <NodeChevron open={expanded} /> : null}
+				</button>
+				<a
+					href={`/${owner}/${repo}/actions/runs/${runId}/jobs/${job.id}`}
+					aria-label={`Open job ${name}`}
+					onClick={(e) => e.stopPropagation()}
+					className="absolute top-1.5 right-1.5 rounded-md bg-background/80 p-1 text-muted-foreground opacity-0 shadow-sm transition-opacity hover:text-foreground group-hover/card:opacity-100"
+				>
+					<ExternalLinkIcon size={12} strokeWidth={2} />
+				</a>
+			</div>
 			{expanded ? (
 				<div className="flex flex-col border-t text-xs">
 					{job.steps.length === 0 ? (
 						<div className="px-3 py-2 text-muted-foreground">No steps</div>
 					) : (
-						job.steps.map((step) => <StepRow key={step.number} step={step} />)
+						job.steps.map((step) => (
+							<StepRow
+								key={step.number}
+								step={step}
+								job={job}
+								sourceNodeId={nodeId}
+							/>
+						))
 					)}
 				</div>
 			) : null}

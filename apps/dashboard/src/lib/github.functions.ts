@@ -63,6 +63,7 @@ import type {
 	UserRepoSummary,
 	WorkflowDefinition,
 	WorkflowDefinitionJob,
+	WorkflowJobLogs,
 	WorkflowRun,
 	WorkflowRunArtifact,
 	WorkflowRunJob,
@@ -10341,4 +10342,124 @@ export const getWorkflowDefinition = createServerFn({ method: "GET" })
 			console.error("[getWorkflowDefinition]", error);
 			return null;
 		}
+	});
+
+export type WorkflowJobLogsInput = {
+	owner: string;
+	repo: string;
+	jobId: number;
+};
+
+function decodeLogsPayload(data: unknown): string {
+	if (typeof data === "string") return data;
+	if (data instanceof ArrayBuffer) return new TextDecoder().decode(data);
+	if (ArrayBuffer.isView(data))
+		return new TextDecoder().decode(data as ArrayBufferView);
+	return "";
+}
+
+export const getWorkflowJobLogs = createServerFn({ method: "GET" })
+	.inputValidator(identityValidator<WorkflowJobLogsInput>)
+	.handler(async ({ data }): Promise<WorkflowJobLogs | null> => {
+		const repoInput = { owner: data.owner, repo: data.repo };
+		const tag = `[getWorkflowJobLogs ${data.owner}/${data.repo}#${data.jobId}]`;
+
+		const [appContext, userContext] = await Promise.all([
+			getGitHubContextForRepository(repoInput),
+			getGitHubUserContextForRepository(repoInput),
+		]);
+
+		const seen = new Set<unknown>();
+		const contexts = [
+			{ label: "app", ctx: appContext },
+			{ label: "user", ctx: userContext },
+		].filter(
+			(
+				entry,
+			): entry is { label: string; ctx: NonNullable<typeof entry.ctx> } => {
+				if (!entry.ctx) return false;
+				if (seen.has(entry.ctx.octokit)) return false;
+				seen.add(entry.ctx.octokit);
+				return true;
+			},
+		);
+
+		console.log(`${tag} contexts`, {
+			appContext: !!appContext,
+			userContext: !!userContext,
+			tiers: contexts.map((c) => c.label),
+		});
+
+		if (contexts.length === 0) {
+			console.warn(`${tag} no usable context`);
+			return null;
+		}
+
+		let lastError: unknown = null;
+		for (const { label, ctx } of contexts) {
+			try {
+				console.log(`${tag} attempting`, label);
+				const response = await ctx.octokit.request(
+					"GET /repos/{owner}/{repo}/actions/jobs/{job_id}/logs",
+					{
+						owner: data.owner,
+						repo: data.repo,
+						job_id: data.jobId,
+					},
+				);
+				const logs = decodeLogsPayload(response.data);
+				const dataKind =
+					typeof response.data === "string"
+						? "string"
+						: response.data instanceof ArrayBuffer
+							? "ArrayBuffer"
+							: ArrayBuffer.isView(response.data)
+								? "ArrayBufferView"
+								: typeof response.data;
+				const groupMarkers: string[] = [];
+				for (const line of logs.split(/\r?\n/)) {
+					const afterTs = line.replace(
+						/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d+Z\s/,
+						"",
+					);
+					if (afterTs.startsWith("##[group]")) {
+						groupMarkers.push(afterTs);
+						if (groupMarkers.length >= 40) break;
+					}
+				}
+				console.log(`${tag} ok via ${label}`, {
+					status: response.status,
+					dataKind,
+					bytes: logs.length,
+					preview: logs.slice(0, 400),
+					groupMarkers,
+				});
+				return {
+					logs,
+					fetchedAt: new Date().toISOString(),
+					notAvailable: false,
+				};
+			} catch (error) {
+				lastError = error;
+				const status = error instanceof RequestError ? error.status : undefined;
+				console.warn(`${tag} ${label} failed`, {
+					status,
+					message: error instanceof Error ? error.message : String(error),
+				});
+				if (status === 404 || status === 410) {
+					return {
+						logs: "",
+						fetchedAt: new Date().toISOString(),
+						notAvailable: true,
+					};
+				}
+				if (status === 401 || status === 403) {
+					continue;
+				}
+				console.error(`${tag} unexpected error`, error);
+				return null;
+			}
+		}
+		console.error(`${tag} all auth tiers failed`, lastError);
+		return null;
 	});

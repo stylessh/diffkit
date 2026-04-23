@@ -115,7 +115,15 @@ export function WorkflowRunPage() {
 						artifacts={artifacts}
 						isJobsLoading={jobsQuery.isLoading}
 					/>
-					<WorkflowRunGraph run={run} jobs={jobs} definition={definition} />
+					<WorkflowRunGraph
+						run={run}
+						jobs={jobs}
+						definition={definition}
+						scope={scope}
+						owner={owner}
+						repo={repo}
+						runId={Number(runId)}
+					/>
 					<WorkflowRunArtifacts artifacts={artifacts} />
 				</>
 			}

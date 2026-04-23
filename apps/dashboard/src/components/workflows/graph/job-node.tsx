@@ -19,6 +19,7 @@ export function JobNode({ id, data }: NodeProps<Node<JobNodeData, "job">>) {
 			/>
 			<JobCard
 				job={data.job}
+				nodeId={id}
 				expanded={expanded}
 				onToggle={canToggle ? onToggle : undefined}
 			/>

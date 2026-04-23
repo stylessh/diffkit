@@ -9,6 +9,7 @@ import {
 	H_NO_STEPS,
 	H_STEP_FIRST_LAST_EXTRA,
 	H_STEP_ROW,
+	STEP_LOG_HEIGHT,
 } from "./constants";
 import type { FlowNode } from "./types";
 
@@ -40,8 +41,8 @@ export function estimateMatrixHeight(
 }
 
 export function estimateNodeHeight(node: FlowNode): number {
-	const expanded = !node.data.collapsed;
+	if (node.type === "stepLog") return STEP_LOG_HEIGHT;
 	if (node.type === "matrix")
-		return estimateMatrixHeight(node.data.jobs, expanded);
-	return estimateJobCardHeight(node.data.job, expanded);
+		return estimateMatrixHeight(node.data.jobs, !node.data.collapsed);
+	return estimateJobCardHeight(node.data.job, !node.data.collapsed);
 }

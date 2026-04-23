@@ -20,9 +20,21 @@ export type MatrixNodeData = {
 	toggleable?: boolean;
 };
 
+export type StepLogNodeData = {
+	jobId: number;
+	jobStatus: string;
+	stepNumber: number;
+	stepName: string;
+	stepStatus: string;
+	stepConclusion: string | null;
+	stepStartedAt: string | null;
+	stepCompletedAt: string | null;
+};
+
 export type FlowNode =
 	| Node<JobNodeData, "job">
-	| Node<MatrixNodeData, "matrix">;
+	| Node<MatrixNodeData, "matrix">
+	| Node<StepLogNodeData, "stepLog">;
 
 export type GraphEdge = {
 	id: string;

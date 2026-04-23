@@ -6,6 +6,9 @@ export const NODE_WIDTH = 300;
 export const COLUMN_GAP = 90;
 export const ROW_GAP = 20;
 export const VARIANT_POPUP_GAP = 40;
+export const STEP_LOG_WIDTH = 560;
+export const STEP_LOG_HEIGHT = 400;
+export const STEP_LOG_GAP = 60;
 
 export const H_JOB_HEADER = 36;
 export const H_STEP_ROW = 28;

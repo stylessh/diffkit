@@ -325,6 +325,12 @@ export type WorkflowRunArtifact = {
 	digest: string | null;
 };
 
+export type WorkflowJobLogs = {
+	logs: string;
+	fetchedAt: string;
+	notAvailable: boolean;
+};
+
 export type WorkflowDefinitionJob = {
 	key: string;
 	needs: string[];

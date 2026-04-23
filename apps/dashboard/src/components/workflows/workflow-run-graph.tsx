@@ -1,5 +1,6 @@
 import { Skeleton } from "@diffkit/ui/components/skeleton";
 import { lazy, Suspense } from "react";
+import type { GitHubQueryScope } from "#/lib/github.query";
 import type {
 	WorkflowDefinition,
 	WorkflowRun,
@@ -17,10 +18,18 @@ export function WorkflowRunGraph({
 	run,
 	jobs,
 	definition,
+	scope,
+	owner,
+	repo,
+	runId,
 }: {
 	run: WorkflowRun;
 	jobs: WorkflowRunJob[];
 	definition: WorkflowDefinition | null;
+	scope: GitHubQueryScope;
+	owner: string;
+	repo: string;
+	runId: number;
 }) {
 	const hasMounted = useHasMounted();
 
@@ -28,7 +37,15 @@ export function WorkflowRunGraph({
 
 	return (
 		<Suspense fallback={<GraphPlaceholder />}>
-			<WorkflowRunGraphCanvas run={run} jobs={jobs} definition={definition} />
+			<WorkflowRunGraphCanvas
+				run={run}
+				jobs={jobs}
+				definition={definition}
+				scope={scope}
+				owner={owner}
+				repo={repo}
+				runId={runId}
+			/>
 		</Suspense>
 	);
 }
