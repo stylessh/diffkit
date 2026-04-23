@@ -139,6 +139,7 @@ function IssuesPage() {
 									href={`#${group.id}`}
 									icon={group.icon}
 									label={group.title}
+									onSelect={() => setGroupCollapsed(group.id, false)}
 									value={group.issues.length}
 								/>
 							))}
@@ -183,11 +184,13 @@ const IssueMetricCard = memo(function IssueMetricCard({
 	href,
 	icon: Icon,
 	label,
+	onSelect,
 	value,
 }: {
 	href: string;
 	icon: ComponentType<{ size?: number; strokeWidth?: number }>;
 	label: string;
+	onSelect: () => void;
 	value: number;
 }) {
 	const content = (
@@ -216,6 +219,7 @@ const IssueMetricCard = memo(function IssueMetricCard({
 	return (
 		<a
 			href={href}
+			onClick={onSelect}
 			className="flex items-center justify-between gap-4 rounded-xl bg-surface-1 px-3.5 py-3 transition-colors hover:bg-surface-2"
 		>
 			{content}
