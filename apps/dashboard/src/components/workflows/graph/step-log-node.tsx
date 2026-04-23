@@ -180,6 +180,7 @@ export function StepLogNode({
 					entries={entries}
 					totalLineCount={totalLineCount}
 					isLoading={logsQuery.isLoading}
+					isError={logsQuery.isError}
 					notAvailable={notAvailable}
 					hasLogs={hasLogs}
 					isStepLive={isStepLive}

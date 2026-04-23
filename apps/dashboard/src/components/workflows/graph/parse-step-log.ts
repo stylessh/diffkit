@@ -41,29 +41,80 @@ export type StepLogRange = {
 	completedAt?: string | null;
 };
 
-function extractByGroup(lines: string[], stepName: string): LogEntry[] {
+function extractByGroup(
+	lines: string[],
+	stepName: string,
+	range?: StepLogRange,
+): LogEntry[] {
+	const matches = findStepGroupMatches(lines, stepName);
+	if (matches.length === 0) return [];
+
+	const chosen = pickMatchByRange(matches, range);
+	return buildGroupEntries(lines, chosen.start);
+}
+
+type StepGroupMatch = { start: number; ts: string | null };
+
+function findStepGroupMatches(
+	lines: string[],
+	stepName: string,
+): StepGroupMatch[] {
+	const out: StepGroupMatch[] = [];
+	let depth = 0;
+	for (let i = 0; i < lines.length; i++) {
+		const raw = lines[i];
+		if (raw == null) continue;
+		const { text, ts } = stripTimestamp(raw);
+		const gm = text.match(GROUP_RE);
+		if (gm) {
+			if (depth === 0 && matchesStep(gm[1] ?? "", stepName)) {
+				out.push({ start: i, ts });
+			}
+			depth++;
+			continue;
+		}
+		if (ENDGROUP_RE.test(text) && depth > 0) {
+			depth--;
+		}
+	}
+	return out;
+}
+
+function pickMatchByRange(
+	matches: StepGroupMatch[],
+	range?: StepLogRange,
+): StepGroupMatch {
+	if (!range || matches.length === 1) return matches[0] as StepGroupMatch;
+	const startMs = range.startedAt ? Date.parse(range.startedAt) : null;
+	const endMs = range.completedAt ? Date.parse(range.completedAt) : null;
+	if (startMs == null && endMs == null) return matches[0] as StepGroupMatch;
+
+	for (const m of matches) {
+		if (!m.ts) continue;
+		const t = Date.parse(m.ts);
+		if (!Number.isFinite(t)) continue;
+		if (startMs != null && t < startMs) continue;
+		if (endMs != null && t > endMs) continue;
+		return m;
+	}
+	return matches[0] as StepGroupMatch;
+}
+
+function buildGroupEntries(lines: string[], startIdx: number): LogEntry[] {
 	const root: LogEntry[] = [];
 	const stack: LogEntry[][] = [root];
-	let capturing = false;
 	let depth = 0;
 	let groupCounter = 0;
 
-	for (const raw of lines) {
-		const parsed = stripTimestamp(raw);
-		const { text, ts } = parsed;
-
-		if (!capturing) {
-			const gm = text.match(GROUP_RE);
-			if (gm && matchesStep(gm[1] ?? "", stepName)) {
-				capturing = true;
-				depth = 1;
-			}
-			continue;
-		}
+	for (let i = startIdx; i < lines.length; i++) {
+		const raw = lines[i];
+		if (raw == null) continue;
+		const { text, ts } = stripTimestamp(raw);
 
 		const gm = text.match(GROUP_RE);
 		if (gm) {
 			depth++;
+			if (depth === 1) continue;
 			groupCounter++;
 			const group: LogEntry = {
 				kind: "group",
@@ -79,10 +130,7 @@ function extractByGroup(lines: string[], stepName: string): LogEntry[] {
 		}
 		if (ENDGROUP_RE.test(text)) {
 			depth--;
-			if (depth <= 0) {
-				capturing = false;
-				continue;
-			}
+			if (depth <= 0) return root;
 			if (stack.length > 1) stack.pop();
 			continue;
 		}
@@ -149,7 +197,7 @@ export function extractStepLog(
 ): ExtractResult {
 	if (!fullLog) return { entries: [], strategy: "empty" };
 	const lines = fullLog.split(/\r?\n/);
-	const byGroup = extractByGroup(lines, stepName);
+	const byGroup = extractByGroup(lines, stepName, range);
 	if (byGroup.length > 0) return { entries: byGroup, strategy: "group" };
 	if (range) {
 		const byTime = extractByTimeRange(lines, range);

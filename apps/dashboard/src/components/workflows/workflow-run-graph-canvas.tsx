@@ -91,40 +91,42 @@ export function WorkflowRunGraphCanvas({
 		[scope, owner, repo, runId],
 	);
 
-	const [collapsedIds, setCollapsedIds] = useState<Set<string>>(() => {
-		const initial = new Set<string>();
-		for (const job of jobs) {
-			const match = MATRIX_SUFFIX_RE.exec(job.name);
-			if (match) {
-				initial.add(getPopupNodeId(`matrix-${match[1]}`, job.id));
-				initial.add(getPopupNodeId(`def-${match[1]}`, job.id));
-			} else {
-				initial.add(`job-${job.id}`);
+	const collectDefaultCollapsedIds = useCallback(
+		(jobs: WorkflowRunJob[], definition: WorkflowDefinition | null) => {
+			const ids = new Set<string>();
+			for (const job of jobs) {
+				const match = MATRIX_SUFFIX_RE.exec(job.name);
+				if (match) {
+					ids.add(`matrix-${match[1]}`);
+					ids.add(`def-${match[1]}`);
+					ids.add(getPopupNodeId(`matrix-${match[1]}`, job.id));
+					ids.add(getPopupNodeId(`def-${match[1]}`, job.id));
+				} else {
+					ids.add(`job-${job.id}`);
+				}
 			}
-		}
-		if (definition) {
-			for (const yamlJob of definition.jobs) {
-				if (!yamlJob.isMatrix) initial.add(`def-${yamlJob.key}`);
+			if (definition) {
+				for (const yamlJob of definition.jobs) {
+					ids.add(`def-${yamlJob.key}`);
+				}
 			}
-		}
-		return initial;
-	});
+			return ids;
+		},
+		[],
+	);
+
+	const [collapsedIds, setCollapsedIds] = useState<Set<string>>(() =>
+		collectDefaultCollapsedIds(jobs, definition),
+	);
 
 	const autoCollapsedRef = useRef<Set<string>>(new Set(collapsedIds));
 	useEffect(() => {
+		const desired = collectDefaultCollapsedIds(jobs, definition);
 		const toAdd: string[] = [];
-		for (const job of jobs) {
-			const match = MATRIX_SUFFIX_RE.exec(job.name);
-			if (!match) continue;
-			const matrixPopup = getPopupNodeId(`matrix-${match[1]}`, job.id);
-			const defPopup = getPopupNodeId(`def-${match[1]}`, job.id);
-			if (!autoCollapsedRef.current.has(matrixPopup)) {
-				toAdd.push(matrixPopup);
-				autoCollapsedRef.current.add(matrixPopup);
-			}
-			if (!autoCollapsedRef.current.has(defPopup)) {
-				toAdd.push(defPopup);
-				autoCollapsedRef.current.add(defPopup);
+		for (const id of desired) {
+			if (!autoCollapsedRef.current.has(id)) {
+				toAdd.push(id);
+				autoCollapsedRef.current.add(id);
 			}
 		}
 		if (toAdd.length === 0) return;
@@ -133,7 +135,7 @@ export function WorkflowRunGraphCanvas({
 			for (const id of toAdd) next.add(id);
 			return next;
 		});
-	}, [jobs]);
+	}, [jobs, definition, collectDefaultCollapsedIds]);
 
 	const toggleCollapsed = useCallback((nodeId: string) => {
 		setCollapsedIds((prev) => {
@@ -252,23 +254,6 @@ export function WorkflowRunGraphCanvas({
 					currentY += estimateNodeHeight(flowNode) + ROW_GAP;
 				}
 			});
-
-			for (let c = 0; c < columns.length - 1; c++) {
-				const prev = columns[c] ?? [];
-				const next = columns[c + 1] ?? [];
-				for (const prevGroup of prev) {
-					for (const nextGroup of next) {
-						const prevId = getGroupId(prevGroup);
-						const nextId = getGroupId(nextGroup);
-						builtEdges.push({
-							id: `${prevId}->${nextId}`,
-							source: prevId,
-							target: nextId,
-							type: "smoothstep",
-						});
-					}
-				}
-			}
 		}
 
 		const matrixNodes = builtNodes.filter(

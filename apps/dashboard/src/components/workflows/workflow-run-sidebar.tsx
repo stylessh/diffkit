@@ -35,7 +35,9 @@ export function WorkflowRunSidebar({
 					<button
 						type="button"
 						aria-label="Filter jobs"
-						className="rounded-md p-1 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+						disabled
+						title="Filtering coming soon"
+						className="rounded-md p-1 text-muted-foreground opacity-50 transition-colors"
 					>
 						<FilterIcon size={13} strokeWidth={2} />
 					</button>

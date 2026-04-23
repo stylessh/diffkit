@@ -36,7 +36,8 @@ export function estimateMatrixHeight(
 	return (
 		H_MATRIX_OUTER_PAD +
 		main +
-		jobs.length * (H_MATRIX_PILL + H_MATRIX_CARD_GAP)
+		jobs.length * H_MATRIX_PILL +
+		Math.max(0, jobs.length - 1) * H_MATRIX_CARD_GAP
 	);
 }
 

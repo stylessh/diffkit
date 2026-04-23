@@ -5,7 +5,7 @@ import {
 	type StatePillTone,
 } from "@diffkit/ui/components/state-pill";
 import { Link } from "@tanstack/react-router";
-import type { ComponentType, SVGProps } from "react";
+import type { ComponentType, ReactNode, SVGProps } from "react";
 import {
 	CheckStateIcon,
 	getCheckState,
@@ -134,7 +134,7 @@ function InfoCell({
 }: {
 	label: string;
 	icon: IconComponent;
-	value: React.ReactNode;
+	value: ReactNode;
 }) {
 	return (
 		<div className="flex flex-col gap-1">

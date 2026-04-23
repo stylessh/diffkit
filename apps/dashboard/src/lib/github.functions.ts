@@ -10332,7 +10332,9 @@ export const getWorkflowDefinition = createServerFn({ method: "GET" })
 			const encoding = payload.encoding ?? "base64";
 			const yamlText =
 				encoding === "base64"
-					? atob(payload.content.replace(/\n/g, ""))
+					? Buffer.from(payload.content.replace(/\n/g, ""), "base64").toString(
+							"utf-8",
+						)
 					: payload.content;
 			return parseWorkflowDefinition(yamlText);
 		} catch (error) {
@@ -10399,13 +10401,18 @@ export const getWorkflowJobLogs = createServerFn({ method: "GET" })
 		for (const { label, ctx } of contexts) {
 			try {
 				console.log(`${tag} attempting`, label);
-				const response = await ctx.octokit.request(
-					"GET /repos/{owner}/{repo}/actions/jobs/{job_id}/logs",
-					{
-						owner: data.owner,
-						repo: data.repo,
-						job_id: data.jobId,
-					},
+				const response = await withGitHubOperationTimeout(
+					`${tag} ${label}`,
+					GITHUB_OPERATION_TIMEOUT_MS,
+					() =>
+						ctx.octokit.request(
+							"GET /repos/{owner}/{repo}/actions/jobs/{job_id}/logs",
+							{
+								owner: data.owner,
+								repo: data.repo,
+								job_id: data.jobId,
+							},
+						),
 				);
 				const logs = decodeLogsPayload(response.data);
 				const dataKind =
@@ -10416,23 +10423,10 @@ export const getWorkflowJobLogs = createServerFn({ method: "GET" })
 							: ArrayBuffer.isView(response.data)
 								? "ArrayBufferView"
 								: typeof response.data;
-				const groupMarkers: string[] = [];
-				for (const line of logs.split(/\r?\n/)) {
-					const afterTs = line.replace(
-						/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d+Z\s/,
-						"",
-					);
-					if (afterTs.startsWith("##[group]")) {
-						groupMarkers.push(afterTs);
-						if (groupMarkers.length >= 40) break;
-					}
-				}
 				console.log(`${tag} ok via ${label}`, {
 					status: response.status,
 					dataKind,
 					bytes: logs.length,
-					preview: logs.slice(0, 400),
-					groupMarkers,
 				});
 				return {
 					logs,

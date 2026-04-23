@@ -4,13 +4,17 @@ export function FullScreenIcon(
   props: SVGProps<SVGSVGElement> & { size?: number }
 ) {
   const { size = 24, width, height, ...rest } = props;
+  const isDecorative =
+    rest["aria-label"] == null && rest["aria-labelledby"] == null;
   return (
+    // biome-ignore lint/a11y/noSvgWithoutTitle: consumer provides aria-label/aria-labelledby; otherwise marked aria-hidden (decorative)
     <svg
-      aria-label="Fullscreen"
+      aria-hidden={isDecorative || undefined}
       color="currentColor"
       fill="none"
+      focusable="false"
       height={height ?? size}
-      role="img"
+      role={isDecorative ? undefined : "img"}
       stroke="currentColor"
       strokeLinecap="round"
       strokeLinejoin="round"

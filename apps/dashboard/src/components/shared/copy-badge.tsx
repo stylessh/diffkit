@@ -4,7 +4,7 @@ import {
 	TooltipTrigger,
 } from "@diffkit/ui/components/tooltip";
 import { cn } from "@diffkit/ui/lib/utils";
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 export function CopyBadge({
 	value,
@@ -18,11 +18,19 @@ export function CopyBadge({
 	const [copied, setCopied] = useState(false);
 	const timeoutRef = useRef<ReturnType<typeof setTimeout>>(undefined);
 
-	const handleClick = useCallback(() => {
-		void navigator.clipboard.writeText(value);
-		setCopied(true);
-		clearTimeout(timeoutRef.current);
-		timeoutRef.current = setTimeout(() => setCopied(false), 1500);
+	useEffect(() => {
+		return () => clearTimeout(timeoutRef.current);
+	}, []);
+
+	const handleClick = useCallback(async () => {
+		try {
+			await navigator.clipboard.writeText(value);
+			setCopied(true);
+			clearTimeout(timeoutRef.current);
+			timeoutRef.current = setTimeout(() => setCopied(false), 1500);
+		} catch {
+			setCopied(false);
+		}
 	}, [value]);
 
 	return (

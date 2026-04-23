@@ -112,6 +112,7 @@ export function WorkflowJobPage() {
 						rawLogs={logsQuery.data?.logs ?? null}
 						notAvailable={logsQuery.data?.notAvailable === true}
 						isLogsLoading={logsQuery.isLoading}
+						isLogsError={logsQuery.isError}
 						isLogsFetching={logsQuery.isFetching}
 						onRefresh={() => {
 							void logsQuery.refetch();
@@ -168,6 +169,7 @@ function JobContainer({
 	rawLogs,
 	notAvailable,
 	isLogsLoading,
+	isLogsError,
 	isLogsFetching,
 	onRefresh,
 	owner,
@@ -181,6 +183,7 @@ function JobContainer({
 	rawLogs: string | null;
 	notAvailable: boolean;
 	isLogsLoading: boolean;
+	isLogsError: boolean;
 	isLogsFetching: boolean;
 	onRefresh: () => void;
 	owner: string;
@@ -238,6 +241,7 @@ function JobContainer({
 							rawLogs={rawLogs}
 							notAvailable={notAvailable}
 							isLogsLoading={isLogsLoading}
+							isLogsError={isLogsError}
 						/>
 					))
 				)}
@@ -350,11 +354,13 @@ const JobStepRow = memo(function JobStepRow({
 	rawLogs,
 	notAvailable,
 	isLogsLoading,
+	isLogsError,
 }: {
 	step: WorkflowRunStep;
 	rawLogs: string | null;
 	notAvailable: boolean;
 	isLogsLoading: boolean;
+	isLogsError: boolean;
 }) {
 	const [expanded, setExpanded] = useState(false);
 
@@ -402,6 +408,7 @@ const JobStepRow = memo(function JobStepRow({
 						entries={entries}
 						totalLineCount={totalLineCount}
 						isLoading={isLogsLoading}
+						isError={isLogsError}
 						notAvailable={notAvailable}
 						hasLogs={hasLogs}
 						isStepLive={isStepLive}

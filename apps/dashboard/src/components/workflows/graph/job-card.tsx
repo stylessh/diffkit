@@ -91,6 +91,8 @@ export function JobCard({
 					type="button"
 					onClick={onToggle}
 					disabled={!onToggle}
+					aria-expanded={onToggle ? expanded : undefined}
+					aria-controls={onToggle ? `job-steps-${job.id}` : undefined}
 					className={cn(NODE_HEADER_CLASS, "flex-1")}
 				>
 					<CheckStateIcon state={state} />
@@ -119,7 +121,10 @@ export function JobCard({
 				</Link>
 			</div>
 			{expanded ? (
-				<div className="flex flex-col border-t text-xs">
+				<div
+					id={`job-steps-${job.id}`}
+					className="flex flex-col border-t text-xs"
+				>
 					{job.steps.length === 0 ? (
 						<div className="px-3 py-2 text-muted-foreground">No steps</div>
 					) : (

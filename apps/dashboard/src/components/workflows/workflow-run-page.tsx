@@ -31,10 +31,11 @@ export function WorkflowRunPage() {
 	const { owner, repo, runId } = routeApi.useParams();
 	const { pr: prNumberFromSearch } = routeApi.useSearch();
 
+	const runIdNum = Number(runId);
 	const scope = useMemo(() => ({ userId: user.id }), [user.id]);
 	const input = useMemo(
-		() => ({ owner, repo, runId: Number(runId) }),
-		[owner, repo, runId],
+		() => ({ owner, repo, runId: runIdNum }),
+		[owner, repo, runIdNum],
 	);
 	const hasMounted = useHasMounted();
 
@@ -122,7 +123,7 @@ export function WorkflowRunPage() {
 						scope={scope}
 						owner={owner}
 						repo={repo}
-						runId={Number(runId)}
+						runId={runIdNum}
 					/>
 					<WorkflowRunArtifacts artifacts={artifacts} />
 				</>
@@ -133,7 +134,7 @@ export function WorkflowRunPage() {
 					isJobsLoading={jobsQuery.isLoading}
 					owner={owner}
 					repo={repo}
-					runId={Number(runId)}
+					runId={runIdNum}
 				/>
 			}
 		/>

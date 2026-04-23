@@ -117,11 +117,15 @@ function DigestCell({ digest }: { digest: string }) {
 	const [copied, setCopied] = useState(false);
 	const timeoutRef = useRef<ReturnType<typeof setTimeout>>(undefined);
 
-	const handleCopy = useCallback(() => {
-		void navigator.clipboard.writeText(digest);
-		setCopied(true);
-		clearTimeout(timeoutRef.current);
-		timeoutRef.current = setTimeout(() => setCopied(false), 1500);
+	const handleCopy = useCallback(async () => {
+		try {
+			await navigator.clipboard.writeText(digest);
+			setCopied(true);
+			clearTimeout(timeoutRef.current);
+			timeoutRef.current = setTimeout(() => setCopied(false), 1500);
+		} catch {
+			setCopied(false);
+		}
 	}, [digest]);
 
 	useEffect(() => () => clearTimeout(timeoutRef.current), []);

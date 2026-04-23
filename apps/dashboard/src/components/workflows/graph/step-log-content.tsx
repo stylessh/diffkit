@@ -8,6 +8,7 @@ export function StepLogContent({
 	entries,
 	totalLineCount,
 	isLoading,
+	isError = false,
 	notAvailable,
 	hasLogs,
 	isStepLive,
@@ -16,6 +17,7 @@ export function StepLogContent({
 	entries: LogEntry[];
 	totalLineCount: number;
 	isLoading: boolean;
+	isError?: boolean;
 	notAvailable: boolean;
 	hasLogs: boolean;
 	isStepLive: boolean;
@@ -55,6 +57,14 @@ export function StepLogContent({
 			<div className={statusClass}>
 				<Spinner className="mr-2 size-3.5" />
 				Loading logs…
+			</div>
+		);
+	}
+
+	if (isError && !hasLogs) {
+		return (
+			<div className={cn(statusClass, "text-center")}>
+				Failed to load logs. Try refreshing.
 			</div>
 		);
 	}

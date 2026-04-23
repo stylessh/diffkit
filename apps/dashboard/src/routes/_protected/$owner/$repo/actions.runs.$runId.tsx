@@ -25,10 +25,13 @@ export const Route = createFileRoute(
 				: typeof raw === "string"
 					? Number(raw)
 					: Number.NaN;
-		return Number.isFinite(parsed) && parsed > 0 ? { pr: parsed } : {};
+		return Number.isInteger(parsed) && parsed > 0 ? { pr: parsed } : {};
 	},
 	loader: ({ context, params }) => {
 		const runId = Number(params.runId);
+		if (!Number.isInteger(runId) || runId <= 0) {
+			return { runTitle: null };
+		}
 		const scope = { userId: context.user.id };
 		const input = { owner: params.owner, repo: params.repo, runId };
 
