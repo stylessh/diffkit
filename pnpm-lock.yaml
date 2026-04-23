@@ -172,6 +172,18 @@ importers:
         specifier: ^4.81.1
         version: 4.81.1(@cloudflare/workers-types@4.20260413.1)
 
+  apps/search:
+    devDependencies:
+      '@types/node':
+        specifier: ^22.18.10
+        version: 22.19.17
+      tsx:
+        specifier: ^4.21.0
+        version: 4.21.0
+      typescript:
+        specifier: ^5.9.3
+        version: 5.9.3
+
   packages/icons:
     dependencies:
       '@hugeicons/react':
