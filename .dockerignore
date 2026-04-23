@@ -1,0 +1,11 @@
+node_modules
+.git
+.turbo
+**/node_modules
+**/.next
+**/dist
+**/coverage
+**/.env
+**/.env.*
+apps/dashboard/.wrangler
+apps/dashboard/.dev.vars*
