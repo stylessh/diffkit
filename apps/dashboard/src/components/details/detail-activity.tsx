@@ -35,6 +35,7 @@ import {
 	githubViewerQueryOptions,
 } from "#/lib/github.query";
 import type { GitHubActor } from "#/lib/github.types";
+import { removePullFromOpenViews } from "#/lib/github-query-updates";
 import { checkPermissionWarning } from "#/lib/warning-store";
 
 export function DetailActivityHeader({
@@ -180,6 +181,13 @@ export function DetailCommentBox({
 				},
 			});
 			if (result.ok) {
+				if (newState === "closed") {
+					removePullFromOpenViews(queryClient, scope, {
+						owner,
+						repo,
+						pullNumber: issueNumber,
+					});
+				}
 				void queryClient.invalidateQueries({
 					queryKey: githubQueryKeys.all,
 				});

@@ -112,6 +112,7 @@ import type {
 	PullWorkflowApproval,
 	TimelineEvent,
 } from "#/lib/github.types";
+import { removePullFromOpenViews } from "#/lib/github-query-updates";
 import { githubRevalidationSignalKeys } from "#/lib/github-revalidation";
 import {
 	mergeIssueStateIntoCloseEvent,
@@ -586,6 +587,7 @@ function MergeStatusCard({
 
 			{/* Merge action footer */}
 			<MergeFooter
+				scope={scope}
 				isMergeBlocked={isMergeBlocked}
 				canMerge={canMerge}
 				bypass={bypass}
@@ -1337,6 +1339,7 @@ const MERGE_STRATEGIES = [
 ];
 
 function MergeFooter({
+	scope,
 	isMergeBlocked,
 	canMerge,
 	bypass,
@@ -1346,6 +1349,7 @@ function MergeFooter({
 	prTitle,
 	firstCommitMessage,
 }: {
+	scope: GitHubQueryScope;
 	isMergeBlocked: boolean;
 	canMerge: boolean;
 	bypass: ReturnType<typeof useMergeBypass>;
@@ -1398,6 +1402,11 @@ function MergeFooter({
 				},
 			});
 			if (result.ok) {
+				removePullFromOpenViews(queryClient, scope, {
+					owner,
+					repo,
+					pullNumber,
+				});
 				await queryClient.invalidateQueries({ queryKey: ["github"] });
 			} else {
 				toast.error(result.error);

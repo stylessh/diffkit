@@ -4,9 +4,12 @@ import { useCallback } from "react";
 import { SidePanelPortal } from "#/components/layouts/dashboard-side-panel";
 import {
 	type GitHubQueryScope,
+	githubQueryKeys,
 	githubRepoOverviewQueryOptions,
 	githubRepoTreeQueryOptions,
 } from "#/lib/github.query";
+import { githubRevalidationSignalKeys } from "#/lib/github-revalidation";
+import { useGitHubSignalStream } from "#/lib/use-github-signal-stream";
 import { useHasMounted } from "#/lib/use-has-mounted";
 import { useRegisterTab } from "#/lib/use-register-tab";
 import { BranchComparisonBanner } from "./branch-comparison-banner";
@@ -38,6 +41,17 @@ export function RepoOverviewPage({
 		...githubRepoOverviewQueryOptions(scope, { owner, repo }),
 		enabled: hasMounted,
 	});
+	const overviewInput = { owner, repo };
+	const overviewRefreshTargets = [
+		{
+			queryKey: githubQueryKeys.repo.overview(scope, overviewInput),
+			signalKeys: [
+				githubRevalidationSignalKeys.repoMeta(overviewInput),
+				githubRevalidationSignalKeys.repoCode(overviewInput),
+			],
+		},
+	];
+	useGitHubSignalStream(overviewRefreshTargets);
 
 	const repoData = overviewQuery.data;
 	const activeRef = currentRef ?? repoData?.defaultBranch ?? "main";
