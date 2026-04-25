@@ -1,0 +1,17 @@
+{
+  "name": "@diffkit/search",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch src/server.ts",
+    "start": "tsx src/server.ts",
+    "check-types": "tsc --noEmit",
+    "check": "biome check",
+    "format": "biome format"
+  },
+  "devDependencies": {
+    "@types/node": "^22.18.10",
+    "tsx": "^4.21.0",
+    "typescript": "^5.9.3"
+  }
+}

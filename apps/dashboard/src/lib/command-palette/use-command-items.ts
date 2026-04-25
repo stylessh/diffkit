@@ -1,5 +1,6 @@
 import {
 	CodeIcon,
+	FileIcon,
 	GitMergeIcon,
 	GitPullRequestClosedIcon,
 	GitPullRequestDraftIcon,
@@ -20,6 +21,10 @@ import type {
 	PullSummary,
 	UserRepoSummary,
 } from "#/lib/github.types";
+import type {
+	SearchCodeResponse,
+	SearchCodeResultItem,
+} from "#/lib/search.types";
 import { getRegisteredCommands, subscribeCommands } from "./registry";
 import type { CommandItem } from "./types";
 
@@ -253,6 +258,73 @@ export function getCommandSearchItems(
 				repo: issue.repository.fullName,
 				comments: issue.comments,
 				updatedAt: issue.updatedAt,
+			},
+		});
+	}
+
+	return items;
+}
+
+export function getSearchCodeCommandItems(
+	result: SearchCodeResponse | undefined,
+	onOpenResult: (item: SearchCodeResultItem) => void | Promise<void>,
+): CommandItem[] {
+	if (!result) {
+		return [];
+	}
+
+	const grouped = new Map<string, SearchCodeResultItem[]>();
+	for (const item of result.results.slice(0, 50)) {
+		const key = `${item.repo}:${item.path}`;
+		const existing = grouped.get(key);
+		if (existing) {
+			existing.push(item);
+		} else {
+			grouped.set(key, [item]);
+		}
+	}
+
+	const items: CommandItem[] = [];
+	for (const itemsForFile of Array.from(grouped.values()).slice(0, 12)) {
+		const first = itemsForFile[0];
+		if (!first) {
+			continue;
+		}
+		const snippets = itemsForFile
+			.slice()
+			.sort((a, b) => a.line_number - b.line_number)
+			.filter(
+				(item, index, list) =>
+					index === 0 || item.line_number !== list[index - 1]?.line_number,
+			)
+			.slice(0, 3)
+			.map((item) => ({
+				lineNumber: item.line_number,
+				line: item.line,
+			}));
+
+		items.push({
+			id: `code-search:${first.repo}:${first.path}`,
+			label: first.path,
+			group: "Code Search",
+			icon: FileIcon,
+			keywords: [
+				first.repo,
+				first.path,
+				...snippets.map((snippet) => snippet.line),
+			].filter(Boolean),
+			action: {
+				type: "execute",
+				fn: () => onOpenResult(first),
+			},
+			meta: {
+				repo: first.repo,
+				codeSearch: {
+					repo: first.repo,
+					path: first.path,
+					totalMatches: itemsForFile.length,
+					snippets,
+				},
 			},
 		});
 	}

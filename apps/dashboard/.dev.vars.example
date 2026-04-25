@@ -114,3 +114,17 @@ DEV_TUNNEL_URL=
 # real bucket named there (see bucket_name). Your pub URL must be for that bucket — not only
 # preview_bucket_name (that name is for local simulation naming when not remote).
 R2_PUBLIC_BASE_URL=
+
+# -----------------------------------------------------------------------------
+# 7. Search service (apps/search + livegrep)
+# -----------------------------------------------------------------------------
+# For local development with apps/search running on localhost:8910.
+# The Worker fetches this endpoint for both query and control endpoints.
+LIVEGREP_BASE_URL=http://127.0.0.1:8910
+SEARCH_CONTROL_BASE_URL=http://127.0.0.1:8910
+
+# Must match SEARCH_CONTROL_TOKEN in apps/search environment (optional but recommended).
+SEARCH_CONTROL_TOKEN=change-me
+
+# Optional: only needed if your apps/search endpoint requires bearer auth for /api/v1/search.
+LIVEGREP_API_TOKEN=

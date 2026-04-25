@@ -1,0 +1,65 @@
+version: "3.9"
+
+services:
+  livegrep-backend:
+    image: ghcr.io/livegrep/livegrep/base:latest
+    command:
+      [
+        "/livegrep/bin/codesearch",
+        "-load_index",
+        "/data/livegrep.idx",
+        "-grpc",
+        "0.0.0.0:9999"
+      ]
+    volumes:
+      - ./.local:/data
+    networks:
+      - diffkit-search
+    restart: unless-stopped
+
+  livegrep-frontend:
+    image: ghcr.io/livegrep/livegrep/base:latest
+    command:
+      [
+        "/livegrep/bin/livegrep",
+        "-docroot",
+        "/livegrep/web",
+        "-listen",
+        "0.0.0.0:8910",
+        "--connect",
+        "livegrep-backend:9999"
+      ]
+    ports:
+      - "8911:8910"
+    depends_on:
+      - livegrep-backend
+    networks:
+      - diffkit-search
+    restart: unless-stopped
+
+  search-service:
+    build:
+      context: ../..
+      dockerfile: apps/search/Dockerfile
+    environment:
+      PORT: "8910"
+      HOST: "0.0.0.0"
+      SEARCH_CONTROL_TOKEN: "${SEARCH_CONTROL_TOKEN:?set SEARCH_CONTROL_TOKEN in your shell or .env}"
+      LIVEGREP_UPSTREAM_BASE_URL: "http://livegrep-frontend:8910"
+      LIVEGREP_SEARCH_PATH: "/api/v1/search"
+      SEARCH_STORAGE_ROOT: "/var/lib/diffkit-search"
+      ALLOWED_REPO_PROVIDERS: "github"
+      MAX_REPO_SIZE_MB: "10000"
+    ports:
+      - "8910:8910"
+    volumes:
+      - ./.local:/var/lib/diffkit-search
+    depends_on:
+      - livegrep-frontend
+    networks:
+      - diffkit-search
+    restart: unless-stopped
+
+networks:
+  diffkit-search:
+    driver: bridge

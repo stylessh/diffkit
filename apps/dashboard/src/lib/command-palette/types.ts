@@ -10,6 +10,15 @@ export type CommandItemMeta = {
 	updatedAt?: string;
 	language?: string | null;
 	stars?: number;
+	codeSearch?: {
+		repo: string;
+		path: string;
+		totalMatches: number;
+		snippets: Array<{
+			lineNumber: number;
+			line: string;
+		}>;
+	};
 };
 
 export type CommandItem = {

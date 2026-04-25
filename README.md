@@ -212,6 +212,27 @@ The dev server uses `DEV_TUNNEL_URL` to allow the tunnel host and configure HMR 
 | `pnpm --filter dashboard test` | Run tests |
 | `pnpm --filter dashboard deploy` | Build and deploy to Cloudflare Workers |
 
+### Search-service scripts
+
+| Command | Description |
+|---------|------------|
+| `pnpm --filter @diffkit/search dev` | Run self-hosted search service locally |
+| `pnpm --filter @diffkit/search start` | Start self-hosted search service |
+| `pnpm --filter @diffkit/search check-types` | Type-check search service |
+| `pnpm --filter @diffkit/search check` | Lint/format-check search service |
+
+## Self-hosted repo search service (Livegrep + apps/search)
+
+DiffKit's repo-search MVP is designed as:
+
+- Cloudflare Worker (`apps/dashboard`) for public API/control-plane orchestration.
+- Self-hosted `apps/search` service for mirror sync/index workflow + search proxying.
+- Livegrep backend for fast code search.
+
+For complete setup and deployment instructions (local + VPS), see:
+
+- `apps/search/README.md`
+
 ## GitHub App Permissions Reference
 
 Expanding permissions after users have installed the app will require those installations to approve the new permission set.

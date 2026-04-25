@@ -45,6 +45,33 @@
 			"migrations_dir": "drizzle"
 		}
 	],
+	"queues": {
+		"producers": [
+			{
+				"binding": "REPO_SYNC_QUEUE",
+				"queue": "diffkit-repo-sync"
+			},
+			{
+				"binding": "INDEX_BUILD_QUEUE",
+				"queue": "diffkit-index-build"
+			}
+		],
+		"consumers": [
+			{
+				"queue": "diffkit-repo-sync",
+				"max_batch_size": 25,
+				"max_batch_timeout": 5
+			},
+			{
+				"queue": "diffkit-index-build",
+				"max_batch_size": 10,
+				"max_batch_timeout": 10
+			}
+		]
+	},
+	"triggers": {
+		"crons": ["*/15 * * * *"]
+	},
 	"durable_objects": {
 		"bindings": [
 			{
@@ -75,6 +102,15 @@
 			"bucket_name": "YOUR_COMMENT_MEDIA_BUCKET_NAME",
 			"preview_bucket_name": "YOUR_COMMENT_MEDIA_PREVIEW_BUCKET_NAME",
 			"remote": true
+		},
+		{
+			"binding": "SEARCH_INDEX_ARTIFACTS",
+			"bucket_name": "YOUR_SEARCH_INDEX_ARTIFACTS_BUCKET",
+			"preview_bucket_name": "YOUR_SEARCH_INDEX_ARTIFACTS_PREVIEW_BUCKET"
 		}
-	]
+	],
+	"vars": {
+		"LIVEGREP_BASE_URL": "http://127.0.0.1:8910",
+		"SEARCH_CONTROL_BASE_URL": "http://127.0.0.1:8910"
+	}
 }
