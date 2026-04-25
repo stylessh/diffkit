@@ -98,7 +98,10 @@ export function WorkflowRunPage() {
 		runQuery.data
 			? {
 					type: "actions",
-					title: runQuery.data.displayTitle,
+					title:
+						runQuery.data.displayTitle ||
+						runQuery.data.name ||
+						`Run #${runQuery.data.runNumber}`,
 					number: runQuery.data.runNumber,
 					url: `/${owner}/${repo}/actions/runs/${runIdNum}`,
 					repo: `${owner}/${repo}`,

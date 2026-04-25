@@ -1042,8 +1042,8 @@ function ChecksSection({
 											)}
 											{run.required && (
 												<StatePill
-													tone="secondary"
-													className="-my-0.5 !text-[10px]"
+													tone="muted"
+													className="-my-0.5 border border-border bg-transparent"
 												>
 													Required
 												</StatePill>
