@@ -43,6 +43,7 @@ import { quickhubDark, quickhubLight } from "@diffkit/ui/lib/diffs-themes";
 import { cn } from "@diffkit/ui/lib/utils";
 import type { DiffLineAnnotation, PatchDiffProps } from "@pierre/diffs/react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { Link } from "@tanstack/react-router";
 import { useTheme } from "next-themes";
 import {
 	type ComponentType,
@@ -55,6 +56,10 @@ import {
 	useRef,
 	useState,
 } from "react";
+import {
+	CheckStateIcon,
+	getCheckState,
+} from "#/components/checks/check-state-icon";
 import { CommentMoreMenu } from "#/components/details/comment-more-menu";
 import { IssueCommentReactionBar } from "#/components/details/comment-reaction-bar";
 import { CommentReplyForm } from "#/components/details/comment-reply-form";
@@ -637,8 +642,8 @@ function ReviewsSection({
 								key={review.id}
 								className="flex items-center gap-2 px-4 py-1.5 pl-11"
 							>
-								<CheckRunIcon
-									status={review.state === "APPROVED" ? "success" : "failure"}
+								<CheckStateIcon
+									state={review.state === "APPROVED" ? "success" : "failure"}
 								/>
 								{review.author && (
 									<img
@@ -808,17 +813,18 @@ function ChecksSection({
 	// Group by status in display order: expected, failed, pending, skipped, passed
 	const groupedRuns = useMemo(() => {
 		const groups: Record<
-			"expected" | "failure" | "pending" | "skipped" | "success",
+			"expected" | "failure" | "pending" | "waiting" | "skipped" | "success",
 			PullCheckRun[]
 		> = {
 			expected: [],
 			failure: [],
 			pending: [],
+			waiting: [],
 			skipped: [],
 			success: [],
 		};
 		for (const run of checkRuns) {
-			groups[getCheckRunStatus(run)].push(run);
+			groups[getCheckState(run)].push(run);
 		}
 		return groups;
 	}, [checkRuns]);
@@ -830,6 +836,7 @@ function ChecksSection({
 		{ key: "expected", label: "Expected" },
 		{ key: "failure", label: "Failed" },
 		{ key: "pending", label: "Pending" },
+		{ key: "waiting", label: "Waiting" },
 		{ key: "skipped", label: "Skipped" },
 		{ key: "success", label: "Passed" },
 	];
@@ -975,7 +982,7 @@ function ChecksSection({
 									{label}
 								</div>
 								{runs.map((run) => {
-									const runStatus = getCheckRunStatus(run);
+									const runStatus = getCheckState(run);
 									const detail =
 										runStatus === "expected"
 											? "Waiting for status to be reported"
@@ -998,7 +1005,7 @@ function ChecksSection({
 											key={`${run.name}:${run.id}`}
 											className="group/run flex items-center gap-2 px-4 py-1.5 pl-11"
 										>
-											<CheckRunIcon status={runStatus} />
+											<CheckStateIcon state={runStatus} />
 											{run.appAvatarUrl && (
 												<img
 													src={run.appAvatarUrl}
@@ -1006,7 +1013,20 @@ function ChecksSection({
 													className="size-4 shrink-0 rounded border border-border"
 												/>
 											)}
-											{run.htmlUrl ? (
+											{run.workflowRunId != null ? (
+												<Link
+													to="/$owner/$repo/actions/runs/$runId"
+													params={{
+														owner,
+														repo,
+														runId: String(run.workflowRunId),
+													}}
+													search={{ pr: pullNumber }}
+													className="min-w-0 flex-1 truncate text-xs hover:underline"
+												>
+													{nameContent}
+												</Link>
+											) : run.htmlUrl ? (
 												<a
 													href={run.htmlUrl}
 													target="_blank"
@@ -1022,8 +1042,8 @@ function ChecksSection({
 											)}
 											{run.required && (
 												<StatePill
-													tone="secondary"
-													className="-my-0.5 !text-[10px]"
+													tone="muted"
+													className="-my-0.5 border border-border bg-transparent"
 												>
 													Required
 												</StatePill>
@@ -1533,78 +1553,6 @@ function StatusIcon({ status }: { status: StatusType }) {
 			<div className="size-1.5 rounded-full bg-current" />
 		</div>
 	);
-}
-
-function CheckRunIcon({
-	status,
-}: {
-	status: "success" | "failure" | "pending" | "skipped" | "expected";
-}) {
-	if (status === "success") {
-		return (
-			<div className="flex size-3.5 shrink-0 items-center justify-center text-green-600 dark:text-green-400">
-				<CheckIcon size={12} strokeWidth={3} />
-			</div>
-		);
-	}
-	if (status === "failure") {
-		return (
-			<div className="flex size-3.5 shrink-0 items-center justify-center text-red-600 dark:text-red-400">
-				<XIcon size={12} strokeWidth={3} />
-			</div>
-		);
-	}
-	if (status === "skipped") {
-		return (
-			<div className="flex size-3.5 shrink-0 items-center justify-center text-muted-foreground">
-				<div className="size-1.5 rounded-full border border-current" />
-			</div>
-		);
-	}
-	if (status === "expected") {
-		return (
-			<div className="flex size-3.5 shrink-0 items-center justify-center text-yellow-500">
-				<div className="size-1.5 rounded-full bg-current" />
-			</div>
-		);
-	}
-	return (
-		<div className="flex size-3.5 shrink-0 items-center justify-center text-yellow-500">
-			<svg
-				className="size-3.5 animate-spin"
-				viewBox="0 0 16 16"
-				fill="none"
-				aria-hidden="true"
-			>
-				<circle
-					cx="8"
-					cy="8"
-					r="6"
-					stroke="currentColor"
-					strokeWidth="2"
-					opacity="0.25"
-				/>
-				<path
-					d="M14 8a6 6 0 0 0-6-6"
-					stroke="currentColor"
-					strokeWidth="2"
-					strokeLinecap="round"
-				/>
-			</svg>
-		</div>
-	);
-}
-
-function getCheckRunStatus(
-	run: PullCheckRun,
-): "success" | "failure" | "pending" | "skipped" | "expected" {
-	if (run.status === "expected") return "expected";
-	if (run.status !== "completed" || run.conclusion === null) return "pending";
-	if (run.conclusion === "success" || run.conclusion === "neutral")
-		return "success";
-	if (run.conclusion === "skipped" || run.conclusion === "stale")
-		return "skipped";
-	return "failure";
 }
 
 function MergeStatusSkeleton() {

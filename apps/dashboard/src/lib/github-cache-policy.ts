@@ -32,6 +32,10 @@ export const githubCachePolicy = {
 		staleTimeMs: 15 * 1000,
 		gcTimeMs: 5 * 60 * 1000,
 	},
+	workflowRun: {
+		staleTimeMs: 15 * 1000,
+		gcTimeMs: 5 * 60 * 1000,
+	},
 	contributions: {
 		staleTimeMs: 60 * 60 * 1000,
 		gcTimeMs: 24 * 60 * 60 * 1000,

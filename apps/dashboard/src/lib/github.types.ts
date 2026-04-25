@@ -253,12 +253,110 @@ export type PullCheckRun = {
 	startedAt: string | null;
 	htmlUrl: string | null;
 	required: boolean;
+	workflowRunId: number | null;
 };
 
 export type PullWorkflowApproval = {
 	workflowRunId: number;
 	name: string;
 	event: string;
+};
+
+export type WorkflowRunPullRequestRef = {
+	number: number;
+	headRef: string;
+	baseRef: string;
+};
+
+export type WorkflowRun = {
+	id: number;
+	name: string | null;
+	displayTitle: string;
+	status: string;
+	conclusion: string | null;
+	event: string;
+	headBranch: string | null;
+	headSha: string;
+	runNumber: number;
+	runAttempt: number;
+	runStartedAt: string | null;
+	createdAt: string;
+	updatedAt: string;
+	htmlUrl: string;
+	path: string;
+	workflowId: number;
+	actor: GitHubActor | null;
+	triggeringActor: GitHubActor | null;
+	pullRequests: WorkflowRunPullRequestRef[];
+	viewerCanRerun: boolean;
+};
+
+export type WorkflowRunStep = {
+	number: number;
+	name: string;
+	status: string;
+	conclusion: string | null;
+	startedAt: string | null;
+	completedAt: string | null;
+};
+
+export type WorkflowRunJob = {
+	id: number;
+	runId: number;
+	name: string;
+	status: string;
+	conclusion: string | null;
+	startedAt: string | null;
+	completedAt: string | null;
+	htmlUrl: string | null;
+	labels: string[];
+	runnerName: string | null;
+	steps: WorkflowRunStep[];
+};
+
+export type WorkflowRunArtifact = {
+	id: number;
+	name: string;
+	sizeInBytes: number;
+	expired: boolean;
+	createdAt: string | null;
+	expiresAt: string | null;
+	archiveDownloadUrl: string;
+	digest: string | null;
+};
+
+export type WorkflowJobLogs = {
+	logs: string;
+	fetchedAt: string;
+	notAvailable: boolean;
+};
+
+/** Per-step logs derived from the run-level zip (`/actions/runs/{runId}/logs`).
+ *  Keys are step numbers as they appear in the API job's `steps[].number`. */
+export type WorkflowJobStepLogs = {
+	/** Sanitized job name as it appears inside the zip (slash/colon stripped, 90-char UTF-16 truncated). */
+	jobName: string;
+	/** Whole-job log file from the top-level `{ordinal}_{jobName}.txt` entry, when present. */
+	jobLog: string | null;
+	/** Per-step files keyed by step number (e.g. `1` → contents of `<jobName>/1_<stepName>.txt`). */
+	steps: Record<number, string>;
+};
+
+export type WorkflowRunLogsBundle = {
+	jobs: Record<string, WorkflowJobStepLogs>;
+	fetchedAt: string;
+	notAvailable: boolean;
+};
+
+export type WorkflowDefinitionJob = {
+	key: string;
+	needs: string[];
+	nameTemplate: string | null;
+	isMatrix: boolean;
+};
+
+export type WorkflowDefinition = {
+	jobs: WorkflowDefinitionJob[];
 };
 
 export type PullReview = {

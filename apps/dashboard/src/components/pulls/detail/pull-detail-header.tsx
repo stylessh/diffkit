@@ -1,19 +1,14 @@
 import { FileIcon, GitCommitIcon, ReviewsIcon } from "@diffkit/icons";
-import { StatePill } from "@diffkit/ui/components/state-pill";
 import {
 	Callout,
 	CalloutAction,
 	CalloutContent,
 } from "@diffkit/ui/components/callout";
-import {
-	Tooltip,
-	TooltipContent,
-	TooltipTrigger,
-} from "@diffkit/ui/components/tooltip";
+import { StatePill } from "@diffkit/ui/components/state-pill";
 import { cn } from "@diffkit/ui/lib/utils";
 import { Link } from "@tanstack/react-router";
-import { useCallback, useRef, useState } from "react";
 import { DetailPageTitle } from "#/components/details/detail-page";
+import { CopyBadge } from "#/components/shared/copy-badge";
 import type { PullDetail } from "#/lib/github.types";
 import { getPrStateConfig } from "#/lib/pr-state";
 
@@ -145,42 +140,6 @@ export function PullDetailHeader({
 }
 
 const DIFF_BOX_COUNT = 5;
-
-function CopyBadge({
-	value,
-	canTruncate,
-}: {
-	value: string;
-	canTruncate?: boolean;
-}) {
-	const [copied, setCopied] = useState(false);
-	const timeoutRef = useRef<ReturnType<typeof setTimeout>>(undefined);
-
-	const handleClick = useCallback(() => {
-		void navigator.clipboard.writeText(value);
-		setCopied(true);
-		clearTimeout(timeoutRef.current);
-		timeoutRef.current = setTimeout(() => setCopied(false), 1500);
-	}, [value]);
-
-	return (
-		<Tooltip open={copied}>
-			<TooltipTrigger asChild>
-				<button
-					type="button"
-					onClick={handleClick}
-					className={cn(
-						"shrink-0 cursor-pointer rounded bg-surface-1 px-1.5 py-0.5 font-mono text-xs font-[550] transition-colors hover:bg-surface-2",
-						canTruncate && "min-w-0 shrink truncate",
-					)}
-				>
-					{value}
-				</button>
-			</TooltipTrigger>
-			<TooltipContent>Copied!</TooltipContent>
-		</Tooltip>
-	);
-}
 
 function DiffBoxes({
 	additions,

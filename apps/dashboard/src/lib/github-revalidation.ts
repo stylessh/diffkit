@@ -431,6 +431,14 @@ export function getGitHubRevalidationSignalKeysForTab(tab: Tab) {
 		];
 	}
 
+	if (tab.type === "actions") {
+		// `tab.number` is the human-readable run number (e.g. #42), not the API
+		// run_id, so we can't subscribe to a specific run/job entity here. The
+		// repo-wide actions signal covers the list view; per-entity refresh
+		// happens via useGitHubSignalStream calls in the page components.
+		return [githubRevalidationSignalKeys.actionsRepo({ owner, repo })];
+	}
+
 	if (tab.number == null) return [];
 
 	if (tab.type === "pull" || tab.type === "review") {

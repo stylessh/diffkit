@@ -36,9 +36,11 @@
 		"@tanstack/react-start": "~1.167.23",
 		"@tanstack/react-virtual": "^3.13.24",
 		"@tanstack/router-plugin": "~1.167.12",
+		"@xyflow/react": "^12.10.2",
 		"agentation": "^3.0.2",
 		"better-auth": "^1.6.0",
 		"drizzle-orm": "^0.45.2",
+		"fflate": "^0.8.2",
 		"motion": "^12.38.0",
 		"next-themes": "^0.4.6",
 		"nuqs": "^2.8.9",
@@ -47,7 +49,8 @@
 		"react-dom": "^19.2.0",
 		"react-dropzone": "^15.0.0",
 		"recharts": "^3.8.1",
-		"tailwindcss": "^4.1.18"
+		"tailwindcss": "^4.1.18",
+		"yaml": "^2.8.3"
 	},
 	"devDependencies": {
 		"@biomejs/biome": "2.4.5",
