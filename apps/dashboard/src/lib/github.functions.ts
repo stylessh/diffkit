@@ -1703,16 +1703,19 @@ async function executeGitHubGraphQL<TResponse>(
 }
 
 /**
- * Fire-and-forget persistence so the OAuth fallback can skip these orgs on
- * future fetches (see `getMySearchSources`). Errors are logged but never
- * propagate — this is best-effort optimization, not correctness-critical.
+ * Persist orgs that returned an OAuth restriction so the OAuth fallback can
+ * skip them on future fetches (see `getMySearchSources`). Awaited inline —
+ * the worker is configured with `no_handle_cross_request_promise_resolution`
+ * so a fire-and-forget write would race the response and get cancelled.
+ * Errors are swallowed: this is best-effort optimization, not correctness.
  */
-function persistForbiddenOrgs(userId: string, orgs: string[]) {
-	void import("./forbidden-orgs-store")
-		.then(({ recordForbiddenOrgs }) => recordForbiddenOrgs(userId, orgs))
-		.catch((error) => {
-			console.error("[github-search] failed to persist forbidden orgs", error);
-		});
+async function persistForbiddenOrgs(userId: string, orgs: string[]) {
+	try {
+		const { recordForbiddenOrgs } = await import("./forbidden-orgs-store");
+		await recordForbiddenOrgs(userId, orgs);
+	} catch (error) {
+		console.error("[github-search] failed to persist forbidden orgs", error);
+	}
 }
 
 /**
@@ -4934,14 +4937,14 @@ async function getMySearchSources(
 			}
 		}
 		if (recovered.length > 0) {
-			void clearForbiddenOrgsForUser(context.session.user.id, recovered).catch(
-				(error) => {
-					console.error(
-						"[github-search] failed to clear recovered forbidden orgs",
-						error,
-					);
-				},
-			);
+			try {
+				await clearForbiddenOrgsForUser(context.session.user.id, recovered);
+			} catch (error) {
+				console.error(
+					"[github-search] failed to clear recovered forbidden orgs",
+					error,
+				);
+			}
 		}
 		for (const org of stillForbidden) {
 			addExcludedOwnerScope(excludedOAuthOwners, {
@@ -5233,7 +5236,10 @@ async function getMyPullsResult({
 			if (forbiddenOrgs.length > 0) {
 				const uniqueForbiddenOrgs = [...new Set(forbiddenOrgs)];
 				data.forbiddenOrgs = uniqueForbiddenOrgs;
-				void persistForbiddenOrgs(context.session.user.id, uniqueForbiddenOrgs);
+				await persistForbiddenOrgs(
+					context.session.user.id,
+					uniqueForbiddenOrgs,
+				);
 			}
 			if (results.length < sources.length) {
 				data.partial = true;
@@ -5411,7 +5417,10 @@ async function getMyIssuesResult({
 			if (forbiddenOrgs.length > 0) {
 				const uniqueForbiddenOrgs = [...new Set(forbiddenOrgs)];
 				data.forbiddenOrgs = uniqueForbiddenOrgs;
-				void persistForbiddenOrgs(context.session.user.id, uniqueForbiddenOrgs);
+				await persistForbiddenOrgs(
+					context.session.user.id,
+					uniqueForbiddenOrgs,
+				);
 			}
 			if (results.length < sources.length) {
 				data.partial = true;
