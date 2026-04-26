@@ -171,7 +171,7 @@ export function PullBodySection({
 				)}
 				{pr.graphqlId ? (
 					<IssueCommentReactionBar
-						className="mt-3 justify-start"
+						className="mt-3 min-h-6 justify-start"
 						revealZeroCount={bodyActive || prefersNoHover}
 						viewerLogin={viewerLogin}
 						owner={owner}

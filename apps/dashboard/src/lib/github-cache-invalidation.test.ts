@@ -13,6 +13,7 @@ describe("getGitHubWebhookRevalidationSignalKeys", () => {
 			}),
 		).toEqual([
 			"pulls.mine",
+			"notifications",
 			"repoMeta:stylessh/havana",
 			"pull:stylessh/havana#42",
 		]);
@@ -32,7 +33,7 @@ describe("getGitHubWebhookRevalidationSignalKeys", () => {
 					},
 				},
 			}),
-		).toEqual(["pull:stylessh/havana#7"]);
+		).toEqual(["notifications", "pull:stylessh/havana#7"]);
 	});
 
 	it("maps plain issues webhook events to issue list and detail signals", () => {
@@ -48,6 +49,7 @@ describe("getGitHubWebhookRevalidationSignalKeys", () => {
 			}),
 		).toEqual([
 			"issues.mine",
+			"notifications",
 			"repoMeta:stylessh/havana",
 			"issue:stylessh/havana#9",
 		]);
@@ -61,7 +63,11 @@ describe("getGitHubWebhookRevalidationSignalKeys", () => {
 					owner: { login: "stylessh" },
 				},
 			}),
-		).toEqual(["repoMeta:stylessh/havana", "repoCode:stylessh/havana"]);
+		).toEqual([
+			"notifications",
+			"repoMeta:stylessh/havana",
+			"repoCode:stylessh/havana",
+		]);
 	});
 
 	it("extracts pull signals from check_run webhook payloads", () => {
@@ -89,7 +95,11 @@ describe("getGitHubWebhookRevalidationSignalKeys", () => {
 					id: 101,
 				},
 			}),
-		).toEqual(["actions:stylessh/havana", "workflowRun:stylessh/havana#101"]);
+		).toEqual([
+			"notifications",
+			"actions:stylessh/havana",
+			"workflowRun:stylessh/havana#101",
+		]);
 	});
 
 	it("maps workflow_job webhook events to repo, run, and job signals", () => {
@@ -105,6 +115,7 @@ describe("getGitHubWebhookRevalidationSignalKeys", () => {
 				},
 			}),
 		).toEqual([
+			"notifications",
 			"actions:stylessh/havana",
 			"workflowRun:stylessh/havana#101",
 			"workflowJob:stylessh/havana#202",
@@ -119,7 +130,7 @@ describe("getGitHubWebhookRevalidationSignalKeys", () => {
 					owner: { login: "stylessh" },
 				},
 			}),
-		).toEqual(["repoProtection:stylessh/havana"]);
+		).toEqual(["notifications", "repoProtection:stylessh/havana"]);
 	});
 
 	it("maps branch_protection_rule events to repo protection signal", () => {
@@ -130,7 +141,7 @@ describe("getGitHubWebhookRevalidationSignalKeys", () => {
 					owner: { login: "stylessh" },
 				},
 			}),
-		).toEqual(["repoProtection:stylessh/havana"]);
+		).toEqual(["notifications", "repoProtection:stylessh/havana"]);
 	});
 
 	it("maps status events to repo statuses signal", () => {
@@ -142,7 +153,7 @@ describe("getGitHubWebhookRevalidationSignalKeys", () => {
 				},
 				sha: "abc123",
 			}),
-		).toEqual(["repoStatuses:stylessh/havana"]);
+		).toEqual(["notifications", "repoStatuses:stylessh/havana"]);
 	});
 
 	it("extracts pull signals from workflow_run payloads alongside run entity", () => {
@@ -158,6 +169,7 @@ describe("getGitHubWebhookRevalidationSignalKeys", () => {
 				},
 			}),
 		).toEqual([
+			"notifications",
 			"actions:stylessh/havana",
 			"workflowRun:stylessh/havana#55",
 			"pull:stylessh/havana#17",

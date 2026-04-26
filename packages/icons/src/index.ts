@@ -7,6 +7,7 @@ export {
   ArchiveIcon,
   ArrangeIcon as SortIcon,
   ArrowDown01Icon as ChevronDownIcon,
+  ArrowExpand02Icon as ExpandIcon,
   ArrowLeft01Icon as ChevronLeftIcon,
   ArrowMoveDownRightIcon,
   ArrowReloadHorizontalIcon as RefreshCwIcon,
@@ -19,6 +20,8 @@ export {
   Cancel01Icon as CloseIcon,
   Cancel01Icon as XIcon,
   CancelCircleIcon as IssueClosedNotPlannedIcon,
+  CellsIcon,
+  CenterFocusIcon,
   CheckListIcon as ReviewsIcon,
   CheckmarkCircle01Icon as IssueClosedCompletedIcon,
   CircleIcon,
@@ -53,9 +56,11 @@ export {
   Logout01Icon as LogOutIcon,
   Mail01Icon as MailIcon,
   Message01Icon as MessageIcon,
+  MinusSignIcon,
   Moon02Icon as MoonIcon,
   MoreHorizontalIcon,
   Notification01Icon as NotificationIcon,
+  PackageIcon,
   PencilEdit01Icon as EditIcon,
   PlusSignIcon,
   Remove01Icon,
@@ -73,8 +78,10 @@ export {
   ViewIcon,
   WifiDisconnected01Icon as WifiOffIcon,
 } from "@hugeicons/react";
+export { ActionsIcon } from "./actions-icon";
 export { ArchiveDownIcon } from "./archive-down-icon";
 export { GitHubLogo, GitHubWordmarkLogo, XLogo } from "./brand-logos";
+export { FullScreenIcon } from "./full-screen-icon";
 export { PenIcon } from "./pen-icon";
 export { SeparatorHorizontalIcon } from "./separator-horizontal-icon";
 export { StarIcon } from "./star-icon";

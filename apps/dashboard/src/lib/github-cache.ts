@@ -52,6 +52,16 @@ export type GitHubFetchResult<TData> =
 			metadata: GitHubResponseMetadata;
 	  };
 
+export type GitHubLocalFirstMeta = {
+	cacheStatus: "fresh" | "stale" | "miss";
+	fetchedAt: number | null;
+	isRevalidating: boolean;
+};
+
+export type BackgroundExecutionContext = {
+	waitUntil(promise: Promise<unknown>): void;
+};
+
 type GetOrRevalidateGitHubResourceOptions<TData> = {
 	userId: string;
 	resource: string;
@@ -547,6 +557,78 @@ export async function markGitHubRevalidationSignals(
 	return uniqueSignalKeys.length;
 }
 
+export type GitHubWebhookEventRecord = {
+	deliveryId: string;
+	event: string;
+	signalKeys: string[];
+	receivedAt?: number;
+};
+
+/**
+ * Records a webhook delivery for audit and replay. Idempotent on deliveryId —
+ * GitHub retries reuse the same X-GitHub-Delivery header, so only the first
+ * attempt persists. Returns true when a new row was inserted.
+ */
+export async function recordGitHubWebhookEvent({
+	deliveryId,
+	event,
+	signalKeys,
+	receivedAt = Date.now(),
+}: GitHubWebhookEventRecord) {
+	const [{ getDb }, { githubWebhookEvent }] = await Promise.all([
+		import("../db"),
+		import("../db/schema"),
+	]);
+	const db = getDb();
+
+	const inserted = await db
+		.insert(githubWebhookEvent)
+		.values({
+			deliveryId,
+			event,
+			signalKeysJson: JSON.stringify(signalKeys),
+			receivedAt,
+		})
+		.onConflictDoNothing({ target: githubWebhookEvent.deliveryId })
+		.returning({ id: githubWebhookEvent.id });
+
+	return inserted.length > 0;
+}
+
+export async function markGitHubWebhookEventProcessed(
+	deliveryId: string,
+	at = Date.now(),
+) {
+	const [{ eq }, { getDb }, { githubWebhookEvent }] = await Promise.all([
+		import("drizzle-orm"),
+		import("../db"),
+		import("../db/schema"),
+	]);
+	const db = getDb();
+
+	await db
+		.update(githubWebhookEvent)
+		.set({ processedAt: at, errorMessage: null })
+		.where(eq(githubWebhookEvent.deliveryId, deliveryId));
+}
+
+export async function markGitHubWebhookEventFailed(
+	deliveryId: string,
+	errorMessage: string,
+) {
+	const [{ eq }, { getDb }, { githubWebhookEvent }] = await Promise.all([
+		import("drizzle-orm"),
+		import("../db"),
+		import("../db/schema"),
+	]);
+	const db = getDb();
+
+	await db
+		.update(githubWebhookEvent)
+		.set({ errorMessage: errorMessage.slice(0, 2000) })
+		.where(eq(githubWebhookEvent.deliveryId, deliveryId));
+}
+
 export async function getGitHubRevalidationSignals(signalKeys: string[]) {
 	if (signalKeys.length === 0) {
 		return [];
@@ -579,6 +661,64 @@ export async function bustGitHubCache(
 	const paramsJson = stableSerialize(params);
 	const cacheKey = buildGitHubCacheKey({ userId, resource, paramsJson });
 	await store.delete(cacheKey);
+}
+
+async function getGitHubCacheKvNamespace(): Promise<KVNamespace | null> {
+	try {
+		const { env } = await import("cloudflare:workers");
+		const workerEnv = env as typeof env & {
+			GITHUB_CACHE_KV?: KVNamespace;
+		};
+		return workerEnv.GITHUB_CACHE_KV ?? null;
+	} catch {
+		return null;
+	}
+}
+
+/**
+ * Drops every cached GitHub response that belongs to the user. Clears legacy
+ * D1 rows (response cache) and best-effort sweeps the KV split-mode payload
+ * store keyed by `gh:${userId}:`. Global signal/namespace tables are left
+ * alone so other users keep their state.
+ */
+export async function clearAllGitHubCacheForUser(userId: string) {
+	const [{ eq }, { getDb }, { githubResponseCache }] = await Promise.all([
+		import("drizzle-orm"),
+		import("../db"),
+		import("../db/schema"),
+	]);
+	const db = getDb();
+
+	const deletedDbRows = await db
+		.delete(githubResponseCache)
+		.where(eq(githubResponseCache.userId, userId))
+		.returning({ cacheKey: githubResponseCache.cacheKey });
+
+	let deletedKvKeys = 0;
+	const kv = await getGitHubCacheKvNamespace();
+	if (kv) {
+		const prefix = `gh:${userId}:`;
+		let cursor: string | undefined;
+
+		do {
+			const result: KVNamespaceListResult<unknown, string> = await kv.list({
+				prefix,
+				cursor,
+			});
+
+			if (result.keys.length > 0) {
+				await Promise.all(result.keys.map((key) => kv.delete(key.name)));
+				deletedKvKeys += result.keys.length;
+			}
+
+			cursor = result.list_complete ? undefined : result.cursor;
+		} while (cursor);
+	}
+
+	return {
+		deletedDbRows: deletedDbRows.length,
+		deletedKvKeys,
+	};
 }
 
 export function createGitHubResponseMetadata(
@@ -618,6 +758,208 @@ async function persistGitHubCacheEntry({
 	await Promise.all(writes);
 }
 
+async function resolveGitHubCacheEntry({
+	userId,
+	resource,
+	params,
+	signalKeys,
+	namespaceKeys,
+	cacheMode,
+	payloadRetentionSeconds,
+	store,
+	payloadStore,
+	getLatestSignalUpdatedAt,
+	getNamespaceVersions,
+	now,
+}: {
+	userId: string;
+	resource: string;
+	params: unknown;
+	signalKeys: string[];
+	namespaceKeys: string[];
+	cacheMode: "legacy" | "split";
+	payloadRetentionSeconds: number;
+	store?: GitHubCacheStore;
+	payloadStore?: GitHubPayloadCacheStore | null;
+	getLatestSignalUpdatedAt: (signalKeys: string[]) => Promise<number | null>;
+	getNamespaceVersions: (
+		namespaceKeys: string[],
+	) => Promise<Record<string, number>>;
+	now: () => number;
+}) {
+	let resolvedStore = store ?? null;
+	const resolvedPayloadStore =
+		typeof payloadStore !== "undefined"
+			? payloadStore
+			: cacheMode === "split"
+				? await getGitHubPayloadCacheStore()
+				: null;
+	const paramsJson = stableSerialize(params);
+	const cacheKey = buildGitHubCacheKey({ userId, resource, paramsJson });
+	const getResolvedStore = async () => {
+		if (!resolvedStore) {
+			resolvedStore = await getGitHubCacheStore();
+		}
+
+		return resolvedStore;
+	};
+	const uniqueNamespaceKeys = Array.from(new Set(namespaceKeys));
+	const namespaceVersions =
+		cacheMode === "split"
+			? await getNamespaceVersions(uniqueNamespaceKeys)
+			: {};
+	const payloadStorageKey =
+		cacheMode === "split" && resolvedPayloadStore
+			? await buildGitHubPayloadStorageKey({
+					userId,
+					resource,
+					paramsJson,
+					namespaceKeys: uniqueNamespaceKeys,
+					namespaceVersions,
+				})
+			: null;
+	const splitEntry =
+		resolvedPayloadStore && payloadStorageKey
+			? await resolvedPayloadStore.get(payloadStorageKey)
+			: null;
+	const legacyEntry = splitEntry
+		? null
+		: await (await getResolvedStore()).get(cacheKey);
+	const existingEntry = splitEntry ?? legacyEntry;
+	const currentTime = now();
+	const latestSignalUpdatedAt =
+		signalKeys.length > 0 ? await getLatestSignalUpdatedAt(signalKeys) : null;
+	const isSignalNewerThanCache = Boolean(
+		existingEntry &&
+			typeof latestSignalUpdatedAt === "number" &&
+			latestSignalUpdatedAt > existingEntry.fetchedAt,
+	);
+
+	if (legacyEntry && resolvedPayloadStore && payloadStorageKey) {
+		await resolvedPayloadStore.put(
+			payloadStorageKey,
+			legacyEntry,
+			payloadRetentionSeconds,
+		);
+	}
+
+	return {
+		cacheKey,
+		currentTime,
+		existingEntry,
+		getResolvedStore,
+		paramsJson,
+		payloadStorageKey,
+		resolvedPayloadStore,
+		isSignalNewerThanCache,
+	};
+}
+
+export async function getGitHubResourceLocalFirst<TData>({
+	executionContext,
+	onBackgroundRefreshSettled,
+	...options
+}: GetOrRevalidateGitHubResourceOptions<TData> & {
+	executionContext?: BackgroundExecutionContext | null;
+	onBackgroundRefreshSettled?: () => Promise<void> | void;
+}): Promise<{ data: TData; meta: GitHubLocalFirstMeta }> {
+	const {
+		userId,
+		resource,
+		params,
+		signalKeys = [],
+		namespaceKeys = [],
+		cacheMode = "legacy",
+		payloadRetentionSeconds = DEFAULT_GITHUB_PAYLOAD_RETENTION_SECONDS,
+		now = Date.now,
+		store,
+		payloadStore,
+		getLatestSignalUpdatedAt = getLatestGitHubRevalidationSignalUpdatedAt,
+		getNamespaceVersions = getGitHubCacheNamespaceVersions,
+	} = options;
+	const resolved = await resolveGitHubCacheEntry({
+		userId,
+		resource,
+		params,
+		signalKeys,
+		namespaceKeys,
+		cacheMode,
+		payloadRetentionSeconds,
+		store,
+		payloadStore,
+		getLatestSignalUpdatedAt,
+		getNamespaceVersions,
+		now,
+	});
+
+	if (
+		resolved.existingEntry &&
+		resolved.existingEntry.freshUntil > resolved.currentTime &&
+		!resolved.isSignalNewerThanCache
+	) {
+		return {
+			data: parseCachedPayload<TData>(resolved.existingEntry.payloadJson),
+			meta: {
+				cacheStatus: "fresh",
+				fetchedAt: resolved.existingEntry.fetchedAt,
+				isRevalidating: false,
+			},
+		};
+	}
+
+	if (resolved.existingEntry) {
+		const previousFetchedAt = resolved.existingEntry.fetchedAt;
+		const refreshPromise = getOrRevalidateGitHubResource({
+			...options,
+			store: store ?? (await resolved.getResolvedStore()),
+			payloadStore: resolved.resolvedPayloadStore,
+			now,
+			getLatestSignalUpdatedAt,
+			getNamespaceVersions,
+		})
+			.then(async () => {
+				const nextEntry = await (await resolved.getResolvedStore()).get(
+					resolved.cacheKey,
+				);
+				if (
+					nextEntry &&
+					nextEntry.fetchedAt > previousFetchedAt &&
+					onBackgroundRefreshSettled
+				) {
+					await onBackgroundRefreshSettled();
+				}
+			})
+			.catch(() => {
+				// Best effort: stale cached payload already served to the caller.
+			});
+
+		if (executionContext?.waitUntil) {
+			executionContext.waitUntil(refreshPromise);
+		} else {
+			void refreshPromise;
+		}
+
+		return {
+			data: parseCachedPayload<TData>(resolved.existingEntry.payloadJson),
+			meta: {
+				cacheStatus: "stale",
+				fetchedAt: resolved.existingEntry.fetchedAt,
+				isRevalidating: true,
+			},
+		};
+	}
+
+	const data = await getOrRevalidateGitHubResource(options);
+	return {
+		data,
+		meta: {
+			cacheStatus: "miss",
+			fetchedAt: null,
+			isRevalidating: false,
+		},
+	};
+}
+
 export async function getOrRevalidateGitHubResource<TData>({
 	userId,
 	resource,
@@ -654,58 +996,37 @@ export async function getOrRevalidateGitHubResource<TData>({
 	}
 
 	const task = (async () => {
-		const getResolvedStore = async () => {
+		const resolved = await resolveGitHubCacheEntry({
+			userId,
+			resource,
+			params,
+			signalKeys,
+			namespaceKeys,
+			cacheMode,
+			payloadRetentionSeconds,
+			store: resolvedStore ?? undefined,
+			payloadStore: resolvedPayloadStore,
+			getLatestSignalUpdatedAt,
+			getNamespaceVersions,
+			now,
+		});
+		const existingEntry = resolved.existingEntry;
+		const currentTime = resolved.currentTime;
+		const payloadStorageKey = resolved.payloadStorageKey;
+		const isSignalNewerThanCache = resolved.isSignalNewerThanCache;
+		const getLegacyStore = async () => {
 			if (!resolvedStore) {
-				resolvedStore = await getGitHubCacheStore();
+				resolvedStore = await resolved.getResolvedStore();
 			}
 
 			return resolvedStore;
 		};
-		const uniqueNamespaceKeys = Array.from(new Set(namespaceKeys));
-		const namespaceVersions =
-			cacheMode === "split"
-				? await getNamespaceVersions(uniqueNamespaceKeys)
-				: {};
-		const payloadStorageKey =
-			cacheMode === "split" && resolvedPayloadStore
-				? await buildGitHubPayloadStorageKey({
-						userId,
-						resource,
-						paramsJson,
-						namespaceKeys: uniqueNamespaceKeys,
-						namespaceVersions,
-					})
-				: null;
-		const splitEntry =
-			resolvedPayloadStore && payloadStorageKey
-				? await resolvedPayloadStore.get(payloadStorageKey)
-				: null;
-		const legacyEntry = splitEntry
-			? null
-			: await (await getResolvedStore()).get(cacheKey);
-		const existingEntry = splitEntry ?? legacyEntry;
-		const currentTime = now();
-		const latestSignalUpdatedAt =
-			signalKeys.length > 0 ? await getLatestSignalUpdatedAt(signalKeys) : null;
-		const isSignalNewerThanCache = Boolean(
-			existingEntry &&
-				typeof latestSignalUpdatedAt === "number" &&
-				latestSignalUpdatedAt > existingEntry.fetchedAt,
-		);
 
 		if (
 			existingEntry &&
 			existingEntry.freshUntil > currentTime &&
 			!isSignalNewerThanCache
 		) {
-			if (legacyEntry && resolvedPayloadStore && payloadStorageKey) {
-				await resolvedPayloadStore.put(
-					payloadStorageKey,
-					legacyEntry,
-					payloadRetentionSeconds,
-				);
-			}
-
 			return parseCachedPayload<TData>(existingEntry.payloadJson);
 		}
 
@@ -725,7 +1046,7 @@ export async function getOrRevalidateGitHubResource<TData>({
 
 				await persistGitHubCacheEntry({
 					entry: staleEntry,
-					legacyStore: await getResolvedStore(),
+					legacyStore: await getLegacyStore(),
 					payloadStore: resolvedPayloadStore,
 					payloadStorageKey,
 					payloadRetentionSeconds,
@@ -743,7 +1064,7 @@ export async function getOrRevalidateGitHubResource<TData>({
 
 				await persistGitHubCacheEntry({
 					entry: staleEntry,
-					legacyStore: await getResolvedStore(),
+					legacyStore: await getLegacyStore(),
 					payloadStore: resolvedPayloadStore,
 					payloadStorageKey,
 					payloadRetentionSeconds,
@@ -778,7 +1099,7 @@ export async function getOrRevalidateGitHubResource<TData>({
 
 			await persistGitHubCacheEntry({
 				entry: refreshedEntry,
-				legacyStore: await getResolvedStore(),
+				legacyStore: await getLegacyStore(),
 				payloadStore: resolvedPayloadStore,
 				payloadStorageKey,
 				payloadRetentionSeconds,
@@ -814,7 +1135,7 @@ export async function getOrRevalidateGitHubResource<TData>({
 
 		await persistGitHubCacheEntry({
 			entry: nextEntry,
-			legacyStore: await getResolvedStore(),
+			legacyStore: await getLegacyStore(),
 			payloadStore: resolvedPayloadStore,
 			payloadStorageKey,
 			payloadRetentionSeconds,

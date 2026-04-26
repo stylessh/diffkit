@@ -5,6 +5,7 @@ import {
 	GitPullRequestDraftIcon,
 	GitPullRequestIcon,
 	IssuesIcon,
+	RefreshCwIcon,
 	UserCircleIcon,
 } from "@diffkit/icons";
 import { type QueryClient, useQueryClient } from "@tanstack/react-query";
@@ -22,6 +23,7 @@ import type {
 } from "#/lib/github.types";
 import { getRegisteredCommands, subscribeCommands } from "./registry";
 import type { CommandItem } from "./types";
+import { useRefreshGitHubData } from "./use-refresh-github-data";
 
 function getPrIcon(pr: PullSummary) {
 	if (pr.isDraft) {
@@ -55,6 +57,7 @@ export function useCommandItems(): CommandItem[] {
 	const { user } = routeApi.useRouteContext();
 	const scope = { userId: user.id };
 	const queryClient = useQueryClient();
+	const refreshGitHubData = useRefreshGitHubData();
 
 	const staticCommands = useSyncExternalStore(
 		subscribeCommands,
@@ -75,7 +78,21 @@ export function useCommandItems(): CommandItem[] {
 		githubQueryKeys.viewer(scope),
 	);
 
-	const dynamicItems: CommandItem[] = [];
+	const dynamicItems: CommandItem[] = [
+		{
+			id: "action:refresh-data",
+			label: "Refresh data",
+			group: "Actions",
+			icon: RefreshCwIcon,
+			keywords: ["refresh", "reload", "clear cache", "stale", "sync"],
+			action: {
+				type: "execute",
+				fn: () => {
+					void refreshGitHubData();
+				},
+			},
+		},
+	];
 
 	if (viewer) {
 		dynamicItems.push({

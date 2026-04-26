@@ -45,6 +45,8 @@ import type {
 	NotificationParticipant,
 	NotificationsResult,
 } from "#/lib/github.types";
+import { githubRevalidationSignalKeys } from "#/lib/github-revalidation";
+import { useGitHubSignalStream } from "#/lib/use-github-signal-stream";
 import { useHasMounted } from "#/lib/use-has-mounted";
 
 const routeApi = getRouteApi("/_protected/inbox");
@@ -120,11 +122,25 @@ export function InboxPage() {
 	const [selectedId, setSelectedId] = useState<string | null>(null);
 	const [filter, setFilter] = useState<InboxFilter>("unread");
 
-	const queryInput = { all: filter === "all" };
+	const queryInput = useMemo(() => ({ all: filter === "all" }), [filter]);
+	const queryKey = useMemo(
+		() => githubQueryKeys.notifications.list(scope, queryInput),
+		[scope, queryInput],
+	);
+	const webhookRefreshTargets = useMemo(
+		() => [
+			{
+				queryKey,
+				signalKeys: [githubRevalidationSignalKeys.notifications],
+			},
+		],
+		[queryKey],
+	);
 	const query = useQuery({
 		...githubNotificationsQueryOptions(scope, queryInput),
 		enabled: hasMounted,
 	});
+	useGitHubSignalStream(webhookRefreshTargets);
 
 	const queryClient = useQueryClient();
 	const notifications = query.data?.notifications ?? [];
@@ -208,6 +224,7 @@ const InboxSidebar = memo(function InboxSidebar({
 			const prev = queryClient.getQueryData<NotificationsResult>(queryKey);
 			if (prev) {
 				queryClient.setQueryData<NotificationsResult>(queryKey, {
+					...prev,
 					notifications: prev.notifications.map((n) => ({
 						...n,
 						unread: false,
@@ -234,6 +251,7 @@ const InboxSidebar = memo(function InboxSidebar({
 			const prev = queryClient.getQueryData<NotificationsResult>(queryKey);
 			if (prev) {
 				queryClient.setQueryData<NotificationsResult>(queryKey, {
+					...prev,
 					notifications: prev.notifications.filter((n) => n.unread),
 				});
 			}
@@ -436,6 +454,7 @@ const InboxRow = memo(function InboxRow({
 			const prev = queryClient.getQueryData<NotificationsResult>(queryKey);
 			if (prev) {
 				queryClient.setQueryData<NotificationsResult>(queryKey, {
+					...prev,
 					notifications: prev.notifications.filter(
 						(n) => n.id !== notification.id,
 					),
@@ -455,6 +474,7 @@ const InboxRow = memo(function InboxRow({
 			const prev = queryClient.getQueryData<NotificationsResult>(queryKey);
 			if (prev) {
 				queryClient.setQueryData<NotificationsResult>(queryKey, {
+					...prev,
 					notifications: prev.notifications.map((n) =>
 						n.id === notification.id ? { ...n, unread: false } : n,
 					),

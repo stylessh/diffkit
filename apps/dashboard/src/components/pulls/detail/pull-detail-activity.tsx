@@ -43,6 +43,7 @@ import { quickhubDark, quickhubLight } from "@diffkit/ui/lib/diffs-themes";
 import { cn } from "@diffkit/ui/lib/utils";
 import type { DiffLineAnnotation, PatchDiffProps } from "@pierre/diffs/react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { Link } from "@tanstack/react-router";
 import { useTheme } from "next-themes";
 import {
 	type ComponentType,
@@ -50,11 +51,14 @@ import {
 	lazy,
 	Suspense,
 	useCallback,
-	useEffect,
 	useMemo,
 	useRef,
 	useState,
 } from "react";
+import {
+	CheckStateIcon,
+	getCheckState,
+} from "#/components/checks/check-state-icon";
 import { CommentMoreMenu } from "#/components/details/comment-more-menu";
 import { IssueCommentReactionBar } from "#/components/details/comment-reaction-bar";
 import { CommentReplyForm } from "#/components/details/comment-reply-form";
@@ -78,6 +82,7 @@ import {
 	dismissPullReview,
 	getCommentPage,
 	getTimelineEventPage,
+	markPullReadyForReview,
 	mergePullRequest,
 	replyToReviewComment,
 	requestPullReviewers,
@@ -108,10 +113,13 @@ import type {
 	PullWorkflowApproval,
 	TimelineEvent,
 } from "#/lib/github.types";
+import { removePullFromOpenViews } from "#/lib/github-query-updates";
+import { githubRevalidationSignalKeys } from "#/lib/github-revalidation";
 import {
 	mergeIssueStateIntoCloseEvent,
 	parseCloseReason,
 } from "#/lib/timeline-close-reason";
+import { useGitHubSignalStream } from "#/lib/use-github-signal-stream";
 import { usePrefersNoHover } from "#/lib/use-prefers-no-hover";
 import { checkPermissionWarning } from "#/lib/warning-store";
 
@@ -247,6 +255,8 @@ export function PullDetailActivitySection({
 						pullNumber={pullNumber}
 						prTitle={pr.title}
 						firstCommitMessage={commits?.[0]?.message}
+						isDraft={pr.isDraft}
+						pullId={pr.graphqlId}
 					/>
 				</div>
 			)}
@@ -321,6 +331,8 @@ function MergeStatusSection({
 	pullNumber,
 	prTitle,
 	firstCommitMessage,
+	isDraft,
+	pullId,
 }: {
 	scope: GitHubQueryScope;
 	owner: string;
@@ -328,10 +340,48 @@ function MergeStatusSection({
 	pullNumber: number;
 	prTitle: string;
 	firstCommitMessage?: string;
+	isDraft: boolean;
+	pullId: string | undefined;
 }) {
+	const input = useMemo(
+		() => ({ owner, repo, pullNumber }),
+		[owner, repo, pullNumber],
+	);
+	const statusQueryKey = useMemo(
+		() => githubQueryKeys.pulls.status(scope, input),
+		[scope, input],
+	);
 	const statusQuery = useQuery({
-		...githubPullStatusQueryOptions(scope, { owner, repo, pullNumber }),
+		...githubPullStatusQueryOptions(scope, input),
 	});
+	const workflowStatusRefreshTargets = useMemo(
+		() => [
+			{
+				queryKey: statusQueryKey,
+				signalKeys: [
+					githubRevalidationSignalKeys.pullEntity(input),
+					githubRevalidationSignalKeys.repoProtection({
+						owner: input.owner,
+						repo: input.repo,
+					}),
+					githubRevalidationSignalKeys.repoStatuses({
+						owner: input.owner,
+						repo: input.repo,
+					}),
+					...(statusQuery.data?.pendingWorkflowApprovals ?? []).map(
+						(approval) =>
+							githubRevalidationSignalKeys.workflowRunEntity({
+								owner: input.owner,
+								repo: input.repo,
+								runId: approval.workflowRunId,
+							}),
+					),
+				],
+			},
+		],
+		[input, statusQuery.data?.pendingWorkflowApprovals, statusQueryKey],
+	);
+	useGitHubSignalStream(workflowStatusRefreshTargets);
 
 	const status = statusQuery.data ?? null;
 
@@ -339,12 +389,15 @@ function MergeStatusSection({
 
 	return (
 		<MergeStatusCard
+			scope={scope}
 			status={status}
 			owner={owner}
 			repo={repo}
 			pullNumber={pullNumber}
 			prTitle={prTitle}
 			firstCommitMessage={firstCommitMessage}
+			isDraft={isDraft}
+			pullId={pullId}
 		/>
 	);
 }
@@ -435,19 +488,25 @@ function MergedBranchBanner({
 }
 
 function MergeStatusCard({
+	scope,
 	status,
 	owner,
 	repo,
 	pullNumber,
 	prTitle,
 	firstCommitMessage,
+	isDraft,
+	pullId,
 }: {
+	scope: GitHubQueryScope;
 	status: PullStatus;
 	owner: string;
 	repo: string;
 	pullNumber: number;
 	prTitle: string;
 	firstCommitMessage?: string;
+	isDraft: boolean;
+	pullId: string | undefined;
 }) {
 	const {
 		checks,
@@ -501,6 +560,7 @@ function MergeStatusCard({
 			{/* Checks section */}
 			{(checks.total > 0 || pendingWorkflowApprovals.length > 0) && (
 				<ChecksSection
+					scope={scope}
 					checks={checks}
 					checkRuns={checkRuns}
 					pendingWorkflowApprovals={pendingWorkflowApprovals}
@@ -538,17 +598,27 @@ function MergeStatusCard({
 				/>
 			)}
 
-			{/* Merge action footer */}
-			<MergeFooter
-				isMergeBlocked={isMergeBlocked}
-				canMerge={canMerge}
-				bypass={bypass}
-				owner={owner}
-				repo={repo}
-				pullNumber={pullNumber}
-				prTitle={prTitle}
-				firstCommitMessage={firstCommitMessage}
-			/>
+			{/* Merge action footer (or "ready for review" CTA when draft) */}
+			{isDraft ? (
+				<ReadyForReviewFooter
+					owner={owner}
+					repo={repo}
+					pullNumber={pullNumber}
+					pullId={pullId}
+				/>
+			) : (
+				<MergeFooter
+					scope={scope}
+					isMergeBlocked={isMergeBlocked}
+					canMerge={canMerge}
+					bypass={bypass}
+					owner={owner}
+					repo={repo}
+					pullNumber={pullNumber}
+					prTitle={prTitle}
+					firstCommitMessage={firstCommitMessage}
+				/>
+			)}
 		</div>
 	);
 }
@@ -637,8 +707,8 @@ function ReviewsSection({
 								key={review.id}
 								className="flex items-center gap-2 px-4 py-1.5 pl-11"
 							>
-								<CheckRunIcon
-									status={review.state === "APPROVED" ? "success" : "failure"}
+								<CheckStateIcon
+									state={review.state === "APPROVED" ? "success" : "failure"}
 								/>
 								{review.author && (
 									<img
@@ -749,6 +819,7 @@ function ReviewsSection({
 // ── Checks section ──────────────────────────────────────────────────
 
 function ChecksSection({
+	scope,
 	checks,
 	checkRuns,
 	pendingWorkflowApprovals,
@@ -758,6 +829,7 @@ function ChecksSection({
 	repo,
 	pullNumber,
 }: {
+	scope: GitHubQueryScope;
 	checks: PullStatus["checks"];
 	checkRuns: PullCheckRun[];
 	pendingWorkflowApprovals: PullWorkflowApproval[];
@@ -771,6 +843,10 @@ function ChecksSection({
 	const [isRerunning, setIsRerunning] = useState(false);
 	const [isApproving, setIsApproving] = useState(false);
 	const queryClient = useQueryClient();
+	const statusQueryKey = useMemo(
+		() => githubQueryKeys.pulls.status(scope, { owner, repo, pullNumber }),
+		[scope, owner, repo, pullNumber],
+	);
 
 	const pendingTotal = checks.pending + checks.expected;
 	const approvalCount = pendingWorkflowApprovals.length;
@@ -808,17 +884,18 @@ function ChecksSection({
 	// Group by status in display order: expected, failed, pending, skipped, passed
 	const groupedRuns = useMemo(() => {
 		const groups: Record<
-			"expected" | "failure" | "pending" | "skipped" | "success",
+			"expected" | "failure" | "pending" | "waiting" | "skipped" | "success",
 			PullCheckRun[]
 		> = {
 			expected: [],
 			failure: [],
 			pending: [],
+			waiting: [],
 			skipped: [],
 			success: [],
 		};
 		for (const run of checkRuns) {
-			groups[getCheckRunStatus(run)].push(run);
+			groups[getCheckState(run)].push(run);
 		}
 		return groups;
 	}, [checkRuns]);
@@ -830,6 +907,7 @@ function ChecksSection({
 		{ key: "expected", label: "Expected" },
 		{ key: "failure", label: "Failed" },
 		{ key: "pending", label: "Pending" },
+		{ key: "waiting", label: "Waiting" },
 		{ key: "skipped", label: "Skipped" },
 		{ key: "success", label: "Passed" },
 	];
@@ -887,32 +965,26 @@ function ChecksSection({
 					toast.warning(
 						`Approved ${approved} workflow${approved !== 1 ? "s" : ""}, but ${failed} failed`,
 					);
+				} else {
+					toast.success(
+						`Approved ${pendingWorkflowApprovals.length} workflow${pendingWorkflowApprovals.length !== 1 ? "s" : ""}`,
+					);
 				}
-				// Keep the button in loading state; the effect below resets it once the
-				// workflow_run webhook invalidates the cache and the pending list drains.
-				await queryClient.invalidateQueries({ queryKey: ["github"] });
+				await queryClient.invalidateQueries({
+					queryKey: statusQueryKey,
+					exact: true,
+					refetchType: "active",
+				});
 			} else {
 				toast.error(result.error);
 				checkPermissionWarning(result, `${owner}/${repo}`);
-				setIsApproving(false);
 			}
 		} catch {
 			toast.error("Failed to approve workflows");
+		} finally {
 			setIsApproving(false);
 		}
 	};
-
-	// Reset the approving state when the pending list drains (webhook arrived) or
-	// after a safety timeout to avoid a permanently-stuck spinner.
-	useEffect(() => {
-		if (!isApproving) return;
-		if (pendingWorkflowApprovals.length === 0) {
-			setIsApproving(false);
-			return;
-		}
-		const timer = setTimeout(() => setIsApproving(false), 30_000);
-		return () => clearTimeout(timer);
-	}, [isApproving, pendingWorkflowApprovals.length]);
 
 	return (
 		<Collapsible open={open} onOpenChange={setOpen}>
@@ -975,7 +1047,7 @@ function ChecksSection({
 									{label}
 								</div>
 								{runs.map((run) => {
-									const runStatus = getCheckRunStatus(run);
+									const runStatus = getCheckState(run);
 									const detail =
 										runStatus === "expected"
 											? "Waiting for status to be reported"
@@ -998,7 +1070,7 @@ function ChecksSection({
 											key={`${run.name}:${run.id}`}
 											className="group/run flex items-center gap-2 px-4 py-1.5 pl-11"
 										>
-											<CheckRunIcon status={runStatus} />
+											<CheckStateIcon state={runStatus} />
 											{run.appAvatarUrl && (
 												<img
 													src={run.appAvatarUrl}
@@ -1006,7 +1078,20 @@ function ChecksSection({
 													className="size-4 shrink-0 rounded border border-border"
 												/>
 											)}
-											{run.htmlUrl ? (
+											{run.workflowRunId != null ? (
+												<Link
+													to="/$owner/$repo/actions/runs/$runId"
+													params={{
+														owner,
+														repo,
+														runId: String(run.workflowRunId),
+													}}
+													search={{ pr: pullNumber }}
+													className="min-w-0 flex-1 truncate text-xs hover:underline"
+												>
+													{nameContent}
+												</Link>
+											) : run.htmlUrl ? (
 												<a
 													href={run.htmlUrl}
 													target="_blank"
@@ -1022,8 +1107,8 @@ function ChecksSection({
 											)}
 											{run.required && (
 												<StatePill
-													tone="secondary"
-													className="-my-0.5 !text-[10px]"
+													tone="muted"
+													className="-my-0.5 border border-border bg-transparent"
 												>
 													Required
 												</StatePill>
@@ -1267,6 +1352,71 @@ function UpdateBranchButton({
 	);
 }
 
+// ── Ready for review footer ─────────────────────────────────────────
+
+function ReadyForReviewFooter({
+	owner,
+	repo,
+	pullNumber,
+	pullId,
+}: {
+	owner: string;
+	repo: string;
+	pullNumber: number;
+	pullId: string | undefined;
+}) {
+	const [isMarking, setIsMarking] = useState(false);
+	const queryClient = useQueryClient();
+
+	const handleMarkReady = async () => {
+		if (!pullId) {
+			toast.error("Missing pull request id");
+			return;
+		}
+		setIsMarking(true);
+		try {
+			const result = await markPullReadyForReview({
+				data: { owner, repo, pullNumber, pullId },
+			});
+			if (result.ok) {
+				await queryClient.invalidateQueries({ queryKey: ["github"] });
+			} else {
+				toast.error(result.error);
+				checkPermissionWarning(result, `${owner}/${repo}`);
+				setIsMarking(false);
+			}
+		} catch {
+			toast.error("Failed to mark as ready for review");
+			setIsMarking(false);
+		}
+	};
+
+	return (
+		<div className="flex items-center gap-3 px-4 py-3">
+			<Button
+				size="sm"
+				disabled={isMarking || !pullId}
+				onClick={() => {
+					void handleMarkReady();
+				}}
+				iconLeft={
+					isMarking ? (
+						<Spinner size={14} />
+					) : (
+						<GitPullRequestIcon size={14} strokeWidth={2} />
+					)
+				}
+			>
+				Ready for review
+			</Button>
+			<p className="text-xs text-muted-foreground">
+				This pull request is a draft. Mark it as ready for review to allow
+				merging.
+			</p>
+		</div>
+	);
+}
+
 // ── Merge footer ────────────────────────────────────────────────────
 
 const MERGE_STRATEGIES = [
@@ -1276,6 +1426,7 @@ const MERGE_STRATEGIES = [
 ];
 
 function MergeFooter({
+	scope,
 	isMergeBlocked,
 	canMerge,
 	bypass,
@@ -1285,6 +1436,7 @@ function MergeFooter({
 	prTitle,
 	firstCommitMessage,
 }: {
+	scope: GitHubQueryScope;
 	isMergeBlocked: boolean;
 	canMerge: boolean;
 	bypass: ReturnType<typeof useMergeBypass>;
@@ -1337,6 +1489,11 @@ function MergeFooter({
 				},
 			});
 			if (result.ok) {
+				removePullFromOpenViews(queryClient, scope, {
+					owner,
+					repo,
+					pullNumber,
+				});
 				await queryClient.invalidateQueries({ queryKey: ["github"] });
 			} else {
 				toast.error(result.error);
@@ -1533,78 +1690,6 @@ function StatusIcon({ status }: { status: StatusType }) {
 			<div className="size-1.5 rounded-full bg-current" />
 		</div>
 	);
-}
-
-function CheckRunIcon({
-	status,
-}: {
-	status: "success" | "failure" | "pending" | "skipped" | "expected";
-}) {
-	if (status === "success") {
-		return (
-			<div className="flex size-3.5 shrink-0 items-center justify-center text-green-600 dark:text-green-400">
-				<CheckIcon size={12} strokeWidth={3} />
-			</div>
-		);
-	}
-	if (status === "failure") {
-		return (
-			<div className="flex size-3.5 shrink-0 items-center justify-center text-red-600 dark:text-red-400">
-				<XIcon size={12} strokeWidth={3} />
-			</div>
-		);
-	}
-	if (status === "skipped") {
-		return (
-			<div className="flex size-3.5 shrink-0 items-center justify-center text-muted-foreground">
-				<div className="size-1.5 rounded-full border border-current" />
-			</div>
-		);
-	}
-	if (status === "expected") {
-		return (
-			<div className="flex size-3.5 shrink-0 items-center justify-center text-yellow-500">
-				<div className="size-1.5 rounded-full bg-current" />
-			</div>
-		);
-	}
-	return (
-		<div className="flex size-3.5 shrink-0 items-center justify-center text-yellow-500">
-			<svg
-				className="size-3.5 animate-spin"
-				viewBox="0 0 16 16"
-				fill="none"
-				aria-hidden="true"
-			>
-				<circle
-					cx="8"
-					cy="8"
-					r="6"
-					stroke="currentColor"
-					strokeWidth="2"
-					opacity="0.25"
-				/>
-				<path
-					d="M14 8a6 6 0 0 0-6-6"
-					stroke="currentColor"
-					strokeWidth="2"
-					strokeLinecap="round"
-				/>
-			</svg>
-		</div>
-	);
-}
-
-function getCheckRunStatus(
-	run: PullCheckRun,
-): "success" | "failure" | "pending" | "skipped" | "expected" {
-	if (run.status === "expected") return "expected";
-	if (run.status !== "completed" || run.conclusion === null) return "pending";
-	if (run.conclusion === "success" || run.conclusion === "neutral")
-		return "success";
-	if (run.conclusion === "skipped" || run.conclusion === "stale")
-		return "skipped";
-	return "failure";
 }
 
 function MergeStatusSkeleton() {

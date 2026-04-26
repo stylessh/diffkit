@@ -109,7 +109,7 @@ export function IssueDetailHeader({
 					)}
 					{issue.graphqlId ? (
 						<IssueCommentReactionBar
-							className="mt-3 justify-start"
+							className="mt-3 min-h-6 justify-start"
 							revealZeroCount={descActive || prefersNoHover}
 							viewerLogin={viewerLogin}
 							owner={owner}

@@ -1,5 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { type Octokit as OctokitType, RequestError } from "octokit";
+import { parse as parseYaml } from "yaml";
 import { debug } from "./debug";
 import type {
 	BranchComparison,
@@ -15,6 +16,7 @@ import type {
 	GitHubActor,
 	GitHubContributionCalendar,
 	GitHubLabel,
+	GitHubLocalFirstMeta,
 	GitHubUserProfile,
 	IssueComment,
 	IssueDetail,
@@ -60,6 +62,14 @@ import type {
 	TimelineEvent,
 	UserActivityEvent,
 	UserRepoSummary,
+	WorkflowDefinition,
+	WorkflowDefinitionJob,
+	WorkflowJobLogs,
+	WorkflowRun,
+	WorkflowRunArtifact,
+	WorkflowRunJob,
+	WorkflowRunLogsBundle,
+	WorkflowRunStep,
 } from "./github.types";
 import {
 	buildGitHubAppAuthorizePath,
@@ -75,11 +85,13 @@ import {
 import { getGitHubAppSlug } from "./github-app.server";
 import { shouldReauthorizeGitHubApp } from "./github-auth-errors";
 import {
+	type BackgroundExecutionContext,
 	bumpGitHubCacheNamespaces,
 	bustGitHubCache,
 	createGitHubResponseMetadata,
 	type GitHubConditionalHeaders,
 	type GitHubFetchResult,
+	getGitHubResourceLocalFirst,
 	getOrRevalidateGitHubResource,
 	markGitHubRevalidationSignals,
 } from "./github-cache";
@@ -117,6 +129,54 @@ type GitHubRestResponse<TData> = {
 	headers: Record<string, unknown>;
 	status: number;
 };
+
+function getBackgroundExecutionContext(
+	value: unknown,
+): BackgroundExecutionContext | null {
+	if (
+		value &&
+		typeof value === "object" &&
+		"waitUntil" in value &&
+		typeof value.waitUntil === "function"
+	) {
+		return value as BackgroundExecutionContext;
+	}
+
+	if (
+		value &&
+		typeof value === "object" &&
+		"cloudflare" in value &&
+		value.cloudflare &&
+		typeof value.cloudflare === "object" &&
+		"ctx" in value.cloudflare &&
+		value.cloudflare.ctx &&
+		typeof value.cloudflare.ctx === "object" &&
+		"waitUntil" in value.cloudflare.ctx &&
+		typeof value.cloudflare.ctx.waitUntil === "function"
+	) {
+		return value.cloudflare.ctx as BackgroundExecutionContext;
+	}
+
+	return null;
+}
+
+function withLocalFirstMeta<T extends object>(
+	data: T,
+	meta: GitHubLocalFirstMeta,
+): T {
+	return { ...data, __meta: meta };
+}
+
+async function broadcastLocalFirstSignalKeys(signalKeys: string[]) {
+	if (signalKeys.length === 0) {
+		return;
+	}
+
+	const { broadcastSignalKeys } = await import(
+		"./signal-relay-broadcast.server"
+	);
+	await broadcastSignalKeys(signalKeys);
+}
 
 type SearchItem = Awaited<
 	ReturnType<GitHubClient["rest"]["search"]["issuesAndPullRequests"]>
@@ -411,6 +471,11 @@ type ListForUserRepo = Awaited<
 function mapGithubRestRepoToUserRepoSummary(
 	repo: AuthenticatedUserRepo | ListForUserRepo,
 ): UserRepoSummary {
+	const repoId = repo.id;
+	if (typeof repoId !== "number") {
+		throw new Error("GitHub repository payload missing id");
+	}
+
 	const visibility: UserRepoSummary["visibility"] =
 		repo.visibility === "internal"
 			? "internal"
@@ -418,7 +483,7 @@ function mapGithubRestRepoToUserRepoSummary(
 				? "private"
 				: "public";
 	return {
-		id: repo.id!,
+		id: repoId,
 		name: repo.name ?? "",
 		fullName: repo.full_name ?? "",
 		description: repo.description ?? null,
@@ -1972,12 +2037,16 @@ async function getInstallationAccessIndex(
 						}
 
 						if (installation.repositorySelection === "selected") {
+							if (!appUserOctokit) {
+								continue;
+							}
+
 							try {
 								// Use the app-user client (not the OAuth client) —
 								// this endpoint requires a GitHub App user-to-server token.
 								const repos = await listPaginatedGitHubItems({
 									request: (page) =>
-										appUserOctokit!.rest.apps.listInstallationReposForAuthenticatedUser(
+										appUserOctokit.rest.apps.listInstallationReposForAuthenticatedUser(
 											{
 												installation_id: installation.id,
 												page,
@@ -2590,7 +2659,6 @@ async function getPullRequestBypassState({
 			Boolean(candidate) && candidates.indexOf(candidate) === index,
 	);
 
-	let rulesetState: boolean | null = null;
 	for (const candidate of contexts) {
 		const candidateRulesetState = await getRulesetPullRequestBypassState({
 			branch,
@@ -2599,18 +2667,16 @@ async function getPullRequestBypassState({
 			repo,
 		});
 		if (candidateRulesetState === false) {
-			rulesetState ??= false;
+			return false;
 		}
 		if (candidateRulesetState === true) {
-			rulesetState = true;
+			return true;
 		}
 	}
 
-	let legacyState: boolean | null = null;
 	for (const candidate of contexts) {
 		try {
-			const viewerResponse =
-				await candidate.octokit.rest.users.getAuthenticated();
+			const viewer = await getViewer(candidate);
 			const candidateLegacyState =
 				await legacyBranchProtectionAllowsPullRequestBypass({
 					branch,
@@ -2618,24 +2684,18 @@ async function getPullRequestBypassState({
 					owner,
 					permissions,
 					repo,
-					viewerLogin: viewerResponse.data.login,
+					viewerLogin: viewer.login,
 				});
 			if (candidateLegacyState === false) {
-				legacyState ??= false;
+				return false;
 			}
 			if (candidateLegacyState === true) {
-				legacyState = true;
+				return true;
 			}
 		} catch {}
 	}
 
-	if (rulesetState === false || legacyState === false) {
-		return false;
-	}
-
-	return (
-		rulesetState === true || legacyState === true || permissions?.admin === true
-	);
+	return permissions?.admin === true;
 }
 
 function buildUserSearchQuery({
@@ -3879,17 +3939,31 @@ async function computePullStatus(
 	const checkRuns = deduplicateCheckRuns(allCheckRuns);
 	const requiredContextSet = new Set(requiredContexts);
 
-	const mappedCheckRuns: PullCheckRun[] = checkRuns.map((check) => ({
-		id: check.id,
-		name: check.name,
-		status: check.status,
-		conclusion: check.conclusion,
-		appAvatarUrl: check.app?.owner?.avatar_url ?? null,
-		outputTitle: check.output?.title ?? null,
-		startedAt: check.started_at ?? null,
-		htmlUrl: check.html_url ?? null,
-		required: requiredContextSet.has(check.name),
-	}));
+	const workflowRunIdByCheckSuiteId = new Map<number, number>();
+	for (const run of allWorkflowRuns) {
+		if (run.check_suite_id != null) {
+			workflowRunIdByCheckSuiteId.set(run.check_suite_id, run.id);
+		}
+	}
+
+	const mappedCheckRuns: PullCheckRun[] = checkRuns.map((check) => {
+		const suiteId = check.check_suite?.id ?? null;
+		return {
+			id: check.id,
+			name: check.name,
+			status: check.status,
+			conclusion: check.conclusion,
+			appAvatarUrl: check.app?.owner?.avatar_url ?? null,
+			outputTitle: check.output?.title ?? null,
+			startedAt: check.started_at ?? null,
+			htmlUrl: check.html_url ?? null,
+			required: requiredContextSet.has(check.name),
+			workflowRunId:
+				suiteId != null
+					? (workflowRunIdByCheckSuiteId.get(suiteId) ?? null)
+					: null,
+		};
+	});
 
 	// Commit statuses (e.g. CodeRabbit, CircleCI) — separate from Check Runs.
 	// GitHub's combined-status endpoint returns the latest status per context
@@ -3923,6 +3997,7 @@ async function computePullStatus(
 				startedAt: status.created_at ?? null,
 				htmlUrl: status.target_url ?? null,
 				required: requiredContextSet.has(status.context),
+				workflowRunId: null,
 			};
 		});
 
@@ -3943,6 +4018,7 @@ async function computePullStatus(
 			startedAt: null,
 			htmlUrl: null,
 			required: true,
+			workflowRunId: null,
 		}));
 
 	const combinedChecks: PullCheckRun[] = [
@@ -4073,6 +4149,7 @@ async function getPullStatusResult(
 	context: GitHubContext,
 	data: PullFromRepoInput,
 	pull?: RepoPullDetail,
+	executionContext?: BackgroundExecutionContext | null,
 ): Promise<PullStatus> {
 	const pullNamespaceKey = githubRevalidationSignalKeys.pullEntity({
 		owner: data.owner,
@@ -4083,15 +4160,26 @@ async function getPullStatusResult(
 		owner: data.owner,
 		repo: data.repo,
 	});
+	const repoProtectionKey = githubRevalidationSignalKeys.repoProtection({
+		owner: data.owner,
+		repo: data.repo,
+	});
 
-	return getOrRevalidateGitHubResource<PullStatus>({
+	const result = await getGitHubResourceLocalFirst<PullStatus>({
 		userId: context.session.user.id,
 		resource: "pulls.status.v3",
 		params: data,
 		freshForMs: githubCachePolicy.status.staleTimeMs,
-		signalKeys: [pullNamespaceKey, repoStatusesKey],
+		signalKeys: [pullNamespaceKey, repoStatusesKey, repoProtectionKey],
 		namespaceKeys: [pullNamespaceKey],
 		cacheMode: "split",
+		executionContext,
+		onBackgroundRefreshSettled: () =>
+			broadcastLocalFirstSignalKeys([
+				pullNamespaceKey,
+				repoStatusesKey,
+				repoProtectionKey,
+			]),
 		fetcher: async () => {
 			const pullForStatus =
 				pull ??
@@ -4113,11 +4201,14 @@ async function getPullStatusResult(
 			};
 		},
 	});
+
+	return withLocalFirstMeta(result.data, result.meta);
 }
 
 async function getPullPageDataViaGraphQL(
 	context: GitHubContext,
 	data: PullFromRepoInput,
+	executionContext?: BackgroundExecutionContext | null,
 ): Promise<PullPageData> {
 	const pullNamespaceKey = githubRevalidationSignalKeys.pullEntity({
 		owner: data.owner,
@@ -4125,7 +4216,7 @@ async function getPullPageDataViaGraphQL(
 		pullNumber: data.pullNumber,
 	});
 
-	return getOrRevalidateGitHubResource<PullPageData>({
+	const result = await getGitHubResourceLocalFirst<PullPageData>({
 		userId: context.session.user.id,
 		resource: "pulls.pageData.graphql.v2",
 		params: data,
@@ -4133,6 +4224,9 @@ async function getPullPageDataViaGraphQL(
 		signalKeys: [pullNamespaceKey],
 		namespaceKeys: [pullNamespaceKey],
 		cacheMode: "split",
+		executionContext,
+		onBackgroundRefreshSettled: () =>
+			broadcastLocalFirstSignalKeys([pullNamespaceKey]),
 		fetcher: async () => {
 			const viewerPromise = getGitHubUserContextForRepository({
 				owner: data.owner,
@@ -4306,6 +4400,8 @@ async function getPullPageDataViaGraphQL(
 			};
 		},
 	});
+
+	return withLocalFirstMeta(result.data, result.meta);
 }
 
 async function getPullPageDataViaRest(
@@ -4362,9 +4458,10 @@ async function getPullPageDataViaRest(
 async function getPullPageDataResult(
 	context: GitHubContext,
 	data: PullFromRepoInput,
+	executionContext?: BackgroundExecutionContext | null,
 ): Promise<PullPageData> {
 	try {
-		return await getPullPageDataViaGraphQL(context, data);
+		return await getPullPageDataViaGraphQL(context, data, executionContext);
 	} catch (error) {
 		console.error("[pull-page:gql] failed, falling back to REST", error);
 		return getPullPageDataViaRest(context, data);
@@ -4455,6 +4552,7 @@ async function getIssueCommentsResult(
 async function getIssuePageDataViaGraphQL(
 	context: GitHubContext,
 	data: IssueFromRepoInput,
+	executionContext?: BackgroundExecutionContext | null,
 ): Promise<IssuePageData> {
 	const issueNamespaceKey = githubRevalidationSignalKeys.issueEntity({
 		owner: data.owner,
@@ -4462,7 +4560,7 @@ async function getIssuePageDataViaGraphQL(
 		issueNumber: data.issueNumber,
 	});
 
-	return getOrRevalidateGitHubResource<IssuePageData>({
+	const result = await getGitHubResourceLocalFirst<IssuePageData>({
 		userId: context.session.user.id,
 		resource: "issues.pageData.graphql.v2",
 		params: data,
@@ -4470,6 +4568,9 @@ async function getIssuePageDataViaGraphQL(
 		signalKeys: [issueNamespaceKey],
 		namespaceKeys: [issueNamespaceKey],
 		cacheMode: "split",
+		executionContext,
+		onBackgroundRefreshSettled: () =>
+			broadcastLocalFirstSignalKeys([issueNamespaceKey]),
 		fetcher: async () => {
 			const viewerPromise = getGitHubUserContextForRepository({
 				owner: data.owner,
@@ -4603,6 +4704,8 @@ async function getIssuePageDataViaGraphQL(
 			};
 		},
 	});
+
+	return withLocalFirstMeta(result.data, result.meta);
 }
 
 async function getIssuePageDataViaRest(
@@ -4651,9 +4754,10 @@ async function getIssuePageDataViaRest(
 async function getIssuePageDataResult(
 	context: GitHubContext,
 	data: IssueFromRepoInput,
+	executionContext?: BackgroundExecutionContext | null,
 ): Promise<IssuePageData> {
 	try {
-		return await getIssuePageDataViaGraphQL(context, data);
+		return await getIssuePageDataViaGraphQL(context, data, executionContext);
 	} catch (error) {
 		console.error("[issue-page:gql] failed, falling back to REST", error);
 		return getIssuePageDataViaRest(context, data);
@@ -4916,11 +5020,13 @@ function buildSourceSearchQuery({
 async function getMyPullsResult({
 	context,
 	username,
+	executionContext,
 }: {
 	context: GitHubContext;
 	username: string;
+	executionContext?: BackgroundExecutionContext | null;
 }) {
-	return getOrRevalidateGitHubResource<MyPullsResult>({
+	const result = await getGitHubResourceLocalFirst<MyPullsResult>({
 		userId: context.session.user.id,
 		resource: "pulls.mine.graphql.v2",
 		params: { username },
@@ -4931,6 +5037,9 @@ async function getMyPullsResult({
 		],
 		namespaceKeys: [githubRevalidationSignalKeys.pullsMine],
 		cacheMode: "split",
+		executionContext,
+		onBackgroundRefreshSettled: () =>
+			broadcastLocalFirstSignalKeys([githubRevalidationSignalKeys.pullsMine]),
 		merge: mergeMyPullsCachedWithFresh,
 		fetcher: async () => {
 			const deadlineAt = Date.now() + MY_SEARCH_TOTAL_TIMEOUT_MS;
@@ -5105,16 +5214,20 @@ async function getMyPullsResult({
 			};
 		},
 	});
+
+	return withLocalFirstMeta(result.data, result.meta);
 }
 
 async function getMyIssuesResult({
 	context,
 	username,
+	executionContext,
 }: {
 	context: GitHubContext;
 	username: string;
+	executionContext?: BackgroundExecutionContext | null;
 }) {
-	return getOrRevalidateGitHubResource<MyIssuesResult>({
+	const result = await getGitHubResourceLocalFirst<MyIssuesResult>({
 		userId: context.session.user.id,
 		resource: "issues.mine.graphql.v2",
 		params: { username },
@@ -5125,6 +5238,9 @@ async function getMyIssuesResult({
 		],
 		namespaceKeys: [githubRevalidationSignalKeys.issuesMine],
 		cacheMode: "split",
+		executionContext,
+		onBackgroundRefreshSettled: () =>
+			broadcastLocalFirstSignalKeys([githubRevalidationSignalKeys.issuesMine]),
 		merge: mergeMyIssuesCachedWithFresh,
 		fetcher: async () => {
 			const deadlineAt = Date.now() + MY_SEARCH_TOTAL_TIMEOUT_MS;
@@ -5274,6 +5390,8 @@ async function getMyIssuesResult({
 			};
 		},
 	});
+
+	return withLocalFirstMeta(result.data, result.meta);
 }
 
 function identityValidator<TInput>(data: TInput) {
@@ -5751,7 +5869,7 @@ function toInstallationTargetType(
 }
 
 export const getMyPulls = createServerFn({ method: "GET" }).handler(
-	async (): Promise<MyPullsResult> => {
+	async ({ context: requestContext }): Promise<MyPullsResult> => {
 		const context = await getGitHubContext();
 		if (!context) {
 			return {
@@ -5765,7 +5883,11 @@ export const getMyPulls = createServerFn({ method: "GET" }).handler(
 
 		const viewer = await getViewer(context);
 		const [result, accessIndex] = await Promise.all([
-			getMyPullsResult({ context, username: viewer.login }),
+			getMyPullsResult({
+				context,
+				username: viewer.login,
+				executionContext: getBackgroundExecutionContext(requestContext),
+			}),
 			getInstallationAccessIndex(context),
 		]);
 		return filterMyPullsResult(result, accessIndex);
@@ -5919,7 +6041,7 @@ export const getPullComments = createServerFn({ method: "GET" })
 	});
 
 export const getMyIssues = createServerFn({ method: "GET" }).handler(
-	async (): Promise<MyIssuesResult> => {
+	async ({ context: requestContext }): Promise<MyIssuesResult> => {
 		const context = await getGitHubContext();
 		if (!context) {
 			return {
@@ -5931,7 +6053,11 @@ export const getMyIssues = createServerFn({ method: "GET" }).handler(
 
 		const viewer = await getViewer(context);
 		const [result, accessIndex] = await Promise.all([
-			getMyIssuesResult({ context, username: viewer.login }),
+			getMyIssuesResult({
+				context,
+				username: viewer.login,
+				executionContext: getBackgroundExecutionContext(requestContext),
+			}),
 			getInstallationAccessIndex(context),
 		]);
 		return filterMyIssuesResult(result, accessIndex);
@@ -6061,36 +6187,58 @@ export const getIssueComments = createServerFn({ method: "GET" })
 
 export const getIssuePageData = createServerFn({ method: "GET" })
 	.inputValidator(identityValidator<IssueFromRepoInput>)
-	.handler(async ({ data }): Promise<IssuePageData | null> => {
-		const context = await getGitHubContextForRepository(data);
-		if (!context) {
-			return null;
-		}
+	.handler(
+		async ({
+			data,
+			context: requestContext,
+		}): Promise<IssuePageData | null> => {
+			const context = await getGitHubContextForRepository(data);
+			if (!context) {
+				return null;
+			}
 
-		return getIssuePageDataResult(context, data);
-	});
+			return getIssuePageDataResult(
+				context,
+				data,
+				getBackgroundExecutionContext(requestContext),
+			);
+		},
+	);
 
 export const getPullStatus = createServerFn({ method: "GET" })
 	.inputValidator(identityValidator<PullFromRepoInput>)
-	.handler(async ({ data }): Promise<PullStatus | null> => {
-		const context = await getGitHubContextForRepository(data);
-		if (!context) {
-			return null;
-		}
+	.handler(
+		async ({ data, context: requestContext }): Promise<PullStatus | null> => {
+			const context = await getGitHubContextForRepository(data);
+			if (!context) {
+				return null;
+			}
 
-		return getPullStatusResult(context, data);
-	});
+			return getPullStatusResult(
+				context,
+				data,
+				undefined,
+				getBackgroundExecutionContext(requestContext),
+			);
+		},
+	);
 
 export const getPullPageData = createServerFn({ method: "GET" })
 	.inputValidator(identityValidator<PullFromRepoInput>)
-	.handler(async ({ data }): Promise<PullPageData | null> => {
-		const context = await getGitHubContextForRepository(data);
-		if (!context) {
-			return null;
-		}
+	.handler(
+		async ({ data, context: requestContext }): Promise<PullPageData | null> => {
+			const context = await getGitHubContextForRepository(data);
+			if (!context) {
+				return null;
+			}
 
-		return getPullPageDataResult(context, data);
-	});
+			return getPullPageDataResult(
+				context,
+				data,
+				getBackgroundExecutionContext(requestContext),
+			);
+		},
+	);
 
 type UpdatePullBodyInput = PullFromRepoInput & { body: string };
 
@@ -6251,6 +6399,35 @@ export const mergePullRequest = createServerFn({ method: "POST" })
 			return { ok: true };
 		} catch (error) {
 			return toMutationError("merge pull request", error);
+		}
+	});
+
+export type ReadyForReviewInput = PullFromRepoInput & {
+	/** GraphQL node id of the pull request (e.g. `PR_kwD...`). */
+	pullId: string;
+};
+
+export const markPullReadyForReview = createServerFn({ method: "POST" })
+	.inputValidator(identityValidator<ReadyForReviewInput>)
+	.handler(async ({ data }): Promise<MutationResult> => {
+		const context = await getGitHubUserContextForRepository(data);
+		if (!context) {
+			return { ok: false, error: "Not authenticated" };
+		}
+
+		try {
+			await context.octokit.graphql(
+				`mutation($pullRequestId: ID!) {
+					markPullRequestReadyForReview(input: { pullRequestId: $pullRequestId }) {
+						pullRequest { isDraft }
+					}
+				}`,
+				{ pullRequestId: data.pullId },
+			);
+			await bustPullDetailCaches(context.session.user.id, data);
+			return { ok: true };
+		} catch (error) {
+			return toMutationError("mark pull request as ready for review", error);
 		}
 	});
 
@@ -8682,27 +8859,31 @@ export const getRepoParticipationStats = createServerFn({ method: "GET" })
 
 export const getRepoOverview = createServerFn({ method: "GET" })
 	.inputValidator(identityValidator<RepoOverviewInput>)
-	.handler(async ({ data }): Promise<RepoOverview | null> => {
-		const context = await getGitHubContextForRepository(data);
-		if (!context) return null;
+	.handler(
+		async ({ data, context: requestContext }): Promise<RepoOverview | null> => {
+			const context = await getGitHubContextForRepository(data);
+			if (!context) return null;
 
-		const repoMetaKey = githubRevalidationSignalKeys.repoMeta(data);
-		const repoCodeKey = githubRevalidationSignalKeys.repoCode(data);
+			const repoMetaKey = githubRevalidationSignalKeys.repoMeta(data);
+			const repoCodeKey = githubRevalidationSignalKeys.repoCode(data);
 
-		return getOrRevalidateGitHubResource<RepoOverview>({
-			userId: context.session.user.id,
-			resource: "repo.overview.v2",
-			params: data,
-			freshForMs: githubCachePolicy.repoMeta.staleTimeMs,
-			signalKeys: [repoMetaKey, repoCodeKey],
-			namespaceKeys: [repoMetaKey, repoCodeKey],
-			cacheMode: "split",
-			fetcher: async () => {
-				const response =
-					await executeGitHubGraphQL<GitHubGraphQLRepoOverviewResponse>(
-						context,
-						`github repo overview ${data.owner}/${data.repo}`,
-						`query($owner: String!, $repo: String!) {
+			const result = await getGitHubResourceLocalFirst<RepoOverview>({
+				userId: context.session.user.id,
+				resource: "repo.overview.v2",
+				params: data,
+				freshForMs: githubCachePolicy.repoMeta.staleTimeMs,
+				signalKeys: [repoMetaKey, repoCodeKey],
+				namespaceKeys: [repoMetaKey, repoCodeKey],
+				cacheMode: "split",
+				executionContext: getBackgroundExecutionContext(requestContext),
+				onBackgroundRefreshSettled: () =>
+					broadcastLocalFirstSignalKeys([repoMetaKey, repoCodeKey]),
+				fetcher: async () => {
+					const response =
+						await executeGitHubGraphQL<GitHubGraphQLRepoOverviewResponse>(
+							context,
+							`github repo overview ${data.owner}/${data.repo}`,
+							`query($owner: String!, $repo: String!) {
 							repository(owner: $owner, name: $repo) {
 								databaseId
 								name
@@ -8777,29 +8958,33 @@ export const getRepoOverview = createServerFn({ method: "GET" })
 								resetAt
 							}
 						}`,
-						{
-							owner: data.owner,
-							repo: data.repo,
-						},
-					);
+							{
+								owner: data.owner,
+								repo: data.repo,
+							},
+						);
 
-				if (!response.repository) {
-					throw new Error(
-						`GitHub repository not found: ${data.owner}/${data.repo}`,
-					);
-				}
+					if (!response.repository) {
+						throw new Error(
+							`GitHub repository not found: ${data.owner}/${data.repo}`,
+						);
+					}
 
-				const overview = mapGraphQLRepoOverview(response.repository);
-				overview.viewerHasStarred = await resolveViewerHasStarredForRepo(data);
+					const overview = mapGraphQLRepoOverview(response.repository);
+					overview.viewerHasStarred =
+						await resolveViewerHasStarredForRepo(data);
 
-				return {
-					kind: "success",
-					data: overview,
-					metadata: createGraphQLResponseMetadata(response.rateLimit),
-				};
-			},
-		});
-	});
+					return {
+						kind: "success",
+						data: overview,
+						metadata: createGraphQLResponseMetadata(response.rateLimit),
+					};
+				},
+			});
+
+			return withLocalFirstMeta(result.data, result.meta);
+		},
+	);
 
 // ---------------------------------------------------------------------------
 // Repository discussions (GraphQL-only)
@@ -9786,171 +9971,215 @@ type GetNotificationsInput = {
 
 export const getNotifications = createServerFn({ method: "GET" })
 	.inputValidator(identityValidator<GetNotificationsInput>)
-	.handler(async ({ data }): Promise<NotificationsResult> => {
-		const context = await getGitHubContext();
-		if (!context) {
-			return { notifications: [] };
-		}
+	.handler(
+		async ({ data, context: requestContext }): Promise<NotificationsResult> => {
+			const context = await getGitHubContext();
+			if (!context) {
+				return { notifications: [] };
+			}
 
-		const [response, accessIndex] = await Promise.all([
-			context.octokit.rest.activity.listNotificationsForAuthenticatedUser({
-				all: data.all ?? false,
-				participating: data.participating ?? false,
-				per_page: 50,
-			}),
-			getInstallationAccessIndex(context),
-		]);
-
-		// Batch-fetch participants for PR/Issue notifications in parallel
-		const participantMap = new Map<string, NotificationParticipant[]>();
-		const stateMap = new Map<string, "open" | "closed" | "merged">();
-		const fetchable = response.data.filter(
-			(n) =>
-				n.subject.url &&
-				(n.subject.type === "PullRequest" || n.subject.type === "Issue"),
-		);
-
-		await Promise.allSettled(
-			fetchable.map(async (n) => {
-				try {
-					const seen = new Set<string>();
-					const participants: NotificationParticipant[] = [];
-					const add = (login: string, avatarUrl: string) => {
-						if (seen.has(login)) return;
-						seen.add(login);
-						participants.push({ login, avatarUrl });
-					};
-
-					// Fetch subject detail + comments (and reviews for PRs) in parallel
-					const subjectUrl = n.subject.url!;
-					const commentsUrl = `${subjectUrl}/comments`;
-					const isPR = n.subject.type === "PullRequest";
-					const reviewsUrl = isPR ? `${subjectUrl}/reviews` : null;
-
-					const [subjectRes, commentsRes, reviewsRes] = await Promise.all([
-						context.octokit.request("GET {url}", { url: subjectUrl }),
-						context.octokit
-							.request("GET {url}", { url: commentsUrl, per_page: 100 })
-							.catch(() => null),
-						reviewsUrl
-							? context.octokit
-									.request("GET {url}", { url: reviewsUrl, per_page: 100 })
-									.catch(() => null)
-							: null,
+			const notificationsKey = githubRevalidationSignalKeys.notifications;
+			const result = await getGitHubResourceLocalFirst<NotificationsResult>({
+				userId: context.session.user.id,
+				resource: "notifications.list.v1",
+				params: data,
+				freshForMs: githubCachePolicy.list.staleTimeMs,
+				signalKeys: [notificationsKey],
+				namespaceKeys: [notificationsKey],
+				cacheMode: "split",
+				executionContext: getBackgroundExecutionContext(requestContext),
+				onBackgroundRefreshSettled: () =>
+					broadcastLocalFirstSignalKeys([notificationsKey]),
+				fetcher: async () => {
+					const [response, accessIndex] = await Promise.all([
+						context.octokit.rest.activity.listNotificationsForAuthenticatedUser(
+							{
+								all: data.all ?? false,
+								participating: data.participating ?? false,
+								per_page: 50,
+							},
+						),
+						getInstallationAccessIndex(context),
 					]);
 
-					const d = subjectRes.data as {
-						user?: { login: string; avatar_url: string };
-						assignees?: Array<{ login: string; avatar_url: string }>;
-						requested_reviewers?: Array<{ login: string; avatar_url: string }>;
-						state?: string;
-						merged?: boolean;
+					const participantMap = new Map<string, NotificationParticipant[]>();
+					const stateMap = new Map<string, "open" | "closed" | "merged">();
+					const fetchable = response.data.filter(
+						(n) =>
+							n.subject.url &&
+							(n.subject.type === "PullRequest" || n.subject.type === "Issue"),
+					);
+
+					await Promise.allSettled(
+						fetchable.map(async (n) => {
+							try {
+								const seen = new Set<string>();
+								const participants: NotificationParticipant[] = [];
+								const add = (login: string, avatarUrl: string) => {
+									if (seen.has(login)) return;
+									seen.add(login);
+									participants.push({ login, avatarUrl });
+								};
+
+								const subjectUrl = n.subject.url;
+								if (!subjectUrl) {
+									return;
+								}
+								const commentsUrl = `${subjectUrl}/comments`;
+								const isPR = n.subject.type === "PullRequest";
+								const reviewsUrl = isPR ? `${subjectUrl}/reviews` : null;
+
+								const [subjectRes, commentsRes, reviewsRes] = await Promise.all(
+									[
+										context.octokit.request("GET {url}", { url: subjectUrl }),
+										context.octokit
+											.request("GET {url}", { url: commentsUrl, per_page: 100 })
+											.catch(() => null),
+										reviewsUrl
+											? context.octokit
+													.request("GET {url}", {
+														url: reviewsUrl,
+														per_page: 100,
+													})
+													.catch(() => null)
+											: null,
+									],
+								);
+
+								const subjectData = subjectRes.data as {
+									user?: { login: string; avatar_url: string };
+									assignees?: Array<{ login: string; avatar_url: string }>;
+									requested_reviewers?: Array<{
+										login: string;
+										avatar_url: string;
+									}>;
+									state?: string;
+									merged?: boolean;
+								};
+
+								if (subjectData.state) {
+									const state = subjectData.merged
+										? "merged"
+										: subjectData.state === "closed"
+											? "closed"
+											: "open";
+									stateMap.set(n.id, state);
+								}
+
+								if (subjectData.user) {
+									add(subjectData.user.login, subjectData.user.avatar_url);
+								}
+								for (const assignee of subjectData.assignees ?? []) {
+									add(assignee.login, assignee.avatar_url);
+								}
+								for (const reviewer of subjectData.requested_reviewers ?? []) {
+									add(reviewer.login, reviewer.avatar_url);
+								}
+
+								if (commentsRes?.data && Array.isArray(commentsRes.data)) {
+									for (const comment of commentsRes.data as Array<{
+										user?: { login: string; avatar_url: string };
+									}>) {
+										if (comment.user) {
+											add(comment.user.login, comment.user.avatar_url);
+										}
+									}
+								}
+
+								if (reviewsRes?.data && Array.isArray(reviewsRes.data)) {
+									for (const review of reviewsRes.data as Array<{
+										user?: { login: string; avatar_url: string };
+									}>) {
+										if (review.user) {
+											add(review.user.login, review.user.avatar_url);
+										}
+									}
+								}
+
+								participantMap.set(n.id, participants);
+							} catch {
+								// Participant enrichment is best-effort.
+							}
+						}),
+					);
+
+					const notifications: NotificationItem[] = response.data.map((n) => ({
+						id: n.id,
+						unread: n.unread,
+						reason: n.reason as NotificationItem["reason"],
+						subject: {
+							title: n.subject.title,
+							url: n.subject.url ?? null,
+							latestCommentUrl: n.subject.latest_comment_url ?? null,
+							type: n.subject.type as NotificationItem["subject"]["type"],
+						},
+						repository: {
+							id: n.repository.id,
+							name: n.repository.name,
+							fullName: n.repository.full_name,
+							owner: {
+								login: n.repository.owner.login,
+								avatarUrl: n.repository.owner.avatar_url,
+								url: n.repository.owner.html_url ?? n.repository.owner.url,
+								type: n.repository.owner.type ?? "User",
+							},
+							private: n.repository.private,
+						},
+						participants: participantMap.get(n.id) ?? [],
+						subjectState: stateMap.get(n.id) ?? null,
+						updatedAt: n.updated_at,
+						lastReadAt: n.last_read_at ?? null,
+						url: n.url,
+					}));
+
+					const filteredNotifications = notifications.filter((notification) =>
+						isRepoVisibleWithInstallationAccess(
+							accessIndex,
+							notification.repository.owner.login,
+							notification.repository.name,
+							notification.repository.private,
+						),
+					);
+
+					const removedCount =
+						notifications.length - filteredNotifications.length;
+					if (removedCount > 0) {
+						debug("installation-access", "getNotifications filtered", {
+							total: notifications.length,
+							kept: filteredNotifications.length,
+							removed: removedCount,
+							removedRepos: [
+								...new Set(
+									notifications
+										.filter(
+											(n) =>
+												!isRepoVisibleWithInstallationAccess(
+													accessIndex,
+													n.repository.owner.login,
+													n.repository.name,
+													n.repository.private,
+												),
+										)
+										.map((n) => n.repository.fullName),
+								),
+							],
+						});
+					}
+
+					return {
+						kind: "success",
+						data: { notifications: filteredNotifications },
+						metadata: createGitHubResponseMetadata(
+							response.status,
+							normalizeResponseHeaders(response.headers),
+						),
 					};
-
-					// Extract subject state (open/closed/merged)
-					if (d.state) {
-						const state = d.merged
-							? "merged"
-							: d.state === "closed"
-								? "closed"
-								: "open";
-						stateMap.set(n.id, state);
-					}
-
-					if (d.user) add(d.user.login, d.user.avatar_url);
-					for (const a of d.assignees ?? []) add(a.login, a.avatar_url);
-					for (const r of d.requested_reviewers ?? [])
-						add(r.login, r.avatar_url);
-
-					// Add commenters
-					if (commentsRes?.data && Array.isArray(commentsRes.data)) {
-						for (const c of commentsRes.data as Array<{
-							user?: { login: string; avatar_url: string };
-						}>) {
-							if (c.user) add(c.user.login, c.user.avatar_url);
-						}
-					}
-
-					// Add reviewers (PRs only)
-					if (reviewsRes?.data && Array.isArray(reviewsRes.data)) {
-						for (const r of reviewsRes.data as Array<{
-							user?: { login: string; avatar_url: string };
-						}>) {
-							if (r.user) add(r.user.login, r.user.avatar_url);
-						}
-					}
-
-					participantMap.set(n.id, participants);
-				} catch {
-					// Silently skip — participant data is best-effort
-				}
-			}),
-		);
-
-		const notifications: NotificationItem[] = response.data.map((n) => ({
-			id: n.id,
-			unread: n.unread,
-			reason: n.reason as NotificationItem["reason"],
-			subject: {
-				title: n.subject.title,
-				url: n.subject.url ?? null,
-				latestCommentUrl: n.subject.latest_comment_url ?? null,
-				type: n.subject.type as NotificationItem["subject"]["type"],
-			},
-			repository: {
-				id: n.repository.id,
-				name: n.repository.name,
-				fullName: n.repository.full_name,
-				owner: {
-					login: n.repository.owner.login,
-					avatarUrl: n.repository.owner.avatar_url,
-					url: n.repository.owner.html_url ?? n.repository.owner.url,
-					type: n.repository.owner.type ?? "User",
 				},
-				private: n.repository.private,
-			},
-			participants: participantMap.get(n.id) ?? [],
-			subjectState: stateMap.get(n.id) ?? null,
-			updatedAt: n.updated_at,
-			lastReadAt: n.last_read_at ?? null,
-			url: n.url,
-		}));
-
-		const filteredNotifications = notifications.filter((notification) =>
-			isRepoVisibleWithInstallationAccess(
-				accessIndex,
-				notification.repository.owner.login,
-				notification.repository.name,
-				notification.repository.private,
-			),
-		);
-
-		const removedCount = notifications.length - filteredNotifications.length;
-		if (removedCount > 0) {
-			debug("installation-access", "getNotifications filtered", {
-				total: notifications.length,
-				kept: filteredNotifications.length,
-				removed: removedCount,
-				removedRepos: [
-					...new Set(
-						notifications
-							.filter(
-								(n) =>
-									!isRepoVisibleWithInstallationAccess(
-										accessIndex,
-										n.repository.owner.login,
-										n.repository.name,
-										n.repository.private,
-									),
-							)
-							.map((n) => n.repository.fullName),
-					),
-				],
 			});
-		}
 
-		return { notifications: filteredNotifications };
-	});
+			return withLocalFirstMeta(result.data, result.meta);
+		},
+	);
 
 type MarkNotificationReadInput = { threadId: string };
 
@@ -10019,3 +10248,825 @@ export const getRevalidationSignalTimestamps = createServerFn({
 			return getGitHubRevalidationSignals(data.signalKeys);
 		},
 	);
+
+type ClearViewerCacheResult = {
+	ok: boolean;
+	deletedDbRows: number;
+	deletedKvKeys: number;
+};
+
+export const clearViewerGitHubCache = createServerFn({
+	method: "POST",
+}).handler(async (): Promise<ClearViewerCacheResult> => {
+	const { getRequestSession } = await import("./auth-runtime");
+	const session = await getRequestSession();
+	if (!session) {
+		return { ok: false, deletedDbRows: 0, deletedKvKeys: 0 };
+	}
+
+	const { clearAllGitHubCacheForUser } = await import("./github-cache");
+	const result = await clearAllGitHubCacheForUser(session.user.id);
+
+	return { ok: true, ...result };
+});
+
+export type WorkflowRunInput = {
+	owner: string;
+	repo: string;
+	runId: number;
+};
+
+export type WorkflowRunListStatus =
+	| "completed"
+	| "action_required"
+	| "cancelled"
+	| "failure"
+	| "neutral"
+	| "skipped"
+	| "stale"
+	| "success"
+	| "timed_out"
+	| "in_progress"
+	| "queued"
+	| "requested"
+	| "waiting"
+	| "pending";
+
+export type WorkflowRunsFromRepoInput = {
+	owner: string;
+	repo: string;
+	page?: number;
+	perPage?: number;
+	status?: WorkflowRunListStatus;
+	event?: string;
+	branch?: string;
+	actor?: string;
+	workflowId?: number;
+};
+
+type WorkflowRunRaw = Awaited<
+	ReturnType<GitHubClient["rest"]["actions"]["getWorkflowRun"]>
+>["data"];
+type WorkflowRunJobRaw = Awaited<
+	ReturnType<GitHubClient["rest"]["actions"]["listJobsForWorkflowRun"]>
+>["data"]["jobs"][number];
+type WorkflowRunStepRaw = NonNullable<WorkflowRunJobRaw["steps"]>[number];
+type WorkflowRunArtifactRaw = Awaited<
+	ReturnType<GitHubClient["rest"]["actions"]["listWorkflowRunArtifacts"]>
+>["data"]["artifacts"][number];
+
+function mapWorkflowRunStep(raw: WorkflowRunStepRaw): WorkflowRunStep {
+	return {
+		number: raw.number,
+		name: raw.name,
+		status: raw.status,
+		conclusion: raw.conclusion ?? null,
+		startedAt: raw.started_at ?? null,
+		completedAt: raw.completed_at ?? null,
+	};
+}
+
+function mapWorkflowRunJob(raw: WorkflowRunJobRaw): WorkflowRunJob {
+	return {
+		id: raw.id,
+		runId: raw.run_id,
+		name: raw.name,
+		status: raw.status,
+		conclusion: raw.conclusion ?? null,
+		startedAt: raw.started_at ?? null,
+		completedAt: raw.completed_at ?? null,
+		htmlUrl: raw.html_url ?? null,
+		labels: raw.labels ?? [],
+		runnerName: raw.runner_name ?? null,
+		steps: (raw.steps ?? []).map(mapWorkflowRunStep),
+	};
+}
+
+function mapWorkflowRunArtifact(
+	raw: WorkflowRunArtifactRaw,
+): WorkflowRunArtifact {
+	return {
+		id: raw.id,
+		name: raw.name,
+		sizeInBytes: raw.size_in_bytes,
+		expired: raw.expired,
+		createdAt: raw.created_at ?? null,
+		expiresAt: raw.expires_at ?? null,
+		archiveDownloadUrl: raw.archive_download_url,
+		digest: raw.digest ?? null,
+	};
+}
+
+function mapWorkflowRun(
+	raw: WorkflowRunRaw,
+	options: { viewerCanRerun: boolean },
+): WorkflowRun {
+	return {
+		id: raw.id,
+		name: raw.name ?? null,
+		displayTitle: raw.display_title ?? raw.name ?? `Run #${raw.run_number}`,
+		status: raw.status ?? "queued",
+		conclusion: raw.conclusion ?? null,
+		event: raw.event,
+		headBranch: raw.head_branch ?? null,
+		headSha: raw.head_sha,
+		runNumber: raw.run_number,
+		runAttempt: raw.run_attempt ?? 1,
+		runStartedAt: raw.run_started_at ?? null,
+		createdAt: raw.created_at,
+		updatedAt: raw.updated_at,
+		htmlUrl: raw.html_url,
+		path: raw.path,
+		workflowId: raw.workflow_id,
+		actor: mapActor(raw.actor),
+		triggeringActor: mapActor(raw.triggering_actor),
+		pullRequests: (raw.pull_requests ?? []).map((pr) => ({
+			number: pr.number,
+			headRef: pr.head?.ref ?? "",
+			baseRef: pr.base?.ref ?? "",
+		})),
+		viewerCanRerun: options.viewerCanRerun,
+	};
+}
+
+export const getWorkflowRunsForRepo = createServerFn({ method: "GET" })
+	.inputValidator(identityValidator<WorkflowRunsFromRepoInput>)
+	.handler(async ({ data }): Promise<WorkflowRun[]> => {
+		const context = await getGitHubContextForRepository(data);
+		if (!context) {
+			return [];
+		}
+
+		const params = {
+			owner: data.owner,
+			repo: data.repo,
+			page: clampPage(data.page),
+			perPage: clampPerPage(data.perPage),
+			status: data.status,
+			event: data.event,
+			branch: data.branch,
+			actor: data.actor,
+			workflowId: data.workflowId,
+		};
+
+		return getCachedGitHubRequest<
+			Awaited<
+				ReturnType<GitHubClient["rest"]["actions"]["listWorkflowRunsForRepo"]>
+			>["data"],
+			WorkflowRun[]
+		>({
+			context,
+			resource: "actions.runs.repo",
+			params,
+			freshForMs: githubCachePolicy.list.staleTimeMs,
+			signalKeys: [
+				githubRevalidationSignalKeys.actionsRepo({
+					owner: data.owner,
+					repo: data.repo,
+				}),
+			],
+			request: (headers) =>
+				context.octokit.rest.actions.listWorkflowRunsForRepo({
+					owner: data.owner,
+					repo: data.repo,
+					page: params.page,
+					per_page: params.perPage,
+					status: data.status,
+					event: data.event,
+					branch: data.branch,
+					actor: data.actor,
+					workflow_id: data.workflowId,
+					headers,
+				}),
+			mapData: (payload) =>
+				payload.workflow_runs.map((raw) =>
+					mapWorkflowRun(raw as unknown as WorkflowRunRaw, {
+						viewerCanRerun: false,
+					}),
+				),
+		});
+	});
+
+export const getWorkflowRun = createServerFn({ method: "GET" })
+	.inputValidator(identityValidator<WorkflowRunInput>)
+	.handler(async ({ data }): Promise<WorkflowRun | null> => {
+		const context = await getGitHubContextForRepository(data);
+		if (!context) {
+			return null;
+		}
+
+		const userContext = await getGitHubUserContextForRepository(data);
+		const [run, userPerms, appPerms] = await Promise.all([
+			getCachedGitHubRequest<WorkflowRunRaw, WorkflowRun | null>({
+				context,
+				resource: "actions.run",
+				params: {
+					owner: data.owner,
+					repo: data.repo,
+					runId: data.runId,
+				},
+				freshForMs: githubCachePolicy.workflowRun.staleTimeMs,
+				signalKeys: [
+					githubRevalidationSignalKeys.workflowRunEntity({
+						owner: data.owner,
+						repo: data.repo,
+						runId: data.runId,
+					}),
+				],
+				request: (headers) =>
+					context.octokit.rest.actions.getWorkflowRun({
+						owner: data.owner,
+						repo: data.repo,
+						run_id: data.runId,
+						headers,
+					}),
+				mapData: (payload) =>
+					mapWorkflowRun(payload, { viewerCanRerun: false }),
+			}).catch((error: unknown) => {
+				if (error instanceof RequestError && error.status === 404) {
+					return null;
+				}
+				throw error;
+			}),
+			getRepositoryPermissions(userContext, data.owner, data.repo),
+			getRepositoryPermissions(context, data.owner, data.repo),
+		]);
+
+		if (!run) return null;
+
+		const permissions = mergeRepositoryPermissions(userPerms, appPerms);
+		const viewerCanRerun =
+			permissions?.push === true || permissions?.admin === true;
+		return { ...run, viewerCanRerun };
+	});
+
+export const listWorkflowRunJobs = createServerFn({ method: "GET" })
+	.inputValidator(identityValidator<WorkflowRunInput>)
+	.handler(async ({ data }): Promise<WorkflowRunJob[]> => {
+		const context = await getGitHubContextForRepository(data);
+		if (!context) {
+			return [];
+		}
+
+		try {
+			return await getCachedPaginatedGitHubRequest<
+				WorkflowRunJobRaw,
+				WorkflowRunJob[]
+			>({
+				context,
+				resource: "actions.run.jobs",
+				params: {
+					owner: data.owner,
+					repo: data.repo,
+					runId: data.runId,
+				},
+				freshForMs: githubCachePolicy.workflowRun.staleTimeMs,
+				signalKeys: [
+					githubRevalidationSignalKeys.workflowRunEntity({
+						owner: data.owner,
+						repo: data.repo,
+						runId: data.runId,
+					}),
+				],
+				request: async (page) => {
+					const response =
+						await context.octokit.rest.actions.listJobsForWorkflowRun({
+							owner: data.owner,
+							repo: data.repo,
+							run_id: data.runId,
+							page,
+							per_page: 100,
+						});
+					return {
+						...response,
+						data: response.data.jobs ?? [],
+					};
+				},
+				mapData: (items) => items.map(mapWorkflowRunJob),
+			});
+		} catch (error) {
+			console.error("[listWorkflowRunJobs]", error);
+			return [];
+		}
+	});
+
+export const listWorkflowRunArtifacts = createServerFn({ method: "GET" })
+	.inputValidator(identityValidator<WorkflowRunInput>)
+	.handler(async ({ data }): Promise<WorkflowRunArtifact[]> => {
+		const context = await getGitHubContextForRepository(data);
+		if (!context) {
+			return [];
+		}
+
+		try {
+			return await getCachedPaginatedGitHubRequest<
+				WorkflowRunArtifactRaw,
+				WorkflowRunArtifact[]
+			>({
+				context,
+				resource: "actions.run.artifacts",
+				params: {
+					owner: data.owner,
+					repo: data.repo,
+					runId: data.runId,
+				},
+				freshForMs: githubCachePolicy.workflowRun.staleTimeMs,
+				signalKeys: [
+					githubRevalidationSignalKeys.workflowRunEntity({
+						owner: data.owner,
+						repo: data.repo,
+						runId: data.runId,
+					}),
+				],
+				request: async (page) => {
+					const response =
+						await context.octokit.rest.actions.listWorkflowRunArtifacts({
+							owner: data.owner,
+							repo: data.repo,
+							run_id: data.runId,
+							page,
+							per_page: 100,
+						});
+					return {
+						...response,
+						data: response.data.artifacts ?? [],
+					};
+				},
+				mapData: (items) => items.map(mapWorkflowRunArtifact),
+			});
+		} catch (error) {
+			console.error("[listWorkflowRunArtifacts]", error);
+			return [];
+		}
+	});
+
+export const rerunWorkflowRun = createServerFn({ method: "POST" })
+	.inputValidator(identityValidator<WorkflowRunInput>)
+	.handler(async ({ data }): Promise<MutationResult> => {
+		const context = await getGitHubUserContextForRepository(data);
+		if (!context) {
+			return { ok: false, error: "Not authenticated" };
+		}
+
+		try {
+			await context.octokit.rest.actions.reRunWorkflow({
+				owner: data.owner,
+				repo: data.repo,
+				run_id: data.runId,
+			});
+			return { ok: true };
+		} catch (error) {
+			return toMutationError("rerun workflow run", error);
+		}
+	});
+
+export const rerunFailedWorkflowJobs = createServerFn({ method: "POST" })
+	.inputValidator(identityValidator<WorkflowRunInput>)
+	.handler(async ({ data }): Promise<MutationResult> => {
+		const context = await getGitHubUserContextForRepository(data);
+		if (!context) {
+			return { ok: false, error: "Not authenticated" };
+		}
+
+		try {
+			await context.octokit.rest.actions.reRunWorkflowFailedJobs({
+				owner: data.owner,
+				repo: data.repo,
+				run_id: data.runId,
+			});
+			return { ok: true };
+		} catch (error) {
+			return toMutationError("rerun failed workflow jobs", error);
+		}
+	});
+
+export type WorkflowDefinitionInput = {
+	owner: string;
+	repo: string;
+	path: string;
+	ref: string;
+};
+
+function parseWorkflowDefinition(yamlText: string): WorkflowDefinition | null {
+	let parsed: unknown;
+	try {
+		parsed = parseYaml(yamlText);
+	} catch {
+		return null;
+	}
+	if (!parsed || typeof parsed !== "object") return null;
+	const jobsRaw = (parsed as { jobs?: unknown }).jobs;
+	if (!jobsRaw || typeof jobsRaw !== "object") return null;
+
+	const jobs: WorkflowDefinitionJob[] = [];
+	for (const [key, value] of Object.entries(
+		jobsRaw as Record<string, unknown>,
+	)) {
+		if (!value || typeof value !== "object") continue;
+		const v = value as {
+			needs?: string | string[];
+			name?: unknown;
+			strategy?: { matrix?: unknown };
+		};
+		const needs = Array.isArray(v.needs)
+			? v.needs.filter((n): n is string => typeof n === "string")
+			: typeof v.needs === "string"
+				? [v.needs]
+				: [];
+		const nameTemplate = typeof v.name === "string" ? v.name : null;
+		const isMatrix =
+			!!v.strategy && typeof v.strategy === "object" && "matrix" in v.strategy;
+		jobs.push({ key, needs, nameTemplate, isMatrix });
+	}
+	return { jobs };
+}
+
+export const getWorkflowDefinition = createServerFn({ method: "GET" })
+	.inputValidator(identityValidator<WorkflowDefinitionInput>)
+	.handler(async ({ data }): Promise<WorkflowDefinition | null> => {
+		const context = await getGitHubContextForRepository(data);
+		if (!context) return null;
+
+		try {
+			const response = await context.octokit.rest.repos.getContent({
+				owner: data.owner,
+				repo: data.repo,
+				path: data.path,
+				ref: data.ref,
+			});
+			const payload = response.data;
+			if (
+				!payload ||
+				Array.isArray(payload) ||
+				payload.type !== "file" ||
+				typeof payload.content !== "string"
+			) {
+				return null;
+			}
+			const encoding = payload.encoding ?? "base64";
+			const yamlText =
+				encoding === "base64"
+					? Buffer.from(payload.content.replace(/\n/g, ""), "base64").toString(
+							"utf-8",
+						)
+					: payload.content;
+			return parseWorkflowDefinition(yamlText);
+		} catch (error) {
+			if (error instanceof RequestError && error.status === 404) {
+				return null;
+			}
+			console.error("[getWorkflowDefinition]", error);
+			return null;
+		}
+	});
+
+export type WorkflowJobLogsInput = {
+	owner: string;
+	repo: string;
+	jobId: number;
+};
+
+function decodeLogsPayload(data: unknown): string {
+	if (typeof data === "string") return data;
+	if (data instanceof ArrayBuffer) return new TextDecoder().decode(data);
+	if (ArrayBuffer.isView(data))
+		return new TextDecoder().decode(data as ArrayBufferView);
+	return "";
+}
+
+export const getWorkflowJobLogs = createServerFn({ method: "GET" })
+	.inputValidator(identityValidator<WorkflowJobLogsInput>)
+	.handler(async ({ data }): Promise<WorkflowJobLogs | null> => {
+		const repoInput = { owner: data.owner, repo: data.repo };
+		const tag = `[getWorkflowJobLogs ${data.owner}/${data.repo}#${data.jobId}]`;
+
+		const [appContext, userContext] = await Promise.all([
+			getGitHubContextForRepository(repoInput),
+			getGitHubUserContextForRepository(repoInput),
+		]);
+
+		const seen = new Set<unknown>();
+		const contexts = [
+			{ label: "app", ctx: appContext },
+			{ label: "user", ctx: userContext },
+		].filter(
+			(
+				entry,
+			): entry is { label: string; ctx: NonNullable<typeof entry.ctx> } => {
+				if (!entry.ctx) return false;
+				if (seen.has(entry.ctx.octokit)) return false;
+				seen.add(entry.ctx.octokit);
+				return true;
+			},
+		);
+
+		console.log(`${tag} contexts`, {
+			appContext: !!appContext,
+			userContext: !!userContext,
+			tiers: contexts.map((c) => c.label),
+		});
+
+		if (contexts.length === 0) {
+			console.warn(`${tag} no usable context`);
+			return null;
+		}
+
+		let lastError: unknown = null;
+		for (const { label, ctx } of contexts) {
+			try {
+				console.log(`${tag} attempting`, label);
+				const response = await withGitHubOperationTimeout(
+					`${tag} ${label}`,
+					GITHUB_OPERATION_TIMEOUT_MS,
+					() =>
+						ctx.octokit.request(
+							"GET /repos/{owner}/{repo}/actions/jobs/{job_id}/logs",
+							{
+								owner: data.owner,
+								repo: data.repo,
+								job_id: data.jobId,
+							},
+						),
+				);
+				const logs = decodeLogsPayload(response.data);
+				const dataKind =
+					typeof response.data === "string"
+						? "string"
+						: response.data instanceof ArrayBuffer
+							? "ArrayBuffer"
+							: ArrayBuffer.isView(response.data)
+								? "ArrayBufferView"
+								: typeof response.data;
+				console.log(`${tag} ok via ${label}`, {
+					status: response.status,
+					dataKind,
+					bytes: logs.length,
+				});
+				return {
+					logs,
+					fetchedAt: new Date().toISOString(),
+					notAvailable: false,
+				};
+			} catch (error) {
+				lastError = error;
+				const status = error instanceof RequestError ? error.status : undefined;
+				console.warn(`${tag} ${label} failed`, {
+					status,
+					message: error instanceof Error ? error.message : String(error),
+				});
+				if (status === 404 || status === 410) {
+					return {
+						logs: "",
+						fetchedAt: new Date().toISOString(),
+						notAvailable: true,
+					};
+				}
+				if (status === 401 || status === 403) {
+					continue;
+				}
+				console.error(`${tag} unexpected error`, error);
+				return null;
+			}
+		}
+		console.error(`${tag} all auth tiers failed`, lastError);
+		return null;
+	});
+
+export type WorkflowRunLogsBundleInput = {
+	owner: string;
+	repo: string;
+	runId: number;
+	attempt?: number;
+};
+
+const JOB_NAME_MAX_LENGTH = 90;
+
+/** Mirrors the gh CLI's `getJobNameForLogFilename`: strip path-illegal chars
+ *  and truncate to 90 UTF-16 code units (matches the C# server's `string.Length`,
+ *  which is also UTF-16 code units; JS strings index by the same units). */
+function sanitizeJobNameForZip(name: string): string {
+	const stripped = name.replace(/[/:]/g, "");
+	const truncated =
+		stripped.length > JOB_NAME_MAX_LENGTH
+			? stripped.slice(0, JOB_NAME_MAX_LENGTH)
+			: stripped;
+	return truncated.trim();
+}
+
+const STEP_FILE_RE = /^(.+?)\/(\d+)_.*\.txt$/;
+const JOB_FILE_RE = /^(-?\d+)_(.+)\.txt$/;
+
+function decodeZipEntry(bytes: Uint8Array): string {
+	return new TextDecoder("utf-8").decode(bytes);
+}
+
+async function unzipBundle(
+	bytes: Uint8Array,
+): Promise<Record<string, Uint8Array>> {
+	const { unzip } = await import("fflate");
+	return new Promise((resolve, reject) => {
+		unzip(
+			bytes,
+			{
+				filter: (file) => file.name.endsWith(".txt"),
+			},
+			(err, result) => {
+				if (err) reject(err);
+				else resolve(result);
+			},
+		);
+	});
+}
+
+function getOrCreateJobEntry(
+	jobs: WorkflowRunLogsBundle["jobs"],
+	jobName: string,
+): WorkflowRunLogsBundle["jobs"][string] {
+	const existing = jobs[jobName];
+	if (existing) return existing;
+	const entry = { jobName, jobLog: null, steps: {} };
+	jobs[jobName] = entry;
+	return entry;
+}
+
+async function parseLogsZip(
+	bytes: Uint8Array,
+): Promise<WorkflowRunLogsBundle["jobs"]> {
+	const files = await unzipBundle(bytes);
+	const jobs: WorkflowRunLogsBundle["jobs"] = {};
+	for (const path in files) {
+		const data = files[path];
+		if (!data) continue;
+		const stepMatch = path.match(STEP_FILE_RE);
+		if (stepMatch) {
+			const jobName = stepMatch[1] ?? "";
+			const stepNumber = Number(stepMatch[2]);
+			if (!Number.isFinite(stepNumber)) continue;
+			const entry = getOrCreateJobEntry(jobs, jobName);
+			entry.steps[stepNumber] = decodeZipEntry(data);
+			continue;
+		}
+		const jobMatch = path.match(JOB_FILE_RE);
+		if (jobMatch) {
+			const jobName = jobMatch[2] ?? "";
+			const entry = getOrCreateJobEntry(jobs, jobName);
+			entry.jobLog = decodeZipEntry(data);
+		}
+	}
+	return jobs;
+}
+
+async function fetchWorkflowRunLogsBundleUncached(
+	data: WorkflowRunLogsBundleInput,
+): Promise<WorkflowRunLogsBundle | null> {
+	const repoInput = { owner: data.owner, repo: data.repo };
+	const tag = `[getWorkflowRunLogsBundle ${data.owner}/${data.repo}#${data.runId}${data.attempt ? `@${data.attempt}` : ""}]`;
+
+	const [appContext, userContext] = await Promise.all([
+		getGitHubContextForRepository(repoInput),
+		getGitHubUserContextForRepository(repoInput),
+	]);
+
+	const seen = new Set<unknown>();
+	const contexts = [
+		{ label: "app", ctx: appContext },
+		{ label: "user", ctx: userContext },
+	].filter(
+		(entry): entry is { label: string; ctx: NonNullable<typeof entry.ctx> } => {
+			if (!entry.ctx) return false;
+			if (seen.has(entry.ctx.octokit)) return false;
+			seen.add(entry.ctx.octokit);
+			return true;
+		},
+	);
+
+	if (contexts.length === 0) {
+		console.warn(`${tag} no usable context`);
+		return null;
+	}
+
+	let lastError: unknown = null;
+	for (const { label, ctx } of contexts) {
+		try {
+			const attempt = data.attempt;
+			const response = await withGitHubOperationTimeout(
+				`${tag} ${label}`,
+				GITHUB_OPERATION_TIMEOUT_MS,
+				() =>
+					attempt
+						? ctx.octokit.request(
+								"GET /repos/{owner}/{repo}/actions/runs/{run_id}/attempts/{attempt_number}/logs",
+								{
+									owner: data.owner,
+									repo: data.repo,
+									run_id: data.runId,
+									attempt_number: attempt,
+									request: { parseSuccessResponseBody: false },
+								},
+							)
+						: ctx.octokit.request(
+								"GET /repos/{owner}/{repo}/actions/runs/{run_id}/logs",
+								{
+									owner: data.owner,
+									repo: data.repo,
+									run_id: data.runId,
+									request: { parseSuccessResponseBody: false },
+								},
+							),
+			);
+			const body = response.data as unknown;
+			const buffer =
+				body instanceof ArrayBuffer
+					? body
+					: ArrayBuffer.isView(body)
+						? (body as ArrayBufferView).buffer.slice(
+								(body as ArrayBufferView).byteOffset,
+								(body as ArrayBufferView).byteOffset +
+									(body as ArrayBufferView).byteLength,
+							)
+						: body && typeof (body as Response).arrayBuffer === "function"
+							? await (body as Response).arrayBuffer()
+							: null;
+			if (!buffer) {
+				console.error(`${tag} unsupported response shape`, typeof body);
+				return null;
+			}
+			const bytes = new Uint8Array(buffer);
+			const jobs = await parseLogsZip(bytes);
+			console.log(`${tag} ok via ${label}`, {
+				status: response.status,
+				bytes: bytes.byteLength,
+				jobs: Object.keys(jobs).length,
+			});
+			return {
+				jobs,
+				fetchedAt: new Date().toISOString(),
+				notAvailable: false,
+			};
+		} catch (error) {
+			lastError = error;
+			const status = error instanceof RequestError ? error.status : undefined;
+			console.warn(`${tag} ${label} failed`, {
+				status,
+				message: error instanceof Error ? error.message : String(error),
+			});
+			if (status === 404 || status === 410) {
+				return {
+					jobs: {},
+					fetchedAt: new Date().toISOString(),
+					notAvailable: true,
+				};
+			}
+			if (status === 401 || status === 403) continue;
+			console.error(`${tag} unexpected error`, error);
+			return null;
+		}
+	}
+	console.error(`${tag} all auth tiers failed`, lastError);
+	return null;
+}
+
+export const getWorkflowRunLogsBundle = createServerFn({ method: "GET" })
+	.inputValidator(identityValidator<WorkflowRunLogsBundleInput>)
+	.handler(async ({ data }): Promise<WorkflowRunLogsBundle | null> => {
+		const context = await getGitHubContextForRepository(data);
+		if (!context) {
+			return fetchWorkflowRunLogsBundleUncached(data);
+		}
+
+		// Cache the parsed bundle. Once a run+attempt completes its data is
+		// immutable, so we use a long fresh window and rely on the
+		// workflowRunEntity signal (bumped by `workflow_run` and `workflow_job`
+		// webhooks) to invalidate while the run is still in-flight.
+		return getOrRevalidateGitHubResource<WorkflowRunLogsBundle | null>({
+			userId: context.session.user.id,
+			resource: "actions.run.logsBundle",
+			params: {
+				owner: data.owner,
+				repo: data.repo,
+				runId: data.runId,
+				attempt: data.attempt ?? null,
+			},
+			freshForMs: 60 * 60 * 1000,
+			signalKeys: [
+				githubRevalidationSignalKeys.workflowRunEntity({
+					owner: data.owner,
+					repo: data.repo,
+					runId: data.runId,
+				}),
+			],
+			fetcher: async () => {
+				const bundle = await fetchWorkflowRunLogsBundleUncached(data);
+				return {
+					kind: "success",
+					data: bundle,
+					metadata: createGitHubResponseMetadata(200, {}),
+				};
+			},
+		});
+	});
+
+/** Build the zip-file job name for a given API job name. Exported for tests/clients. */
+export function workflowZipJobName(jobName: string): string {
+	return sanitizeJobNameForZip(jobName);
+}

@@ -45,19 +45,57 @@ function OverviewPage() {
 		...githubMyIssuesQueryOptions(scope),
 		enabled: hasMounted,
 	});
-	const webhookTargets = useMemo(
-		() => [
+	const webhookTargets = useMemo(() => {
+		const pulls = pullsQuery.data;
+		const issues = issuesQuery.data;
+		const pullSignalKeys = new Set<string>([
+			githubRevalidationSignalKeys.pullsMine,
+		]);
+		const issueSignalKeys = new Set<string>([
+			githubRevalidationSignalKeys.issuesMine,
+		]);
+
+		for (const pull of [
+			...(pulls?.reviewRequested ?? []),
+			...(pulls?.assigned ?? []),
+			...(pulls?.authored ?? []),
+			...(pulls?.mentioned ?? []),
+			...(pulls?.involved ?? []),
+		]) {
+			pullSignalKeys.add(
+				githubRevalidationSignalKeys.pullEntity({
+					owner: pull.repository.owner,
+					repo: pull.repository.name,
+					pullNumber: pull.number,
+				}),
+			);
+		}
+
+		for (const issue of [
+			...(issues?.assigned ?? []),
+			...(issues?.authored ?? []),
+			...(issues?.mentioned ?? []),
+		]) {
+			issueSignalKeys.add(
+				githubRevalidationSignalKeys.issueEntity({
+					owner: issue.repository.owner,
+					repo: issue.repository.name,
+					issueNumber: issue.number,
+				}),
+			);
+		}
+
+		return [
 			{
 				queryKey: githubQueryKeys.pulls.mine(scope),
-				signalKeys: [githubRevalidationSignalKeys.pullsMine],
+				signalKeys: Array.from(pullSignalKeys),
 			},
 			{
 				queryKey: githubQueryKeys.issues.mine(scope),
-				signalKeys: [githubRevalidationSignalKeys.issuesMine],
+				signalKeys: Array.from(issueSignalKeys),
 			},
-		],
-		[scope],
-	);
+		];
+	}, [issuesQuery.data, pullsQuery.data, scope]);
 	useGitHubSignalStream(webhookTargets);
 
 	if (pullsQuery.error) throw pullsQuery.error;
@@ -88,7 +126,9 @@ function OverviewPage() {
 			},
 		];
 
-		const recentPulls = pulls.authored.slice(0, 10);
+		const recentPulls = [...pulls.authored]
+			.sort((a, b) => Date.parse(b.updatedAt) - Date.parse(a.updatedAt))
+			.slice(0, 10);
 
 		return (
 			<div className="overflow-stable h-full px-6 py-16">

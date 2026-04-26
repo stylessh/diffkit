@@ -8,7 +8,7 @@ import { useEffect, useRef } from "react";
 import { githubCachePolicy } from "./github-cache-policy";
 import { readStoredTabs, type Tab, useTabs } from "./tab-store";
 
-const GITHUB_QUERY_CACHE_STORAGE_KEY = "diffkit:github-query-cache:v1";
+export const GITHUB_QUERY_CACHE_STORAGE_KEY = "diffkit:github-query-cache:v1";
 const GITHUB_QUERY_CACHE_MAX_AGE_MS = githubCachePolicy.viewer.gcTimeMs;
 
 type PersistedGitHubQueryCache = {

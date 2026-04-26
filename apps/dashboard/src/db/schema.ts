@@ -93,3 +93,21 @@ export const githubCacheNamespace = sqliteTable("github_cache_namespace", {
 	version: integer("version").notNull(),
 	updatedAt: integer("updated_at").notNull(),
 });
+
+export const githubWebhookEvent = sqliteTable(
+	"github_webhook_event",
+	{
+		id: integer("id").primaryKey({ autoIncrement: true }),
+		deliveryId: text("delivery_id").notNull().unique(),
+		event: text("event").notNull(),
+		signalKeysJson: text("signal_keys_json").notNull(),
+		receivedAt: integer("received_at").notNull(),
+		processedAt: integer("processed_at"),
+		errorMessage: text("error_message"),
+	},
+	(table) => ({
+		receivedAtIdx: index("github_webhook_event_received_at_idx").on(
+			table.receivedAt,
+		),
+	}),
+);

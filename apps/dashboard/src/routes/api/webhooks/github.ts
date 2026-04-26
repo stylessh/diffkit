@@ -5,7 +5,12 @@ import {
 	getGitHubWebhookSecret,
 	verifyGitHubWebhookSignature,
 } from "#/lib/github-app.server";
-import { markGitHubRevalidationSignals } from "#/lib/github-cache";
+import {
+	markGitHubRevalidationSignals,
+	markGitHubWebhookEventFailed,
+	markGitHubWebhookEventProcessed,
+	recordGitHubWebhookEvent,
+} from "#/lib/github-cache";
 import { getGitHubWebhookRevalidationSignalKeys } from "#/lib/github-revalidation";
 import { getGitHubWebhookPayloadMetadata } from "#/lib/github-webhook-debug";
 import { PRIVATE_ROUTE_HEADERS } from "#/lib/seo";
@@ -114,41 +119,80 @@ export const Route = createFileRoute("/api/webhooks/github")({
 					payload,
 				);
 				const installationId = getWebhookInstallationId(payload);
-				let invalidatedInstallationToken = false;
 
-				if (
-					installationId !== null &&
-					INSTALLATION_TOKEN_INVALIDATION_EVENTS.has(event)
-				) {
-					await invalidateGitHubInstallationToken(installationId);
-					invalidatedInstallationToken = true;
-				}
-
-				const updatedSignalCount =
-					await markGitHubRevalidationSignals(signalKeys);
-
-				if (signalKeys.length > 0) {
-					await broadcastSignalKeys(signalKeys);
-				}
-
-				debug("github-webhook", "processed webhook", {
-					deliveryId,
-					event,
-					installationId,
-					invalidatedInstallationToken,
-					signalKeys,
-					updatedSignalCount,
-				});
-
-				return Response.json(
-					{
-						ok: true,
+				let recordedNewEvent = false;
+				if (deliveryId) {
+					recordedNewEvent = await recordGitHubWebhookEvent({
+						deliveryId,
 						event,
-						signalCount: signalKeys.length,
+						signalKeys,
+					});
+				}
+
+				try {
+					let invalidatedInstallationToken = false;
+
+					if (
+						installationId !== null &&
+						INSTALLATION_TOKEN_INVALIDATION_EVENTS.has(event)
+					) {
+						await invalidateGitHubInstallationToken(installationId);
+						invalidatedInstallationToken = true;
+					}
+
+					const updatedSignalCount =
+						await markGitHubRevalidationSignals(signalKeys);
+
+					if (signalKeys.length > 0) {
+						await broadcastSignalKeys(signalKeys);
+					}
+
+					if (deliveryId) {
+						await markGitHubWebhookEventProcessed(deliveryId);
+					}
+
+					debug("github-webhook", "processed webhook", {
+						deliveryId,
+						event,
+						installationId,
+						invalidatedInstallationToken,
+						signalKeys,
 						updatedSignalCount,
-					},
-					{ status: 202 },
-				);
+						recordedNewEvent,
+					});
+
+					return Response.json(
+						{
+							ok: true,
+							event,
+							signalCount: signalKeys.length,
+							updatedSignalCount,
+						},
+						{ status: 202 },
+					);
+				} catch (error) {
+					const errorMessage =
+						error instanceof Error ? error.message : String(error);
+
+					if (deliveryId) {
+						try {
+							await markGitHubWebhookEventFailed(deliveryId, errorMessage);
+						} catch (logError) {
+							debug("github-webhook", "failed to record processing error", {
+								deliveryId,
+								logError,
+							});
+						}
+					}
+
+					debug("github-webhook", "processing failed", {
+						deliveryId,
+						event,
+						errorMessage,
+					});
+
+					return new Response("Webhook processing failed.", { status: 500 });
+				}
 			},
 		},
 	},

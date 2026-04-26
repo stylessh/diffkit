@@ -27,8 +27,45 @@ function isSignalMessage(data: unknown): data is SignalMessage {
 }
 
 const RECONNECT_DELAY_MS = 3_000;
-/** Fallback when WebSocket misses — keep "My" lists reasonably fresh */
-const POLL_INTERVAL_MS = 90 * 1_000;
+/**
+ * Safety net for missed WebSocket broadcasts. Tight enough that a dropped
+ * signal surfaces within ~20 s; the work itself is one indexed lookup keyed
+ * by the (small) set of signal keys the page subscribes to.
+ */
+const POLL_INTERVAL_MS = 20 * 1_000;
+const RESUME_SYNC_MIN_INTERVAL_MS = 2_000;
+
+export function getGitHubDataFetchedAt(value: unknown): number | null {
+	if (!value || typeof value !== "object" || !("__meta" in value)) {
+		return null;
+	}
+
+	const meta = value.__meta;
+	if (!meta || typeof meta !== "object" || !("fetchedAt" in meta)) {
+		return null;
+	}
+
+	return typeof meta.fetchedAt === "number" ? meta.fetchedAt : null;
+}
+
+export function getGitHubSignalComparisonTimestamp(
+	queryState:
+		| {
+				data?: unknown;
+				dataUpdatedAt: number;
+		  }
+		| null
+		| undefined,
+) {
+	if (!queryState || queryState.dataUpdatedAt === 0) {
+		return null;
+	}
+
+	return (
+		getGitHubDataFetchedAt(queryState.data) ??
+		(queryState.dataUpdatedAt > 0 ? queryState.dataUpdatedAt : null)
+	);
+}
 
 function tryGitHubQueryScopeFromTargets(
 	targets: readonly GitHubSignalStreamTarget[],
@@ -160,10 +197,18 @@ function collectKeysToInvalidateAfterServerSync(
 				signal.signalKey,
 			);
 			const lastSeen = lastSeenTimestamps.get(compositeKey);
-			const qs = queryClient.getQueryState(target.queryKey);
+			const freshnessTimestamp = getGitHubSignalComparisonTimestamp(
+				queryClient.getQueryState(target.queryKey),
+			);
 
 			if (lastSeen === undefined) {
-				if (qs && qs.dataUpdatedAt > 0 && signal.updatedAt > qs.dataUpdatedAt) {
+				if (typeof freshnessTimestamp !== "number") {
+					// Query is still loading — defer recording until we can compare
+					// against the cached payload's fetchedAt. Otherwise a webhook that
+					// fired before mount would be silently absorbed and never invalidate.
+					continue;
+				}
+				if (signal.updatedAt > freshnessTimestamp) {
 					updatedKeys.add(signal.signalKey);
 				}
 				lastSeenTimestamps.set(compositeKey, signal.updatedAt);
@@ -195,9 +240,15 @@ function useGitHubSignalStreamWebSocket(
 		let ws: WebSocket | null = null;
 		let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
 		let disposed = false;
+		let lastResumeSyncAt = 0;
 
 		async function syncSignalsFromServer(source: string) {
 			try {
+				debug(source, "attempting catch-up", {
+					signalKeys: keys,
+					totalTargets: targetsRef.current.length,
+				});
+
 				const signals = await getRevalidationSignalTimestamps({
 					data: { signalKeys: keys },
 				});
@@ -233,6 +284,26 @@ function useGitHubSignalStreamWebSocket(
 			} catch (error) {
 				debug(source, "sync failed", { error });
 			}
+		}
+
+		function scheduleResumeSync(source: string) {
+			const now = Date.now();
+			if (now - lastResumeSyncAt < RESUME_SYNC_MIN_INTERVAL_MS) {
+				debug(source, "skipping catch-up attempt", {
+					reason: "throttled",
+					signalKeys: keys,
+					lastResumeSyncAt,
+					now,
+				});
+				return;
+			}
+
+			lastResumeSyncAt = now;
+			debug(source, "scheduling catch-up attempt", {
+				signalKeys: keys,
+				totalTargets: targetsRef.current.length,
+			});
+			void syncSignalsFromServer(source);
 		}
 
 		function sendSubscription(socket: WebSocket) {
@@ -325,10 +396,30 @@ function useGitHubSignalStreamWebSocket(
 			reconnectTimer = setTimeout(connect, RECONNECT_DELAY_MS);
 		}
 
+		function handleVisibilityChange() {
+			if (document.visibilityState === "visible") {
+				scheduleResumeSync("github-signal-visibility-catchup");
+			}
+		}
+
+		function handleWindowFocus() {
+			scheduleResumeSync("github-signal-focus-catchup");
+		}
+
+		function handleOnline() {
+			scheduleResumeSync("github-signal-online-catchup");
+		}
+
 		connect();
+		document.addEventListener("visibilitychange", handleVisibilityChange);
+		window.addEventListener("focus", handleWindowFocus);
+		window.addEventListener("online", handleOnline);
 
 		return () => {
 			disposed = true;
+			document.removeEventListener("visibilitychange", handleVisibilityChange);
+			window.removeEventListener("focus", handleWindowFocus);
+			window.removeEventListener("online", handleOnline);
 			if (reconnectTimer) {
 				clearTimeout(reconnectTimer);
 			}

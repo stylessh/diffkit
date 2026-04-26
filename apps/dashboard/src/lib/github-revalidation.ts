@@ -3,6 +3,7 @@ import type { Tab } from "./tab-store";
 export const githubRevalidationSignalKeys = {
 	pullsMine: "pulls.mine",
 	issuesMine: "issues.mine",
+	notifications: "notifications",
 	repoMeta: (input: { owner: string; repo: string }) =>
 		`repoMeta:${input.owner}/${input.repo}`,
 	repoLabels: (input: { owner: string; repo: string }) =>
@@ -197,7 +198,10 @@ export function getGitHubWebhookRevalidationSignalKeys(
 		event === "installation_repositories" ||
 		event === "github_app_authorization"
 	) {
-		return [githubRevalidationSignalKeys.installationAccess];
+		return [
+			githubRevalidationSignalKeys.installationAccess,
+			githubRevalidationSignalKeys.notifications,
+		];
 	}
 
 	const repository = getRepositoryIdentity(payload);
@@ -210,6 +214,7 @@ export function getGitHubWebhookRevalidationSignalKeys(
 		return typeof pullNumber === "number"
 			? [
 					githubRevalidationSignalKeys.pullsMine,
+					githubRevalidationSignalKeys.notifications,
 					githubRevalidationSignalKeys.repoMeta({
 						owner: repository.owner,
 						repo: repository.repo,
@@ -222,6 +227,7 @@ export function getGitHubWebhookRevalidationSignalKeys(
 				]
 			: [
 					githubRevalidationSignalKeys.pullsMine,
+					githubRevalidationSignalKeys.notifications,
 					githubRevalidationSignalKeys.repoMeta({
 						owner: repository.owner,
 						repo: repository.repo,
@@ -254,6 +260,7 @@ export function getGitHubWebhookRevalidationSignalKeys(
 		return issueIdentity.isPullRequest
 			? [
 					githubRevalidationSignalKeys.pullsMine,
+					githubRevalidationSignalKeys.notifications,
 					githubRevalidationSignalKeys.repoMeta({
 						owner: repository.owner,
 						repo: repository.repo,
@@ -266,6 +273,7 @@ export function getGitHubWebhookRevalidationSignalKeys(
 				]
 			: [
 					githubRevalidationSignalKeys.issuesMine,
+					githubRevalidationSignalKeys.notifications,
 					githubRevalidationSignalKeys.repoMeta({
 						owner: repository.owner,
 						repo: repository.repo,
@@ -286,6 +294,7 @@ export function getGitHubWebhookRevalidationSignalKeys(
 
 		return issueIdentity.isPullRequest
 			? [
+					githubRevalidationSignalKeys.notifications,
 					githubRevalidationSignalKeys.pullEntity({
 						owner: repository.owner,
 						repo: repository.repo,
@@ -293,6 +302,7 @@ export function getGitHubWebhookRevalidationSignalKeys(
 					}),
 				]
 			: [
+					githubRevalidationSignalKeys.notifications,
 					githubRevalidationSignalKeys.issueEntity({
 						owner: repository.owner,
 						repo: repository.repo,
@@ -303,6 +313,7 @@ export function getGitHubWebhookRevalidationSignalKeys(
 
 	if (event === "push") {
 		return [
+			githubRevalidationSignalKeys.notifications,
 			githubRevalidationSignalKeys.repoMeta({
 				owner: repository.owner,
 				repo: repository.repo,
@@ -317,6 +328,7 @@ export function getGitHubWebhookRevalidationSignalKeys(
 	if (event === "create" || event === "delete") {
 		return [
 			githubRevalidationSignalKeys.pullsMine,
+			githubRevalidationSignalKeys.notifications,
 			githubRevalidationSignalKeys.repoMeta({
 				owner: repository.owner,
 				repo: repository.repo,
@@ -342,6 +354,7 @@ export function getGitHubWebhookRevalidationSignalKeys(
 		event === "branch_protection_configuration"
 	) {
 		return [
+			githubRevalidationSignalKeys.notifications,
 			githubRevalidationSignalKeys.repoProtection({
 				owner: repository.owner,
 				repo: repository.repo,
@@ -354,6 +367,7 @@ export function getGitHubWebhookRevalidationSignalKeys(
 	// this and re-fetches its status — captures CodeRabbit/CircleCI updates.
 	if (event === "status") {
 		return [
+			githubRevalidationSignalKeys.notifications,
 			githubRevalidationSignalKeys.repoStatuses({
 				owner: repository.owner,
 				repo: repository.repo,
@@ -366,6 +380,7 @@ export function getGitHubWebhookRevalidationSignalKeys(
 		const pullSignals = getWorkflowRunPullSignals(payload);
 		return typeof runId === "number"
 			? [
+					githubRevalidationSignalKeys.notifications,
 					githubRevalidationSignalKeys.actionsRepo({
 						owner: repository.owner,
 						repo: repository.repo,
@@ -378,6 +393,7 @@ export function getGitHubWebhookRevalidationSignalKeys(
 					...pullSignals,
 				]
 			: [
+					githubRevalidationSignalKeys.notifications,
 					githubRevalidationSignalKeys.actionsRepo({
 						owner: repository.owner,
 						repo: repository.repo,
@@ -391,6 +407,7 @@ export function getGitHubWebhookRevalidationSignalKeys(
 		const jobId = getWorkflowJobId(payload);
 
 		return [
+			githubRevalidationSignalKeys.notifications,
 			githubRevalidationSignalKeys.actionsRepo({
 				owner: repository.owner,
 				repo: repository.repo,
@@ -429,6 +446,14 @@ export function getGitHubRevalidationSignalKeysForTab(tab: Tab) {
 				repo,
 			}),
 		];
+	}
+
+	if (tab.type === "actions") {
+		// `tab.number` is the human-readable run number (e.g. #42), not the API
+		// run_id, so we can't subscribe to a specific run/job entity here. The
+		// repo-wide actions signal covers the list view; per-entity refresh
+		// happens via useGitHubSignalStream calls in the page components.
+		return [githubRevalidationSignalKeys.actionsRepo({ owner, repo })];
 	}
 
 	if (tab.number == null) return [];

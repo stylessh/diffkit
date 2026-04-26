@@ -1,4 +1,5 @@
 import {
+	ActionsIcon,
 	ChevronRightIcon,
 	CommentIcon,
 	GitPullRequestIcon,
@@ -8,20 +9,30 @@ import {
 import { cn } from "@diffkit/ui/lib/utils";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
+import { useMemo } from "react";
+import {
+	CheckStateIcon,
+	getCheckState,
+} from "#/components/checks/check-state-icon";
 import { formatRelativeTime } from "#/lib/format-relative-time";
 import {
 	type GitHubQueryScope,
 	githubIssuesFromRepoQueryOptions,
 	githubPullsFromRepoQueryOptions,
+	githubQueryKeys,
 	githubRepoDiscussionsQueryOptions,
+	githubWorkflowRunsFromRepoQueryOptions,
 } from "#/lib/github.query";
 import type {
 	DiscussionSummary,
 	IssueSummary,
 	PullSummary,
 	RepoOverview,
+	WorkflowRun,
 } from "#/lib/github.types";
+import { githubRevalidationSignalKeys } from "#/lib/github-revalidation";
 import { getPrStateConfig } from "#/lib/pr-state";
+import { useGitHubSignalStream } from "#/lib/use-github-signal-stream";
 import { useHasMounted } from "#/lib/use-has-mounted";
 
 export function RepoActivityCards({
@@ -61,6 +72,15 @@ export function RepoActivityCards({
 		enabled: hasMounted,
 	});
 
+	const runsQuery = useQuery({
+		...githubWorkflowRunsFromRepoQueryOptions(scope, {
+			owner,
+			repo,
+			perPage: 5,
+		}),
+		enabled: hasMounted,
+	});
+
 	const discussionsQuery = useQuery({
 		...githubRepoDiscussionsQueryOptions(scope, { owner, repo }),
 		enabled: hasMounted && !!repoData.hasDiscussions,
@@ -77,6 +97,82 @@ export function RepoActivityCards({
 		discussionsData && !Array.isArray(discussionsData)
 			? discussionsData.totalCount
 			: undefined;
+	const webhookRefreshTargets = useMemo(() => {
+		const repoInput = { owner, repo };
+		const pullSignalKeys = new Set<string>([
+			githubRevalidationSignalKeys.repoMeta(repoInput),
+		]);
+		const issueSignalKeys = new Set<string>([
+			githubRevalidationSignalKeys.repoMeta(repoInput),
+		]);
+		const runSignalKeys = new Set<string>([
+			githubRevalidationSignalKeys.actionsRepo(repoInput),
+		]);
+
+		for (const pull of pullsQuery.data ?? []) {
+			pullSignalKeys.add(
+				githubRevalidationSignalKeys.pullEntity({
+					owner: pull.repository.owner,
+					repo: pull.repository.name,
+					pullNumber: pull.number,
+				}),
+			);
+		}
+
+		for (const issue of issuesQuery.data ?? []) {
+			issueSignalKeys.add(
+				githubRevalidationSignalKeys.issueEntity({
+					owner: issue.repository.owner,
+					repo: issue.repository.name,
+					issueNumber: issue.number,
+				}),
+			);
+		}
+
+		for (const run of runsQuery.data ?? []) {
+			runSignalKeys.add(
+				githubRevalidationSignalKeys.workflowRunEntity({
+					owner,
+					repo,
+					runId: run.id,
+				}),
+			);
+		}
+
+		return [
+			{
+				queryKey: githubQueryKeys.pulls.repo(scope, {
+					owner,
+					repo,
+					state: "open",
+					perPage: 5,
+					sort: "updated",
+					direction: "desc",
+				}),
+				signalKeys: Array.from(pullSignalKeys),
+			},
+			{
+				queryKey: githubQueryKeys.issues.repo(scope, {
+					owner,
+					repo,
+					state: "open",
+					perPage: 5,
+					sort: "updated",
+					direction: "desc",
+				}),
+				signalKeys: Array.from(issueSignalKeys),
+			},
+			{
+				queryKey: githubQueryKeys.actions.runsList(scope, {
+					owner,
+					repo,
+					perPage: 5,
+				}),
+				signalKeys: Array.from(runSignalKeys),
+			},
+		];
+	}, [issuesQuery.data, owner, pullsQuery.data, repo, runsQuery.data, scope]);
+	useGitHubSignalStream(webhookRefreshTargets);
 
 	return (
 		<div className="flex w-72 flex-col gap-3">
@@ -96,6 +192,15 @@ export function RepoActivityCards({
 				viewAllHref={`/${owner}/${repo}/issues`}
 				actionHref={`/${owner}/${repo}/issues/new`}
 				renderItem={(issue) => <IssueItem key={issue.id} issue={issue} />}
+			/>
+			<ActivityCard
+				title="Actions"
+				icon={ActionsIcon}
+				items={runsQuery.data}
+				viewAllHref={`/${owner}/${repo}/actions`}
+				renderItem={(run) => (
+					<RunItem key={run.id} run={run} owner={owner} repo={repo} />
+				)}
 			/>
 			{repoData.hasDiscussions && (
 				<ActivityCard
@@ -223,6 +328,35 @@ function IssueItem({ issue }: { issue: IssueSummary }) {
 				<p className="truncate text-sm">{issue.title}</p>
 				<p className="text-xs text-muted-foreground">
 					#{issue.number} · {formatRelativeTime(issue.updatedAt)}
+				</p>
+			</div>
+		</Link>
+	);
+}
+
+function RunItem({
+	run,
+	owner,
+	repo,
+}: {
+	run: WorkflowRun;
+	owner: string;
+	repo: string;
+}) {
+	const state = getCheckState(run);
+	return (
+		<Link
+			to="/$owner/$repo/actions/runs/$runId"
+			params={{ owner, repo, runId: String(run.id) }}
+			className="flex items-start gap-2.5 px-4 py-2 transition-colors hover:bg-surface-1"
+		>
+			<div className="mt-0.5 shrink-0">
+				<CheckStateIcon state={state} />
+			</div>
+			<div className="min-w-0 flex-1">
+				<p className="truncate text-sm">{run.displayTitle}</p>
+				<p className="truncate text-xs text-muted-foreground">
+					#{run.runNumber} · {formatRelativeTime(run.updatedAt)}
 				</p>
 			</div>
 		</Link>
