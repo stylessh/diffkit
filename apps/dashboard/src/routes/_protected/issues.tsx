@@ -1,15 +1,12 @@
 import { CommentIcon, InboxIcon, IssuesIcon } from "@diffkit/icons";
-import { cn } from "@diffkit/ui/lib/utils";
 import { useQuery } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
 import {
 	type ComponentType,
 	memo,
 	type RefObject,
-	useEffect,
 	useMemo,
 	useRef,
-	useState,
 } from "react";
 import {
 	applyFilters,
@@ -21,6 +18,12 @@ import {
 } from "#/components/filters";
 import { IssueRow } from "#/components/issues/issue-row";
 import { DashboardContentLoading } from "#/components/layouts/dashboard-content-loading";
+import {
+	StickyGroupContent,
+	StickyGroupHeader,
+} from "#/components/shared/sticky-group-header";
+import { useCollapsedGroups } from "#/lib/collapsible-groups-storage";
+import { countUniqueById } from "#/lib/count-unique";
 import {
 	githubMyIssuesQueryOptions,
 	githubQueryKeys,
@@ -86,6 +89,9 @@ function IssuesPage() {
 		defaultSortId: "updated",
 		initialStore: filterStore,
 	});
+	const { collapsedGroups, setGroupCollapsed } = useCollapsedGroups(
+		ISSUES_GROUP_COLLAPSED_STORAGE_KEY,
+	);
 
 	if (query.error) throw query.error;
 	if (query.data) {
@@ -110,9 +116,8 @@ function IssuesPage() {
 				issues: applyFilters(data.mentioned, filterState),
 			},
 		];
-		const totalIssues = groups.reduce(
-			(sum, group) => sum + group.issues.length,
-			0,
+		const totalIssues = countUniqueById(
+			groups.flatMap((group) => group.issues),
 		);
 
 		return (
@@ -134,6 +139,7 @@ function IssuesPage() {
 									href={`#${group.id}`}
 									icon={group.icon}
 									label={group.title}
+									onSelect={() => setGroupCollapsed(group.id, false)}
 									value={group.issues.length}
 								/>
 							))}
@@ -149,6 +155,10 @@ function IssuesPage() {
 								title={group.title}
 								icon={group.icon}
 								issues={group.issues}
+								isCollapsed={collapsedGroups[group.id] ?? false}
+								onCollapsedChange={(isCollapsed) =>
+									setGroupCollapsed(group.id, isCollapsed)
+								}
 								scrollContainerRef={scrollContainerRef}
 							/>
 						))}
@@ -168,16 +178,19 @@ type IssueGroupData = {
 };
 
 const ISSUE_GROUP_STICKY_TOP = -32;
+const ISSUES_GROUP_COLLAPSED_STORAGE_KEY = "diffkit:issues:collapsed-groups";
 
 const IssueMetricCard = memo(function IssueMetricCard({
 	href,
 	icon: Icon,
 	label,
+	onSelect,
 	value,
 }: {
 	href: string;
 	icon: ComponentType<{ size?: number; strokeWidth?: number }>;
 	label: string;
+	onSelect: () => void;
 	value: number;
 }) {
 	const content = (
@@ -206,6 +219,7 @@ const IssueMetricCard = memo(function IssueMetricCard({
 	return (
 		<a
 			href={href}
+			onClick={onSelect}
 			className="flex items-center justify-between gap-4 rounded-xl bg-surface-1 px-3.5 py-3 transition-colors hover:bg-surface-2"
 		>
 			{content}
@@ -218,15 +232,21 @@ const IssueGroup = memo(function IssueGroup({
 	title,
 	icon,
 	issues,
+	isCollapsed,
+	onCollapsedChange,
 	scrollContainerRef,
 }: {
 	id: string;
 	title: string;
 	icon: ComponentType<{ size?: number; strokeWidth?: number }>;
 	issues: IssueSummary[];
+	isCollapsed: boolean;
+	onCollapsedChange: (isCollapsed: boolean) => void;
 	scrollContainerRef: RefObject<HTMLDivElement | null>;
 }) {
 	const sectionRef = useRef<HTMLElement>(null);
+	const hasIssues = issues.length > 0;
+	const isGroupCollapsed = hasIssues && isCollapsed;
 
 	return (
 		<section
@@ -241,90 +261,20 @@ const IssueGroup = memo(function IssueGroup({
 				icon={icon}
 				title={title}
 				count={issues.length}
-				isEmpty={issues.length === 0}
+				isEmpty={!hasIssues}
+				isCollapsed={isGroupCollapsed}
+				onCollapsedChange={onCollapsedChange}
 			/>
-			{issues.length > 0 && (
+			<StickyGroupContent
+				isCollapsed={isGroupCollapsed}
+				itemCount={issues.length}
+			>
 				<div className="mt-2 flex flex-col gap-1">
 					{issues.map((issue) => (
 						<IssueRow key={issue.id} issue={issue} />
 					))}
 				</div>
-			)}
+			</StickyGroupContent>
 		</section>
 	);
 });
-
-function StickyGroupHeader({
-	sectionRef,
-	scrollContainerRef,
-	stickyTop: stickyTopOffset,
-	icon: Icon,
-	title,
-	count,
-	isEmpty,
-}: {
-	sectionRef: RefObject<HTMLElement | null>;
-	scrollContainerRef: RefObject<HTMLDivElement | null>;
-	stickyTop: number;
-	icon: ComponentType<{ size?: number; strokeWidth?: number }>;
-	title: string;
-	count: number;
-	isEmpty: boolean;
-}) {
-	const headerRef = useRef<HTMLDivElement>(null);
-	const [isStickyActive, setIsStickyActive] = useState(false);
-
-	useEffect(() => {
-		const scrollContainer = scrollContainerRef.current;
-		const section = sectionRef.current;
-		const header = headerRef.current;
-
-		if (!scrollContainer || !section || !header) {
-			return;
-		}
-
-		const updateStickyState = () => {
-			const scrollContainerRect = scrollContainer.getBoundingClientRect();
-			const sectionRect = section.getBoundingClientRect();
-			const stickyTop = scrollContainerRect.top + stickyTopOffset;
-			const headerHeight = header.offsetHeight;
-			const isStuck =
-				sectionRect.top <= stickyTop &&
-				sectionRect.bottom > stickyTop + headerHeight;
-
-			setIsStickyActive((current) => (current === isStuck ? current : isStuck));
-		};
-
-		updateStickyState();
-		scrollContainer.addEventListener("scroll", updateStickyState, {
-			passive: true,
-		});
-		window.addEventListener("resize", updateStickyState);
-
-		return () => {
-			scrollContainer.removeEventListener("scroll", updateStickyState);
-			window.removeEventListener("resize", updateStickyState);
-		};
-	}, [scrollContainerRef, sectionRef, stickyTopOffset]);
-
-	return (
-		<div
-			ref={headerRef}
-			className={cn(
-				"sticky -top-8 z-10 flex items-center justify-between gap-3 rounded-lg bg-surface-1 px-3 py-2 transition-shadow",
-				isStickyActive && "shadow-lg",
-				isEmpty && "opacity-70",
-			)}
-		>
-			<div className="flex min-w-0 items-center gap-2">
-				<div className="shrink-0 text-muted-foreground">
-					<Icon size={15} strokeWidth={1.9} />
-				</div>
-				<h2 className="truncate text-sm font-medium">{title}</h2>
-			</div>
-			<span className="text-sm tabular-nums text-muted-foreground">
-				{count}
-			</span>
-		</div>
-	);
-}

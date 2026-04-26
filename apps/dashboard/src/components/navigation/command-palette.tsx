@@ -90,7 +90,7 @@ export function CommandPalette() {
 				value={search}
 				onValueChange={setSearch}
 			/>
-			<CommandList>
+			<CommandList className="px-0">
 				<CommandEmpty>
 					{getEmptyMessage(
 						search,
@@ -98,12 +98,17 @@ export function CommandPalette() {
 					)}
 				</CommandEmpty>
 				{Array.from(groups.entries()).map(([groupName, groupItems]) => (
-					<CommandGroup key={groupName} heading={groupName}>
+					<CommandGroup
+						key={groupName}
+						heading={groupName}
+						className="!p-0 [&_[cmdk-group-heading]]:px-4"
+					>
 						{groupItems.map((item) => (
 							<CommandItemUI
 								key={item.id}
 								value={`${item.label} ${(item.keywords ?? []).join(" ")}`}
 								onSelect={() => handleSelect(item)}
+								className="rounded-none !px-4"
 							>
 								{item.icon && (
 									<item.icon

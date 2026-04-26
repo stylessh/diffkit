@@ -1,0 +1,12 @@
+diff --git a/dist/src/index.js b/dist/src/index.js
+index 3efc727987c0e73c67f11602cf0d2113d205353f..b4bc33dd5e95e00eccf0b26421f1c968bd048768 100644
+--- a/dist/src/index.js
++++ b/dist/src/index.js
+@@ -87403,6 +87403,7 @@ var Miniflare = class {
+     }
+     return {
+       services: servicesArray,
++      v8Flags: ["--max-old-space-size=4096"],
+       sockets,
+       extensions,
+       structuredLogging: this.#structuredWorkerdLogs
