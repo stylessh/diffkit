@@ -5,7 +5,6 @@ import { useMemo } from "react";
 import {
 	DetailPageLayout,
 	DetailPageSkeletonLayout,
-	StaggerItem,
 } from "#/components/details/detail-page";
 import {
 	githubPullPageQueryOptions,
@@ -202,90 +201,80 @@ export function PullDetailContent({
 
 function PullDetailPageSkeleton() {
 	return (
-		<DetailPageSkeletonLayout mainItemCount={5}>
-			<StaggerItem index={0}>
+		<DetailPageSkeletonLayout>
+			<div className="flex flex-col gap-3">
+				<Skeleton className="h-3 w-32" />
+				<div className="flex items-start gap-3">
+					<Skeleton className="mt-1 size-5 rounded-full" />
+					<div className="flex min-w-0 flex-1 flex-col gap-2">
+						<Skeleton className="h-7 w-3/5" />
+						<div className="flex items-center gap-2">
+							<Skeleton className="h-5 w-14 rounded-full" />
+							<Skeleton className="h-4 w-64" />
+						</div>
+					</div>
+				</div>
+			</div>
+
+			<div className="flex items-center gap-3 rounded-lg bg-surface-1 px-4 py-2.5">
+				<Skeleton className="h-4 w-20" />
+				<Skeleton className="h-4 w-16" />
+				<Skeleton className="h-4 w-24" />
+			</div>
+
+			<div className="rounded-lg border bg-surface-0 p-5">
 				<div className="flex flex-col gap-3">
-					<Skeleton className="h-3 w-32" />
-					<div className="flex items-start gap-3">
-						<Skeleton className="mt-1 size-5 rounded-full" />
-						<div className="flex min-w-0 flex-1 flex-col gap-2">
-							<Skeleton className="h-7 w-3/5" />
-							<div className="flex items-center gap-2">
-								<Skeleton className="h-5 w-14 rounded-full" />
-								<Skeleton className="h-4 w-64" />
-							</div>
-						</div>
-					</div>
+					<Skeleton className="h-4 w-full" />
+					<Skeleton className="h-4 w-5/6" />
+					<Skeleton className="h-4 w-2/3" />
 				</div>
-			</StaggerItem>
+			</div>
 
-			<StaggerItem index={1}>
-				<div className="flex items-center gap-3 rounded-lg bg-surface-1 px-4 py-2.5">
-					<Skeleton className="h-4 w-20" />
+			<div className="flex flex-col gap-6">
+				<div className="flex items-center justify-between gap-2 rounded-lg bg-surface-1 px-4 py-2.5">
 					<Skeleton className="h-4 w-16" />
-					<Skeleton className="h-4 w-24" />
+					<Skeleton className="h-4 w-6" />
 				</div>
-			</StaggerItem>
+				<div className="flex flex-col gap-5 pl-8">
+					{/* Comment */}
+					<div className="flex items-start gap-2">
+						<Skeleton className="size-5 rounded-full" />
+						<div className="flex flex-col gap-1.5">
+							<Skeleton className="h-3.5 w-36" />
+							<Skeleton className="h-12 w-64 rounded-lg" />
+						</div>
+					</div>
+					{/* Commit */}
+					<div className="flex items-center gap-2">
+						<Skeleton className="size-4 rounded" />
+						<Skeleton className="h-3.5 w-52" />
+					</div>
+					{/* Review */}
+					<div className="flex items-start gap-2">
+						<Skeleton className="size-5 rounded-full" />
+						<div className="flex flex-col gap-1.5">
+							<Skeleton className="h-3.5 w-44" />
+							<Skeleton className="h-3.5 w-28" />
+						</div>
+					</div>
+					{/* Label event */}
+					<div className="flex items-center gap-2">
+						<Skeleton className="size-4 rounded" />
+						<Skeleton className="h-3.5 w-32" />
+						<Skeleton className="h-5 w-16 rounded-full" />
+					</div>
+				</div>
+			</div>
 
-			<StaggerItem index={2}>
-				<div className="rounded-lg border bg-surface-0 p-5">
-					<div className="flex flex-col gap-3">
-						<Skeleton className="h-4 w-full" />
-						<Skeleton className="h-4 w-5/6" />
-						<Skeleton className="h-4 w-2/3" />
+			<div className="rounded-lg border p-4">
+				<div className="flex flex-col gap-3">
+					<div className="flex items-center gap-2">
+						<Skeleton className="size-5 rounded-full" />
+						<Skeleton className="h-4 w-40" />
 					</div>
+					<Skeleton className="h-9 w-24 rounded-lg" />
 				</div>
-			</StaggerItem>
-
-			<StaggerItem index={3}>
-				<div className="flex flex-col gap-6">
-					<div className="flex items-center justify-between gap-2 rounded-lg bg-surface-1 px-4 py-2.5">
-						<Skeleton className="h-4 w-16" />
-						<Skeleton className="h-4 w-6" />
-					</div>
-					<div className="flex flex-col gap-5 pl-8">
-						{/* Comment */}
-						<div className="flex items-start gap-2">
-							<Skeleton className="size-5 rounded-full" />
-							<div className="flex flex-col gap-1.5">
-								<Skeleton className="h-3.5 w-36" />
-								<Skeleton className="h-12 w-64 rounded-lg" />
-							</div>
-						</div>
-						{/* Commit */}
-						<div className="flex items-center gap-2">
-							<Skeleton className="size-4 rounded" />
-							<Skeleton className="h-3.5 w-52" />
-						</div>
-						{/* Review */}
-						<div className="flex items-start gap-2">
-							<Skeleton className="size-5 rounded-full" />
-							<div className="flex flex-col gap-1.5">
-								<Skeleton className="h-3.5 w-44" />
-								<Skeleton className="h-3.5 w-28" />
-							</div>
-						</div>
-						{/* Label event */}
-						<div className="flex items-center gap-2">
-							<Skeleton className="size-4 rounded" />
-							<Skeleton className="h-3.5 w-32" />
-							<Skeleton className="h-5 w-16 rounded-full" />
-						</div>
-					</div>
-				</div>
-			</StaggerItem>
-
-			<StaggerItem index={4}>
-				<div className="rounded-lg border p-4">
-					<div className="flex flex-col gap-3">
-						<div className="flex items-center gap-2">
-							<Skeleton className="size-5 rounded-full" />
-							<Skeleton className="h-4 w-40" />
-						</div>
-						<Skeleton className="h-9 w-24 rounded-lg" />
-					</div>
-				</div>
-			</StaggerItem>
+			</div>
 		</DetailPageSkeletonLayout>
 	);
 }

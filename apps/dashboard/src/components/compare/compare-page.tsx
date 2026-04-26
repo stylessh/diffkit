@@ -3,10 +3,7 @@ import { toast } from "@diffkit/ui/components/sonner";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "@tanstack/react-router";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import {
-	DetailPageSkeletonLayout,
-	StaggerItem,
-} from "#/components/details/detail-page";
+import { DetailPageSkeletonLayout } from "#/components/details/detail-page";
 import { createPullRequest } from "#/lib/github.functions";
 import {
 	type GitHubQueryScope,
@@ -320,22 +317,16 @@ export function ComparePage({
 
 function ComparePageSkeleton() {
 	return (
-		<DetailPageSkeletonLayout mainItemCount={3}>
-			<StaggerItem index={0}>
-				<div className="flex flex-col gap-3">
-					<div className="h-4 w-32 animate-pulse rounded bg-surface-1" />
-					<div className="h-7 w-3/5 animate-pulse rounded bg-surface-1" />
-				</div>
-			</StaggerItem>
-			<StaggerItem index={1}>
-				<div className="flex flex-col gap-3 rounded-lg border p-4">
-					<div className="h-9 w-full animate-pulse rounded bg-surface-1" />
-					<div className="h-32 w-full animate-pulse rounded bg-surface-1" />
-				</div>
-			</StaggerItem>
-			<StaggerItem index={2}>
-				<div className="h-40 w-full animate-pulse rounded-lg bg-surface-1" />
-			</StaggerItem>
+		<DetailPageSkeletonLayout>
+			<div className="flex flex-col gap-3">
+				<div className="h-4 w-32 animate-pulse rounded bg-surface-1" />
+				<div className="h-7 w-3/5 animate-pulse rounded bg-surface-1" />
+			</div>
+			<div className="flex flex-col gap-3 rounded-lg border p-4">
+				<div className="h-9 w-full animate-pulse rounded bg-surface-1" />
+				<div className="h-32 w-full animate-pulse rounded bg-surface-1" />
+			</div>
+			<div className="h-40 w-full animate-pulse rounded-lg bg-surface-1" />
 		</DetailPageSkeletonLayout>
 	);
 }
