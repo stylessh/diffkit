@@ -486,11 +486,18 @@ export function githubPullPageQueryOptions(
 ) {
 	return queryOptions({
 		queryKey: githubQueryKeys.pulls.page(scope, input),
-		queryFn: () =>
-			ensureDefinedQueryData(
+		queryFn: async () => {
+			const data = await ensureDefinedQueryData(
 				() => getPullPageData({ data: input }),
 				"getPullPageData",
-			),
+			);
+			if (!data) {
+				throw new Error(
+					`Pull request ${input.owner}/${input.repo}#${input.pullNumber} is not accessible. The token may have expired or you may have lost access.`,
+				);
+			}
+			return data;
+		},
 		staleTime: githubCachePolicy.detail.staleTimeMs,
 		gcTime: githubCachePolicy.detail.gcTimeMs,
 		meta: tabPersistedMeta,
@@ -523,13 +530,20 @@ export function githubPullStatusQueryOptions(
 	});
 }
 
-export function githubPullFilesQueryOptions(
+export const PULL_FILES_PAGE_SIZE = 25;
+
+export function githubPullFilesInfiniteQueryOptions(
 	scope: GitHubQueryScope,
 	input: PullFromRepoQueryInput,
 ) {
-	return queryOptions({
+	return infiniteQueryOptions({
 		queryKey: githubQueryKeys.pulls.files(scope, input),
-		queryFn: () => getPullFiles({ data: input }),
+		queryFn: ({ pageParam }) =>
+			getPullFiles({
+				data: { ...input, page: pageParam, perPage: PULL_FILES_PAGE_SIZE },
+			}),
+		initialPageParam: 1,
+		getNextPageParam: (lastPage) => lastPage.nextPage ?? undefined,
 		staleTime: githubCachePolicy.detail.staleTimeMs,
 		gcTime: githubCachePolicy.detail.gcTimeMs,
 		meta: tabPersistedMeta,

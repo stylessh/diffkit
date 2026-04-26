@@ -33,9 +33,10 @@ import {
 } from "react";
 import { getPrStateConfig } from "#/components/pulls/detail/pull-detail-header";
 import { FileSearchCard } from "#/components/shared/file-search-card";
-import { getPullFiles, submitPullReview } from "#/lib/github.functions";
+import { submitPullReview } from "#/lib/github.functions";
 import {
 	githubPullFileSummariesQueryOptions,
+	githubPullFilesInfiniteQueryOptions,
 	githubPullPageQueryOptions,
 	githubPullReviewCommentsQueryOptions,
 	githubQueryKeys,
@@ -69,7 +70,6 @@ import type {
 import { buildFileTree, encodeFileId } from "./review-utils";
 
 const routeApi = getRouteApi("/_protected/$owner/$repo/review/$pullId");
-const PULL_FILES_PAGE_SIZE = 25;
 const reviewDiffPaneImport = import("./review-diff-pane");
 const ReviewDiffPane = lazy(() =>
 	reviewDiffPaneImport.then((mod) => ({
@@ -168,17 +168,7 @@ export function ReviewPage() {
 	]);
 
 	const filesQuery = useInfiniteQuery({
-		queryKey: filesQueryKey,
-		initialPageParam: 1,
-		queryFn: ({ pageParam }) =>
-			getPullFiles({
-				data: {
-					...input,
-					page: pageParam,
-					perPage: PULL_FILES_PAGE_SIZE,
-				},
-			}),
-		getNextPageParam: (lastPage) => lastPage.nextPage ?? undefined,
+		...githubPullFilesInfiniteQueryOptions(scope, input),
 		refetchOnMount: false,
 		refetchOnWindowFocus: false,
 	});
@@ -200,12 +190,10 @@ export function ReviewPage() {
 	const hasDiffPayload = filesQuery.data !== undefined;
 	const reviewCommentsQuery = useQuery({
 		...githubPullReviewCommentsQueryOptions(scope, input),
-		enabled: hasDiffPayload,
 		refetchOnWindowFocus: false,
 	});
 	const threadStatusesQuery = useQuery({
 		...githubReviewThreadStatusesQueryOptions(scope, input),
-		enabled: hasDiffPayload,
 		refetchOnWindowFocus: false,
 	});
 	useGitHubSignalStream(webhookRefreshTargets);

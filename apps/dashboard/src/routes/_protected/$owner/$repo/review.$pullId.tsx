@@ -1,14 +1,11 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { ReviewPage } from "#/components/pulls/review/review-page";
-import { getPullFiles } from "#/lib/github.functions";
 import {
 	githubPullFileSummariesQueryOptions,
+	githubPullFilesInfiniteQueryOptions,
 	githubPullPageQueryOptions,
-	githubQueryKeys,
 } from "#/lib/github.query";
 import { buildSeo, formatPageTitle } from "#/lib/seo";
-
-const PULL_FILES_PAGE_SIZE = 25;
 
 export const Route = createFileRoute("/_protected/$owner/$repo/review/$pullId")(
 	{
@@ -22,35 +19,19 @@ export const Route = createFileRoute("/_protected/$owner/$repo/review/$pullId")(
 				scope,
 				input,
 			);
-
-			// Clean up broken cache entries (no detail)
-			const cachedPageData = context.queryClient.getQueryData(
-				pageOptions.queryKey,
-			);
-			const isBrokenEntry =
-				cachedPageData !== undefined && !cachedPageData?.detail;
-			if (isBrokenEntry) {
-				context.queryClient.removeQueries({
-					queryKey: pageOptions.queryKey,
-					exact: true,
-				});
-			}
+			const filesOptions = githubPullFilesInfiniteQueryOptions(scope, input);
 
 			// Never block navigation — fire prefetches and let the component
 			// show cached data instantly or a skeleton while loading.
 			void context.queryClient.prefetchQuery(pageOptions);
 			void context.queryClient.prefetchInfiniteQuery(fileSummariesOptions);
+			void context.queryClient.prefetchInfiniteQuery(filesOptions);
 
-			// Prefetch first page of files if not cached
-			const filesQueryKey = githubQueryKeys.pulls.files(scope, input);
-			if (!context.queryClient.getQueryData(filesQueryKey)) {
-				void getPullFiles({
-					data: { ...input, page: 1, perPage: PULL_FILES_PAGE_SIZE },
-				});
-			}
-
+			const cachedPageData = context.queryClient.getQueryData(
+				pageOptions.queryKey,
+			);
 			return {
-				prTitle: isBrokenEntry ? null : (cachedPageData?.detail?.title ?? null),
+				prTitle: cachedPageData?.detail?.title ?? null,
 			};
 		},
 		head: ({ match, params }) =>
