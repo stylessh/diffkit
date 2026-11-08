@@ -307,7 +307,7 @@ function ActivityRow({ item }: { item: ActivityLogItem }) {
 	if (!item.detail) return row;
 	return (
 		<Collapsible>
-			<CollapsibleTrigger className="group block w-full transition-colors hover:bg-muted/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40 focus-visible:ring-inset">
+			<CollapsibleTrigger className="group block w-full transition-colors hover:bg-muted/40 focus-visible:outline-1 focus-visible:-outline-offset-1 focus-visible:outline-ring focus-visible:ring-inset">
 				{row}
 			</CollapsibleTrigger>
 			<CollapsibleContent className="border-t border-border/40 bg-background/35 px-3 py-2.5 text-xs text-foreground">

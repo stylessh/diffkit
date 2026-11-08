@@ -122,7 +122,7 @@ function Button({
 					data-slot="button-icon"
 					data-side="left"
 					aria-hidden="true"
-					className="shrink-0"
+					className="flex shrink-0 items-center"
 				>
 					{iconLeft}
 				</span>
@@ -133,7 +133,7 @@ function Button({
 					data-slot="button-icon"
 					data-side="right"
 					aria-hidden="true"
-					className="shrink-0"
+					className="flex shrink-0 items-center"
 				>
 					{iconRight}
 				</span>

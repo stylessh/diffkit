@@ -4,16 +4,17 @@ import type * as React from "react";
 import { cn } from "../lib/utils";
 
 const statePillVariants = cva(
-	"inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium whitespace-nowrap shrink-0",
+	"inline-flex h-5 items-center gap-1 rounded-full px-2 text-xs leading-none font-medium whitespace-nowrap shrink-0 [&_svg]:size-3 [&_svg]:shrink-0",
 	{
 		variants: {
+			// Linear's state hues, mapped from GitHub's states (see `--ln-state-*`).
 			tone: {
-				open: "bg-green-500/10 text-green-500",
-				closed: "bg-red-500/10 text-red-500",
-				merged: "bg-purple-500/10 text-purple-500",
-				muted: "bg-muted text-muted-foreground",
+				open: "bg-pill-ok text-pill-ok-text",
+				closed: "bg-pill-blocked text-pill-blocked-text",
+				merged: "bg-pill-merged text-pill-merged-text",
+				muted: "bg-pill-neutral text-muted-foreground",
 				secondary: "bg-secondary text-secondary-foreground",
-				warning: "bg-amber-500/10 text-amber-500",
+				warning: "bg-pill-warning text-pill-warning-text",
 			},
 		},
 		defaultVariants: {

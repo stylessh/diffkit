@@ -22,5 +22,5 @@ export const liftedPopoverNestedSurfaceClassName =
 
 /** Tooltip hint — small, popover-colored. */
 export const liftedTooltipSurfaceClassName = cn(
-	"border-0 bg-tooltip text-text-header shadow-popover",
+	"border-0 bg-tooltip text-text-header shadow-tooltip",
 );

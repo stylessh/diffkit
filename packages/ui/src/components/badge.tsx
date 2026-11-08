@@ -14,13 +14,13 @@ const badgeVariants = cva(
 					"bg-primary text-primary-foreground [a&]:hover:bg-primary/90 data-[interactive=true]:hover:bg-primary/90",
 				secondary:
 					"bg-secondary text-secondary-foreground [a&]:hover:bg-secondary/90 data-[interactive=true]:hover:bg-secondary/90",
-				destructive: "bg-pill-blocked text-danger",
+				destructive: "bg-pill-blocked text-pill-blocked-text",
 				outline:
 					"bg-chip text-muted-foreground shadow-chip [a&]:hover:bg-accent [a&]:hover:text-foreground data-[interactive=true]:hover:bg-accent data-[interactive=true]:hover:text-foreground",
 				// Tinted status tones — same recipe as StatePill.
-				success: "bg-pill-ok text-success",
-				warning: "bg-amber-500/12 text-amber-700 dark:text-amber-400",
-				purple: "bg-merged/12 text-merged",
+				success: "bg-pill-ok text-pill-ok-text",
+				warning: "bg-pill-warning text-pill-warning-text",
+				purple: "bg-pill-merged text-pill-merged-text",
 				gold: "bg-yellow-500/12 text-yellow-700 dark:text-yellow-400",
 			},
 			size: {
@@ -147,7 +147,7 @@ function Badge(props: BadgeProps) {
 					aria-label={removeAriaLabel ?? "Remove"}
 					data-slot="badge-remove"
 					className={cn(
-						"flex shrink-0 items-center self-stretch border-l-[0.5px] border-current/20 opacity-70 transition-[opacity,background-color] hover:bg-foreground/10 hover:opacity-100 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring",
+						"flex shrink-0 items-center self-stretch border-l-[0.5px] border-current/20 opacity-70 transition-[opacity,background-color] hover:bg-foreground/10 hover:opacity-100 focus-visible:outline-1 focus-visible:-outline-offset-1 focus-visible:outline-ring",
 						removePadding,
 					)}
 				>
