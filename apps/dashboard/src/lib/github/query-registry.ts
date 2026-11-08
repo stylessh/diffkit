@@ -61,7 +61,7 @@ export const githubQueryEntityCoverage: Record<
 	"issues.page": ["issue"],
 	"issues.detail": ["issue"],
 	"issues.comments": ["issue"],
-	"notifications.list": ["notifications"],
+	"notifications.list": ["pull", "issue"],
 	"actions.runsList": ["run"],
 	"actions.workflowRun": ["run"],
 	"actions.workflowRunJobs": ["run"],
@@ -97,6 +97,7 @@ const AGGREGATE_PATHS = new Set([
 	"reviewDrafts.mine",
 	"repos.list",
 	"repos.hub",
+	"notifications.list",
 ]);
 
 /** `githubQueryKeys` path of a query key, e.g. `pulls.page` or `viewer`. */
@@ -166,7 +167,7 @@ function* itemsOf(data: unknown): Generator<Record<string, unknown>> {
 
 function itemRepo(item: Record<string, unknown>): string | null {
 	const repository = item.repository as
-		| { owner?: unknown; name?: unknown }
+		| { owner?: unknown; name?: unknown; fullName?: unknown }
 		| undefined;
 	if (
 		repository &&
@@ -175,16 +176,29 @@ function itemRepo(item: Record<string, unknown>): string | null {
 	) {
 		return normalizeRepoFullName(repository.owner, repository.name);
 	}
+	if (typeof repository?.fullName === "string") {
+		return repository.fullName.toLowerCase();
+	}
 	if (typeof item.fullName === "string") return item.fullName.toLowerCase();
 	return null;
 }
 
+const SUBJECT_NUMBER = /\/(?:pulls|issues)\/(\d+)$/;
+
+/** Notifications only carry the item number inside their API subject URL. */
+function itemNumber(item: Record<string, unknown>): number | null {
+	if (typeof item.number === "number") return item.number;
+	const subject = item.subject as { url?: unknown } | undefined;
+	const match =
+		typeof subject?.url === "string" ? SUBJECT_NUMBER.exec(subject.url) : null;
+	return match ? Number(match[1]) : null;
+}
+
 function aggregateContains(data: unknown, entity: GitHubChangeEntity) {
-	if (entity.kind === "notifications") return false;
 	for (const item of itemsOf(data)) {
 		if (itemRepo(item) !== entity.repo) continue;
 		if (entity.kind === "pull" || entity.kind === "issue") {
-			if (item.number === entity.number) return true;
+			if (itemNumber(item) === entity.number) return true;
 		} else {
 			return true;
 		}
@@ -210,7 +224,6 @@ export function githubQueryMatchesEntity(
 	if (!kinds || kinds === "exempt" || !kinds.includes(entity.kind)) {
 		return false;
 	}
-	if (entity.kind === "notifications") return true;
 
 	const repo = githubQueryRepo(queryKey);
 	if (AGGREGATE_PATHS.has(path) && (repo === null || repo === entity.repo)) {

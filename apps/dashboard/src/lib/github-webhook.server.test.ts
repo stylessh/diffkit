@@ -188,7 +188,7 @@ describe("handleGitHubWebhook: change recording", () => {
 		expect(await response.json()).toEqual({
 			ok: true,
 			event: "pull_request",
-			changes: 2,
+			changes: 1,
 		});
 		finishInsert();
 		await settled();
@@ -196,12 +196,6 @@ describe("handleGitHubWebhook: change recording", () => {
 			{
 				repo: "acme/api",
 				entityKey: "pull:acme/api#12",
-				isPrivate: true,
-				changedAt: NOW,
-			},
-			{
-				repo: "acme/api",
-				entityKey: "notifications",
 				isPrivate: true,
 				changedAt: NOW,
 			},

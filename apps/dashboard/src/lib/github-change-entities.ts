@@ -11,7 +11,6 @@
  *   labels:owner/repo         the label set
  *   collaborators:owner/repo  collaborators
  *   discussions:owner/repo    discussions
- *   notifications             the viewer's notifications inbox
  *
  * Repo names are stored lowercased; GitHub logins and repo names are
  * case-insensitive.
@@ -28,8 +27,7 @@ export type GitHubChangeEntity =
 	| { kind: "release"; repo: string }
 	| { kind: "labels"; repo: string }
 	| { kind: "collaborators"; repo: string }
-	| { kind: "discussions"; repo: string }
-	| { kind: "notifications" };
+	| { kind: "discussions"; repo: string };
 
 export type GitHubChangeEntityKind = GitHubChangeEntity["kind"];
 
@@ -46,8 +44,6 @@ export function formatEntityKey(entity: GitHubChangeEntity): string {
 			return `run:${entity.repo}#${entity.runId}`;
 		case "checks":
 			return `checks:${entity.repo}@${entity.sha}`;
-		case "notifications":
-			return "notifications";
 		default:
 			return `${entity.kind}:${entity.repo}`;
 	}
@@ -61,7 +57,6 @@ const REPO_ONLY = new RegExp(
 );
 
 export function parseEntityKey(key: string): GitHubChangeEntity | null {
-	if (key === "notifications") return { kind: "notifications" };
 	const numbered = NUMBERED.exec(key);
 	if (numbered) {
 		const [, kind, repo, raw] = numbered;
@@ -97,10 +92,6 @@ export function parseEntityKey(key: string): GitHubChangeEntity | null {
 		}
 	}
 	return null;
-}
-
-export function entityRepo(entity: GitHubChangeEntity): string | null {
-	return entity.kind === "notifications" ? null : entity.repo;
 }
 
 // ---------------------------------------------------------------------------
@@ -168,7 +159,6 @@ export function getWebhookChangeEntities(
 	const repository = getWebhookRepository(payload);
 	if (!repository || !isRecord(payload)) return [];
 	const repo = repository.fullName;
-	const notifications: GitHubChangeEntity = { kind: "notifications" };
 
 	switch (event) {
 		case "pull_request":
@@ -179,10 +169,7 @@ export function getWebhookChangeEntities(
 				? getNumber(payload.pull_request.number)
 				: null;
 			if (number === null) return [];
-			const entities: GitHubChangeEntity[] = [
-				{ kind: "pull", repo, number },
-				notifications,
-			];
+			const entities: GitHubChangeEntity[] = [{ kind: "pull", repo, number }];
 			// New commits change the head; the code view follows the branch.
 			if (event === "pull_request" && payload.action === "synchronize") {
 				entities.push({ kind: "repo", repo });
@@ -196,7 +183,7 @@ export function getWebhookChangeEntities(
 			const number = getNumber(payload.issue.number);
 			if (number === null) return [];
 			const isPull = isRecord(payload.issue.pull_request);
-			return [{ kind: isPull ? "pull" : "issue", repo, number }, notifications];
+			return [{ kind: isPull ? "pull" : "issue", repo, number }];
 		}
 
 		case "push":
@@ -233,7 +220,6 @@ export function getWebhookChangeEntities(
 			return [
 				...(runId !== null ? [{ kind: "run", repo, runId } as const] : []),
 				...(sha ? [{ kind: "checks", repo, sha } as const] : []),
-				...(payload.action === "completed" ? [notifications] : []),
 			];
 		}
 
@@ -249,7 +235,7 @@ export function getWebhookChangeEntities(
 		}
 
 		case "release":
-			return [{ kind: "release", repo }, notifications];
+			return [{ kind: "release", repo }];
 
 		case "label":
 			return [{ kind: "labels", repo }];
@@ -261,7 +247,7 @@ export function getWebhookChangeEntities(
 
 		case "discussion":
 		case "discussion_comment":
-			return [{ kind: "discussions", repo }, notifications];
+			return [{ kind: "discussions", repo }];
 
 		default:
 			return [];
