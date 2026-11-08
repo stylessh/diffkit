@@ -7,11 +7,11 @@ import { SidePanelPortal } from "#/components/layouts/dashboard-side-panel";
 import {
 	type GitHubQueryScope,
 	githubRepoOverviewQueryOptions,
-	githubRepoTreeQueryOptions,
 } from "#/lib/github.query";
 import { useHasMounted } from "#/lib/use-has-mounted";
 import { useRegisterTab } from "#/lib/use-register-tab";
 import { BranchComparisonBanner } from "./branch-comparison-banner";
+import { useDirectoryListing } from "./code/use-directory-listing";
 import { CodeExplorerToolbar } from "./code-explorer-toolbar";
 import { FileTree } from "./file-tree";
 import { LatestCommitBar } from "./latest-commit-bar";
@@ -77,15 +77,13 @@ export function RepoOverviewPage({
 			: null,
 	);
 
-	const treeQuery = useQuery({
-		...githubRepoTreeQueryOptions(scope, {
-			owner,
-			repo,
-			ref: activeRef,
-			path: "",
-		}),
-		enabled: hasMounted && !!repoData,
-	});
+	const rootListing = useDirectoryListing(
+		scope,
+		{ owner, repo, ref: activeRef, path: "" },
+		hasMounted && !!repoData,
+	);
+	const rootEntries =
+		rootListing.status === "ready" ? rootListing.entries : undefined;
 
 	if (overviewQuery.error) throw overviewQuery.error;
 
@@ -137,9 +135,9 @@ export function RepoOverviewPage({
 									defaultBranch={repoData.defaultBranch}
 									defaultBranchTip={repoData.latestCommit}
 								/>
-								{treeQuery.data ? (
+								{rootEntries ? (
 									<FileTree
-										entries={treeQuery.data}
+										entries={rootEntries}
 										owner={owner}
 										repo={repo}
 										currentRef={activeRef}
@@ -150,10 +148,10 @@ export function RepoOverviewPage({
 								)}
 							</RepoCard>
 
-							{treeQuery.data && (
+							{rootEntries && (
 								<div className="mt-6">
 									<RepoMarkdownFiles
-										entries={treeQuery.data}
+										entries={rootEntries}
 										owner={owner}
 										repo={repo}
 										currentRef={activeRef}

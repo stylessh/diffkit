@@ -14,6 +14,10 @@ const routesToCompile = [
 	"/lumen-labs/beacon/commits",
 	"/lumen-labs/beacon/branches",
 	"/lumen-labs/beacon/releases",
+	"/lumen-labs/beacon/tree/main/src",
+	"/lumen-labs/beacon/blob/main/src/client.ts",
+	"/lumen-labs/beacon/blame/main/src/client.ts",
+	"/lumen-labs/beacon/search?q=reconnect",
 ];
 
 export default async function globalSetup() {

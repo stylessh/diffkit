@@ -35,6 +35,7 @@ import { Route as ApiGithubAppCallbackRouteImport } from './routes/api/github/ap
 import { Route as ApiGithubAppAuthorizeRouteImport } from './routes/api/github/app/authorize'
 import { Route as ProtectedOwnerRepoTagsRouteImport } from './routes/_protected/$owner/$repo/tags'
 import { Route as ProtectedOwnerRepoSettingsRouteImport } from './routes/_protected/$owner/$repo/settings'
+import { Route as ProtectedOwnerRepoSearchRouteImport } from './routes/_protected/$owner/$repo/search'
 import { Route as ProtectedOwnerRepoPullsRouteImport } from './routes/_protected/$owner/$repo/pulls'
 import { Route as ProtectedOwnerRepoBranchesRouteImport } from './routes/_protected/$owner/$repo/branches'
 import { Route as ProtectedOwnerRepoSettingsIndexRouteImport } from './routes/_protected/$owner/$repo/settings/index'
@@ -58,6 +59,7 @@ import { Route as ProtectedOwnerRepoCompareSplatRouteImport } from './routes/_pr
 import { Route as ProtectedOwnerRepoCommitsSplatRouteImport } from './routes/_protected/$owner/$repo/commits.$'
 import { Route as ProtectedOwnerRepoCommitShaRouteImport } from './routes/_protected/$owner/$repo/commit.$sha'
 import { Route as ProtectedOwnerRepoBlobSplatRouteImport } from './routes/_protected/$owner/$repo/blob.$'
+import { Route as ProtectedOwnerRepoBlameSplatRouteImport } from './routes/_protected/$owner/$repo/blame.$'
 import { Route as ProtectedOwnerRepoReleasesTagEditRouteImport } from './routes/_protected/$owner/$repo/releases.$tag_.edit'
 import { Route as ProtectedOwnerRepoActionsRunsRunIdRouteImport } from './routes/_protected/$owner/$repo/actions.runs.$runId'
 import { Route as ProtectedOwnerRepoActionsRunsRunIdJobJobIdRouteImport } from './routes/_protected/$owner/$repo/actions.runs.$runId_.job.$jobId'
@@ -191,6 +193,12 @@ const ProtectedOwnerRepoSettingsRoute =
   ProtectedOwnerRepoSettingsRouteImport.update({
     id: '/$owner/$repo/settings',
     path: '/$owner/$repo/settings',
+    getParentRoute: () => ProtectedRoute,
+  } as any)
+const ProtectedOwnerRepoSearchRoute =
+  ProtectedOwnerRepoSearchRouteImport.update({
+    id: '/$owner/$repo/search',
+    path: '/$owner/$repo/search',
     getParentRoute: () => ProtectedRoute,
   } as any)
 const ProtectedOwnerRepoPullsRoute = ProtectedOwnerRepoPullsRouteImport.update({
@@ -330,6 +338,12 @@ const ProtectedOwnerRepoBlobSplatRoute =
     path: '/$owner/$repo/blob/$',
     getParentRoute: () => ProtectedRoute,
   } as any)
+const ProtectedOwnerRepoBlameSplatRoute =
+  ProtectedOwnerRepoBlameSplatRouteImport.update({
+    id: '/$owner/$repo/blame/$',
+    path: '/$owner/$repo/blame/$',
+    getParentRoute: () => ProtectedRoute,
+  } as any)
 const ProtectedOwnerRepoReleasesTagEditRoute =
   ProtectedOwnerRepoReleasesTagEditRouteImport.update({
     id: '/$owner/$repo/releases/$tag_/edit',
@@ -372,11 +386,13 @@ export interface FileRoutesByFullPath {
   '/settings/': typeof ProtectedSettingsIndexRoute
   '/$owner/$repo/branches': typeof ProtectedOwnerRepoBranchesRoute
   '/$owner/$repo/pulls': typeof ProtectedOwnerRepoPullsRoute
+  '/$owner/$repo/search': typeof ProtectedOwnerRepoSearchRoute
   '/$owner/$repo/settings': typeof ProtectedOwnerRepoSettingsRouteWithChildren
   '/$owner/$repo/tags': typeof ProtectedOwnerRepoTagsRoute
   '/api/github/app/authorize': typeof ApiGithubAppAuthorizeRoute
   '/api/github/app/callback': typeof ApiGithubAppCallbackRoute
   '/$owner/$repo/': typeof ProtectedOwnerRepoIndexRoute
+  '/$owner/$repo/blame/$': typeof ProtectedOwnerRepoBlameSplatRoute
   '/$owner/$repo/blob/$': typeof ProtectedOwnerRepoBlobSplatRoute
   '/$owner/$repo/commit/$sha': typeof ProtectedOwnerRepoCommitShaRoute
   '/$owner/$repo/commits/$': typeof ProtectedOwnerRepoCommitsSplatRoute
@@ -424,10 +440,12 @@ export interface FileRoutesByTo {
   '/settings': typeof ProtectedSettingsIndexRoute
   '/$owner/$repo/branches': typeof ProtectedOwnerRepoBranchesRoute
   '/$owner/$repo/pulls': typeof ProtectedOwnerRepoPullsRoute
+  '/$owner/$repo/search': typeof ProtectedOwnerRepoSearchRoute
   '/$owner/$repo/tags': typeof ProtectedOwnerRepoTagsRoute
   '/api/github/app/authorize': typeof ApiGithubAppAuthorizeRoute
   '/api/github/app/callback': typeof ApiGithubAppCallbackRoute
   '/$owner/$repo': typeof ProtectedOwnerRepoIndexRoute
+  '/$owner/$repo/blame/$': typeof ProtectedOwnerRepoBlameSplatRoute
   '/$owner/$repo/blob/$': typeof ProtectedOwnerRepoBlobSplatRoute
   '/$owner/$repo/commit/$sha': typeof ProtectedOwnerRepoCommitShaRoute
   '/$owner/$repo/commits/$': typeof ProtectedOwnerRepoCommitsSplatRoute
@@ -478,11 +496,13 @@ export interface FileRoutesById {
   '/_protected/settings/': typeof ProtectedSettingsIndexRoute
   '/_protected/$owner/$repo/branches': typeof ProtectedOwnerRepoBranchesRoute
   '/_protected/$owner/$repo/pulls': typeof ProtectedOwnerRepoPullsRoute
+  '/_protected/$owner/$repo/search': typeof ProtectedOwnerRepoSearchRoute
   '/_protected/$owner/$repo/settings': typeof ProtectedOwnerRepoSettingsRouteWithChildren
   '/_protected/$owner/$repo/tags': typeof ProtectedOwnerRepoTagsRoute
   '/api/github/app/authorize': typeof ApiGithubAppAuthorizeRoute
   '/api/github/app/callback': typeof ApiGithubAppCallbackRoute
   '/_protected/$owner/$repo/': typeof ProtectedOwnerRepoIndexRoute
+  '/_protected/$owner/$repo/blame/$': typeof ProtectedOwnerRepoBlameSplatRoute
   '/_protected/$owner/$repo/blob/$': typeof ProtectedOwnerRepoBlobSplatRoute
   '/_protected/$owner/$repo/commit/$sha': typeof ProtectedOwnerRepoCommitShaRoute
   '/_protected/$owner/$repo/commits/$': typeof ProtectedOwnerRepoCommitsSplatRoute
@@ -533,11 +553,13 @@ export interface FileRouteTypes {
     | '/settings/'
     | '/$owner/$repo/branches'
     | '/$owner/$repo/pulls'
+    | '/$owner/$repo/search'
     | '/$owner/$repo/settings'
     | '/$owner/$repo/tags'
     | '/api/github/app/authorize'
     | '/api/github/app/callback'
     | '/$owner/$repo/'
+    | '/$owner/$repo/blame/$'
     | '/$owner/$repo/blob/$'
     | '/$owner/$repo/commit/$sha'
     | '/$owner/$repo/commits/$'
@@ -585,10 +607,12 @@ export interface FileRouteTypes {
     | '/settings'
     | '/$owner/$repo/branches'
     | '/$owner/$repo/pulls'
+    | '/$owner/$repo/search'
     | '/$owner/$repo/tags'
     | '/api/github/app/authorize'
     | '/api/github/app/callback'
     | '/$owner/$repo'
+    | '/$owner/$repo/blame/$'
     | '/$owner/$repo/blob/$'
     | '/$owner/$repo/commit/$sha'
     | '/$owner/$repo/commits/$'
@@ -638,11 +662,13 @@ export interface FileRouteTypes {
     | '/_protected/settings/'
     | '/_protected/$owner/$repo/branches'
     | '/_protected/$owner/$repo/pulls'
+    | '/_protected/$owner/$repo/search'
     | '/_protected/$owner/$repo/settings'
     | '/_protected/$owner/$repo/tags'
     | '/api/github/app/authorize'
     | '/api/github/app/callback'
     | '/_protected/$owner/$repo/'
+    | '/_protected/$owner/$repo/blame/$'
     | '/_protected/$owner/$repo/blob/$'
     | '/_protected/$owner/$repo/commit/$sha'
     | '/_protected/$owner/$repo/commits/$'
@@ -868,6 +894,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ProtectedOwnerRepoSettingsRouteImport
       parentRoute: typeof ProtectedRoute
     }
+    '/_protected/$owner/$repo/search': {
+      id: '/_protected/$owner/$repo/search'
+      path: '/$owner/$repo/search'
+      fullPath: '/$owner/$repo/search'
+      preLoaderRoute: typeof ProtectedOwnerRepoSearchRouteImport
+      parentRoute: typeof ProtectedRoute
+    }
     '/_protected/$owner/$repo/pulls': {
       id: '/_protected/$owner/$repo/pulls'
       path: '/$owner/$repo/pulls'
@@ -1029,6 +1062,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ProtectedOwnerRepoBlobSplatRouteImport
       parentRoute: typeof ProtectedRoute
     }
+    '/_protected/$owner/$repo/blame/$': {
+      id: '/_protected/$owner/$repo/blame/$'
+      path: '/$owner/$repo/blame/$'
+      fullPath: '/$owner/$repo/blame/$'
+      preLoaderRoute: typeof ProtectedOwnerRepoBlameSplatRouteImport
+      parentRoute: typeof ProtectedRoute
+    }
     '/_protected/$owner/$repo/releases/$tag_/edit': {
       id: '/_protected/$owner/$repo/releases/$tag_/edit'
       path: '/$owner/$repo/releases/$tag/edit'
@@ -1107,9 +1147,11 @@ interface ProtectedRouteChildren {
   ProtectedOwnerIndexRoute: typeof ProtectedOwnerIndexRoute
   ProtectedOwnerRepoBranchesRoute: typeof ProtectedOwnerRepoBranchesRoute
   ProtectedOwnerRepoPullsRoute: typeof ProtectedOwnerRepoPullsRoute
+  ProtectedOwnerRepoSearchRoute: typeof ProtectedOwnerRepoSearchRoute
   ProtectedOwnerRepoSettingsRoute: typeof ProtectedOwnerRepoSettingsRouteWithChildren
   ProtectedOwnerRepoTagsRoute: typeof ProtectedOwnerRepoTagsRoute
   ProtectedOwnerRepoIndexRoute: typeof ProtectedOwnerRepoIndexRoute
+  ProtectedOwnerRepoBlameSplatRoute: typeof ProtectedOwnerRepoBlameSplatRoute
   ProtectedOwnerRepoBlobSplatRoute: typeof ProtectedOwnerRepoBlobSplatRoute
   ProtectedOwnerRepoCommitShaRoute: typeof ProtectedOwnerRepoCommitShaRoute
   ProtectedOwnerRepoCommitsSplatRoute: typeof ProtectedOwnerRepoCommitsSplatRoute
@@ -1142,9 +1184,11 @@ const ProtectedRouteChildren: ProtectedRouteChildren = {
   ProtectedOwnerIndexRoute: ProtectedOwnerIndexRoute,
   ProtectedOwnerRepoBranchesRoute: ProtectedOwnerRepoBranchesRoute,
   ProtectedOwnerRepoPullsRoute: ProtectedOwnerRepoPullsRoute,
+  ProtectedOwnerRepoSearchRoute: ProtectedOwnerRepoSearchRoute,
   ProtectedOwnerRepoSettingsRoute: ProtectedOwnerRepoSettingsRouteWithChildren,
   ProtectedOwnerRepoTagsRoute: ProtectedOwnerRepoTagsRoute,
   ProtectedOwnerRepoIndexRoute: ProtectedOwnerRepoIndexRoute,
+  ProtectedOwnerRepoBlameSplatRoute: ProtectedOwnerRepoBlameSplatRoute,
   ProtectedOwnerRepoBlobSplatRoute: ProtectedOwnerRepoBlobSplatRoute,
   ProtectedOwnerRepoCommitShaRoute: ProtectedOwnerRepoCommitShaRoute,
   ProtectedOwnerRepoCommitsSplatRoute: ProtectedOwnerRepoCommitsSplatRoute,
