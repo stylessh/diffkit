@@ -142,7 +142,6 @@ export function CommentBody({
 	);
 }
 
-/** GitHub's "edited" marker; the tooltip carries the time of the last edit. */
 export function EditedMark({ editedAt }: { editedAt?: string | null }) {
 	if (!editedAt) return null;
 	return (

@@ -48,11 +48,6 @@ function patchList<T>(list: T[], commentId: number, change: CommentChange) {
 	);
 }
 
-/**
- * Applies an edit or delete to any cached payload that holds comments: a
- * bare list, or an object with a `comments` list (page data, comment pages).
- * Returns the input unchanged when the comment isn't there.
- */
 export function patchComment<T>(
 	data: T,
 	commentId: number,
@@ -95,7 +90,6 @@ function queryInput(queryKey: readonly unknown[]) {
 	};
 }
 
-/** Query filters for every cached view that can show this comment. */
 export function commentQueryFilters(
 	scope: GitHubQueryScope,
 	target: CommentTarget,

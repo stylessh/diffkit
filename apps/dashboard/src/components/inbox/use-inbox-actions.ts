@@ -14,7 +14,6 @@ type ListUpdate = (items: NotificationItem[]) => NotificationItem[];
 
 const isOk = (result: { ok: boolean }) => result.ok;
 
-/** Inbox writes, applied to both cached lists (unread and all) at once. */
 export function useInboxActions(scope: GitHubQueryScope) {
 	const { mutate } = useOptimisticMutation();
 
