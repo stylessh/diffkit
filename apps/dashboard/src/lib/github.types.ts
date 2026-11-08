@@ -65,6 +65,12 @@ export type PullSummary = {
 	author: GitHubActor | null;
 	labels: GitHubLabel[];
 	repository: RepositoryRef;
+	/** Branch the PR merges into. Only set for REST-sourced pulls (repo list, detail). */
+	baseRefName?: string;
+	/** Branch the PR is opened from. Only set for REST-sourced pulls. */
+	headRefName?: string;
+	/** `owner/repo` the head branch lives in; `null` when the fork was deleted. */
+	headRepoFullName?: string | null;
 };
 
 export type RequestedTeam = {
@@ -134,7 +140,6 @@ export type MyPullsResult = {
 	forbiddenOrgs?: string[];
 	partial?: boolean;
 	timedOut?: boolean;
-	__meta?: GitHubLocalFirstMeta;
 };
 
 export type MyIssuesResult = {
@@ -144,7 +149,6 @@ export type MyIssuesResult = {
 	forbiddenOrgs?: string[];
 	partial?: boolean;
 	timedOut?: boolean;
-	__meta?: GitHubLocalFirstMeta;
 };
 
 export type CommandPaletteSearchResult = {
@@ -243,7 +247,6 @@ export type IssuePageData = {
 	events: TimelineEvent[];
 	commentPagination: CommentPagination;
 	eventPagination: EventPagination;
-	__meta?: GitHubLocalFirstMeta;
 };
 
 export type PullCheckRun = {
@@ -388,7 +391,6 @@ export type PullStatus = {
 	canUpdateBranch: boolean;
 	canBypassProtections: boolean;
 	canMerge: boolean;
-	__meta?: GitHubLocalFirstMeta;
 };
 
 export type PullCommit = {
@@ -417,7 +419,6 @@ export type PullPageData = {
 	commentPagination: CommentPagination;
 	eventPagination: EventPagination;
 	headRefDeleted: boolean;
-	__meta?: GitHubLocalFirstMeta;
 };
 
 export type PullFile = {
@@ -654,7 +655,6 @@ export type RepoOverview = {
 		date: string;
 		author: GitHubActor | null;
 	} | null;
-	__meta?: GitHubLocalFirstMeta;
 };
 
 export type RepoTreeEntry = {
@@ -810,13 +810,78 @@ export type NotificationItem = {
 	url: string;
 };
 
-export type GitHubLocalFirstMeta = {
-	cacheStatus: "fresh" | "stale" | "miss";
-	fetchedAt: number | null;
-	isRevalidating: boolean;
-};
-
 export type NotificationsResult = {
 	notifications: NotificationItem[];
-	__meta?: GitHubLocalFirstMeta;
+};
+
+// ── Review drafts (pending, unsubmitted GitHub reviews) ──────────────
+
+export type ReviewDraftComment = {
+	/** GraphQL node id. */
+	id: string;
+	path: string;
+	line: number | null;
+	startLine: number | null;
+	/** Attached to the whole file rather than a diff line. */
+	isFileComment: boolean;
+	/** The commented line no longer exists in the latest diff. */
+	outdated: boolean;
+	body: string;
+	createdAt: string;
+	updatedAt: string;
+};
+
+export type ReviewDraft = {
+	/** REST review id; required to submit or delete the pending review. */
+	reviewId: number;
+	nodeId: string;
+	/** The overall review body typed so far. */
+	body: string;
+	url: string;
+	createdAt: string;
+	updatedAt: string;
+	/** Total comments on GitHub; may exceed `comments.length` when truncated. */
+	commentCount: number;
+	comments: ReviewDraftComment[];
+};
+
+export type ReviewDraftPull = {
+	owner: string;
+	repo: string;
+	repositoryFullName: string;
+	number: number;
+	title: string;
+	url: string;
+	isDraft: boolean;
+	author: GitHubActor | null;
+	updatedAt: string;
+	review: ReviewDraft;
+};
+
+export type ReviewDraftsResult = {
+	drafts: ReviewDraftPull[];
+	/** Open PRs that were checked for a pending review. */
+	checkedCount: number;
+	/** More candidate PRs existed than the per-load budget allows. */
+	truncated: boolean;
+	/** At least one batch failed (access restrictions, timeout, …). */
+	partial: boolean;
+};
+
+export type ReviewDraftSubmitEvent = "APPROVE" | "COMMENT" | "REQUEST_CHANGES";
+
+export type SubmitPendingReviewInput = {
+	owner: string;
+	repo: string;
+	pullNumber: number;
+	reviewId: number;
+	event: ReviewDraftSubmitEvent;
+	body?: string;
+};
+
+export type DeletePendingReviewInput = {
+	owner: string;
+	repo: string;
+	pullNumber: number;
+	reviewId: number;
 };

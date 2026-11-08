@@ -1,7 +1,5 @@
 import startEntry from "@tanstack/react-start/server-entry";
 
-export { SignalRelay } from "./lib/signal-relay.server";
-
 const SECURITY_HEADERS: Record<string, string> = {
 	"Strict-Transport-Security": "max-age=63072000; includeSubDomains; preload",
 	"X-Content-Type-Options": "nosniff",
@@ -17,34 +15,6 @@ function applySecurityHeaders(response: Response): Response {
 	return response;
 }
 
-async function handleWebSocketUpgrade(
-	request: Request,
-	env: Record<string, unknown>,
-): Promise<Response> {
-	const { getAuth } = await import("#/lib/auth.server");
-	const session = await getAuth().api.getSession({
-		headers: request.headers,
-	});
-
-	if (!session) {
-		return new Response("Unauthorized", { status: 401 });
-	}
-
-	const signalRelay = env.SIGNAL_RELAY as DurableObjectNamespace | undefined;
-	if (!signalRelay) {
-		return new Response("Signal relay not configured", { status: 503 });
-	}
-
-	const id = signalRelay.idFromName("global");
-	const stub = signalRelay.get(id);
-	const doUrl = new URL(request.url);
-	doUrl.pathname = "/connect";
-
-	return stub.fetch(
-		new Request(doUrl.toString(), { headers: request.headers }),
-	);
-}
-
 export default {
 	async fetch(
 		request: Request,
@@ -52,13 +22,6 @@ export default {
 		ctx: ExecutionContext,
 	): Promise<Response> {
 		const url = new URL(request.url);
-
-		if (
-			url.pathname === "/api/ws/signals" &&
-			request.headers.get("Upgrade") === "websocket"
-		) {
-			return handleWebSocketUpgrade(request, env);
-		}
 
 		if (
 			url.pathname === "/api/comment-media/upload" &&

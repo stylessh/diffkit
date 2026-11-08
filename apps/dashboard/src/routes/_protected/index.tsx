@@ -7,11 +7,8 @@ import { PullRequestRow } from "#/components/pulls/pull-request-row";
 import {
 	githubMyIssuesQueryOptions,
 	githubMyPullsQueryOptions,
-	githubQueryKeys,
 } from "#/lib/github.query";
-import { githubRevalidationSignalKeys } from "#/lib/github-revalidation";
 import { buildSeo, formatPageTitle } from "#/lib/seo";
-import { useGitHubSignalStream } from "#/lib/use-github-signal-stream";
 import { useHasMounted } from "#/lib/use-has-mounted";
 
 export const Route = createFileRoute("/_protected/")({
@@ -45,58 +42,6 @@ function OverviewPage() {
 		...githubMyIssuesQueryOptions(scope),
 		enabled: hasMounted,
 	});
-	const webhookTargets = useMemo(() => {
-		const pulls = pullsQuery.data;
-		const issues = issuesQuery.data;
-		const pullSignalKeys = new Set<string>([
-			githubRevalidationSignalKeys.pullsMine,
-		]);
-		const issueSignalKeys = new Set<string>([
-			githubRevalidationSignalKeys.issuesMine,
-		]);
-
-		for (const pull of [
-			...(pulls?.reviewRequested ?? []),
-			...(pulls?.assigned ?? []),
-			...(pulls?.authored ?? []),
-			...(pulls?.mentioned ?? []),
-			...(pulls?.involved ?? []),
-		]) {
-			pullSignalKeys.add(
-				githubRevalidationSignalKeys.pullEntity({
-					owner: pull.repository.owner,
-					repo: pull.repository.name,
-					pullNumber: pull.number,
-				}),
-			);
-		}
-
-		for (const issue of [
-			...(issues?.assigned ?? []),
-			...(issues?.authored ?? []),
-			...(issues?.mentioned ?? []),
-		]) {
-			issueSignalKeys.add(
-				githubRevalidationSignalKeys.issueEntity({
-					owner: issue.repository.owner,
-					repo: issue.repository.name,
-					issueNumber: issue.number,
-				}),
-			);
-		}
-
-		return [
-			{
-				queryKey: githubQueryKeys.pulls.mine(scope),
-				signalKeys: Array.from(pullSignalKeys),
-			},
-			{
-				queryKey: githubQueryKeys.issues.mine(scope),
-				signalKeys: Array.from(issueSignalKeys),
-			},
-		];
-	}, [issuesQuery.data, pullsQuery.data, scope]);
-	useGitHubSignalStream(webhookTargets);
 
 	if (pullsQuery.error) throw pullsQuery.error;
 	if (issuesQuery.error) throw issuesQuery.error;

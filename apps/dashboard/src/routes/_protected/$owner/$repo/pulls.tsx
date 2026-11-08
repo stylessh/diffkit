@@ -15,7 +15,7 @@ import {
 import { DashboardContentLoading } from "#/components/layouts/dashboard-content-loading";
 import { SidePanelPortal } from "#/components/layouts/dashboard-side-panel";
 import { Pagination } from "#/components/pagination";
-import { PullRequestRow } from "#/components/pulls/pull-request-row";
+import { StackedPullList } from "#/components/pulls/stack/stacked-pull-list";
 import { RepoActivityCards } from "#/components/repo/repo-activity-cards";
 import {
 	githubPullsFromRepoQueryOptions,
@@ -138,17 +138,11 @@ function RepoPullsPage() {
 									No pull requests found.
 								</p>
 							)}
-							{filtered.map((pr) => (
-								<div
-									key={pr.id}
-									style={{
-										contentVisibility: "auto",
-										containIntrinsicSize: "auto 52px",
-									}}
-								>
-									<PullRequestRow pr={pr} scope={scope} />
-								</div>
-							))}
+							<StackedPullList
+								pulls={filtered}
+								allPulls={pulls}
+								scope={scope}
+							/>
 						</div>
 					)}
 
