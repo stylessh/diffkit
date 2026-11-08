@@ -131,7 +131,7 @@ export function ComparePage({
 			base: resolved?.base ?? "",
 			head: pullHeadFilter(resolved?.head ?? "", owner),
 		}),
-		enabled: hasMounted && (compareQuery.data?.aheadBy ?? 0) > 0,
+		enabled: hasMounted && Boolean(resolved?.base && resolved.head),
 	});
 
 	if (overviewQuery.error) throw overviewQuery.error;

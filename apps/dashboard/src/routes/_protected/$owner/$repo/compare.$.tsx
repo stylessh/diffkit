@@ -1,11 +1,13 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMemo } from "react";
 import { ComparePage } from "#/components/compare/compare-page";
-import { parseCompareSplat } from "#/lib/compare-ref";
+import { parseCompareSplat, pullHeadFilter } from "#/lib/compare-ref";
 import {
 	githubCompareDetailQueryOptions,
+	githubOpenPullForRefsQueryOptions,
 	githubRepoBranchesListInfiniteQueryOptions,
 	githubRepoOverviewQueryOptions,
+	githubRepoViewerPermissionQueryOptions,
 	githubViewerQueryOptions,
 } from "#/lib/github.query";
 import { buildSeo, formatPageTitle } from "#/lib/seo";
@@ -31,12 +33,22 @@ export const Route = createFileRoute("/_protected/$owner/$repo/compare/$")({
 		void context.queryClient.prefetchInfiniteQuery(
 			githubRepoBranchesListInfiniteQueryOptions(scope, repoInput),
 		);
+		void context.queryClient.prefetchQuery(
+			githubRepoViewerPermissionQueryOptions(scope, repoInput),
+		);
 		if (refs.base && refs.head) {
 			void context.queryClient.prefetchQuery(
 				githubCompareDetailQueryOptions(scope, {
 					...repoInput,
 					base: refs.base,
 					head: refs.head,
+				}),
+			);
+			void context.queryClient.prefetchQuery(
+				githubOpenPullForRefsQueryOptions(scope, {
+					...repoInput,
+					base: refs.base,
+					head: pullHeadFilter(refs.head, params.owner),
 				}),
 			);
 		}
