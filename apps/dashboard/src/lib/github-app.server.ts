@@ -277,11 +277,13 @@ async function performGitHubAppUserTokenRefresh(
 	}
 
 	try {
-		await saveGitHubAppUserToken(userId, token);
+		await saveGitHubAppUserToken(userId, token).catch(() =>
+			saveGitHubAppUserToken(userId, token),
+		);
 	} catch (error) {
 		// The new access token is good for this request even if D1 rejects the
-		// write. The rotated refresh token is lost, so the user re-authorizes at
-		// the next expiry, which beats failing the page now.
+		// write twice. The old refresh token is already rotated out, so the next
+		// refresh fails and the user re-authorizes; that beats failing this page.
 		console.error(
 			"[github-auth] failed to store refreshed app user token",
 			userId,

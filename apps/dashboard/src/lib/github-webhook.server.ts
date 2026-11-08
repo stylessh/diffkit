@@ -33,6 +33,36 @@ export type GitHubWebhookDeps = {
 	now?: () => number;
 };
 
+type BodyRead = { kind: "ok"; text: string } | { kind: "too-large" };
+
+async function readBodyWithinLimit(
+	request: Request,
+	limit: number,
+): Promise<BodyRead> {
+	const reader = request.body?.getReader();
+	if (!reader) return { kind: "ok", text: "" };
+
+	const chunks: Uint8Array[] = [];
+	let size = 0;
+	for (;;) {
+		const { done, value } = await reader.read();
+		if (done) break;
+		size += value.byteLength;
+		if (size > limit) {
+			await reader.cancel();
+			return { kind: "too-large" };
+		}
+		chunks.push(value);
+	}
+	const bytes = new Uint8Array(size);
+	let offset = 0;
+	for (const chunk of chunks) {
+		bytes.set(chunk, offset);
+		offset += chunk.byteLength;
+	}
+	return { kind: "ok", text: new TextDecoder().decode(bytes) };
+}
+
 function text(body: string, status: number) {
 	return new Response(body, { status });
 }
@@ -99,20 +129,16 @@ export async function handleGitHubWebhook(
 		return text("GitHub webhook secret is not configured.", 503);
 	}
 
-	const declaredLength = Number(request.headers.get("content-length"));
-	if (
-		Number.isFinite(declaredLength) &&
-		declaredLength > MAX_WEBHOOK_BODY_BYTES
-	) {
-		return text("Payload too large.", 413);
-	}
-
-	let requestBody: string;
+	let body: BodyRead;
 	try {
-		requestBody = await request.text();
+		body = await readBodyWithinLimit(request, MAX_WEBHOOK_BODY_BYTES);
 	} catch {
 		return text("Unreadable request body.", 400);
 	}
+	if (body.kind === "too-large") {
+		return text("Payload too large.", 413);
+	}
+	const requestBody = body.text;
 
 	let isValid = false;
 	try {

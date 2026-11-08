@@ -297,6 +297,29 @@ describe("GitHub App user tokens", () => {
 		);
 	});
 
+	it("retries a failed token write once so the rotated refresh token is not lost", async () => {
+		await seed({});
+		const realPrepare = runtime.db.prepare.bind(runtime.db);
+		let updates = 0;
+		runtime.db = {
+			...runtime.db,
+			prepare: (sql: string) => {
+				if (sql.trim().toLowerCase().startsWith("update") && updates++ === 0) {
+					throw new Error("D1_ERROR: transient");
+				}
+				return realPrepare(sql);
+			},
+		} as unknown as D1Database;
+		fetchMock.mockResolvedValue(
+			tokenResponse({ access_token: "ghu_new", refresh_token: "ghr_new" }),
+		);
+
+		expect(await getGitHubAppUserAccessTokenByUserId("u1")).toBe("ghu_new");
+
+		expect((await appRow()).refreshToken).toBe("ghr_new");
+		expect(console.error).not.toHaveBeenCalled();
+	});
+
 	it("still returns the refreshed token when D1 rejects the write, without logging it", async () => {
 		await seed({});
 		const realPrepare = runtime.db.prepare.bind(runtime.db);

@@ -139,14 +139,31 @@ describe("handleGitHubWebhook: bad requests are 4xx, never 5xx", () => {
 		}
 	});
 
-	it("413s a declared payload above GitHub's cap without reading it", async () => {
-		const request = await webhook(
-			"push",
-			{},
-			{ headers: { "content-length": String(MAX_WEBHOOK_BODY_BYTES + 1) } },
+	it("413s a streamed body above GitHub's cap, with or without a declared length", async () => {
+		const chunk = new Uint8Array(1024 * 1024);
+		let sent = 0;
+		const body = new ReadableStream<Uint8Array>({
+			pull(controller) {
+				if (sent > MAX_WEBHOOK_BODY_BYTES) return controller.close();
+				sent += chunk.byteLength;
+				controller.enqueue(chunk);
+			},
+		});
+		const { deps } = setup();
+		const response = await handleGitHubWebhook(
+			new Request("https://diffkit.test/api/webhooks/github", {
+				method: "POST",
+				headers: {
+					"x-github-event": "push",
+					"x-hub-signature-256": "sha256=00",
+				},
+				body,
+				duplex: "half",
+			} as RequestInit),
+			deps,
 		);
-		const response = await handleGitHubWebhook(request, setup().deps);
 		expect(response.status).toBe(413);
+		expect(deps.runInBackground).not.toHaveBeenCalled();
 	});
 });
 

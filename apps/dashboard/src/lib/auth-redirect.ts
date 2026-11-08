@@ -24,7 +24,13 @@ export function normalizeAuthRedirect(
 		return fallback;
 	}
 
-	if (url.origin !== AUTH_REDIRECT_BASE_URL || url.pathname === "/login") {
+	// "/.//evil.com" normalizes to the same-origin path "//evil.com", which a
+	// browser would read as protocol-relative once it is used as a Location.
+	if (
+		url.origin !== AUTH_REDIRECT_BASE_URL ||
+		url.pathname === "/login" ||
+		url.pathname.startsWith("//")
+	) {
 		return fallback;
 	}
 

@@ -54,11 +54,9 @@ export function createTestD1(migrations: string[] = []) {
 			// drizzle's d1 driver reads rows through `raw()` (arrays, not objects).
 			raw: async () => {
 				statementCalls.push(sql);
-				const rows = sqlite.prepare(sql).all(...(params as never[])) as Record<
-					string,
-					unknown
-				>[];
-				return rows.map((row) => Object.values(row));
+				const prepared = sqlite.prepare(sql);
+				prepared.setReturnArrays(true);
+				return prepared.all(...(params as never[])) as unknown as unknown[][];
 			},
 			run: async () => {
 				statementCalls.push(sql);
