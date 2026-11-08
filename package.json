@@ -9,6 +9,7 @@
     "check": "turbo run check",
     "check-types": "turbo run check-types",
     "test": "turbo run test",
+    "test:e2e": "pnpm --filter @diffkit/e2e test:e2e",
     "format": "turbo run format",
     "prepare": "husky"
   },
