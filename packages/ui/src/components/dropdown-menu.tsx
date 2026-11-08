@@ -75,7 +75,7 @@ function DropdownMenuItem({
 			data-inset={inset}
 			data-variant={variant}
 			className={cn(
-				"focus:bg-menu-hover focus:text-foreground text-text-header data-[variant=destructive]:text-destructive-foreground data-[variant=destructive]:focus:bg-destructive/10 dark:data-[variant=destructive]:focus:bg-destructive/40 data-[variant=destructive]:focus:text-destructive-foreground data-[variant=destructive]:*:[svg]:!text-destructive-foreground [&_svg:not([class*='text-'])]:text-muted-foreground relative flex h-7 cursor-default items-center gap-2 rounded-md px-2 text-[13px] font-[450] outline-hidden select-none data-[disabled]:pointer-events-none data-[disabled]:opacity-50 data-[inset]:pl-8 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
+				"focus:bg-menu-hover focus:text-foreground text-text-header data-[variant=destructive]:text-destructive-foreground data-[variant=destructive]:focus:bg-pill-blocked data-[variant=destructive]:focus:text-destructive-foreground data-[variant=destructive]:*:[svg]:!text-destructive-foreground [&_svg:not([class*='text-'])]:text-muted-foreground relative flex h-8 cursor-default items-center gap-2 rounded-lg pr-2.5 pl-[7.75px] text-[13px] font-[450] outline-hidden select-none data-[disabled]:pointer-events-none data-[disabled]:opacity-50 data-[inset]:pl-8 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
 				className,
 			)}
 			{...props}
@@ -220,7 +220,7 @@ function DropdownMenuSubTrigger({
 			data-slot="dropdown-menu-sub-trigger"
 			data-inset={inset}
 			className={cn(
-				"focus:bg-menu-hover focus:text-foreground text-text-header data-[state=open]:bg-menu-hover data-[state=open]:text-foreground flex cursor-default items-center h-8 rounded-lg px-2 text-[13px] font-[450] outline-hidden select-none data-[inset]:pl-8",
+				"focus:bg-menu-hover focus:text-foreground text-text-header data-[state=open]:bg-menu-hover data-[state=open]:text-foreground flex cursor-default items-center h-8 rounded-lg pr-2.5 pl-[7.75px] text-[13px] font-[450] outline-hidden select-none data-[inset]:pl-8",
 				className,
 			)}
 			{...props}

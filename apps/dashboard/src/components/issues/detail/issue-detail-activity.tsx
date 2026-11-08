@@ -451,14 +451,14 @@ export function IssueDetailActivitySection({
 											<img
 												src={group.actor?.avatarUrl}
 												alt={group.actor?.login}
-												className="size-5 shrink-0 rounded-full border-[0.5px] border-border self-start"
+												className="mt-[3px] size-3.5 shrink-0 self-start rounded-full ring-[0.5px] ring-chip-border"
 											/>
 										) : (
-											<div className="flex size-5 shrink-0 items-center justify-center rounded-full border-[0.5px] border-border bg-surface-1 self-start">
+											<div className="flex h-[17px] w-[18px] shrink-0 items-center justify-center self-start rounded-[4px] bg-main text-muted-foreground mt-[1.5px] [&_svg]:size-3.5">
 												{icon}
 											</div>
 										)}
-										<span className="min-w-0 text-[13px] text-muted-foreground">
+										<span className="min-w-0 text-xs leading-5 font-[450] text-muted-foreground">
 											{item.type === "label_group" ? (
 												<GroupedLabelDescription
 													group={item.data as GroupedLabelEvent}
@@ -469,7 +469,7 @@ export function IssueDetailActivitySection({
 												/>
 											)}
 										</span>
-										<span className="ml-auto shrink-0 text-[13px] text-muted-foreground">
+										<span className="ml-auto shrink-0 text-xs font-[450] tabular-nums text-icon-faint">
 											{formatRelativeTime(group.createdAt)}
 										</span>
 									</div>
@@ -508,14 +508,14 @@ export function IssueDetailActivitySection({
 											<img
 												src={group.actor?.avatarUrl}
 												alt={group.actor?.login}
-												className="size-5 shrink-0 rounded-full border-[0.5px] border-border self-start"
+												className="mt-[3px] size-3.5 shrink-0 self-start rounded-full ring-[0.5px] ring-chip-border"
 											/>
 										) : (
-											<div className="flex size-5 shrink-0 items-center justify-center rounded-full border-[0.5px] border-border bg-surface-1 self-start">
+											<div className="flex h-[17px] w-[18px] shrink-0 items-center justify-center self-start rounded-[4px] bg-main text-muted-foreground mt-[1.5px] [&_svg]:size-3.5">
 												{icon}
 											</div>
 										)}
-										<span className="min-w-0 text-[13px] text-muted-foreground">
+										<span className="min-w-0 text-xs leading-5 font-[450] text-muted-foreground">
 											<GroupedIssueStateToggleDescription
 												group={group}
 												subject="issue"
@@ -530,7 +530,7 @@ export function IssueDetailActivitySection({
 												}
 											/>
 										</span>
-										<span className="ml-auto shrink-0 text-[13px] text-muted-foreground">
+										<span className="ml-auto shrink-0 text-xs font-[450] tabular-nums text-icon-faint">
 											{formatRelativeTime(group.createdAt)}
 										</span>
 									</div>
@@ -564,18 +564,18 @@ export function IssueDetailActivitySection({
 										<img
 											src={event.actor?.avatarUrl}
 											alt={event.actor?.login}
-											className="size-5 shrink-0 rounded-full border-[0.5px] border-border self-start"
+											className="mt-[3px] size-3.5 shrink-0 self-start rounded-full ring-[0.5px] ring-chip-border"
 										/>
 									) : (
-										<div className="flex size-5 shrink-0 items-center justify-center rounded-full border-[0.5px] border-border bg-surface-1 self-start">
+										<div className="flex h-[17px] w-[18px] shrink-0 items-center justify-center self-start rounded-[4px] bg-main text-muted-foreground mt-[1.5px] [&_svg]:size-3.5">
 											{icon}
 										</div>
 									)}
-									<span className="min-w-0 text-[13px] text-muted-foreground">
+									<span className="min-w-0 text-xs leading-5 font-[450] text-muted-foreground">
 										{description}
 									</span>
 									{event.createdAt && (
-										<span className="ml-auto shrink-0 text-[13px] text-muted-foreground">
+										<span className="ml-auto shrink-0 text-xs font-[450] tabular-nums text-icon-faint">
 											{formatRelativeTime(event.createdAt)}
 										</span>
 									)}
@@ -649,33 +649,20 @@ function IssueCommentBubble({
 				}
 			}}
 		>
-			<div className="flex items-center gap-1.5">
+			<div className="flex h-[18.5px] items-center gap-2">
 				{comment.author ? (
 					<img
 						src={comment.author.avatarUrl}
 						alt={comment.author.login}
-						className={cn(
-							"rounded-full border-[0.5px] border-border",
-							isReply ? "size-3.5" : "size-4",
-						)}
+						className="size-[18px] rounded-full ring-[0.5px] ring-chip-border"
 					/>
 				) : (
-					<div
-						className={cn(
-							"rounded-full bg-surface-2",
-							isReply ? "size-3.5" : "size-4",
-						)}
-					/>
+					<div className="size-[18px] rounded-full bg-group" />
 				)}
 				<span className="text-[13px] font-medium text-foreground">
 					{comment.author?.login ?? "Unknown"}
 				</span>
-				<span
-					className={cn(
-						"text-muted-foreground",
-						isReply ? "text-xs" : "text-[13px]",
-					)}
-				>
+				<span className="ml-0.5 text-[13px] font-[450] text-icon-faint">
 					{formatRelativeTime(comment.createdAt)}
 				</span>
 				<div className="ml-auto flex items-center gap-1">
@@ -683,7 +670,8 @@ function IssueCommentBubble({
 						<button
 							type="button"
 							onClick={onReply}
-							className="rounded-md p-0.5 text-muted-foreground opacity-0 transition-all hover:bg-surface-2 hover:text-foreground group-hover/comment:opacity-100"
+							aria-label="Reply"
+							className="flex size-7 items-center justify-center rounded-full text-text-header opacity-0 transition-opacity hover:bg-ghost-hover group-hover/comment:opacity-100 focus-visible:opacity-100"
 						>
 							<CommentIcon size={14} strokeWidth={2} />
 						</button>
@@ -701,13 +689,19 @@ function IssueCommentBubble({
 					/>
 				</div>
 			</div>
-			<div className={cn("relative", comment.graphqlId != null && "mb-9")}>
+			<div
+				className={cn(
+					"relative",
+					isReply && "pl-[27px]",
+					comment.graphqlId != null && "mb-7",
+				)}
+			>
 				<Markdown className="text-[15px] leading-6 text-text-strong">
 					{comment.body}
 				</Markdown>
 				{comment.graphqlId ? (
 					<IssueCommentReactionBar
-						className="absolute left-0 right-0 top-full z-10 mt-1.5"
+						className="absolute left-0 right-0 top-full z-10 mt-1"
 						revealZeroCount={commentActive || prefersNoHover}
 						viewerLogin={viewerLogin}
 						owner={owner}
@@ -853,7 +847,7 @@ function LoadMoreDivider({
 					"flex shrink-0 items-center gap-1.5 rounded-full border-[0.5px] border-border bg-surface-1 px-3 py-1 text-xs text-muted-foreground transition-colors",
 					isPending
 						? "cursor-not-allowed opacity-60"
-						: "hover:bg-surface-2 hover:text-foreground",
+						: "hover:bg-ghost-hover hover:text-foreground",
 				)}
 			>
 				{isPending ? (

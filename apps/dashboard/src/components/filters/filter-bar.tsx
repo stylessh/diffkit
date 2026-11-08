@@ -121,7 +121,7 @@ function SearchInput({
 				onChange={(e) => onChange(e.target.value)}
 				placeholder={placeholder}
 				aria-label={placeholder}
-				className="min-w-0 flex-1 bg-transparent text-base outline-none placeholder:text-muted-foreground focus-visible:outline-none sm:text-[13px]"
+				className="min-w-0 flex-1 bg-transparent text-base font-[450] text-foreground caret-indigo outline-none placeholder:text-muted-foreground focus-visible:outline-none sm:text-[13px]"
 			/>
 			{value && (
 				<button
@@ -176,7 +176,7 @@ function DisplayOptions({
 					<Select value={value} onValueChange={onChange}>
 						<SelectTrigger
 							size="sm"
-							className="w-[115px]"
+							className="w-[136px]"
 							aria-labelledby="display-ordering-label"
 						>
 							<SelectValue />
@@ -405,30 +405,31 @@ function FieldPickerInline({
 
 	return (
 		<div className="min-w-[180px] rounded-[10px] bg-popover p-1 shadow-popover">
-			<div className="-mx-1 -mt-1 flex h-9 items-center gap-2 border-b-[0.5px] border-popover-border px-2.5">
-				<SearchIcon size={13} className="shrink-0 text-muted-foreground" />
+			<div className="-mx-1 -mt-1 flex h-9 items-center gap-2 border-b-[0.5px] border-popover-border pr-[11px] pl-[13.5px]">
 				<input
 					ref={inputRef}
 					type="text"
 					value={query}
 					onChange={(e) => setQuery(e.target.value)}
-					placeholder="Filter…"
-					className="min-w-0 flex-1 bg-transparent text-base outline-none placeholder:text-muted-foreground focus-visible:outline-none sm:text-[13px]"
+					placeholder="Filter by…"
+					className="min-w-0 flex-1 bg-transparent text-base font-[450] text-foreground caret-indigo outline-none placeholder:text-muted-foreground focus-visible:outline-none sm:text-[13px]"
 				/>
 			</div>
-			<div className="flex flex-col gap-px pt-1">
+			<div className="flex flex-col pt-1">
 				{filtered.map((def) => (
 					<button
 						key={def.id}
 						type="button"
 						onClick={() => onSelect(def.id)}
 						className={cn(
-							"flex h-7 items-center gap-2 rounded-md px-2 text-left text-[13px] font-[450] text-text-header transition-colors hover:bg-menu-hover hover:text-foreground",
+							"flex h-8 items-center gap-2 rounded-lg pr-2.5 pl-[7.75px] text-left text-[13px] font-[450] text-text-header transition-colors hover:bg-menu-hover hover:text-foreground",
 							def.id === selectedFieldId && "bg-menu-hover text-foreground",
 							activeFieldIds.has(def.id) && "text-muted-foreground",
 						)}
 					>
-						<def.icon size={14} strokeWidth={1.9} />
+						<span className="flex size-4 shrink-0 items-center justify-center text-muted-foreground">
+							<def.icon size={14} strokeWidth={2} />
+						</span>
 						<span>{def.label}</span>
 						{activeFieldIds.has(def.id) && (
 							<CheckIcon
@@ -470,18 +471,17 @@ function ValuePickerInline({
 
 	return (
 		<div className="min-w-[200px] rounded-[10px] bg-popover p-1 shadow-popover">
-			<div className="-mx-1 -mt-1 flex h-9 items-center gap-2 border-b-[0.5px] border-popover-border px-2.5">
-				<SearchIcon size={13} className="shrink-0 text-muted-foreground" />
+			<div className="-mx-1 -mt-1 flex h-9 items-center gap-2 border-b-[0.5px] border-popover-border pr-[11px] pl-[13.5px]">
 				<input
 					ref={inputRef}
 					type="text"
 					value={query}
 					onChange={(e) => setQuery(e.target.value)}
 					placeholder="Search…"
-					className="min-w-0 flex-1 bg-transparent text-base outline-none placeholder:text-muted-foreground focus-visible:outline-none sm:text-[13px]"
+					className="min-w-0 flex-1 bg-transparent text-base font-[450] text-foreground caret-indigo outline-none placeholder:text-muted-foreground focus-visible:outline-none sm:text-[13px]"
 				/>
 			</div>
-			<div className="flex max-h-[240px] flex-col gap-px overflow-y-auto pt-1">
+			<div className="flex max-h-[280px] flex-col overflow-y-auto pt-1">
 				{filtered.map((opt) => {
 					const isSelected = selectedValues.has(opt.value);
 					return (
@@ -489,7 +489,7 @@ function ValuePickerInline({
 							key={opt.value}
 							type="button"
 							onClick={() => onToggle(opt.value)}
-							className="flex h-7 items-center gap-2 rounded-md px-2 text-left text-[13px] font-[450] text-text-header transition-colors hover:bg-menu-hover hover:text-foreground"
+							className="flex h-8 items-center gap-2 rounded-lg pr-2.5 pl-[7.75px] text-left text-[13px] font-[450] text-text-header transition-colors hover:bg-menu-hover hover:text-foreground"
 						>
 							<span
 								className={cn(
@@ -542,18 +542,17 @@ function ValuePicker({
 
 	return (
 		<DropdownPanel onClose={onClose} anchorRef={anchorRef}>
-			<div className="-mx-1 -mt-1 flex h-9 items-center gap-2 border-b-[0.5px] border-popover-border px-2.5">
-				<SearchIcon size={13} className="shrink-0 text-muted-foreground" />
+			<div className="-mx-1 -mt-1 flex h-9 items-center gap-2 border-b-[0.5px] border-popover-border pr-[11px] pl-[13.5px]">
 				<input
 					ref={inputRef}
 					type="text"
 					value={query}
 					onChange={(e) => setQuery(e.target.value)}
 					placeholder="Search…"
-					className="min-w-0 flex-1 bg-transparent text-base outline-none placeholder:text-muted-foreground focus-visible:outline-none sm:text-[13px]"
+					className="min-w-0 flex-1 bg-transparent text-base font-[450] text-foreground caret-indigo outline-none placeholder:text-muted-foreground focus-visible:outline-none sm:text-[13px]"
 				/>
 			</div>
-			<div className="flex max-h-[240px] flex-col gap-px overflow-y-auto pt-1">
+			<div className="flex max-h-[280px] flex-col overflow-y-auto pt-1">
 				{filtered.map((opt) => {
 					const isSelected = selectedValues.has(opt.value);
 					return (
@@ -561,7 +560,7 @@ function ValuePicker({
 							key={opt.value}
 							type="button"
 							onClick={() => onToggle(opt.value)}
-							className="flex h-7 items-center gap-2 rounded-md px-2 text-left text-[13px] font-[450] text-text-header transition-colors hover:bg-menu-hover hover:text-foreground"
+							className="flex h-8 items-center gap-2 rounded-lg pr-2.5 pl-[7.75px] text-left text-[13px] font-[450] text-text-header transition-colors hover:bg-menu-hover hover:text-foreground"
 						>
 							<span
 								className={cn(

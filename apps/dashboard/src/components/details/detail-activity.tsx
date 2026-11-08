@@ -1,6 +1,6 @@
 import {
+	ArrowUpIcon,
 	ChevronDownIcon,
-	CommentIcon,
 	GitPullRequestClosedIcon,
 	GitPullRequestIcon,
 	IssueClosedCompletedIcon,
@@ -248,13 +248,13 @@ export function DetailCommentBox({
 	};
 
 	return (
-		<div className="flex flex-col gap-2">
+		<div className="-mx-3 flex flex-col">
 			<MarkdownEditor
 				ref={editorRef}
 				scrollAnchorRef={commentActionsRef}
 				value={value}
 				onChange={setValue}
-				placeholder="Leave a comment..."
+				placeholder="Leave a comment…"
 				compact
 				media={mediaUpload}
 				onPaste={onMediaPaste}
@@ -263,112 +263,112 @@ export function DetailCommentBox({
 					onActivate: () => setMentionActivated(true),
 					isLoading: collaboratorsQuery.isLoading && mentionActivated,
 				}}
-			/>
-			<div
-				ref={commentActionsRef}
-				className="flex items-center justify-end gap-2 pb-3"
-			>
-				{issueState &&
-					(issueState === "open" ? (
-						<DropdownMenu>
-							<DropdownMenuTrigger asChild>
+				footer={
+					<div ref={commentActionsRef} className="flex items-center gap-2">
+						{issueState &&
+							(issueState === "open" ? (
+								<DropdownMenu>
+									<DropdownMenuTrigger asChild>
+										<button
+											type="button"
+											disabled={isTogglingIssueState}
+											className="flex h-7 items-center gap-1.5 rounded-full bg-button px-2.5 text-xs font-medium text-text-header shadow-button transition-colors hover:bg-button-hover hover:text-foreground disabled:opacity-40"
+										>
+											{isTogglingIssueState ? (
+												<Spinner size={12} />
+											) : (
+												<>
+													<IssuesIcon size={12} strokeWidth={2} />
+													<span>Close issue as</span>
+													<ChevronDownIcon
+														size={12}
+														strokeWidth={2}
+														className="opacity-70"
+													/>
+												</>
+											)}
+										</button>
+									</DropdownMenuTrigger>
+									<DropdownMenuContent align="end" className="min-w-[12rem]">
+										<DropdownMenuItem
+											disabled={isTogglingIssueState}
+											className="text-merged focus:bg-pill-merged focus:text-merged data-[highlighted]:bg-pill-merged data-[highlighted]:text-merged"
+											onClick={() =>
+												void runIssueStateChange("closed", "completed")
+											}
+										>
+											<IssueClosedCompletedIcon
+												className="size-4 shrink-0 text-merged"
+												size={16}
+												strokeWidth={2}
+											/>
+											Close as completed
+										</DropdownMenuItem>
+										<DropdownMenuItem
+											disabled={isTogglingIssueState}
+											className="text-muted-foreground focus:bg-muted focus:text-muted-foreground data-[highlighted]:bg-muted data-[highlighted]:text-muted-foreground"
+											onClick={() =>
+												void runIssueStateChange("closed", "not_planned")
+											}
+										>
+											<IssueClosedNotPlannedIcon
+												className="size-4 shrink-0 text-muted-foreground"
+												size={16}
+												strokeWidth={2}
+											/>
+											Close as not planned
+										</DropdownMenuItem>
+									</DropdownMenuContent>
+								</DropdownMenu>
+							) : (
 								<button
 									type="button"
 									disabled={isTogglingIssueState}
-									className="flex items-center gap-1.5 rounded-lg border-[0.5px] bg-secondary px-3 py-1.5 text-xs font-medium text-secondary-foreground transition-opacity hover:bg-secondary/80 disabled:opacity-40"
+									onClick={() => void runIssueStateChange("open")}
+									className="flex h-7 items-center gap-1.5 rounded-full bg-button px-2.5 text-xs font-medium text-text-header shadow-button transition-colors hover:bg-button-hover hover:text-foreground disabled:opacity-40"
 								>
 									{isTogglingIssueState ? (
 										<Spinner size={12} />
 									) : (
-										<>
-											<IssuesIcon size={12} strokeWidth={2} />
-											<span>Close issue as</span>
-											<ChevronDownIcon
-												size={12}
-												strokeWidth={2}
-												className="opacity-70"
-											/>
-										</>
+										<IssuesIcon size={12} strokeWidth={2} />
 									)}
+									Re-open issue
 								</button>
-							</DropdownMenuTrigger>
-							<DropdownMenuContent align="end" className="min-w-[12rem]">
-								<DropdownMenuItem
-									disabled={isTogglingIssueState}
-									className="text-merged focus:bg-pill-merged focus:text-merged data-[highlighted]:bg-pill-merged data-[highlighted]:text-merged"
-									onClick={() =>
-										void runIssueStateChange("closed", "completed")
-									}
-								>
-									<IssueClosedCompletedIcon
-										className="size-4 shrink-0 text-merged"
-										size={16}
-										strokeWidth={2}
-									/>
-									Close as completed
-								</DropdownMenuItem>
-								<DropdownMenuItem
-									disabled={isTogglingIssueState}
-									className="text-muted-foreground focus:bg-muted focus:text-muted-foreground data-[highlighted]:bg-muted data-[highlighted]:text-muted-foreground"
-									onClick={() =>
-										void runIssueStateChange("closed", "not_planned")
-									}
-								>
-									<IssueClosedNotPlannedIcon
-										className="size-4 shrink-0 text-muted-foreground"
-										size={16}
-										strokeWidth={2}
-									/>
-									Close as not planned
-								</DropdownMenuItem>
-							</DropdownMenuContent>
-						</DropdownMenu>
-					) : (
+							))}
+						{pullState && (
+							<button
+								type="button"
+								disabled={isTogglingState || hasPendingUploads}
+								onClick={handleTogglePullState}
+								className="flex h-7 items-center gap-1.5 rounded-full bg-button px-2.5 text-xs font-medium text-text-header shadow-button transition-colors hover:bg-button-hover hover:text-foreground disabled:opacity-40"
+							>
+								{isTogglingState ? (
+									<Spinner size={12} />
+								) : pullState === "open" ? (
+									<GitPullRequestClosedIcon size={12} strokeWidth={2} />
+								) : (
+									<GitPullRequestIcon size={12} strokeWidth={2} />
+								)}
+								{pullState === "open" ? "Close PR" : "Re-open PR"}
+							</button>
+						)}
 						<button
 							type="button"
-							disabled={isTogglingIssueState}
-							onClick={() => void runIssueStateChange("open")}
-							className="flex items-center gap-1.5 rounded-lg border-[0.5px] bg-secondary px-3 py-1.5 text-xs font-medium text-secondary-foreground transition-opacity hover:bg-secondary/80 disabled:opacity-40"
+							aria-label="Send comment"
+							title="Send comment"
+							disabled={!value.trim() || isSending || hasPendingUploads}
+							onClick={handleSend}
+							className="flex size-7 items-center justify-center rounded-full bg-send text-text-strong shadow-send transition-opacity hover:text-foreground disabled:opacity-40"
 						>
-							{isTogglingIssueState ? (
+							{isSending ? (
 								<Spinner size={12} />
 							) : (
-								<IssuesIcon size={12} strokeWidth={2} />
+								<ArrowUpIcon size={14} strokeWidth={2} />
 							)}
-							Re-open issue
 						</button>
-					))}
-				{pullState && (
-					<button
-						type="button"
-						disabled={isTogglingState || hasPendingUploads}
-						onClick={handleTogglePullState}
-						className="flex items-center gap-1.5 rounded-lg border-[0.5px] bg-secondary px-3 py-1.5 text-xs font-medium text-secondary-foreground transition-opacity hover:bg-secondary/80 disabled:opacity-40"
-					>
-						{isTogglingState ? (
-							<Spinner size={12} />
-						) : pullState === "open" ? (
-							<GitPullRequestClosedIcon size={12} strokeWidth={2} />
-						) : (
-							<GitPullRequestIcon size={12} strokeWidth={2} />
-						)}
-						{pullState === "open" ? "Close PR" : "Re-open PR"}
-					</button>
-				)}
-				<button
-					type="button"
-					disabled={!value.trim() || isSending || hasPendingUploads}
-					onClick={handleSend}
-					className="flex items-center gap-1.5 rounded-lg bg-foreground px-3 py-1.5 text-xs font-medium text-background transition-opacity disabled:opacity-40"
-				>
-					{isSending ? (
-						<Spinner size={12} />
-					) : (
-						<CommentIcon size={12} strokeWidth={2} />
-					)}
-					Send
-				</button>
-			</div>
+					</div>
+				}
+			/>
 		</div>
 	);
 }

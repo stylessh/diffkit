@@ -39,7 +39,7 @@ export function PullStackList({
 								"flex min-w-0 items-center gap-2 rounded-md px-2 py-1.5 transition-colors",
 								isCurrent
 									? "bg-surface-2 font-medium text-foreground"
-									: "text-muted-foreground hover:bg-surface-1 hover:text-foreground",
+									: "text-muted-foreground hover:bg-ghost-hover hover:text-foreground",
 							)}
 						>
 							<Icon

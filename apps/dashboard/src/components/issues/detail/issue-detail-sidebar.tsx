@@ -1,4 +1,10 @@
 import {
+	PanelGoButton,
+	PanelRow,
+	PanelSection,
+} from "@diffkit/ui/components/detail-layout";
+import { Link } from "@tanstack/react-router";
+import {
 	DetailParticipantAvatars,
 	DetailSidebar,
 	DetailSidebarRow,
@@ -30,24 +36,31 @@ export function IssueDetailSidebar({
 }) {
 	return (
 		<DetailSidebar>
-			<DetailSidebarSection title="Assignees">
+			<PanelSection label="Assignees">
 				{issue.assignees.length > 0 ? (
-					<div className="flex flex-col gap-2">
-						{issue.assignees.map((assignee) => (
-							<div key={assignee.login} className="flex items-center gap-2">
+					issue.assignees.map((assignee) => (
+						<PanelRow
+							key={assignee.login}
+							icon={
 								<img
 									src={assignee.avatarUrl}
-									alt={assignee.login}
-									className="size-5 rounded-full border-[0.5px] border-border"
+									alt=""
+									className="size-3.5 rounded-full ring-[0.5px] ring-chip-border"
 								/>
-								<span className="text-sm">{assignee.login}</span>
-							</div>
-						))}
-					</div>
+							}
+							go={
+								<PanelGoButton asChild aria-label={`Open ${assignee.login}`}>
+									<Link to="/$owner" params={{ owner: assignee.login }} />
+								</PanelGoButton>
+							}
+						>
+							{assignee.login}
+						</PanelRow>
+					))
 				) : (
-					<p className="text-xs text-muted-foreground">No one assigned</p>
+					<PanelRow muted>No one assigned</PanelRow>
 				)}
-			</DetailSidebarSection>
+			</PanelSection>
 
 			<LabelsSection
 				currentLabels={issue.labels}
@@ -67,22 +80,20 @@ export function IssueDetailSidebar({
 			</DetailSidebarSection>
 
 			{issue.milestone && (
-				<DetailSidebarSection title="Milestone">
-					<div className="flex flex-col gap-1 text-xs">
-						<span className="font-medium text-foreground">
-							{issue.milestone.title}
-						</span>
-						{issue.milestone.dueOn && (
-							<span className="text-muted-foreground">
-								Due {formatRelativeTime(issue.milestone.dueOn)}
+				<PanelSection label="Milestone">
+					<PanelRow>
+						{issue.milestone.title}
+						{issue.milestone.dueOn ? (
+							<span className="font-[450] text-muted-foreground">
+								due {formatRelativeTime(issue.milestone.dueOn)}
 							</span>
-						)}
-					</div>
-				</DetailSidebarSection>
+						) : null}
+					</PanelRow>
+				</PanelSection>
 			)}
 
 			<DetailSidebarSection title="Details">
-				<div className="flex flex-col gap-2 text-xs">
+				<div className="flex flex-col gap-1">
 					<DetailSidebarRow label="Created">
 						{formatRelativeTime(issue.createdAt)}
 					</DetailSidebarRow>

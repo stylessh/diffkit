@@ -387,7 +387,7 @@ function NewIssueLabelsPicker({
 					<PopoverTrigger asChild>
 						<button
 							type="button"
-							className="flex size-5 items-center justify-center rounded text-muted-foreground transition-colors hover:bg-surface-2 hover:text-foreground"
+							className="flex size-5 items-center justify-center rounded text-muted-foreground transition-colors hover:bg-ghost-hover hover:text-foreground"
 						>
 							<PlusSignIcon size={14} strokeWidth={2} />
 						</button>
@@ -425,7 +425,7 @@ function NewIssueLabelsPicker({
 											data-index={i}
 											onClick={() => onToggleLabel(label)}
 											onMouseEnter={() => setFocusedIndex(i)}
-											className={`flex w-full items-center gap-2 px-3 py-1.5 text-left text-sm transition-colors hover:bg-surface-1 ${focusedIndex === i ? "bg-surface-1" : ""}`}
+											className={`flex w-full items-center gap-2 px-3 py-1.5 text-left text-sm transition-colors hover:bg-ghost-hover ${focusedIndex === i ? "bg-surface-1" : ""}`}
 										>
 											<span
 												className="size-3 shrink-0 rounded-full"
@@ -578,7 +578,7 @@ function AssigneesSection({
 							type="button"
 							onMouseEnter={prefetchCollaborators}
 							onFocus={prefetchCollaborators}
-							className="flex size-5 items-center justify-center rounded text-muted-foreground transition-colors hover:bg-surface-2 hover:text-foreground"
+							className="flex size-5 items-center justify-center rounded text-muted-foreground transition-colors hover:bg-ghost-hover hover:text-foreground"
 						>
 							<PlusSignIcon size={14} strokeWidth={2} />
 						</button>
@@ -616,7 +616,7 @@ function AssigneesSection({
 											data-index={i}
 											onClick={() => onToggleAssignee(collaborator)}
 											onMouseEnter={() => setFocusedIndex(i)}
-											className={`flex w-full items-center gap-2 px-3 py-1.5 text-left text-sm transition-colors hover:bg-surface-1 ${focusedIndex === i ? "bg-surface-1" : ""}`}
+											className={`flex w-full items-center gap-2 px-3 py-1.5 text-left text-sm transition-colors hover:bg-ghost-hover ${focusedIndex === i ? "bg-surface-1" : ""}`}
 										>
 											<img
 												src={collaborator.avatarUrl}

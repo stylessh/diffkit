@@ -41,6 +41,10 @@ export function DetailSidebarSection({
 	);
 }
 
+/**
+ * A dated or counted property in the panel, as Linear's Properties rows read:
+ * a 14px muted icon, then "Created 3h ago" on one 28px line.
+ */
 export function DetailSidebarRow({
 	icon: Icon,
 	label,
@@ -51,12 +55,14 @@ export function DetailSidebarRow({
 	children: React.ReactNode;
 }) {
 	return (
-		<div className="flex min-h-7 items-center justify-between gap-4 text-[13px]">
-			<span className="flex items-center gap-2 font-[450] text-muted-foreground">
-				{Icon ? <Icon size={14} strokeWidth={2} /> : null}
-				{label}
-			</span>
-			<span className="font-medium tabular-nums text-text-header">
+		<div className="flex min-h-7 items-center gap-2 text-[13px] font-medium">
+			{Icon ? (
+				<span className="flex size-3.5 shrink-0 items-center justify-center text-muted-foreground">
+					<Icon size={14} strokeWidth={2} />
+				</span>
+			) : null}
+			<span className="font-[450] text-muted-foreground">{label}</span>
+			<span className="min-w-0 truncate tabular-nums text-text-header">
 				{children}
 			</span>
 		</div>

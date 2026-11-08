@@ -71,6 +71,8 @@ type MarkdownEditorProps = {
 	media?: MarkdownEditorMediaUpload;
 	/** Scroll into view when typing at end — e.g. ref on the row below the editor (Send / Close PR). */
 	scrollAnchorRef?: React.RefObject<HTMLElement | null>;
+	/** Actions rendered inside the card, under the text (Linear's composer keeps send in the card). */
+	footer?: React.ReactNode;
 };
 
 // ── Mention hook ──────────────────────────────────────────────────
@@ -263,7 +265,7 @@ function CompactWriteSurface({
 			placeholder={placeholder}
 			rows={4}
 			className={cn(
-				"min-h-[5.5rem] max-h-[min(85vh,40rem)] w-full resize-y overflow-y-auto bg-transparent p-3 text-sm outline-none placeholder:text-muted-foreground",
+				"min-h-12 max-h-[min(85vh,40rem)] w-full resize-y overflow-y-auto bg-transparent px-4 py-3 focus:min-h-[5.5rem] group-data-[filled=true]/editor:min-h-[5.5rem] text-[15px] leading-6 font-[450] text-text-strong outline-none placeholder:text-icon-faint focus-visible:outline-none",
 				contentSizing.sizingClassName,
 			)}
 		/>
@@ -287,6 +289,7 @@ export const MarkdownEditor = forwardRef<
 		mentions: mentionConfig,
 		media: mediaUpload,
 		scrollAnchorRef,
+		footer,
 	},
 	ref,
 ) {
@@ -407,16 +410,17 @@ export const MarkdownEditor = forwardRef<
 
 	const rootProps = mediaUpload?.rootProps;
 	const rootClassName = cn(
-		"flex flex-col rounded-lg border-[0.5px] bg-surface-0 overflow-hidden transition-[box-shadow,border-color]",
-		"has-[textarea:focus-visible]:border-ring has-[textarea:focus-visible]:ring-[3px] has-[textarea:focus-visible]:ring-ring/50",
-		mediaUpload?.isDragActive && "ring-2 ring-primary/45 ring-inset",
+		"flex flex-col overflow-hidden rounded-lg bg-card shadow-card transition-[box-shadow]",
+		"has-[textarea:focus-visible]:shadow-[0_0_0_1px_var(--ln-focus),var(--ln-main-shadow)]",
+		mediaUpload?.isDragActive && "ring-1 ring-focus ring-inset",
 		rootProps?.className,
 	);
 
 	return (
 		<div
 			{...(rootProps ?? {})}
-			className={cn(rootClassName, mediaUpload && "relative")}
+			data-filled={value.length > 0 ? "true" : undefined}
+			className={cn("group/editor", rootClassName, mediaUpload && "relative")}
 		>
 			{mediaUpload ? (
 				<input
@@ -426,7 +430,16 @@ export const MarkdownEditor = forwardRef<
 				/>
 			) : null}
 			{/* Tabs + Toolbar */}
-			<div className="flex items-center justify-between border-b-[0.5px] px-2 py-1.5 bg-surface-1">
+			<div
+				className={cn(
+					"items-center justify-between px-2 pt-2",
+					// Compact composers idle as one line, as Linear's do: the
+					// tabs and tools appear once you focus or type.
+					compact
+						? "hidden group-focus-within/editor:flex group-data-[filled=true]/editor:flex"
+						: "flex",
+				)}
+			>
 				<div className="flex items-center gap-0.5">
 					<button
 						type="button"
@@ -435,10 +448,10 @@ export const MarkdownEditor = forwardRef<
 							requestAnimationFrame(() => editorRef.current?.focus());
 						}}
 						className={cn(
-							"rounded-md px-2.5 py-1 text-xs font-medium transition-colors",
+							"flex h-6 items-center rounded-full px-2.5 text-xs font-medium transition-colors",
 							tab === "write"
-								? "bg-surface-2 text-foreground"
-								: "text-muted-foreground hover:bg-surface-2 hover:text-foreground",
+								? "bg-tab-selected text-foreground shadow-tab-selected"
+								: "text-muted-foreground hover:text-foreground",
 						)}
 					>
 						Write
@@ -447,10 +460,10 @@ export const MarkdownEditor = forwardRef<
 						type="button"
 						onClick={() => setTab("preview")}
 						className={cn(
-							"rounded-md px-2.5 py-1 text-xs font-medium transition-colors",
+							"flex h-6 items-center rounded-full px-2.5 text-xs font-medium transition-colors",
 							tab === "preview"
-								? "bg-surface-2 text-foreground"
-								: "text-muted-foreground hover:bg-surface-2 hover:text-foreground",
+								? "bg-tab-selected text-foreground shadow-tab-selected"
+								: "text-muted-foreground hover:text-foreground",
 						)}
 					>
 						Preview
@@ -485,7 +498,7 @@ export const MarkdownEditor = forwardRef<
 						>
 							<path d="M10 4h4M8 20h4M15 4l-6 16" />
 						</MdToolbarButton>
-						<span className="mx-1 h-4 w-px bg-border" />
+						<span aria-hidden className="mx-1 h-3.5 w-px bg-header-rule" />
 						<MdToolbarButton
 							label="Code"
 							shortcut="⌘E"
@@ -517,7 +530,7 @@ export const MarkdownEditor = forwardRef<
 							<path d="M3 21c3 0 7-1 7-8V5c0-1.25-.756-2.017-2-2H4c-1.25 0-2 .75-2 1.972V11c0 1.25.75 2 2 2 1 0 1 0 1 1v1c0 1-1 2-2 2s-1 .008-1 1.031V21z" />
 							<path d="M15 21c3 0 7-1 7-8V5c0-1.25-.757-2.017-2-2h-4c-1.25 0-2 .75-2 1.972V11c0 1.25.75 2 2 2h.75c0 2.25.25 4-2.75 4v3c0 1 0 1 1 1z" />
 						</MdToolbarButton>
-						<span className="mx-1 h-4 w-px bg-border" />
+						<span aria-hidden className="mx-1 h-3.5 w-px bg-header-rule" />
 						<MdToolbarButton
 							label="Unordered list"
 							shortcut="⌘⇧8"
@@ -579,16 +592,28 @@ export const MarkdownEditor = forwardRef<
 					)}
 				</div>
 			) : (
-				<div className={cn("p-4", compact ? "min-h-[120px]" : "min-h-[200px]")}>
+				<div
+					className={cn(
+						"px-4 py-3",
+						compact ? "min-h-[120px]" : "min-h-[200px]",
+					)}
+				>
 					{value ? (
-						<Markdown>{value}</Markdown>
+						<Markdown className="text-[15px] leading-6 text-text-strong">
+							{value}
+						</Markdown>
 					) : (
-						<p className="text-sm italic text-muted-foreground">
+						<p className="text-[13px] text-muted-foreground">
 							Nothing to preview
 						</p>
 					)}
 				</div>
 			)}
+			{footer ? (
+				<div className="flex items-center justify-end gap-2 px-3 pt-1 pb-3">
+					{footer}
+				</div>
+			) : null}
 		</div>
 	);
 });
@@ -636,7 +661,7 @@ function MentionDropdown({
 	return createPortal(
 		<div
 			ref={listRef}
-			className="fixed z-50 max-h-48 min-w-[200px] overflow-y-auto rounded-lg border-[0.5px] bg-surface-0 py-1 shadow-lg"
+			className="fixed z-50 max-h-56 min-w-[206px] overflow-y-auto rounded-xl bg-popover p-1 shadow-popover"
 			style={{ top: position.top, left: position.left }}
 		>
 			{isLoading && candidates.length === 0 && (
@@ -658,20 +683,20 @@ function MentionDropdown({
 						onSelect(candidate);
 					}}
 					className={cn(
-						"flex w-full items-center gap-2 px-3 py-1.5 text-left text-sm transition-colors",
+						"flex h-8 w-full items-center gap-2 rounded-lg pr-2.5 pl-[7.75px] text-left text-[13px] font-[450] transition-colors",
 						index === activeIndex
-							? "bg-surface-2 text-foreground"
-							: "text-muted-foreground hover:bg-surface-1 hover:text-foreground",
+							? "bg-menu-hover text-foreground"
+							: "text-text-header hover:bg-menu-hover hover:text-foreground",
 					)}
 				>
 					{candidate.avatarUrl ? (
 						<img
 							src={candidate.avatarUrl}
 							alt={candidate.label}
-							className="size-4 rounded-full"
+							className="size-4 rounded-full ring-[0.5px] ring-chip-border"
 						/>
 					) : (
-						<div className="size-4 rounded-full bg-surface-2" />
+						<div className="size-4 rounded-full bg-group" />
 					)}
 					<span className="truncate">{candidate.label}</span>
 					{candidate.secondary && (
@@ -708,32 +733,25 @@ function MdToolbarButton({
 					// focus ring on the editor root doesn't flicker.
 					onMouseDown={(e) => e.preventDefault()}
 					onClick={onClick}
-					className="flex size-7 items-center justify-center rounded-md transition-colors hover:bg-surface-1 hover:text-foreground"
+					className="flex size-6 items-center justify-center rounded-md transition-colors hover:bg-ghost-hover hover:text-foreground"
 				>
 					<svg
 						aria-hidden="true"
 						fill="none"
-						height={15}
+						height={14}
 						stroke="currentColor"
 						strokeLinecap="round"
 						strokeLinejoin="round"
 						strokeWidth={2}
 						viewBox="0 0 24 24"
-						width={15}
+						width={14}
 					>
 						{children}
 					</svg>
 				</button>
 			</TooltipTrigger>
-			<TooltipContent>
-				<span className="flex items-center gap-1.5">
-					{label}
-					{shortcut && (
-						<kbd className="rounded bg-foreground/10 px-1 font-mono text-[10px]">
-							{shortcut}
-						</kbd>
-					)}
-				</span>
+			<TooltipContent keys={shortcut ? [...shortcut] : undefined}>
+				{label}
 			</TooltipContent>
 		</Tooltip>
 	);

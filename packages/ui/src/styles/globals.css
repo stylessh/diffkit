@@ -106,6 +106,11 @@
 	--ln-ghost-hover: lch(0 0 0 / 0.05);
 	--ln-menu-hover: lch(0 0 0 / 0.045);
 	--ln-item-hover: lch(0 0 0 / 0.05);
+	/* the round › beside a hovered panel item: fainter than the item's own pill */
+	--ln-go-fill: lch(0 0 0 / 0.03);
+	/* a composer's send button: a filled 24px circle under a hairline ring */
+	--ln-send: lch(100 0 282);
+	--ln-send-ring: lch(0 0 0 / 0.1) 0 0 0 0.5px, lch(0 0 0 / 0.06) 0 0.5px 1px 0;
 
 	/* Overlays */
 	--ln-popover: lch(100 0 282);
@@ -183,6 +188,10 @@
 	--ln-word-added: lch(94.733 9.903 148.136);
 	--ln-word-removed: lch(92.62 9.55 18.428);
 	--ln-line-number: lch(64.64 1.25 282);
+	--ln-number-added: lch(60 64.37 141.95);
+	--ln-number-removed: lch(50 73 29);
+	/* a hunk separator's fill */
+	--ln-gap: lch(95.542 0.067 281.853);
 
 	/* Motion: quick, linear-ish easing for hover, selection and popovers */
 	--ln-duration: 140ms;
@@ -212,6 +221,10 @@
 	--ln-ghost-hover: lch(100 0 0 / 0.06);
 	--ln-menu-hover: lch(100 0 0 / 0.078);
 	--ln-item-hover: lch(100 0 0 / 0.074);
+	--ln-go-fill: lch(100 0 0 / 0.038);
+	--ln-send: lch(13.861 1.139 272);
+	--ln-send-ring:
+		lch(100 0 0 / 0.143) 0 0 0 0.5px, lch(0 0 0 / 0.3) 0 0.5px 1px 1px;
 
 	--ln-popover: lch(12.72 0.85 272);
 	--ln-popover-border: lch(25.68 1.93 272);
@@ -274,6 +287,9 @@
 	--ln-word-added: lch(20.509 17.212 148.731);
 	--ln-word-removed: lch(22.083 22.163 22.026);
 	--ln-line-number: lch(36.975 1.2 272);
+	--ln-number-added: lch(67.2 64.37 141.95);
+	--ln-number-removed: lch(65.2 73 29);
+	--ln-gap: lch(14.256 0.892 271.982);
 }
 
 /* 2. shadcn variables, aliased onto the Linear tokens ----------------------
@@ -407,6 +423,9 @@
 	--color-tab-selected: var(--ln-tab-selected);
 	--color-ghost-hover: var(--ln-ghost-hover);
 	--color-menu-hover: var(--ln-menu-hover);
+	--color-item-hover: var(--ln-item-hover);
+	--color-go-fill: var(--ln-go-fill);
+	--color-send: var(--ln-send);
 	--color-chip: var(--ln-chip);
 	--color-tooltip: var(--ln-tooltip);
 	--color-dialog: var(--ln-dialog);
@@ -462,6 +481,9 @@
 	--color-word-added: var(--ln-word-added);
 	--color-word-removed: var(--ln-word-removed);
 	--color-line-number: var(--ln-line-number);
+	--color-number-added: var(--ln-number-added);
+	--color-number-removed: var(--ln-number-removed);
+	--color-gap: var(--ln-gap);
 	--color-card-border: var(--ln-card-border);
 	--color-main-border: var(--ln-main-border);
 
@@ -477,6 +499,7 @@
 		0 0 0 0.5px var(--ln-comment-card-border), var(--ln-main-shadow);
 	--shadow-popover:
 		0 0 0 0.5px var(--ln-popover-border), var(--ln-popover-shadow);
+	--shadow-send: var(--ln-send-ring);
 	--shadow-tooltip:
 		0 0 0 0.5px var(--ln-tooltip-border), var(--ln-popover-shadow);
 

@@ -1,3 +1,4 @@
+import { Slot, Slottable } from "@radix-ui/react-slot";
 import type * as React from "react";
 
 import { cn } from "../lib/utils";
@@ -68,38 +69,156 @@ function PanelSection({
 }
 
 /**
- * A property in the panel: its 14px icon and its value, 28px tall, 13px
- * medium in the header gray (muted when it states an absence).
+ * The ghost pill a panel value sits in, as Linear's issue panel draws them:
+ * it hugs its content, hangs 6px past the text on both sides and lights on
+ * hover (or while its menu is open). Render a button or a trigger with
+ * `asChild` when clicking it changes the value.
  */
-function PanelRow({
+function PanelPill({
 	className,
 	icon,
 	muted = false,
+	asChild = false,
 	children,
 	...props
 }: React.ComponentProps<"div"> & {
 	icon?: React.ReactNode;
 	muted?: boolean;
+	asChild?: boolean;
 }) {
+	const Comp = asChild ? Slot : "div";
 	return (
-		<div
-			data-slot="panel-row"
+		<Comp
+			data-slot="panel-pill"
 			className={cn(
-				"flex min-h-7 min-w-0 items-center gap-2 text-[13px] font-medium",
+				"-mx-1.5 flex h-7 w-fit max-w-[calc(100%+12px)] min-w-0 items-center gap-2 truncate rounded-full px-1.5 text-left text-[13px] font-medium transition-colors",
+				"group-hover/row:bg-item-hover hover:bg-item-hover aria-expanded:bg-item-hover data-[state=open]:bg-item-hover",
 				muted ? "text-muted-foreground" : "text-text-header",
 				className,
 			)}
 			{...props}
 		>
 			{icon ? (
-				<span className="flex size-3.5 shrink-0 items-center justify-center [&_svg]:size-3.5">
+				<span className="flex size-3.5 shrink-0 items-center justify-center [&_img]:size-3.5 [&_svg]:size-3.5">
 					{icon}
 				</span>
 			) : null}
-			<span className="flex min-w-0 flex-1 items-center gap-1.5 truncate">
+			<Slottable>{children}</Slottable>
+		</Comp>
+	);
+}
+
+/**
+ * A row in a panel section: the pill, then (for values with their own page)
+ * the round › that shows on hover, and anything that sits after it.
+ */
+function PanelRow({
+	className,
+	icon,
+	muted = false,
+	go,
+	after,
+	children,
+	...props
+}: React.ComponentProps<"div"> & {
+	icon?: React.ReactNode;
+	muted?: boolean;
+	/** A `PanelGoButton` that opens the value's own page. */
+	go?: React.ReactNode;
+	after?: React.ReactNode;
+}) {
+	return (
+		<div
+			data-slot="panel-row"
+			className={cn(
+				"group/row flex w-fit max-w-full items-center gap-2.5",
+				className,
+			)}
+			{...props}
+		>
+			<PanelPill icon={icon} muted={muted}>
 				{children}
-			</span>
+			</PanelPill>
+			{go}
+			{after}
 		</div>
+	);
+}
+
+/**
+ * The round › beside a panel item, shown on hover: a 28px circle 4px after
+ * the pill, fainter than the pill, with a 4x7.5 chevron. Pass a link with
+ * `asChild`.
+ */
+function PanelGoButton({
+	className,
+	asChild = false,
+	children,
+	...props
+}: React.ComponentProps<"button"> & { asChild?: boolean }) {
+	const Comp = asChild ? Slot : "button";
+	return (
+		<Comp
+			data-slot="panel-go-button"
+			className={cn(
+				"flex size-7 shrink-0 items-center justify-center rounded-full bg-go-fill text-muted-foreground opacity-0 transition-opacity group-hover/row:opacity-100 hover:bg-ghost-hover hover:text-text-header focus-visible:opacity-100",
+				className,
+			)}
+			{...props}
+		>
+			<Slottable>{children}</Slottable>
+			<svg
+				width="8"
+				height="8"
+				viewBox="0 0 8 8"
+				fill="none"
+				aria-hidden="true"
+			>
+				<path
+					d="M2.6.85 5.4 4 2.6 7.15"
+					stroke="currentColor"
+					strokeWidth="1.25"
+					strokeLinecap="round"
+					strokeLinejoin="round"
+				/>
+			</svg>
+		</Comp>
+	);
+}
+
+/**
+ * A panel section's +: on a row of its own under the section's items, a
+ * 24px muted round button whose glyph centres on the 14px icon column above.
+ */
+function PanelAddButton({
+	className,
+	...props
+}: React.ComponentProps<"button">) {
+	return (
+		<button
+			type="button"
+			data-slot="panel-add-button"
+			className={cn(
+				"-ml-[5px] flex size-6 shrink-0 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-ghost-hover hover:text-text-header aria-expanded:bg-ghost-hover data-[state=open]:bg-ghost-hover",
+				className,
+			)}
+			{...props}
+		>
+			<svg
+				width="14"
+				height="14"
+				viewBox="0 0 16 16"
+				fill="none"
+				aria-hidden="true"
+			>
+				<path
+					d="M8 3v10M3 8h10"
+					stroke="currentColor"
+					strokeWidth="1.5"
+					strokeLinecap="round"
+				/>
+			</svg>
+		</button>
 	);
 }
 
@@ -165,6 +284,9 @@ export {
 	BranchBadge,
 	DetailLayout,
 	LineCounts,
+	PanelAddButton,
+	PanelGoButton,
+	PanelPill,
 	PanelRow,
 	PanelSection,
 	PropertyRow,

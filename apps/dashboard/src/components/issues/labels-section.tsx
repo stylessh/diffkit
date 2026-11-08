@@ -1,11 +1,16 @@
-import { CheckIcon, CloseIcon, PlusSignIcon, SearchIcon } from "@diffkit/icons";
+import { PlusSignIcon } from "@diffkit/icons";
 import {
-	Popover,
-	PopoverContent,
-	PopoverTrigger,
-} from "@diffkit/ui/components/popover";
+	PanelAddButton,
+	PanelPill,
+	PanelSection,
+} from "@diffkit/ui/components/detail-layout";
+import { MenuRowEnd, menuRowClassName } from "@diffkit/ui/components/menu";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useCallback, useMemo, useRef, useState } from "react";
+import {
+	PanelPicker,
+	PanelPickerEmpty,
+} from "#/components/details/panel-picker";
 import { createRepoLabel, setIssueLabels } from "#/lib/github.functions";
 import {
 	type GitHubQueryScope,
@@ -165,7 +170,7 @@ export function LabelsSection({
 		}
 	};
 
-	const handleKeyDown = (e: React.KeyboardEvent) => {
+	const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
 		if (totalItems === 0) return;
 
 		if (e.key === "ArrowDown") {
@@ -186,145 +191,143 @@ export function LabelsSection({
 			} else if (showCreate) {
 				createAndAssign();
 			}
+		} else if (!search && /^[1-9]$/.test(e.key)) {
+			// As in Linear's pickers, a number toggles the row it labels.
+			const label = filtered[Number(e.key) - 1];
+			if (!label) return;
+			e.preventDefault();
+			toggleLabel(label.name);
 		}
 	};
 
+	const openPicker = () => {
+		prefetchLabels();
+		setPickerOpen(true);
+	};
+
 	return (
-		<section className="mb-7 flex flex-col gap-1.5">
-			<div className="flex h-6 items-center justify-between">
-				<h3 className="text-[13px] font-[450] text-muted-foreground">Labels</h3>
-				<Popover
-					open={pickerOpen}
-					onOpenChange={(open) => {
-						setPickerOpen(open);
-						if (!open) {
-							setSearch("");
-							setFocusedIndex(-1);
-						}
-					}}
-				>
-					<PopoverTrigger asChild>
-						<button
-							type="button"
-							onMouseEnter={prefetchLabels}
-							onFocus={prefetchLabels}
-							className="flex size-5 items-center justify-center rounded text-muted-foreground transition-colors hover:bg-surface-2 hover:text-foreground"
-						>
-							<PlusSignIcon size={14} strokeWidth={2} />
-						</button>
-					</PopoverTrigger>
-					<PopoverContent align="end" className="w-64 p-0">
-						<div className="flex items-center gap-2 border-b-[0.5px] px-3 py-2">
-							<SearchIcon className="size-3.5 shrink-0 text-muted-foreground" />
-							<input
-								value={search}
-								onChange={(e) => {
-									setSearch(e.target.value);
-									setFocusedIndex(-1);
-								}}
-								onKeyDown={handleKeyDown}
-								placeholder="Search labels..."
-								className="w-full bg-transparent text-sm outline-none placeholder:text-muted-foreground"
+		<PanelSection label="Labels">
+			<PanelPicker
+				open={pickerOpen}
+				onOpenChange={(open) => {
+					setPickerOpen(open);
+					if (!open) {
+						setSearch("");
+						setFocusedIndex(-1);
+					}
+				}}
+				search={search}
+				onSearchChange={(value) => {
+					setSearch(value);
+					setFocusedIndex(-1);
+				}}
+				onKeyDown={handleKeyDown}
+				placeholder="Change labels…"
+				listRef={listRef}
+				anchor={
+					currentLabels.length > 0 ? (
+						<div className="flex flex-wrap items-center gap-1.5">
+							{currentLabels.map((label) => (
+								<button
+									key={label.name}
+									type="button"
+									aria-haspopup="listbox"
+									aria-expanded={pickerOpen}
+									onMouseEnter={prefetchLabels}
+									onClick={openPicker}
+									className="inline-flex h-6 max-w-full items-center gap-1.5 rounded-full bg-chip px-2 text-xs font-[450] text-text-header shadow-chip transition-colors hover:bg-row-hover"
+								>
+									<span
+										aria-hidden
+										className="size-2 shrink-0 rounded-full"
+										style={{ backgroundColor: `#${label.color}` }}
+									/>
+									<span className="truncate">{label.name}</span>
+								</button>
+							))}
+							<PanelAddButton
+								aria-label="Add label"
+								aria-haspopup="listbox"
+								aria-expanded={pickerOpen}
+								onMouseEnter={prefetchLabels}
+								onClick={openPicker}
+								className="ml-0"
 							/>
 						</div>
-						<div ref={listRef} className="max-h-64 overflow-y-auto py-1">
-							{repoLabelsQuery.isLoading ? (
-								<p className="px-3 py-4 text-center text-xs text-muted-foreground">
-									Loading…
-								</p>
-							) : (
-								<>
-									{filtered.map((label, i) => {
-										const isSelected = activeNames.has(label.name);
-										return (
-											<button
-												key={label.name}
-												type="button"
-												data-index={i}
-												disabled={pending}
-												onClick={() => toggleLabel(label.name)}
-												onMouseEnter={() => setFocusedIndex(i)}
-												className={`flex w-full items-center gap-2 px-3 py-1.5 text-left text-sm transition-colors hover:bg-surface-1 disabled:opacity-50 ${focusedIndex === i ? "bg-surface-1" : ""}`}
-											>
-												<span
-													className="size-3 shrink-0 rounded-full"
-													style={{
-														backgroundColor: `#${label.color}`,
-													}}
-												/>
-												<span className="min-w-0 flex-1 truncate">
-													{label.name}
-												</span>
-												{isSelected && (
-													<CheckIcon
-														size={14}
-														strokeWidth={2}
-														className="shrink-0 text-success"
-													/>
-												)}
-											</button>
-										);
-									})}
-									{showCreate && (
-										<button
-											type="button"
-											data-index={filtered.length}
-											disabled={pending}
-											onClick={createAndAssign}
-											onMouseEnter={() => setFocusedIndex(filtered.length)}
-											className={`flex w-full items-center gap-2 px-3 py-1.5 text-left text-sm transition-colors hover:bg-surface-1 disabled:opacity-50 ${focusedIndex === filtered.length ? "bg-surface-1" : ""}`}
-										>
-											<PlusSignIcon
-												size={13}
-												strokeWidth={2}
-												className="shrink-0 text-muted-foreground"
-											/>
-											<span className="min-w-0 flex-1 truncate">
-												Create{" "}
-												<span className="font-medium">"{search.trim()}"</span>
-											</span>
-										</button>
-									)}
-									{filtered.length === 0 && !search.trim() && (
-										<p className="px-3 py-4 text-center text-xs text-muted-foreground">
-											No labels found
-										</p>
-									)}
-								</>
-							)}
-						</div>
-					</PopoverContent>
-				</Popover>
-			</div>
-			{currentLabels.length > 0 ? (
-				<div className="flex flex-wrap gap-1.5">
-					{currentLabels.map((label) => (
-						<span
-							key={label.name}
-							className="group/label label-pill relative rounded-full px-2.5 py-0.5 text-xs font-medium"
-							style={
-								{
-									"--label-color": `#${label.color}`,
-								} as React.CSSProperties
-							}
-						>
-							{label.name}
+					) : (
+						<PanelPill asChild muted>
 							<button
 								type="button"
-								disabled={pending}
-								onClick={() => toggleLabel(label.name)}
-								className="label-pill-close-gradient absolute inset-y-0 right-0 flex items-center overflow-hidden rounded-r-full pl-5 pr-1.5 opacity-0 transition-opacity group-hover/label:opacity-100 disabled:opacity-50"
+								aria-haspopup="listbox"
+								aria-expanded={pickerOpen}
+								onMouseEnter={prefetchLabels}
+								onClick={openPicker}
 							>
-								<span className="relative flex size-4 items-center justify-center rounded-full hover:bg-black/15">
-									<CloseIcon size={10} strokeWidth={2.5} />
+								Add labels
+							</button>
+						</PanelPill>
+					)
+				}
+			>
+				{repoLabelsQuery.isLoading ? (
+					<PanelPickerEmpty>Loading…</PanelPickerEmpty>
+				) : (
+					<>
+						{filtered.map((label, i) => {
+							const isSelected = activeNames.has(label.name);
+							return (
+								<button
+									key={label.name}
+									type="button"
+									role="option"
+									aria-selected={isSelected}
+									data-index={i}
+									data-active={focusedIndex === i}
+									disabled={pending}
+									onClick={() => toggleLabel(label.name)}
+									onMouseEnter={() => setFocusedIndex(i)}
+									className={menuRowClassName}
+								>
+									<span className="flex size-4 shrink-0 items-center justify-center">
+										<span
+											aria-hidden
+											className="size-2.5 rounded-full"
+											style={{ backgroundColor: `#${label.color}` }}
+										/>
+									</span>
+									<span className="truncate">{label.name}</span>
+									<MenuRowEnd
+										checked={isSelected}
+										shortcut={!search && i < 9 ? i + 1 : undefined}
+									/>
+								</button>
+							);
+						})}
+						{showCreate && (
+							<button
+								type="button"
+								data-index={filtered.length}
+								data-active={focusedIndex === filtered.length}
+								disabled={pending}
+								onClick={createAndAssign}
+								onMouseEnter={() => setFocusedIndex(filtered.length)}
+								className={menuRowClassName}
+							>
+								<span className="flex size-4 shrink-0 items-center justify-center text-muted-foreground">
+									<PlusSignIcon size={14} strokeWidth={2} />
+								</span>
+								<span className="truncate">
+									Create label{" "}
+									<span className="text-foreground">“{search.trim()}”</span>
 								</span>
 							</button>
-						</span>
-					))}
-				</div>
-			) : (
-				<p className="text-xs text-muted-foreground">No labels</p>
-			)}
-		</section>
+						)}
+						{filtered.length === 0 && !search.trim() && (
+							<PanelPickerEmpty>No labels in this repository</PanelPickerEmpty>
+						)}
+					</>
+				)}
+			</PanelPicker>
+		</PanelSection>
 	);
 }

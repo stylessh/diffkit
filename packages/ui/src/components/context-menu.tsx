@@ -66,7 +66,7 @@ function ContextMenuSubTrigger({
 			data-slot="context-menu-sub-trigger"
 			data-inset={inset}
 			className={cn(
-				"focus:bg-menu-hover focus:text-foreground text-text-header data-[state=open]:bg-menu-hover data-[state=open]:text-foreground flex cursor-default items-center h-8 rounded-lg px-2 text-[13px] font-[450] outline-hidden select-none data-[inset]:pl-8 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
+				"focus:bg-menu-hover focus:text-foreground text-text-header data-[state=open]:bg-menu-hover data-[state=open]:text-foreground flex cursor-default items-center h-8 rounded-lg pr-2.5 pl-[7.75px] text-[13px] font-[450] outline-hidden select-none data-[inset]:pl-8 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
 				className,
 			)}
 			{...props}
@@ -126,7 +126,7 @@ function ContextMenuItem({
 			data-inset={inset}
 			data-variant={variant}
 			className={cn(
-				"focus:bg-menu-hover focus:text-foreground text-text-header data-[variant=destructive]:text-destructive data-[variant=destructive]:focus:bg-destructive/10 dark:data-[variant=destructive]:focus:bg-destructive/20 data-[variant=destructive]:focus:text-destructive data-[variant=destructive]:*:[svg]:!text-destructive relative flex cursor-default items-center gap-2 h-8 rounded-lg px-2 text-[13px] font-[450] outline-hidden select-none data-[disabled]:pointer-events-none data-[disabled]:opacity-50 data-[inset]:pl-8 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
+				"focus:bg-menu-hover focus:text-foreground text-text-header data-[variant=destructive]:text-destructive data-[variant=destructive]:focus:bg-destructive/10 dark:data-[variant=destructive]:focus:bg-destructive/20 data-[variant=destructive]:focus:text-destructive data-[variant=destructive]:*:[svg]:!text-destructive relative flex cursor-default items-center gap-2 h-8 rounded-lg pr-2.5 pl-[7.75px] text-[13px] font-[450] outline-hidden select-none data-[disabled]:pointer-events-none data-[disabled]:opacity-50 data-[inset]:pl-8 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
 				className,
 			)}
 			{...props}

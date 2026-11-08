@@ -2,6 +2,7 @@ import {
 	AlertCircleIcon,
 	CheckIcon,
 	ChevronDownIcon,
+	ChevronRightIcon,
 	ChevronUpIcon,
 	CircleIcon,
 	CommentIcon,
@@ -35,6 +36,7 @@ import {
 } from "@diffkit/ui/components/dropdown-menu";
 import { Markdown } from "@diffkit/ui/components/markdown";
 import { MarkdownEditor } from "@diffkit/ui/components/markdown-editor";
+import { MenuCheck } from "@diffkit/ui/components/menu";
 import { Skeleton } from "@diffkit/ui/components/skeleton";
 import { toast } from "@diffkit/ui/components/sonner";
 import { Spinner } from "@diffkit/ui/components/spinner";
@@ -512,7 +514,7 @@ function MergeStatusCard({
 	});
 
 	return (
-		<div className="flex flex-col overflow-hidden rounded-lg border-[0.5px]">
+		<div className="-mx-3 flex flex-col overflow-hidden rounded-lg bg-card shadow-card">
 			{/* Reviews section */}
 			<ReviewsSection
 				approvedReviews={approvedReviews}
@@ -642,32 +644,35 @@ function ReviewsSection({
 			<CollapsibleTrigger asChild>
 				<button
 					type="button"
-					className="flex w-full items-start gap-3 border-b-[0.5px] border-border/50 px-4 py-3 text-left transition-colors hover:bg-surface-1/50"
+					className="flex w-full items-start gap-3 border-b-[0.5px] border-card-border px-4 py-3 text-left transition-colors hover:bg-item-hover"
 				>
 					<div className="mt-0.5 shrink-0">
 						<StatusIcon status={reviewStatus} />
 					</div>
 					<div className="flex min-w-0 flex-1 flex-col gap-0.5">
-						<p className="text-sm font-medium">{title}</p>
+						<p className="text-[13px] font-medium text-foreground">{title}</p>
 						<p className="text-xs text-muted-foreground">{description}</p>
 					</div>
 					<div className="mt-0.5 shrink-0 text-muted-foreground">
-						{open ? (
-							<ChevronUpIcon size={16} strokeWidth={2} />
-						) : (
-							<ChevronDownIcon size={16} strokeWidth={2} />
-						)}
+						<ChevronRightIcon
+							size={14}
+							strokeWidth={2}
+							className={cn(
+								"transition-transform duration-150",
+								open && "rotate-90",
+							)}
+						/>
 					</div>
 				</button>
 			</CollapsibleTrigger>
 			<CollapsibleContent>
 				{allReviews.length === 0 && (
-					<div className="border-b-[0.5px] border-border/50 bg-surface-1/50 px-4 py-3 pl-11">
+					<div className="border-b-[0.5px] border-card-border px-4 py-3 pl-11">
 						<p className="text-xs text-muted-foreground">No reviewers added</p>
 					</div>
 				)}
 				{allReviews.length > 0 && (
-					<div className="flex flex-col border-b-[0.5px] border-border/50 bg-surface-1/50 py-1">
+					<div className="flex flex-col border-b-[0.5px] border-card-border py-1">
 						{allReviews.map((review) => (
 							<div
 								key={review.id}
@@ -702,7 +707,7 @@ function ReviewsSection({
 									<DropdownMenuTrigger asChild>
 										<button
 											type="button"
-											className="flex size-5 shrink-0 items-center justify-center rounded text-muted-foreground transition-colors hover:bg-surface-2 hover:text-foreground"
+											className="flex size-5 shrink-0 items-center justify-center rounded text-muted-foreground transition-colors hover:bg-ghost-hover hover:text-foreground"
 										>
 											<MoreHorizontalIcon size={14} strokeWidth={2} />
 										</button>
@@ -957,26 +962,29 @@ function ChecksSection({
 			<CollapsibleTrigger asChild>
 				<button
 					type="button"
-					className="flex w-full items-start gap-3 border-b-[0.5px] border-border/50 px-4 py-3 text-left transition-colors hover:bg-surface-1/50"
+					className="flex w-full items-start gap-3 border-b-[0.5px] border-card-border px-4 py-3 text-left transition-colors hover:bg-item-hover"
 				>
 					<div className="mt-0.5 shrink-0">
 						<StatusIcon status={checkStatus} />
 					</div>
 					<div className="flex min-w-0 flex-1 flex-col gap-0.5">
-						<p className="text-sm font-medium">{title}</p>
+						<p className="text-[13px] font-medium text-foreground">{title}</p>
 						<p className="text-xs text-muted-foreground">{description}</p>
 					</div>
 					<div className="mt-0.5 shrink-0 text-muted-foreground">
-						{open ? (
-							<ChevronUpIcon size={16} strokeWidth={2} />
-						) : (
-							<ChevronDownIcon size={16} strokeWidth={2} />
-						)}
+						<ChevronRightIcon
+							size={14}
+							strokeWidth={2}
+							className={cn(
+								"transition-transform duration-150",
+								open && "rotate-90",
+							)}
+						/>
 					</div>
 				</button>
 			</CollapsibleTrigger>
 			{pendingWorkflowApprovals.length > 0 && (
-				<div className="flex items-start gap-3 border-b-[0.5px] border-border/50 bg-surface-1/50 px-4 py-3">
+				<div className="flex items-start gap-3 border-b-[0.5px] border-card-border px-4 py-3">
 					<div className="mt-0.5 shrink-0 text-pill-warning-text">
 						<AlertCircleIcon size={16} strokeWidth={2} />
 					</div>
@@ -1003,7 +1011,7 @@ function ChecksSection({
 				</div>
 			)}
 			<CollapsibleContent>
-				<div className="flex max-h-64 flex-col overflow-y-auto border-b-[0.5px] border-border/50 bg-surface-1/50">
+				<div className="flex max-h-64 flex-col overflow-y-auto border-b-[0.5px] border-card-border bg-surface-1/50">
 					{checkRunGroups.map(({ key, label }) => {
 						const runs = groupedRuns[key];
 						if (runs.length === 0) return null;
@@ -1107,7 +1115,7 @@ function ChecksSection({
 					})}
 				</div>
 				{(hasCheckFailures || checks.total > 0) && (
-					<div className="flex items-center gap-2 border-b-[0.5px] border-border/50 bg-surface-1/50 px-4 py-1.5 pl-11">
+					<div className="flex items-center gap-2 border-b-[0.5px] border-card-border px-4 py-1.5 pl-11">
 						{hasCheckFailures && (
 							<Button
 								variant="ghost"
@@ -1176,7 +1184,7 @@ function ConflictsSection({
 			<CollapsibleTrigger asChild>
 				<button
 					type="button"
-					className="flex w-full items-start gap-3 border-b-[0.5px] border-border/50 px-4 py-3 text-left transition-colors hover:bg-surface-1/50"
+					className="flex w-full items-start gap-3 border-b-[0.5px] border-card-border px-4 py-3 text-left transition-colors hover:bg-item-hover"
 				>
 					<div className="mt-0.5 shrink-0">
 						<StatusIcon status="error" />
@@ -1191,16 +1199,19 @@ function ConflictsSection({
 						</p>
 					</div>
 					<div className="mt-0.5 shrink-0 text-muted-foreground">
-						{open ? (
-							<ChevronUpIcon size={16} strokeWidth={2} />
-						) : (
-							<ChevronDownIcon size={16} strokeWidth={2} />
-						)}
+						<ChevronRightIcon
+							size={14}
+							strokeWidth={2}
+							className={cn(
+								"transition-transform duration-150",
+								open && "rotate-90",
+							)}
+						/>
 					</div>
 				</button>
 			</CollapsibleTrigger>
 			<CollapsibleContent>
-				<div className="flex max-h-64 flex-col overflow-y-auto border-b-[0.5px] border-border/50 bg-surface-1/50 py-1">
+				<div className="flex max-h-64 flex-col overflow-y-auto border-b-[0.5px] border-card-border py-1">
 					{conflictingFiles.map((file) => (
 						<div
 							key={file}
@@ -1249,9 +1260,9 @@ function UpdateBranchButton({
 	};
 
 	return (
-		<div className="flex overflow-hidden rounded-md">
+		<div className="flex overflow-hidden rounded-md shadow-button">
 			<Button
-				variant="secondary"
+				variant="outline"
 				size="xs"
 				disabled={isUpdating}
 				className="rounded-r-none"
@@ -1271,7 +1282,7 @@ function UpdateBranchButton({
 			<DropdownMenu>
 				<DropdownMenuTrigger asChild>
 					<Button
-						variant="secondary"
+						variant="outline"
 						size="xs"
 						disabled={isUpdating}
 						className="rounded-l-none border-l-[0.5px] border-l-secondary-foreground/10 px-1"
@@ -1475,7 +1486,7 @@ function MergeFooter({
 
 	if (showCommitForm) {
 		return (
-			<div className="flex flex-col gap-3 bg-surface-1/50 px-4 py-3">
+			<div className="flex flex-col gap-3 px-4 py-3">
 				<div className="flex flex-col gap-1.5">
 					<label htmlFor="merge-commit-title" className="text-xs font-medium">
 						Commit message
@@ -1533,60 +1544,49 @@ function MergeFooter({
 	return (
 		<div className="flex flex-col gap-3 px-4 py-3">
 			<div className="flex items-center gap-3">
-				<div className="flex items-center gap-2">
-					<div className="flex overflow-hidden rounded-md">
-						<Button
-							size="sm"
-							disabled={isDisabled}
-							onClick={openCommitForm}
-							className="rounded-r-none"
-							iconLeft={
-								isMerging ? (
-									<Spinner size={14} />
-								) : (
-									<GitMergeIcon size={14} strokeWidth={2} />
-								)
-							}
-						>
-							{currentStrategy.label}
-						</Button>
-						<DropdownMenu>
-							<DropdownMenuTrigger asChild>
-								<Button
-									size="sm"
-									disabled={isDisabled}
-									className="rounded-l-none border-l-[0.5px] border-primary-foreground/20 px-1.5"
+				<p className="min-w-0 flex-1 text-xs font-[450] text-muted-foreground">
+					{isMergeBlocked && !bypass.shouldBypass
+						? "Merging is blocked until the required checks and reviews pass."
+						: "Ready to merge"}
+				</p>
+				<div className="flex shrink-0 overflow-hidden rounded-full shadow-[0_1px_1px_0_lch(0_0_0/0.12),0_3px_6px_-2px_lch(0_0_0/0.12)]">
+					<button
+						type="button"
+						disabled={isDisabled}
+						onClick={openCommitForm}
+						className="flex h-7 items-center gap-1.5 bg-merge pr-2.5 pl-3 text-xs font-medium text-white transition-colors hover:bg-merge-hover disabled:opacity-50"
+					>
+						{isMerging ? (
+							<Spinner size={12} />
+						) : (
+							<GitMergeIcon size={13} strokeWidth={2} />
+						)}
+						{currentStrategy.label}
+					</button>
+					<DropdownMenu>
+						<DropdownMenuTrigger asChild>
+							<button
+								type="button"
+								disabled={isDisabled}
+								aria-label="Merge options"
+								className="flex h-7 items-center border-l-[0.5px] border-white/25 bg-merge pr-2 pl-1.5 text-white transition-colors hover:bg-merge-hover disabled:opacity-50"
+							>
+								<ChevronDownIcon size={13} strokeWidth={2} />
+							</button>
+						</DropdownMenuTrigger>
+						<DropdownMenuContent align="end" className="w-52">
+							{MERGE_STRATEGIES.map((strategy) => (
+								<DropdownMenuItem
+									key={strategy.value}
+									onClick={() => setMergeMethod(strategy.value)}
 								>
-									<ChevronDownIcon size={14} strokeWidth={2} />
-								</Button>
-							</DropdownMenuTrigger>
-							<DropdownMenuContent align="end">
-								{MERGE_STRATEGIES.map((strategy) => (
-									<DropdownMenuItem
-										key={strategy.value}
-										onClick={() => setMergeMethod(strategy.value)}
-									>
-										<span className="flex items-center gap-2">
-											{strategy.value === mergeMethod && (
-												<CheckIcon size={14} strokeWidth={2} />
-											)}
-											<span
-												className={cn(strategy.value !== mergeMethod && "pl-5")}
-											>
-												{strategy.label}
-											</span>
-										</span>
-									</DropdownMenuItem>
-								))}
-							</DropdownMenuContent>
-						</DropdownMenu>
-					</div>
+									<span className="flex-1">{strategy.label}</span>
+									{strategy.value === mergeMethod ? <MenuCheck /> : null}
+								</DropdownMenuItem>
+							))}
+						</DropdownMenuContent>
+					</DropdownMenu>
 				</div>
-				{isMergeBlocked && !bypass.shouldBypass ? (
-					<p className="text-xs text-muted-foreground">
-						Merging is blocked — all required conditions have not been met.
-					</p>
-				) : null}
 			</div>
 			{bypass.showOption && (
 				<div className="flex items-center gap-2 text-xs text-pill-warning-text">
@@ -1619,10 +1619,10 @@ function StatusRow({
 	action?: React.ReactNode;
 }) {
 	return (
-		<div className="flex items-start gap-3 border-b-[0.5px] border-border/50 px-4 py-3">
+		<div className="flex items-start gap-3 border-b-[0.5px] border-card-border px-4 py-3">
 			<div className="mt-0.5 shrink-0">{icon}</div>
 			<div className="flex min-w-0 flex-1 flex-col gap-0.5">
-				<p className="text-sm font-medium">{title}</p>
+				<p className="text-[13px] font-medium text-foreground">{title}</p>
 				<p className="text-xs text-muted-foreground">{description}</p>
 			</div>
 			{action && <div className="shrink-0">{action}</div>}
@@ -1656,13 +1656,13 @@ function StatusIcon({ status }: { status: StatusType }) {
 
 function MergeStatusSkeleton() {
 	return (
-		<div className="flex flex-col rounded-lg border-[0.5px]">
+		<div className="-mx-3 flex flex-col overflow-hidden rounded-lg bg-card shadow-card">
 			{[0, 1, 2].map((item) => (
 				<div
 					key={item}
 					className={cn(
 						"flex items-start gap-3 px-4 py-3",
-						item < 2 && "border-b-[0.5px] border-border/50",
+						item < 2 && "border-b-[0.5px] border-card-border",
 					)}
 				>
 					<Skeleton className="mt-0.5 size-4 rounded-full" />
@@ -2042,12 +2042,12 @@ function ActivityTimeline({
 							<div
 								key={`commit-${commit.sha}`}
 								className={cn(
-									"flex items-center gap-1.5",
+									"flex items-start gap-[9px]",
 									index === 0 ? "pt-5" : isConsecutiveCommit ? "pt-2" : "pt-5",
 									isLastInCommitRun ? "pb-5" : "pb-2",
 								)}
 							>
-								<div className="flex size-5 shrink-0 items-center justify-center rounded-full border-[0.5px] border-border bg-surface-1">
+								<div className="flex h-[17px] w-[18px] shrink-0 items-center justify-center rounded-[4px] bg-main text-muted-foreground [&_svg]:size-3.5">
 									<GitCommitIcon
 										size={12}
 										strokeWidth={2}
@@ -2058,18 +2058,18 @@ function ActivityTimeline({
 									<img
 										src={commit.author.avatarUrl}
 										alt={commit.author.login}
-										className="size-5 shrink-0 rounded-full border-[0.5px] border-border self-start"
+										className="mt-[3px] size-3.5 shrink-0 self-start rounded-full ring-[0.5px] ring-chip-border"
 									/>
 								) : (
-									<div className="size-5 shrink-0 rounded-full bg-surface-2" />
+									<div className="size-3.5 shrink-0 rounded-full bg-group" />
 								)}
-								<span className="min-w-0 truncate text-[13px]">
+								<span className="min-w-0 truncate text-xs leading-5 font-[450] text-text-header">
 									{firstLine}
 								</span>
-								<code className="ml-auto shrink-0 rounded bg-surface-1 px-1.5 py-0.5 font-mono text-[10px] text-muted-foreground">
+								<code className="ml-auto shrink-0 font-mono text-[11px] text-icon-faint">
 									{commit.sha.slice(0, 7)}
 								</code>
-								<span className="shrink-0 text-[13px] text-muted-foreground">
+								<span className="shrink-0 text-xs font-[450] tabular-nums text-icon-faint">
 									{formatRelativeTime(commit.createdAt)}
 								</span>
 							</div>
@@ -2093,10 +2093,10 @@ function ActivityTimeline({
 									<img
 										src={mergedPr.mergedBy.avatarUrl}
 										alt={mergedPr.mergedBy.login}
-										className="size-5 shrink-0 rounded-full border-[0.5px] border-border self-start"
+										className="mt-[3px] size-3.5 shrink-0 self-start rounded-full ring-[0.5px] ring-chip-border"
 									/>
 								) : (
-									<div className="size-5 shrink-0 rounded-full bg-surface-2" />
+									<div className="size-3.5 shrink-0 rounded-full bg-group" />
 								)}
 								<span className="text-[13px]">
 									<span className="font-medium">
@@ -2104,16 +2104,16 @@ function ActivityTimeline({
 									</span>
 									{" merged commit "}
 									{mergedPr.mergeCommitSha && (
-										<code className="rounded bg-surface-1 px-1 py-0.5 font-mono text-[10px] text-muted-foreground">
+										<code className="font-mono text-[11px] text-icon-faint">
 											{mergedPr.mergeCommitSha.slice(0, 7)}
 										</code>
 									)}
 									{" into "}
-									<code className="rounded bg-surface-1 px-1 py-0.5 font-mono text-[10px] text-muted-foreground">
+									<code className="font-mono text-[11px] text-icon-faint">
 										{mergedPr.baseRefName}
 									</code>
 								</span>
-								<span className="ml-auto shrink-0 text-[13px] text-muted-foreground">
+								<span className="ml-auto shrink-0 text-xs font-[450] tabular-nums text-icon-faint">
 									{formatRelativeTime(mergedPr.mergedAt as string)}
 								</span>
 							</div>
@@ -2147,7 +2147,7 @@ function ActivityTimeline({
 							<div
 								key={`${item.type}-${group.createdAt}`}
 								className={cn(
-									"flex items-center gap-1.5",
+									"flex items-start gap-[9px]",
 									index === 0 ? "pt-5" : isConsecutiveEvent ? "pt-2" : "pt-5",
 									isLastInEventRun ? "pb-5" : "pb-2",
 								)}
@@ -2156,14 +2156,14 @@ function ActivityTimeline({
 									<img
 										src={group.actor?.avatarUrl}
 										alt={group.actor?.login}
-										className="size-5 shrink-0 rounded-full border-[0.5px] border-border self-start"
+										className="mt-[3px] size-3.5 shrink-0 self-start rounded-full ring-[0.5px] ring-chip-border"
 									/>
 								) : (
-									<div className="flex size-5 shrink-0 items-center justify-center rounded-full border-[0.5px] border-border bg-surface-1 self-start">
+									<div className="flex h-[17px] w-[18px] shrink-0 items-center justify-center self-start rounded-[4px] bg-main text-muted-foreground mt-[1.5px] [&_svg]:size-3.5">
 										{icon}
 									</div>
 								)}
-								<span className="min-w-0 text-[13px] text-muted-foreground">
+								<span className="min-w-0 text-xs leading-5 font-[450] text-muted-foreground">
 									{item.type === "label_group" ? (
 										<GroupedLabelDescription
 											group={item.data as GroupedLabelEvent}
@@ -2174,7 +2174,7 @@ function ActivityTimeline({
 										/>
 									)}
 								</span>
-								<span className="ml-auto shrink-0 text-[13px] text-muted-foreground">
+								<span className="ml-auto shrink-0 text-xs font-[450] tabular-nums text-icon-faint">
 									{formatRelativeTime(group.createdAt)}
 								</span>
 							</div>
@@ -2202,7 +2202,7 @@ function ActivityTimeline({
 							<div
 								key={`issue_state_toggle_group-${toggleKey}-${group.createdAt}`}
 								className={cn(
-									"flex items-center gap-1.5",
+									"flex items-start gap-[9px]",
 									index === 0 ? "pt-5" : isConsecutiveEvent ? "pt-2" : "pt-5",
 									isLastInEventRun ? "pb-5" : "pb-2",
 								)}
@@ -2211,14 +2211,14 @@ function ActivityTimeline({
 									<img
 										src={group.actor?.avatarUrl}
 										alt={group.actor?.login}
-										className="size-5 shrink-0 rounded-full border-[0.5px] border-border self-start"
+										className="mt-[3px] size-3.5 shrink-0 self-start rounded-full ring-[0.5px] ring-chip-border"
 									/>
 								) : (
-									<div className="flex size-5 shrink-0 items-center justify-center rounded-full border-[0.5px] border-border bg-surface-1 self-start">
+									<div className="flex h-[17px] w-[18px] shrink-0 items-center justify-center self-start rounded-[4px] bg-main text-muted-foreground mt-[1.5px] [&_svg]:size-3.5">
 										{icon}
 									</div>
 								)}
-								<span className="min-w-0 text-[13px] text-muted-foreground">
+								<span className="min-w-0 text-xs leading-5 font-[450] text-muted-foreground">
 									<GroupedIssueStateToggleDescription
 										group={group}
 										subject="pull"
@@ -2233,7 +2233,7 @@ function ActivityTimeline({
 										}
 									/>
 								</span>
-								<span className="ml-auto shrink-0 text-[13px] text-muted-foreground">
+								<span className="ml-auto shrink-0 text-xs font-[450] tabular-nums text-icon-faint">
 									{formatRelativeTime(group.createdAt)}
 								</span>
 							</div>
@@ -2310,7 +2310,7 @@ function LoadMoreDivider({
 					"flex shrink-0 items-center gap-1.5 rounded-full border-[0.5px] border-border bg-surface-1 px-3 py-1 text-xs text-muted-foreground transition-colors",
 					isPending
 						? "cursor-not-allowed opacity-60"
-						: "hover:bg-surface-2 hover:text-foreground",
+						: "hover:bg-ghost-hover hover:text-foreground",
 				)}
 			>
 				{isPending ? (
@@ -2394,11 +2394,11 @@ function TimelineEventRow({
 			<div className={cn("flex flex-col gap-2 py-5", isFirst && "pt-5")}>
 				<div className="flex items-center gap-1.5">
 					{icon}
-					<span className="min-w-0 text-[13px] text-muted-foreground">
+					<span className="min-w-0 text-xs leading-5 font-[450] text-muted-foreground">
 						{description}
 					</span>
 					{event.createdAt && (
-						<span className="ml-auto shrink-0 text-[13px] text-muted-foreground">
+						<span className="ml-auto shrink-0 text-xs font-[450] tabular-nums text-icon-faint">
 							{formatRelativeTime(event.createdAt)}
 						</span>
 					)}
@@ -2431,7 +2431,7 @@ function TimelineEventRow({
 	return (
 		<div
 			className={cn(
-				"flex items-center gap-1.5",
+				"flex items-start gap-[9px]",
 				isFirst ? "pt-5" : isConsecutive ? "pt-2" : "pt-5",
 				isLastInRun ? "pb-5" : "pb-2",
 			)}
@@ -2440,18 +2440,18 @@ function TimelineEventRow({
 				<img
 					src={event.actor?.avatarUrl}
 					alt={event.actor?.login}
-					className="size-5 shrink-0 rounded-full border-[0.5px] border-border self-start"
+					className="mt-[3px] size-3.5 shrink-0 self-start rounded-full ring-[0.5px] ring-chip-border"
 				/>
 			) : (
-				<div className="flex size-5 shrink-0 items-center justify-center rounded-full border-[0.5px] border-border bg-surface-1 self-start">
+				<div className="flex h-[17px] w-[18px] shrink-0 items-center justify-center self-start rounded-[4px] bg-main text-muted-foreground mt-[1.5px] [&_svg]:size-3.5">
 					{icon}
 				</div>
 			)}
-			<span className="min-w-0 text-[13px] text-muted-foreground">
+			<span className="min-w-0 text-xs leading-5 font-[450] text-muted-foreground">
 				{description}
 			</span>
 			{event.createdAt && (
-				<span className="ml-auto shrink-0 text-[13px] text-muted-foreground">
+				<span className="ml-auto shrink-0 text-xs font-[450] tabular-nums text-icon-faint">
 					{formatRelativeTime(event.createdAt)}
 				</span>
 			)}
@@ -2571,33 +2571,20 @@ function PullCommentBubble({
 				}
 			}}
 		>
-			<div className="flex items-center gap-1.5">
+			<div className="flex h-[18.5px] items-center gap-2">
 				{comment.author ? (
 					<img
 						src={comment.author.avatarUrl}
 						alt={comment.author.login}
-						className={cn(
-							"rounded-full border-[0.5px] border-border",
-							isReply ? "size-3.5" : "size-4",
-						)}
+						className="size-[18px] rounded-full ring-[0.5px] ring-chip-border"
 					/>
 				) : (
-					<div
-						className={cn(
-							"rounded-full bg-surface-2",
-							isReply ? "size-3.5" : "size-4",
-						)}
-					/>
+					<div className="size-[18px] rounded-full bg-group" />
 				)}
 				<span className="text-[13px] font-medium text-foreground">
 					{comment.author?.login ?? "Unknown"}
 				</span>
-				<span
-					className={cn(
-						"text-muted-foreground",
-						isReply ? "text-xs" : "text-[13px]",
-					)}
-				>
+				<span className="ml-0.5 text-[13px] font-[450] text-icon-faint">
 					{formatRelativeTime(comment.createdAt)}
 				</span>
 				<div className="ml-auto flex items-center gap-1">
@@ -2605,7 +2592,8 @@ function PullCommentBubble({
 						<button
 							type="button"
 							onClick={onReply}
-							className="rounded-md p-0.5 text-muted-foreground opacity-0 transition-all hover:bg-surface-2 hover:text-foreground group-hover/comment:opacity-100"
+							aria-label="Reply"
+							className="flex size-7 items-center justify-center rounded-full text-text-header opacity-0 transition-opacity hover:bg-ghost-hover group-hover/comment:opacity-100 focus-visible:opacity-100"
 						>
 							<CommentIcon size={14} strokeWidth={2} />
 						</button>
@@ -2623,13 +2611,19 @@ function PullCommentBubble({
 					/>
 				</div>
 			</div>
-			<div className={cn("relative", comment.graphqlId != null && "mb-9")}>
+			<div
+				className={cn(
+					"relative",
+					isReply && "pl-[27px]",
+					comment.graphqlId != null && "mb-7",
+				)}
+			>
 				<Markdown className="text-[15px] leading-6 text-text-strong">
 					{comment.body}
 				</Markdown>
 				{comment.graphqlId ? (
 					<IssueCommentReactionBar
-						className="absolute left-0 right-0 top-full z-10 mt-1.5"
+						className="absolute left-0 right-0 top-full z-10 mt-1"
 						revealZeroCount={commentActive || prefersNoHover}
 						viewerLogin={viewerLogin}
 						owner={owner}
@@ -2956,7 +2950,7 @@ function ReviewCommentBlock({
 										type="button"
 										onClick={() => void handleReply()}
 										disabled={!replyBody.trim() || isSending}
-										className="flex items-center gap-1.5 rounded-md bg-foreground px-3 py-1.5 text-xs font-medium text-background transition-opacity disabled:opacity-50"
+										className="flex h-7 items-center gap-1.5 rounded-full bg-indigo px-3 text-xs font-medium text-indigo-foreground shadow-[0_1px_1px_0_lch(0_0_0/0.12),0_3px_6px_-2px_lch(0_0_0/0.12)] transition-colors hover:bg-indigo/90 disabled:opacity-50"
 									>
 										{isSending ? (
 											<Spinner className="size-3" />
@@ -3431,7 +3425,7 @@ function getEventDescription(
 				<span className="inline-flex items-center gap-1 flex-wrap">
 					<ActorMention actor={event.actor} hideAvatar />
 					{" deleted "}
-					<code className="rounded bg-surface-1 px-1 py-0.5 font-mono text-[10px] text-muted-foreground">
+					<code className="font-mono text-[11px] text-icon-faint">
 						{headRefName}
 					</code>
 					{" branch"}
@@ -3442,7 +3436,7 @@ function getEventDescription(
 				<span className="inline-flex items-center gap-1 flex-wrap">
 					<ActorMention actor={event.actor} hideAvatar />
 					{" restored "}
-					<code className="rounded bg-surface-1 px-1 py-0.5 font-mono text-[10px] text-muted-foreground">
+					<code className="font-mono text-[11px] text-icon-faint">
 						{headRefName}
 					</code>
 					{" branch"}
