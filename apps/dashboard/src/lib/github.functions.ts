@@ -1103,6 +1103,8 @@ function mapPullSummary(
 		comments?: number;
 		user?: GitHubApiUser | null;
 		labels?: Array<string | GitHubApiLabel> | null;
+		head?: { ref: string; repo?: { full_name: string } | null };
+		base?: { ref: string };
 	},
 	repository: RepositoryRef,
 ): PullSummary {
@@ -1124,6 +1126,13 @@ function mapPullSummary(
 		author: mapActor(pull.user),
 		labels: mapLabels(pull.labels),
 		repository,
+		...(pull.base?.ref ? { baseRefName: pull.base.ref } : {}),
+		...(pull.head?.ref
+			? {
+					headRefName: pull.head.ref,
+					headRepoFullName: pull.head.repo?.full_name ?? null,
+				}
+			: {}),
 	};
 }
 
@@ -6002,7 +6011,7 @@ export const getPullsFromRepo = createServerFn({ method: "GET" })
 			PullSummary[]
 		>({
 			context,
-			resource: "pulls.repo",
+			resource: "pulls.repo.v2",
 			params: {
 				owner: data.owner,
 				repo: data.repo,

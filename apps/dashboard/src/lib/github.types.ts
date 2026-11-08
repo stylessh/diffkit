@@ -65,6 +65,12 @@ export type PullSummary = {
 	author: GitHubActor | null;
 	labels: GitHubLabel[];
 	repository: RepositoryRef;
+	/** Branch the PR merges into. Only set for REST-sourced pulls (repo list, detail). */
+	baseRefName?: string;
+	/** Branch the PR is opened from. Only set for REST-sourced pulls. */
+	headRefName?: string;
+	/** `owner/repo` the head branch lives in; `null` when the fork was deleted. */
+	headRepoFullName?: string | null;
 };
 
 export type RequestedTeam = {
