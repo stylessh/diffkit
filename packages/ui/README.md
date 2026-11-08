@@ -56,8 +56,9 @@ from Linear's live app and live in `src/styles/globals.css` in three layers:
 | Focus | `outline-focus` / the base `:focus-visible` rule (1px `--ln-focus`, offset -1px) |
 
 Motion: hover, selection and popover transitions share `--ln-duration` (140ms) and `--ln-ease`
-(`ease-ln`); `prefers-reduced-motion` collapses every animation and transition. Menus use 28px rows
-with 6px radii inside a 10px popover with 4px padding, so the corners stay concentric.
+(`ease-ln`); `prefers-reduced-motion` collapses every animation and transition. Menus use Linear's 32px rows
+with 8px radii inside a 12px popover with 4px padding, so the corners stay concentric; 30px group
+labels; 1px separators.
 
 Rules of thumb: never add `border` + `shadow-sm`; use a ring token. Bare `border` utilities are
 written `border-[0.5px]` so they match the rings (Chrome rounds them to one device pixel on 1x
@@ -69,6 +70,20 @@ Keep corners ≤ 12px except fully-round pills and avatars.
 Existing `bg-surface-0/1/2`, `bg-container`, `text-destructive-foreground`, etc. keep working and
 resolve to the Linear set (card → group fill → selected nav). New code should prefer the semantic
 names above; `apps/dashboard` will migrate in a later pass.
+
+### Page chrome (measured off the Linear reference)
+
+| Component | What it is |
+| --- | --- |
+| `PageHeader` (`page-header.tsx`) | The page's first row: 44px, hairline under it, 20px left inset, 13px/500 title in the header gray, actions right. `PageHeaderCrumb` (asChild with a router link) adds `›` crumbs; `PageHeaderTitle` (asChild for a non-h1 title); `PageHeaderCount`; `PageIconButton` (round 28px, `raised` for the pill ring). |
+| `ViewTabs` / `ViewTab` / `ViewTabCount` (`view-tabs.tsx`) | The 44px row of 28px pill tabs under a header; `aria-current="page"` (router links set it) takes the selected fill and ring. |
+| `GroupHeader` (`group-header.tsx`) | A list group's 36px banner: caret centred 18px in, 16px icon box at 34px, title at 60px, count after it. |
+| `DetailLayout` + `PanelSection` / `PanelRow` / `PropertyRow` (`detail-layout.tsx`) | Detail pages: a content column (max 780px, 46px insets) and a properties panel taking ~34% that stays pinned; panel sections have a 13px muted label and 28px rows. Also `LineCounts` and `BranchBadge`. |
+| `Chip` (`chip.tsx`) | 24px hairline pill for row metadata (repository, label with a color dot, branch). |
+
+List rows follow Linear's grid: 44px, full width with the hover fill inset 8px, content from 42px to
+26px before the edge, 8px between columns, `#number` in a 42px column, 18px avatars and a 40px
+right-aligned time column (see `apps/dashboard/src/components/shared/list-row.tsx`).
 
 ## Components
 

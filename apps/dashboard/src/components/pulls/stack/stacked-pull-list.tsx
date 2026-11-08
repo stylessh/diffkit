@@ -62,7 +62,7 @@ export function StackedPullList({
 	return (
 		<div className="flex flex-col gap-1">
 			{hasStacks ? (
-				<label className="flex w-fit cursor-pointer items-center gap-2 self-end px-3 py-1 text-xs text-muted-foreground">
+				<label className="flex h-8 w-fit cursor-pointer items-center gap-2 self-end px-3 text-xs font-[450] text-muted-foreground">
 					<input
 						type="checkbox"
 						checked={groupStacks}
@@ -76,15 +76,19 @@ export function StackedPullList({
 				? items.map((item) =>
 						item.kind === "pull" ? (
 							<div key={item.pull.id} style={rowVisibilityStyle}>
-								<PullRequestRow pr={item.pull} scope={scope} />
+								<PullRequestRow
+									pr={item.pull}
+									scope={scope}
+									showRepository={false}
+								/>
 							</div>
 						) : (
 							<section
 								key={`stack-${item.rootNumber}`}
 								aria-label={`Stack of ${item.size} pull requests`}
-								className="my-1 rounded-xl border-[0.5px] bg-surface-1/40 py-1"
+								className="my-1"
 							>
-								<p className="flex items-center gap-1.5 px-3 pb-0.5 pt-1.5 text-xs font-medium text-muted-foreground">
+								<p className="flex h-8 items-center gap-1.5 px-3 text-xs font-medium text-muted-foreground md:pl-[34px]">
 									<GitBranchIcon size={12} strokeWidth={2} />
 									<span>
 										Stack · <span className="tabular-nums">{item.size}</span>{" "}
@@ -99,10 +103,14 @@ export function StackedPullList({
 											marginLeft: depth * 16,
 										}}
 										className={cn(
-											depth > 0 && "border-l-[0.5px] border-border",
+											depth > 0 && "border-l-[0.5px] border-chip-border",
 										)}
 									>
-										<PullRequestRow pr={pull} scope={scope} />
+										<PullRequestRow
+											pr={pull}
+											scope={scope}
+											showRepository={false}
+										/>
 									</div>
 								))}
 							</section>
@@ -110,7 +118,7 @@ export function StackedPullList({
 					)
 				: pulls.map((pull) => (
 						<div key={pull.id} style={rowVisibilityStyle}>
-							<PullRequestRow pr={pull} scope={scope} />
+							<PullRequestRow pr={pull} scope={scope} showRepository={false} />
 						</div>
 					))}
 		</div>

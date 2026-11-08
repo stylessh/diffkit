@@ -145,7 +145,7 @@ function RepoIssuesPage() {
 										containIntrinsicSize: "auto 52px",
 									}}
 								>
-									<IssueRow issue={issue} />
+									<IssueRow issue={issue} showRepository={false} />
 								</div>
 							))}
 						</div>

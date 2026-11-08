@@ -249,10 +249,10 @@ const InboxSidebar = memo(function InboxSidebar({
 	const hasUnread = notifications.some((n) => n.unread);
 
 	return (
-		<aside className="flex h-full w-full flex-col border-r-[0.5px] border-border md:w-80 md:min-w-80 lg:w-96 lg:min-w-96">
-			<div className="flex h-12 items-center justify-between gap-2 border-b-[0.5px] border-border px-4">
+		<aside className="flex h-full w-full flex-col border-r-[0.5px] border-header-rule md:w-80 md:min-w-80 lg:w-96 lg:min-w-96">
+			<div className="flex h-11 shrink-0 items-center justify-between gap-2 border-b-[0.5px] border-header-rule pr-2 pl-5">
 				<div className="flex items-center gap-2">
-					<h1 className="text-base font-semibold">Inbox</h1>
+					<h1 className="text-[13px] font-medium text-text-header">Inbox</h1>
 					<DropdownMenu>
 						<DropdownMenuTrigger asChild>
 							<Button
@@ -496,15 +496,16 @@ const InboxRow = memo(function InboxRow({
 				}
 			}}
 			className={cn(
-				"group flex w-full cursor-pointer items-start gap-3 border-b-[0.5px] border-border/50 px-4 py-3 text-left transition-colors last:border-b-0",
-				"hover:[&:not(:has([data-action]:hover))]:bg-surface-1",
-				isSelected && "bg-surface-1",
+				"group flex w-[calc(100%-16px)] cursor-pointer items-start gap-3 mx-2 rounded-lg px-3 py-2.5 text-left transition-colors",
+				"hover:[&:not(:has([data-action]:hover))]:bg-row-hover",
+				isSelected &&
+					"bg-row-selected hover:[&:not(:has([data-action]:hover))]:bg-row-selected",
 			)}
 		>
 			<div className={cn("mt-0.5 shrink-0", iconColor)}>
-				<Icon size={16} strokeWidth={2} />
+				<Icon size={14} strokeWidth={2} />
 			</div>
-			<div className="flex min-w-0 flex-1 flex-col gap-3">
+			<div className="flex min-w-0 flex-1 flex-col gap-1.5">
 				<div className="flex flex-col gap-1">
 					<div className="flex items-center gap-2">
 						<span className="truncate text-xs text-muted-foreground">
@@ -517,8 +518,10 @@ const InboxRow = memo(function InboxRow({
 					</div>
 					<p
 						className={cn(
-							"line-clamp-2 text-sm",
-							notification.unread ? "font-medium" : "text-muted-foreground",
+							"line-clamp-2 text-[13px] text-pretty",
+							notification.unread
+								? "font-medium text-foreground"
+								: "font-[450] text-text-header",
 						)}
 					>
 						{notification.subject.title}
@@ -528,7 +531,9 @@ const InboxRow = memo(function InboxRow({
 					<span className="text-xs text-muted-foreground">
 						{reasonLabels[notification.reason] ?? notification.reason}
 					</span>
-					<span className="text-xs text-muted-foreground/50">·</span>
+					<span aria-hidden className="text-xs text-icon-faint">
+						·
+					</span>
 					<span className="text-xs text-muted-foreground">
 						{formatRelativeTime(notification.updatedAt)}
 					</span>
@@ -547,7 +552,7 @@ const InboxRow = memo(function InboxRow({
 							markDone.mutate();
 						}}
 						disabled={markDone.isPending}
-						className="flex size-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-surface-2 hover:text-foreground"
+						className="flex size-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-ghost-hover hover:text-foreground"
 						title="Mark as done"
 					>
 						{markDone.isPending ? (
@@ -565,7 +570,7 @@ const InboxRow = memo(function InboxRow({
 								markRead.mutate();
 							}}
 							disabled={markRead.isPending}
-							className="flex size-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-surface-2 hover:text-foreground"
+							className="flex size-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-ghost-hover hover:text-foreground"
 							title="Mark as read"
 						>
 							{markRead.isPending ? (
@@ -616,7 +621,7 @@ const InboxPreview = memo(function InboxPreview({
 
 	return (
 		<div className="hidden flex-1 flex-col md:flex">
-			<div className="flex h-12 items-center justify-between border-b-[0.5px] border-border px-4">
+			<div className="flex h-11 shrink-0 items-center justify-between border-b-[0.5px] border-header-rule pr-2 pl-5">
 				<div className="flex items-center gap-2 text-xs text-muted-foreground">
 					<Link
 						to="/$owner/$repo"
@@ -770,7 +775,7 @@ function InboxPreviewFallback({
 				</div>
 			</div>
 
-			<div className="rounded-xl border-[0.5px] border-border bg-surface-1 p-5">
+			<div className="rounded-lg bg-card p-5 shadow-card">
 				<div className="flex items-center gap-3">
 					<img
 						src={notification.repository.owner.avatarUrl}

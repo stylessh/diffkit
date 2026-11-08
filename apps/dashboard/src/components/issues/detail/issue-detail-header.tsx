@@ -72,11 +72,11 @@ export function IssueDetailHeader({
 					<div className="flex flex-wrap items-center gap-2">
 						<StatePill tone={stateConfig.tone}>{stateConfig.label}</StatePill>
 						{issue.author && (
-							<span className="flex items-center gap-1.5 text-sm text-muted-foreground">
+							<span className="flex items-center gap-1.5 text-xs font-[450] text-muted-foreground">
 								<img
 									src={issue.author.avatarUrl}
 									alt={issue.author.login}
-									className="size-4 rounded-full border-[0.5px] border-border"
+									className="size-4 rounded-full ring-[0.5px] ring-chip-border"
 								/>
 								<span className="font-medium text-foreground">
 									{issue.author.login}
@@ -101,7 +101,9 @@ export function IssueDetailHeader({
 					}}
 				>
 					{issue.body ? (
-						<Markdown>{issue.body}</Markdown>
+						<Markdown className="text-[15px] leading-6 text-text-header">
+							{issue.body}
+						</Markdown>
 					) : (
 						<p className="text-sm italic text-muted-foreground">
 							No description provided.

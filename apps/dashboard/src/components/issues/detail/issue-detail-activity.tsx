@@ -370,7 +370,7 @@ export function IssueDetailActivitySection({
 			)}
 
 			{visibleItems.length > 0 && (
-				<div className="relative flex flex-col pl-8 before:absolute before:left-4 before:top-0 before:h-full before:w-px before:bg-[linear-gradient(to_bottom,var(--color-border)_80%,transparent)]">
+				<div className="relative flex flex-col">
 					{visibleItems.map((item, index) => {
 						const previousType =
 							index > 0 ? visibleItems[index - 1].type : null;
@@ -639,10 +639,7 @@ function IssueCommentBubble({
 
 	return (
 		<div
-			className={cn(
-				"group/comment relative flex flex-col gap-1",
-				isReply ? "py-2" : "py-4",
-			)}
+			className="group/comment relative flex flex-col gap-1.5 px-4 py-3"
 			onPointerEnter={() => setCommentActive(true)}
 			onPointerLeave={() => setCommentActive(false)}
 			onFocusCapture={() => setCommentActive(true)}
@@ -670,9 +667,7 @@ function IssueCommentBubble({
 						)}
 					/>
 				)}
-				<span
-					className={cn("font-medium", isReply ? "text-xs" : "text-[13px]")}
-				>
+				<span className="text-[13px] font-medium text-foreground">
 					{comment.author?.login ?? "Unknown"}
 				</span>
 				<span
@@ -706,8 +701,10 @@ function IssueCommentBubble({
 					/>
 				</div>
 			</div>
-			<div className={cn("relative", comment.graphqlId != null && "mb-14")}>
-				<Markdown className="text-muted-foreground">{comment.body}</Markdown>
+			<div className={cn("relative", comment.graphqlId != null && "mb-9")}>
+				<Markdown className="text-[15px] leading-6 text-text-strong">
+					{comment.body}
+				</Markdown>
 				{comment.graphqlId ? (
 					<IssueCommentReactionBar
 						className="absolute left-0 right-0 top-full z-10 mt-1.5"
@@ -750,7 +747,12 @@ function IssueCommentWithThread({
 	const hasReplies = replies && replies.length > 0;
 
 	return (
-		<div className={cn("relative flex flex-col", isFirst && "pt-1")}>
+		<div
+			className={cn(
+				"relative -mx-3 my-2 flex flex-col rounded-lg bg-card shadow-card",
+				isFirst && "mt-0",
+			)}
+		>
 			<IssueCommentBubble
 				comment={comment}
 				owner={owner}
@@ -762,7 +764,7 @@ function IssueCommentWithThread({
 			/>
 
 			{hasReplies && (
-				<div className="ml-4 border-l-2 border-border pl-4">
+				<div className="flex flex-col divide-y-[0.5px] divide-header-rule border-t-[0.5px] border-header-rule">
 					{replies.map((reply) => (
 						<IssueCommentBubble
 							key={reply.id}
@@ -780,7 +782,7 @@ function IssueCommentWithThread({
 			)}
 
 			{showReplyForm && (
-				<div className={cn(hasReplies && "ml-4 border-l-2 border-border pl-4")}>
+				<div className="border-t-[0.5px] border-header-rule px-3 py-3">
 					<CommentReplyForm
 						owner={owner}
 						repo={repo}

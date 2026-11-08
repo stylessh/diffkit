@@ -1,10 +1,18 @@
-import { CommentIcon, RepoIcon, ViewIcon } from "@diffkit/icons";
-import { Chip } from "@diffkit/ui/components/chip";
+import { CommentIcon, ViewIcon } from "@diffkit/icons";
 import { Spinner } from "@diffkit/ui/components/spinner";
 import { cn } from "@diffkit/ui/lib/utils";
 import { useQuery } from "@tanstack/react-query";
 import { Link, useRouter } from "@tanstack/react-router";
 import { lazy, memo, Suspense, useState } from "react";
+import {
+	listRowClassName,
+	RepoChip,
+	RowAvatar,
+	RowLabels,
+	RowNumber,
+	RowStateIcon,
+	RowTime,
+} from "#/components/shared/list-row";
 import { formatRelativeTime } from "#/lib/format-relative-time";
 import {
 	type GitHubQueryScope,
@@ -23,9 +31,12 @@ const Markdown = lazy(() =>
 export const PullRequestRow = memo(function PullRequestRow({
 	pr,
 	scope,
+	showRepository = true,
 }: {
 	pr: PullSummary;
 	scope: GitHubQueryScope;
+	/** Hide the repository chip in lists scoped to one repository. */
+	showRepository?: boolean;
 }) {
 	const { icon: Icon, color } = getPrStateConfig(pr);
 	const href = `/${pr.repository.owner}/${pr.repository.name}/pull/${pr.number}`;
@@ -44,8 +55,10 @@ export const PullRequestRow = memo(function PullRequestRow({
 		enabled: expanded,
 	});
 
+	const time = formatRelativeTime(pr.updatedAt, undefined, { compact: true });
+
 	return (
-		<div className="rounded-lg">
+		<div>
 			<Link
 				to={href}
 				preload={false}
@@ -53,31 +66,39 @@ export const PullRequestRow = memo(function PullRequestRow({
 				onFocus={preloadDetail}
 				onTouchStart={preloadDetail}
 				className={cn(
-					"group flex items-start gap-3 rounded-lg px-3 py-2.5 transition-colors md:h-11 md:items-center md:py-0",
-					"hover:[&:not(:has([data-action]:hover))]:bg-row-hover",
-					expanded && "bg-row-selected",
+					listRowClassName,
+					"hover:[&:not(:has([data-action]:hover))]:before:bg-row-hover",
+					expanded && "before:bg-row-selected",
 				)}
 			>
-				<div className={cn("mt-0.5 flex shrink-0 md:mt-0", color)}>
+				<RowStateIcon className={color}>
 					<Icon size={14} strokeWidth={2} />
-				</div>
-				<div className="flex min-w-0 flex-1 flex-col gap-1">
+				</RowStateIcon>
+				<RowNumber number={pr.number} />
+				<div className="flex min-w-0 flex-1 flex-col gap-1 md:flex-row md:items-center md:gap-2">
 					<p
 						title={pr.title}
 						className="text-[13px] font-medium text-foreground md:truncate"
 					>
 						{pr.title}
 					</p>
+					{pr.comments > 0 && (
+						<span
+							className="hidden shrink-0 items-center gap-1 text-xs tabular-nums text-muted-foreground md:flex"
+							title={`${pr.comments} comments`}
+						>
+							<CommentIcon size={12} strokeWidth={2} />
+							{pr.comments}
+						</span>
+					)}
 					<p className="flex min-w-0 items-center gap-1 truncate text-xs text-muted-foreground md:hidden">
 						<span className="truncate">{pr.repository.fullName}</span>
 						<span className="tabular-nums">#{pr.number}</span>
 						<span aria-hidden>·</span>
-						<span className="tabular-nums">
-							{formatRelativeTime(pr.updatedAt)}
-						</span>
+						<span className="tabular-nums">{time}</span>
 					</p>
 				</div>
-				<div className="hidden min-w-0 shrink items-center gap-2 md:flex">
+				<div className="hidden min-w-0 shrink items-center gap-1 md:flex">
 					<button
 						type="button"
 						data-action
@@ -86,7 +107,7 @@ export const PullRequestRow = memo(function PullRequestRow({
 							e.preventDefault();
 							setExpanded((v) => !v);
 						}}
-						className="flex h-6 shrink-0 items-center gap-1 rounded-md bg-button px-2 text-xs font-medium text-text-header opacity-0 shadow-button transition-[opacity,background-color] hover:bg-button-hover hover:text-foreground group-hover:opacity-100 focus-visible:opacity-100 aria-expanded:opacity-100"
+						className="mr-1 flex h-6 shrink-0 items-center gap-1 rounded-full bg-button px-2 text-xs font-medium text-text-header opacity-0 shadow-button transition-[opacity,background-color] hover:bg-button-hover hover:text-foreground group-hover/row:opacity-100 focus-visible:opacity-100 aria-expanded:opacity-100"
 					>
 						{expanded && commentsQuery.isPending ? (
 							<Spinner size={12} />
@@ -95,39 +116,19 @@ export const PullRequestRow = memo(function PullRequestRow({
 						)}
 						Preview
 					</button>
-					{pr.comments > 0 && (
-						<span
-							className="flex shrink-0 items-center gap-1 px-1 text-xs tabular-nums text-muted-foreground"
-							title={`${pr.comments} comments`}
-						>
-							<CommentIcon size={12} strokeWidth={2} />
-							{pr.comments}
-						</span>
-					)}
-					<Chip
-						className="max-w-56"
-						title={`${pr.repository.fullName} #${pr.number}`}
-					>
-						<RepoIcon size={12} strokeWidth={2} />
-						<span className="truncate">{pr.repository.fullName}</span>
-						<span className="tabular-nums">#{pr.number}</span>
-					</Chip>
-					{pr.author && (
-						<img
-							src={pr.author.avatarUrl}
-							alt={pr.author.login}
-							title={pr.author.login}
-							className="size-4 shrink-0 rounded-full ring-[0.5px] ring-chip-border"
-						/>
-					)}
-					<span className="w-14 shrink-0 text-right text-xs tabular-nums text-muted-foreground">
-						{formatRelativeTime(pr.updatedAt)}
-					</span>
+					<RowLabels labels={pr.labels} />
+					{showRepository ? (
+						<RepoChip fullName={pr.repository.fullName} />
+					) : null}
 				</div>
+				<span className="hidden shrink-0 items-center gap-2 md:flex">
+					<RowAvatar actor={pr.author} />
+					<RowTime>{time}</RowTime>
+				</span>
 			</Link>
 
 			{expanded && commentsQuery.data && (
-				<div className="relative ml-[19px] pt-3 pr-3 pb-2 pl-[18px] before:absolute before:top-0 before:left-0 before:h-full before:w-px before:bg-[linear-gradient(to_bottom,var(--color-border)_80%,transparent)]">
+				<div className="relative ml-[19px] pt-3 pr-3 pb-2 pl-[18px] md:ml-[42px] before:absolute before:top-0 before:left-0 before:h-full before:w-px before:bg-[linear-gradient(to_bottom,var(--color-border)_80%,transparent)]">
 					{commentsQuery.data.length === 0 && (
 						<p className="text-xs text-muted-foreground">No comments yet.</p>
 					)}

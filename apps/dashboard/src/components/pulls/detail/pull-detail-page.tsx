@@ -1,3 +1,4 @@
+import { LineCounts } from "@diffkit/ui/components/detail-layout";
 import { Skeleton } from "@diffkit/ui/components/skeleton";
 import {
 	ViewTab,
@@ -141,6 +142,13 @@ export function PullDetailContent({
 					icon={stateConfig.icon}
 					iconClassName={stateConfig.color}
 					title={pr.title}
+					titleSuffix={
+						<LineCounts
+							additions={pr.additions}
+							deletions={pr.deletions}
+							className="text-[13px]"
+						/>
+					}
 				/>
 			}
 			tabs={

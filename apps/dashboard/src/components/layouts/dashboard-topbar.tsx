@@ -340,7 +340,7 @@ export function DashboardTopbar({
 						size="sm"
 						asChild
 						iconLeft={<item.icon size={14} strokeWidth={2} />}
-						className="h-7 px-2 text-text-nav hover:bg-nav-hover hover:text-foreground [&.active]:bg-nav-selected [&.active]:text-foreground"
+						className="h-7 rounded-lg px-2.5 text-text-nav hover:bg-nav-hover hover:text-foreground [&.active]:bg-nav-selected [&.active]:text-foreground"
 					>
 						<Link
 							to={item.to as string}

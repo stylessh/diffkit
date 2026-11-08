@@ -1993,7 +1993,7 @@ function ActivityTimeline({
 	if (visibleItems.length === 0 && !pr.isMerged) return null;
 
 	return (
-		<div className="relative flex flex-col md:pl-8 md:before:absolute md:before:left-4 md:before:top-0 md:before:h-full md:before:w-px md:before:bg-[linear-gradient(to_bottom,var(--color-border)_80%,transparent)]">
+		<div className="relative flex flex-col">
 			{visibleItems.map((item, index) => {
 				const previousType = index > 0 ? visibleItems[index - 1].type : null;
 				const nextType =
@@ -2561,10 +2561,7 @@ function PullCommentBubble({
 
 	return (
 		<div
-			className={cn(
-				"group/comment relative flex flex-col gap-1",
-				isReply ? "py-2" : "py-5",
-			)}
+			className="group/comment relative flex flex-col gap-1.5 px-4 py-3"
 			onPointerEnter={() => setCommentActive(true)}
 			onPointerLeave={() => setCommentActive(false)}
 			onFocusCapture={() => setCommentActive(true)}
@@ -2592,9 +2589,7 @@ function PullCommentBubble({
 						)}
 					/>
 				)}
-				<span
-					className={cn("font-medium", isReply ? "text-xs" : "text-[13px]")}
-				>
+				<span className="text-[13px] font-medium text-foreground">
 					{comment.author?.login ?? "Unknown"}
 				</span>
 				<span
@@ -2628,8 +2623,10 @@ function PullCommentBubble({
 					/>
 				</div>
 			</div>
-			<div className={cn("relative", comment.graphqlId != null && "mb-14")}>
-				<Markdown className="text-muted-foreground">{comment.body}</Markdown>
+			<div className={cn("relative", comment.graphqlId != null && "mb-9")}>
+				<Markdown className="text-[15px] leading-6 text-text-strong">
+					{comment.body}
+				</Markdown>
 				{comment.graphqlId ? (
 					<IssueCommentReactionBar
 						className="absolute left-0 right-0 top-full z-10 mt-1.5"
@@ -2672,7 +2669,12 @@ function PullCommentWithThread({
 	const hasReplies = replies && replies.length > 0;
 
 	return (
-		<div className={cn("relative flex flex-col", isFirst && "pt-0")}>
+		<div
+			className={cn(
+				"relative -mx-3 my-2 flex flex-col rounded-lg bg-card shadow-card",
+				isFirst && "mt-0",
+			)}
+		>
 			<PullCommentBubble
 				comment={comment}
 				owner={owner}
@@ -2684,7 +2686,7 @@ function PullCommentWithThread({
 			/>
 
 			{hasReplies && (
-				<div className="ml-4 border-l-2 border-border pl-4">
+				<div className="flex flex-col divide-y-[0.5px] divide-header-rule border-t-[0.5px] border-header-rule">
 					{replies.map((reply) => (
 						<PullCommentBubble
 							key={reply.id}
@@ -2702,7 +2704,7 @@ function PullCommentWithThread({
 			)}
 
 			{showReplyForm && (
-				<div className={cn(hasReplies && "ml-4 border-l-2 border-border pl-4")}>
+				<div className="border-t-[0.5px] border-header-rule px-3 py-3">
 					<CommentReplyForm
 						owner={owner}
 						repo={repo}
@@ -2765,7 +2767,9 @@ function ReviewCommentBubble({
 					</div>
 				)}
 			</div>
-			<Markdown className="text-muted-foreground">{comment.body}</Markdown>
+			<Markdown className="text-[15px] leading-6 text-text-strong">
+				{comment.body}
+			</Markdown>
 		</div>
 	);
 }

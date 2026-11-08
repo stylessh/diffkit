@@ -4,6 +4,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { type ComponentType, useMemo } from "react";
 import { DashboardContentLoading } from "#/components/layouts/dashboard-content-loading";
 import { PullRequestRow } from "#/components/pulls/pull-request-row";
+import { ListEmpty, ListGroup, ListPage } from "#/components/shared/list-page";
 import {
 	githubMyIssuesQueryOptions,
 	githubMyPullsQueryOptions,
@@ -76,38 +77,28 @@ function OverviewPage() {
 			.slice(0, 10);
 
 		return (
-			<div className="overflow-stable h-full px-6 py-16">
-				<div className="mx-auto flex w-full max-w-3xl flex-col gap-8">
-					<section className="flex flex-col gap-3">
-						<h1 className="text-lg font-semibold tracking-tight">
-							Welcome back,{" "}
-							{user.name?.split(" ")[0] ?? user.email.split("@")[0]}
-						</h1>
-						<div className="grid grid-cols-3 gap-2">
-							{metrics.map((m) => (
-								<MetricCard key={m.label} {...m} />
-							))}
-						</div>
-					</section>
-
-					<section className="flex flex-col gap-2">
-						<h2 className="text-sm font-medium text-muted-foreground">
-							Recent Pull Requests
-						</h2>
-						{recentPulls.length === 0 ? (
-							<p className="py-4 text-center text-sm text-muted-foreground">
-								No pull requests yet.
-							</p>
-						) : (
-							<div className="-mx-3 flex flex-col gap-1">
-								{recentPulls.map((pr) => (
-									<PullRequestRow key={pr.id} pr={pr} scope={scope} />
-								))}
-							</div>
-						)}
-					</section>
+			<ListPage
+				title={`Welcome back, ${user.name?.split(" ")[0] ?? user.email.split("@")[0]}`}
+				className="overflow-stable"
+			>
+				<div className="grid grid-cols-1 gap-2 pb-4 sm:grid-cols-3">
+					{metrics.map((m) => (
+						<MetricCard key={m.label} {...m} />
+					))}
 				</div>
-			</div>
+				<ListGroup
+					icon={GitPullRequestIcon}
+					title="Recent pull requests"
+					count={recentPulls.length}
+				>
+					{recentPulls.map((pr) => (
+						<PullRequestRow key={pr.id} pr={pr} scope={scope} />
+					))}
+				</ListGroup>
+				{recentPulls.length === 0 ? (
+					<ListEmpty>No pull requests yet.</ListEmpty>
+				) : null}
+			</ListPage>
 		);
 	}
 
@@ -123,13 +114,17 @@ type MetricCardProps = {
 
 function MetricCard({ icon: Icon, label, value, to }: MetricCardProps) {
 	const content = (
-		<div className="flex items-center gap-3 rounded-xl bg-surface-1 px-3.5 py-3 transition-colors hover:bg-surface-2">
-			<div className="flex shrink-0 items-center justify-center text-muted-foreground">
-				<Icon size={20} strokeWidth={1.75} />
+		<div className="flex h-16 items-center gap-3 rounded-lg bg-card px-3.5 shadow-card transition-colors hover:bg-row-hover">
+			<div className="flex size-8 shrink-0 items-center justify-center rounded-md bg-group text-muted-foreground">
+				<Icon size={16} strokeWidth={2} />
 			</div>
 			<div className="min-w-0">
-				<p className="font-semibold tabular-nums leading-tight">{value}</p>
-				<p className="truncate text-xs text-muted-foreground">{label}</p>
+				<p className="text-[15px] leading-5 font-semibold tabular-nums text-foreground">
+					{value}
+				</p>
+				<p className="truncate text-xs font-[450] text-muted-foreground">
+					{label}
+				</p>
 			</div>
 		</div>
 	);

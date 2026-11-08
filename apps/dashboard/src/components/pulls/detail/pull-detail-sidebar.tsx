@@ -4,11 +4,18 @@ import {
 	ClockIcon,
 	CloseIcon,
 	CommentIcon,
+	FileIcon,
+	GitCommitIcon,
 	GitMergeIcon,
 	MessageIcon,
 	PlusSignIcon,
 	SearchIcon,
 } from "@diffkit/icons";
+import {
+	LineCounts,
+	PanelRow,
+	PanelSection,
+} from "@diffkit/ui/components/detail-layout";
 import {
 	Popover,
 	PopoverContent,
@@ -42,6 +49,7 @@ import type {
 	PullDetail,
 	PullPageData,
 } from "#/lib/github.types";
+import { getPrStateConfig } from "#/lib/pr-state";
 import { useOptimisticMutation } from "#/lib/use-optimistic-mutation";
 
 export function PullDetailSidebar({
@@ -64,6 +72,8 @@ export function PullDetailSidebar({
 	return (
 		<DetailSidebar>
 			<PullStackSection pr={pr} owner={owner} repo={repo} scope={scope} />
+
+			<PullPropertiesSection pr={pr} />
 
 			<LabelsSection
 				currentLabels={pr.labels}
@@ -633,4 +643,30 @@ function ParticipantsList({
 	}
 
 	return <DetailParticipantAvatars actors={participants} />;
+}
+
+/** Linear's Properties section: where the pull request stands at a glance. */
+function PullPropertiesSection({ pr }: { pr: PullDetail }) {
+	const state = getPrStateConfig(pr);
+	const StateIcon = state.icon;
+	return (
+		<PanelSection label="Properties">
+			<PanelRow
+				icon={<StateIcon size={14} strokeWidth={2} className={state.color} />}
+			>
+				{state.label}
+			</PanelRow>
+			<PanelRow icon={<FileIcon size={14} strokeWidth={2} />}>
+				<span className="tabular-nums">
+					{pr.changedFiles} {pr.changedFiles === 1 ? "file" : "files"}
+				</span>
+				<LineCounts additions={pr.additions} deletions={pr.deletions} />
+			</PanelRow>
+			<PanelRow icon={<GitCommitIcon size={14} strokeWidth={2} />}>
+				<span className="tabular-nums">
+					{pr.commits} {pr.commits === 1 ? "commit" : "commits"}
+				</span>
+			</PanelRow>
+		</PanelSection>
+	);
 }

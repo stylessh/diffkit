@@ -153,6 +153,7 @@ export function DetailPageHeader({
 	icon: Icon,
 	iconClassName,
 	title,
+	titleSuffix,
 	actions,
 }: {
 	collectionHref: string;
@@ -163,6 +164,8 @@ export function DetailPageHeader({
 	icon: DetailHeaderIcon;
 	iconClassName?: string;
 	title: string;
+	/** Shown right after the title, e.g. a pull request's line counts. */
+	titleSuffix?: React.ReactNode;
 	actions?: React.ReactNode;
 }) {
 	return (
@@ -180,6 +183,7 @@ export function DetailPageHeader({
 					<Icon size={14} strokeWidth={2} className={iconClassName} />
 					<span className="tabular-nums text-muted-foreground">#{number}</span>
 					<span className="truncate">{title}</span>
+					{titleSuffix}
 				</span>
 			</PageHeaderTitle>
 		</PageHeader>
@@ -206,8 +210,8 @@ export function DetailPageTitle({
 	subtitle: React.ReactNode;
 }) {
 	return (
-		<div className="flex min-w-0 flex-col gap-2.5">
-			<h1 className="text-2xl font-semibold tracking-tight text-pretty text-foreground">
+		<div className="flex min-w-0 flex-col gap-2">
+			<h1 className="text-[24px] leading-8 font-semibold tracking-[-0.01em] text-pretty text-foreground">
 				{title}
 			</h1>
 			{subtitle}

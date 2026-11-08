@@ -163,7 +163,9 @@ export function PullBodySection({
 				}}
 			>
 				{pr.body ? (
-					<Markdown>{pr.body}</Markdown>
+					<Markdown className="text-[15px] leading-6 text-text-header">
+						{pr.body}
+					</Markdown>
 				) : (
 					<p className="text-sm italic text-muted-foreground">
 						No description provided.

@@ -46,10 +46,12 @@ export function DetailActivityHeader({
 	count?: number;
 }) {
 	return (
-		<div className="flex items-center justify-between gap-2 rounded-lg bg-surface-1 px-4 py-2.5">
-			<h2 className="text-xs font-medium">{title}</h2>
+		<div className="flex items-center justify-between gap-2 border-t-[0.5px] border-header-rule pt-6 pb-4">
+			<h2 className="text-[15px] leading-[1.5] font-semibold text-foreground">
+				{title}
+			</h2>
 			{count != null && (
-				<span className="text-xs tabular-nums text-muted-foreground">
+				<span className="text-[13px] tabular-nums text-muted-foreground">
 					{count}
 				</span>
 			)}

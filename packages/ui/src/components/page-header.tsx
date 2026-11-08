@@ -75,7 +75,7 @@ function PageHeaderTitle({
 		<Comp
 			data-slot="page-header-title"
 			className={cn(
-				"flex min-w-0 items-center gap-1.5 truncate text-[13px] font-medium text-foreground [&_svg]:shrink-0",
+				"flex min-w-0 items-center gap-1.5 truncate text-[13px] font-medium text-text-header [&_svg]:shrink-0",
 				className,
 			)}
 			{...props}
