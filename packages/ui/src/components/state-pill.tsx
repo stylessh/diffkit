@@ -13,6 +13,7 @@ const statePillVariants = cva(
 				merged: "bg-purple-500/10 text-purple-500",
 				muted: "bg-muted text-muted-foreground",
 				secondary: "bg-secondary text-secondary-foreground",
+				warning: "bg-amber-500/10 text-amber-500",
 			},
 		},
 		defaultVariants: {

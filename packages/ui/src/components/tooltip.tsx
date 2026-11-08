@@ -36,22 +36,38 @@ function TooltipTrigger({
 
 function TooltipContent({
 	className,
-	sideOffset = 8,
+	sideOffset = 5,
 	children,
+	keys,
 	...props
-}: React.ComponentProps<typeof TooltipPrimitive.Content>) {
+}: React.ComponentProps<typeof TooltipPrimitive.Content> & {
+	/** Shortcut shown after the label, one hairline box per key: ["⌘", "K"]. */
+	keys?: readonly string[];
+}) {
 	return (
 		<TooltipPrimitive.Portal>
 			<TooltipPrimitive.Content
 				data-slot="tooltip-content"
 				sideOffset={sideOffset}
 				className={cn(
-					"bg-surface-2 text-foreground animate-in fade-in-0 zoom-in-95 data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2 z-50 w-fit rounded-md px-2 py-1 text-[11px] leading-none",
+					"bg-tooltip text-text-header shadow-popover animate-in fade-in-0 zoom-in-95 data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2 z-50 flex w-fit items-center gap-2 rounded-lg px-2 py-1.5 text-[11px] leading-none font-medium",
 					className,
 				)}
 				{...props}
 			>
 				{children}
+				{keys?.length ? (
+					<span className="flex gap-1">
+						{keys.map((key) => (
+							<kbd
+								key={key}
+								className="flex h-[17px] min-w-[17px] items-center justify-center rounded-[4px] px-1 font-sans text-[11px] font-medium text-muted-foreground shadow-key"
+							>
+								{key}
+							</kbd>
+						))}
+					</span>
+				) : null}
 			</TooltipPrimitive.Content>
 		</TooltipPrimitive.Portal>
 	);
