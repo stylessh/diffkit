@@ -15,11 +15,9 @@ type MutateOptions<TResult> = {
 };
 
 /**
- * Applies optimistic cache updates, runs the mutation, and rolls the updates
- * back if it fails. On success nothing is refetched: GitHub can serve the
- * pre-write state for a moment, so an immediate refetch would flash the old
- * value. The change feed (or focus refetch for repos without the app)
- * reconciles later.
+ * Nothing is refetched on success: GitHub can serve the pre-write state for a
+ * moment, so an immediate refetch would flash the old value. The change feed
+ * (or focus refetch for repos without the app) reconciles later.
  */
 export function useOptimisticMutation() {
 	const queryClient = useQueryClient();

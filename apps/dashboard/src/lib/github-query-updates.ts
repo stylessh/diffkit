@@ -216,9 +216,8 @@ export function findIssueSummaryInLists(
 }
 
 /**
- * Invalidates exactly the queries a mutation affected, through the same
- * entity → query registry as the change feed. Active matches refetch; inactive
- * ones refetch on next use.
+ * Same entity → query registry as the change feed, so a mutation and the
+ * webhook it triggers invalidate the same queries.
  */
 export function invalidateGitHubEntities(
 	queryClient: QueryClient,
