@@ -61,6 +61,7 @@ const samples: Record<string, GitHubChangeEntity> = {
 	labels: { kind: "labels", repo: "acme/api" },
 	collaborators: { kind: "collaborators", repo: "acme/api" },
 	discussions: { kind: "discussions", repo: "acme/api" },
+	settings: { kind: "settings", repo: "acme/api" },
 };
 
 /** Cached payload of an aggregate that contains the sample item. */

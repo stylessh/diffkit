@@ -16,7 +16,9 @@ import { RepoStarForkActions } from "#/components/repo/repo-star-fork-actions";
 import {
 	type GitHubQueryScope,
 	githubRepoOverviewQueryOptions,
+	githubRepoViewerPermissionQueryOptions,
 } from "#/lib/github.query";
+import { repoSettingsCapabilities } from "#/lib/settings/permissions";
 import { useHasMounted } from "#/lib/use-has-mounted";
 import { HairlineBadge } from "./repo-ui";
 
@@ -40,6 +42,13 @@ export function RepoHeader({
 		...githubRepoOverviewQueryOptions(scope, { owner, repo }),
 		enabled: hasMounted,
 	});
+	const permissionQuery = useQuery({
+		...githubRepoViewerPermissionQueryOptions(scope, { owner, repo }),
+		enabled: hasMounted,
+	});
+	const showSettings = repoSettingsCapabilities(
+		permissionQuery.data?.permission ?? null,
+	).openSettings;
 	const repoData = overviewQuery.data;
 	const name = repoData?.name ?? repo;
 	const section = active && active !== "code" ? active : null;
@@ -118,6 +127,7 @@ export function RepoHeader({
 				active={active}
 				repoData={repoData}
 				actions={tabActions}
+				showSettings={showSettings}
 			/>
 		</>
 	);

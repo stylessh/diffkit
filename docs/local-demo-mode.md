@@ -38,10 +38,19 @@ browser ──▶ dashboard (vite dev, CLOUDFLARE_ENV=demo, :3000)
   exclusive fragments are allowed, as GitHub allows them.
 - **REST shims** (`src/shims`) fill gaps in emulate: notifications (kept up to
   date from emulate's own webhook events), `/user/installations`, commit
-  statuses and combined status, stars, rulesets, participation stats, user
-  events, contributors, real PR files and commits, zipped Actions logs, reviews
-  with line ranges, review replies, deleting pending reviews, `GET/PATCH
+  statuses and combined status, stars, participation stats, user events,
+  contributors, real PR files and commits, zipped Actions logs, reviews with
+  line ranges, review replies, deleting pending reviews, `GET/PATCH
   /issues/:n` for pull requests, `/users/<org>`, and SVG avatars.
+- **Settings shims** (`src/shims/settings-*.ts`): what the repository and
+  organization settings pages call on top of emulate. Actions variables and
+  secrets (with a real X25519 public key), collaborator roles and invitations,
+  teams with per-repository roles, webhook config, pings and a delivery history
+  with redelivery (recorded, never sent), rulesets, branch protection flags,
+  repository settings that GitHub validates (`default_branch`,
+  `allow_update_branch`, per-viewer `permissions`, repo delete cleanup), org
+  profile, owner/member roles, org invitations and team counts. `lumen-labs/beacon`
+  carries the seed for all of it.
 - **Seed** (`src/seed`): `content/*.ts` declares people, an org, five repos
   (a TypeScript library, a pnpm monorepo, a docs repo, a private repo and a
   personal repo), commit histories, ~13 PRs in every state (draft, approved,
@@ -100,8 +109,10 @@ sync with `apps/emulator/src/seed/identity.ts`.
   covers them.
 - Conditional requests: no ETags or `304 Not Modified`.
 - Search is a qualifier matcher over the store, not GitHub's ranking.
-- Merge conflicts are declared in the seed, not computed; `update-branch`,
-  rulesets and branch protection are minimal.
+- Merge conflicts are declared in the seed, not computed; `update-branch` is
+  minimal. Rulesets are read-only (two seeded, none enforced, no create/edit),
+  the seeded branch protection on `beacon`'s `main` does not block merges, and
+  invitations can be created and cancelled but not accepted.
 - Actions do not execute: runs, jobs and logs are seeded; re-runs only return
   success.
 - "Open on GitHub" and other github.com links keep pointing at github.com, where
