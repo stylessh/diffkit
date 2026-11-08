@@ -27,14 +27,21 @@ const runbook = (name) =>
 const health = await fetchHealth();
 const evaluations = [
   evaluateWorkerHealth(health),
-  await evaluateD1Size(),
+  await guarded("Production alert: D1 database above 8 GB", evaluateD1Size),
   evaluateMaintenance(health),
-  await evaluateErrorRate(),
+  await guarded("Production alert: Worker error rate above 5%", evaluateErrorRate),
 ];
 
 const actions = [];
-for (const evaluation of evaluations) actions.push(await reconcile(evaluation));
+for (const evaluation of evaluations) {
+  try {
+    actions.push(await reconcile(evaluation));
+  } catch (error) {
+    actions.push(`reconcile failed: ${messageOf(error)}`);
+  }
+}
 writeSummary(evaluations, actions);
+process.exit(actions.some((action) => action.startsWith("reconcile failed")) ? 1 : 0);
 
 function requireEnv(names) {
   const missing = names.filter((name) => !process.env[name]);
@@ -43,6 +50,18 @@ function requireEnv(names) {
     process.exit(1);
   }
   return Object.fromEntries(names.map((name) => [name, process.env[name]]));
+}
+
+function messageOf(error) {
+  return error instanceof Error ? error.message : String(error);
+}
+
+async function guarded(title, evaluate) {
+  try {
+    return await evaluate(title);
+  } catch (error) {
+    return unknown(title, messageOf(error));
+  }
 }
 
 function firing(title, body) {
@@ -101,11 +120,10 @@ function evaluateWorkerHealth(result) {
   );
 }
 
-async function evaluateD1Size() {
-  const title = "Production alert: D1 database above 8 GB";
+async function evaluateD1Size(title) {
   const response = await fetch(
     `https://api.cloudflare.com/client/v4/accounts/${env.CLOUDFLARE_ACCOUNT_ID}/d1/database/${env.D1_DATABASE_ID}`,
-    { headers: { Authorization: `Bearer ${env.CLOUDFLARE_API_TOKEN}` } },
+    { headers: { Authorization: `Bearer ${env.CLOUDFLARE_API_TOKEN}` }, signal: AbortSignal.timeout(15_000) },
   );
   const payload = parseJson(await response.text());
   const sizeBytes = payload?.result?.file_size;
@@ -146,14 +164,14 @@ function evaluateMaintenance(result) {
   }
 }
 
-async function evaluateErrorRate() {
-  const title = "Production alert: Worker error rate above 5%";
+async function evaluateErrorRate(title) {
   const end = Date.now() - ERROR_RATE_LAG_MS;
   const start = end - ERROR_RATE_WINDOW_MS;
   const query = `query ($account: String!, $script: String!, $start: Time!, $end: Time!) {
     viewer { accounts(filter: { accountTag: $account }) {
-      workersInvocationsAdaptive(limit: 10, filter: { scriptName: $script, datetime_geq: $start, datetime_lt: $end }) {
+      workersInvocationsAdaptive(limit: 100, filter: { scriptName: $script, datetime_geq: $start, datetime_lt: $end }) {
         sum { requests errors }
+        dimensions { httpResponseStatus }
       }
     } }
   }`;
@@ -169,20 +187,27 @@ async function evaluateErrorRate() {
         end: new Date(end).toISOString(),
       },
     }),
+    signal: AbortSignal.timeout(15_000),
   });
   const payload = parseJson(await response.text());
   const rows = payload?.data?.viewer?.accounts?.[0]?.workersInvocationsAdaptive;
   if (!response.ok || payload?.errors?.length || !Array.isArray(rows)) {
-    return unknown(
-      title,
-      `Workers analytics query failed (HTTP ${response.status}): ${JSON.stringify(payload?.errors ?? payload)}. The CLOUDFLARE_API_TOKEN secret needs Account Analytics: Read.`,
-    );
+    const errors = JSON.stringify(payload?.errors ?? payload);
+    const permissionHint = /auth|permission|forbidden/i.test(errors)
+      ? " The CLOUDFLARE_API_TOKEN secret needs Account Analytics: Read."
+      : "";
+    return unknown(title, `Workers analytics query failed (HTTP ${response.status}): ${errors}.${permissionHint}`);
   }
   const requests = rows.reduce((total, row) => total + row.sum.requests, 0);
-  const errors = rows.reduce((total, row) => total + row.sum.errors, 0);
+  // `sum.errors` only counts invocations that threw; the Worker catches
+  // errors and answers 500, so count 5xx responses as failures too.
+  const errors = rows.reduce(
+    (total, row) => total + (row.dimensions.httpResponseStatus >= 500 ? row.sum.requests : row.sum.errors),
+    0,
+  );
   const rate = requests === 0 ? 0 : errors / requests;
   const window = `${new Date(start).toISOString()} – ${new Date(end).toISOString()}`;
-  const detail = `${errors} errors / ${requests} requests (${(rate * 100).toFixed(2)}%) in ${window}`;
+  const detail = `${errors} failed (5xx or exception) / ${requests} requests (${(rate * 100).toFixed(2)}%) in ${window}`;
   if (requests < ERROR_RATE_MIN_REQUESTS || rate < ERROR_RATE_THRESHOLD) return clear(title, detail);
   return firing(
     title,
@@ -193,6 +218,7 @@ async function evaluateErrorRate() {
 async function github(path, init = {}) {
   const response = await fetch(`https://api.github.com/repos/${env.GITHUB_REPOSITORY}${path}`, {
     ...init,
+    signal: AbortSignal.timeout(15_000),
     headers: {
       Authorization: `Bearer ${env.GITHUB_TOKEN}`,
       Accept: "application/vnd.github+json",
@@ -230,7 +256,12 @@ async function closeIssue(issue, comment) {
 async function reconcile(evaluation) {
   const runLink = `[the alert watchdog](${process.env.GITHUB_SERVER_URL}/${env.GITHUB_REPOSITORY}/actions/runs/${process.env.GITHUB_RUN_ID})`;
   const open = await openIssuesFor(evaluation);
-  const wantedTitle = evaluation.state === "clear" ? null : issueTitles(evaluation)[evaluation.state];
+  const titles = issueTitles(evaluation);
+  const firingIssue = open.find((issue) => issue.title === titles.firing);
+  // A check that cannot be evaluated says nothing about recovery: keep a
+  // firing issue open instead of churning it into an "unavailable" one.
+  if (evaluation.state === "unknown" && firingIssue) return `open #${firingIssue.number} (check unavailable this run)`;
+  const wantedTitle = evaluation.state === "clear" ? null : titles[evaluation.state];
 
   const outdated = open.filter((issue) => issue.title !== wantedTitle);
   for (const issue of outdated) {

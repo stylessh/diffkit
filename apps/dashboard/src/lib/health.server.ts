@@ -34,7 +34,7 @@ const MAINTENANCE_HEARTBEAT_KEY = "health:maintenance-heartbeat";
 const MAINTENANCE_HEARTBEAT_TTL_SECONDS = 24 * 60 * 60;
 /** Two missed 5-minute cron runs plus scheduling slack. */
 const MAINTENANCE_STALE_AFTER_MS = 12 * 60 * 1000;
-const CHECK_TIMEOUT_MS = 2_000;
+const CHECK_TIMEOUT_MS = 5_000;
 
 export async function recordMaintenanceRun(
 	kv: KVNamespace,

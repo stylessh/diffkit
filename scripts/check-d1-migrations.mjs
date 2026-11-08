@@ -21,7 +21,9 @@ const EDIT_MARKER = /migration-edit:\s*approved/i;
 const DESTRUCTIVE_PATTERNS = [
   { label: "DROP", pattern: /\bDROP\s+(TABLE|INDEX|VIEW|TRIGGER)\b/i },
   { label: "ALTER ... DROP COLUMN", pattern: /\bALTER\s+TABLE\b[^;]*\bDROP\s+COLUMN\b/i },
+  { label: "ALTER ... RENAME", pattern: /\bALTER\s+TABLE\b[^;]*\bRENAME\b/i },
   { label: "TRUNCATE", pattern: /\bTRUNCATE\b/i },
+  { label: "UPDATE without WHERE", pattern: /^\s*UPDATE\b(?![\s\S]*\bWHERE\b)/i },
   { label: "DELETE without WHERE", pattern: /\bDELETE\s+FROM\s+[`"\w.]+\s*(;|$)/i },
 ];
 
@@ -85,7 +87,7 @@ function skip(name, reason) {
 }
 
 function stripSqlComments(sql) {
-  return sql.replace(/\/\*[\s\S]*?\*\//g, "").replace(/--[^\n]*/g, "");
+  return sql.replace(/\/\*[\s\S]*?\*\//g, " ").replace(/--[^\n]*/g, " ");
 }
 
 function changedMigrationFiles(base) {
@@ -243,11 +245,12 @@ function describeSchema(db) {
       .filter((index) => index.origin === "c")
       .map((index) => {
         const cols = db
-          .prepare(`PRAGMA index_info("${index.name}")`)
+          .prepare(`PRAGMA index_xinfo("${index.name}")`)
           .all()
-          .map((c) => c.name)
+          .filter((c) => c.key === 1)
+          .map((c) => `${c.name ?? "<expr>"}${c.desc ? " desc" : ""}`)
           .join(",");
-        return `index ${index.name} unique=${index.unique} (${cols})`;
+        return `index ${index.name} unique=${index.unique} partial=${index.partial} (${cols})`;
       });
     const foreignKeys = db
       .prepare(`PRAGMA foreign_key_list(${quoted})`)

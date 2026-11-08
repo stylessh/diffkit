@@ -25,7 +25,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          fetch-depth: 0
+          fetch-depth: 2
 
       - uses: pnpm/action-setup@v4
 
@@ -40,5 +40,4 @@ jobs:
       - name: Check migrations
         env:
           PR_BODY: ${{ github.event.pull_request.body }}
-          BASE_SHA: ${{ github.event.pull_request.base.sha }}
-        run: node scripts/check-d1-migrations.mjs --base "$BASE_SHA"
+        run: node scripts/check-d1-migrations.mjs --base HEAD^1
