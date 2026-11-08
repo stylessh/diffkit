@@ -1,9 +1,25 @@
-import { CheckIcon, CommentIcon, CopyIcon, EditIcon } from "@diffkit/icons";
+import {
+	CheckIcon,
+	ChevronDownIcon,
+	ChevronUpIcon,
+	CommentIcon,
+	CopyIcon,
+	EditIcon,
+	MoreHorizontalIcon,
+} from "@diffkit/icons";
+import { LineCounts } from "@diffkit/ui/components/detail-layout";
+import {
+	DropdownMenu,
+	DropdownMenuContent,
+	DropdownMenuItem,
+	DropdownMenuTrigger,
+} from "@diffkit/ui/components/dropdown-menu";
 import { Markdown } from "@diffkit/ui/components/markdown";
 import {
 	MarkdownEditor,
 	type MentionConfig,
 } from "@diffkit/ui/components/markdown-editor";
+import { PageIconButton } from "@diffkit/ui/components/page-header";
 import { toast } from "@diffkit/ui/components/sonner";
 import { Spinner } from "@diffkit/ui/components/spinner";
 import { quickhubDark, quickhubLight } from "@diffkit/ui/lib/diffs-themes";
@@ -34,6 +50,7 @@ import {
 } from "#/lib/github.functions";
 import { githubQueryKeys } from "#/lib/github.query";
 import type { PullFile, PullReviewComment } from "#/lib/github.types";
+import { FileTypeIcon } from "./review-icons";
 import type {
 	ActiveCommentForm,
 	PendingComment,
@@ -47,6 +64,105 @@ const LARGE_PATCH_CHANGE_THRESHOLD = 400;
 const LARGE_PATCH_CHAR_THRESHOLD = 24_000;
 const DIFF_LINE_HEIGHT = 20;
 const DIFF_HUNK_SEPARATOR_HEIGHT = 28;
+
+/**
+ * Pierre's diff, restyled after Linear's file card (measured from the
+ * reference's Diff tab): 20px rows of 12px mono on the card's own fill, a 50px
+ * number column (12px right padding, numbers green/red on changed lines), no
+ * change bars or gutter gaps, a calm 28px hunk row, a hairline between split
+ * halves, and comment threads on the page fill between hairlines.
+ */
+const DIFF_UNSAFE_CSS = `
+:host {
+	--diffs-font-family: 'Geist Mono Variable', 'SF Mono', ui-monospace, 'Cascadia Code', monospace;
+	--diffs-header-font-family: 'Inter Variable', 'Inter', ui-sans-serif, system-ui, sans-serif;
+	--diffs-light-bg: var(--ln-card);
+	--diffs-dark-bg: var(--ln-card);
+	--diffs-light: var(--ln-text);
+	--diffs-dark: var(--ln-text-header);
+	font-weight: 400;
+	--diffs-font-features: "liga" 0, "calt" 0;
+	--diffs-font-size: 12px;
+	--diffs-line-height: 20px;
+	--diffs-gap-block: 4px;
+	--diffs-gap-inline: 0px;
+	--diffs-gap-style: 0 solid transparent;
+	--diffs-fg-number-addition-override: var(--ln-success);
+	--diffs-fg-number-deletion-override: var(--ln-number-removed);
+	--diffs-bg-separator-override: var(--ln-card);
+	--diffs-bg-hover-override: var(--ln-row-hover);
+	--diffs-bg-context-override: var(--ln-main);
+}
+[data-code] { padding-block: 4px; }
+[data-column-number] {
+	box-sizing: border-box;
+	min-width: 50px;
+	padding: 0 12px 0 0;
+}
+[data-line-number-content] { min-width: 0; }
+[data-line], [data-no-newline] { padding-inline: 0 16px; }
+[data-diff-type='split'] [data-deletions] { border-right: 0; }
+[data-diff-type='split'][data-overflow='scroll'] [data-additions],
+[data-diff-type='split'][data-overflow='wrap'] [data-additions] [data-gutter] {
+	border-left: 1px solid var(--ln-card-border);
+}
+[data-gutter-utility-slot] { align-items: center; }
+[data-utility-button] {
+	width: 20px;
+	height: 20px;
+	margin-right: -12px;
+	border-radius: 9999px;
+	background-color: var(--ln-button);
+	color: var(--ln-text-muted);
+	box-shadow: var(--ln-button-ring);
+}
+[data-utility-button]:hover { background-color: var(--ln-button-hover); color: var(--ln-text); }
+[data-utility-button] svg { width: 12px; height: 12px; }
+[data-content-buffer],
+[data-gutter-buffer='buffer'] {
+	background-image: none;
+	background-color: var(--ln-card);
+}
+[data-separator='line-info'] {
+	height: 28px;
+	margin-block: 0;
+	background-color: var(--ln-card);
+}
+[data-separator-wrapper],
+[data-separator-content],
+[data-expand-button] {
+	background-color: transparent;
+	border: 0;
+	border-radius: 0;
+}
+[data-separator-content] {
+	justify-content: center;
+	font-size: 12px;
+	font-weight: 500;
+	color: var(--ln-text-muted);
+	padding-inline: 8px;
+}
+[data-expand-button] { color: var(--ln-text-muted); }
+[data-expand-button]:hover { color: var(--ln-text); }
+[data-line-annotation] {
+	font-family: var(--diffs-header-font-family);
+	font-weight: 450;
+	white-space: normal;
+	border-block: 0.5px solid var(--ln-card-border);
+}
+[data-gutter-buffer='annotation'] { border-block: 0.5px solid var(--ln-card-border); }
+[data-line-annotation] code { font-family: var(--diffs-font-family, var(--diffs-font-fallback)); }
+[data-annotation-content] {
+	background-color: transparent;
+	/* keep threads in view when long lines scroll the column sideways */
+	position: sticky;
+	left: var(--diffs-column-number-width, 50px);
+	width: var(--diffs-column-content-width, auto);
+	box-sizing: border-box;
+}
+[data-overflow='wrap'] [data-annotation-content] { position: static; width: auto; }
+[data-line-annotation], [data-gutter-buffer='annotation'] { --diffs-line-bg: var(--ln-main); }
+`;
 
 function estimateDiffHeight(
 	patch: string | null | undefined,
@@ -132,6 +248,7 @@ export const ReviewFileDiffBlock = memo(function ReviewFileDiffBlock({
 	mentionConfig,
 	viewerLogin,
 	threadInfoByCommentId,
+	wrapLines = false,
 }: {
 	id: string;
 	file: PullFile;
@@ -156,8 +273,12 @@ export const ReviewFileDiffBlock = memo(function ReviewFileDiffBlock({
 		number,
 		{ threadId: string; isResolved: boolean }
 	>;
+	/** Wrap long lines instead of scrolling them sideways. */
+	wrapLines?: boolean;
 }) {
-	const [isCollapsed, setIsCollapsed] = useState(false);
+	// A deleted file starts folded: its lines are all red and rarely worth reading.
+	const [isCollapsed, setIsCollapsed] = useState(file.status === "removed");
+	const [isViewed, setIsViewed] = useState(false);
 	const { resolvedTheme } = useTheme();
 	const isDark = resolvedTheme === "dark";
 
@@ -207,11 +328,7 @@ export const ReviewFileDiffBlock = memo(function ReviewFileDiffBlock({
 		() =>
 			[
 				`:host { color-scheme: ${isDark ? "dark" : "light"}; }`,
-				`:host { --diffs-font-family: 'Geist Mono Variable', 'SF Mono', ui-monospace, 'Cascadia Code', monospace; }`,
-				`[data-line-annotation] { font-family: 'Inter Variable', 'Inter', 'Avenir Next', ui-sans-serif, system-ui, sans-serif; }`,
-				`[data-line-annotation] code { font-family: var(--diffs-font-family, var(--diffs-font-fallback)); }`,
-				`[data-annotation-content] { background-color: transparent; }`,
-				`[data-diff] { border: 1px solid var(--border); border-top: 0; border-radius: 0 0 4px 4px; overflow: hidden; }`,
+				DIFF_UNSAFE_CSS,
 			].join("\n"),
 		[isDark],
 	);
@@ -226,14 +343,22 @@ export const ReviewFileDiffBlock = memo(function ReviewFileDiffBlock({
 			lineDiffType: useWordDiff ? ("word" as const) : ("none" as const),
 			maxLineDiffLength: useWordDiff ? 1_000 : 200,
 			hunkSeparators: "line-info" as const,
-			overflow: "scroll" as const,
+			diffIndicators: "none" as const,
+			overflow: wrapLines ? ("wrap" as const) : ("scroll" as const),
 			disableFileHeader: true,
 			enableGutterUtility: !readOnly,
 			enableLineSelection: !readOnly,
 			...(readOnly ? {} : { onGutterUtilityClick: handleGutterUtilityClick }),
 			unsafeCSS,
 		}),
-		[diffStyle, handleGutterUtilityClick, readOnly, unsafeCSS, useWordDiff],
+		[
+			diffStyle,
+			handleGutterUtilityClick,
+			readOnly,
+			unsafeCSS,
+			useWordDiff,
+			wrapLines,
+		],
 	);
 	const patchString = useMemo(() => buildPatchString(file), [file]);
 	const placeholderHeight = useMemo(
@@ -242,6 +367,11 @@ export const ReviewFileDiffBlock = memo(function ReviewFileDiffBlock({
 	);
 
 	const toggleCollapse = useCallback(() => setIsCollapsed((prev) => !prev), []);
+	// Marking a file viewed folds it away; unmarking opens it again.
+	const toggleViewed = useCallback((viewed: boolean) => {
+		setIsViewed(viewed);
+		setIsCollapsed(viewed);
+	}, []);
 
 	const renderAnnotation = useCallback(
 		(annotation: DiffLineAnnotation<ReviewAnnotation>) => {
@@ -322,114 +452,156 @@ export const ReviewFileDiffBlock = memo(function ReviewFileDiffBlock({
 		],
 	);
 
-	if (!file.patch) {
-		return (
-			<div id={id} data-filename={file.filename}>
-				<FileHeader
-					file={file}
-					isCollapsed={isCollapsed}
-					onToggleCollapse={toggleCollapse}
-				/>
-				{!isCollapsed && (
-					<div className="px-2 pb-2">
-						<div className="flex items-center justify-center rounded-b-lg border-[0.5px] border-t-0 bg-surface-0 py-8 text-sm text-muted-foreground">
-							Binary file or diff too large to display
-						</div>
-					</div>
-				)}
-			</div>
-		);
-	}
+	const header = (
+		<FileHeader
+			file={file}
+			isCollapsed={isCollapsed}
+			onToggleCollapse={toggleCollapse}
+			isViewed={readOnly ? undefined : isViewed}
+			onViewedChange={toggleViewed}
+		/>
+	);
 
 	return (
-		<div id={id} data-filename={file.filename}>
-			<FileHeader
-				file={file}
-				isCollapsed={isCollapsed}
-				onToggleCollapse={toggleCollapse}
-			/>
-			{!isCollapsed && !isNearViewport && (
-				<div className="px-2 pb-2" style={{ height: placeholderHeight }} />
+		<section
+			id={id}
+			data-filename={file.filename}
+			aria-label={file.filename}
+			className="overflow-clip rounded-lg border-[0.5px] border-card-border bg-surface-0"
+		>
+			{header}
+			{!isCollapsed && !file.patch && (
+				<p className="px-4 py-3 text-xs font-[450] text-muted-foreground">
+					Binary file or diff too large to display
+				</p>
 			)}
-			{!isCollapsed && isNearViewport && (
-				<div className="px-2 pb-2">
-					<Suspense fallback={<div style={{ height: placeholderHeight }} />}>
-						<PatchDiff
-							patch={patchString}
-							options={diffOptions}
-							selectedLines={selectedLines}
-							lineAnnotations={allAnnotations}
-							renderAnnotation={renderAnnotation}
-						/>
-					</Suspense>
-				</div>
+			{!isCollapsed && file.patch && !isNearViewport && (
+				<div style={{ height: placeholderHeight }} />
 			)}
-		</div>
+			{!isCollapsed && file.patch && isNearViewport && (
+				<Suspense fallback={<div style={{ height: placeholderHeight }} />}>
+					<PatchDiff
+						patch={patchString}
+						options={diffOptions}
+						selectedLines={selectedLines}
+						lineAnnotations={allAnnotations}
+						renderAnnotation={renderAnnotation}
+					/>
+				</Suspense>
+			)}
+		</section>
 	);
 });
 
+const CHANGE_LABEL: Partial<
+	Record<PullFile["status"], { label: string; tone: string }>
+> = {
+	added: { label: "New", tone: "text-added" },
+	removed: { label: "Deleted", tone: "text-removed" },
+	renamed: { label: "Renamed", tone: "text-muted-foreground" },
+};
+
+function splitPath(path: string) {
+	const at = path.lastIndexOf("/");
+	return { name: path.slice(at + 1), dir: path.slice(0, at + 1) };
+}
+
+/**
+ * A file card's 36px header, after Linear's diff view: the file's glyph (it
+ * folds the card), name, muted path and what happened to it, copy, the line
+ * counts, Viewed and a more menu. It sticks to the top while its lines scroll.
+ */
 const FileHeader = memo(function FileHeader({
 	file,
 	isCollapsed,
 	onToggleCollapse,
+	isViewed,
+	onViewedChange,
 }: {
 	file: PullFile;
 	isCollapsed: boolean;
 	onToggleCollapse: () => void;
+	/** Omit to hide the Viewed checkbox (read-only diffs). */
+	isViewed?: boolean;
+	onViewedChange: (viewed: boolean) => void;
 }) {
 	const [copied, setCopied] = useState(false);
+	const { name, dir } = splitPath(file.filename);
+	const moved =
+		file.previousFilename && file.previousFilename !== file.filename
+			? splitPath(file.previousFilename)
+			: null;
+	const change = CHANGE_LABEL[file.status];
+
+	const copyPath = useCallback(() => {
+		void navigator.clipboard.writeText(file.filename).then(() => {
+			setCopied(true);
+			setTimeout(() => setCopied(false), 1500);
+		});
+	}, [file.filename]);
 
 	return (
-		<div className="sticky top-2 z-10 flex items-center gap-2 rounded-lg border-[0.5px] bg-surface-1 px-3 py-2 select-none">
+		<div
+			className={cn(
+				"sticky top-0 z-10 flex h-9 items-center gap-2 rounded-t-[7.5px] bg-surface-0 pr-2 pl-4 text-xs leading-4 font-[450] select-none",
+				isCollapsed
+					? "rounded-b-[7.5px]"
+					: "border-b-[0.5px] border-card-border",
+			)}
+		>
 			<button
 				type="button"
 				onClick={onToggleCollapse}
-				className="flex shrink-0 items-center text-muted-foreground transition-colors hover:text-foreground"
-				aria-label={isCollapsed ? "Expand file" : "Collapse file"}
+				aria-expanded={!isCollapsed}
+				aria-label={
+					isCollapsed ? "Expand file contents" : "Collapse file contents"
+				}
+				title={isCollapsed ? "Expand file" : "Collapse file"}
+				className="relative flex shrink-0 items-center rounded-sm after:absolute after:-inset-1.5"
 			>
-				<svg
-					aria-hidden="true"
-					className={cn(
-						"size-3 shrink-0 transition-transform",
-						!isCollapsed && "rotate-90",
-					)}
-					viewBox="0 0 16 16"
-					fill="currentColor"
-				>
-					<path d="M6.22 3.22a.75.75 0 0 1 1.06 0l4.25 4.25a.75.75 0 0 1 0 1.06l-4.25 4.25a.75.75 0 0 1-1.06-1.06L9.94 8 6.22 4.28a.75.75 0 0 1 0-1.06Z" />
-				</svg>
+				<FileTypeIcon path={file.filename} />
 			</button>
 
-			{/* biome-ignore lint/a11y/noStaticElementInteractions: span stops propagation so text selection doesn't trigger collapse */}
-			{/* biome-ignore lint/a11y/useKeyWithClickEvents: keyboard users use the collapse button; this only prevents mouse click bubbling */}
+			{/* a moved file reads "old → new", the old name struck through when it changed too */}
+			{moved ? (
+				<>
+					<span
+						className={cn(
+							"min-w-0 shrink truncate text-muted-foreground select-text",
+							moved.name !== name && "line-through",
+						)}
+					>
+						{moved.name !== name ? moved.name : moved.dir}
+					</span>
+					<span aria-hidden className="shrink-0 text-icon-faint">
+						→
+					</span>
+				</>
+			) : null}
 			<span
-				className="min-w-0 flex-1 cursor-text truncate font-mono text-xs font-medium select-text"
-				onClick={(e) => e.stopPropagation()}
-			>
-				{file.previousFilename && file.previousFilename !== file.filename ? (
-					<>
-						<span className="text-muted-foreground line-through">
-							{file.previousFilename}
-						</span>
-						<span className="mx-1 text-muted-foreground">→</span>
-						{file.filename}
-					</>
-				) : (
-					file.filename
+				className={cn(
+					"max-w-[60%] shrink-0 truncate select-text",
+					file.status === "removed"
+						? "text-muted-foreground line-through"
+						: "text-foreground",
 				)}
+			>
+				{name}
 			</span>
-
+			<span className="min-w-0 truncate text-muted-foreground select-text max-sm:hidden">
+				{dir}
+			</span>
+			{change ? (
+				<span className={cn("shrink-0 font-medium", change.tone)}>
+					{change.label}
+				</span>
+			) : null}
 			<button
 				type="button"
-				onClick={(e) => {
-					e.stopPropagation();
-					void navigator.clipboard.writeText(file.filename).then(() => {
-						setCopied(true);
-						setTimeout(() => setCopied(false), 1500);
-					});
-				}}
-				className="shrink-0 text-muted-foreground transition-colors hover:text-foreground"
-				aria-label="Copy file path"
+				onClick={copyPath}
+				aria-label={copied ? "Copied file path" : "Copy file path"}
+				title="Copy file path"
+				className="relative flex shrink-0 text-muted-foreground transition-colors after:absolute after:-inset-1.5 hover:text-foreground"
 			>
 				{copied ? (
 					<CheckIcon size={12} strokeWidth={2.5} />
@@ -438,14 +610,48 @@ const FileHeader = memo(function FileHeader({
 				)}
 			</button>
 
-			<span className="ml-auto flex items-center gap-2 font-mono text-xs tabular-nums">
-				{file.additions > 0 && (
-					<span className="font-medium text-success">+{file.additions}</span>
-				)}
-				{file.deletions > 0 && (
-					<span className="font-medium text-danger">-{file.deletions}</span>
-				)}
-			</span>
+			<span className="ml-auto" />
+			<LineCounts
+				additions={file.additions}
+				deletions={file.deletions}
+				className="text-xs"
+			/>
+			{isViewed !== undefined ? (
+				<label className="ml-3 flex h-6 shrink-0 cursor-pointer items-center gap-2 rounded-full px-2 text-muted-foreground transition-colors hover:bg-ghost-hover hover:text-foreground">
+					<input
+						type="checkbox"
+						checked={isViewed}
+						onChange={(e) => onViewedChange(e.target.checked)}
+						className="size-3.5 cursor-pointer accent-focus"
+					/>
+					<span className="max-sm:sr-only">Viewed</span>
+				</label>
+			) : null}
+			<DropdownMenu>
+				<DropdownMenuTrigger asChild>
+					<PageIconButton
+						type="button"
+						className="size-6 text-foreground"
+						aria-label="File actions"
+					>
+						<MoreHorizontalIcon size={14} />
+					</PageIconButton>
+				</DropdownMenuTrigger>
+				<DropdownMenuContent align="end">
+					<DropdownMenuItem onSelect={copyPath}>
+						<CopyIcon size={14} strokeWidth={2} />
+						Copy file path
+					</DropdownMenuItem>
+					<DropdownMenuItem onSelect={onToggleCollapse}>
+						{isCollapsed ? (
+							<ChevronDownIcon size={14} strokeWidth={2} />
+						) : (
+							<ChevronUpIcon size={14} strokeWidth={2} />
+						)}
+						{isCollapsed ? "Expand file" : "Collapse file"}
+					</DropdownMenuItem>
+				</DropdownMenuContent>
+			</DropdownMenu>
 		</div>
 	);
 });
@@ -473,9 +679,9 @@ function InlineCommentForm({
 	}, []);
 
 	return (
-		<div className="mx-2 my-1 flex flex-col gap-2">
+		<div className="my-3 mr-4 flex flex-col gap-2 max-md:ml-3">
 			{isMultiLine && startLine != null && endLine != null && (
-				<div className="text-xs text-muted-foreground">
+				<div className="text-xs font-[450] text-muted-foreground">
 					Commenting on lines {startLine}–{endLine}
 				</div>
 			)}
@@ -487,11 +693,11 @@ function InlineCommentForm({
 				mentions={mentionConfig}
 				textareaRef={textareaRef}
 			/>
-			<div className="flex items-center justify-end gap-2">
+			<div className="flex items-center justify-end gap-1.5">
 				<button
 					type="button"
 					onClick={onCancel}
-					className="rounded-md px-3 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:text-foreground"
+					className="h-7 rounded-full px-2.5 text-xs font-medium text-text-header transition-colors hover:bg-ghost-hover"
 				>
 					Cancel
 				</button>
@@ -501,7 +707,7 @@ function InlineCommentForm({
 						if (body.trim()) onSubmit(body.trim());
 					}}
 					disabled={!body.trim()}
-					className="rounded-md bg-foreground px-3 py-1.5 text-xs font-medium text-background transition-opacity disabled:opacity-50"
+					className="flex h-7 items-center gap-1.5 rounded-full bg-button px-3 text-xs font-medium text-foreground shadow-button transition-colors hover:bg-button-hover disabled:pointer-events-none disabled:opacity-45"
 				>
 					Add comment
 				</button>
@@ -524,21 +730,21 @@ function ReviewCommentBubble({
 	viewerLogin?: string;
 }) {
 	return (
-		<div className="group/comment relative px-3 py-2.5">
-			<div className="mb-1.5 flex items-center gap-1.5">
+		<div className="group/comment relative flex flex-col gap-1.5 px-4 py-3">
+			<div className="flex h-6 items-center">
 				{comment.author ? (
 					<img
 						src={comment.author.avatarUrl}
 						alt={comment.author.login}
-						className="size-4 rounded-full border-[0.5px] border-border"
+						className="size-[18px] rounded-full"
 					/>
 				) : (
-					<div className="size-4 rounded-full bg-surface-2" />
+					<div className="size-[18px] rounded-full bg-pill-neutral" />
 				)}
-				<span className="text-[13px] font-medium">
+				<span className="ml-[9px] text-[13px] font-medium text-foreground">
 					{comment.author?.login ?? "Unknown"}
 				</span>
-				<span className="text-[13px] text-muted-foreground">
+				<span className="ml-2 text-[13px] font-[450] text-icon-faint">
 					{formatRelativeTime(comment.createdAt)}
 				</span>
 				<div className="ml-auto">
@@ -555,7 +761,7 @@ function ReviewCommentBubble({
 					/>
 				</div>
 			</div>
-			<Markdown className="text-muted-foreground">{comment.body}</Markdown>
+			<Markdown className="pl-[27px] text-text-strong">{comment.body}</Markdown>
 		</div>
 	);
 }
@@ -635,9 +841,9 @@ function ReviewCommentThread({
 	};
 
 	return (
-		<div className="m-2 divide-y-[0.5px] overflow-hidden rounded-lg border-[0.5px] bg-surface-0">
+		<div className="my-3 mr-4 divide-y-[0.5px] divide-card-border overflow-hidden rounded-lg border-[0.5px] border-card-border bg-surface-0 max-md:ml-3">
 			{threadInfo?.isResolved && (
-				<div className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-success">
+				<div className="flex h-9 items-center gap-1.5 px-4 text-xs font-medium text-pill-ok-text">
 					<CheckIcon size={12} strokeWidth={2} />
 					Resolved
 				</div>
@@ -659,7 +865,7 @@ function ReviewCommentThread({
 					viewerLogin={viewerLogin}
 				/>
 			))}
-			<div className="flex items-center gap-2 px-3 py-2">
+			<div className="flex min-h-10 items-center gap-2 px-4 py-2">
 				{showReplyForm ? (
 					<div className="flex w-full flex-col gap-2">
 						<MarkdownEditor
@@ -668,14 +874,14 @@ function ReviewCommentThread({
 							placeholder="Write a reply..."
 							compact
 						/>
-						<div className="flex items-center justify-end gap-2">
+						<div className="flex items-center justify-end gap-1.5">
 							<button
 								type="button"
 								onClick={() => {
 									setShowReplyForm(false);
 									setReplyBody("");
 								}}
-								className="rounded-md px-3 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:text-foreground"
+								className="h-7 rounded-full px-2.5 text-xs font-medium text-text-header transition-colors hover:bg-ghost-hover"
 							>
 								Cancel
 							</button>
@@ -683,7 +889,7 @@ function ReviewCommentThread({
 								type="button"
 								onClick={() => void handleReply()}
 								disabled={!replyBody.trim() || isSending}
-								className="flex items-center gap-1.5 rounded-md bg-foreground px-3 py-1.5 text-xs font-medium text-background transition-opacity disabled:opacity-50"
+								className="flex h-7 items-center gap-1.5 rounded-full bg-button px-3 text-xs font-medium text-foreground shadow-button transition-colors hover:bg-button-hover disabled:pointer-events-none disabled:opacity-45"
 							>
 								{isSending ? (
 									<Spinner className="size-3" />
@@ -699,7 +905,7 @@ function ReviewCommentThread({
 						<button
 							type="button"
 							onClick={() => setShowReplyForm(true)}
-							className="flex items-center gap-1.5 text-xs text-muted-foreground transition-colors hover:text-foreground"
+							className="-ml-2 flex h-6 items-center gap-1.5 rounded-full px-2 text-xs font-medium text-muted-foreground transition-colors hover:bg-ghost-hover hover:text-foreground"
 						>
 							<CommentIcon size={12} strokeWidth={2} />
 							Reply
@@ -709,7 +915,7 @@ function ReviewCommentThread({
 								type="button"
 								onClick={() => void handleResolve()}
 								disabled={isResolving}
-								className="ml-auto flex items-center gap-1.5 text-xs text-muted-foreground transition-colors hover:text-foreground"
+								className="-mr-2 ml-auto flex h-6 items-center gap-1.5 rounded-full px-2 text-xs font-medium text-muted-foreground transition-colors hover:bg-ghost-hover hover:text-foreground disabled:opacity-45"
 							>
 								{isResolving ? (
 									<Spinner className="size-3" />
@@ -742,7 +948,7 @@ function PendingCommentBubble({
 
 	if (isEditing) {
 		return (
-			<div className="mx-2 my-1 flex flex-col gap-2">
+			<div className="my-3 mr-4 flex flex-col gap-2 max-md:ml-3">
 				<MarkdownEditor
 					value={draft}
 					onChange={setDraft}
@@ -750,14 +956,14 @@ function PendingCommentBubble({
 					compact
 					mentions={mentionConfig}
 				/>
-				<div className="flex items-center justify-end gap-2">
+				<div className="flex items-center justify-end gap-1.5">
 					<button
 						type="button"
 						onClick={() => {
 							setDraft(comment.body);
 							setIsEditing(false);
 						}}
-						className="rounded-md px-3 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:text-foreground"
+						className="h-7 rounded-full px-2.5 text-xs font-medium text-text-header transition-colors hover:bg-ghost-hover"
 					>
 						Cancel
 					</button>
@@ -770,7 +976,7 @@ function PendingCommentBubble({
 							}
 						}}
 						disabled={!draft.trim()}
-						className="rounded-md bg-foreground px-3 py-1.5 text-xs font-medium text-background transition-opacity disabled:opacity-50"
+						className="flex h-7 items-center gap-1.5 rounded-full bg-button px-3 text-xs font-medium text-foreground shadow-button transition-colors hover:bg-button-hover disabled:pointer-events-none disabled:opacity-45"
 					>
 						Update
 					</button>
@@ -780,26 +986,27 @@ function PendingCommentBubble({
 	}
 
 	return (
-		<div className="mx-2 my-1 rounded-lg border-[0.5px] border-dashed bg-surface-0 px-3 py-2.5">
-			<div className="mb-1.5 flex items-center gap-1.5">
+		<div className="my-3 mr-4 flex flex-col gap-1.5 rounded-lg border-[0.5px] border-dashed border-chip-border bg-surface-0 px-4 py-3 max-md:ml-3">
+			<div className="flex h-6 items-center gap-1.5">
 				<CommentIcon
 					size={12}
 					strokeWidth={2}
 					className="text-muted-foreground"
 				/>
-				<span className="text-[13px] font-medium text-muted-foreground">
+				<span className="text-xs font-medium text-muted-foreground">
 					Pending
 					{isMultiLine ? ` · lines ${comment.startLine}–${comment.line}` : ""}
 				</span>
 				<button
 					type="button"
 					onClick={() => setIsEditing(true)}
-					className="ml-auto flex size-6 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-surface-1 hover:text-foreground"
+					aria-label="Edit pending comment"
+					className="-mr-1 ml-auto flex size-6 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-ghost-hover hover:text-foreground"
 				>
 					<EditIcon size={12} strokeWidth={2} />
 				</button>
 			</div>
-			<Markdown className="text-muted-foreground">{comment.body}</Markdown>
+			<Markdown className="text-text-strong">{comment.body}</Markdown>
 		</div>
 	);
 }

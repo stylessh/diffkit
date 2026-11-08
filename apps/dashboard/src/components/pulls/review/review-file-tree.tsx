@@ -1,4 +1,4 @@
-import { FileIcon, FolderIcon } from "@diffkit/icons";
+import { FolderIcon } from "@diffkit/icons";
 import { cn } from "@diffkit/ui/lib/utils";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import {
@@ -9,6 +9,7 @@ import {
 	useState,
 	useSyncExternalStore,
 } from "react";
+import { FileTypeIcon } from "./review-icons";
 import type { FileTreeNode } from "./review-types";
 import { encodeFileId } from "./review-utils";
 
@@ -50,9 +51,11 @@ function useIsActiveFile(store: ActiveFileStore, path: string): boolean {
 	return useSyncExternalStore(subscribe, getSnapshot);
 }
 
-// Row height is fixed so useVirtualizer can compute absolute positions without
-// measuring. Keep this in sync with the `py-1.5 text-[13px]` styling below.
-const ROW_HEIGHT = 30;
+// Row pitch is fixed so useVirtualizer can compute absolute positions without
+// measuring: a 28px Linear sidebar item plus a 1px gap under it.
+const ROW_HEIGHT = 29;
+// Each level of nesting steps the row's content in by this much.
+const INDENT = 12;
 
 type FlatRow = {
 	node: FileTreeNode;
@@ -138,7 +141,7 @@ export const ReviewVirtualizedFileTree = memo(
 		const totalSize = virtualizer.getTotalSize();
 
 		return (
-			<div ref={scrollRef} className="flex-1 overflow-auto py-1">
+			<div ref={scrollRef} className="flex-1 overflow-auto px-2 py-1">
 				<div className="relative w-full" style={{ height: `${totalSize}px` }}>
 					{items.map((virtualItem) => {
 						const row = flatRows[virtualItem.index];
@@ -191,14 +194,15 @@ const DirectoryRow = memo(function DirectoryRow({
 	return (
 		<button
 			type="button"
-			className="flex h-full w-full items-center gap-1.5 px-3 py-1.5 text-[13px] text-muted-foreground transition-colors hover:bg-surface-1 hover:text-foreground"
-			style={{ paddingLeft: `${depth * 12 + 12}px` }}
+			aria-expanded={isOpen}
+			className="flex h-7 w-full items-center gap-1.5 rounded-lg pr-2 text-[13px] font-medium text-text-nav transition-colors hover:bg-nav-hover hover:text-foreground"
+			style={{ paddingLeft: `${depth * INDENT + 6}px` }}
 			onClick={() => onToggle(node.path)}
 		>
 			<svg
 				aria-hidden="true"
 				className={cn(
-					"size-3 shrink-0 text-muted-foreground/60 transition-transform",
+					"size-3 shrink-0 text-icon-faint transition-transform",
 					isOpen && "rotate-90",
 				)}
 				viewBox="0 0 16 16"
@@ -211,7 +215,7 @@ const DirectoryRow = memo(function DirectoryRow({
 				strokeWidth={2}
 				className="shrink-0 text-muted-foreground"
 			/>
-			<span className="truncate font-medium">{node.name}</span>
+			<span className="truncate">{node.name}</span>
 		</button>
 	);
 });
@@ -233,30 +237,32 @@ const FileTreeLeaf = memo(function FileTreeLeaf({
 	return (
 		<a
 			href={`#${fileId}`}
+			aria-current={isActive ? "location" : undefined}
 			className={cn(
-				"flex h-full w-full items-center gap-1.5 px-3 py-1.5 text-[13px] transition-colors hover:bg-surface-1",
-				isActive ? "bg-surface-1 text-foreground" : "text-muted-foreground",
+				"flex h-7 w-full items-center gap-1.5 rounded-lg pr-2 text-[13px] font-medium transition-colors",
+				isActive
+					? "bg-nav-selected text-foreground"
+					: "text-text-nav hover:bg-nav-hover hover:text-foreground",
 			)}
-			style={{ paddingLeft: `${depth * 12 + 30}px` }}
+			style={{ paddingLeft: `${depth * INDENT + 24}px` }}
 			onClick={() => onFileClick(node.path)}
 		>
-			<FileIcon
-				size={14}
-				strokeWidth={2}
-				className="shrink-0 text-muted-foreground"
-			/>
+			<FileTypeIcon path={node.path} size={14} className="shrink-0" />
 			<span
-				className={cn("truncate", node.status === "removed" && "line-through")}
+				className={cn(
+					"min-w-0 truncate",
+					node.status === "removed" && "line-through",
+				)}
 			>
 				{node.name}
 			</span>
 			{(node.additions != null || node.deletions != null) && (
-				<span className="ml-auto flex shrink-0 items-center gap-1 font-mono tabular-nums">
+				<span className="ml-auto flex shrink-0 items-center gap-1 pl-2 text-[11px] font-[450] tabular-nums text-muted-foreground">
 					{node.additions != null && node.additions > 0 && (
-						<span className="text-success">+{node.additions}</span>
+						<span>+{node.additions}</span>
 					)}
 					{node.deletions != null && node.deletions > 0 && (
-						<span className="text-danger">-{node.deletions}</span>
+						<span>-{node.deletions}</span>
 					)}
 				</span>
 			)}

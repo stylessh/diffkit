@@ -1,8 +1,8 @@
 import {
+	ChangesRequestIcon,
 	CheckIcon,
 	CloseIcon,
 	CommentIcon,
-	GitBranchIcon,
 	TickIcon,
 } from "@diffkit/icons";
 import {
@@ -43,23 +43,23 @@ const reviewOptions: Array<{
 	{
 		value: "COMMENT",
 		label: "Comment",
-		description: "Submit general feedback without explicit approval.",
+		description: "Leave feedback without a verdict",
 		icon: CommentIcon,
-		color: "text-foreground",
+		color: "text-muted-foreground",
 	},
 	{
 		value: "APPROVE",
 		label: "Approve",
-		description: "Submit feedback and approve merging these changes.",
+		description: "Approve merging these changes",
 		icon: TickIcon,
-		color: "text-success",
+		color: "text-review-approved",
 	},
 	{
 		value: "REQUEST_CHANGES",
 		label: "Request changes",
-		description: "Submit feedback suggesting changes.",
-		icon: GitBranchIcon,
-		color: "text-danger",
+		description: "Ask for changes before merging",
+		icon: ChangesRequestIcon,
+		color: "text-review-changes",
 	},
 ];
 
@@ -85,28 +85,37 @@ export function ReviewSubmitPopover({
 		}
 	};
 
+	const pendingBadge =
+		pendingCount > 0 ? (
+			<span className="flex h-4 min-w-4 items-center justify-center rounded-full bg-white/20 px-1 text-[10px] font-semibold tabular-nums">
+				{pendingCount}
+				<span className="sr-only"> pending</span>
+			</span>
+		) : null;
+
+	// The page's one saturated action: an indigo pill beside the round buttons.
 	const trigger = (
 		<button
 			type="button"
-			className="flex items-center gap-1.5 h-7 rounded-md bg-success px-2.5 text-xs font-medium text-white shadow-[0_1px_1px_0_lch(0_0_0/0.12),0_3px_6px_-2px_lch(0_0_0/0.12)] transition-colors hover:bg-success/90"
+			onClick={isDesktop ? undefined : () => setIsOpen(true)}
+			className="flex h-7 shrink-0 items-center gap-1.5 rounded-full bg-indigo px-3 text-xs font-medium text-indigo-foreground shadow-[0_1px_1px_0_lch(0_0_0/0.12),0_3px_6px_-2px_lch(0_0_0/0.12)] transition-colors hover:bg-indigo/90"
 		>
 			Submit review
-			{pendingCount > 0 && (
-				<span className="flex size-4 items-center justify-center rounded-full bg-white/20 text-[10px] font-bold">
-					{pendingCount}
-				</span>
-			)}
+			{pendingBadge}
 		</button>
 	);
 
 	const form = (
 		<div className="flex flex-col">
-			<div className="flex items-center justify-between border-b-[0.5px] px-4 py-3">
-				<h3 className="text-sm font-semibold">Finish your review</h3>
+			<div className="flex h-9 items-center justify-between border-b-[0.5px] border-popover-border pr-1.5 pl-3">
+				<h3 className="text-xs font-medium text-muted-foreground">
+					Submit review
+				</h3>
 				{isDesktop && (
 					<button
 						type="button"
-						className="text-muted-foreground transition-colors hover:text-foreground"
+						aria-label="Close"
+						className="flex size-6 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-ghost-hover hover:text-foreground"
 						onClick={() => setIsOpen(false)}
 					>
 						<CloseIcon size={14} strokeWidth={2} />
@@ -114,55 +123,65 @@ export function ReviewSubmitPopover({
 				)}
 			</div>
 
-			<div className="p-4">
+			<div className="p-1.5">
 				<textarea
 					value={body}
 					onChange={(event) => setBody(event.target.value)}
-					placeholder="Leave a comment"
-					className="min-h-[80px] w-full resize-y rounded-md border-[0.5px] bg-background px-3 py-2 text-xs outline-none placeholder:text-muted-foreground focus-visible:outline-1 focus-visible:-outline-offset-1 focus-visible:outline-ring focus:ring-focus"
+					placeholder="Leave a summary…"
+					aria-label="Review summary"
+					rows={3}
+					className="w-full resize-y rounded-lg bg-transparent px-2 py-1.5 text-[13px] leading-5 font-[450] text-foreground outline-none placeholder:text-muted-foreground focus-visible:outline-none"
 				/>
+				<fieldset className="flex flex-col">
+					<legend className="sr-only">Verdict</legend>
+					{reviewOptions.map((option) => {
+						const Icon = option.icon;
+						const checked = event === option.value;
+						return (
+							<label
+								key={option.value}
+								className={cn(
+									"flex min-h-8 w-full cursor-pointer items-start gap-2.5 rounded-lg px-2.5 py-[7px] transition-colors has-[:focus-visible]:outline-1 has-[:focus-visible]:-outline-offset-1 has-[:focus-visible]:outline-ring",
+									checked ? "bg-menu-hover" : "hover:bg-menu-hover",
+								)}
+							>
+								<input
+									type="radio"
+									name="review-event"
+									value={option.value}
+									checked={checked}
+									onChange={() => setEvent(option.value)}
+									className="sr-only"
+								/>
+								<span className={cn("mt-[3px] flex shrink-0", option.color)}>
+									<Icon size={14} strokeWidth={2} />
+								</span>
+								<span className="min-w-0 flex-1">
+									<span className="block text-[13px] font-medium text-foreground">
+										{option.label}
+									</span>
+									<span className="block text-xs font-[450] text-muted-foreground">
+										{option.description}
+									</span>
+								</span>
+								{checked ? (
+									<CheckIcon
+										size={14}
+										strokeWidth={2}
+										className="mt-[3px] shrink-0 text-foreground"
+									/>
+								) : null}
+							</label>
+						);
+					})}
+				</fieldset>
 			</div>
 
-			<div className="flex flex-col gap-1 border-t-[0.5px] px-4 py-3">
-				{reviewOptions.map((option) => {
-					const Icon = option.icon;
-					return (
-						<label
-							key={option.value}
-							className="flex cursor-pointer items-start gap-3 rounded-md p-2 transition-colors hover:bg-surface-1"
-						>
-							<input
-								type="radio"
-								name="review-event"
-								value={option.value}
-								checked={event === option.value}
-								onChange={() => setEvent(option.value)}
-								className="mt-0.5"
-							/>
-							<div className="flex flex-col gap-0.5">
-								<span
-									className={cn(
-										"flex items-center gap-1.5 text-xs font-semibold",
-										option.color,
-									)}
-								>
-									<Icon size={13} strokeWidth={2} />
-									{option.label}
-								</span>
-								<span className="text-[11px] text-muted-foreground">
-									{option.description}
-								</span>
-							</div>
-						</label>
-					);
-				})}
-			</div>
-
-			<div className="flex items-center justify-between border-t-[0.5px] px-4 py-3">
+			<div className="flex items-center justify-end gap-1.5 border-t-[0.5px] border-popover-border p-2">
 				<button
 					type="button"
 					onClick={() => setIsOpen(false)}
-					className="rounded-md px-3 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:text-foreground"
+					className="h-7 rounded-full px-2.5 text-xs font-medium text-text-header transition-colors hover:bg-ghost-hover"
 				>
 					Cancel
 				</button>
@@ -170,19 +189,11 @@ export function ReviewSubmitPopover({
 					type="button"
 					onClick={handleSubmit}
 					disabled={isSubmitting}
-					className="flex items-center gap-1.5 h-7 rounded-md bg-success px-3 text-xs font-medium text-white shadow-[0_1px_1px_0_lch(0_0_0/0.12),0_3px_6px_-2px_lch(0_0_0/0.12)] transition-colors hover:bg-success/90 disabled:opacity-50"
+					className="flex h-7 items-center gap-1.5 rounded-full bg-indigo px-3 text-xs font-medium text-indigo-foreground shadow-[0_1px_1px_0_lch(0_0_0/0.12),0_3px_6px_-2px_lch(0_0_0/0.12)] transition-colors hover:bg-indigo/90 disabled:opacity-45"
 				>
-					{isSubmitting ? (
-						<Spinner size={12} />
-					) : (
-						<CheckIcon size={12} strokeWidth={2.5} />
-					)}
+					{isSubmitting ? <Spinner size={12} /> : null}
 					Submit review
-					{pendingCount > 0 && (
-						<span className="flex size-4 items-center justify-center rounded-full bg-white/20 text-[10px] font-bold">
-							{pendingCount}
-						</span>
-					)}
+					{pendingBadge}
 				</button>
 			</div>
 		</div>
@@ -191,9 +202,7 @@ export function ReviewSubmitPopover({
 	if (!isDesktop) {
 		return (
 			<Drawer open={isOpen} onOpenChange={setIsOpen}>
-				<button type="button" onClick={() => setIsOpen(true)}>
-					{trigger}
-				</button>
+				{trigger}
 				<DrawerContent>
 					<DrawerTitle className="sr-only">Submit review</DrawerTitle>
 					{form}
@@ -205,7 +214,7 @@ export function ReviewSubmitPopover({
 	return (
 		<Popover open={isOpen} onOpenChange={setIsOpen}>
 			<PopoverTrigger asChild>{trigger}</PopoverTrigger>
-			<PopoverContent align="end" className="w-96 p-0" sideOffset={8}>
+			<PopoverContent align="end" className="w-[320px] p-0" sideOffset={6}>
 				{form}
 			</PopoverContent>
 		</Popover>

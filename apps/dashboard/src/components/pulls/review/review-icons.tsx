@@ -1,0 +1,293 @@
+// File-type glyphs for the diff's file cards and tree, as Linear's diff view
+// draws them: the Material Icon Theme symbols (MIT,
+// github.com/material-extensions/vscode-material-icon-theme) in their own
+// colors. Chrome glyphs (copy, more, chevrons) stay on @diffkit/icons.
+
+const FILE_ICONS = {
+	"react-ts": {
+		viewBox: "0 0 32 32",
+		body: (
+			<>
+				<path
+					fill="#0288d1"
+					d="M16 12c7.444 0 12 2.59 12 4s-4.556 4-12 4-12-2.59-12-4 4.556-4 12-4m0-2c-7.732 0-14 2.686-14 6s6.268 6 14 6 14-2.686 14-6-6.268-6-14-6"
+				/>
+				<path fill="#0288d1" d="M16 14a2 2 0 1 0 2 2 2 2 0 0 0-2-2" />
+				<path
+					fill="#0288d1"
+					d="M10.458 5.507c2.017 0 5.937 3.177 9.006 8.493 3.722 6.447 3.757 11.687 2.536 12.392a.9.9 0 0 1-.457.1c-2.017 0-5.938-3.176-9.007-8.492C8.814 11.553 8.779 6.313 10 5.608a.9.9 0 0 1 .458-.1m-.001-2A2.87 2.87 0 0 0 9 3.875C6.13 5.532 6.938 12.304 10.804 19c3.284 5.69 7.72 9.493 10.74 9.493A2.87 2.87 0 0 0 23 28.124c2.87-1.656 2.062-8.428-1.804-15.124-3.284-5.69-7.72-9.493-10.74-9.493Z"
+				/>
+				<path
+					fill="#0288d1"
+					d="M21.543 5.507a.9.9 0 0 1 .457.1c1.221.706 1.186 5.946-2.536 12.393-3.07 5.316-6.99 8.493-9.007 8.493a.9.9 0 0 1-.457-.1C8.779 25.686 8.814 20.446 12.536 14c3.07-5.316 6.99-8.493 9.007-8.493m0-2c-3.02 0-7.455 3.804-10.74 9.493C6.939 19.696 6.13 26.468 9 28.124a2.87 2.87 0 0 0 1.457.369c3.02 0 7.455-3.804 10.74-9.493C25.061 12.304 25.87 5.532 23 3.876a2.87 2.87 0 0 0-1.457-.369"
+				/>
+			</>
+		),
+	},
+	typescript: {
+		viewBox: "0 0 16 16",
+		body: (
+			<>
+				<path
+					fill="#0288d1"
+					d="M2 2v12h12V2zm4 6h3v1H8v4H7V9H6zm5 0h2v1h-2v1h1a1.003 1.003 0 0 1 1 1v1a1.003 1.003 0 0 1-1 1h-2v-1h2v-1h-1a1.003 1.003 0 0 1-1-1V9a1.003 1.003 0 0 1 1-1"
+				/>
+			</>
+		),
+	},
+	go: {
+		viewBox: "0 0 32 32",
+		body: (
+			<>
+				<path
+					fill="#00acc1"
+					d="M2 12h4v2H2zm-2 4h6v2H0zm4 4h2v2H4zm16.954-5H14v3h3.239a4.42 4.42 0 0 1-3.531 2 2.65 2.65 0 0 1-2.053-.858 2.86 2.86 0 0 1-.628-2.28A4.515 4.515 0 0 1 15.292 13a2.73 2.73 0 0 1 1.749.584l2.962-1.185A5.6 5.6 0 0 0 15.292 10a7.526 7.526 0 0 0-7.243 6.5 5.614 5.614 0 0 0 5.659 6.5 7.526 7.526 0 0 0 7.243-6.5 6.4 6.4 0 0 0 .003-1.5"
+				/>
+				<path
+					fill="#00acc1"
+					d="M26.292 10a7.526 7.526 0 0 0-7.243 6.5 5.614 5.614 0 0 0 5.659 6.5 7.526 7.526 0 0 0 7.243-6.5 5.614 5.614 0 0 0-5.659-6.5m2.681 6.137A4.515 4.515 0 0 1 24.708 20a2.65 2.65 0 0 1-2.053-.858 2.86 2.86 0 0 1-.628-2.28A4.515 4.515 0 0 1 26.292 13a2.65 2.65 0 0 1 2.053.858 2.86 2.86 0 0 1 .628 2.28Z"
+				/>
+			</>
+		),
+	},
+	markdown: {
+		viewBox: "0 0 32 32",
+		body: (
+			<>
+				<path
+					fill="#42a5f5"
+					d="m14 10-4 3.5L6 10H4v12h4v-6l2 2 2-2v6h4V10zm12 6v-6h-4v6h-4l6 8 6-8z"
+				/>
+			</>
+		),
+	},
+	json: {
+		viewBox: "0 -960 960 960",
+		body: (
+			<>
+				<path
+					fill="#f9a825"
+					d="M560-160v-80h120q17 0 28.5-11.5T720-280v-80q0-38 22-69t58-44v-14q-36-13-58-44t-22-69v-80q0-17-11.5-28.5T680-720H560v-80h120q50 0 85 35t35 85v80q0 17 11.5 28.5T840-560h40v160h-40q-17 0-28.5 11.5T800-360v80q0 50-35 85t-85 35zm-280 0q-50 0-85-35t-35-85v-80q0-17-11.5-28.5T120-400H80v-160h40q17 0 28.5-11.5T160-600v-80q0-50 35-85t85-35h120v80H280q-17 0-28.5 11.5T240-680v80q0 38-22 69t-58 44v14q36 13 58 44t22 69v80q0 17 11.5 28.5T280-240h120v80z"
+				/>
+			</>
+		),
+	},
+	css: {
+		viewBox: "0 0 32 32",
+		body: (
+			<>
+				<path
+					fill="#7e57c2"
+					d="M20 18h-2v-2h-2v2c0 .193 0 .703 1.254 1.033A3.345 3.345 0 0 1 20 22h2v2h2v-2c0-.388-.562-.851-1.254-1.034C20.356 20.34 20 18.84 20 18m-3.254 2.966C14.356 20.34 14 18.84 14 18h-2v-2h-2v8h2v-2h4v2h2v-2c0-.388-.562-.851-1.254-1.034"
+				/>
+				<path
+					fill="#7e57c2"
+					d="M24 4H4v20a4 4 0 0 0 4 4h16.16A3.84 3.84 0 0 0 28 24.16V8a4 4 0 0 0-4-4m2 14h-2v-2h-2v2c0 .193 0 .703 1.254 1.033A3.345 3.345 0 0 1 26 22v2a2 2 0 0 1-2 2h-2a2 2 0 0 1-2-2 2 2 0 0 1-2 2h-2a2 2 0 0 1-2-2 2 2 0 0 1-2 2h-2a2 2 0 0 1-2-2v-8a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2 2 2 0 0 1 2-2h2a2 2 0 0 1 2 2 2 2 0 0 1 2-2h2a2 2 0 0 1 2 2Z"
+				/>
+			</>
+		),
+	},
+	file: {
+		viewBox: "0 0 16 16",
+		body: (
+			<>
+				<path
+					d="m8.668 6h3.6641l-3.6641-3.668v3.668m-4.668-4.668h5.332l4 4v8c0 0.73828-0.59375 1.3359-1.332 1.3359h-8c-0.73828 0-1.332-0.59766-1.332-1.3359v-10.664c0-0.74219 0.59375-1.3359 1.332-1.3359m3.332 1.3359h-3.332v10.664h8v-6h-4.668z"
+					fill="#90a4ae"
+				/>
+			</>
+		),
+	},
+	git: {
+		viewBox: "0 0 32 32",
+		body: (
+			<>
+				<path
+					fill="#e64a19"
+					d="M13.172 2.828 11.78 4.22l1.91 1.91 2 2A2.986 2.986 0 0 1 20 10.81a3.25 3.25 0 0 1-.31 1.31l2.06 2a2.68 2.68 0 0 1 3.37.57 2.86 2.86 0 0 1 .88 2.117 3.02 3.02 0 0 1-.856 2.109A2.9 2.9 0 0 1 23 19.81a2.93 2.93 0 0 1-2.13-.87 2.694 2.694 0 0 1-.56-3.38l-2-2.06a3 3 0 0 1-.31.12V20a3 3 0 0 1 1.44 1.09 2.92 2.92 0 0 1 .56 1.72 2.88 2.88 0 0 1-.878 2.128 2.98 2.98 0 0 1-2.048.871 2.981 2.981 0 0 1-2.514-4.719A3 3 0 0 1 16 20v-6.38a2.96 2.96 0 0 1-1.44-1.09 2.9 2.9 0 0 1-.56-1.72 2.9 2.9 0 0 1 .31-1.31l-3.9-3.9-7.579 7.572a4 4 0 0 0-.001 5.658l10.342 10.342a4 4 0 0 0 5.656 0l10.344-10.344a4 4 0 0 0 0-5.656L18.828 2.828a4 4 0 0 0-5.656 0"
+				/>
+			</>
+		),
+	},
+	yaml: {
+		viewBox: "0 0 24 24",
+		body: (
+			<>
+				<path
+					fill="#ff5252"
+					d="M13 9h5.5L13 3.5zM6 2h8l6 6v12c0 1.1-.9 2-2 2H6c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2m12 16v-2H9v2zm-4-4v-2H6v2z"
+				/>
+			</>
+		),
+	},
+	nodejs: {
+		viewBox: "0 0 32 32",
+		body: (
+			<>
+				<path
+					fill="#8bc34a"
+					d="M16 20.003v2h4a2 2 0 0 0 2-2v-2a2 2 0 0 0-2-2h-2v-2h4v-2h-4a2 2 0 0 0-2 2v2a2 2 0 0 0 2 2h2v2Z"
+				/>
+				<path
+					fill="#8bc34a"
+					d="m16 3.003-12 7v14l4 2h6v-13.5a.5.5 0 0 0-.5-.5h-1a.5.5 0 0 0-.5.5v11.5H8l-2-1.034V11.15l10-5.833 10 5.833v11.703l-10 5.833-1.745-1.022L13 29.253l3 1.75 12-7v-14Z"
+				/>
+			</>
+		),
+	},
+	lock: {
+		viewBox: "0 0 32 32",
+		body: (
+			<>
+				<path
+					fill="#ffd54f"
+					d="M25 12h-3V8a6 6 0 0 0-12 0v4H7a1 1 0 0 0-1 1v16a1 1 0 0 0 1 1h18a1 1 0 0 0 1-1V13a1 1 0 0 0-1-1M14 8a2 2 0 0 1 4 0v4h-4Zm2 17a4 4 0 1 1 4-4 4 4 0 0 1-4 4"
+				/>
+			</>
+		),
+	},
+	tsconfig: {
+		viewBox: "0 0 32 32",
+		body: (
+			<>
+				<path
+					fill="#757575"
+					d="M15 2H6a2.006 2.006 0 0 0-2 2v22a2.006 2.006 0 0 0 2 2h6v-4H6v-2h6v-2H6v-2h6v-2H6v-2h6v-2h2V4l8 8h2v-1Z"
+				/>
+				<path
+					fill="#0288d1"
+					d="M12 12v18h18V12Zm8 6h-2v8h-2v-8h-2v-2h6Zm8 0h-4v2h2a2.006 2.006 0 0 1 2 2v2a2.006 2.006 0 0 1-2 2h-4v-2h4v-2h-2a2.006 2.006 0 0 1-2-2v-2a2.006 2.006 0 0 1 2-2h4Z"
+				/>
+			</>
+		),
+	},
+	python: {
+		viewBox: "0 0 24 24",
+		body: (
+			<>
+				<path
+					fill="#0288d1"
+					d="M9.86 2A2.86 2.86 0 0 0 7 4.86v1.68h4.29c.39 0 .71.57.71.96H4.86A2.86 2.86 0 0 0 2 10.36v3.781a2.86 2.86 0 0 0 2.86 2.86h1.18v-2.68a2.85 2.85 0 0 1 2.85-2.86h5.25c1.58 0 2.86-1.271 2.86-2.851V4.86A2.86 2.86 0 0 0 14.14 2zm-.72 1.61c.4 0 .72.12.72.71s-.32.891-.72.891c-.39 0-.71-.3-.71-.89s.32-.711.71-.711"
+				/>
+				<path
+					fill="#fdd835"
+					d="M17.959 7v2.68a2.85 2.85 0 0 1-2.85 2.859H9.86A2.85 2.85 0 0 0 7 15.389v3.75a2.86 2.86 0 0 0 2.86 2.86h4.28A2.86 2.86 0 0 0 17 19.14v-1.68h-4.291c-.39 0-.709-.57-.709-.96h7.14A2.86 2.86 0 0 0 22 13.64V9.86A2.86 2.86 0 0 0 19.14 7zM8.32 11.513l-.004.004.038-.004zm6.54 7.276c.39 0 .71.3.71.89a.71.71 0 0 1-.71.71c-.4 0-.72-.12-.72-.71s.32-.89.72-.89"
+				/>
+			</>
+		),
+	},
+};
+
+type FileKind = keyof typeof FILE_ICONS;
+
+const BY_EXTENSION: Record<string, FileKind> = {
+	ts: "typescript",
+	mts: "typescript",
+	cts: "typescript",
+	tsx: "react-ts",
+	jsx: "react-ts",
+	json: "json",
+	jsonc: "json",
+	md: "markdown",
+	mdx: "markdown",
+	css: "css",
+	scss: "css",
+	yml: "yaml",
+	yaml: "yaml",
+	py: "python",
+	go: "go",
+	lock: "lock",
+};
+
+function fileKind(path: string): FileKind {
+	const name = path.slice(path.lastIndexOf("/") + 1).toLowerCase();
+	if (name === "package.json") return "nodejs";
+	if (name.startsWith("tsconfig") && name.endsWith(".json")) return "tsconfig";
+	if (name === "pnpm-lock.yaml" || name === "package-lock.json") return "lock";
+	if (name.startsWith(".git")) return "git";
+	const dot = name.lastIndexOf(".");
+	const ext = dot > 0 ? name.slice(dot + 1) : "";
+	return BY_EXTENSION[ext] ?? "file";
+}
+
+/** A file's 16px type glyph, picked from its name. */
+export function FileTypeIcon({
+	path,
+	size = 16,
+	className,
+}: {
+	path: string;
+	size?: number;
+	className?: string;
+}) {
+	const icon = FILE_ICONS[fileKind(path)];
+	return (
+		<svg
+			width={size}
+			height={size}
+			viewBox={icon.viewBox}
+			aria-hidden="true"
+			className={className}
+		>
+			{icon.body}
+		</svg>
+	);
+}
+
+/** Split view: two panes side by side. */
+export function SplitDiffGlyph({ size = 14 }: { size?: number }) {
+	return (
+		<svg
+			width={size}
+			height={size}
+			viewBox="0 0 14 14"
+			fill="none"
+			aria-hidden="true"
+		>
+			<rect
+				x="1.75"
+				y="2.25"
+				width="10.5"
+				height="9.5"
+				rx="2"
+				stroke="currentColor"
+				strokeWidth="1.25"
+			/>
+			<path
+				d="M7 2.25v9.5M3.75 7h1.5M8.75 7h1.5"
+				stroke="currentColor"
+				strokeWidth="1.25"
+				strokeLinecap="round"
+			/>
+		</svg>
+	);
+}
+
+/** Unified view: one pane, removed above added. */
+export function UnifiedDiffGlyph({ size = 14 }: { size?: number }) {
+	return (
+		<svg
+			width={size}
+			height={size}
+			viewBox="0 0 14 14"
+			fill="none"
+			aria-hidden="true"
+		>
+			<rect
+				x="1.75"
+				y="2.25"
+				width="10.5"
+				height="9.5"
+				rx="2"
+				stroke="currentColor"
+				strokeWidth="1.25"
+			/>
+			<path
+				d="M5.5 5.25h3M7 3.75v3M5.5 9h3"
+				stroke="currentColor"
+				strokeWidth="1.25"
+				strokeLinecap="round"
+			/>
+		</svg>
+	);
+}

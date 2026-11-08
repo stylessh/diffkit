@@ -1,9 +1,11 @@
 import type { MentionConfig } from "@diffkit/ui/components/markdown-editor";
+import { cn } from "@diffkit/ui/lib/utils";
 import type { SelectedLineRange } from "@pierre/diffs";
 import type { DiffLineAnnotation } from "@pierre/diffs/react";
 import {
 	forwardRef,
 	memo,
+	type ReactNode,
 	useCallback,
 	useEffect,
 	useImperativeHandle,
@@ -56,6 +58,11 @@ type ReviewDiffPaneProps = {
 		number,
 		{ threadId: string; isResolved: boolean }
 	>;
+	/** The bar above the file cards (Files / Commits, display options). */
+	toolbar?: ReactNode;
+	/** Shown in place of the file cards (e.g. the commit list); the cards stay mounted. */
+	alternateView?: ReactNode;
+	wrapLines?: boolean;
 };
 
 export const ReviewDiffPane = memo(
@@ -83,6 +90,9 @@ export const ReviewDiffPane = memo(
 			mentionConfig,
 			viewerLogin,
 			threadInfoByCommentId,
+			toolbar,
+			alternateView,
+			wrapLines = false,
 		},
 		ref,
 	) {
@@ -356,63 +366,69 @@ export const ReviewDiffPane = memo(
 			}
 		}, [visibleFiles]);
 
-		if (totalFileCount === 0 && !hasNextPage) {
-			return (
-				<div className="flex h-full items-center justify-center py-20 text-sm text-muted-foreground">
-					No files changed in this pull request.
-				</div>
-			);
-		}
+		const isEmpty = totalFileCount === 0 && !hasNextPage;
 
 		return (
 			<div ref={diffPanelRef} className="h-full overflow-auto">
-				<div className="flex flex-col gap-4 p-4">
-					{visibleFiles.map((file) => (
-						<ReviewFileDiffBlock
-							key={file.filename}
-							id={encodeFileId(file.filename)}
-							file={file}
-							diffStyle={diffStyle}
-							isNearViewport={nearViewportRef.current.has(file.filename)}
-							annotations={
-								annotationsByFile.get(file.filename) ?? EMPTY_ANNOTATIONS
-							}
-							repliesByCommentId={repliesByCommentId}
-							owner={owner}
-							repo={repo}
-							pullNumber={pullNumber}
-							pendingComments={
-								pendingCommentsByFile.get(file.filename) ??
-								EMPTY_PENDING_COMMENTS
-							}
-							activeCommentForm={
-								activeCommentForm?.path === file.filename
-									? activeCommentForm
-									: null
-							}
-							selectedLines={
-								activeCommentForm?.path === file.filename ? selectedLines : null
-							}
-							onGutterClick={onStartComment}
-							onCancelComment={onCancelComment}
-							onAddComment={onAddComment}
-							onEditComment={onEditComment}
-							mentionConfig={mentionConfig}
-							viewerLogin={viewerLogin}
-							threadInfoByCommentId={threadInfoByCommentId}
-						/>
-					))}
+				<div className="flex min-w-0 flex-col gap-2 px-[14px] pb-6 max-md:px-2">
+					{toolbar}
+					{alternateView}
+					{isEmpty && !alternateView ? (
+						<p className="px-4 py-10 text-center text-[13px] font-[450] text-muted-foreground">
+							No files changed in this pull request.
+						</p>
+					) : null}
+					<div className={cn("flex flex-col gap-2", alternateView && "hidden")}>
+						{visibleFiles.map((file) => (
+							<ReviewFileDiffBlock
+								key={file.filename}
+								id={encodeFileId(file.filename)}
+								file={file}
+								diffStyle={diffStyle}
+								wrapLines={wrapLines}
+								isNearViewport={nearViewportRef.current.has(file.filename)}
+								annotations={
+									annotationsByFile.get(file.filename) ?? EMPTY_ANNOTATIONS
+								}
+								repliesByCommentId={repliesByCommentId}
+								owner={owner}
+								repo={repo}
+								pullNumber={pullNumber}
+								pendingComments={
+									pendingCommentsByFile.get(file.filename) ??
+									EMPTY_PENDING_COMMENTS
+								}
+								activeCommentForm={
+									activeCommentForm?.path === file.filename
+										? activeCommentForm
+										: null
+								}
+								selectedLines={
+									activeCommentForm?.path === file.filename
+										? selectedLines
+										: null
+								}
+								onGutterClick={onStartComment}
+								onCancelComment={onCancelComment}
+								onAddComment={onAddComment}
+								onEditComment={onEditComment}
+								mentionConfig={mentionConfig}
+								viewerLogin={viewerLogin}
+								threadInfoByCommentId={threadInfoByCommentId}
+							/>
+						))}
 
-					{(visibleCount < files.length || hasNextPage) && (
-						<>
-							<div ref={loadMoreRef} className="h-8" />
-							<div className="rounded-lg border-[0.5px] bg-surface-0 px-3 py-2 text-xs text-muted-foreground">
-								Loaded patch payload for {files.length} of {totalFileCount}{" "}
-								files
-								{isFetchingNextPage ? "..." : ""}
-							</div>
-						</>
-					)}
+						{(visibleCount < files.length || hasNextPage) && (
+							<>
+								<div ref={loadMoreRef} className="h-8" />
+								<p className="rounded-lg border-[0.5px] border-card-border bg-surface-0 px-4 py-3 text-xs font-[450] text-muted-foreground">
+									Loaded patch payload for {files.length} of {totalFileCount}{" "}
+									files
+									{isFetchingNextPage ? "…" : ""}
+								</p>
+							</>
+						)}
+					</div>
 				</div>
 			</div>
 		);
