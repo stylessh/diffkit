@@ -26,27 +26,6 @@ const PHASE_HEADLINE = {
   failed: "❌ Deploy failed",
 };
 
-let state = { phase: "starting" };
-try {
-  state = { phase: "bookmarked", previousVersionId: currentVersionId(), bookmark: timeTravelBookmark() };
-  log(`D1 Time Travel bookmark before migrations: ${state.bookmark}`);
-  log(`Serving version before deploy: ${state.previousVersionId}`);
-
-  applyMigrations();
-  state = { ...state, phase: "migrated" };
-
-  state = { ...state, phase: "deployed", versionId: deployWorker() };
-  log(`Deployed version ${state.versionId}`);
-
-  state = await settle(state);
-} catch (error) {
-  state = { ...state, phase: "failed", failedAfter: state.phase, error: messageOf(error) };
-}
-
-writeSummary(state);
-announce(state);
-process.exit(SUCCESSFUL_PHASES.has(state.phase) ? 0 : 1);
-
 function requireEnv(name) {
   const value = process.env[name];
   if (!value) {
@@ -242,3 +221,28 @@ function announce(final) {
   const detail = final.error ?? final.health?.reason ?? "";
   console.log(`::error title=${PHASE_HEADLINE[final.phase]}::${detail.split("\n")[0]}`);
 }
+
+async function main() {
+  let state = { phase: "starting" };
+  try {
+    state = { phase: "bookmarked", previousVersionId: currentVersionId(), bookmark: timeTravelBookmark() };
+    log(`D1 Time Travel bookmark before migrations: ${state.bookmark}`);
+    log(`Serving version before deploy: ${state.previousVersionId}`);
+
+    applyMigrations();
+    state = { ...state, phase: "migrated" };
+
+    state = { ...state, phase: "deployed", versionId: deployWorker() };
+    log(`Deployed version ${state.versionId}`);
+
+    state = await settle(state);
+  } catch (error) {
+    state = { ...state, phase: "failed", failedAfter: state.phase, error: messageOf(error) };
+  }
+
+  writeSummary(state);
+  announce(state);
+  process.exit(SUCCESSFUL_PHASES.has(state.phase) ? 0 : 1);
+}
+
+await main();
