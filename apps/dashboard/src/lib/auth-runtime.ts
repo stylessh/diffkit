@@ -6,6 +6,7 @@ import {
 	getGitHubAccessTokenByUserId,
 	getGitHubAppUserAccessTokenByUserId,
 } from "./github-app.server";
+import { getGitHubOctokitBaseOptions } from "./github-emulator.server";
 import { configureGitHubRequestPolicies } from "./github-request-policy";
 
 export async function getRequestSession() {
@@ -16,6 +17,7 @@ export async function getGitHubClientByUserId(
 	userId: string,
 ): Promise<OctokitType> {
 	const octokit = new Octokit({
+		...getGitHubOctokitBaseOptions(),
 		auth: await getGitHubAccessTokenByUserId(userId),
 		retry: { enabled: false },
 		throttle: { enabled: false },
@@ -37,6 +39,7 @@ export async function getGitHubAppUserClientByUserId(
 	}
 
 	const octokit = new Octokit({
+		...getGitHubOctokitBaseOptions(),
 		auth: token,
 		retry: { enabled: false },
 		throttle: { enabled: false },

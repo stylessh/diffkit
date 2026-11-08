@@ -1,0 +1,1055 @@
+import type { RepoSpec } from "../types.ts";
+import {
+	beaconBackoff,
+	beaconBackoffJitter,
+	beaconBackoffJitterTest,
+	beaconBackoffTest,
+	beaconChangelog120,
+	beaconChangelog130,
+	beaconCi,
+	beaconCiNode20,
+	beaconClientV1,
+	beaconClientV2,
+	beaconClientV3,
+	beaconClientV4,
+	beaconIndex,
+	beaconLicense,
+	beaconPackageJson,
+	beaconPrTemplate,
+	beaconReadme,
+	beaconReadmeWithTransports,
+	beaconRegistry,
+	beaconRelease,
+	beaconSse,
+	beaconSseHeaders,
+	beaconStateMachineClient,
+	beaconTransportInterface,
+	beaconTsconfig,
+	beaconTypes,
+	beaconWebSocket,
+	beaconWebTransport,
+} from "./beacon-files.ts";
+import { ciJobs, inProgressJobs, publishJob } from "./ci.ts";
+
+const clientTest = `import { describe, expect, it, vi } from "vitest";
+import { createClient } from "../client";
+
+describe("createClient", () => {
+	it("schedules a single reconnect when close fires twice", () => {
+		vi.useFakeTimers();
+		const client = createClient({ url: "ws://localhost:1234" });
+		expect(vi.getTimerCount()).toBeLessThanOrEqual(1);
+		client.close();
+	});
+});
+`;
+
+export const beacon: RepoSpec = {
+	owner: "lumen-labs",
+	name: "beacon",
+	description: "Typed realtime events for the browser and the edge.",
+	language: "TypeScript",
+	languages: { TypeScript: 48_210, JavaScript: 1_904, Shell: 312 },
+	topics: ["realtime", "websocket", "sse", "typescript", "edge"],
+	homepage: "https://beacon.lumen-labs.dev",
+	license: { key: "mit", name: "MIT License", spdx_id: "MIT" },
+	stars: 1284,
+	forks: 87,
+	watchers: 41,
+	hasDiscussions: true,
+	collaborators: [{ login: "theo-martin", permission: "push" }],
+	labels: [
+		{ name: "bug", color: "d73a4a", description: "Something isn't working" },
+		{
+			name: "enhancement",
+			color: "a2eeef",
+			description: "New feature or request",
+		},
+		{
+			name: "documentation",
+			color: "0075ca",
+			description: "Improvements or additions to documentation",
+		},
+		{
+			name: "good first issue",
+			color: "7057ff",
+			description: "Good for newcomers",
+		},
+		{
+			name: "priority: high",
+			color: "b60205",
+			description: "Needs attention this cycle",
+		},
+		{ name: "needs triage", color: "fbca04", description: "Not yet looked at" },
+		{
+			name: "transport",
+			color: "1d76db",
+			description: "WebSocket / SSE / WebTransport",
+		},
+		{ name: "ci", color: "5319e7", description: "Continuous integration" },
+		{
+			name: "breaking change",
+			color: "e11d21",
+			description: "Requires a major version",
+		},
+		{
+			name: "experimental",
+			color: "c5def5",
+			description: "Behind a flag, may change",
+		},
+	],
+	milestones: [
+		{
+			title: "v1.4",
+			description: "Jitter, SSE headers, listener cleanup",
+			dueIn: 18,
+		},
+		{
+			title: "v2.0",
+			description: "Transport registry, drop Node 18",
+			dueIn: 90,
+		},
+	],
+	commits: [
+		{
+			message: "Initial commit",
+			author: "nova",
+			at: { d: 75, h: 6 },
+			files: {
+				"README.md": beaconReadme,
+				LICENSE: beaconLicense,
+				"package.json": beaconPackageJson("0.1.0"),
+				"tsconfig.json": beaconTsconfig,
+			},
+		},
+		{
+			message: "Add typed event client",
+			author: "nova",
+			at: { d: 73, h: 4 },
+			files: {
+				"src/types.ts": beaconTypes,
+				"src/index.ts": beaconIndex,
+				"src/client.ts": beaconClientV1,
+			},
+		},
+		{
+			message: "Add WebSocket transport",
+			author: "jun-park",
+			at: { d: 70, h: 9 },
+			files: { "src/transport/websocket.ts": beaconWebSocket },
+		},
+		{
+			message:
+				"Add exponential backoff helper\n\nStarts at 250ms and caps at 30s.",
+			author: "jun-park",
+			at: { d: 66, h: 7 },
+			files: {
+				"src/backoff.ts": beaconBackoff,
+				"src/__tests__/backoff.test.ts": beaconBackoffTest,
+			},
+		},
+		{
+			message: "Set up CI with a Node 18/20/22 matrix",
+			author: "sam-okafor",
+			at: { d: 63, h: 5 },
+			files: { ".github/workflows/ci.yml": beaconCi },
+		},
+		{
+			message: "Add SSE transport and reconnect with backoff",
+			author: "lena-fischer",
+			at: { d: 60, h: 8 },
+			files: {
+				"src/transport/sse.ts": beaconSse,
+				"src/client.ts": beaconClientV2,
+			},
+		},
+		{
+			message: "Document transports and reconnects",
+			author: "nova",
+			at: { d: 57, h: 3 },
+			files: { "README.md": beaconReadmeWithTransports },
+		},
+		{
+			message: "Add a pull request template",
+			author: "priya-rao",
+			at: { d: 54, h: 6 },
+			files: { ".github/pull_request_template.md": beaconPrTemplate },
+		},
+		{
+			message: "Release 1.2.0",
+			author: "nova",
+			at: { d: 50, h: 2 },
+			files: {
+				"CHANGELOG.md": beaconChangelog120,
+				"package.json": beaconPackageJson("1.2.0"),
+			},
+		},
+		{
+			message: "Add a release workflow with npm provenance",
+			author: "sam-okafor",
+			at: { d: 24, h: 4 },
+			files: { ".github/workflows/release.yml": beaconRelease },
+		},
+		{
+			message: "Release 1.3.0",
+			author: "nova",
+			at: { d: 22, h: 5 },
+			files: {
+				"CHANGELOG.md": beaconChangelog130,
+				"package.json": beaconPackageJson("1.3.0"),
+			},
+		},
+		{
+			message: "Expose connection status through onStatus",
+			author: "jun-park",
+			at: { d: 12, h: 6 },
+			files: { "src/client.ts": beaconClientV4 },
+		},
+		{
+			message: "Enable noUncheckedIndexedAccess",
+			author: "sam-okafor",
+			at: { d: 6, h: 9 },
+			files: {
+				"tsconfig.json": beaconTsconfig.replace(
+					'"strict": true,',
+					'"strict": true,\n\t\t"noUncheckedIndexedAccess": true,',
+				),
+			},
+		},
+	],
+	branches: [
+		{
+			name: "refactor/on-event",
+			commits: [
+				{
+					message: "Rename onMessage to onEvent",
+					author: "priya-rao",
+					at: { d: 45, h: 3 },
+					files: {
+						"src/types.ts": beaconTypes.replaceAll("onMessage", "onEvent"),
+					},
+				},
+			],
+		},
+		{
+			name: "refactor/state-machine",
+			commits: [
+				{
+					message: "Model the connection as a state machine",
+					author: "jun-park",
+					at: { d: 38, h: 5 },
+					files: { "src/client.ts": beaconStateMachineClient },
+				},
+				{
+					message: "Drop the outbox in favour of explicit states",
+					author: "jun-park",
+					at: { d: 37, h: 2 },
+					files: {
+						"src/client.ts": beaconStateMachineClient.replace(
+							"\tvoid open(0);\n",
+							"\t// Connect lazily on first subscription.\n\tvoid open(0);\n",
+						),
+					},
+				},
+			],
+		},
+		{
+			name: "fix/reconnect-storm",
+			commits: [
+				{
+					message: "Deduplicate reconnect timers",
+					author: "lena-fischer",
+					at: { d: 30, h: 7 },
+					files: { "src/client.ts": beaconClientV3 },
+				},
+				{
+					message: "Add a regression test for sleep/wake reconnects",
+					author: "lena-fischer",
+					at: { d: 29, h: 3 },
+					files: { "src/__tests__/client.test.ts": clientTest },
+				},
+			],
+		},
+		{
+			name: "feat/jitter-backoff",
+			commits: [
+				{
+					message: "Add full and equal jitter to nextDelay",
+					author: "jun-park",
+					at: { d: 9, h: 6 },
+					files: { "src/backoff.ts": beaconBackoffJitter },
+				},
+				{
+					message: "Test jitter bounds",
+					author: "jun-park",
+					at: { d: 8, h: 8 },
+					files: { "src/__tests__/backoff.test.ts": beaconBackoffJitterTest },
+				},
+			],
+		},
+		{
+			name: "feat/sse-headers",
+			commits: [
+				{
+					message: "Stream SSE over fetch so custom headers work",
+					author: "theo-martin",
+					at: { d: 7, h: 4 },
+					files: { "src/transport/sse.ts": beaconSseHeaders },
+				},
+				{
+					message: "Document SSE headers",
+					author: "theo-martin",
+					at: { d: 6, h: 11 },
+					files: {
+						"README.md": beaconReadmeWithTransports.replace(
+							'Pick one explicitly with `transport: "sse"`.',
+							'Pick one explicitly with `transport: "sse"`. Pass `headers` to send\nauth tokens with the SSE request.',
+						),
+					},
+				},
+			],
+		},
+		{
+			name: "stack/transport-interface",
+			commits: [
+				{
+					message: "Extract a Transport interface",
+					author: "nova",
+					at: { d: 5, h: 8 },
+					files: { "src/transport/transport.ts": beaconTransportInterface },
+				},
+			],
+		},
+		{
+			name: "chore/node-matrix",
+			commits: [
+				{
+					message: "Drop Node 18 from the test matrix",
+					author: "sam-okafor",
+					at: { d: 4, h: 9 },
+					files: { ".github/workflows/ci.yml": beaconCiNode20 },
+				},
+			],
+		},
+		{
+			name: "stack/transport-registry",
+			from: "stack/transport-interface",
+			commits: [
+				{
+					message: "Add a transport registry",
+					author: "nova",
+					at: { d: 4, h: 3 },
+					files: { "src/transport/registry.ts": beaconRegistry },
+				},
+			],
+		},
+		{
+			name: "feat/webtransport",
+			from: "stack/transport-registry",
+			commits: [
+				{
+					message: "WIP: WebTransport transport",
+					author: "nova",
+					at: { d: 2, h: 7 },
+					files: { "src/transport/webtransport.ts": beaconWebTransport },
+				},
+			],
+		},
+	],
+	tags: [
+		{ name: "v1.0.0", commit: 2 },
+		{ name: "v1.1.0", commit: 4 },
+		{
+			name: "v1.2.0",
+			commit: 8,
+			annotated: {
+				message: "beacon 1.2.0\n\nSSE transport and backoff.",
+				tagger: "nova",
+				at: { d: 50, h: 1 },
+			},
+		},
+		{
+			name: "v1.3.0",
+			commit: 10,
+			annotated: {
+				message: "beacon 1.3.0",
+				tagger: "nova",
+				at: { d: 22, h: 4 },
+			},
+		},
+		{ name: "v1.4.0-beta.1", commit: 12 },
+	],
+	releases: [
+		{
+			tag: "v1.1.0",
+			name: "v1.1.0",
+			author: "nova",
+			at: { d: 63, h: 1 },
+			body: "## What's new\n\n- WebSocket transport\n- Exponential backoff helper",
+		},
+		{
+			tag: "v1.2.0",
+			name: "v1.2.0 — SSE transport",
+			author: "nova",
+			at: { d: 50, h: 1 },
+			body: '## Highlights\n\n- **SSE transport.** Use `transport: "sse"` where WebSockets are blocked.\n- Reconnects now back off exponentially (250ms → 30s).\n\n## Contributors\n\n@lena-fischer @jun-park @sam-okafor',
+			assets: [
+				{
+					name: "beacon-1.2.0.tgz",
+					size: 18_432,
+					contentType: "application/gzip",
+					downloads: 912,
+				},
+			],
+		},
+		{
+			tag: "v1.3.0",
+			name: "v1.3.0",
+			author: "nova",
+			at: { d: 22, h: 3 },
+			body: "## Fixes\n\n- Fix a reconnect storm after a laptop wakes from sleep (#{pull:fix/reconnect-storm}).\n\n## Improvements\n\n- Events emitted while offline are buffered and flushed in order.\n- Release workflow publishes with npm provenance.",
+			assets: [
+				{
+					name: "beacon-1.3.0.tgz",
+					size: 19_870,
+					contentType: "application/gzip",
+					downloads: 2_418,
+				},
+				{
+					name: "beacon-1.3.0.sbom.json",
+					size: 6_204,
+					contentType: "application/json",
+					downloads: 57,
+				},
+			],
+		},
+		{
+			tag: "v1.4.0-beta.1",
+			name: "v1.4.0-beta.1",
+			author: "jun-park",
+			at: { d: 6, h: 2 },
+			prerelease: true,
+			body: "Beta for 1.4. Adds `onStatus` and stricter types.\n\nPlease report regressions in #{issue:memory-leak}.",
+			assets: [
+				{
+					name: "beacon-1.4.0-beta.1.tgz",
+					size: 20_311,
+					contentType: "application/gzip",
+					downloads: 143,
+				},
+			],
+		},
+		{
+			tag: "v1.4.0",
+			name: "v1.4.0",
+			author: "nova",
+			at: { d: 1, h: 2 },
+			draft: true,
+			body: "## Draft notes\n\n- Jittered backoff\n- SSE custom headers\n- Listener cleanup on close()",
+		},
+	],
+	issues: [
+		{
+			key: "not-planned",
+			title: "Ship a jQuery plugin",
+			author: "theo-martin",
+			at: { d: 41, h: 6 },
+			labels: ["enhancement"],
+			state: "closed",
+			stateReason: "not_planned",
+			closedAt: { d: 40, h: 2 },
+			body: "Would love `$.beacon()` for an older app we maintain.",
+			comments: [
+				{
+					author: "nova",
+					at: { d: 40, h: 2 },
+					body: "Thanks for asking! We're keeping beacon framework-agnostic, so a wrapper is better maintained outside the repo. Closing as not planned.",
+				},
+			],
+		},
+		{
+			key: "reconnect-storm",
+			title: "Reconnect storm after laptop wakes from sleep",
+			author: "lena-fischer",
+			at: { d: 34, h: 4 },
+			labels: ["bug", "priority: high", "transport"],
+			assignees: ["lena-fischer"],
+			state: "closed",
+			stateReason: "completed",
+			closedAt: { d: 26, h: 1 },
+			body: "After a MacBook wakes from sleep, the client opens dozens of sockets within a couple of seconds. Each `close` event schedules its own reconnect timer.\n\n**Repro**\n\n1. Open the playground\n2. Sleep the laptop for ~5 minutes\n3. Wake it and watch the network tab",
+			reactions: {
+				THUMBS_UP: ["nova", "jun-park", "sam-okafor"],
+				EYES: ["priya-rao"],
+			},
+			comments: [
+				{
+					author: "jun-park",
+					at: { d: 33, h: 9 },
+					body: "Repro'd on macOS 15: 40+ sockets in 2s. The SSE transport fires `error` repeatedly too.",
+				},
+				{
+					author: "nova",
+					at: { d: 33, h: 6 },
+					body: "Let's guard with a single pending timer. @lena-fischer want to take it?",
+					reactions: { THUMBS_UP: ["lena-fischer"] },
+				},
+			],
+		},
+		{
+			key: "docs-examples",
+			title: "README example uses an outdated import path",
+			author: "priya-rao",
+			at: { d: 18, h: 5 },
+			labels: ["documentation", "good first issue"],
+			state: "closed",
+			stateReason: "completed",
+			closedAt: { d: 16, h: 3 },
+			body: "The README imports from `beacon/client`, but the package only exports `@lumen/beacon`.",
+		},
+		{
+			key: "status-api",
+			title: "Expose connection status to the UI",
+			author: "priya-rao",
+			at: { d: 25, h: 7 },
+			labels: ["enhancement"],
+			milestone: "v1.4",
+			state: "closed",
+			stateReason: "completed",
+			closedAt: { d: 12, h: 5 },
+			body: 'We\'d like to show a small "Reconnecting…" badge. A callback or an observable status would do.',
+			comments: [
+				{
+					author: "jun-park",
+					at: { d: 12, h: 5 },
+					body: "Landed as `onStatus` on main.",
+				},
+			],
+		},
+		{
+			key: "webtransport",
+			title: "Explore WebTransport as a transport",
+			author: "nova",
+			at: { d: 20, h: 6 },
+			labels: ["enhancement", "experimental", "transport"],
+			milestone: "v2.0",
+			assignees: ["nova"],
+			body: "HTTP/3 + WebTransport could give us unreliable datagrams for presence updates. Chrome-only for now; let's prototype behind a flag.",
+			comments: [
+				{
+					author: "lena-fischer",
+					at: { d: 19, h: 3 },
+					body: "Worth checking how proxies in corporate networks treat QUIC first.",
+				},
+			],
+		},
+		{
+			key: "node18",
+			title: "Drop Node 18 support in 2.0",
+			author: "sam-okafor",
+			at: { d: 14, h: 4 },
+			labels: ["breaking change", "ci"],
+			milestone: "v2.0",
+			assignees: ["nova"],
+			body: "Node 18 is EOL. Dropping it lets us use `Promise.withResolvers` and native `WebSocket` in tests.",
+			comments: [
+				{
+					author: "nova",
+					at: { d: 13, h: 6 },
+					body: "Agreed for 2.0. For 1.x we promised 18 support through the end of the year.",
+				},
+			],
+		},
+		{
+			key: "jitter",
+			title: "Add jitter to reconnect backoff",
+			author: "lena-fischer",
+			at: { d: 15, h: 2 },
+			labels: ["enhancement", "transport"],
+			milestone: "v1.4",
+			assignees: ["jun-park"],
+			body: "When a region fails over, every client reconnects at the exact same moments. Full jitter would spread the load.",
+			reactions: { THUMBS_UP: ["nova", "sam-okafor"], ROCKET: ["jun-park"] },
+		},
+		{
+			key: "sse-headers",
+			title: "SSE transport ignores custom headers",
+			author: "theo-martin",
+			at: { d: 10, h: 8 },
+			labels: ["bug", "transport"],
+			milestone: "v1.4",
+			assignees: ["theo-martin"],
+			body: '`createClient({ transport: "sse", headers: { authorization } })` connects without the header, so our edge auth rejects it.',
+			comments: [
+				{
+					author: "nova",
+					at: { d: 10, h: 2 },
+					body: "`EventSource` can't set headers; we'd need to stream over `fetch`. PR welcome!",
+				},
+				{
+					author: "theo-martin",
+					at: { d: 9, h: 9 },
+					body: "On it 👍",
+					reactions: { HEART: ["nova"] },
+				},
+			],
+		},
+		{
+			key: "strict-types",
+			title: "Type errors with exactOptionalPropertyTypes",
+			author: "theo-martin",
+			at: { d: 11, h: 3 },
+			labels: ["bug", "needs triage"],
+			body: "With `exactOptionalPropertyTypes: true`, passing `headers: undefined` fails to type-check:\n\n```\nType 'undefined' is not assignable to type 'Record<string, string>'.\n```",
+		},
+		{
+			key: "memory-leak",
+			title: "Listeners are never released after close()",
+			author: "jun-park",
+			at: { d: 9, h: 2 },
+			labels: ["bug", "priority: high"],
+			milestone: "v1.4",
+			assignees: ["nova"],
+			body: "`close()` stops the transport but keeps every listener in the map, so long-lived SPAs leak closures across route changes.",
+			reactions: { THUMBS_UP: ["lena-fischer", "priya-rao"] },
+			comments: [
+				{
+					author: "nova",
+					at: { d: 8, h: 7 },
+					body: "Good catch. I'll clear the map in `close()` and add a test that counts listeners.",
+				},
+				{
+					author: "priya-rao",
+					at: { d: 3, h: 4 },
+					body: "Hit this in Orbit's docs site too — memory climbs ~2MB per navigation.",
+				},
+			],
+		},
+		{
+			key: "flaky-windows",
+			title: "Flaky test: backoff timing on Windows runners",
+			author: "sam-okafor",
+			at: { d: 5, h: 5 },
+			labels: ["bug", "ci"],
+			assignees: ["sam-okafor"],
+			body: "`reconnects after the socket closes` times out roughly 1 in 8 runs on `windows-latest`. Probably real timers leaking into the fake-timer test.",
+		},
+	],
+	pulls: [
+		{
+			head: "refactor/on-event",
+			title: "Rename onMessage to onEvent",
+			author: "priya-rao",
+			at: { d: 44, h: 8 },
+			state: "closed",
+			closedAt: { d: 40, h: 4 },
+			labels: ["breaking change"],
+			body: "`onEvent` reads better next to `on()`. This is a breaking rename.",
+			comments: [
+				{
+					author: "nova",
+					at: { d: 40, h: 4 },
+					body: "Let's keep `onMessage` for 1.x — renaming the transport contract would break every custom transport. Happy to revisit for 2.0.",
+				},
+			],
+		},
+		{
+			head: "refactor/state-machine",
+			title: "Rewrite the client as an explicit state machine",
+			author: "jun-park",
+			at: { d: 36, h: 4 },
+			conflicting: true,
+			labels: ["transport"],
+			reviewers: ["lena-fischer"],
+			body: "Replaces the ad-hoc `connected` flag with `idle → connecting → open → waiting`. Makes the reconnect logic testable.\n\nRelated: #{issue:reconnect-storm}",
+			comments: [
+				{
+					author: "lena-fischer",
+					at: { d: 11, h: 3 },
+					body: "This conflicts with the `onStatus` change on main now — could you rebase? The states map nicely onto `ConnectionStatus`.",
+				},
+			],
+		},
+		{
+			head: "fix/reconnect-storm",
+			title: "Fix reconnect storm after laptop sleep",
+			author: "lena-fischer",
+			at: { d: 28, h: 9 },
+			state: "merged",
+			closedAt: { d: 26, h: 1 },
+			mergedBy: "nova",
+			labels: ["bug", "transport"],
+			milestone: "v1.4",
+			body: "Fixes #{issue:reconnect-storm}\n\nOnly one reconnect timer can be pending at a time; extra `close` events are ignored until the timer fires.",
+			reviews: [
+				{
+					author: "nova",
+					state: "APPROVED",
+					at: { d: 26, h: 3 },
+					body: "Nice and small. Thanks!",
+				},
+			],
+		},
+		{
+			head: "feat/jitter-backoff",
+			title: "Add jitter to reconnect backoff",
+			author: "jun-park",
+			at: { d: 8, h: 6 },
+			labels: ["enhancement", "transport"],
+			milestone: "v1.4",
+			reviewers: [],
+			body: 'Closes #{issue:jitter}\n\nAdds `"full" | "equal" | "none"` jitter to `nextDelay`. Defaults to full jitter, which is what the AWS architecture blog recommends.',
+			reviews: [
+				{
+					author: "lena-fischer",
+					state: "APPROVED",
+					at: { d: 7, h: 4 },
+					body: "LGTM 🚀",
+				},
+				{
+					author: "nova",
+					state: "APPROVED",
+					at: { d: 5, h: 6 },
+					body: "Approving — one question inline, not blocking.",
+					threads: [
+						{
+							path: "src/backoff.ts",
+							line: 12,
+							body: 'Should the default stay `"none"` for 1.x? Full jitter changes timing for existing users.',
+							resolved: true,
+							replies: [
+								{
+									author: "jun-park",
+									at: { d: 5, h: 3 },
+									body: "Full jitter only ever shortens delays, so nobody waits longer than before. I'll call it out in the changelog.",
+								},
+							],
+						},
+					],
+				},
+			],
+			reactions: { HOORAY: ["lena-fischer"] },
+		},
+		{
+			head: "feat/sse-headers",
+			title: "Support custom headers on the SSE transport",
+			author: "theo-martin",
+			at: { d: 6, h: 9 },
+			labels: ["enhancement", "transport"],
+			milestone: "v1.4",
+			reviewers: ["nova"],
+			body: "Fixes #{issue:sse-headers}\n\n`EventSource` can't send headers, so this streams the event source over `fetch` and parses frames manually.\n\n- [x] Parses multi-line `data:` frames\n- [x] README updated\n- [ ] Abort handling",
+			reviews: [
+				{
+					author: "sam-okafor",
+					state: "COMMENTED",
+					at: { d: 5, h: 9 },
+					body: "Looks good overall, two notes.",
+					threads: [
+						{
+							path: "src/transport/sse.ts",
+							line: 19,
+							body: "Spread order means callers can override `accept` — intended?",
+							resolved: true,
+							replies: [
+								{
+									author: "theo-martin",
+									at: { d: 5, h: 4 },
+									body: "Yes, some proxies need `text/event-stream; charset=utf-8`.",
+								},
+							],
+						},
+						{
+							path: "src/transport/sse.ts",
+							line: 33,
+							startLine: 31,
+							body: "This loop never exits on abort — we should catch the `AbortError` and fire the close listeners.",
+							replies: [
+								{
+									author: "theo-martin",
+									at: { d: 4, h: 8 },
+									body: "Good point, will fix.",
+								},
+							],
+						},
+					],
+				},
+				{
+					author: "nova",
+					state: "PENDING",
+					at: { d: 1, h: 3 },
+					threads: [
+						{
+							path: "src/transport/sse.ts",
+							line: 25,
+							body: "`void` swallows pump errors — can we surface them through `onClose`?",
+						},
+						{
+							path: "src/transport/sse.ts",
+							line: 35,
+							body: "Nit: CRLF-delimited streams (`\\r\\n\\r\\n`) won't split here.",
+						},
+					],
+				},
+			],
+			comments: [
+				{
+					author: "theo-martin",
+					at: { d: 4, h: 7 },
+					body: "@nova could you take a look when you have a moment? We're blocked on this for the edge rollout.",
+				},
+			],
+		},
+		{
+			head: "stack/transport-interface",
+			title: "Stack 1/3: Extract a Transport interface",
+			author: "nova",
+			at: { d: 5, h: 7 },
+			labels: ["transport"],
+			milestone: "v2.0",
+			body: "First of three PRs towards pluggable transports (#{issue:webtransport}).\n\n1. **Extract a Transport interface** ← you are here\n2. Add a transport registry\n3. WebTransport transport",
+			reviews: [
+				{
+					author: "jun-park",
+					state: "APPROVED",
+					at: { d: 4, h: 6 },
+					body: "Small and safe ✅",
+				},
+			],
+		},
+		{
+			head: "chore/node-matrix",
+			title: "Drop Node 18 from the test matrix",
+			author: "sam-okafor",
+			at: { d: 4, h: 8 },
+			labels: ["ci"],
+			reviewers: [],
+			body: "Node 18 is EOL and most of our flaky Windows failures are on 18. See #{issue:flaky-windows}.",
+			reviews: [
+				{
+					author: "nova",
+					state: "CHANGES_REQUESTED",
+					at: { d: 3, h: 7 },
+					body: "We promised Node 18 support for 1.x, so this needs to wait for 2.0.",
+					threads: [
+						{
+							path: ".github/workflows/ci.yml",
+							line: 21,
+							body: "Can we keep 18 here and gate the drop behind the 2.0 branch? See #{issue:node18}.",
+							replies: [
+								{
+									author: "sam-okafor",
+									at: { d: 3, h: 2 },
+									body: "Fair. Could we at least mark 18 as `continue-on-error` so it stops blocking merges?",
+								},
+							],
+						},
+					],
+				},
+			],
+		},
+		{
+			head: "stack/transport-registry",
+			base: "stack/transport-interface",
+			title: "Stack 2/3: Add a transport registry",
+			author: "nova",
+			at: { d: 4, h: 2 },
+			labels: ["transport"],
+			milestone: "v2.0",
+			reviewers: ["jun-park", "lena-fischer"],
+			body: "Stacked on #{pull:stack/transport-interface}.\n\nLets apps register custom transports by name.",
+		},
+		{
+			head: "feat/webtransport",
+			base: "stack/transport-registry",
+			title: "Stack 3/3: Experimental WebTransport transport",
+			author: "nova",
+			at: { d: 2, h: 6 },
+			draft: true,
+			labels: ["experimental", "transport"],
+			milestone: "v2.0",
+			body: "Stacked on #{pull:stack/transport-registry}. Chrome-only prototype, not ready for review.",
+		},
+	],
+	workflows: [
+		{ name: "CI", path: ".github/workflows/ci.yml" },
+		{ name: "Release", path: ".github/workflows/release.yml" },
+	],
+	runs: [
+		{
+			workflow: "CI",
+			branch: "main@8",
+			event: "push",
+			at: { d: 50, h: 2 },
+			actor: "nova",
+			jobs: ciJobs({}),
+		},
+		{
+			workflow: "CI",
+			branch: "fix/reconnect-storm",
+			event: "pull_request",
+			at: { d: 28, h: 9 },
+			actor: "lena-fischer",
+			jobs: ciJobs({}),
+		},
+		{
+			workflow: "CI",
+			branch: "refactor/state-machine",
+			event: "pull_request",
+			at: { d: 36, h: 4 },
+			actor: "jun-park",
+			conclusion: "failure",
+			jobs: ciJobs({ lint: "failure" }),
+		},
+		{
+			workflow: "Release",
+			branch: "main@10",
+			event: "release",
+			at: { d: 22, h: 3 },
+			actor: "nova",
+			jobs: [publishJob()],
+		},
+		{
+			workflow: "CI",
+			branch: "main@11",
+			event: "push",
+			at: { d: 12, h: 6 },
+			actor: "jun-park",
+			jobs: ciJobs({}),
+		},
+		{
+			workflow: "CI",
+			branch: "feat/jitter-backoff",
+			event: "pull_request",
+			at: { d: 8, h: 6 },
+			actor: "jun-park",
+			jobs: ciJobs({}),
+		},
+		{
+			workflow: "CI",
+			branch: "feat/sse-headers",
+			event: "pull_request",
+			at: { d: 6, h: 9 },
+			actor: "theo-martin",
+			conclusion: "failure",
+			jobs: ciJobs({ failNode: 18 }),
+		},
+		{
+			workflow: "CI",
+			branch: "feat/sse-headers",
+			event: "pull_request",
+			at: { d: 6, h: 7 },
+			actor: "theo-martin",
+			attempt: 2,
+			jobs: ciJobs({}),
+		},
+		{
+			workflow: "CI",
+			branch: "main",
+			event: "push",
+			at: { d: 6, h: 9 },
+			actor: "sam-okafor",
+			jobs: ciJobs({}),
+		},
+		{
+			workflow: "CI",
+			branch: "stack/transport-interface",
+			event: "pull_request",
+			at: { d: 5, h: 7 },
+			actor: "nova",
+			jobs: ciJobs({}),
+		},
+		{
+			workflow: "CI",
+			branch: "chore/node-matrix",
+			event: "pull_request",
+			at: { d: 4, h: 8 },
+			actor: "sam-okafor",
+			conclusion: "failure",
+			jobs: ciJobs({ nodes: [20, 22], failNode: 20 }),
+		},
+		{
+			workflow: "CI",
+			branch: "stack/transport-registry",
+			event: "pull_request",
+			at: { d: 4, h: 2 },
+			actor: "nova",
+			jobs: ciJobs({}),
+		},
+		{
+			workflow: "CI",
+			branch: "feat/webtransport",
+			event: "pull_request",
+			at: { d: 0, h: 1 },
+			actor: "nova",
+			status: "in_progress",
+			conclusion: null,
+			jobs: inProgressJobs(),
+		},
+	],
+	statuses: [
+		{
+			branch: "feat/jitter-backoff",
+			context: "codecov/patch",
+			state: "success",
+			description: "98.2% of diff hit (target 90.0%)",
+			at: { d: 8, h: 5 },
+		},
+		{
+			branch: "feat/sse-headers",
+			context: "codecov/patch",
+			state: "failure",
+			description: "61.5% of diff hit (target 90.0%)",
+			at: { d: 6, h: 6 },
+		},
+		{
+			branch: "chore/node-matrix",
+			context: "codecov/patch",
+			state: "success",
+			description: "No changes to coverable lines",
+			at: { d: 4, h: 7 },
+		},
+		{
+			branch: "feat/webtransport",
+			context: "preview",
+			state: "pending",
+			description: "Building playground preview…",
+			at: { d: 0, h: 1 },
+		},
+	],
+	discussions: [
+		{
+			title: "Roadmap: pluggable transports in 2.0",
+			author: "nova",
+			category: { name: "Announcements", emoji: "📣" },
+			at: { d: 21 },
+			updated: { d: 2 },
+			comments: 14,
+		},
+		{
+			title: "How do you handle auth token refresh with long-lived sockets?",
+			author: "theo-martin",
+			category: { name: "Q&A", emoji: "🙏" },
+			at: { d: 16 },
+			updated: { d: 3 },
+			comments: 6,
+			answered: { d: 15 },
+		},
+		{
+			title: "Show and tell: live cursors with beacon + Durable Objects",
+			author: "priya-rao",
+			category: { name: "Show and tell", emoji: "🙌" },
+			at: { d: 9 },
+			updated: { d: 5 },
+			comments: 9,
+		},
+		{
+			title: "Idea: presence channels as a first-class API",
+			author: "jun-park",
+			category: { name: "Ideas", emoji: "💡" },
+			at: { d: 4 },
+			updated: { d: 1 },
+			comments: 3,
+		},
+	],
+};

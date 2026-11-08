@@ -1,0 +1,91 @@
+import type { PersonSpec, WorkspaceSpec } from "../types.ts";
+
+export const people: PersonSpec[] = [
+	{
+		login: "nova",
+		name: "Nova Reyes",
+		email: "nova@lumen-labs.dev",
+		bio: "Staff engineer at Lumen Labs. Realtime systems, small tools, long walks.",
+		company: "@lumen-labs",
+		location: "Lisbon, Portugal",
+		blog: "https://nova.example.dev",
+		followers: 312,
+		following: 48,
+	},
+	{
+		login: "jun-park",
+		name: "Jun Park",
+		email: "jun@lumen-labs.dev",
+		bio: "Client runtime + protocol nerd.",
+		company: "@lumen-labs",
+		location: "Seoul",
+		followers: 128,
+		following: 61,
+	},
+	{
+		login: "sam-okafor",
+		name: "Sam Okafor",
+		email: "sam@lumen-labs.dev",
+		bio: "Build systems, CI and keeping the lights on.",
+		company: "@lumen-labs",
+		location: "Lagos",
+		followers: 87,
+		following: 40,
+	},
+	{
+		login: "lena-fischer",
+		name: "Lena Fischer",
+		email: "lena@lumen-labs.dev",
+		bio: "Reliability & docs. On-call more than I'd like.",
+		company: "@lumen-labs",
+		location: "Berlin",
+		followers: 204,
+		following: 77,
+	},
+	{
+		login: "priya-rao",
+		name: "Priya Rao",
+		email: "priya@lumen-labs.dev",
+		bio: "Design systems and accessible UI.",
+		company: "@lumen-labs",
+		location: "Bengaluru",
+		followers: 156,
+		following: 92,
+	},
+	{
+		login: "theo-martin",
+		name: "Théo Martin",
+		email: "theo@martin.example",
+		bio: "Open source contributor. Edge runtimes.",
+		location: "Lyon",
+		followers: 34,
+		following: 12,
+	},
+];
+
+export const org: WorkspaceSpec["org"] = {
+	login: "lumen-labs",
+	name: "Lumen Labs",
+	description: "Realtime infrastructure for small teams.",
+	members: [
+		{ login: "nova", role: "admin" },
+		{ login: "jun-park", role: "member" },
+		{ login: "sam-okafor", role: "admin" },
+		{ login: "lena-fischer", role: "member" },
+		{ login: "priya-rao", role: "member" },
+	],
+	teams: [
+		{
+			name: "Runtime",
+			slug: "runtime",
+			description: "Client runtime and transports",
+			members: ["nova", "jun-park", "lena-fischer"],
+		},
+		{
+			name: "Design Systems",
+			slug: "design-systems",
+			description: "Orbit UI kit",
+			members: ["priya-rao", "nova"],
+		},
+	],
+};

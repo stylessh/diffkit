@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { getAuth } from "#/lib/auth.server";
 import { getGitHubAppAuthConfig } from "#/lib/github-app.server";
+import { getGitHubOAuthOrigin } from "#/lib/github-emulator.server";
 import { PRIVATE_ROUTE_HEADERS } from "#/lib/seo";
 
 const STATE_COOKIE = "github_app_oauth_state";
@@ -52,7 +53,8 @@ export const Route = createFileRoute("/api/github/app/authorize")({
 				const githubApp = getGitHubAppAuthConfig();
 				const callbackUrl = new URL("/api/github/app/callback", request.url);
 				const authorizeUrl = new URL(
-					"https://github.com/login/oauth/authorize",
+					"/login/oauth/authorize",
+					getGitHubOAuthOrigin(),
 				);
 				authorizeUrl.searchParams.set("client_id", githubApp.clientId);
 				authorizeUrl.searchParams.set("redirect_uri", callbackUrl.toString());

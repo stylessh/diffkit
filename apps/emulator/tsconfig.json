@@ -1,0 +1,11 @@
+{
+	"extends": "@diffkit/typescript-config/base.json",
+	"compilerOptions": {
+		"lib": ["ES2023", "DOM", "DOM.Iterable"],
+		"types": ["node"],
+		"allowImportingTsExtensions": true,
+		"declaration": false,
+		"declarationMap": false
+	},
+	"include": ["src", "scripts", "vitest.config.ts"]
+}
