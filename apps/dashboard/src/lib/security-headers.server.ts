@@ -6,11 +6,8 @@ export const SECURITY_HEADERS: Readonly<Record<string, string>> = {
 	"Permissions-Policy": "camera=(), microphone=(), geolocation=(), payment=()",
 };
 
-/**
- * Adds the security headers to a response. Some responses (`Response.redirect`,
- * `fetch` results) have immutable headers; those are copied instead of
- * throwing, which would turn a redirect into a 1101.
- */
+// Response.redirect() and fetch() results have immutable headers; setting
+// them would throw and turn a redirect into a 1101.
 export function applySecurityHeaders(response: Response): Response {
 	try {
 		for (const [key, value] of Object.entries(SECURITY_HEADERS)) {
@@ -26,7 +23,6 @@ export function applySecurityHeaders(response: Response): Response {
 	}
 }
 
-/** The response for an error nothing else handled. */
 export function unhandledErrorResponse(pathname: string): Response {
 	const headers = { "Cache-Control": "no-store", "Retry-After": "5" };
 	if (pathname.startsWith("/api/")) {

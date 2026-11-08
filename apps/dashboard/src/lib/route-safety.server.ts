@@ -1,12 +1,3 @@
-/**
- * Shared guards for request handlers.
- *
- * Storage (D1, KV, R2) can fail at any time. A handler must turn that into a
- * logged, clearly worded 503, never an unhandled exception that Workers
- * reports as a bare 1101 page. These helpers are pure so they can be tested
- * without a Worker runtime.
- */
-
 type ErrorSummary = {
 	name: string;
 	message: string;
@@ -16,11 +7,8 @@ type ErrorSummary = {
 
 const MAX_MESSAGE_LENGTH = 300;
 
-/**
- * Drizzle's "Failed query: <sql>\nparams: <values>" embeds bound parameters in
- * the message, which for the `account` table are OAuth tokens. Everything from
- * the `params:` marker on is dropped, then token-shaped strings are masked.
- */
+// Drizzle's "Failed query: <sql>\nparams: <values>" embeds bound parameters,
+// which for the `account` table are OAuth tokens.
 export function redactErrorMessage(message: string): string {
 	const paramsIndex = message.search(/\bparams:/i);
 	const withoutParams =
@@ -34,7 +22,6 @@ export function redactErrorMessage(message: string): string {
 		.slice(0, MAX_MESSAGE_LENGTH);
 }
 
-/** A loggable summary of an error that is safe to print to Workers Logs. */
 export function describeError(error: unknown, depth = 0): ErrorSummary {
 	if (error instanceof Error) {
 		const code = (error as { code?: unknown }).code;
@@ -55,7 +42,6 @@ export function describeError(error: unknown, depth = 0): ErrorSummary {
 	};
 }
 
-/** One structured log line; Workers Logs indexes the JSON fields. */
 export function logRouteError(
 	scope: string,
 	message: string,
@@ -89,10 +75,6 @@ export function serviceUnavailable(
 	);
 }
 
-/**
- * Wraps a handler so an unexpected throw (a failed D1 read, a missing secret)
- * becomes a logged 503 instead of an unhandled exception.
- */
 export function guardRoute<TArgs extends unknown[]>(
 	scope: string,
 	handler: (...args: TArgs) => Promise<Response>,

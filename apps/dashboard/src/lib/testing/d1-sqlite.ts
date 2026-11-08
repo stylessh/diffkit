@@ -7,10 +7,6 @@ const { DatabaseSync } = process.getBuiltinModule(
 	"node:sqlite",
 ) as typeof import("node:sqlite");
 
-/**
- * Minimal D1Database over node:sqlite for tests: prepare/bind/all/first/raw/run
- * and batch, with `meta.changes` and `meta.size_after` like D1.
- */
 export function createTestD1(migrations: string[] = []) {
 	const sqlite = new DatabaseSync(":memory:");
 	for (const file of migrations) {

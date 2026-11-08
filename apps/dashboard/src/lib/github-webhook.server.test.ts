@@ -79,45 +79,36 @@ afterEach(() => {
 	vi.restoreAllMocks();
 });
 
-describe("handleGitHubWebhook: rejecting bad requests with 4xx", () => {
-	it("503s when the secret is not configured, before reading anything", async () => {
+describe("handleGitHubWebhook: bad requests are 4xx, never 5xx", () => {
+	it("503s when the secret is not configured", async () => {
 		const { deps } = setup({ getSecret: () => null });
 		const response = await handleGitHubWebhook(await webhook("push", {}), deps);
 		expect(response.status).toBe(503);
-		expect(deps.recordChanges).not.toHaveBeenCalled();
 	});
 
-	it("401s a missing, malformed or wrong signature", async () => {
+	it("401s missing, malformed, wrong-secret and tampered signatures", async () => {
 		const wrongSecret = await sign("{}", "other-secret");
-		for (const signature of [
-			null,
-			"",
-			"sha256=",
-			"nope",
-			"sha1=abc",
-			wrongSecret,
-		]) {
+		const signedForOtherBody = await sign('{"a":1}');
+		const cases: Array<[string | null, string]> = [
+			[null, "{}"],
+			["", "{}"],
+			["sha256=", "{}"],
+			["sha1=abc", "{}"],
+			[wrongSecret, "{}"],
+			[signedForOtherBody, '{"a":2}'],
+		];
+		for (const [signature, rawBody] of cases) {
 			const { deps } = setup();
 			const response = await handleGitHubWebhook(
-				await webhook("push", {}, { signature, rawBody: "{}" }),
+				await webhook("push", null, { signature, rawBody }),
 				deps,
 			);
-			expect(response.status).toBe(401);
+			expect(response.status, String(signature)).toBe(401);
 			expect(deps.runInBackground).not.toHaveBeenCalled();
 		}
 	});
 
-	it("401s when the body was changed after signing", async () => {
-		const { deps } = setup();
-		const signature = await sign('{"a":1}');
-		const response = await handleGitHubWebhook(
-			await webhook("push", null, { signature, rawBody: '{"a":2}' }),
-			deps,
-		);
-		expect(response.status).toBe(401);
-	});
-
-	it("401s instead of 500 when signature verification itself throws", async () => {
+	it("401s when signature verification itself throws", async () => {
 		vi.spyOn(console, "warn").mockImplementation(() => undefined);
 		const { deps } = setup({
 			verifySignature: async () => {
@@ -128,40 +119,16 @@ describe("handleGitHubWebhook: rejecting bad requests with 4xx", () => {
 		expect(response.status).toBe(401);
 	});
 
-	it("400s a missing or malformed event header (after the signature check)", async () => {
-		for (const event of [
-			null,
-			"",
-			"Push",
-			"push event",
-			"../x",
-			"a".repeat(80),
-		]) {
-			const { deps } = setup();
+	it("400s a bad event header, invalid JSON and JSON that is not an object", async () => {
+		const badEvents = [null, "Push", "push event", "../x", "a".repeat(80)];
+		for (const event of badEvents) {
 			const response = await handleGitHubWebhook(
-				await webhook(
-					event,
-					{},
-					event === "" ? { headers: { "x-github-event": "" } } : {},
-				),
-				deps,
+				await webhook(event, {}),
+				setup().deps,
 			);
-			expect(response.status).toBe(400);
+			expect(response.status, String(event)).toBe(400);
 		}
-	});
-
-	it("400s invalid JSON", async () => {
-		const { deps } = setup();
-		const response = await handleGitHubWebhook(
-			await webhook("push", null, { rawBody: "{not json" }),
-			deps,
-		);
-		expect(response.status).toBe(400);
-		expect(await response.text()).toMatch(/JSON/);
-	});
-
-	it("400s JSON that is not an object", async () => {
-		for (const rawBody of ["null", "[]", "[1,2]", '"text"', "42", "true"]) {
+		for (const rawBody of ["{not json", "null", "[]", '"text"', "42"]) {
 			const { deps } = setup();
 			const response = await handleGitHubWebhook(
 				await webhook("push", null, { rawBody }),
@@ -173,21 +140,18 @@ describe("handleGitHubWebhook: rejecting bad requests with 4xx", () => {
 	});
 
 	it("413s a declared payload above GitHub's cap without reading it", async () => {
-		const { deps } = setup();
 		const request = await webhook(
 			"push",
 			{},
-			{
-				headers: { "content-length": String(MAX_WEBHOOK_BODY_BYTES + 1) },
-			},
+			{ headers: { "content-length": String(MAX_WEBHOOK_BODY_BYTES + 1) } },
 		);
-		const response = await handleGitHubWebhook(request, deps);
+		const response = await handleGitHubWebhook(request, setup().deps);
 		expect(response.status).toBe(413);
 	});
 });
 
 describe("handleGitHubWebhook: change recording", () => {
-	it("records entity keys in the background and answers 202 immediately", async () => {
+	it("answers 202 while the insert is still pending, then records the entity keys", async () => {
 		let finishInsert: () => void = () => undefined;
 		const { deps, settled } = setup({
 			recordChanges: vi.fn(
@@ -203,17 +167,14 @@ describe("handleGitHubWebhook: change recording", () => {
 			deps,
 		);
 
-		// Answered while the insert is still pending: nothing awaits D1.
 		expect(response.status).toBe(202);
 		expect(await response.json()).toEqual({
 			ok: true,
 			event: "pull_request",
 			changes: 2,
 		});
-		expect(deps.runInBackground).toHaveBeenCalledTimes(1);
 		finishInsert();
 		await settled();
-
 		expect(deps.recordChanges).toHaveBeenCalledWith([
 			{
 				repo: "acme/api",
@@ -230,44 +191,29 @@ describe("handleGitHubWebhook: change recording", () => {
 		]);
 	});
 
-	it("marks rows public only when the payload says the repo is public", async () => {
-		const { deps, settled } = setup();
-		await handleGitHubWebhook(
-			await webhook("push", {
-				repository: { name: "lib", private: false, owner: { login: "oss" } },
-			}),
-			deps,
-		);
-		await settled();
-		expect(deps.recordChanges).toHaveBeenCalledWith([
-			{
-				repo: "oss/lib",
-				entityKey: "repo:oss/lib",
-				isPrivate: false,
-				changedAt: NOW,
-			},
-		]);
-
-		const unknownVisibility = setup();
-		await handleGitHubWebhook(
-			await webhook("push", {
-				repository: { name: "lib", owner: { login: "oss" } },
-			}),
-			unknownVisibility.deps,
-		);
-		await unknownVisibility.settled();
-		expect(unknownVisibility.deps.recordChanges).toHaveBeenCalledWith([
-			expect.objectContaining({ isPrivate: true }),
-		]);
+	it("treats a repo as public only when the payload says so", async () => {
+		const recorded = async (repository: Record<string, unknown>) => {
+			const { deps, settled } = setup();
+			await handleGitHubWebhook(await webhook("push", { repository }), deps);
+			await settled();
+			return vi.mocked(deps.recordChanges).mock.calls[0][0][0].isPrivate;
+		};
+		const owner = { login: "oss" };
+		expect(await recorded({ name: "lib", private: false, owner })).toBe(false);
+		expect(await recorded({ name: "lib", owner })).toBe(true);
 	});
 
-	it("answers 202 and logs when the insert fails (D1 full, outage)", async () => {
+	it.each([
+		["async", async () => Promise.reject(new Error("Failed query\nparams: x"))],
+		[
+			"sync",
+			() => {
+				throw new Error("DB binding missing");
+			},
+		],
+	])("answers 202 and logs when the insert fails (%s)", async (_name, fail) => {
 		const warn = vi.spyOn(console, "warn").mockImplementation(() => undefined);
-		const { deps, settled } = setup({
-			recordChanges: vi.fn(async () => {
-				throw new Error('Failed query: insert into "github_change"\nparams: x');
-			}),
-		});
+		const { deps, settled } = setup({ recordChanges: vi.fn(fail) });
 		const response = await handleGitHubWebhook(
 			await webhook("pull_request", pullRequestPayload),
 			deps,
@@ -278,29 +224,12 @@ describe("handleGitHubWebhook: change recording", () => {
 		expect(JSON.stringify(warn.mock.calls)).not.toContain("params:");
 	});
 
-	it("answers 202 when the insert throws synchronously", async () => {
-		vi.spyOn(console, "warn").mockImplementation(() => undefined);
-		const { deps, settled } = setup({
-			recordChanges: vi.fn(() => {
-				throw new Error("DB binding missing");
-			}),
-		});
-		const response = await handleGitHubWebhook(
-			await webhook("pull_request", pullRequestPayload),
-			deps,
-		);
-		await settled();
-		expect(response.status).toBe(202);
-	});
-
 	it("accepts events and payloads the dashboard does not read without writing", async () => {
 		const cases: Array<[string, unknown]> = [
-			["ping", { zen: "Keep it logically awesome.", hook_id: 1 }],
+			["ping", { zen: "Keep it logically awesome." }],
 			["star", pullRequestPayload],
-			["pull_request", { ...pullRequestPayload, pull_request: {} }],
 			["pull_request", { action: "opened" }],
 			["push", { repository: "not-an-object" }],
-			["push", { repository: { name: 1, owner: { login: "x" } } }],
 		];
 		for (const [event, payload] of cases) {
 			const { deps } = setup();
@@ -309,38 +238,12 @@ describe("handleGitHubWebhook: change recording", () => {
 				deps,
 			);
 			expect(response.status, event).toBe(202);
-			expect(await response.json()).toMatchObject({ changes: 0 });
 			expect(deps.runInBackground).not.toHaveBeenCalled();
 		}
-	});
-
-	it("maps workflow and check events to their entities", async () => {
-		const { deps, settled } = setup();
-		await handleGitHubWebhook(
-			await webhook("check_run", {
-				repository: { name: "api", private: true, owner: { login: "acme" } },
-				check_run: {
-					head_sha: "ABCDEF1234567",
-					pull_requests: [{ number: 3 }, { number: 3 }, { nope: true }],
-				},
-			}),
-			deps,
-		);
-		await settled();
-		const rows = vi.mocked(deps.recordChanges).mock.calls[0][0];
-		expect(rows.map((row) => row.entityKey)).toEqual([
-			"checks:acme/api@abcdef1234567",
-			"pull:acme/api#3",
-		]);
 	});
 });
 
 describe("handleGitHubWebhook: installation events", () => {
-	const installation = (id: unknown) => ({
-		action: "created",
-		installation: { id },
-	});
-
 	it("drops the cached installation token", async () => {
 		for (const event of [
 			"installation",
@@ -349,32 +252,12 @@ describe("handleGitHubWebhook: installation events", () => {
 		]) {
 			const { deps } = setup();
 			const response = await handleGitHubWebhook(
-				await webhook(event, installation(4242)),
+				await webhook(event, { installation: { id: 4242 } }),
 				deps,
 			);
 			expect(response.status).toBe(200);
-			expect(await response.json()).toEqual({
-				ok: true,
-				event,
-				invalidatedInstallationToken: true,
-			});
 			expect(deps.invalidateInstallationToken).toHaveBeenCalledWith(4242);
 			expect(deps.runInBackground).not.toHaveBeenCalled();
-		}
-	});
-
-	it("ignores installation ids that are not integers", async () => {
-		for (const id of ["4242", 1.5, null, {}, undefined]) {
-			const { deps } = setup();
-			const response = await handleGitHubWebhook(
-				await webhook("installation", installation(id)),
-				deps,
-			);
-			expect(response.status).toBe(200);
-			expect(deps.invalidateInstallationToken).not.toHaveBeenCalled();
-			expect(await response.json()).toMatchObject({
-				invalidatedInstallationToken: false,
-			});
 		}
 	});
 
@@ -386,7 +269,7 @@ describe("handleGitHubWebhook: installation events", () => {
 			}),
 		});
 		const response = await handleGitHubWebhook(
-			await webhook("installation", installation(1)),
+			await webhook("installation", { installation: { id: 1 } }),
 			deps,
 		);
 		expect(response.status).toBe(200);

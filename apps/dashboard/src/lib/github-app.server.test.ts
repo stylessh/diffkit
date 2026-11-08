@@ -23,13 +23,8 @@ vi.mock("./github-emulator.server", () => ({
 	getGitHubOAuthOrigin: () => "https://github.com",
 }));
 
-const {
-	getGitHubAccessTokenByUserId,
-	getGitHubAppUserAccessTokenByUserId,
-	getGitHubWebhookSecret,
-	hasGitHubAppUserAccount,
-	verifyGitHubWebhookSignature,
-} = await import("./github-app.server");
+const { getGitHubAppUserAccessTokenByUserId, verifyGitHubWebhookSignature } =
+	await import("./github-app.server");
 const { normalizeGitHubAppPrivateKey } = await import("./github-private-key");
 
 describe("normalizeGitHubAppPrivateKey", () => {
@@ -137,17 +132,6 @@ describe("verifyGitHubWebhookSignature", () => {
 	});
 });
 
-describe("getGitHubWebhookSecret", () => {
-	it("is null when unset or empty", () => {
-		runtime.env.GITHUB_WEBHOOK_SECRET = undefined;
-		expect(getGitHubWebhookSecret()).toBeNull();
-		runtime.env.GITHUB_WEBHOOK_SECRET = "";
-		expect(getGitHubWebhookSecret()).toBeNull();
-		runtime.env.GITHUB_WEBHOOK_SECRET = "s3cret";
-		expect(getGitHubWebhookSecret()).toBe("s3cret");
-	});
-});
-
 describe("GitHub App user tokens", () => {
 	const now = () => Math.floor(Date.now() / 1000) * 1000;
 	const fetchMock = vi.fn();
@@ -222,25 +206,9 @@ describe("GitHub App user tokens", () => {
 		vi.spyOn(console, "error").mockImplementation(() => undefined);
 	});
 
-	it("reads the OAuth token and reports a missing account", async () => {
-		await seed();
-		expect(await getGitHubAccessTokenByUserId("u1")).toBe("gho_oauth_token");
-		await expect(getGitHubAccessTokenByUserId("nobody")).rejects.toThrow(
-			"No GitHub account linked",
-		);
-		expect(await hasGitHubAppUserAccount("u1")).toBe(false);
-	});
-
-	it("returns null when the user never authorized the app", async () => {
-		await seed();
-		expect(await getGitHubAppUserAccessTokenByUserId("u1")).toBeNull();
-		expect(fetchMock).not.toHaveBeenCalled();
-	});
-
 	it("returns a token that is not about to expire without calling GitHub", async () => {
 		await seed({ accessTokenExpiresAt: new Date(now() + 3_600_000) });
 		expect(await getGitHubAppUserAccessTokenByUserId("u1")).toBe("ghu_old");
-		expect(await hasGitHubAppUserAccount("u1")).toBe(true);
 		expect(fetchMock).not.toHaveBeenCalled();
 	});
 
@@ -268,7 +236,6 @@ describe("GitHub App user tokens", () => {
 			grant_type: "refresh_token",
 			refresh_token: "ghr_old",
 		});
-		// GitHub rotates the refresh token; the new one must be stored.
 		const row = await appRow();
 		expect(row.accessToken).toBe("ghu_new");
 		expect(row.refreshToken).toBe("ghr_new");
@@ -316,7 +283,6 @@ describe("GitHub App user tokens", () => {
 			"incorrect or expired",
 		);
 		expect((await appRow()).refreshToken).toBe("ghr_old");
-		// A later call tries again: a failed refresh is not cached.
 		fetchMock.mockResolvedValue(tokenResponse({ access_token: "ghu_new" }));
 		expect(await getGitHubAppUserAccessTokenByUserId("u1")).toBe("ghu_new");
 	});

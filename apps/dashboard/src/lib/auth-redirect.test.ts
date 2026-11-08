@@ -25,8 +25,6 @@ describe("normalizeAuthRedirect", () => {
 });
 
 describe("normalizeAuthRedirect: open-redirect attempts", () => {
-	// Browsers treat a backslash (and stripped tab/newline) like a slash, so
-	// these all navigate off-site when used as a Location header.
 	const attempts = [
 		"/\\evil.com",
 		"/\\\\evil.com",

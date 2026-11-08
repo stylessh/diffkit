@@ -8,14 +8,11 @@ import {
 } from "#/lib/comment-media.server";
 import { logRouteError, serviceUnavailable } from "#/lib/route-safety.server";
 
-/** Everything the handler needs from the Worker runtime. */
 export type CommentMediaUploadRuntime = {
-	bucket: Pick<R2Bucket, "put"> | undefined;
-	publicBaseUrl: string | undefined;
+	storage: { bucket: Pick<R2Bucket, "put">; publicBaseUrl: string } | null;
 	getSession: (headers: Headers) => Promise<{ user: { id: string } } | null>;
 };
 
-/** Multipart framing around the largest file we accept. */
 const MULTIPART_OVERHEAD_BYTES = 1024 * 1024;
 
 async function getRuntime(): Promise<CommentMediaUploadRuntime> {
@@ -23,9 +20,10 @@ async function getRuntime(): Promise<CommentMediaUploadRuntime> {
 		import("cloudflare:workers"),
 		import("#/lib/auth.server"),
 	]);
+	const bucket = env.COMMENT_MEDIA;
+	const publicBaseUrl = env.R2_PUBLIC_BASE_URL;
 	return {
-		bucket: env.COMMENT_MEDIA,
-		publicBaseUrl: env.R2_PUBLIC_BASE_URL,
+		storage: bucket && publicBaseUrl ? { bucket, publicBaseUrl } : null,
 		getSession: (headers) => getAuth().api.getSession({ headers }),
 	};
 }
@@ -34,9 +32,9 @@ export async function handleCommentMediaUpload(
 	request: Request,
 	runtime?: CommentMediaUploadRuntime,
 ): Promise<Response> {
-	const { bucket, publicBaseUrl, getSession } = runtime ?? (await getRuntime());
+	const { storage, getSession } = runtime ?? (await getRuntime());
 
-	if (!bucket || !publicBaseUrl) {
+	if (!storage) {
 		return Response.json(
 			{ error: "Comment media uploads are not configured" },
 			{ status: 503 },
@@ -55,7 +53,7 @@ export async function handleCommentMediaUpload(
 		return Response.json({ error: "Unauthorized" }, { status: 401 });
 	}
 
-	// Refuse before buffering the body: formData() holds the whole upload.
+	// formData() buffers the whole upload, so refuse oversized ones first.
 	const declaredLength = Number(request.headers.get("Content-Length"));
 	if (
 		Number.isFinite(declaredLength) &&
@@ -103,7 +101,7 @@ export async function handleCommentMediaUpload(
 	const key = buildCommentMediaObjectKey(session.user.id, filename);
 
 	try {
-		await bucket.put(key, file.stream(), {
+		await storage.bucket.put(key, file.stream(), {
 			httpMetadata: {
 				contentType: detected.contentType,
 				cacheControl: "public, max-age=31536000, immutable",
@@ -114,7 +112,7 @@ export async function handleCommentMediaUpload(
 		return Response.json({ error: "Upload failed" }, { status: 502 });
 	}
 
-	const publicUrl = publicUrlForR2Key(publicBaseUrl, key);
+	const publicUrl = publicUrlForR2Key(storage.publicBaseUrl, key);
 
 	return Response.json({
 		key,

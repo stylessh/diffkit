@@ -9,43 +9,56 @@ import { normalizeGitHubAppPrivateKey } from "./github-private-key";
 import { GITHUB_REQUEST_TIMEOUT_MS } from "./github-request-policy";
 import { describeError } from "./route-safety.server";
 
-type WorkerEnvRecord = typeof env & Record<string, string | undefined>;
-
 export const GITHUB_OAUTH_PROVIDER_ID = "github";
 const GITHUB_APP_USER_PROVIDER_ID = "github-app";
 
-type GitHubTokenResponse = {
-	access_token?: string;
-	token_type?: string;
-	expires_in?: number;
-	refresh_token?: string;
-	refresh_token_expires_in?: number;
-	scope?: string;
-	error?: string;
-	error_description?: string;
+type StoredAccount = typeof account.$inferSelect;
+
+const TOKEN_EXPIRY_MARGIN_MS = 5 * 60 * 1000;
+
+type EnvStringKey =
+	| "GITHUB_OAUTH_CLIENT_ID"
+	| "GITHUB_CLIENT_ID"
+	| "GITHUB_OAUTH_CLIENT_SECRET"
+	| "GITHUB_CLIENT_SECRET"
+	| "GITHUB_APP_CLIENT_ID"
+	| "GITHUB_APP_CLIENT_SECRET"
+	| "GITHUB_APP_ID"
+	| "GITHUB_APP_PRIVATE_KEY"
+	| "GITHUB_APP_SLUG"
+	| "GITHUB_WEBHOOK_SECRET";
+
+type AppUserToken = {
+	accessToken: string;
+	refreshToken: string | null;
+	accessTokenExpiresAt: Date | null;
+	refreshTokenExpiresAt: Date | null;
+	scope: string | null;
 };
 
-function getWorkerEnv() {
-	return env as WorkerEnvRecord;
+type AppUserTokenState =
+	| { status: "missing" }
+	| { status: "fresh"; accessToken: string }
+	| { status: "refreshable"; refreshToken: string }
+	| { status: "expired" };
+
+function readEnvString(key: EnvStringKey): string | undefined {
+	const value: unknown = env[key];
+	return typeof value === "string" && value.length > 0 ? value : undefined;
 }
 
-function pickFirstNonEmpty(...values: Array<string | null | undefined>) {
-	return values.find((value) => typeof value === "string" && value.length > 0);
+function firstDefined(...values: Array<string | undefined>) {
+	return values.find((value) => value !== undefined);
 }
 
-/**
- * Returns the classic OAuth App credentials used for user authentication.
- * OAuth App tokens support scopes (e.g. `repo`) and don't expire.
- */
 export function getGitHubOAuthConfig() {
-	const workerEnv = getWorkerEnv();
-	const clientId = pickFirstNonEmpty(
-		workerEnv.GITHUB_OAUTH_CLIENT_ID,
-		workerEnv.GITHUB_CLIENT_ID,
+	const clientId = firstDefined(
+		readEnvString("GITHUB_OAUTH_CLIENT_ID"),
+		readEnvString("GITHUB_CLIENT_ID"),
 	);
-	const clientSecret = pickFirstNonEmpty(
-		workerEnv.GITHUB_OAUTH_CLIENT_SECRET,
-		workerEnv.GITHUB_CLIENT_SECRET,
+	const clientSecret = firstDefined(
+		readEnvString("GITHUB_OAUTH_CLIENT_SECRET"),
+		readEnvString("GITHUB_CLIENT_SECRET"),
 	);
 
 	if (!clientId || !clientSecret) {
@@ -57,13 +70,9 @@ export function getGitHubOAuthConfig() {
 	return { clientId, clientSecret };
 }
 
-/**
- * Returns the GitHub App credentials used for webhooks and installation management.
- */
 export function getGitHubAppAuthConfig() {
-	const workerEnv = getWorkerEnv();
-	const clientId = pickFirstNonEmpty(workerEnv.GITHUB_APP_CLIENT_ID);
-	const clientSecret = pickFirstNonEmpty(workerEnv.GITHUB_APP_CLIENT_SECRET);
+	const clientId = readEnvString("GITHUB_APP_CLIENT_ID");
+	const clientSecret = readEnvString("GITHUB_APP_CLIENT_SECRET");
 
 	if (!clientId || !clientSecret) {
 		throw new Error(
@@ -75,20 +84,20 @@ export function getGitHubAppAuthConfig() {
 }
 
 export function getGitHubAppId(): string | null {
-	return pickFirstNonEmpty(getWorkerEnv().GITHUB_APP_ID) ?? null;
+	return readEnvString("GITHUB_APP_ID") ?? null;
 }
 
 export function getGitHubAppPrivateKey(): string | null {
-	const privateKey = pickFirstNonEmpty(getWorkerEnv().GITHUB_APP_PRIVATE_KEY);
+	const privateKey = readEnvString("GITHUB_APP_PRIVATE_KEY");
 	return privateKey ? normalizeGitHubAppPrivateKey(privateKey) : null;
 }
 
 export function getGitHubAppSlug(): string | null {
-	return pickFirstNonEmpty(getWorkerEnv().GITHUB_APP_SLUG) ?? null;
+	return readEnvString("GITHUB_APP_SLUG") ?? null;
 }
 
 export function getGitHubWebhookSecret() {
-	return pickFirstNonEmpty(getWorkerEnv().GITHUB_WEBHOOK_SECRET) ?? null;
+	return readEnvString("GITHUB_WEBHOOK_SECRET") ?? null;
 }
 
 export async function getGitHubAccessTokenByUserId(userId: string) {
@@ -101,18 +110,19 @@ export async function getGitHubAccessTokenByUserId(userId: string) {
 	return githubAccount.accessToken;
 }
 
-async function getGitHubOAuthAccountByUserId(userId: string) {
-	const db = getDb();
+function getGitHubOAuthAccountByUserId(userId: string) {
+	return getAccountByProvider(userId, GITHUB_OAUTH_PROVIDER_ID);
+}
 
-	return db
+function getGitHubAppUserAccountByUserId(userId: string) {
+	return getAccountByProvider(userId, GITHUB_APP_USER_PROVIDER_ID);
+}
+
+function getAccountByProvider(userId: string, providerId: string) {
+	return getDb()
 		.select()
 		.from(account)
-		.where(
-			and(
-				eq(account.userId, userId),
-				eq(account.providerId, GITHUB_OAUTH_PROVIDER_ID),
-			),
-		)
+		.where(and(eq(account.userId, userId), eq(account.providerId, providerId)))
 		.get();
 }
 
@@ -121,42 +131,48 @@ export async function hasGitHubAppUserAccount(userId: string) {
 	return Boolean(row?.accessToken);
 }
 
-async function getGitHubAppUserAccountByUserId(userId: string) {
-	const db = getDb();
-
-	return db
-		.select()
-		.from(account)
-		.where(
-			and(
-				eq(account.userId, userId),
-				eq(account.providerId, GITHUB_APP_USER_PROVIDER_ID),
-			),
-		)
-		.get();
+function outlivesExpiryMargin(expiresAt: Date | null, now: number) {
+	return (
+		expiresAt === null || expiresAt.getTime() - now > TOKEN_EXPIRY_MARGIN_MS
+	);
 }
 
-function isRecord(value: unknown): value is GitHubTokenResponse {
-	return typeof value === "object" && value !== null && !Array.isArray(value);
-}
-
-function getTokenExpiresAt(expiresInSeconds: number | undefined) {
-	if (!expiresInSeconds || expiresInSeconds <= 0) {
-		return null;
+function classifyAppUserToken(
+	stored: StoredAccount | undefined,
+	now: number,
+): AppUserTokenState {
+	if (!stored?.accessToken) {
+		return { status: "missing" };
 	}
-
-	return new Date(Date.now() + expiresInSeconds * 1000);
-}
-
-function isUsableAccessTokenExpiresAt(expiresAt: Date | null) {
-	if (!expiresAt) {
-		return true;
+	if (outlivesExpiryMargin(stored.accessTokenExpiresAt, now)) {
+		return { status: "fresh", accessToken: stored.accessToken };
 	}
-
-	return expiresAt.getTime() - Date.now() > 5 * 60 * 1000;
+	if (
+		stored.refreshToken &&
+		outlivesExpiryMargin(stored.refreshTokenExpiresAt, now)
+	) {
+		return { status: "refreshable", refreshToken: stored.refreshToken };
+	}
+	return { status: "expired" };
 }
 
-async function requestGitHubAppUserToken(params: Record<string, string>) {
+function expiresInFromNow(seconds: number | undefined) {
+	return seconds && seconds > 0 ? new Date(Date.now() + seconds * 1000) : null;
+}
+
+function stringField(value: unknown) {
+	return typeof value === "string" ? value : undefined;
+}
+
+function numberField(value: unknown) {
+	return typeof value === "number" && Number.isFinite(value)
+		? value
+		: undefined;
+}
+
+async function requestGitHubAppUserToken(
+	params: Record<string, string>,
+): Promise<AppUserToken> {
 	const response = await fetch(
 		`${getGitHubOAuthOrigin()}/login/oauth/access_token`,
 		{
@@ -169,22 +185,31 @@ async function requestGitHubAppUserToken(params: Record<string, string>) {
 			body: new URLSearchParams(params),
 		},
 	);
-	// An upstream 5xx can answer with HTML; that is a failed request, not a
-	// JSON parse error.
-	const payload = await response
-		.json()
-		.then((body): GitHubTokenResponse => (isRecord(body) ? body : {}))
-		.catch((): GitHubTokenResponse => ({}));
+	// An upstream 5xx can answer with HTML.
+	const body: unknown = await response.json().catch(() => null);
+	const fields: Record<string, unknown> =
+		typeof body === "object" && body !== null && !Array.isArray(body)
+			? { ...body }
+			: {};
+	const accessToken = stringField(fields.access_token);
 
-	if (!response.ok || !payload.access_token) {
+	if (!response.ok || !accessToken) {
 		const message =
-			payload.error_description ??
-			payload.error ??
+			stringField(fields.error_description) ??
+			stringField(fields.error) ??
 			(response.statusText || `HTTP ${response.status}`);
 		throw new Error(`GitHub App user token request failed: ${message}`);
 	}
 
-	return payload;
+	return {
+		accessToken,
+		refreshToken: stringField(fields.refresh_token) ?? null,
+		accessTokenExpiresAt: expiresInFromNow(numberField(fields.expires_in)),
+		refreshTokenExpiresAt: expiresInFromNow(
+			numberField(fields.refresh_token_expires_in),
+		),
+		scope: stringField(fields.scope) ?? null,
+	};
 }
 
 export async function exchangeGitHubAppUserCode({
@@ -197,53 +222,46 @@ export async function exchangeGitHubAppUserCode({
 	userId: string;
 }) {
 	const githubApp = getGitHubAppAuthConfig();
-	const payload = await requestGitHubAppUserToken({
+	const token = await requestGitHubAppUserToken({
 		client_id: githubApp.clientId,
 		client_secret: githubApp.clientSecret,
 		code,
 		...(redirectUri ? { redirect_uri: redirectUri } : {}),
 	});
 
-	await saveGitHubAppUserToken({
-		userId,
-		payload,
-	});
+	await saveGitHubAppUserToken(userId, token);
 }
 
-/**
- * GitHub rotates the refresh token on every use, so two concurrent refreshes
- * with the same token would invalidate each other. Calls for the same user in
- * one isolate share a single exchange.
- */
-const refreshInflight = new Map<string, Promise<string | null>>();
+// GitHub rotates the refresh token on every use, so concurrent refreshes with
+// the same token would invalidate each other.
+const refreshInflight = new Map<string, Promise<string>>();
 
-function refreshGitHubAppUserToken(params: {
-	refreshToken: string;
-	userId: string;
-}): Promise<string | null> {
-	const existing = refreshInflight.get(params.userId);
+function refreshGitHubAppUserToken(
+	userId: string,
+	refreshToken: string,
+): Promise<string> {
+	const existing = refreshInflight.get(userId);
 	if (existing) {
 		return existing;
 	}
 
-	const task = performGitHubAppUserTokenRefresh(params).finally(() => {
-		refreshInflight.delete(params.userId);
-	});
-	refreshInflight.set(params.userId, task);
+	const task = performGitHubAppUserTokenRefresh(userId, refreshToken).finally(
+		() => {
+			refreshInflight.delete(userId);
+		},
+	);
+	refreshInflight.set(userId, task);
 	return task;
 }
 
-async function performGitHubAppUserTokenRefresh({
-	refreshToken,
-	userId,
-}: {
-	refreshToken: string;
-	userId: string;
-}): Promise<string | null> {
+async function performGitHubAppUserTokenRefresh(
+	userId: string,
+	refreshToken: string,
+): Promise<string> {
 	const githubApp = getGitHubAppAuthConfig();
-	let payload: GitHubTokenResponse;
+	let token: AppUserToken;
 	try {
-		payload = await requestGitHubAppUserToken({
+		token = await requestGitHubAppUserToken({
 			client_id: githubApp.clientId,
 			client_secret: githubApp.clientSecret,
 			grant_type: "refresh_token",
@@ -259,11 +277,11 @@ async function performGitHubAppUserTokenRefresh({
 	}
 
 	try {
-		await saveGitHubAppUserToken({ userId, payload });
+		await saveGitHubAppUserToken(userId, token);
 	} catch (error) {
-		// The refreshed access token is valid for this request even if D1 would
-		// not take it. The rotated refresh token is lost, so the next expiry will
-		// ask the user to re-authorize; that beats failing the page now.
+		// The new access token is good for this request even if D1 rejects the
+		// write. The rotated refresh token is lost, so the user re-authorizes at
+		// the next expiry, which beats failing the page now.
 		console.error(
 			"[github-auth] failed to store refreshed app user token",
 			userId,
@@ -271,34 +289,19 @@ async function performGitHubAppUserTokenRefresh({
 		);
 	}
 
-	debug("github-auth", "app user token refreshed", { userId });
-	return payload.access_token ?? null;
+	return token.accessToken;
 }
 
-async function saveGitHubAppUserToken({
-	payload,
-	userId,
-}: {
-	payload: GitHubTokenResponse;
-	userId: string;
-}) {
-	if (!payload.access_token) {
-		throw new Error("GitHub App user token response did not include a token.");
-	}
-
+async function saveGitHubAppUserToken(userId: string, token: AppUserToken) {
 	const db = getDb();
 	const now = new Date();
 	const existingAccount = await getGitHubAppUserAccountByUserId(userId);
 	const oauthAccount = await getGitHubOAuthAccountByUserId(userId);
 	const values = {
+		...token,
 		accountId: oauthAccount?.accountId ?? userId,
 		providerId: GITHUB_APP_USER_PROVIDER_ID,
 		userId,
-		accessToken: payload.access_token,
-		refreshToken: payload.refresh_token ?? null,
-		accessTokenExpiresAt: getTokenExpiresAt(payload.expires_in),
-		refreshTokenExpiresAt: getTokenExpiresAt(payload.refresh_token_expires_in),
-		scope: payload.scope ?? null,
 		updatedAt: now,
 	};
 
@@ -320,35 +323,21 @@ async function saveGitHubAppUserToken({
 }
 
 export async function getGitHubAppUserAccessTokenByUserId(userId: string) {
-	const githubAccount = await getGitHubAppUserAccountByUserId(userId);
-	if (!githubAccount?.accessToken) {
-		debug("github-auth", "no app user account", { userId });
-		return null;
-	}
+	const state = classifyAppUserToken(
+		await getGitHubAppUserAccountByUserId(userId),
+		Date.now(),
+	);
+	debug("github-auth", "app user token", { userId, status: state.status });
 
-	if (isUsableAccessTokenExpiresAt(githubAccount.accessTokenExpiresAt)) {
-		debug("github-auth", "app user token is fresh", { userId });
-		return githubAccount.accessToken;
+	switch (state.status) {
+		case "fresh":
+			return state.accessToken;
+		case "refreshable":
+			return refreshGitHubAppUserToken(userId, state.refreshToken);
+		case "missing":
+		case "expired":
+			return null;
 	}
-
-	if (
-		!githubAccount.refreshToken ||
-		!isUsableAccessTokenExpiresAt(githubAccount.refreshTokenExpiresAt)
-	) {
-		debug("github-auth", "app user token expired, refresh unavailable", {
-			userId,
-			hasRefreshToken: Boolean(githubAccount.refreshToken),
-			refreshTokenExpiresAt:
-				githubAccount.refreshTokenExpiresAt?.toISOString() ?? null,
-		});
-		return null;
-	}
-
-	debug("github-auth", "app user token expired, refreshing", { userId });
-	return refreshGitHubAppUserToken({
-		refreshToken: githubAccount.refreshToken,
-		userId,
-	});
 }
 
 const SHA256_HEX_SIGNATURE = /^[0-9a-f]{64}$/i;
@@ -366,11 +355,6 @@ function fromHex(hex: string) {
 	return bytes;
 }
 
-/**
- * Verifies GitHub's `X-Hub-Signature-256` header. The comparison is done by
- * `crypto.subtle.verify`, which is constant-time; malformed signatures
- * (missing prefix, wrong length, non-hex) are rejected before any HMAC work.
- */
 export async function verifyGitHubWebhookSignature({
 	body,
 	secret,
@@ -397,6 +381,7 @@ export async function verifyGitHubWebhookSignature({
 		["verify"],
 	);
 
+	// subtle.verify compares in constant time.
 	return crypto.subtle.verify(
 		"HMAC",
 		key,

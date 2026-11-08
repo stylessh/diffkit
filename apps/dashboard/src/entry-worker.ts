@@ -49,8 +49,6 @@ export default {
 		try {
 			return await handleRequest(request, env, ctx);
 		} catch (error) {
-			// Routes handle their own storage failures; this is the last resort so
-			// a bug or an outage shows a retryable 503, not a Workers 1101 page.
 			const { pathname } = new URL(request.url);
 			logRouteError("worker", "unhandled request error", error, {
 				method: request.method,
@@ -60,11 +58,6 @@ export default {
 		}
 	},
 
-	/**
-	 * Cron trigger (`triggers.crons`, every 5 minutes): sweeps change-feed
-	 * rows older than 15 minutes and checks D1 size. Each task fails on its
-	 * own; neither can affect requests.
-	 */
 	async scheduled(
 		controller: ScheduledController,
 		env: { DB: D1Database },

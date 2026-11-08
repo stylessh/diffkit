@@ -3,15 +3,6 @@ import { handleChangesRequest } from "#/lib/changes-request.server";
 import { guardRoute } from "#/lib/route-safety.server";
 import { PRIVATE_ROUTE_HEADERS } from "#/lib/seo";
 
-/**
- * Change feed (docs/data-fetching.md, L2).
- *
- * GET /api/changes?since=<cursor>&repos=owner/a,owner/b[&scope=all]
- *
- * See `handleChangesRequest` for the contract and failure modes. Modules that
- * touch the Worker runtime are imported lazily so route registration stays
- * cheap.
- */
 const handleChanges = guardRoute(
 	"changes",
 	async (request: Request) => {

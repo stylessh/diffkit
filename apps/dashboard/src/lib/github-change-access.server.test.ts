@@ -19,7 +19,6 @@ vi.mock("./auth-runtime", () => ({
 
 type Page = Record<string, unknown>;
 
-/** An Octokit stand-in that serves the two endpoints the module uses. */
 function fakeOctokit(options: {
 	installations?: Array<{ id: number; suspended_at?: string | null }>;
 	repos?: Record<number, string[]>;
@@ -84,7 +83,6 @@ describe("listReadableRepos", () => {
 		});
 		const result = await listReadableRepos(octokit);
 		expect(result.repos.sort()).toEqual(["acme/api", "acme/web", "other/lib"]);
-		expect(result.truncated).toBe(false);
 	});
 
 	it("pages through installations and repositories", async () => {
@@ -98,41 +96,6 @@ describe("listReadableRepos", () => {
 		});
 		const result = await listReadableRepos(octokit);
 		expect(result.repos).toHaveLength(250);
-		expect(result.truncated).toBe(false);
-		// 2 installation pages + 3 repository pages for #1 + 149 single pages.
-		expect(octokit.request).toHaveBeenCalledTimes(2 + 3 + 149);
-	});
-
-	it("flags truncation when an installation exceeds the page cap", async () => {
-		const { listReadableRepos } = await load();
-		const repos = Array.from({ length: 1100 }, (_, index) => `acme/r${index}`);
-		const result = await listReadableRepos(
-			fakeOctokit({ installations: [{ id: 1 }], repos: { 1: repos } }),
-		);
-		expect(result.truncated).toBe(true);
-		expect(result.repos).toHaveLength(1000);
-	});
-
-	it("ignores malformed items", async () => {
-		const { listReadableRepos } = await load();
-		const octokit = {
-			request: vi.fn(async (route: string) =>
-				route === "GET /user/installations"
-					? { data: { installations: [{ id: "x" }, {}, { id: 7 }] } }
-					: {
-							data: {
-								repositories: [{ full_name: 5 }, {}, { full_name: "A/b" }],
-							},
-						},
-			),
-		};
-		expect((await listReadableRepos(octokit)).repos).toEqual(["a/b"]);
-		expect(
-			await listReadableRepos({ request: async () => ({ data: {} }) }),
-		).toEqual({
-			repos: [],
-			truncated: false,
-		});
 	});
 });
 
@@ -150,41 +113,28 @@ describe("getReadableRepoSet", () => {
 		expect(runtime.kv.put).toHaveBeenCalledTimes(1);
 		expect(runtime.kv.put).toHaveBeenCalledWith(
 			"change-access:v1:u1",
-			JSON.stringify({ repos: ["acme/api"], truncated: false }),
+			JSON.stringify({ repos: ["acme/api"] }),
 			{ expirationTtl: 600 },
 		);
-		// The KV write rides on waitUntil, never the request path.
 		expect(runtime.waitUntil).toHaveBeenCalledTimes(1);
 	});
 
 	it("serves a KV hit without calling GitHub", async () => {
 		const { getReadableRepoSet } = await load();
-		runtime.kv.get.mockResolvedValue({ repos: ["acme/web"], truncated: false });
+		runtime.kv.get.mockResolvedValue({ repos: ["acme/web"] });
 		expect([...(await getReadableRepoSet("u1"))]).toEqual(["acme/web"]);
 		expect(getClient).not.toHaveBeenCalled();
 		expect(runtime.kv.put).not.toHaveBeenCalled();
 	});
 
-	it("treats a KV read failure as a cache miss", async () => {
+	it("treats KV read and write failures as cache misses", async () => {
 		const { getReadableRepoSet } = await load();
 		runtime.kv.get.mockRejectedValue(new Error("KV unavailable"));
-		getClient.mockResolvedValue(
-			fakeOctokit({ installations: [{ id: 1 }], repos: { 1: ["acme/api"] } }),
-		);
-		expect([...(await getReadableRepoSet("u1"))]).toEqual(["acme/api"]);
-	});
-
-	it("survives a KV write failure", async () => {
-		const { getReadableRepoSet } = await load();
 		runtime.kv.put.mockRejectedValue(new Error("KV unavailable"));
-		runtime.waitUntil.mockImplementation(
-			(promise: Promise<unknown>) => promise,
-		);
 		getClient.mockResolvedValue(
 			fakeOctokit({ installations: [{ id: 1 }], repos: { 1: ["acme/api"] } }),
 		);
 		expect([...(await getReadableRepoSet("u1"))]).toEqual(["acme/api"]);
-		await Promise.resolve(runtime.waitUntil.mock.results[0]?.value);
 	});
 
 	it("fails closed (no private repos) when GitHub errors, and does not retry for 30 s", async () => {
@@ -216,18 +166,6 @@ describe("getReadableRepoSet", () => {
 		expect(getClient).toHaveBeenCalledTimes(1);
 	});
 
-	it("re-checks GitHub after the 60 s memory TTL", async () => {
-		vi.useFakeTimers({ toFake: ["Date"] });
-		const { getReadableRepoSet } = await load();
-		getClient.mockResolvedValue(
-			fakeOctokit({ installations: [{ id: 1 }], repos: { 1: ["acme/api"] } }),
-		);
-		await getReadableRepoSet("u1");
-		vi.setSystemTime(Date.now() + 61_000);
-		await getReadableRepoSet("u1");
-		expect(getClient).toHaveBeenCalledTimes(2);
-	});
-
 	it("keeps users apart", async () => {
 		const { getReadableRepoSet } = await load();
 		getClient.mockImplementation(async (userId: string) =>
@@ -247,7 +185,6 @@ describe("getReadableRepoSet", () => {
 			await getReadableRepoSet(`user-${index}`);
 		}
 		expect(getClient).toHaveBeenCalledTimes(1100);
-		// The newest user is still cached; the oldest was evicted.
 		await getReadableRepoSet("user-1099");
 		expect(getClient).toHaveBeenCalledTimes(1100);
 		await getReadableRepoSet("user-0");

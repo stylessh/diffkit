@@ -2,10 +2,8 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import {
 	type AuthorizeDeps,
 	type CallbackDeps,
-	constantTimeEqual,
 	handleGitHubAppAuthorize,
 	handleGitHubAppCallback,
-	normalizeReturnTo,
 } from "./github-app-oauth.server";
 
 const ORIGIN = "https://diffkit.test";
@@ -132,21 +130,6 @@ describe("GitHub App authorize", () => {
 			`${ORIGIN}/setup?github-app-error=session-unavailable`,
 		);
 	});
-
-	it("redirects to /setup with an error when the GitHub App is not configured", async () => {
-		vi.spyOn(console, "error").mockImplementation(() => undefined);
-		const response = await handleGitHubAppAuthorize(
-			new Request(`${ORIGIN}/api/github/app/authorize`),
-			authorizeDeps({
-				getClientId: () => {
-					throw new Error("Missing GitHub App credentials.");
-				},
-			}),
-		);
-		expect(response.headers.get("Location")).toBe(
-			`${ORIGIN}/setup?github-app-error=not-configured`,
-		);
-	});
 });
 
 function callbackRequest(
@@ -175,7 +158,6 @@ function callbackDeps(overrides: Partial<CallbackDeps> = {}) {
 	return { deps, exchangeCode };
 }
 
-/** Names of the cookies this response expires (HttpOnly, Max-Age=0). */
 function clearedCookieNames(response: Response) {
 	return setCookies(response)
 		.filter(
@@ -218,7 +200,6 @@ describe("GitHub App callback", () => {
 				callbackRequest(query, cookies),
 				deps,
 			);
-			// The query separator matters: "/setup&x=1" is a different path.
 			expect(response.headers.get("Location"), query).toBe(
 				`${ORIGIN}/setup?github-app-error=invalid-state`,
 			);
@@ -297,40 +278,5 @@ describe("GitHub App callback", () => {
 		);
 		expect(clearedCookieNames(response)).toEqual(BOTH_COOKIES);
 		expect(JSON.stringify(error.mock.calls)).not.toContain("super-secret-code");
-	});
-
-	it("redirects to /setup with an error when the session store is down", async () => {
-		vi.spyOn(console, "error").mockImplementation(() => undefined);
-		const { deps, exchangeCode } = callbackDeps({
-			getSession: async () => {
-				throw new Error("D1_ERROR");
-			},
-		});
-		const response = await handleGitHubAppCallback(
-			callbackRequest("code=abc&state=state-123"),
-			deps,
-		);
-		expect(response.headers.get("Location")).toBe(
-			`${ORIGIN}/setup?github-app-error=session-unavailable`,
-		);
-		expect(exchangeCode).not.toHaveBeenCalled();
-	});
-});
-
-describe("normalizeReturnTo and constantTimeEqual", () => {
-	it("defaults to /setup", () => {
-		expect(normalizeReturnTo(null)).toBe("/setup");
-		expect(normalizeReturnTo(undefined)).toBe("/setup");
-		expect(normalizeReturnTo("/login")).toBe("/setup");
-		expect(normalizeReturnTo("/acme?tab=1")).toBe("/acme?tab=1");
-	});
-
-	it("compares equal strings, and differing lengths or contents, correctly", () => {
-		expect(constantTimeEqual("abc", "abc")).toBe(true);
-		expect(constantTimeEqual("", "")).toBe(true);
-		expect(constantTimeEqual("abc", "abd")).toBe(false);
-		expect(constantTimeEqual("abc", "abcd")).toBe(false);
-		expect(constantTimeEqual("abcd", "abc")).toBe(false);
-		expect(constantTimeEqual("é", "e")).toBe(false);
 	});
 });

@@ -10,7 +10,6 @@ import { handleGitHubWebhook } from "#/lib/github-webhook.server";
 import { guardRoute } from "#/lib/route-safety.server";
 import { PRIVATE_ROUTE_HEADERS } from "#/lib/seo";
 
-/** See `handleGitHubWebhook` for the behaviour; this only wires the runtime. */
 const handleWebhook = guardRoute(
 	"github-webhook",
 	(request: Request) =>

@@ -2,13 +2,8 @@ export const DEFAULT_AUTH_REDIRECT = "/";
 
 const AUTH_REDIRECT_BASE_URL = "https://diffkit.local";
 
-/**
- * Reduces a user-supplied post-auth destination to a same-origin path.
- *
- * The value is parsed, not pattern-matched: browsers treat `/\evil.com` and
- * `/\t/evil.com` like `//evil.com`, so anything that parses to another origin
- * falls back. The result is rebuilt from the parsed URL.
- */
+// Parsed rather than prefix-checked: browsers read `/\evil.com` and
+// `/<TAB>/evil.com` as `//evil.com`.
 export function normalizeAuthRedirect(
 	value: unknown,
 	fallback = DEFAULT_AUTH_REDIRECT,

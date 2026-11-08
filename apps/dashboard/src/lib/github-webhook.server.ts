@@ -10,23 +10,6 @@ import {
 import { getGitHubWebhookPayloadMetadata } from "./github-webhook-debug";
 import { describeError } from "./route-safety.server";
 
-/**
- * GitHub App webhook receiver (the logic behind `/api/webhooks/github`).
- *
- * 1. Installation events drop cached installation tokens.
- * 2. Every other event is mapped to change-feed entity keys
- *    (`getWebhookChangeEntities`) and recorded in `github_change` in the
- *    background: never awaited, failures logged, the response is always 202.
- *    Rows expire after 15 minutes (cron sweeper); there is no delivery log.
- *    Redeliveries are not de-duplicated: a duplicate row only makes clients
- *    invalidate the same queries twice within one poll.
- *
- * Status codes: a request GitHub can fix by retrying (missing secret) is a 503;
- * everything wrong with the request itself is a 4xx. Nothing in the payload
- * can cause a 5xx.
- */
-
-/** GitHub caps webhook payloads at 25 MB. */
 export const MAX_WEBHOOK_BODY_BYTES = 25 * 1024 * 1024;
 
 const INSTALLATION_TOKEN_INVALIDATION_EVENTS = new Set([
@@ -35,11 +18,9 @@ const INSTALLATION_TOKEN_INVALIDATION_EVENTS = new Set([
 	"github_app_authorization",
 ]);
 
-/** GitHub event names are lowercase words joined by underscores. */
 const EVENT_NAME = /^[a-z][a-z0-9_]{0,63}$/;
 
 export type GitHubWebhookDeps = {
-	/** `null` when the webhook secret is not configured. */
 	getSecret: () => string | null;
 	verifySignature: (input: {
 		body: string;
@@ -47,9 +28,7 @@ export type GitHubWebhookDeps = {
 		signature: string | null;
 	}) => Promise<boolean>;
 	invalidateInstallationToken: (installationId: number) => Promise<void>;
-	/** Inserts change rows; may reject. Called from `runInBackground`. */
 	recordChanges: (rows: GitHubChangeRow[]) => Promise<void>;
-	/** Registers a promise with `waitUntil`; must not throw on rejection. */
 	runInBackground: (task: Promise<unknown>) => void;
 	now?: () => number;
 };
@@ -76,7 +55,6 @@ function getWebhookInstallationId(payload: Record<string, unknown>) {
 	return null;
 }
 
-/** Records the delivery's entities without delaying the response. */
 function recordChangesInBackground(
 	event: string,
 	payload: Record<string, unknown>,
@@ -85,6 +63,8 @@ function recordChangesInBackground(
 	const repository = getWebhookRepository(payload);
 	const entities = getWebhookChangeEntities(event, payload);
 	if (!repository || entities.length === 0) return 0;
+	// Redeliveries are not de-duplicated: a duplicate row only makes clients
+	// invalidate the same queries twice within one poll.
 	const rows = toGitHubChangeRows(
 		entities,
 		repository,
@@ -113,6 +93,7 @@ export async function handleGitHubWebhook(
 	const signature = request.headers.get("x-hub-signature-256");
 	const webhookSecret = deps.getSecret();
 
+	// 503, not 4xx: the sender did nothing wrong.
 	if (!webhookSecret) {
 		debug("github-webhook", "missing webhook secret", { deliveryId, event });
 		return text("GitHub webhook secret is not configured.", 503);
@@ -183,7 +164,7 @@ export async function handleGitHubWebhook(
 			await deps.invalidateInstallationToken(installationId);
 			invalidated = true;
 		} catch (error) {
-			// The token expires on its own within the hour; do not fail the delivery.
+			// The token expires within the hour anyway.
 			console.warn("[github-webhook] token invalidation failed", {
 				installationId,
 				error: describeError(error),

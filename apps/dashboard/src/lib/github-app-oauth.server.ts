@@ -2,17 +2,6 @@ import { normalizeAuthRedirect } from "./auth-redirect";
 import { readCookieValue } from "./cookies";
 import { logRouteError } from "./route-safety.server";
 
-/**
- * GitHub App user-authorization flow (`/api/github/app/authorize` and
- * `/api/github/app/callback`).
- *
- * - `state` is a random value kept in an HttpOnly cookie and compared in
- *   constant time on the way back (login-CSRF protection).
- * - The post-flow destination is reduced to a same-origin path on both legs;
- *   see `normalizeAuthRedirect`.
- * - Failures redirect to `/setup?github-app-error=<code>` instead of throwing.
- */
-
 const STATE_COOKIE = "github_app_oauth_state";
 const RETURN_TO_COOKIE = "github_app_oauth_return_to";
 const DEFAULT_RETURN_TO = "/setup";
@@ -24,7 +13,6 @@ export function normalizeReturnTo(value: string | null | undefined) {
 	return normalizeAuthRedirect(value, DEFAULT_RETURN_TO);
 }
 
-/** Secure by default; only plain-http localhost (dev) goes without it. */
 function shouldUseSecureCookie(requestUrl: string) {
 	const { protocol, hostname } = new URL(requestUrl);
 	if (protocol === "https:") return true;
@@ -41,7 +29,6 @@ function serializeCookie(
 	return `${name}=${encodeURIComponent(value)}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${maxAge}${secure}`;
 }
 
-/** Constant-time string comparison for secrets such as the OAuth state. */
 export function constantTimeEqual(left: string, right: string) {
 	const encoder = new TextEncoder();
 	const a = encoder.encode(left);
@@ -54,7 +41,7 @@ export function constantTimeEqual(left: string, right: string) {
 }
 
 function redirect(request: Request, href: string, cookies: string[]): Response {
-	// Not `Response.redirect()`: its headers are immutable.
+	// Not Response.redirect(): its headers are immutable.
 	const response = new Response(null, {
 		status: 302,
 		headers: { Location: new URL(href, request.url).toString() },
@@ -87,7 +74,6 @@ function loginRedirect(request: Request, returnTo: string, cookies: string[]) {
 
 export type AuthorizeDeps = {
 	getSession: (request: Request) => Promise<SessionResult>;
-	/** Throws when the GitHub App credentials are not configured. */
 	getClientId: () => string;
 	oauthOrigin: () => string;
 	generateState?: () => string;

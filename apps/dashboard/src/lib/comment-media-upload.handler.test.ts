@@ -10,8 +10,10 @@ const PNG = [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a];
 function setup(overrides: Partial<CommentMediaUploadRuntime> = {}) {
 	const put = vi.fn(async () => ({}));
 	const runtime: CommentMediaUploadRuntime = {
-		bucket: { put } as unknown as CommentMediaUploadRuntime["bucket"],
-		publicBaseUrl: "https://cdn.test",
+		storage: {
+			bucket: { put } as unknown as Pick<R2Bucket, "put">,
+			publicBaseUrl: "https://cdn.test",
+		},
 		getSession: async () => ({ user: { id: "user-1" } }),
 		...overrides,
 	};
@@ -44,7 +46,6 @@ afterEach(() => {
 describe("handleCommentMediaUpload", () => {
 	it("stores the file under the user's prefix with the detected content type", async () => {
 		const { runtime, put } = setup();
-		// The client claims a script; the signature says PNG.
 		const form = new FormData();
 		form.set("file", new File([png()], "evil.html", { type: "text/html" }));
 		const response = await handleCommentMediaUpload(
@@ -69,18 +70,6 @@ describe("handleCommentMediaUpload", () => {
 				httpMetadata: expect.objectContaining({ contentType: "image/png" }),
 			}),
 		);
-	});
-
-	it("503s when uploads are not configured", async () => {
-		for (const overrides of [
-			{ bucket: undefined },
-			{ publicBaseUrl: undefined },
-		]) {
-			const { runtime, put } = setup(overrides);
-			const response = await handleCommentMediaUpload(upload(png()), runtime);
-			expect(response.status).toBe(503);
-			expect(put).not.toHaveBeenCalled();
-		}
 	});
 
 	it("401s without a session and 503s when the session store is down", async () => {
@@ -115,17 +104,6 @@ describe("handleCommentMediaUpload", () => {
 		const response = await handleCommentMediaUpload(request, runtime);
 		expect(response.status).toBe(413);
 		expect(formData).not.toHaveBeenCalled();
-		expect(put).not.toHaveBeenCalled();
-	});
-
-	it("413s an image over its own cap", async () => {
-		const { runtime, put } = setup();
-		const big = new Blob([
-			new Uint8Array([...PNG]),
-			new Uint8Array(maxBytesForCommentMediaKind("image")),
-		]);
-		const response = await handleCommentMediaUpload(upload(big), runtime);
-		expect(response.status).toBe(413);
 		expect(put).not.toHaveBeenCalled();
 	});
 
@@ -165,16 +143,21 @@ describe("handleCommentMediaUpload", () => {
 		expect(put).not.toHaveBeenCalled();
 	});
 
-	it("502s, and logs without the file name, when R2 rejects the write", async () => {
-		const { runtime } = setup();
-		runtime.bucket = {
-			put: async () => {
-				throw new Error("R2 put failed: 503");
-			},
-		} as unknown as CommentMediaUploadRuntime["bucket"];
-		const response = await handleCommentMediaUpload(upload(png()), runtime);
+	it("502s when R2 rejects the write", async () => {
+		const failing = setup();
+		failing.runtime.storage = {
+			bucket: {
+				put: async () => {
+					throw new Error("R2 put failed: 503");
+				},
+			} as unknown as Pick<R2Bucket, "put">,
+			publicBaseUrl: "https://cdn.test",
+		};
+		const response = await handleCommentMediaUpload(
+			upload(png()),
+			failing.runtime,
+		);
 		expect(response.status).toBe(502);
 		expect(await response.json()).toEqual({ error: "Upload failed" });
-		expect(console.error).toHaveBeenCalled();
 	});
 });

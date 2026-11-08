@@ -8,7 +8,6 @@ concurrency:
   group: pr-checks-${{ github.event.pull_request.number }}
   cancel-in-progress: true
 
-# Read-only token: these jobs only check out and run the repo's scripts.
 permissions:
   contents: read
 
