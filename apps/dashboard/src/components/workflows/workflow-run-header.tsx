@@ -24,8 +24,13 @@ import {
 	rerunFailedWorkflowJobs,
 	rerunWorkflowRun,
 } from "#/lib/github.functions";
-import { type GitHubQueryScope, githubQueryKeys } from "#/lib/github.query";
+import type { GitHubQueryScope } from "#/lib/github.query";
 import type { WorkflowRun } from "#/lib/github.types";
+import {
+	invalidateGitHubEntities,
+	pullEntityKey,
+	runEntityKey,
+} from "#/lib/github-query-updates";
 
 export function WorkflowRunHeader({
 	owner,
@@ -49,29 +54,13 @@ export function WorkflowRunHeader({
 	const failedOnly = state === "failure";
 	const canRerun = run.viewerCanRerun;
 
-	const invalidateAfterRerun = async () => {
-		const runInput = { owner, repo, runId: run.id };
-		await Promise.all([
-			queryClient.invalidateQueries({
-				queryKey: githubQueryKeys.actions.workflowRun(scope, runInput),
-			}),
-			queryClient.invalidateQueries({
-				queryKey: githubQueryKeys.actions.workflowRunJobs(scope, runInput),
-			}),
-			queryClient.invalidateQueries({
-				queryKey: githubQueryKeys.actions.workflowRunArtifacts(scope, runInput),
-			}),
-			pullRequestNumber
-				? queryClient.invalidateQueries({
-						queryKey: githubQueryKeys.pulls.status(scope, {
-							owner,
-							repo,
-							pullNumber: pullRequestNumber,
-						}),
-					})
-				: Promise.resolve(),
+	const invalidateAfterRerun = () =>
+		invalidateGitHubEntities(queryClient, scope, [
+			runEntityKey({ owner, repo, runId: run.id }),
+			...(pullRequestNumber
+				? [pullEntityKey({ owner, repo, pullNumber: pullRequestNumber })]
+				: []),
 		]);
-	};
 
 	const handleRerun = async (mode: "all" | "failed") => {
 		setRerunPending(mode);

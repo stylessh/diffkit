@@ -10,9 +10,6 @@ import type {
 	GitHubAppInstallation,
 	GitHubInstallationTargetType,
 } from "../github-access";
-import { getOrRevalidateGitHubResource } from "../github-cache";
-import { githubCachePolicy } from "../github-cache-policy";
-import { githubRevalidationSignalKeys } from "../github-revalidation";
 import {
 	GitHubOperationTimeoutError,
 	getRemainingSearchTimeoutMs,
@@ -23,11 +20,11 @@ import {
 	getGitHubContextForInstallation,
 } from "./installations";
 import {
-	createGraphQLResponseMetadata,
 	mapGraphQLActor,
 	mapGraphQLLabels,
 	mapGraphQLRepositoryRef,
 } from "./mappers";
+import { dedupeGitHubRead } from "./request-dedup";
 import {
 	GITHUB_MIN_OPERATION_TIMEOUT_MS,
 	type GitHubContext,
@@ -148,31 +145,6 @@ function mapGraphQLIssueSearchNode(
 	};
 }
 
-function mergeGraphQLRateLimits(
-	rateLimits: Array<GitHubGraphQLRateLimit | null | undefined>,
-): GitHubGraphQLRateLimit | null {
-	const presentRateLimits = rateLimits.filter(
-		(rateLimit): rateLimit is GitHubGraphQLRateLimit => Boolean(rateLimit),
-	);
-	if (presentRateLimits.length === 0) {
-		return null;
-	}
-
-	return {
-		cost: presentRateLimits.reduce(
-			(total, rateLimit) => total + rateLimit.cost,
-			0,
-		),
-		remaining: Math.min(
-			...presentRateLimits.map((rateLimit) => rateLimit.remaining),
-		),
-		resetAt: presentRateLimits
-			.map((rateLimit) => rateLimit.resetAt)
-			.sort()
-			.at(-1) as string,
-	};
-}
-
 /**
  * Persist orgs that returned an OAuth restriction so the OAuth fallback can
  * skip them on future fetches (see `getMySearchSources`). Awaited inline —
@@ -189,10 +161,6 @@ async function persistForbiddenOrgs(userId: string, orgs: string[]) {
 	}
 }
 
-/**
- * Extract an organization name from a GitHub FORBIDDEN/OAuth App access
- * restriction error.  Returns `null` when the error is unrelated.
- */
 function extractForbiddenOrg(error: unknown): string | null {
 	const message = error instanceof Error ? error.message : String(error ?? "");
 	if (
@@ -495,27 +463,6 @@ function mergeMyIssuesResults(results: MyIssuesResult[]): MyIssuesResult {
 	};
 }
 
-/** Full refresh replaces cache so merged/closed items drop off; union only when this fetch missed sources (`partial`). */
-function mergeMyPullsCachedWithFresh(
-	existing: MyPullsResult,
-	fresh: MyPullsResult,
-): MyPullsResult {
-	if (fresh.partial) {
-		return mergeMyPullsResults([existing, fresh]);
-	}
-	return fresh;
-}
-
-function mergeMyIssuesCachedWithFresh(
-	existing: MyIssuesResult,
-	fresh: MyIssuesResult,
-): MyIssuesResult {
-	if (fresh.partial) {
-		return mergeMyIssuesResults([existing, fresh]);
-	}
-	return fresh;
-}
-
 function buildSourceSearchQuery({
 	itemType,
 	role,
@@ -545,23 +492,14 @@ export async function getMyPullsResult({
 	context: GitHubContext;
 	username: string;
 }) {
-	return getOrRevalidateGitHubResource<MyPullsResult>({
+	return dedupeGitHubRead<MyPullsResult>({
 		userId: context.session.user.id,
 		resource: "pulls.mine.graphql.v2",
 		params: { username },
-		freshForMs: githubCachePolicy.mine.staleTimeMs,
-		signalKeys: [
-			githubRevalidationSignalKeys.pullsMine,
-			githubRevalidationSignalKeys.installationAccess,
-		],
-		namespaceKeys: [githubRevalidationSignalKeys.pullsMine],
-		cacheMode: "split",
-		merge: mergeMyPullsCachedWithFresh,
 		fetcher: async () => {
 			const deadlineAt = Date.now() + MY_SEARCH_TOTAL_TIMEOUT_MS;
 			const sources = await getMySearchSources(context, username, deadlineAt);
 			const results: MyPullsResult[] = [];
-			const rateLimits: GitHubGraphQLRateLimit[] = [];
 			const forbiddenOrgs: string[] = [];
 			let timedOut = false;
 
@@ -695,7 +633,6 @@ export async function getMyPullsResult({
 						mentioned: mapGraphQLPullSearchConnection(response.mentioned),
 						involved: mapGraphQLPullSearchConnection(response.involved),
 					});
-					rateLimits.push(response.rateLimit);
 				} catch (error) {
 					console.error(
 						"[github-search] failed to load pull requests",
@@ -726,13 +663,7 @@ export async function getMyPullsResult({
 				data.timedOut = true;
 			}
 
-			return {
-				kind: "success",
-				data,
-				metadata: createGraphQLResponseMetadata(
-					mergeGraphQLRateLimits(rateLimits),
-				),
-			};
+			return data;
 		},
 	});
 }
@@ -744,23 +675,14 @@ export async function getMyIssuesResult({
 	context: GitHubContext;
 	username: string;
 }) {
-	return getOrRevalidateGitHubResource<MyIssuesResult>({
+	return dedupeGitHubRead<MyIssuesResult>({
 		userId: context.session.user.id,
 		resource: "issues.mine.graphql.v2",
 		params: { username },
-		freshForMs: githubCachePolicy.mine.staleTimeMs,
-		signalKeys: [
-			githubRevalidationSignalKeys.issuesMine,
-			githubRevalidationSignalKeys.installationAccess,
-		],
-		namespaceKeys: [githubRevalidationSignalKeys.issuesMine],
-		cacheMode: "split",
-		merge: mergeMyIssuesCachedWithFresh,
 		fetcher: async () => {
 			const deadlineAt = Date.now() + MY_SEARCH_TOTAL_TIMEOUT_MS;
 			const sources = await getMySearchSources(context, username, deadlineAt);
 			const results: MyIssuesResult[] = [];
-			const rateLimits: GitHubGraphQLRateLimit[] = [];
 			const forbiddenOrgs: string[] = [];
 			let timedOut = false;
 
@@ -869,7 +791,6 @@ export async function getMyIssuesResult({
 						authored: mapGraphQLIssueSearchConnection(response.authored),
 						mentioned: mapGraphQLIssueSearchConnection(response.mentioned),
 					});
-					rateLimits.push(response.rateLimit);
 				} catch (error) {
 					console.error(
 						"[github-search] failed to load issues",
@@ -900,13 +821,7 @@ export async function getMyIssuesResult({
 				data.timedOut = true;
 			}
 
-			return {
-				kind: "success",
-				data,
-				metadata: createGraphQLResponseMetadata(
-					mergeGraphQLRateLimits(rateLimits),
-				),
-			};
+			return data;
 		},
 	});
 }

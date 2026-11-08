@@ -106,7 +106,7 @@ describe("readGitHubChanges", () => {
 		]);
 	});
 
-	it("limits repo entities to watched repos but keeps notifications", async () => {
+	it("limits entities to watched repos and ignores legacy notifications rows", async () => {
 		const { db } = setup();
 		await insert(db, [
 			["acme/api", "pull:acme/api#1", true],
@@ -118,10 +118,7 @@ describe("readGitHubChanges", () => {
 			access: { canRead: () => true, watched: new Set(["acme/api"]) },
 			now: NOW,
 		});
-		expect(result.entities.sort()).toEqual([
-			"notifications",
-			"pull:acme/api#1",
-		]);
+		expect(result.entities).toEqual(["pull:acme/api#1"]);
 	});
 
 	it("expires cursors older than the retention window", async () => {

@@ -23,7 +23,10 @@ import {
 	deleteReviewComment,
 	minimizeComment,
 } from "#/lib/github.functions";
-import { githubQueryKeys } from "#/lib/github.query";
+import {
+	invalidateGitHubEntities,
+	pullOrIssueEntityKeys,
+} from "#/lib/github-query-updates";
 
 type CommentMoreMenuProps = {
 	commentId: number;
@@ -47,8 +50,9 @@ export function CommentMoreMenu({
 	onStartEdit,
 }: CommentMoreMenuProps) {
 	const queryClient = useQueryClient();
-	const [isDeleting, setIsDeleting] = useState(false);
-	const [isHiding, setIsHiding] = useState(false);
+	const [pendingAction, setPendingAction] = useState<"hide" | "delete" | null>(
+		null,
+	);
 
 	const commentUrl = `https://github.com/${owner}/${repo}/${commentType === "review" ? "pull" : "issues"}/${number}#${commentType === "review" ? "discussion_r" : "issuecomment-"}${commentId}`;
 
@@ -63,28 +67,30 @@ export function CommentMoreMenu({
 	};
 
 	const handleHide = async () => {
-		setIsHiding(true);
+		setPendingAction("hide");
 		try {
 			const result = await minimizeComment({
 				data: { owner, repo, commentId, commentType },
 			});
 			if (result.ok) {
 				toast.success("Comment hidden");
-				void queryClient.invalidateQueries({
-					queryKey: githubQueryKeys.all,
-				});
+				void invalidateGitHubEntities(
+					queryClient,
+					null,
+					pullOrIssueEntityKeys({ owner, repo, number }),
+				);
 			} else {
 				toast.error(result.error);
 			}
 		} catch {
 			toast.error("Failed to hide comment");
 		} finally {
-			setIsHiding(false);
+			setPendingAction(null);
 		}
 	};
 
 	const handleDelete = async () => {
-		setIsDeleting(true);
+		setPendingAction("delete");
 		try {
 			const deleteFn =
 				commentType === "review" ? deleteReviewComment : deleteComment;
@@ -93,16 +99,18 @@ export function CommentMoreMenu({
 			});
 			if (result.ok) {
 				toast.success("Comment deleted");
-				void queryClient.invalidateQueries({
-					queryKey: githubQueryKeys.all,
-				});
+				void invalidateGitHubEntities(
+					queryClient,
+					null,
+					pullOrIssueEntityKeys({ owner, repo, number }),
+				);
 			} else {
 				toast.error(result.error);
 			}
 		} catch {
 			toast.error("Failed to delete comment");
 		} finally {
-			setIsDeleting(false);
+			setPendingAction(null);
 		}
 	};
 
@@ -139,9 +147,9 @@ export function CommentMoreMenu({
 						)}
 						<DropdownMenuItem
 							onClick={() => void handleHide()}
-							disabled={isHiding}
+							disabled={pendingAction !== null}
 						>
-							{isHiding ? (
+							{pendingAction === "hide" ? (
 								<Spinner className="size-3.5" />
 							) : (
 								<ViewIcon size={14} strokeWidth={2} />
@@ -150,10 +158,10 @@ export function CommentMoreMenu({
 						</DropdownMenuItem>
 						<DropdownMenuItem
 							onClick={() => void handleDelete()}
-							disabled={isDeleting}
+							disabled={pendingAction !== null}
 							variant="destructive"
 						>
-							{isDeleting ? (
+							{pendingAction === "delete" ? (
 								<Spinner className="size-3.5" />
 							) : (
 								<Delete01Icon size={14} strokeWidth={2} />

@@ -8,13 +8,11 @@ import type {
 	PullSummary,
 	RepositoryRef,
 } from "../github.types";
-import { createGitHubResponseMetadata } from "../github-cache";
 import type {
 	GitHubApiUser,
 	GitHubGraphQLActor,
 	GitHubGraphQLCommentConnection,
 	GitHubGraphQLLabel,
-	GitHubGraphQLRateLimit,
 	GitHubGraphQLRepositoryRef,
 } from "./shared";
 
@@ -304,18 +302,4 @@ export function mapGraphQLComments(
 	return [...byId.values()].sort(
 		(a, b) => Date.parse(a.createdAt) - Date.parse(b.createdAt),
 	);
-}
-
-export function createGraphQLResponseMetadata(
-	rateLimit: GitHubGraphQLRateLimit | null | undefined,
-) {
-	return createGitHubResponseMetadata(200, {
-		"x-ratelimit-remaining":
-			typeof rateLimit?.remaining === "number"
-				? String(rateLimit.remaining)
-				: undefined,
-		"x-ratelimit-reset": rateLimit?.resetAt
-			? String(Math.floor(new Date(rateLimit.resetAt).getTime() / 1_000))
-			: undefined,
-	});
 }

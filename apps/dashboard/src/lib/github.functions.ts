@@ -203,5 +203,4 @@ export {
 	getGitHubAppAccessState,
 	getGitHubViewer,
 	getInstallationAccess,
-	refreshInstallationAccess,
 } from "./github/viewer";

@@ -103,7 +103,7 @@ describe("handleChangesRequest", () => {
 		expect(body.entities).toEqual(["repo:oss/lib"]);
 	});
 
-	it("limits results to watched repos but keeps notifications", async () => {
+	it("limits results to watched repos", async () => {
 		const { deps, insert } = setup({ readable: ["acme/api", "acme/web"] });
 		await insert([
 			["acme/api", "pull:acme/api#1", true],
@@ -113,7 +113,7 @@ describe("handleChangesRequest", () => {
 		const body = (await (
 			await handleChangesRequest(get(`since=${cursor0}&repos=ACME/Api`), deps)
 		).json()) as { entities: string[] };
-		expect(body.entities.sort()).toEqual(["notifications", "pull:acme/api#1"]);
+		expect(body.entities).toEqual(["pull:acme/api#1"]);
 	});
 
 	it("degrades to 'nothing changed' with the client's cursor when D1 fails", async () => {

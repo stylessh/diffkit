@@ -24,25 +24,6 @@ const HEALTH_RETRY_MS = 20_000;
 const runbook = (name) =>
   `https://github.com/${env.GITHUB_REPOSITORY}/blob/main/docs/runbooks/${name}`;
 
-const health = await fetchHealth();
-const evaluations = [
-  evaluateWorkerHealth(health),
-  await guarded("Production alert: D1 database above 8 GB", evaluateD1Size),
-  evaluateMaintenance(health),
-  await guarded("Production alert: Worker error rate above 5%", evaluateErrorRate),
-];
-
-const actions = [];
-for (const evaluation of evaluations) {
-  try {
-    actions.push(await reconcile(evaluation));
-  } catch (error) {
-    actions.push(`reconcile failed: ${messageOf(error)}`);
-  }
-}
-writeSummary(evaluations, actions);
-process.exit(actions.some((action) => action.startsWith("reconcile failed")) ? 1 : 0);
-
 function requireEnv(names) {
   const missing = names.filter((name) => !process.env[name]);
   if (missing.length > 0) {
@@ -307,3 +288,26 @@ function writeSummary(results, outcomes) {
   console.log(text);
   if (process.env.GITHUB_STEP_SUMMARY) writeFileSync(process.env.GITHUB_STEP_SUMMARY, `${text}\n`, { flag: "a" });
 }
+
+async function main() {
+  const health = await fetchHealth();
+  const evaluations = [
+    evaluateWorkerHealth(health),
+    await guarded("Production alert: D1 database above 8 GB", evaluateD1Size),
+    evaluateMaintenance(health),
+    await guarded("Production alert: Worker error rate above 5%", evaluateErrorRate),
+  ];
+
+  const actions = [];
+  for (const evaluation of evaluations) {
+    try {
+      actions.push(await reconcile(evaluation));
+    } catch (error) {
+      actions.push(`reconcile failed: ${messageOf(error)}`);
+    }
+  }
+  writeSummary(evaluations, actions);
+  process.exit(actions.some((action) => action.startsWith("reconcile failed")) ? 1 : 0);
+}
+
+await main();
