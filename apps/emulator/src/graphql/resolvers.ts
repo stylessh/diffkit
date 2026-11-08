@@ -1557,6 +1557,10 @@ export const resolvers: Record<string, Record<string, unknown>> = {
 		bodyText: (model: IssueCommentModel) => model.comment.body,
 		createdAt: (model: IssueCommentModel) => model.comment.created_at,
 		updatedAt: (model: IssueCommentModel) => model.comment.updated_at,
+		lastEditedAt: (model: IssueCommentModel) =>
+			model.comment.updated_at > model.comment.created_at
+				? model.comment.updated_at
+				: null,
 		author: (model: IssueCommentModel, _args: Args, ctx: GraphQLContext) =>
 			actorById(ctx, model.comment.user_id),
 		url: (model: IssueCommentModel) =>

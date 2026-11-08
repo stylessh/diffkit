@@ -60,6 +60,11 @@ import {
 	CheckStateIcon,
 	getCheckState,
 } from "#/components/checks/check-state-icon";
+import {
+	CommentBody,
+	EditedMark,
+	useCommentEditor,
+} from "#/components/details/comment-body";
 import { CommentMoreMenu } from "#/components/details/comment-more-menu";
 import { IssueCommentReactionBar } from "#/components/details/comment-reaction-bar";
 import { CommentReplyForm } from "#/components/details/comment-reply-form";
@@ -2581,6 +2586,13 @@ function PullCommentBubble({
 	isReply?: boolean;
 }) {
 	const [commentActive, setCommentActive] = useState(false);
+	const editor = useCommentEditor({
+		kind: "issue",
+		owner: owner,
+		repo: repo,
+		number: pullNumber,
+		commentId: comment.id,
+	});
 	const prefersNoHover = usePrefersNoHover();
 
 	return (
@@ -2611,6 +2623,7 @@ function PullCommentBubble({
 				<span className="ml-0.5 text-[13px] font-[450] text-icon-faint">
 					{formatRelativeTime(comment.createdAt)}
 				</span>
+				<EditedMark editedAt={comment.editedAt} />
 				<div className="ml-auto flex items-center gap-1">
 					{onReply && (
 						<button
@@ -2629,6 +2642,7 @@ function PullCommentBubble({
 						repo={repo}
 						number={pullNumber}
 						commentType="issue"
+						editor={editor}
 						isAuthor={
 							viewerLogin != null && comment.author?.login === viewerLogin
 						}
@@ -2642,13 +2656,13 @@ function PullCommentBubble({
 					comment.graphqlId != null && "mb-7",
 				)}
 			>
-				<AppMarkdown
+				<CommentBody
+					editor={editor}
+					body={comment.body}
 					owner={owner}
 					repo={repo}
 					className="text-[15px] leading-6 text-text-strong"
-				>
-					{comment.body}
-				</AppMarkdown>
+				/>
 				{comment.graphqlId ? (
 					<IssueCommentReactionBar
 						className="absolute left-0 right-0 top-full z-10 mt-1"
@@ -2755,6 +2769,13 @@ function ReviewCommentBubble({
 	pullNumber?: number;
 	viewerLogin?: string;
 }) {
+	const editor = useCommentEditor({
+		kind: "review",
+		owner: owner ?? "",
+		repo: repo ?? "",
+		number: pullNumber ?? 0,
+		commentId: comment.id,
+	});
 	return (
 		<div className="group/comment relative px-3 py-2.5">
 			<div className="mb-1.5 flex items-center gap-1.5">
@@ -2773,6 +2794,7 @@ function ReviewCommentBubble({
 				<span className="text-[13px] text-muted-foreground">
 					{formatRelativeTime(comment.createdAt)}
 				</span>
+				<EditedMark editedAt={comment.editedAt} />
 				{owner && repo && pullNumber != null && (
 					<div className="ml-auto">
 						<CommentMoreMenu
@@ -2782,6 +2804,7 @@ function ReviewCommentBubble({
 							repo={repo}
 							number={pullNumber}
 							commentType="review"
+							editor={editor}
 							isAuthor={
 								viewerLogin != null && comment.author?.login === viewerLogin
 							}
@@ -2789,13 +2812,13 @@ function ReviewCommentBubble({
 					</div>
 				)}
 			</div>
-			<AppMarkdown
+			<CommentBody
+				editor={editor}
+				body={comment.body}
 				owner={owner}
 				repo={repo}
 				className="text-[15px] leading-6 text-text-strong"
-			>
-				{comment.body}
-			</AppMarkdown>
+			/>
 		</div>
 	);
 }

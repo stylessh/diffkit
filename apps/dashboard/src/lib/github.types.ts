@@ -181,6 +181,8 @@ export type PullComment = {
 	graphqlId?: string;
 	body: string;
 	createdAt: string;
+	/** When the body last changed; `null` for comments never edited. */
+	editedAt?: string | null;
 	author: GitHubActor | null;
 	reactions?: CommentReactionSummary;
 };
@@ -191,6 +193,8 @@ export type IssueComment = {
 	graphqlId?: string;
 	body: string;
 	createdAt: string;
+	/** When the body last changed; `null` for comments never edited. */
+	editedAt?: string | null;
 	author: GitHubActor | null;
 	reactions?: CommentReactionSummary;
 };
@@ -491,6 +495,7 @@ export type PullReviewComment = {
 	side: "LEFT" | "RIGHT";
 	createdAt: string;
 	updatedAt: string;
+	editedAt?: string | null;
 	author: GitHubActor | null;
 	inReplyToId: number | null;
 	diffHunk: string;
