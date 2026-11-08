@@ -11,7 +11,7 @@ import { GITHUB_REQUEST_TIMEOUT_MS } from "./github-request-policy";
 type WorkerEnvRecord = typeof env & Record<string, string | undefined>;
 
 export const GITHUB_OAUTH_PROVIDER_ID = "github";
-export const GITHUB_APP_USER_PROVIDER_ID = "github-app";
+const GITHUB_APP_USER_PROVIDER_ID = "github-app";
 
 type GitHubTokenResponse = {
 	access_token?: string;
@@ -100,7 +100,7 @@ export async function getGitHubAccessTokenByUserId(userId: string) {
 	return githubAccount.accessToken;
 }
 
-export async function getGitHubOAuthAccountByUserId(userId: string) {
+async function getGitHubOAuthAccountByUserId(userId: string) {
 	const db = getDb();
 
 	return db
