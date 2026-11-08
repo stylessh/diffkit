@@ -28,7 +28,6 @@ describe("parseEntityKey / formatEntityKey", () => {
 		"labels:acme/api",
 		"collaborators:acme/api",
 		"discussions:acme/api",
-		"notifications",
 	];
 
 	it("round-trips every kind", () => {
@@ -81,7 +80,7 @@ describe("getWebhookChangeEntities", () => {
 				repository,
 				pull_request: { number: 12 },
 			}),
-		).toEqual(["pull:acme/api#12", "notifications"]);
+		).toEqual(["pull:acme/api#12"]);
 	});
 
 	it("pull_request synchronize also touches the repo code", () => {
@@ -91,7 +90,7 @@ describe("getWebhookChangeEntities", () => {
 				repository,
 				pull_request: { number: 12 },
 			}),
-		).toEqual(["pull:acme/api#12", "notifications", "repo:acme/api"]);
+		).toEqual(["pull:acme/api#12", "repo:acme/api"]);
 	});
 
 	it("reviews, review comments and threads target the pull", () => {
@@ -112,10 +111,10 @@ describe("getWebhookChangeEntities", () => {
 				repository,
 				issue: { number: 7, pull_request: { url: "…" } },
 			}),
-		).toEqual(["pull:acme/api#7", "notifications"]);
+		).toEqual(["pull:acme/api#7"]);
 		expect(
 			keys("issues", { action: "labeled", repository, issue: { number: 4 } }),
-		).toEqual(["issue:acme/api#4", "notifications"]);
+		).toEqual(["issue:acme/api#4"]);
 	});
 
 	it("push, create, delete and repository settings target the repo", () => {
@@ -160,7 +159,7 @@ describe("getWebhookChangeEntities", () => {
 				repository,
 				workflow_run: { id: 99, head_sha: "abcdef1" },
 			}),
-		).toEqual(["run:acme/api#99", "checks:acme/api@abcdef1", "notifications"]);
+		).toEqual(["run:acme/api#99", "checks:acme/api@abcdef1"]);
 		expect(
 			keys("workflow_job", {
 				action: "in_progress",
@@ -171,15 +170,11 @@ describe("getWebhookChangeEntities", () => {
 	});
 
 	it("releases, labels, members and discussions", () => {
-		expect(keys("release", { repository })).toEqual([
-			"release:acme/api",
-			"notifications",
-		]);
+		expect(keys("release", { repository })).toEqual(["release:acme/api"]);
 		expect(keys("label", { repository })).toEqual(["labels:acme/api"]);
 		expect(keys("member", { repository })).toEqual(["collaborators:acme/api"]);
 		expect(keys("discussion", { repository })).toEqual([
 			"discussions:acme/api",
-			"notifications",
 		]);
 	});
 

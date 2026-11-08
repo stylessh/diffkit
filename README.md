@@ -31,6 +31,10 @@ A fast, design-first GitHub dashboard for developers who want to stay on top of 
 
 ## Getting Started
 
+Everything about running DiffKit locally (demo mode, real GitHub, wrangler
+config, troubleshooting) is in [docs/local-dev.md](docs/local-dev.md). The
+short version:
+
 ### Run without GitHub (demo mode)
 
 Want to try DiffKit or work on the UI without setting up GitHub apps? Run it
@@ -172,11 +176,13 @@ BETTER_AUTH_URL=http://localhost:3000
 
 > DiffKit also accepts the legacy `GITHUB_CLIENT_ID` and `GITHUB_CLIENT_SECRET` names as a fallback for the OAuth App credentials.
 
-### 6. Run database migrations
+### 6. Configure Wrangler
 
 ```bash
-pnpm --filter dashboard migrate
+cp apps/dashboard/wrangler.jsonc.example apps/dashboard/wrangler.dev.jsonc
 ```
+
+Replace the `YOUR_…` placeholders ([details](docs/local-dev.md#real-github)).
 
 ### 7. Start the dev server
 
@@ -184,7 +190,8 @@ pnpm --filter dashboard migrate
 pnpm dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) in your browser.
+It applies local D1 migrations, starts the dashboard and makes the first
+request. Open [http://localhost:3000](http://localhost:3000) in your browser.
 
 ### Local webhook testing
 
@@ -212,7 +219,7 @@ The dev server uses `DEV_TUNNEL_URL` to allow the tunnel host and configure HMR 
 
 | Command | Description |
 |---------|------------|
-| `pnpm dev` | Start all dev servers |
+| `pnpm dev` | Run the dashboard against real GitHub ([docs](docs/local-dev.md)) |
 | `pnpm dev:demo` | Run the dashboard against the local GitHub emulator ([docs](docs/local-demo-mode.md)) |
 | `pnpm build` | Build all packages and apps |
 | `pnpm lint` | Lint the codebase |

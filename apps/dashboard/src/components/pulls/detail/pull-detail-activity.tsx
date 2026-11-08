@@ -285,9 +285,9 @@ export function PullDetailActivitySection({
 					issueNumber={pullNumber}
 					scope={scope}
 					involvedUsers={getInvolvedUsers(pr, comments)}
-					pullState={
+					stateToggle={
 						!pr.isMerged && (pr.state === "open" || pr.state === "closed")
-							? pr.state
+							? { kind: "pull", state: pr.state }
 							: undefined
 					}
 				/>
@@ -733,9 +733,9 @@ function ReviewsSection({
 												})
 													.then((result) => {
 														if (result.ok) {
-															void queryClient.invalidateQueries({
-																queryKey: ["github"],
-															});
+															void invalidateGitHubEntities(queryClient, null, [
+																pullEntityKey({ owner, repo, pullNumber }),
+															]);
 														} else {
 															toast.error(result.error);
 															checkPermissionWarning(
@@ -764,9 +764,11 @@ function ReviewsSection({
 													})
 														.then((result) => {
 															if (result.ok) {
-																void queryClient.invalidateQueries({
-																	queryKey: ["github"],
-																});
+																void invalidateGitHubEntities(
+																	queryClient,
+																	null,
+																	[pullEntityKey({ owner, repo, pullNumber })],
+																);
 															} else {
 																toast.error(result.error);
 																checkPermissionWarning(
@@ -900,10 +902,8 @@ function ChecksSection({
 				data: { owner, repo, pullNumber, failedOnly },
 			});
 			if (result.ok) {
-				const rerun = result.rerun ?? 0;
-				const skipped = result.skipped ?? 0;
-				const failed = result.failed ?? 0;
-				if (result.partial) {
+				const { rerun, skipped, failed } = result;
+				if (failed > 0) {
 					toast.warning(
 						`Re-running ${rerun} check${rerun !== 1 ? "s" : ""}, but ${failed} failed`,
 					);
@@ -942,9 +942,8 @@ function ChecksSection({
 				},
 			});
 			if (result.ok) {
-				if (result.partial) {
-					const approved = result.approved ?? 0;
-					const failed = result.failed ?? 0;
+				const { approved, failed } = result;
+				if (failed > 0) {
 					toast.warning(
 						`Approved ${approved} workflow${approved !== 1 ? "s" : ""}, but ${failed} failed`,
 					);
@@ -2889,9 +2888,9 @@ function ReviewCommentBlock({
 			if (result) {
 				setReplyBody("");
 				setReplyStatus("closed");
-				void queryClient.invalidateQueries({
-					queryKey: githubQueryKeys.all,
-				});
+				void invalidateGitHubEntities(queryClient, null, [
+					pullEntityKey({ owner, repo, pullNumber }),
+				]);
 			} else {
 				toast.error("Failed to send reply");
 				setReplyStatus("open");

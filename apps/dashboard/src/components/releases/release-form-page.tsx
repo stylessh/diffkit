@@ -36,6 +36,10 @@ import {
 	REPO_RELEASES_PER_PAGE,
 } from "#/lib/github.query";
 import type { RepoRelease } from "#/lib/github.types";
+import {
+	invalidateGitHubEntities,
+	releaseEntityKey,
+} from "#/lib/github-query-updates";
 import { useHasMounted } from "#/lib/use-has-mounted";
 import { ReleaseDeleteButton } from "./release-card-actions";
 import { ReleaseBranchPicker, ReleaseTagPicker } from "./release-ref-pickers";
@@ -356,29 +360,8 @@ function ReleaseForm({
 				}),
 				saved,
 			);
-			await Promise.all([
-				queryClient.invalidateQueries({
-					queryKey: githubQueryKeys.releases.repo(scope, { owner, repo }),
-				}),
-				// A new tag may have been created on publish.
-				queryClient.invalidateQueries({
-					queryKey: githubQueryKeys.refs.names(scope, {
-						owner,
-						repo,
-						kind: "tags",
-					}),
-				}),
-				queryClient.invalidateQueries({
-					queryKey: ["github", scope.userId, "refs", "tags"],
-				}),
-				// Tag count in the repo nav/sidebar.
-				...(saved.isDraft
-					? []
-					: [
-							queryClient.invalidateQueries({
-								queryKey: githubQueryKeys.repo.overview(scope, { owner, repo }),
-							}),
-						]),
+			await invalidateGitHubEntities(queryClient, scope, [
+				releaseEntityKey({ owner, repo }),
 			]);
 			toast.success(
 				saved.isDraft

@@ -11,10 +11,9 @@ import { resolveGitHubEmulatorUrl } from "./github-emulator";
 const GITHUB_WEB_ORIGIN = "https://github.com";
 
 export function getGitHubEmulatorUrl(): string | null {
-	return resolveGitHubEmulatorUrl(
-		(env as { GITHUB_EMULATOR_URL?: string }).GITHUB_EMULATOR_URL,
-		{ isProduction: import.meta.env.PROD },
-	);
+	return resolveGitHubEmulatorUrl(env.GITHUB_EMULATOR_URL, {
+		isProduction: import.meta.env.PROD,
+	});
 }
 
 export function isGitHubEmulatorEnabled() {

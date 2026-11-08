@@ -23,8 +23,12 @@ import { Link } from "@tanstack/react-router";
 import { useState } from "react";
 import { iconButtonClassName } from "#/components/repo/repo-ui";
 import { deleteRepoRelease } from "#/lib/github.functions";
-import { type GitHubQueryScope, githubQueryKeys } from "#/lib/github.query";
+import type { GitHubQueryScope } from "#/lib/github.query";
 import type { RepoRelease } from "#/lib/github.types";
+import {
+	invalidateGitHubEntities,
+	releaseEntityKey,
+} from "#/lib/github-query-updates";
 
 const iconButtonClass = iconButtonClassName;
 
@@ -108,9 +112,9 @@ export function ReleaseDeleteButton({
 				description: "The git tag was kept.",
 			});
 			onDeleted?.();
-			await queryClient.invalidateQueries({
-				queryKey: githubQueryKeys.releases.repo(scope, { owner, repo }),
-			});
+			await invalidateGitHubEntities(queryClient, scope, [
+				releaseEntityKey({ owner, repo }),
+			]);
 		} catch {
 			toast.error("Failed to delete release");
 			setDialog("confirming");

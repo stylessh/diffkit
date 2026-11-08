@@ -21,7 +21,7 @@ function setup() {
 
 const everything: GitHubChangeAccess = {
 	canRead: () => true,
-	watched: null,
+	watched: "all",
 };
 
 async function insert(
@@ -87,7 +87,7 @@ describe("readGitHubChanges", () => {
 		const readable = new Set(["acme/api"]);
 		const access: GitHubChangeAccess = {
 			canRead: (repo, isPrivate) => !isPrivate || readable.has(repo),
-			watched: null,
+			watched: "all",
 		};
 		await insert(db, [
 			["acme/api", "pull:acme/api#1", true],
@@ -106,7 +106,7 @@ describe("readGitHubChanges", () => {
 		]);
 	});
 
-	it("limits repo entities to watched repos but keeps notifications", async () => {
+	it("limits entities to watched repos and ignores legacy notifications rows", async () => {
 		const { db } = setup();
 		await insert(db, [
 			["acme/api", "pull:acme/api#1", true],
@@ -118,10 +118,7 @@ describe("readGitHubChanges", () => {
 			access: { canRead: () => true, watched: new Set(["acme/api"]) },
 			now: NOW,
 		});
-		expect(result.entities.sort()).toEqual([
-			"notifications",
-			"pull:acme/api#1",
-		]);
+		expect(result.entities).toEqual(["pull:acme/api#1"]);
 	});
 
 	it("expires cursors older than the retention window", async () => {
@@ -275,15 +272,33 @@ describe("checkD1Health", () => {
 			limitBytes: 1,
 			log: (line) => lines.push(line),
 		});
-		expect(report.warning).toBe(true);
+		expect(report.alert).toBe("d1_size_warning");
 		expect(JSON.parse(lines[0])).toMatchObject({ alert: "d1_size_warning" });
+	});
+
+	it("flags a change table the sweeper has stopped keeping small", async () => {
+		const { db } = setup();
+		await insert(db, [
+			["acme/api", "pull:acme/api#1", true],
+			["acme/api", "pull:acme/api#2", true],
+		]);
+		const lines: string[] = [];
+		const report = await checkD1Health(db, {
+			maxExpectedChangeRows: 1,
+			log: (line) => lines.push(line),
+		});
+		expect(report.alert).toBe("d1_change_table_growth");
+		expect(JSON.parse(lines[0])).toMatchObject({
+			alert: "d1_change_table_growth",
+			changeRows: 2,
+		});
 	});
 
 	it("stays quiet when healthy", async () => {
 		const { db } = setup();
 		const lines: string[] = [];
 		const report = await checkD1Health(db, { log: (line) => lines.push(line) });
-		expect(report.warning).toBe(false);
+		expect(report.alert).toBeNull();
 		expect(report.sizeBytes).toBeGreaterThan(0);
 		expect(report.changeRows).toBe(0);
 		expect(lines).toEqual([]);

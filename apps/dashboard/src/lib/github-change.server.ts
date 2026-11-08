@@ -1,34 +1,21 @@
 import type { GitHubChangeEntity } from "./github-change-entities";
-import {
-	entityRepo,
-	formatEntityKey,
-	parseEntityKey,
-} from "./github-change-entities";
+import { formatEntityKey, parseEntityKey } from "./github-change-entities";
 
-/**
- * D1 storage for the change feed (`github_change`).
- *
- * Bounded by design (docs/platform-plan.md, "Incidents"):
- * - rows are useful for 15 minutes; `sweepGitHubChanges` runs from the cron
- *   trigger and deletes older rows in throttled batches;
- * - inserts happen in `waitUntil`, never on a request's critical path, and a
- *   failed insert is logged and dropped;
- * - reads that fail degrade to "cursor expired" (the client refetches its
- *   active queries), never to an error.
- */
+// Storage rules from the 2026-11-08 incident (docs/platform-plan.md): rows
+// expire after 15 minutes and the cron sweeper deletes them in throttled
+// batches; inserts run in waitUntil and are dropped on failure; read failures
+// degrade to "cursor expired", never to an error.
 
 export const GITHUB_CHANGE_RETENTION_MS = 15 * 60 * 1000;
-/** Cursors older than this are expired: rows after them may be swept. */
+// Rows after a cursor older than this may already be swept.
 const GITHUB_CHANGE_CURSOR_MAX_AGE_MS = GITHUB_CHANGE_RETENTION_MS - 60 * 1000;
-/** A response never carries more rows than this; more means "refetch all". */
 const GITHUB_CHANGE_READ_LIMIT = 2000;
 
-/** Batch limits that stayed clear of D1's 7429 and query time limits. */
+// Batch limits that stayed clear of D1's 7429 error and per-query time limit.
 const GITHUB_CHANGE_SWEEP_BATCH_SIZE = 20_000;
 const GITHUB_CHANGE_SWEEP_PAUSE_MS = 4_000;
 const GITHUB_CHANGE_SWEEP_MAX_BATCHES = 10;
 
-/** Cloudflare's per-database D1 limit. */
 const D1_DATABASE_LIMIT_BYTES = 10 * 1000 * 1000 * 1000;
 const D1_SIZE_WARN_RATIO = 0.8;
 
@@ -53,7 +40,7 @@ export function toGitHubChangeRows(
 		if (seen.has(entityKey)) continue;
 		seen.add(entityKey);
 		rows.push({
-			repo: entityRepo(entity) ?? repository.fullName,
+			repo: entity.repo,
 			entityKey,
 			isPrivate: repository.isPrivate,
 			changedAt,
@@ -90,14 +77,8 @@ export async function recordGitHubChanges(
 	await db.batch(statements);
 }
 
-// ---------------------------------------------------------------------------
-// Cursors
-// ---------------------------------------------------------------------------
-
 export type GitHubChangeCursor = {
-	/** Last row id the client has seen. */
 	id: number;
-	/** When the cursor was issued (epoch ms). */
 	at: number;
 };
 
@@ -118,16 +99,26 @@ export function decodeChangeCursor(
 		: null;
 }
 
-// ---------------------------------------------------------------------------
-// Reads
-// ---------------------------------------------------------------------------
-
 export type GitHubChangeAccess = {
-	/** Repos (lowercased `owner/repo`) the viewer can read. */
 	canRead: (repo: string, isPrivate: boolean) => boolean;
-	/** Repos the client watches; `null` means every readable repo. */
-	watched: Set<string> | null;
+	watched: Set<string> | "all";
 };
+
+type CursorState =
+	| { kind: "start" }
+	| { kind: "stale" }
+	| { kind: "live"; since: GitHubChangeCursor };
+
+function classifyCursor(
+	since: GitHubChangeCursor | null,
+	now: number,
+): CursorState {
+	if (!since) return { kind: "start" };
+	if (now - since.at > GITHUB_CHANGE_CURSOR_MAX_AGE_MS) {
+		return { kind: "stale" };
+	}
+	return { kind: "live", since };
+}
 
 export type GitHubChangesResult =
 	| { cursor: string; entities: string[]; expired: false }
@@ -147,13 +138,6 @@ async function currentMaxId(db: D1Database) {
 	return row?.id ?? 0;
 }
 
-/**
- * Entity keys changed after `since` that the viewer can read and watches.
- *
- * - No cursor: returns a fresh cursor and no entities (first poll).
- * - Cursor older than ~14 minutes, or more than READ_LIMIT rows since it:
- *   `expired: true`, and the client refetches its active queries.
- */
 export async function readGitHubChanges(
 	db: D1Database,
 	options: {
@@ -165,15 +149,16 @@ export async function readGitHubChanges(
 ): Promise<GitHubChangesResult> {
 	const now = options.now ?? Date.now();
 	const limit = options.limit ?? GITHUB_CHANGE_READ_LIMIT;
-	const { since, access } = options;
+	const { access } = options;
+	const cursorState = classifyCursor(options.since, now);
 
-	if (!since || now - since.at > GITHUB_CHANGE_CURSOR_MAX_AGE_MS) {
-		const id = await currentMaxId(db);
-		const cursor = encodeChangeCursor({ id, at: now });
-		return since
+	if (cursorState.kind !== "live") {
+		const cursor = encodeChangeCursor({ id: await currentMaxId(db), at: now });
+		return cursorState.kind === "stale"
 			? { cursor, entities: [], expired: true }
 			: { cursor, entities: [], expired: false };
 	}
+	const { since } = cursorState;
 
 	const { results } = await db
 		.prepare(
@@ -198,12 +183,7 @@ export async function readGitHubChanges(
 		if (!access.canRead(row.repo, row.is_private !== 0)) continue;
 		const parsed = parseEntityKey(row.entity_key);
 		if (!parsed) continue;
-		// Notifications are user-wide; everything else only for watched repos.
-		if (
-			parsed.kind !== "notifications" &&
-			access.watched &&
-			!access.watched.has(row.repo)
-		) {
+		if (access.watched !== "all" && !access.watched.has(row.repo)) {
 			continue;
 		}
 		entities.add(row.entity_key);
@@ -215,10 +195,6 @@ export async function readGitHubChanges(
 		expired: false,
 	};
 }
-
-// ---------------------------------------------------------------------------
-// Sweeper and guardrails (cron)
-// ---------------------------------------------------------------------------
 
 export async function sweepGitHubChanges(
 	db: D1Database,
@@ -262,19 +238,30 @@ export async function sweepGitHubChanges(
 	return { deleted, batches, complete: false };
 }
 
-export type D1SizeReport = {
+type D1Alert = "d1_size_warning" | "d1_change_table_growth";
+
+export type D1HealthReport = {
 	sizeBytes: number | null;
 	ratio: number | null;
 	changeRows: number | null;
-	warning: boolean;
+	alert: D1Alert | null;
 };
 
-/**
- * Database size via the D1 result metadata (`meta.size_after`, the same
- * number `wrangler d1 info` reports) plus the change-table row count. Logs a
- * structured warning at 80% of the 10 GB limit and when the change table has
- * grown far beyond its expected steady state (a stuck sweeper).
- */
+function pickD1Alert(
+	ratio: number | null,
+	warnRatio: number,
+	changeRows: number | null,
+	maxExpectedChangeRows: number,
+): D1Alert | null {
+	if (ratio !== null && ratio >= warnRatio) return "d1_size_warning";
+	if (changeRows !== null && changeRows > maxExpectedChangeRows) {
+		return "d1_change_table_growth";
+	}
+	return null;
+}
+
+// Size is D1's meta.size_after, the number `wrangler d1 info` reports. A large
+// change table means the sweeper is stuck.
 export async function checkD1Health(
 	db: D1Database,
 	options: {
@@ -283,10 +270,8 @@ export async function checkD1Health(
 		maxExpectedChangeRows?: number;
 		log?: (line: string) => void;
 	} = {},
-): Promise<D1SizeReport> {
+): Promise<D1HealthReport> {
 	const limitBytes = options.limitBytes ?? D1_DATABASE_LIMIT_BYTES;
-	const warnRatio = options.warnRatio ?? D1_SIZE_WARN_RATIO;
-	const maxExpectedChangeRows = options.maxExpectedChangeRows ?? 50_000;
 	const log = options.log ?? ((line: string) => console.warn(line));
 
 	const countResult = await db
@@ -298,15 +283,18 @@ export async function checkD1Health(
 			? countResult.meta.size_after
 			: null;
 	const ratio = sizeBytes === null ? null : sizeBytes / limitBytes;
+	const alert = pickD1Alert(
+		ratio,
+		options.warnRatio ?? D1_SIZE_WARN_RATIO,
+		changeRows,
+		options.maxExpectedChangeRows ?? 50_000,
+	);
 
-	const sizeWarning = ratio !== null && ratio >= warnRatio;
-	const growthWarning =
-		changeRows !== null && changeRows > maxExpectedChangeRows;
-	if (sizeWarning || growthWarning) {
+	if (alert) {
 		log(
 			JSON.stringify({
 				level: "warn",
-				alert: sizeWarning ? "d1_size_warning" : "d1_change_table_growth",
+				alert,
 				sizeBytes,
 				limitBytes,
 				ratio,
@@ -314,10 +302,5 @@ export async function checkD1Health(
 			}),
 		);
 	}
-	return {
-		sizeBytes,
-		ratio,
-		changeRows,
-		warning: sizeWarning || growthWarning,
-	};
+	return { sizeBytes, ratio, changeRows, alert };
 }
