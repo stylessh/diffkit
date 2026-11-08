@@ -18,7 +18,6 @@ import {
 	setProtectedRouteCachedAuth,
 } from "#/lib/protected-auth-cache";
 import { buildSeo, formatPageTitle, PRIVATE_ROUTE_HEADERS } from "#/lib/seo";
-import { parseSidebarLayout } from "#/lib/shell/sidebar-layout";
 import { parseViewerHint } from "#/lib/viewer-hint";
 
 const readRequestCookie = createIsomorphicFn()
@@ -45,8 +44,7 @@ const readRequestCookie = createIsomorphicFn()
 export const Route = createFileRoute("/_protected")({
 	beforeLoad: async ({ location }) => {
 		const cookie = await readRequestCookie();
-		const auth = await resolveProtectedAuth(location.href, cookie);
-		return { ...auth, sidebarLayout: parseSidebarLayout(cookie) };
+		return resolveProtectedAuth(location.href, cookie);
 	},
 	headers: () => PRIVATE_ROUTE_HEADERS,
 	head: ({ match }) => {

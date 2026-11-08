@@ -685,7 +685,7 @@ function IssueCommentBubble({
 							type="button"
 							onClick={onReply}
 							aria-label="Reply"
-							className="flex size-7 items-center justify-center rounded-full text-text-header opacity-0 transition-opacity hover:bg-ghost-hover group-hover/comment:opacity-100 focus-visible:opacity-100"
+							className="flex size-7 items-center justify-center rounded-md text-text-header opacity-0 transition-opacity hover:bg-ghost-hover group-hover/comment:opacity-100 focus-visible:opacity-100"
 						>
 							<CommentIcon size={14} strokeWidth={2} />
 						</button>
@@ -863,7 +863,7 @@ function LoadMoreDivider({
 				onClick={onLoadMore}
 				disabled={isPending}
 				className={cn(
-					"flex shrink-0 items-center gap-1.5 rounded-full border-[0.5px] border-border bg-surface-1 px-3 py-1 text-xs text-muted-foreground transition-colors",
+					"flex shrink-0 items-center gap-1.5 rounded-md border-[0.5px] border-border bg-surface-1 px-3 py-1 text-xs text-muted-foreground transition-colors",
 					isPending
 						? "cursor-not-allowed opacity-60"
 						: "hover:bg-ghost-hover hover:text-foreground",

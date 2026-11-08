@@ -24,7 +24,7 @@ function ViewTabs({
 		>
 			<nav
 				aria-label={label}
-				className="no-scrollbar flex min-w-0 items-center gap-[7px] overflow-x-auto p-px"
+				className="no-scrollbar -m-1.5 flex min-w-0 items-center gap-[7px] overflow-x-auto p-1.5"
 			>
 				{children}
 			</nav>
@@ -52,7 +52,7 @@ function ViewTab({
 			data-slot="view-tab"
 			aria-current={active ? "page" : undefined}
 			className={cn(
-				"inline-flex h-7 shrink-0 items-center gap-1.5 rounded-full bg-button px-[10.5px] text-xs font-medium whitespace-nowrap text-muted-foreground shadow-button transition-colors hover:bg-button-hover hover:text-foreground [&_svg]:shrink-0",
+				"inline-flex h-7 shrink-0 items-center gap-1.5 rounded-md bg-button px-[10.5px] text-xs font-medium whitespace-nowrap text-muted-foreground shadow-button transition-colors hover:bg-button-hover hover:text-foreground [&_svg]:shrink-0",
 				"aria-[current=page]:bg-tab-selected aria-[current=page]:text-foreground aria-[current=page]:shadow-tab-selected",
 				className,
 			)}

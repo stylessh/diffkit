@@ -106,7 +106,7 @@ function DiffToolbarTab({
 			aria-pressed={active}
 			onClick={onClick}
 			className={cn(
-				"flex h-6 items-center gap-1.5 rounded-full px-1.5 transition-colors [&_svg]:shrink-0",
+				"flex h-6 items-center gap-1.5 rounded-md px-1.5 transition-colors [&_svg]:shrink-0",
 				active
 					? "font-[450] text-text-header"
 					: "font-medium text-muted-foreground hover:text-text-header",
@@ -135,7 +135,7 @@ function DiffDisplayOptions({
 			aria-pressed={diffStyle === id}
 			onClick={() => onDiffStyleChange(id)}
 			className={cn(
-				"flex h-[27px] flex-1 items-center justify-center gap-1.5 rounded-full text-[13px] font-medium transition-colors",
+				"flex h-[27px] flex-1 items-center justify-center gap-1.5 rounded-md text-[13px] font-medium transition-colors",
 				diffStyle === id
 					? "bg-tab-selected text-foreground shadow-tab-selected"
 					: "bg-button text-muted-foreground shadow-button hover:bg-button-hover hover:text-foreground",

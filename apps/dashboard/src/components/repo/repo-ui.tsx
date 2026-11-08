@@ -2,16 +2,16 @@ import { cn } from "@diffkit/ui/lib/utils";
 import type * as React from "react";
 
 export const pillButtonClassName =
-	"inline-flex h-7 max-w-full min-w-0 shrink-0 items-center gap-1.5 rounded-full bg-button px-2.5 text-xs font-medium whitespace-nowrap text-text-header shadow-button transition-colors hover:bg-button-hover hover:text-foreground disabled:pointer-events-none disabled:opacity-50 aria-expanded:text-foreground [&_svg]:shrink-0";
+	"inline-flex h-7 max-w-full min-w-0 shrink-0 items-center gap-1.5 rounded-md bg-button px-2.5 text-xs font-medium whitespace-nowrap text-text-header shadow-button transition-colors hover:bg-button-hover hover:text-foreground disabled:pointer-events-none disabled:opacity-50 aria-expanded:text-foreground [&_svg]:shrink-0";
 
 export const ghostPillClassName =
-	"inline-flex h-7 shrink-0 items-center gap-1.5 rounded-full px-2 text-xs font-medium whitespace-nowrap text-muted-foreground transition-colors hover:bg-ghost-hover hover:text-foreground [&_svg]:shrink-0";
+	"inline-flex h-7 shrink-0 items-center gap-1.5 rounded-md px-2 text-xs font-medium whitespace-nowrap text-muted-foreground transition-colors hover:bg-ghost-hover hover:text-foreground [&_svg]:shrink-0";
 
 export const pillTabClassName =
-	"inline-flex h-7 shrink-0 items-center gap-1.5 rounded-full bg-button px-[10.5px] text-xs font-medium whitespace-nowrap text-muted-foreground shadow-button transition-colors hover:bg-button-hover hover:text-foreground aria-selected:bg-tab-selected aria-selected:text-foreground aria-selected:shadow-tab-selected aria-pressed:bg-tab-selected aria-pressed:text-foreground aria-pressed:shadow-tab-selected [&_svg]:shrink-0";
+	"inline-flex h-7 shrink-0 items-center gap-1.5 rounded-md bg-button px-[10.5px] text-xs font-medium whitespace-nowrap text-muted-foreground shadow-button transition-colors hover:bg-button-hover hover:text-foreground aria-selected:bg-tab-selected aria-selected:text-foreground aria-selected:shadow-tab-selected aria-pressed:bg-tab-selected aria-pressed:text-foreground aria-pressed:shadow-tab-selected [&_svg]:shrink-0";
 
 export const iconButtonClassName =
-	"flex size-7 shrink-0 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-ghost-hover hover:text-foreground disabled:pointer-events-none disabled:opacity-40 aria-disabled:pointer-events-none aria-disabled:opacity-30";
+	"flex size-7 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-ghost-hover hover:text-foreground disabled:pointer-events-none disabled:opacity-40 aria-disabled:pointer-events-none aria-disabled:opacity-30";
 
 export const cardRowClassName =
 	"flex h-9 w-full min-w-0 items-center gap-[9px] border-t-[0.5px] border-card-border px-4 text-left transition-colors first:border-t-0 hover:bg-item-hover";

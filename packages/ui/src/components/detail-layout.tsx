@@ -25,7 +25,7 @@ function DetailLayout({
 				</div>
 				<aside
 					aria-label={panelLabel}
-					className="min-w-0 self-start px-4 pt-2 pb-10 md:px-[46px] lg:sticky lg:top-0 lg:max-h-[calc(100dvh-4rem)] lg:overflow-y-auto lg:overscroll-contain lg:pt-3.5 lg:pr-3 lg:pl-0 lg:[scrollbar-width:none]"
+					className="min-w-0 self-start px-4 pt-2 pb-10 md:px-[46px] lg:sticky lg:top-0 lg:max-h-[calc(100dvh-4rem)] lg:-ml-2 lg:overflow-y-auto lg:overscroll-contain lg:pt-3.5 lg:pr-3 lg:pl-2 lg:[scrollbar-width:none]"
 				>
 					<div className="flex max-w-80 flex-col">{panel}</div>
 				</aside>
@@ -76,7 +76,7 @@ function PanelPill({
 		<Comp
 			data-slot="panel-pill"
 			className={cn(
-				"-mx-1.5 flex h-7 w-fit max-w-[calc(100%+12px)] min-w-0 items-center gap-2 truncate rounded-full px-1.5 text-left text-[13px] font-medium transition-colors",
+				"-mx-1.5 flex h-7 w-fit max-w-[calc(100%+12px)] min-w-0 items-center gap-2 truncate rounded-md px-1.5 text-left text-[13px] font-medium transition-colors",
 				"group-hover/row:bg-item-hover hover:bg-item-hover aria-expanded:bg-item-hover data-[state=open]:bg-item-hover",
 				muted ? "text-muted-foreground" : "text-text-header",
 				className,
@@ -136,7 +136,7 @@ function PanelGoButton({
 		<Comp
 			data-slot="panel-go-button"
 			className={cn(
-				"flex size-7 shrink-0 items-center justify-center rounded-full bg-go-fill text-muted-foreground opacity-0 transition-opacity group-hover/row:opacity-100 hover:bg-ghost-hover hover:text-text-header focus-visible:opacity-100",
+				"flex size-7 shrink-0 items-center justify-center rounded-md bg-go-fill text-muted-foreground opacity-0 transition-opacity group-hover/row:opacity-100 hover:bg-ghost-hover hover:text-text-header focus-visible:opacity-100",
 				className,
 			)}
 			{...props}
@@ -170,7 +170,7 @@ function PanelAddButton({
 			type="button"
 			data-slot="panel-add-button"
 			className={cn(
-				"-ml-[5px] flex size-6 shrink-0 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-ghost-hover hover:text-text-header aria-expanded:bg-ghost-hover data-[state=open]:bg-ghost-hover",
+				"-ml-[5px] flex size-6 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-ghost-hover hover:text-text-header aria-expanded:bg-ghost-hover data-[state=open]:bg-ghost-hover",
 				className,
 			)}
 			{...props}

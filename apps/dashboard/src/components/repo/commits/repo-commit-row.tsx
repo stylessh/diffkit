@@ -74,7 +74,7 @@ export const RepoCommitRow = memo(function RepoCommitRow({
 										? "Hide commit description"
 										: "Show commit description"
 								}
-								className="relative z-[1] flex h-5 shrink-0 items-center rounded-full px-1.5 text-muted-foreground transition-colors hover:bg-ghost-hover hover:text-foreground aria-expanded:bg-ghost-hover aria-expanded:text-foreground"
+								className="relative z-[1] flex h-5 shrink-0 items-center rounded-md px-1.5 text-muted-foreground transition-colors hover:bg-ghost-hover hover:text-foreground aria-expanded:bg-ghost-hover aria-expanded:text-foreground"
 							>
 								<MoreHorizontalIcon size={12} strokeWidth={2} />
 							</button>
@@ -123,7 +123,7 @@ export const RepoCommitRow = memo(function RepoCommitRow({
 							to="/$owner"
 							params={{ owner: commit.author.login }}
 							data-action
-							className="flex max-w-32 items-center gap-1.5 rounded-full text-xs font-[450] text-muted-foreground transition-colors hover:text-foreground"
+							className="flex max-w-32 items-center gap-1.5 rounded-md text-xs font-[450] text-muted-foreground transition-colors hover:text-foreground"
 						>
 							<span className="truncate max-lg:hidden">{authorLabel}</span>
 							<RowAvatar actor={commit.author} />

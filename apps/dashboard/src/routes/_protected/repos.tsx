@@ -254,7 +254,7 @@ function RepositoriesPage() {
 						<div className="flex justify-center pt-4">
 							<Button
 								type="button"
-								variant="pill"
+								variant="outline"
 								size="sm"
 								onClick={() => {
 									void setPage(safePage + 1);

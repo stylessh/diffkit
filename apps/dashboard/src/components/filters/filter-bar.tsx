@@ -315,7 +315,7 @@ function AddFilterButton({
 				aria-expanded={open}
 				aria-label="Filter"
 				title="Filter"
-				className="flex size-7 items-center justify-center rounded-full bg-button text-muted-foreground shadow-button transition-colors hover:bg-button-hover hover:text-foreground"
+				className="flex size-7 items-center justify-center rounded-md bg-button text-muted-foreground shadow-button transition-colors hover:bg-button-hover hover:text-foreground"
 			>
 				<FilterLinesIcon size={14} />
 			</button>

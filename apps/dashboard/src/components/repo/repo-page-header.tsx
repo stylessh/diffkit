@@ -91,7 +91,7 @@ export function RepoListSearchInput({
 					type="button"
 					onClick={() => onChange("")}
 					aria-label="Clear search"
-					className="-mr-1 flex size-5 shrink-0 items-center justify-center rounded-full transition-colors hover:bg-ghost-hover hover:text-foreground"
+					className="-mr-1 flex size-5 shrink-0 items-center justify-center rounded-md transition-colors hover:bg-ghost-hover hover:text-foreground"
 				>
 					<CloseIcon size={12} />
 				</button>

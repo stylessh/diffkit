@@ -105,7 +105,7 @@ function ReleaseMeta({
 							<Link
 								to="/$owner/$repo/commit/$sha"
 								params={{ owner, repo, sha: target }}
-								className="flex h-6 items-center gap-1 rounded-full px-2 font-mono transition-colors hover:bg-ghost-hover hover:text-foreground"
+								className="flex h-6 items-center gap-1 rounded-md px-2 font-mono transition-colors hover:bg-ghost-hover hover:text-foreground"
 							>
 								<GitCommitIcon size={12} />
 								{target.slice(0, 7)}
@@ -114,7 +114,7 @@ function ReleaseMeta({
 							<Link
 								to="/$owner/$repo/commits/$"
 								params={{ owner, repo, _splat: target }}
-								className="flex h-6 min-w-0 items-center gap-1 rounded-full px-2 font-mono transition-colors hover:bg-ghost-hover hover:text-foreground"
+								className="flex h-6 min-w-0 items-center gap-1 rounded-md px-2 font-mono transition-colors hover:bg-ghost-hover hover:text-foreground"
 							>
 								<GitBranchIcon size={12} />
 								<span className="max-w-32 truncate">{target}</span>
@@ -288,7 +288,7 @@ export function ReleaseCard({
 					<Link
 						to="/$owner/$repo/releases/$tag"
 						params={{ owner, repo, tag: release.tagName }}
-						className="-ml-2 w-fit rounded-full px-2 py-1 text-xs font-medium text-muted-foreground transition-colors hover:bg-ghost-hover hover:text-foreground"
+						className="-ml-2 w-fit rounded-md px-2 py-1 text-xs font-medium text-muted-foreground transition-colors hover:bg-ghost-hover hover:text-foreground"
 					>
 						Read full release notes
 					</Link>

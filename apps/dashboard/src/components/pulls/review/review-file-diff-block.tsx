@@ -607,7 +607,7 @@ const FileHeader = memo(function FileHeader({
 				className="text-xs"
 			/>
 			{isViewed !== undefined ? (
-				<label className="ml-3 flex h-6 shrink-0 cursor-pointer items-center gap-2 rounded-full px-2 text-muted-foreground transition-colors hover:bg-ghost-hover hover:text-foreground">
+				<label className="ml-3 flex h-6 shrink-0 cursor-pointer items-center gap-2 rounded-md px-2 text-muted-foreground transition-colors hover:bg-ghost-hover hover:text-foreground">
 					<input
 						type="checkbox"
 						checked={isViewed}
@@ -687,7 +687,7 @@ function InlineCommentForm({
 				<button
 					type="button"
 					onClick={onCancel}
-					className="h-7 rounded-full px-2.5 text-xs font-medium text-text-header transition-colors hover:bg-ghost-hover"
+					className="h-7 rounded-md px-2.5 text-xs font-medium text-text-header transition-colors hover:bg-ghost-hover"
 				>
 					Cancel
 				</button>
@@ -697,7 +697,7 @@ function InlineCommentForm({
 						if (body.trim()) onSubmit(body.trim());
 					}}
 					disabled={!body.trim()}
-					className="flex h-7 items-center gap-1.5 rounded-full bg-button px-3 text-xs font-medium text-foreground shadow-button transition-colors hover:bg-button-hover disabled:pointer-events-none disabled:opacity-45"
+					className="flex h-7 items-center gap-1.5 rounded-md bg-button px-3 text-xs font-medium text-foreground shadow-button transition-colors hover:bg-button-hover disabled:pointer-events-none disabled:opacity-45"
 				>
 					Add comment
 				</button>
@@ -893,7 +893,7 @@ function ReviewCommentThread({
 									setReplyStatus("closed");
 									setReplyBody("");
 								}}
-								className="h-7 rounded-full px-2.5 text-xs font-medium text-text-header transition-colors hover:bg-ghost-hover"
+								className="h-7 rounded-md px-2.5 text-xs font-medium text-text-header transition-colors hover:bg-ghost-hover"
 							>
 								Cancel
 							</button>
@@ -901,7 +901,7 @@ function ReviewCommentThread({
 								type="button"
 								onClick={() => void handleReply()}
 								disabled={!replyBody.trim() || isSending}
-								className="flex h-7 items-center gap-1.5 rounded-full bg-button px-3 text-xs font-medium text-foreground shadow-button transition-colors hover:bg-button-hover disabled:pointer-events-none disabled:opacity-45"
+								className="flex h-7 items-center gap-1.5 rounded-md bg-button px-3 text-xs font-medium text-foreground shadow-button transition-colors hover:bg-button-hover disabled:pointer-events-none disabled:opacity-45"
 							>
 								{isSending ? (
 									<Spinner className="size-3" />
@@ -917,7 +917,7 @@ function ReviewCommentThread({
 						<button
 							type="button"
 							onClick={() => setReplyStatus("open")}
-							className="-ml-2 flex h-6 items-center gap-1.5 rounded-full px-2 text-xs font-medium text-muted-foreground transition-colors hover:bg-ghost-hover hover:text-foreground"
+							className="-ml-2 flex h-6 items-center gap-1.5 rounded-md px-2 text-xs font-medium text-muted-foreground transition-colors hover:bg-ghost-hover hover:text-foreground"
 						>
 							<CommentIcon size={12} strokeWidth={2} />
 							Reply
@@ -927,7 +927,7 @@ function ReviewCommentThread({
 								type="button"
 								onClick={() => void handleResolve()}
 								disabled={isResolving}
-								className="-mr-2 ml-auto flex h-6 items-center gap-1.5 rounded-full px-2 text-xs font-medium text-muted-foreground transition-colors hover:bg-ghost-hover hover:text-foreground disabled:opacity-45"
+								className="-mr-2 ml-auto flex h-6 items-center gap-1.5 rounded-md px-2 text-xs font-medium text-muted-foreground transition-colors hover:bg-ghost-hover hover:text-foreground disabled:opacity-45"
 							>
 								{isResolving ? (
 									<Spinner className="size-3" />
@@ -975,7 +975,7 @@ function PendingCommentBubble({
 							setDraft(comment.body);
 							setIsEditing(false);
 						}}
-						className="h-7 rounded-full px-2.5 text-xs font-medium text-text-header transition-colors hover:bg-ghost-hover"
+						className="h-7 rounded-md px-2.5 text-xs font-medium text-text-header transition-colors hover:bg-ghost-hover"
 					>
 						Cancel
 					</button>
@@ -988,7 +988,7 @@ function PendingCommentBubble({
 							}
 						}}
 						disabled={!draft.trim()}
-						className="flex h-7 items-center gap-1.5 rounded-full bg-button px-3 text-xs font-medium text-foreground shadow-button transition-colors hover:bg-button-hover disabled:pointer-events-none disabled:opacity-45"
+						className="flex h-7 items-center gap-1.5 rounded-md bg-button px-3 text-xs font-medium text-foreground shadow-button transition-colors hover:bg-button-hover disabled:pointer-events-none disabled:opacity-45"
 					>
 						Update
 					</button>
@@ -1013,7 +1013,7 @@ function PendingCommentBubble({
 					type="button"
 					onClick={() => setIsEditing(true)}
 					aria-label="Edit pending comment"
-					className="-mr-1 ml-auto flex size-6 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-ghost-hover hover:text-foreground"
+					className="-mr-1 ml-auto flex size-6 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-ghost-hover hover:text-foreground"
 				>
 					<EditIcon size={12} strokeWidth={2} />
 				</button>

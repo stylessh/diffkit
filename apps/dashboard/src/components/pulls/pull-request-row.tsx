@@ -108,7 +108,7 @@ export const PullRequestRow = memo(function PullRequestRow({
 							e.preventDefault();
 							setExpanded((v) => !v);
 						}}
-						className="mr-1 flex h-6 shrink-0 items-center gap-1 rounded-full bg-button px-2 text-xs font-medium text-text-header opacity-0 shadow-button transition-[opacity,background-color] hover:bg-button-hover hover:text-foreground group-hover/row:opacity-100 focus-visible:opacity-100 aria-expanded:opacity-100"
+						className="mr-1 flex h-6 shrink-0 items-center gap-1 rounded-md bg-button px-2 text-xs font-medium text-text-header opacity-0 shadow-button transition-[opacity,background-color] hover:bg-button-hover hover:text-foreground group-hover/row:opacity-100 focus-visible:opacity-100 aria-expanded:opacity-100"
 					>
 						{expanded && commentsQuery.isPending ? (
 							<Spinner size={12} />

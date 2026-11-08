@@ -17,7 +17,7 @@ test("signing in through GitHub lands on the dashboard and signing out locks it 
 			.getByRole("link", { name: /^Pull requests/ }),
 	).toBeVisible();
 
-	const account = page.getByRole("button", { name: /^(NR|Nova Reyes)$/ });
+	const account = page.getByRole("button", { name: /^Account, / });
 	await (await whenInteractive(account)).click();
 	await expect(page.getByRole("menu")).toContainText("@nova");
 	await page.getByRole("menuitem", { name: "Sign out" }).click();

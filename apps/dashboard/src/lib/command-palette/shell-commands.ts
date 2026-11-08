@@ -48,7 +48,7 @@ export function useShellCommandItems(userId: string): CommandItem[] {
 	if (currentRepo && isRepoPinned(workspace, currentRepo)) {
 		repoItems.push({
 			id: "repo:unpin-current",
-			label: `Unpin ${repoFullName(currentRepo)} from the sidebar`,
+			label: `Unpin ${repoFullName(currentRepo)}`,
 			group: "Repositories",
 			icon: PinIcon,
 			keywords: ["unpin", "remove", "quick access", "favorite"],
@@ -63,7 +63,7 @@ export function useShellCommandItems(userId: string): CommandItem[] {
 	} else if (currentRepo && canPinMoreRepos(workspace)) {
 		repoItems.push({
 			id: "repo:pin-current",
-			label: `Pin ${repoFullName(currentRepo)} to the sidebar`,
+			label: `Pin ${repoFullName(currentRepo)}`,
 			group: "Repositories",
 			icon: PinIcon,
 			keywords: ["pin", "quick access", "favorite"],
@@ -78,10 +78,10 @@ export function useShellCommandItems(userId: string): CommandItem[] {
 	} else if (!currentRepo && canPinMoreRepos(workspace)) {
 		repoItems.push({
 			id: "repo:pin",
-			label: "Pin a repository…",
+			label: "Pin or unpin a repository…",
 			group: "Repositories",
 			icon: PinIcon,
-			keywords: ["pin", "quick access", "favorite", "sidebar"],
+			keywords: ["pin", "unpin", "quick access", "favorite"],
 			action: { type: "execute", fn: () => openRepoPicker({ kind: "pin" }) },
 		});
 	}

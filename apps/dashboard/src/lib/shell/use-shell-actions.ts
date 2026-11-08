@@ -14,7 +14,7 @@ import {
 import {
 	type RepoRef,
 	updateWorkspaceRepos,
-	withPinnedRepo,
+	withPinToggled,
 	withRecentRepo,
 } from "./workspace-repos";
 
@@ -73,7 +73,7 @@ export function useCompleteRepoPick(userId: string) {
 					void router.navigate({ to: `/${repo.owner}/${repo.name}` });
 					return;
 				case "pin":
-					updateWorkspaceRepos(userId, (state) => withPinnedRepo(state, repo));
+					updateWorkspaceRepos(userId, (state) => withPinToggled(state, repo));
 					return;
 				case "create":
 					void router.navigate({

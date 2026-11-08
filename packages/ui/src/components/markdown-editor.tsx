@@ -426,7 +426,7 @@ export const MarkdownEditor = forwardRef<
 							requestAnimationFrame(() => editorRef.current?.focus());
 						}}
 						className={cn(
-							"flex h-6 items-center rounded-full px-2.5 text-xs font-medium transition-colors",
+							"flex h-6 items-center rounded-md px-2.5 text-xs font-medium transition-colors",
 							tab === "write"
 								? "bg-tab-selected text-foreground shadow-tab-selected"
 								: "text-muted-foreground hover:text-foreground",
@@ -438,7 +438,7 @@ export const MarkdownEditor = forwardRef<
 						type="button"
 						onClick={() => setTab("preview")}
 						className={cn(
-							"flex h-6 items-center rounded-full px-2.5 text-xs font-medium transition-colors",
+							"flex h-6 items-center rounded-md px-2.5 text-xs font-medium transition-colors",
 							tab === "preview"
 								? "bg-tab-selected text-foreground shadow-tab-selected"
 								: "text-muted-foreground hover:text-foreground",

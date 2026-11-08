@@ -231,7 +231,7 @@ export function RepoCommitsPage({
 						type="button"
 						onClick={() => goToRef(currentRef, "")}
 						aria-label="Show all commits"
-						className="flex size-5 shrink-0 items-center justify-center rounded-full transition-colors hover:bg-ghost-hover hover:text-foreground"
+						className="flex size-5 shrink-0 items-center justify-center rounded-md transition-colors hover:bg-ghost-hover hover:text-foreground"
 					>
 						<CloseIcon size={12} />
 					</button>

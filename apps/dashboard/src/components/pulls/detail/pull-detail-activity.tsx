@@ -1574,7 +1574,7 @@ function MergeFooter({
 						? "Merging is blocked until the required checks and reviews pass."
 						: "Ready to merge"}
 				</p>
-				<div className="flex shrink-0 overflow-hidden rounded-full shadow-[0_1px_1px_0_lch(0_0_0/0.12),0_3px_6px_-2px_lch(0_0_0/0.12)]">
+				<div className="flex shrink-0 overflow-hidden rounded-md shadow-[0_1px_1px_0_lch(0_0_0/0.12),0_3px_6px_-2px_lch(0_0_0/0.12)]">
 					<button
 						type="button"
 						disabled={isDisabled}
@@ -2332,7 +2332,7 @@ function LoadMoreDivider({
 				onClick={onLoadMore}
 				disabled={isPending}
 				className={cn(
-					"flex shrink-0 items-center gap-1.5 rounded-full border-[0.5px] border-border bg-surface-1 px-3 py-1 text-xs text-muted-foreground transition-colors",
+					"flex shrink-0 items-center gap-1.5 rounded-md border-[0.5px] border-border bg-surface-1 px-3 py-1 text-xs text-muted-foreground transition-colors",
 					isPending
 						? "cursor-not-allowed opacity-60"
 						: "hover:bg-ghost-hover hover:text-foreground",
@@ -2630,7 +2630,7 @@ function PullCommentBubble({
 							type="button"
 							onClick={onReply}
 							aria-label="Reply"
-							className="flex size-7 items-center justify-center rounded-full text-text-header opacity-0 transition-opacity hover:bg-ghost-hover group-hover/comment:opacity-100 focus-visible:opacity-100"
+							className="flex size-7 items-center justify-center rounded-md text-text-header opacity-0 transition-opacity hover:bg-ghost-hover group-hover/comment:opacity-100 focus-visible:opacity-100"
 						>
 							<CommentIcon size={14} strokeWidth={2} />
 						</button>
@@ -3014,7 +3014,7 @@ function ReviewCommentBlock({
 										type="button"
 										onClick={() => void handleReply()}
 										disabled={!replyBody.trim() || isSending}
-										className="flex h-7 items-center gap-1.5 rounded-full bg-indigo px-3 text-xs font-medium text-indigo-foreground shadow-[0_1px_1px_0_lch(0_0_0/0.12),0_3px_6px_-2px_lch(0_0_0/0.12)] transition-colors hover:bg-indigo/90 disabled:opacity-50"
+										className="flex h-7 items-center gap-1.5 rounded-md bg-indigo px-3 text-xs font-medium text-indigo-foreground shadow-[0_1px_1px_0_lch(0_0_0/0.12),0_3px_6px_-2px_lch(0_0_0/0.12)] transition-colors hover:bg-indigo/90 disabled:opacity-50"
 									>
 										{isSending ? (
 											<Spinner className="size-3" />

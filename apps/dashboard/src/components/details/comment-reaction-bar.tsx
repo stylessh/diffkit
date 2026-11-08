@@ -338,7 +338,7 @@ export function IssueCommentReactionBar(props: IssueCommentReactionBarProps) {
 								transition={reactionSpring}
 								onClick={() => void handleToggle(content)}
 								className={cn(
-									"relative inline-flex h-6 items-center gap-2 rounded-full border-[0.5px] px-2.5 text-xs transition-colors",
+									"relative inline-flex h-6 items-center gap-2 rounded-md border-[0.5px] px-2.5 text-xs transition-colors",
 									"border-transparent text-muted-foreground hover:bg-ghost-hover hover:text-foreground",
 									active
 										? "bg-surface-2 hover:bg-ghost-hover hover:text-foreground"

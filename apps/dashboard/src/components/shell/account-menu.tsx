@@ -1,12 +1,16 @@
 import {
 	ArchiveIcon,
+	BugIcon,
 	ChevronDownIcon,
+	CommandIcon,
+	ExternalLinkIcon,
 	LogOutIcon,
 	MoonIcon,
 	SettingsIcon,
 	SunIcon,
 	SystemIcon,
 	UserCircleIcon,
+	XLogo,
 } from "@diffkit/icons";
 import {
 	Avatar,
@@ -27,7 +31,6 @@ import { cn } from "@diffkit/ui/lib/utils";
 import { Link } from "@tanstack/react-router";
 import { useTheme } from "next-themes";
 import { signOutToLogin } from "#/lib/auth-actions";
-import type { SidebarDensity } from "./sidebar-nav";
 
 export type ShellUser = {
 	id: string;
@@ -94,14 +97,12 @@ function ThemeSwitch() {
 	);
 }
 
-export function SidebarAccountMenu({
+export function AccountMenu({
 	user,
 	viewerLogin,
-	density,
 }: {
 	user: ShellUser;
 	viewerLogin?: string;
-	density: SidebarDensity;
 }) {
 	const displayName = user.name ?? user.email;
 	return (
@@ -109,29 +110,22 @@ export function SidebarAccountMenu({
 			<DropdownMenuTrigger asChild>
 				<button
 					type="button"
-					aria-label={displayName}
-					className={cn(
-						"flex h-7 min-w-0 items-center gap-[7px] rounded-lg text-text-strong transition-colors hover:bg-nav-hover",
-						density === "rail" ? "w-7 justify-center" : "pr-1.5 pl-1",
-					)}
+					aria-label={`Account, ${viewerLogin ?? displayName}`}
+					className="flex h-7 min-w-0 shrink-0 items-center gap-2 rounded-md pr-1.5 pl-1 text-text-strong transition-colors hover:bg-nav-hover data-[state=open]:bg-nav-hover"
 				>
 					<UserAvatar user={user} className="size-5 shrink-0" />
-					{density === "full" ? (
-						<>
-							<span className="truncate text-[13px] font-[550] tracking-[-0.1px]">
-								{viewerLogin ?? displayName}
-							</span>
-							<ChevronDownIcon
-								size={12}
-								strokeWidth={2}
-								className="shrink-0 text-muted-foreground"
-							/>
-						</>
-					) : null}
+					<span className="max-w-32 truncate text-[13px] font-[550] tracking-[-0.1px]">
+						{viewerLogin ?? displayName}
+					</span>
+					<ChevronDownIcon
+						size={12}
+						strokeWidth={2}
+						className="shrink-0 text-muted-foreground"
+					/>
 				</button>
 			</DropdownMenuTrigger>
 			<DropdownMenuContent align="start" className="w-60">
-				<DropdownMenuLabel className="flex items-center gap-3 py-2">
+				<DropdownMenuLabel className="h-auto gap-3 py-2">
 					<UserAvatar user={user} className="size-8" />
 					<div className="flex min-w-0 flex-1 flex-col">
 						<span className="truncate text-sm font-medium text-foreground">
@@ -166,6 +160,45 @@ export function SidebarAccountMenu({
 							Settings
 							<DropdownMenuShortcut keys={["G", "S"]} />
 						</Link>
+					</DropdownMenuItem>
+				</DropdownMenuGroup>
+				<DropdownMenuSeparator />
+				<DropdownMenuGroup aria-label="Help">
+					<DropdownMenuItem asChild>
+						<Link to="/settings/shortcuts">
+							<CommandIcon size={16} strokeWidth={2} />
+							Keyboard shortcuts
+						</Link>
+					</DropdownMenuItem>
+					<DropdownMenuItem asChild>
+						<Link
+							to="/$owner/$repo/issues/new"
+							params={{ owner: "stylessh", repo: "diffkit" }}
+						>
+							<BugIcon size={16} strokeWidth={2} />
+							Report an issue
+						</Link>
+					</DropdownMenuItem>
+					<DropdownMenuItem asChild>
+						<Link
+							to="/$owner/$repo"
+							params={{ owner: "stylessh", repo: "diffkit" }}
+						>
+							<ExternalLinkIcon size={16} strokeWidth={2} />
+							DiffKit on GitHub
+						</Link>
+					</DropdownMenuItem>
+					<DropdownMenuItem asChild>
+						<a
+							href="https://x.com/stylesshDev"
+							target="_blank"
+							rel="noopener noreferrer"
+						>
+							<span className="flex size-4 items-center justify-center">
+								<XLogo className="size-3.5" />
+							</span>
+							Check for updates
+						</a>
 					</DropdownMenuItem>
 				</DropdownMenuGroup>
 				<DropdownMenuSeparator />

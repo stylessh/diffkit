@@ -277,7 +277,7 @@ export function DetailCommentBox({
 										<button
 											type="button"
 											disabled={isBusy}
-											className="flex h-7 items-center gap-1.5 rounded-full bg-button px-2.5 text-xs font-medium text-text-header shadow-button transition-colors hover:bg-button-hover hover:text-foreground disabled:opacity-40"
+											className="flex h-7 items-center gap-1.5 rounded-md bg-button px-2.5 text-xs font-medium text-text-header shadow-button transition-colors hover:bg-button-hover hover:text-foreground disabled:opacity-40"
 										>
 											{pendingAction === "toggle-state" ? (
 												<Spinner size={12} />
@@ -330,7 +330,7 @@ export function DetailCommentBox({
 									type="button"
 									disabled={isBusy}
 									onClick={() => void runIssueStateChange("open")}
-									className="flex h-7 items-center gap-1.5 rounded-full bg-button px-2.5 text-xs font-medium text-text-header shadow-button transition-colors hover:bg-button-hover hover:text-foreground disabled:opacity-40"
+									className="flex h-7 items-center gap-1.5 rounded-md bg-button px-2.5 text-xs font-medium text-text-header shadow-button transition-colors hover:bg-button-hover hover:text-foreground disabled:opacity-40"
 								>
 									{pendingAction === "toggle-state" ? (
 										<Spinner size={12} />
@@ -345,7 +345,7 @@ export function DetailCommentBox({
 								type="button"
 								disabled={isBusy || hasPendingUploads}
 								onClick={handleTogglePullState}
-								className="flex h-7 items-center gap-1.5 rounded-full bg-button px-2.5 text-xs font-medium text-text-header shadow-button transition-colors hover:bg-button-hover hover:text-foreground disabled:opacity-40"
+								className="flex h-7 items-center gap-1.5 rounded-md bg-button px-2.5 text-xs font-medium text-text-header shadow-button transition-colors hover:bg-button-hover hover:text-foreground disabled:opacity-40"
 							>
 								{pendingAction === "toggle-state" ? (
 									<Spinner size={12} />
@@ -363,7 +363,7 @@ export function DetailCommentBox({
 							title="Send comment"
 							disabled={!value.trim() || isBusy || hasPendingUploads}
 							onClick={handleSend}
-							className="flex size-7 items-center justify-center rounded-full bg-send text-text-strong shadow-send transition-opacity hover:text-foreground disabled:opacity-40"
+							className="flex size-7 items-center justify-center rounded-md bg-send text-text-strong shadow-send transition-opacity hover:text-foreground disabled:opacity-40"
 						>
 							{pendingAction === "send" ? (
 								<Spinner size={12} />

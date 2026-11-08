@@ -102,7 +102,7 @@ function MessageScrollerButton({
 					<Button
 						variant="secondary"
 						size="icon"
-						className="size-8 rounded-full bg-button shadow-button hover:bg-button-hover"
+						className="size-8 rounded-md bg-button shadow-button hover:bg-button-hover"
 					/>
 				)
 			}

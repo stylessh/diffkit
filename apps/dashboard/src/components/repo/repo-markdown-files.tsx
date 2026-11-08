@@ -94,7 +94,7 @@ export function RepoMarkdownFiles({
 						onClick={() => setActiveTab(file.path)}
 						onMouseEnter={() => prefetch(file.path)}
 						className={cn(
-							"inline-flex h-7 items-center gap-1.5 rounded-full bg-button pr-[10.5px] pl-2 text-xs font-medium whitespace-nowrap text-muted-foreground shadow-button transition-colors hover:bg-button-hover hover:text-foreground",
+							"inline-flex h-7 items-center gap-1.5 rounded-md bg-button pr-[10.5px] pl-2 text-xs font-medium whitespace-nowrap text-muted-foreground shadow-button transition-colors hover:bg-button-hover hover:text-foreground",
 							"aria-selected:bg-tab-selected aria-selected:text-foreground aria-selected:shadow-tab-selected",
 						)}
 					>

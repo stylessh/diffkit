@@ -266,7 +266,7 @@ export function ExplorerSkeleton() {
 			</div>
 			<div className="flex-1">
 				<div className="flex h-11 items-center gap-2 border-b-[0.5px] border-header-rule px-4">
-					<Skeleton className="h-7 w-24 rounded-full" />
+					<Skeleton className="h-7 w-24 rounded-md" />
 					<Skeleton className="h-4 w-48 rounded" />
 				</div>
 				<div className="px-6 pt-4">

@@ -228,7 +228,7 @@ export function ActivityLog({
 			{trailingContent}
 			{showJumpToLatest ? (
 				<Button
-					className="absolute right-3 bottom-3 h-8 gap-1.5 rounded-full bg-button px-3 shadow-button hover:bg-button-hover"
+					className="absolute right-3 bottom-3 h-8 gap-1.5 rounded-md bg-button px-3 shadow-button hover:bg-button-hover"
 					onClick={() => scrollToLatest()}
 					size="sm"
 					type="button"

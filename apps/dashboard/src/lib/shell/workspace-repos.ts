@@ -101,6 +101,15 @@ export function withoutPinnedRepo(
 	};
 }
 
+export function withPinToggled(
+	state: WorkspaceRepos,
+	repo: RepoRef,
+): WorkspaceRepos {
+	return isRepoPinned(state, repo)
+		? withoutPinnedRepo(state, repo)
+		: withPinnedRepo(state, repo);
+}
+
 function storageKey(userId: string) {
 	return `diffkit:workspace-repos:${userId}`;
 }
