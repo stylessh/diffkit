@@ -75,7 +75,7 @@ describe("entry worker scheduled", () => {
 
 		await worker.scheduled(
 			{ scheduledTime: 1234 } as ScheduledController,
-			{ DB: {} as D1Database },
+			{ DB: {} as D1Database, GITHUB_CACHE_KV: {} as KVNamespace },
 			context,
 		);
 
