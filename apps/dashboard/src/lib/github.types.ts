@@ -885,3 +885,216 @@ export type DeletePendingReviewInput = {
 	pullNumber: number;
 	reviewId: number;
 };
+
+// ---------------------------------------------------------------------------
+// Repository commits, releases, branches and tags
+// ---------------------------------------------------------------------------
+
+export type RepoCommitSummary = {
+	sha: string;
+	message: string;
+	/** Author date (falls back to committer date). ISO string. */
+	date: string;
+	/** Linked GitHub account for the commit author, when GitHub could match one. */
+	author: GitHubActor | null;
+	/** Raw git author name — shown when `author` is null (unlinked email). */
+	authorName: string | null;
+	/** True when GitHub verified the commit signature. */
+	verified: boolean;
+	commentCount: number;
+	url: string;
+};
+
+export type RepoCommitsInput = {
+	owner: string;
+	repo: string;
+	/** Branch, tag or SHA. Omit for the default branch. */
+	ref?: string;
+	/** Only commits touching this file or directory. */
+	path?: string;
+	/** GitHub login or email address. */
+	author?: string;
+	/** Commit message search (uses the commit search API; default branch only). */
+	query?: string;
+	page?: number;
+	perPage?: number;
+};
+
+export type RepoCommitsPage = {
+	commits: RepoCommitSummary[];
+	hasNextPage: boolean;
+	/** True when `query` was served by GitHub's commit search (default branch index). */
+	searched: boolean;
+};
+
+export type RepoReleaseAsset = {
+	id: number;
+	name: string;
+	size: number;
+	downloadCount: number;
+	contentType: string;
+	downloadUrl: string;
+	updatedAt: string;
+};
+
+export type RepoRelease = {
+	id: number;
+	tagName: string;
+	/** Release title (GitHub falls back to the tag name when empty). */
+	name: string;
+	body: string;
+	isDraft: boolean;
+	isPrerelease: boolean;
+	isLatest: boolean;
+	createdAt: string;
+	publishedAt: string | null;
+	author: GitHubActor | null;
+	targetCommitish: string;
+	url: string;
+	tarballUrl: string | null;
+	zipballUrl: string | null;
+	assets: RepoReleaseAsset[];
+};
+
+export type RepoReleasesInput = {
+	owner: string;
+	repo: string;
+	page?: number;
+	perPage?: number;
+};
+
+export type RepoReleasesPage = {
+	releases: RepoRelease[];
+	hasNextPage: boolean;
+};
+
+export type RepoReleaseInput = {
+	owner: string;
+	repo: string;
+	tag: string;
+};
+
+export type SaveRepoReleaseInput = {
+	owner: string;
+	repo: string;
+	tagName: string;
+	/** Branch or SHA the tag is created from when the tag does not exist yet. */
+	targetCommitish?: string;
+	name: string;
+	body: string;
+	draft: boolean;
+	prerelease: boolean;
+	/** "true" marks it latest, "false" never, "legacy" lets GitHub decide by date/semver. */
+	makeLatest?: "true" | "false" | "legacy";
+};
+
+export type UpdateRepoReleaseInput = SaveRepoReleaseInput & {
+	releaseId: number;
+};
+
+export type SaveRepoReleaseResult =
+	| { ok: true; release: RepoRelease }
+	| { ok: false; error: string; installUrl?: string };
+
+export type GenerateReleaseNotesInput = {
+	owner: string;
+	repo: string;
+	tagName: string;
+	targetCommitish?: string;
+	previousTagName?: string;
+};
+
+export type GenerateReleaseNotesResult =
+	| { ok: true; name: string; body: string }
+	| { ok: false; error: string };
+
+export type RepoRefKind = "branches" | "tags";
+
+export type RepoRefNamesInput = {
+	owner: string;
+	repo: string;
+	kind: RepoRefKind;
+};
+
+export type RepoRefNames = {
+	names: string[];
+	/** True when the repo has more refs than the single page we load (100). */
+	truncated: boolean;
+};
+
+export type RepoBranchListItem = {
+	name: string;
+	commit: {
+		sha: string;
+		date: string | null;
+		author: GitHubActor | null;
+		authorName: string | null;
+	} | null;
+	pullRequest: {
+		number: number;
+		state: "OPEN" | "CLOSED" | "MERGED";
+		isDraft: boolean;
+		title: string;
+	} | null;
+};
+
+export type RepoBranchesListInput = {
+	owner: string;
+	repo: string;
+	/** Name filter (GitHub ref `query`). */
+	query?: string;
+	/** GraphQL cursor from the previous page. */
+	after?: string | null;
+};
+
+export type RepoBranchesListPage = {
+	/** Default branch tip, always included so the "Default" section renders on any page. */
+	defaultBranch: RepoBranchListItem | null;
+	branches: RepoBranchListItem[];
+	totalCount: number;
+	endCursor: string | null;
+	hasNextPage: boolean;
+};
+
+export type RepoTagListItem = {
+	name: string;
+	commitSha: string | null;
+	/** Tagger date for annotated tags, otherwise the commit date. */
+	date: string | null;
+	message: string | null;
+	tagger: GitHubActor | null;
+};
+
+export type RepoTagsListInput = {
+	owner: string;
+	repo: string;
+	query?: string;
+	after?: string | null;
+};
+
+export type RepoTagsListPage = {
+	tags: RepoTagListItem[];
+	totalCount: number;
+	endCursor: string | null;
+	hasNextPage: boolean;
+};
+
+export type RepoViewerPermission = {
+	/** GraphQL `viewerPermission` (ADMIN, MAINTAIN, WRITE, TRIAGE, READ) or null when unknown. */
+	permission: "ADMIN" | "MAINTAIN" | "WRITE" | "TRIAGE" | "READ" | null;
+	canPush: boolean;
+};
+
+export type RepoRefSplatInput = {
+	owner: string;
+	repo: string;
+	/** `/commits/$` splat: `ref[/path]` where ref may itself contain slashes. */
+	splat: string;
+};
+
+export type RepoRefSplatResolution = {
+	ref: string | null;
+	path: string;
+	/** Which namespace the ref was found in, or null when unresolved. */
+	kind: "branch" | "tag" | null;
+};

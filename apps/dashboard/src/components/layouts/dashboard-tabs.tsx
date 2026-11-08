@@ -6,6 +6,7 @@ import {
 	GitCommitIcon,
 	GitPullRequestIcon,
 	IssuesIcon,
+	PackageIcon,
 	Remove01Icon,
 	ReviewsIcon,
 } from "@diffkit/icons";
@@ -37,6 +38,8 @@ const tabIconMap = {
 	repo: ArchiveIcon,
 	commit: GitCommitIcon,
 	actions: ActionsIcon,
+	commits: GitCommitIcon,
+	releases: PackageIcon,
 } as const;
 
 function useScrollShadows(tabCount: number) {

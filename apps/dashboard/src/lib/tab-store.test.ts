@@ -26,6 +26,31 @@ describe("readStoredTabs", () => {
 		expect(readStoredTabs()).toEqual(storedTabs);
 	});
 
+	it("keeps persisted commits and releases tabs", () => {
+		const storedTabs: Tab[] = [
+			{
+				id: "commits:diffkit/app",
+				type: "commits",
+				title: "Commits · diffkit/app",
+				url: "/diffkit/app/commits",
+				repo: "diffkit/app",
+				iconColor: "text-muted-foreground",
+			},
+			{
+				id: "releases:diffkit/app",
+				type: "releases",
+				title: "Releases · diffkit/app",
+				url: "/diffkit/app/releases",
+				repo: "diffkit/app",
+				iconColor: "text-muted-foreground",
+			},
+		];
+
+		localStorage.setItem(TABS_STORAGE_KEY, JSON.stringify(storedTabs));
+
+		expect(readStoredTabs()).toEqual(storedTabs);
+	});
+
 	it("clears storage when a tab type is unsupported", () => {
 		localStorage.setItem(
 			TABS_STORAGE_KEY,

@@ -29,17 +29,24 @@ import {
 	getRecentPushableBranch,
 	getRefHeadCommit,
 	getRepoBranches,
+	getRepoBranchesList,
 	getRepoCollaborators,
 	getRepoCommit,
+	getRepoCommits,
 	getRepoContributors,
 	getRepoDiscussions,
 	getRepoFileContent,
 	getRepoLabels,
 	getRepoOverview,
 	getRepoParticipationStats,
+	getRepoRefNames,
+	getRepoRelease,
+	getRepoReleases,
 	getReposHub,
+	getRepoTagsList,
 	getRepoTemplate,
 	getRepoTree,
+	getRepoViewerPermission,
 	getReviewThreadStatuses,
 	getTimelineEventPage,
 	getTreeEntryCommits,
@@ -56,10 +63,20 @@ import {
 	listWorkflowRunArtifacts,
 	listWorkflowRunJobs,
 	type RepoTemplateKind,
+	resolveRepoRefSplat,
 	searchCommandPaletteGitHub,
 	type WorkflowRunListStatus,
 	workflowZipJobName,
 } from "./github.functions";
+import type {
+	RepoBranchesListInput,
+	RepoCommitsInput,
+	RepoRefNamesInput,
+	RepoRefSplatInput,
+	RepoReleaseInput,
+	RepoReleasesInput,
+	RepoTagsListInput,
+} from "./github.types";
 import { githubCachePolicy } from "./github-cache-policy";
 import {
 	adaptiveRefetchInterval,
@@ -378,6 +395,56 @@ export const githubQueryKeys = {
 				"workflowRunLogsBundle",
 				input,
 			] as const,
+	},
+	commits: {
+		list: (scope: GitHubQueryScope, input: RepoCommitsInput) =>
+			["github", scope.userId, "commits", "list", input] as const,
+	},
+	releases: {
+		/** Prefix for every release query of a repo — invalidate after mutations. */
+		repo: (scope: GitHubQueryScope, input: { owner: string; repo: string }) =>
+			["github", scope.userId, "releases", "repo", input] as const,
+		list: (scope: GitHubQueryScope, input: RepoReleasesInput) =>
+			[
+				"github",
+				scope.userId,
+				"releases",
+				"repo",
+				{ owner: input.owner, repo: input.repo },
+				"list",
+				input,
+			] as const,
+		detail: (scope: GitHubQueryScope, input: RepoReleaseInput) =>
+			[
+				"github",
+				scope.userId,
+				"releases",
+				"repo",
+				{ owner: input.owner, repo: input.repo },
+				"detail",
+				input,
+			] as const,
+		viewerPermission: (
+			scope: GitHubQueryScope,
+			input: { owner: string; repo: string },
+		) =>
+			["github", scope.userId, "releases", "viewerPermission", input] as const,
+	},
+	refs: {
+		names: (scope: GitHubQueryScope, input: RepoRefNamesInput) =>
+			["github", scope.userId, "refs", "names", input] as const,
+		branches: (
+			scope: GitHubQueryScope,
+			input: Omit<RepoBranchesListInput, "after">,
+		) => ["github", scope.userId, "refs", "branches", input] as const,
+		tags: (scope: GitHubQueryScope, input: Omit<RepoTagsListInput, "after">) =>
+			["github", scope.userId, "refs", "tags", input] as const,
+		comparison: (
+			scope: GitHubQueryScope,
+			input: { owner: string; repo: string; base: string; head: string },
+		) => ["github", scope.userId, "refs", "comparison", input] as const,
+		splat: (scope: GitHubQueryScope, input: RepoRefSplatInput) =>
+			["github", scope.userId, "refs", "splat", input] as const,
 	},
 	reviewDrafts: {
 		mine: (scope: GitHubQueryScope) =>
@@ -1144,6 +1211,147 @@ export function githubWorkflowRunLogsBundleQueryOptions(
 /** Re-exported so client code can compute the sanitized job-name lookup key
  *  the same way the server stores entries in the bundle. */
 export { workflowZipJobName };
+
+// ---------------------------------------------------------------------------
+// Repository commits, releases, branches and tags
+// ---------------------------------------------------------------------------
+
+export const REPO_COMMITS_PER_PAGE = 35;
+export const REPO_RELEASES_PER_PAGE = 10;
+
+export function githubRepoCommitsQueryOptions(
+	scope: GitHubQueryScope,
+	input: RepoCommitsInput,
+) {
+	return queryOptions({
+		queryKey: githubQueryKeys.commits.list(scope, input),
+		queryFn: () => getRepoCommits({ data: input }),
+		staleTime: githubCachePolicy.list.staleTimeMs,
+		gcTime: githubCachePolicy.list.gcTimeMs,
+		refetchOnWindowFocus: true,
+		meta: tabPersistedMeta,
+	});
+}
+
+export function githubRepoReleasesQueryOptions(
+	scope: GitHubQueryScope,
+	input: RepoReleasesInput,
+) {
+	return queryOptions({
+		queryKey: githubQueryKeys.releases.list(scope, input),
+		queryFn: () => getRepoReleases({ data: input }),
+		staleTime: githubCachePolicy.list.staleTimeMs,
+		gcTime: githubCachePolicy.list.gcTimeMs,
+		refetchOnWindowFocus: true,
+		meta: tabPersistedMeta,
+	});
+}
+
+export function githubRepoReleaseQueryOptions(
+	scope: GitHubQueryScope,
+	input: RepoReleaseInput,
+) {
+	return queryOptions({
+		queryKey: githubQueryKeys.releases.detail(scope, input),
+		queryFn: () => getRepoRelease({ data: input }),
+		staleTime: githubCachePolicy.detail.staleTimeMs,
+		gcTime: githubCachePolicy.detail.gcTimeMs,
+		refetchOnWindowFocus: true,
+		meta: tabPersistedMeta,
+	});
+}
+
+export function githubRepoViewerPermissionQueryOptions(
+	scope: GitHubQueryScope,
+	input: { owner: string; repo: string },
+) {
+	return queryOptions({
+		queryKey: githubQueryKeys.releases.viewerPermission(scope, input),
+		queryFn: () => getRepoViewerPermission({ data: input }),
+		staleTime: githubCachePolicy.repoMeta.staleTimeMs,
+		gcTime: githubCachePolicy.repoMeta.gcTimeMs,
+		meta: persistedMeta,
+	});
+}
+
+/** First 100 branch or tag names — feeds ref pickers. */
+export function githubRepoRefNamesQueryOptions(
+	scope: GitHubQueryScope,
+	input: RepoRefNamesInput,
+) {
+	return queryOptions({
+		queryKey: githubQueryKeys.refs.names(scope, input),
+		queryFn: () => getRepoRefNames({ data: input }),
+		staleTime: githubCachePolicy.repoMeta.staleTimeMs,
+		gcTime: githubCachePolicy.repoMeta.gcTimeMs,
+		meta: persistedMeta,
+	});
+}
+
+export function githubRepoBranchesListInfiniteQueryOptions(
+	scope: GitHubQueryScope,
+	input: Omit<RepoBranchesListInput, "after">,
+) {
+	return infiniteQueryOptions({
+		queryKey: githubQueryKeys.refs.branches(scope, input),
+		queryFn: ({ pageParam }) =>
+			getRepoBranchesList({ data: { ...input, after: pageParam } }),
+		initialPageParam: null as string | null,
+		getNextPageParam: (lastPage) =>
+			lastPage.hasNextPage ? lastPage.endCursor : undefined,
+		staleTime: githubCachePolicy.list.staleTimeMs,
+		gcTime: githubCachePolicy.list.gcTimeMs,
+		refetchOnWindowFocus: true,
+	});
+}
+
+export function githubRepoTagsListInfiniteQueryOptions(
+	scope: GitHubQueryScope,
+	input: Omit<RepoTagsListInput, "after">,
+) {
+	return infiniteQueryOptions({
+		queryKey: githubQueryKeys.refs.tags(scope, input),
+		queryFn: ({ pageParam }) =>
+			getRepoTagsList({ data: { ...input, after: pageParam } }),
+		initialPageParam: null as string | null,
+		getNextPageParam: (lastPage) =>
+			lastPage.hasNextPage ? lastPage.endCursor : undefined,
+		staleTime: githubCachePolicy.list.staleTimeMs,
+		gcTime: githubCachePolicy.list.gcTimeMs,
+		refetchOnWindowFocus: true,
+	});
+}
+
+/**
+ * Ahead/behind for one branch on the branches page. Each visible row owns one
+ * of these, so the page issues at most one compare call per rendered row; the
+ * longer stale time keeps window-focus refetches from re-running all of them.
+ */
+export function githubRepoRefComparisonQueryOptions(
+	scope: GitHubQueryScope,
+	input: { owner: string; repo: string; base: string; head: string },
+) {
+	return queryOptions({
+		queryKey: githubQueryKeys.refs.comparison(scope, input),
+		queryFn: () => getBranchComparison({ data: input }),
+		staleTime: githubCachePolicy.reposList.staleTimeMs,
+		gcTime: githubCachePolicy.list.gcTimeMs,
+	});
+}
+
+/** Splits a slashed `/commits/$` splat into ref + path (one cached GraphQL call). */
+export function githubRepoRefSplatQueryOptions(
+	scope: GitHubQueryScope,
+	input: RepoRefSplatInput,
+) {
+	return queryOptions({
+		queryKey: githubQueryKeys.refs.splat(scope, input),
+		queryFn: () => resolveRepoRefSplat({ data: input }),
+		staleTime: githubCachePolicy.repoMeta.staleTimeMs,
+		gcTime: githubCachePolicy.repoMeta.gcTimeMs,
+		meta: persistedMeta,
+	});
+}
 
 /**
  * Viewer's pending (unsubmitted) reviews. Deliberately not persisted: draft

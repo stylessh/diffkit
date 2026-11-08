@@ -9,7 +9,7 @@ import {
 	UserCircleIcon,
 } from "@diffkit/icons";
 import { type QueryClient, useQueryClient } from "@tanstack/react-query";
-import { getRouteApi } from "@tanstack/react-router";
+import { getRouteApi, useParams } from "@tanstack/react-router";
 import { useSyncExternalStore } from "react";
 import type { GitHubQueryScope } from "#/lib/github.query";
 import { githubQueryKeys } from "#/lib/github.query";
@@ -22,6 +22,7 @@ import type {
 	UserRepoSummary,
 } from "#/lib/github.types";
 import { getRegisteredCommands, subscribeCommands } from "./registry";
+import { getRepoSectionCommands } from "./repo-commands";
 import type { CommandItem } from "./types";
 import { useRefreshGitHubData } from "./use-refresh-github-data";
 
@@ -77,6 +78,14 @@ export function useCommandItems(): CommandItem[] {
 	const viewer = queryClient.getQueryData<{ login: string } | null>(
 		githubQueryKeys.viewer(scope),
 	);
+	const routeParams = useParams({ strict: false }) as {
+		owner?: string;
+		repo?: string;
+	};
+	const repoItems =
+		routeParams.owner && routeParams.repo
+			? getRepoSectionCommands(routeParams.owner, routeParams.repo)
+			: [];
 
 	const dynamicItems: CommandItem[] = [
 		{
@@ -210,7 +219,7 @@ export function useCommandItems(): CommandItem[] {
 		return bTime.localeCompare(aTime);
 	});
 
-	return [...staticCommands, ...dynamicItems];
+	return [...staticCommands, ...repoItems, ...dynamicItems];
 }
 
 export function getCommandSearchItems(

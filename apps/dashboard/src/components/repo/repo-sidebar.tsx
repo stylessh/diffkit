@@ -1,4 +1,10 @@
-import { GitBranchIcon, GitForkIcon, StarIcon, ViewIcon } from "@diffkit/icons";
+import {
+	GitBranchIcon,
+	GitForkIcon,
+	PackageIcon,
+	StarIcon,
+	ViewIcon,
+} from "@diffkit/icons";
 import { Badge } from "@diffkit/ui/components/badge";
 import {
 	Tooltip,
@@ -12,6 +18,7 @@ import {
 	DetailSidebarRow,
 	DetailSidebarSection,
 } from "#/components/details/detail-sidebar";
+import { TagIcon } from "#/components/repo/refs/tag-icon";
 import {
 	type GitHubQueryScope,
 	githubRepoContributorsQueryOptions,
@@ -69,7 +76,31 @@ export function RepoSidebar({
 					{formatCount(repo.forks)}
 				</DetailSidebarRow>
 				<DetailSidebarRow icon={GitBranchIcon} label="Branches">
-					{repo.branchCount}
+					<Link
+						to="/$owner/$repo/branches"
+						params={{ owner: repo.owner, repo: repo.name }}
+						className="hover:underline"
+					>
+						{repo.branchCount}
+					</Link>
+				</DetailSidebarRow>
+				<DetailSidebarRow icon={TagIcon} label="Tags">
+					<Link
+						to="/$owner/$repo/tags"
+						params={{ owner: repo.owner, repo: repo.name }}
+						className="hover:underline"
+					>
+						{repo.tagCount}
+					</Link>
+				</DetailSidebarRow>
+				<DetailSidebarRow icon={PackageIcon} label="Releases">
+					<Link
+						to="/$owner/$repo/releases"
+						params={{ owner: repo.owner, repo: repo.name }}
+						className="hover:underline"
+					>
+						View
+					</Link>
 				</DetailSidebarRow>
 			</DetailSidebarSection>
 

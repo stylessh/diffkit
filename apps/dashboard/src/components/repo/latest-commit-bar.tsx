@@ -13,6 +13,7 @@ import {
 	githubRefHeadCommitQueryOptions,
 } from "#/lib/github.query";
 import type { RepoOverview } from "#/lib/github.types";
+import { CommitHistoryLink } from "./commits/commit-history-link";
 
 export function LatestCommitBar({
 	owner,
@@ -21,6 +22,7 @@ export function LatestCommitBar({
 	scope,
 	defaultBranch,
 	defaultBranchTip,
+	path,
 }: {
 	owner: string;
 	repoName: string;
@@ -28,6 +30,8 @@ export function LatestCommitBar({
 	scope: GitHubQueryScope;
 	defaultBranch: string;
 	defaultBranchTip: RepoOverview["latestCommit"];
+	/** Directory being browsed — scopes the History link. */
+	path?: string;
 }) {
 	const tipQuery = useQuery({
 		...githubRefHeadCommitQueryOptions(scope, {
@@ -93,6 +97,13 @@ export function LatestCommitBar({
 					</TooltipContent>
 				</Tooltip>
 				<span>{formatRelativeTime(commit.date)}</span>
+				<CommitHistoryLink
+					owner={owner}
+					repo={repoName}
+					ref={ref}
+					path={path}
+					className="-mr-1.5"
+				/>
 			</div>
 		</div>
 	);
