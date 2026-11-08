@@ -33,7 +33,6 @@ export {
 export {
 	getFileLastCommit,
 	getRefHeadCommit,
-	getRepoFileContent,
 	getRepoTree,
 	getTreeEntryCommits,
 } from "./github/code";

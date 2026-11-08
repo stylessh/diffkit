@@ -57,6 +57,7 @@ user.
 | `concurrent/overview` | home summary and navigation into a pull request |
 | `concurrent/pull-requests` | queues, author filter persisted in the `diffkit-filters` cookie, pull request detail, the diff page with review threads |
 | `concurrent/issues` | issue queue and issue detail |
+| `concurrent/code-browsing` | folder view, `t` file finder, `#L` line links, blame with its commit card, in-repository code search |
 | `concurrent/repository` | commits, branches and releases pages |
 | `concurrent/compare` | the compare page's recent-branch chooser and owner-qualified (`owner:branch`) head |
 | `isolated/auth` | protected redirect, sign-in through the emulator, sign-out |

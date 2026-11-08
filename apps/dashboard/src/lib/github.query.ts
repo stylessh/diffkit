@@ -1,5 +1,12 @@
 /** Compatibility barrel: existing "#/lib/github.query" imports resolve to the split modules. */
 
+export {
+	githubRepoBlameQueryOptions,
+	githubRepoBlobQueryOptions,
+	githubRepoCodeSearchQueryOptions,
+	githubRepoGitTreeQueryOptions,
+	githubRepoTreeIndexQueryOptions,
+} from "./github/code-browsing-query-options";
 export type {
 	GitHubQueryScope,
 	IssueFromRepoQueryInput,
@@ -55,7 +62,6 @@ export {
 	githubRepoCommitsQueryOptions,
 	githubRepoContributorsQueryOptions,
 	githubRepoDiscussionsQueryOptions,
-	githubRepoFileContentQueryOptions,
 	githubRepoLabelsQueryOptions,
 	githubRepoMilestonesQueryOptions,
 	githubRepoOverviewQueryOptions,

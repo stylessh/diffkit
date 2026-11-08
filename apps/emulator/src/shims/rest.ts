@@ -8,6 +8,7 @@ import { commitsBetween } from "../graphql/git.ts";
 import { DEMO_GITHUB_APP } from "../seed/identity.ts";
 import type { ShimContext } from "../server.ts";
 import type { CommitStatusRow } from "../store-extras.ts";
+import { registerCodeSearchTextMatches } from "./code-search.ts";
 import {
 	apiRepoJson,
 	apiUserJson,
@@ -272,6 +273,7 @@ export function registerRestShims(context: ShimContext) {
 	const { app, baseUrl } = context;
 
 	registerSearchRoute(context);
+	registerCodeSearchTextMatches(context);
 
 	app.get("/_diffkit/health", (c) =>
 		json(c, {
