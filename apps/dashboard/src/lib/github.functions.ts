@@ -10190,27 +10190,6 @@ export const markAllNotificationsRead = createServerFn({
 	return { ok: true };
 });
 
-type ClearViewerCacheResult = {
-	ok: boolean;
-	deletedDbRows: number;
-	deletedKvKeys: number;
-};
-
-export const clearViewerGitHubCache = createServerFn({
-	method: "POST",
-}).handler(async (): Promise<ClearViewerCacheResult> => {
-	const { getRequestSession } = await import("./auth-runtime");
-	const session = await getRequestSession();
-	if (!session) {
-		return { ok: false, deletedDbRows: 0, deletedKvKeys: 0 };
-	}
-
-	const { clearAllGitHubCacheForUser } = await import("./github-cache");
-	const result = await clearAllGitHubCacheForUser(session.user.id);
-
-	return { ok: true, ...result };
-});
-
 export type WorkflowRunInput = {
 	owner: string;
 	repo: string;

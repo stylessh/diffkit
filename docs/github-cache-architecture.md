@@ -1,5 +1,12 @@
 # GitHub Cache Architecture
 
+> **Removed (2026-11-08).** The D1/KV response cache, revalidation signals,
+> cache namespaces and webhook event log described below no longer exist. They
+> filled the production D1 database to its 10 GB limit and broke sign-in; see
+> [platform-plan.md, Incidents](./platform-plan.md#incidents). Server reads now
+> go straight to GitHub. This document is kept as a record of the old design
+> until the replacement data-fetching strategy is written up.
+
 This document describes the GitHub caching and rate-limit architecture currently
 implemented in the dashboard app.
 
