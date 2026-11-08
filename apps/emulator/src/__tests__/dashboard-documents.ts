@@ -3,11 +3,11 @@
  * shim is always tested against the exact text DiffKit sends. Dynamic
  * documents are rendered by evaluating their own template literals.
  */
-import { readFileSync } from "node:fs";
+import { readdirSync, readFileSync } from "node:fs";
 import ts from "typescript";
 
-export const GITHUB_FUNCTIONS_PATH = new URL(
-	"../../../dashboard/src/lib/github.functions.ts",
+const GITHUB_MODULES_DIR = new URL(
+	"../../../dashboard/src/lib/github/",
 	import.meta.url,
 );
 
@@ -36,14 +36,18 @@ function enclosingName(node: ts.Node): string {
 	return "anonymous";
 }
 
-function loadSource() {
-	const text = readFileSync(GITHUB_FUNCTIONS_PATH, "utf8");
-	return ts.createSourceFile(
-		"github.functions.ts",
-		text,
-		ts.ScriptTarget.Latest,
-		true,
-	);
+function loadSources() {
+	return readdirSync(GITHUB_MODULES_DIR)
+		.filter((file) => file.endsWith(".ts") && !file.endsWith(".test.ts"))
+		.sort()
+		.map((file) =>
+			ts.createSourceFile(
+				file,
+				readFileSync(new URL(file, GITHUB_MODULES_DIR), "utf8"),
+				ts.ScriptTarget.Latest,
+				true,
+			),
+		);
 }
 
 function templateText(node: ts.TemplateLiteral, source: ts.SourceFile) {
@@ -51,7 +55,10 @@ function templateText(node: ts.TemplateLiteral, source: ts.SourceFile) {
 }
 
 export function extractDocuments(): ExtractedDocument[] {
-	const source = loadSource();
+	return loadSources().flatMap(extractDocumentsFrom);
+}
+
+function extractDocumentsFrom(source: ts.SourceFile): ExtractedDocument[] {
 	const documents: ExtractedDocument[] = [];
 	const visit = (node: ts.Node) => {
 		if (
@@ -74,11 +81,21 @@ export function extractDocuments(): ExtractedDocument[] {
 	return documents;
 }
 
-/** Every template literal in the file, for rendering dynamic fragments. */
+/** Every template literal in the modules, for rendering dynamic fragments. */
 function allTemplates() {
-	const source = loadSource();
 	const templates: string[] = [];
 	const constants = new Map<string, unknown>();
+	for (const source of loadSources()) {
+		collectTemplates(source, templates, constants);
+	}
+	return { templates, constants };
+}
+
+function collectTemplates(
+	source: ts.SourceFile,
+	templates: string[],
+	constants: Map<string, unknown>,
+) {
 	const visit = (node: ts.Node) => {
 		if (
 			ts.isNoSubstitutionTemplateLiteral(node) ||
@@ -106,7 +123,6 @@ function allTemplates() {
 		ts.forEachChild(node, visit);
 	};
 	visit(source);
-	return { templates, constants };
 }
 
 export function renderTemplate(

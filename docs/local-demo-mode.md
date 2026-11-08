@@ -78,12 +78,16 @@ Everything is gated on one dev var, `GITHUB_EMULATOR_URL`
 It throws in production builds (`import.meta.env.PROD`) and for non-localhost
 URLs. Unset, nothing changes.
 
-`pnpm dev:demo` (`scripts/dev-demo.mjs`) applies D1 migrations to
-`apps/dashboard/.wrangler/demo-state`, starts the emulator, waits for
-`/_diffkit/health`, then runs the dashboard with `CLOUDFLARE_ENV=demo`. That
-selects the `demo` environment in the committed `wrangler.demo.jsonc` (local
-D1/KV/R2 only) and makes Wrangler load the committed `.dev.vars.demo` **instead
-of** your `.dev.vars`, which is never read or touched.
+`pnpm dev:demo` (`scripts/dev-demo.mjs`) checks that ports 3000 and 4001 are
+free, applies D1 migrations to `apps/dashboard/.wrangler/demo-state`, starts the
+emulator, waits for `/_diffkit/health`, runs the dashboard with
+`CLOUDFLARE_ENV=demo` and makes the first request to `/login`. If any step or
+process fails, everything it started is stopped. See
+[local-dev.md](local-dev.md#when-something-is-off) for the error messages.
+`CLOUDFLARE_ENV=demo` selects the `demo` environment in the committed
+`wrangler.demo.jsonc` (local D1/KV/R2 only) and makes Wrangler load the
+committed `.dev.vars.demo` **instead of** your `.dev.vars`, which is never read
+or touched.
 
 `.dev.vars.demo` holds throwaway credentials, including a demo-only GitHub App
 private key; they only work against the local emulator. A test keeps them in

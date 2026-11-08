@@ -2,9 +2,8 @@
   "name": "diffkit",
   "private": true,
   "scripts": {
-    "predev": "node scripts/link-worktree-dev-vars.mjs",
     "build": "turbo run build",
-    "dev": "turbo run dev",
+    "dev": "node scripts/dev.mjs",
     "dev:demo": "node scripts/dev-demo.mjs",
     "lint": "turbo run lint",
     "check": "turbo run check",
