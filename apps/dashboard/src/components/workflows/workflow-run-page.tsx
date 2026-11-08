@@ -12,15 +12,12 @@ import {
 	StaggerItem,
 } from "#/components/details/detail-page";
 import {
-	githubQueryKeys,
 	githubViewerQueryOptions,
 	githubWorkflowDefinitionQueryOptions,
 	githubWorkflowRunArtifactsQueryOptions,
 	githubWorkflowRunJobsQueryOptions,
 	githubWorkflowRunQueryOptions,
 } from "#/lib/github.query";
-import { githubRevalidationSignalKeys } from "#/lib/github-revalidation";
-import { useGitHubSignalStream } from "#/lib/use-github-signal-stream";
 import { useHasMounted } from "#/lib/use-has-mounted";
 import { useRegisterTab } from "#/lib/use-register-tab";
 import { WorkflowRunArtifacts } from "./workflow-run-artifacts";
@@ -43,25 +40,6 @@ export function WorkflowRunPage() {
 		[owner, repo, runIdNum],
 	);
 	const hasMounted = useHasMounted();
-
-	const webhookRefreshTargets = useMemo(() => {
-		const runSignals = [githubRevalidationSignalKeys.workflowRunEntity(input)];
-		return [
-			{
-				queryKey: githubQueryKeys.actions.workflowRun(scope, input),
-				signalKeys: runSignals,
-			},
-			{
-				queryKey: githubQueryKeys.actions.workflowRunJobs(scope, input),
-				signalKeys: runSignals,
-			},
-			{
-				queryKey: githubQueryKeys.actions.workflowRunArtifacts(scope, input),
-				signalKeys: runSignals,
-			},
-		];
-	}, [scope, input]);
-	useGitHubSignalStream(webhookRefreshTargets);
 
 	const runQuery = useQuery({
 		...githubWorkflowRunQueryOptions(scope, input),

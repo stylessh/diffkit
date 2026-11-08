@@ -14,8 +14,6 @@ import {
 	githubReviewThreadStatusesQueryOptions,
 	githubViewerQueryOptions,
 } from "#/lib/github.query";
-import { githubRevalidationSignalKeys } from "#/lib/github-revalidation";
-import { useGitHubSignalStream } from "#/lib/use-github-signal-stream";
 import { useHasMounted } from "#/lib/use-has-mounted";
 import { usePageTitle } from "#/lib/use-page-title";
 import { useRegisterTab } from "#/lib/use-register-tab";
@@ -66,29 +64,6 @@ export function PullDetailContent({
 		() => githubQueryKeys.pulls.page(scope, input),
 		[scope, input],
 	);
-	const webhookRefreshTargets = useMemo(
-		() => [
-			{
-				queryKey: pageQueryKey,
-				signalKeys: [githubRevalidationSignalKeys.pullEntity(input)],
-			},
-			{
-				queryKey: githubQueryKeys.pulls.status(scope, input),
-				signalKeys: [
-					githubRevalidationSignalKeys.pullEntity(input),
-					githubRevalidationSignalKeys.repoProtection({
-						owner: input.owner,
-						repo: input.repo,
-					}),
-					githubRevalidationSignalKeys.repoStatuses({
-						owner: input.owner,
-						repo: input.repo,
-					}),
-				],
-			},
-		],
-		[pageQueryKey, scope, input],
-	);
 
 	const pageQuery = useQuery({
 		...githubPullPageQueryOptions(scope, input),
@@ -106,7 +81,6 @@ export function PullDetailContent({
 		...githubReviewThreadStatusesQueryOptions(scope, input),
 		enabled: hasMounted && !!pageQuery.data,
 	});
-	useGitHubSignalStream(webhookRefreshTargets);
 
 	const threadInfoByCommentId = useMemo(() => {
 		const map = new Map<number, { threadId: string; isResolved: boolean }>();

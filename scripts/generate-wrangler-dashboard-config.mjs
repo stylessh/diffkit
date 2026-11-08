@@ -49,10 +49,12 @@ const config = {
     logs: { enabled: true, invocation_logs: true },
     traces: { enabled: false },
   },
-  durable_objects: {
-    bindings: [{ name: "SIGNAL_RELAY", class_name: "SignalRelay" }],
-  },
-  migrations: [{ tag: "v1", new_classes: ["SignalRelay"] }],
+  // SignalRelay Durable Object was removed; v2 deletes the class on Workers
+  // that already applied v1. Keep both tags.
+  migrations: [
+    { tag: "v1", new_classes: ["SignalRelay"] },
+    { tag: "v2", deleted_classes: ["SignalRelay"] },
+  ],
   name,
   d1_databases: [
     {

@@ -114,12 +114,10 @@ import type {
 	TimelineEvent,
 } from "#/lib/github.types";
 import { removePullFromOpenViews } from "#/lib/github-query-updates";
-import { githubRevalidationSignalKeys } from "#/lib/github-revalidation";
 import {
 	mergeIssueStateIntoCloseEvent,
 	parseCloseReason,
 } from "#/lib/timeline-close-reason";
-import { useGitHubSignalStream } from "#/lib/use-github-signal-stream";
 import { usePrefersNoHover } from "#/lib/use-prefers-no-hover";
 import { checkPermissionWarning } from "#/lib/warning-store";
 
@@ -347,41 +345,9 @@ function MergeStatusSection({
 		() => ({ owner, repo, pullNumber }),
 		[owner, repo, pullNumber],
 	);
-	const statusQueryKey = useMemo(
-		() => githubQueryKeys.pulls.status(scope, input),
-		[scope, input],
-	);
 	const statusQuery = useQuery({
 		...githubPullStatusQueryOptions(scope, input),
 	});
-	const workflowStatusRefreshTargets = useMemo(
-		() => [
-			{
-				queryKey: statusQueryKey,
-				signalKeys: [
-					githubRevalidationSignalKeys.pullEntity(input),
-					githubRevalidationSignalKeys.repoProtection({
-						owner: input.owner,
-						repo: input.repo,
-					}),
-					githubRevalidationSignalKeys.repoStatuses({
-						owner: input.owner,
-						repo: input.repo,
-					}),
-					...(statusQuery.data?.pendingWorkflowApprovals ?? []).map(
-						(approval) =>
-							githubRevalidationSignalKeys.workflowRunEntity({
-								owner: input.owner,
-								repo: input.repo,
-								runId: approval.workflowRunId,
-							}),
-					),
-				],
-			},
-		],
-		[input, statusQuery.data?.pendingWorkflowApprovals, statusQueryKey],
-	);
-	useGitHubSignalStream(workflowStatusRefreshTargets);
 
 	const status = statusQuery.data ?? null;
 

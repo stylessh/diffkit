@@ -16,7 +16,6 @@ import type {
 	GitHubActor,
 	GitHubContributionCalendar,
 	GitHubLabel,
-	GitHubLocalFirstMeta,
 	GitHubUserProfile,
 	IssueComment,
 	IssueDetail,
@@ -85,13 +84,11 @@ import {
 import { getGitHubAppSlug } from "./github-app.server";
 import { shouldReauthorizeGitHubApp } from "./github-auth-errors";
 import {
-	type BackgroundExecutionContext,
 	bumpGitHubCacheNamespaces,
 	bustGitHubCache,
 	createGitHubResponseMetadata,
 	type GitHubConditionalHeaders,
 	type GitHubFetchResult,
-	getGitHubResourceLocalFirst,
 	getOrRevalidateGitHubResource,
 	markGitHubRevalidationSignals,
 } from "./github-cache";
@@ -129,54 +126,6 @@ type GitHubRestResponse<TData> = {
 	headers: Record<string, unknown>;
 	status: number;
 };
-
-function getBackgroundExecutionContext(
-	value: unknown,
-): BackgroundExecutionContext | null {
-	if (
-		value &&
-		typeof value === "object" &&
-		"waitUntil" in value &&
-		typeof value.waitUntil === "function"
-	) {
-		return value as BackgroundExecutionContext;
-	}
-
-	if (
-		value &&
-		typeof value === "object" &&
-		"cloudflare" in value &&
-		value.cloudflare &&
-		typeof value.cloudflare === "object" &&
-		"ctx" in value.cloudflare &&
-		value.cloudflare.ctx &&
-		typeof value.cloudflare.ctx === "object" &&
-		"waitUntil" in value.cloudflare.ctx &&
-		typeof value.cloudflare.ctx.waitUntil === "function"
-	) {
-		return value.cloudflare.ctx as BackgroundExecutionContext;
-	}
-
-	return null;
-}
-
-function withLocalFirstMeta<T extends object>(
-	data: T,
-	meta: GitHubLocalFirstMeta,
-): T {
-	return { ...data, __meta: meta };
-}
-
-async function broadcastLocalFirstSignalKeys(signalKeys: string[]) {
-	if (signalKeys.length === 0) {
-		return;
-	}
-
-	const { broadcastSignalKeys } = await import(
-		"./signal-relay-broadcast.server"
-	);
-	await broadcastSignalKeys(signalKeys);
-}
 
 type SearchItem = Awaited<
 	ReturnType<GitHubClient["rest"]["search"]["issuesAndPullRequests"]>
@@ -4138,7 +4087,6 @@ async function getPullStatusResult(
 	context: GitHubContext,
 	data: PullFromRepoInput,
 	pull?: RepoPullDetail,
-	executionContext?: BackgroundExecutionContext | null,
 ): Promise<PullStatus> {
 	const pullNamespaceKey = githubRevalidationSignalKeys.pullEntity({
 		owner: data.owner,
@@ -4154,7 +4102,7 @@ async function getPullStatusResult(
 		repo: data.repo,
 	});
 
-	const result = await getGitHubResourceLocalFirst<PullStatus>({
+	return getOrRevalidateGitHubResource<PullStatus>({
 		userId: context.session.user.id,
 		resource: "pulls.status.v3",
 		params: data,
@@ -4162,13 +4110,6 @@ async function getPullStatusResult(
 		signalKeys: [pullNamespaceKey, repoStatusesKey, repoProtectionKey],
 		namespaceKeys: [pullNamespaceKey],
 		cacheMode: "split",
-		executionContext,
-		onBackgroundRefreshSettled: () =>
-			broadcastLocalFirstSignalKeys([
-				pullNamespaceKey,
-				repoStatusesKey,
-				repoProtectionKey,
-			]),
 		fetcher: async () => {
 			const pullForStatus =
 				pull ??
@@ -4190,14 +4131,11 @@ async function getPullStatusResult(
 			};
 		},
 	});
-
-	return withLocalFirstMeta(result.data, result.meta);
 }
 
 async function getPullPageDataViaGraphQL(
 	context: GitHubContext,
 	data: PullFromRepoInput,
-	executionContext?: BackgroundExecutionContext | null,
 ): Promise<PullPageData> {
 	const pullNamespaceKey = githubRevalidationSignalKeys.pullEntity({
 		owner: data.owner,
@@ -4205,7 +4143,7 @@ async function getPullPageDataViaGraphQL(
 		pullNumber: data.pullNumber,
 	});
 
-	const result = await getGitHubResourceLocalFirst<PullPageData>({
+	return getOrRevalidateGitHubResource<PullPageData>({
 		userId: context.session.user.id,
 		resource: "pulls.pageData.graphql.v2",
 		params: data,
@@ -4213,9 +4151,6 @@ async function getPullPageDataViaGraphQL(
 		signalKeys: [pullNamespaceKey],
 		namespaceKeys: [pullNamespaceKey],
 		cacheMode: "split",
-		executionContext,
-		onBackgroundRefreshSettled: () =>
-			broadcastLocalFirstSignalKeys([pullNamespaceKey]),
 		fetcher: async () => {
 			const viewerPromise = getGitHubUserContextForRepository({
 				owner: data.owner,
@@ -4389,8 +4324,6 @@ async function getPullPageDataViaGraphQL(
 			};
 		},
 	});
-
-	return withLocalFirstMeta(result.data, result.meta);
 }
 
 async function getPullPageDataViaRest(
@@ -4447,10 +4380,9 @@ async function getPullPageDataViaRest(
 async function getPullPageDataResult(
 	context: GitHubContext,
 	data: PullFromRepoInput,
-	executionContext?: BackgroundExecutionContext | null,
 ): Promise<PullPageData> {
 	try {
-		return await getPullPageDataViaGraphQL(context, data, executionContext);
+		return await getPullPageDataViaGraphQL(context, data);
 	} catch (error) {
 		console.error("[pull-page:gql] failed, falling back to REST", error);
 		return getPullPageDataViaRest(context, data);
@@ -4541,7 +4473,6 @@ async function getIssueCommentsResult(
 async function getIssuePageDataViaGraphQL(
 	context: GitHubContext,
 	data: IssueFromRepoInput,
-	executionContext?: BackgroundExecutionContext | null,
 ): Promise<IssuePageData> {
 	const issueNamespaceKey = githubRevalidationSignalKeys.issueEntity({
 		owner: data.owner,
@@ -4549,7 +4480,7 @@ async function getIssuePageDataViaGraphQL(
 		issueNumber: data.issueNumber,
 	});
 
-	const result = await getGitHubResourceLocalFirst<IssuePageData>({
+	return getOrRevalidateGitHubResource<IssuePageData>({
 		userId: context.session.user.id,
 		resource: "issues.pageData.graphql.v2",
 		params: data,
@@ -4557,9 +4488,6 @@ async function getIssuePageDataViaGraphQL(
 		signalKeys: [issueNamespaceKey],
 		namespaceKeys: [issueNamespaceKey],
 		cacheMode: "split",
-		executionContext,
-		onBackgroundRefreshSettled: () =>
-			broadcastLocalFirstSignalKeys([issueNamespaceKey]),
 		fetcher: async () => {
 			const viewerPromise = getGitHubUserContextForRepository({
 				owner: data.owner,
@@ -4693,8 +4621,6 @@ async function getIssuePageDataViaGraphQL(
 			};
 		},
 	});
-
-	return withLocalFirstMeta(result.data, result.meta);
 }
 
 async function getIssuePageDataViaRest(
@@ -4743,10 +4669,9 @@ async function getIssuePageDataViaRest(
 async function getIssuePageDataResult(
 	context: GitHubContext,
 	data: IssueFromRepoInput,
-	executionContext?: BackgroundExecutionContext | null,
 ): Promise<IssuePageData> {
 	try {
-		return await getIssuePageDataViaGraphQL(context, data, executionContext);
+		return await getIssuePageDataViaGraphQL(context, data);
 	} catch (error) {
 		console.error("[issue-page:gql] failed, falling back to REST", error);
 		return getIssuePageDataViaRest(context, data);
@@ -5058,13 +4983,11 @@ function buildSourceSearchQuery({
 async function getMyPullsResult({
 	context,
 	username,
-	executionContext,
 }: {
 	context: GitHubContext;
 	username: string;
-	executionContext?: BackgroundExecutionContext | null;
 }) {
-	const result = await getGitHubResourceLocalFirst<MyPullsResult>({
+	return getOrRevalidateGitHubResource<MyPullsResult>({
 		userId: context.session.user.id,
 		resource: "pulls.mine.graphql.v2",
 		params: { username },
@@ -5075,9 +4998,6 @@ async function getMyPullsResult({
 		],
 		namespaceKeys: [githubRevalidationSignalKeys.pullsMine],
 		cacheMode: "split",
-		executionContext,
-		onBackgroundRefreshSettled: () =>
-			broadcastLocalFirstSignalKeys([githubRevalidationSignalKeys.pullsMine]),
 		merge: mergeMyPullsCachedWithFresh,
 		fetcher: async () => {
 			const deadlineAt = Date.now() + MY_SEARCH_TOTAL_TIMEOUT_MS;
@@ -5257,20 +5177,16 @@ async function getMyPullsResult({
 			};
 		},
 	});
-
-	return withLocalFirstMeta(result.data, result.meta);
 }
 
 async function getMyIssuesResult({
 	context,
 	username,
-	executionContext,
 }: {
 	context: GitHubContext;
 	username: string;
-	executionContext?: BackgroundExecutionContext | null;
 }) {
-	const result = await getGitHubResourceLocalFirst<MyIssuesResult>({
+	return getOrRevalidateGitHubResource<MyIssuesResult>({
 		userId: context.session.user.id,
 		resource: "issues.mine.graphql.v2",
 		params: { username },
@@ -5281,9 +5197,6 @@ async function getMyIssuesResult({
 		],
 		namespaceKeys: [githubRevalidationSignalKeys.issuesMine],
 		cacheMode: "split",
-		executionContext,
-		onBackgroundRefreshSettled: () =>
-			broadcastLocalFirstSignalKeys([githubRevalidationSignalKeys.issuesMine]),
 		merge: mergeMyIssuesCachedWithFresh,
 		fetcher: async () => {
 			const deadlineAt = Date.now() + MY_SEARCH_TOTAL_TIMEOUT_MS;
@@ -5438,8 +5351,6 @@ async function getMyIssuesResult({
 			};
 		},
 	});
-
-	return withLocalFirstMeta(result.data, result.meta);
 }
 
 function identityValidator<TInput>(data: TInput) {
@@ -5917,7 +5828,7 @@ function toInstallationTargetType(
 }
 
 export const getMyPulls = createServerFn({ method: "GET" }).handler(
-	async ({ context: requestContext }): Promise<MyPullsResult> => {
+	async (): Promise<MyPullsResult> => {
 		const context = await getGitHubContext();
 		if (!context) {
 			return {
@@ -5934,7 +5845,6 @@ export const getMyPulls = createServerFn({ method: "GET" }).handler(
 			getMyPullsResult({
 				context,
 				username: viewer.login,
-				executionContext: getBackgroundExecutionContext(requestContext),
 			}),
 			getInstallationAccessIndex(context),
 		]);
@@ -6089,7 +5999,7 @@ export const getPullComments = createServerFn({ method: "GET" })
 	});
 
 export const getMyIssues = createServerFn({ method: "GET" }).handler(
-	async ({ context: requestContext }): Promise<MyIssuesResult> => {
+	async (): Promise<MyIssuesResult> => {
 		const context = await getGitHubContext();
 		if (!context) {
 			return {
@@ -6104,7 +6014,6 @@ export const getMyIssues = createServerFn({ method: "GET" }).handler(
 			getMyIssuesResult({
 				context,
 				username: viewer.login,
-				executionContext: getBackgroundExecutionContext(requestContext),
 			}),
 			getInstallationAccessIndex(context),
 		]);
@@ -6235,58 +6144,36 @@ export const getIssueComments = createServerFn({ method: "GET" })
 
 export const getIssuePageData = createServerFn({ method: "GET" })
 	.inputValidator(identityValidator<IssueFromRepoInput>)
-	.handler(
-		async ({
-			data,
-			context: requestContext,
-		}): Promise<IssuePageData | null> => {
-			const context = await getGitHubContextForRepository(data);
-			if (!context) {
-				return null;
-			}
+	.handler(async ({ data }): Promise<IssuePageData | null> => {
+		const context = await getGitHubContextForRepository(data);
+		if (!context) {
+			return null;
+		}
 
-			return getIssuePageDataResult(
-				context,
-				data,
-				getBackgroundExecutionContext(requestContext),
-			);
-		},
-	);
+		return getIssuePageDataResult(context, data);
+	});
 
 export const getPullStatus = createServerFn({ method: "GET" })
 	.inputValidator(identityValidator<PullFromRepoInput>)
-	.handler(
-		async ({ data, context: requestContext }): Promise<PullStatus | null> => {
-			const context = await getGitHubContextForRepository(data);
-			if (!context) {
-				return null;
-			}
+	.handler(async ({ data }): Promise<PullStatus | null> => {
+		const context = await getGitHubContextForRepository(data);
+		if (!context) {
+			return null;
+		}
 
-			return getPullStatusResult(
-				context,
-				data,
-				undefined,
-				getBackgroundExecutionContext(requestContext),
-			);
-		},
-	);
+		return getPullStatusResult(context, data);
+	});
 
 export const getPullPageData = createServerFn({ method: "GET" })
 	.inputValidator(identityValidator<PullFromRepoInput>)
-	.handler(
-		async ({ data, context: requestContext }): Promise<PullPageData | null> => {
-			const context = await getGitHubContextForRepository(data);
-			if (!context) {
-				return null;
-			}
+	.handler(async ({ data }): Promise<PullPageData | null> => {
+		const context = await getGitHubContextForRepository(data);
+		if (!context) {
+			return null;
+		}
 
-			return getPullPageDataResult(
-				context,
-				data,
-				getBackgroundExecutionContext(requestContext),
-			);
-		},
-	);
+		return getPullPageDataResult(context, data);
+	});
 
 type UpdatePullBodyInput = PullFromRepoInput & { body: string };
 
@@ -8907,31 +8794,27 @@ export const getRepoParticipationStats = createServerFn({ method: "GET" })
 
 export const getRepoOverview = createServerFn({ method: "GET" })
 	.inputValidator(identityValidator<RepoOverviewInput>)
-	.handler(
-		async ({ data, context: requestContext }): Promise<RepoOverview | null> => {
-			const context = await getGitHubContextForRepository(data);
-			if (!context) return null;
+	.handler(async ({ data }): Promise<RepoOverview | null> => {
+		const context = await getGitHubContextForRepository(data);
+		if (!context) return null;
 
-			const repoMetaKey = githubRevalidationSignalKeys.repoMeta(data);
-			const repoCodeKey = githubRevalidationSignalKeys.repoCode(data);
+		const repoMetaKey = githubRevalidationSignalKeys.repoMeta(data);
+		const repoCodeKey = githubRevalidationSignalKeys.repoCode(data);
 
-			const result = await getGitHubResourceLocalFirst<RepoOverview>({
-				userId: context.session.user.id,
-				resource: "repo.overview.v2",
-				params: data,
-				freshForMs: githubCachePolicy.repoMeta.staleTimeMs,
-				signalKeys: [repoMetaKey, repoCodeKey],
-				namespaceKeys: [repoMetaKey, repoCodeKey],
-				cacheMode: "split",
-				executionContext: getBackgroundExecutionContext(requestContext),
-				onBackgroundRefreshSettled: () =>
-					broadcastLocalFirstSignalKeys([repoMetaKey, repoCodeKey]),
-				fetcher: async () => {
-					const response =
-						await executeGitHubGraphQL<GitHubGraphQLRepoOverviewResponse>(
-							context,
-							`github repo overview ${data.owner}/${data.repo}`,
-							`query($owner: String!, $repo: String!) {
+		return getOrRevalidateGitHubResource<RepoOverview>({
+			userId: context.session.user.id,
+			resource: "repo.overview.v2",
+			params: data,
+			freshForMs: githubCachePolicy.repoMeta.staleTimeMs,
+			signalKeys: [repoMetaKey, repoCodeKey],
+			namespaceKeys: [repoMetaKey, repoCodeKey],
+			cacheMode: "split",
+			fetcher: async () => {
+				const response =
+					await executeGitHubGraphQL<GitHubGraphQLRepoOverviewResponse>(
+						context,
+						`github repo overview ${data.owner}/${data.repo}`,
+						`query($owner: String!, $repo: String!) {
 							repository(owner: $owner, name: $repo) {
 								databaseId
 								name
@@ -9006,33 +8889,29 @@ export const getRepoOverview = createServerFn({ method: "GET" })
 								resetAt
 							}
 						}`,
-							{
-								owner: data.owner,
-								repo: data.repo,
-							},
-						);
+						{
+							owner: data.owner,
+							repo: data.repo,
+						},
+					);
 
-					if (!response.repository) {
-						throw new Error(
-							`GitHub repository not found: ${data.owner}/${data.repo}`,
-						);
-					}
+				if (!response.repository) {
+					throw new Error(
+						`GitHub repository not found: ${data.owner}/${data.repo}`,
+					);
+				}
 
-					const overview = mapGraphQLRepoOverview(response.repository);
-					overview.viewerHasStarred =
-						await resolveViewerHasStarredForRepo(data);
+				const overview = mapGraphQLRepoOverview(response.repository);
+				overview.viewerHasStarred = await resolveViewerHasStarredForRepo(data);
 
-					return {
-						kind: "success",
-						data: overview,
-						metadata: createGraphQLResponseMetadata(response.rateLimit),
-					};
-				},
-			});
-
-			return withLocalFirstMeta(result.data, result.meta);
-		},
-	);
+				return {
+					kind: "success",
+					data: overview,
+					metadata: createGraphQLResponseMetadata(response.rateLimit),
+				};
+			},
+		});
+	});
 
 // ---------------------------------------------------------------------------
 // Repository discussions (GraphQL-only)
@@ -10019,215 +9898,204 @@ type GetNotificationsInput = {
 
 export const getNotifications = createServerFn({ method: "GET" })
 	.inputValidator(identityValidator<GetNotificationsInput>)
-	.handler(
-		async ({ data, context: requestContext }): Promise<NotificationsResult> => {
-			const context = await getGitHubContext();
-			if (!context) {
-				return { notifications: [] };
-			}
+	.handler(async ({ data }): Promise<NotificationsResult> => {
+		const context = await getGitHubContext();
+		if (!context) {
+			return { notifications: [] };
+		}
 
-			const notificationsKey = githubRevalidationSignalKeys.notifications;
-			const result = await getGitHubResourceLocalFirst<NotificationsResult>({
-				userId: context.session.user.id,
-				resource: "notifications.list.v1",
-				params: data,
-				freshForMs: githubCachePolicy.list.staleTimeMs,
-				signalKeys: [notificationsKey],
-				namespaceKeys: [notificationsKey],
-				cacheMode: "split",
-				executionContext: getBackgroundExecutionContext(requestContext),
-				onBackgroundRefreshSettled: () =>
-					broadcastLocalFirstSignalKeys([notificationsKey]),
-				fetcher: async () => {
-					const [response, accessIndex] = await Promise.all([
-						context.octokit.rest.activity.listNotificationsForAuthenticatedUser(
-							{
-								all: data.all ?? false,
-								participating: data.participating ?? false,
-								per_page: 50,
-							},
-						),
-						getInstallationAccessIndex(context),
-					]);
+		const notificationsKey = githubRevalidationSignalKeys.notifications;
+		return getOrRevalidateGitHubResource<NotificationsResult>({
+			userId: context.session.user.id,
+			resource: "notifications.list.v1",
+			params: data,
+			freshForMs: githubCachePolicy.list.staleTimeMs,
+			signalKeys: [notificationsKey],
+			namespaceKeys: [notificationsKey],
+			cacheMode: "split",
+			fetcher: async () => {
+				const [response, accessIndex] = await Promise.all([
+					context.octokit.rest.activity.listNotificationsForAuthenticatedUser({
+						all: data.all ?? false,
+						participating: data.participating ?? false,
+						per_page: 50,
+					}),
+					getInstallationAccessIndex(context),
+				]);
 
-					const participantMap = new Map<string, NotificationParticipant[]>();
-					const stateMap = new Map<string, "open" | "closed" | "merged">();
-					const fetchable = response.data.filter(
-						(n) =>
-							n.subject.url &&
-							(n.subject.type === "PullRequest" || n.subject.type === "Issue"),
-					);
+				const participantMap = new Map<string, NotificationParticipant[]>();
+				const stateMap = new Map<string, "open" | "closed" | "merged">();
+				const fetchable = response.data.filter(
+					(n) =>
+						n.subject.url &&
+						(n.subject.type === "PullRequest" || n.subject.type === "Issue"),
+				);
 
-					await Promise.allSettled(
-						fetchable.map(async (n) => {
-							try {
-								const seen = new Set<string>();
-								const participants: NotificationParticipant[] = [];
-								const add = (login: string, avatarUrl: string) => {
-									if (seen.has(login)) return;
-									seen.add(login);
-									participants.push({ login, avatarUrl });
-								};
+				await Promise.allSettled(
+					fetchable.map(async (n) => {
+						try {
+							const seen = new Set<string>();
+							const participants: NotificationParticipant[] = [];
+							const add = (login: string, avatarUrl: string) => {
+								if (seen.has(login)) return;
+								seen.add(login);
+								participants.push({ login, avatarUrl });
+							};
 
-								const subjectUrl = n.subject.url;
-								if (!subjectUrl) {
-									return;
-								}
-								const commentsUrl = `${subjectUrl}/comments`;
-								const isPR = n.subject.type === "PullRequest";
-								const reviewsUrl = isPR ? `${subjectUrl}/reviews` : null;
-
-								const [subjectRes, commentsRes, reviewsRes] = await Promise.all(
-									[
-										context.octokit.request("GET {url}", { url: subjectUrl }),
-										context.octokit
-											.request("GET {url}", { url: commentsUrl, per_page: 100 })
-											.catch(() => null),
-										reviewsUrl
-											? context.octokit
-													.request("GET {url}", {
-														url: reviewsUrl,
-														per_page: 100,
-													})
-													.catch(() => null)
-											: null,
-									],
-								);
-
-								const subjectData = subjectRes.data as {
-									user?: { login: string; avatar_url: string };
-									assignees?: Array<{ login: string; avatar_url: string }>;
-									requested_reviewers?: Array<{
-										login: string;
-										avatar_url: string;
-									}>;
-									state?: string;
-									merged?: boolean;
-								};
-
-								if (subjectData.state) {
-									const state = subjectData.merged
-										? "merged"
-										: subjectData.state === "closed"
-											? "closed"
-											: "open";
-									stateMap.set(n.id, state);
-								}
-
-								if (subjectData.user) {
-									add(subjectData.user.login, subjectData.user.avatar_url);
-								}
-								for (const assignee of subjectData.assignees ?? []) {
-									add(assignee.login, assignee.avatar_url);
-								}
-								for (const reviewer of subjectData.requested_reviewers ?? []) {
-									add(reviewer.login, reviewer.avatar_url);
-								}
-
-								if (commentsRes?.data && Array.isArray(commentsRes.data)) {
-									for (const comment of commentsRes.data as Array<{
-										user?: { login: string; avatar_url: string };
-									}>) {
-										if (comment.user) {
-											add(comment.user.login, comment.user.avatar_url);
-										}
-									}
-								}
-
-								if (reviewsRes?.data && Array.isArray(reviewsRes.data)) {
-									for (const review of reviewsRes.data as Array<{
-										user?: { login: string; avatar_url: string };
-									}>) {
-										if (review.user) {
-											add(review.user.login, review.user.avatar_url);
-										}
-									}
-								}
-
-								participantMap.set(n.id, participants);
-							} catch {
-								// Participant enrichment is best-effort.
+							const subjectUrl = n.subject.url;
+							if (!subjectUrl) {
+								return;
 							}
-						}),
-					);
+							const commentsUrl = `${subjectUrl}/comments`;
+							const isPR = n.subject.type === "PullRequest";
+							const reviewsUrl = isPR ? `${subjectUrl}/reviews` : null;
 
-					const notifications: NotificationItem[] = response.data.map((n) => ({
-						id: n.id,
-						unread: n.unread,
-						reason: n.reason as NotificationItem["reason"],
-						subject: {
-							title: n.subject.title,
-							url: n.subject.url ?? null,
-							latestCommentUrl: n.subject.latest_comment_url ?? null,
-							type: n.subject.type as NotificationItem["subject"]["type"],
+							const [subjectRes, commentsRes, reviewsRes] = await Promise.all([
+								context.octokit.request("GET {url}", { url: subjectUrl }),
+								context.octokit
+									.request("GET {url}", { url: commentsUrl, per_page: 100 })
+									.catch(() => null),
+								reviewsUrl
+									? context.octokit
+											.request("GET {url}", {
+												url: reviewsUrl,
+												per_page: 100,
+											})
+											.catch(() => null)
+									: null,
+							]);
+
+							const subjectData = subjectRes.data as {
+								user?: { login: string; avatar_url: string };
+								assignees?: Array<{ login: string; avatar_url: string }>;
+								requested_reviewers?: Array<{
+									login: string;
+									avatar_url: string;
+								}>;
+								state?: string;
+								merged?: boolean;
+							};
+
+							if (subjectData.state) {
+								const state = subjectData.merged
+									? "merged"
+									: subjectData.state === "closed"
+										? "closed"
+										: "open";
+								stateMap.set(n.id, state);
+							}
+
+							if (subjectData.user) {
+								add(subjectData.user.login, subjectData.user.avatar_url);
+							}
+							for (const assignee of subjectData.assignees ?? []) {
+								add(assignee.login, assignee.avatar_url);
+							}
+							for (const reviewer of subjectData.requested_reviewers ?? []) {
+								add(reviewer.login, reviewer.avatar_url);
+							}
+
+							if (commentsRes?.data && Array.isArray(commentsRes.data)) {
+								for (const comment of commentsRes.data as Array<{
+									user?: { login: string; avatar_url: string };
+								}>) {
+									if (comment.user) {
+										add(comment.user.login, comment.user.avatar_url);
+									}
+								}
+							}
+
+							if (reviewsRes?.data && Array.isArray(reviewsRes.data)) {
+								for (const review of reviewsRes.data as Array<{
+									user?: { login: string; avatar_url: string };
+								}>) {
+									if (review.user) {
+										add(review.user.login, review.user.avatar_url);
+									}
+								}
+							}
+
+							participantMap.set(n.id, participants);
+						} catch {
+							// Participant enrichment is best-effort.
+						}
+					}),
+				);
+
+				const notifications: NotificationItem[] = response.data.map((n) => ({
+					id: n.id,
+					unread: n.unread,
+					reason: n.reason as NotificationItem["reason"],
+					subject: {
+						title: n.subject.title,
+						url: n.subject.url ?? null,
+						latestCommentUrl: n.subject.latest_comment_url ?? null,
+						type: n.subject.type as NotificationItem["subject"]["type"],
+					},
+					repository: {
+						id: n.repository.id,
+						name: n.repository.name,
+						fullName: n.repository.full_name,
+						owner: {
+							login: n.repository.owner.login,
+							avatarUrl: n.repository.owner.avatar_url,
+							url: n.repository.owner.html_url ?? n.repository.owner.url,
+							type: n.repository.owner.type ?? "User",
 						},
-						repository: {
-							id: n.repository.id,
-							name: n.repository.name,
-							fullName: n.repository.full_name,
-							owner: {
-								login: n.repository.owner.login,
-								avatarUrl: n.repository.owner.avatar_url,
-								url: n.repository.owner.html_url ?? n.repository.owner.url,
-								type: n.repository.owner.type ?? "User",
-							},
-							private: n.repository.private,
-						},
-						participants: participantMap.get(n.id) ?? [],
-						subjectState: stateMap.get(n.id) ?? null,
-						updatedAt: n.updated_at,
-						lastReadAt: n.last_read_at ?? null,
-						url: n.url,
-					}));
+						private: n.repository.private,
+					},
+					participants: participantMap.get(n.id) ?? [],
+					subjectState: stateMap.get(n.id) ?? null,
+					updatedAt: n.updated_at,
+					lastReadAt: n.last_read_at ?? null,
+					url: n.url,
+				}));
 
-					const filteredNotifications = notifications.filter((notification) =>
-						isRepoVisibleWithInstallationAccess(
-							accessIndex,
-							notification.repository.owner.login,
-							notification.repository.name,
-							notification.repository.private,
-						),
-					);
+				const filteredNotifications = notifications.filter((notification) =>
+					isRepoVisibleWithInstallationAccess(
+						accessIndex,
+						notification.repository.owner.login,
+						notification.repository.name,
+						notification.repository.private,
+					),
+				);
 
-					const removedCount =
-						notifications.length - filteredNotifications.length;
-					if (removedCount > 0) {
-						debug("installation-access", "getNotifications filtered", {
-							total: notifications.length,
-							kept: filteredNotifications.length,
-							removed: removedCount,
-							removedRepos: [
-								...new Set(
-									notifications
-										.filter(
-											(n) =>
-												!isRepoVisibleWithInstallationAccess(
-													accessIndex,
-													n.repository.owner.login,
-													n.repository.name,
-													n.repository.private,
-												),
-										)
-										.map((n) => n.repository.fullName),
-								),
-							],
-						});
-					}
+				const removedCount =
+					notifications.length - filteredNotifications.length;
+				if (removedCount > 0) {
+					debug("installation-access", "getNotifications filtered", {
+						total: notifications.length,
+						kept: filteredNotifications.length,
+						removed: removedCount,
+						removedRepos: [
+							...new Set(
+								notifications
+									.filter(
+										(n) =>
+											!isRepoVisibleWithInstallationAccess(
+												accessIndex,
+												n.repository.owner.login,
+												n.repository.name,
+												n.repository.private,
+											),
+									)
+									.map((n) => n.repository.fullName),
+							),
+						],
+					});
+				}
 
-					return {
-						kind: "success",
-						data: { notifications: filteredNotifications },
-						metadata: createGitHubResponseMetadata(
-							response.status,
-							normalizeResponseHeaders(response.headers),
-						),
-					};
-				},
-			});
-
-			return withLocalFirstMeta(result.data, result.meta);
-		},
-	);
+				return {
+					kind: "success",
+					data: { notifications: filteredNotifications },
+					metadata: createGitHubResponseMetadata(
+						response.status,
+						normalizeResponseHeaders(response.headers),
+					),
+				};
+			},
+		});
+	});
 
 type MarkNotificationReadInput = { threadId: string };
 
@@ -10275,27 +10143,6 @@ export const markAllNotificationsRead = createServerFn({
 
 	return { ok: true };
 });
-
-type RevalidationSignalTimestampsInput = { signalKeys: string[] };
-
-export const getRevalidationSignalTimestamps = createServerFn({
-	method: "GET",
-})
-	.inputValidator(identityValidator<RevalidationSignalTimestampsInput>)
-	.handler(
-		async ({
-			data,
-		}): Promise<Array<{ signalKey: string; updatedAt: number }>> => {
-			const { getRequestSession } = await import("./auth-runtime");
-			const session = await getRequestSession();
-			if (!session) {
-				return [];
-			}
-
-			const { getGitHubRevalidationSignals } = await import("./github-cache");
-			return getGitHubRevalidationSignals(data.signalKeys);
-		},
-	);
 
 type ClearViewerCacheResult = {
 	ok: boolean;
