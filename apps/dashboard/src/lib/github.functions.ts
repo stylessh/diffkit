@@ -11471,10 +11471,10 @@ export const getRepoBranchesList = createServerFn({ method: "GET" })
 					await executeGitHubGraphQL<GitHubGraphQLBranchesResponse>(
 						context,
 						`github repo branches ${data.owner}/${data.repo}`,
-						`query($owner: String!, $repo: String!, $first: Int!, $after: String, $query: String) {
+						`query($owner: String!, $repo: String!, $first: Int!, $after: String, $refQuery: String) {
 							repository(owner: $owner, name: $repo) {
 								defaultBranchRef { ${BRANCH_NODE_FIELDS} }
-								refs(refPrefix: "refs/heads/", first: $first, after: $after, query: $query) {
+								refs(refPrefix: "refs/heads/", first: $first, after: $after, query: $refQuery) {
 									totalCount
 									pageInfo { hasNextPage endCursor }
 									nodes { ${BRANCH_NODE_FIELDS} }
@@ -11486,7 +11486,7 @@ export const getRepoBranchesList = createServerFn({ method: "GET" })
 							repo: data.repo,
 							first: REPO_BRANCHES_PAGE_SIZE,
 							after,
-							query,
+							refQuery: query,
 						},
 					);
 
@@ -11590,13 +11590,13 @@ export const getRepoTagsList = createServerFn({ method: "GET" })
 				const response = await executeGitHubGraphQL<GitHubGraphQLTagsResponse>(
 					context,
 					`github repo tags ${data.owner}/${data.repo}`,
-					`query($owner: String!, $repo: String!, $first: Int!, $after: String, $query: String) {
+					`query($owner: String!, $repo: String!, $first: Int!, $after: String, $refQuery: String) {
 						repository(owner: $owner, name: $repo) {
 							refs(
 								refPrefix: "refs/tags/"
 								first: $first
 								after: $after
-								query: $query
+								query: $refQuery
 								orderBy: { field: TAG_COMMIT_DATE, direction: DESC }
 							) {
 								totalCount
@@ -11629,7 +11629,7 @@ export const getRepoTagsList = createServerFn({ method: "GET" })
 						repo: data.repo,
 						first: REPO_TAGS_PAGE_SIZE,
 						after,
-						query,
+						refQuery: query,
 					},
 				);
 
@@ -11882,11 +11882,17 @@ export const getRepoViewerPermission = createServerFn({ method: "GET" })
 		}
 	});
 
-/** Releases live under `repoMeta`; publishing can also create a tag (`repoCode`). */
-async function bustRepoReleaseCaches(params: { owner: string; repo: string }) {
+/**
+ * Releases live under `repoMeta`. Publishing can also create a git tag, which
+ * changes `repoCode` (tags list, ref pickers) — only bump that when it might.
+ */
+async function bustRepoReleaseCaches(
+	params: { owner: string; repo: string },
+	{ mayCreateTag }: { mayCreateTag: boolean },
+) {
 	await bumpGitHubCacheNamespaces([
 		githubRevalidationSignalKeys.repoMeta(params),
-		githubRevalidationSignalKeys.repoCode(params),
+		...(mayCreateTag ? [githubRevalidationSignalKeys.repoCode(params)] : []),
 	]);
 }
 
@@ -11937,7 +11943,7 @@ export const createRepoRelease = createServerFn({ method: "POST" })
 				prerelease: data.prerelease,
 				...(data.makeLatest ? { make_latest: data.makeLatest } : {}),
 			});
-			await bustRepoReleaseCaches(data);
+			await bustRepoReleaseCaches(data, { mayCreateTag: !data.draft });
 			return { ok: true, release: mapRepoRelease(response.data, null) };
 		} catch (error) {
 			return toReleaseMutationError("create release", error);
@@ -11963,7 +11969,7 @@ export const updateRepoRelease = createServerFn({ method: "POST" })
 				prerelease: data.prerelease,
 				...(data.makeLatest ? { make_latest: data.makeLatest } : {}),
 			});
-			await bustRepoReleaseCaches(data);
+			await bustRepoReleaseCaches(data, { mayCreateTag: !data.draft });
 			return { ok: true, release: mapRepoRelease(response.data, null) };
 		} catch (error) {
 			return toReleaseMutationError("update release", error);
@@ -11984,7 +11990,7 @@ export const deleteRepoRelease = createServerFn({ method: "POST" })
 				repo: data.repo,
 				release_id: data.releaseId,
 			});
-			await bustRepoReleaseCaches(data);
+			await bustRepoReleaseCaches(data, { mayCreateTag: false });
 			return { ok: true };
 		} catch (error) {
 			return toReleaseMutationError("delete release", error);
