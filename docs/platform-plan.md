@@ -54,6 +54,22 @@ revalidation entirely:
 A follow-up migration drops the tables once the purge finishes; dropping an
 8 GB table in one statement would block the deploy pipeline.
 
+**Purge completed (2026-11-08).** The throttled purge emptied the three large
+tables by 13:15 UTC, and #198 dropped all four tables at 13:21 UTC.
+
+| Table | Rows deleted | Window (UTC) |
+| --- | --- | --- |
+| `github_webhook_event` | 31,989,462 | 03:08–03:33, then 05:36–11:00 |
+| `github_revalidation_signal` | 6,004,294 | 11:00–12:07 |
+| `github_cache_namespace` | 6,001,415 | 12:07–13:15 |
+
+- `wrangler d1 info` went from 8.35 GB to 3.15 MB before the drop, because D1
+  reclaimed space as rows were deleted. It was 2.53 MB after the drop.
+- After the change feed (#197) shipped, 20k-row batches with a 4 s pause made
+  about 12% of live webhook `github_change` inserts fail with 7429. 10k-row
+  batches with a 6 s pause caused none. The webhooks still returned 202, so
+  only change-feed entries were lost.
+
 **Follow-ups.**
 - Design a replacement data-fetching and caching strategy. Requirements: bounded
   storage with TTL or pruning built in from day one; no storage writes on the
