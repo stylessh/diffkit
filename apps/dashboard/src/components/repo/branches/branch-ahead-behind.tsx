@@ -43,7 +43,9 @@ export function BranchAheadBehind({
 	}
 	if (!comparison) {
 		return (
-			<span className="w-24 text-center text-xs text-muted-foreground">—</span>
+			<span className="block w-24 text-center text-xs text-muted-foreground">
+				—
+			</span>
 		);
 	}
 
@@ -55,20 +57,20 @@ export function BranchAheadBehind({
 					role="img"
 					aria-label={`${comparison.behindBy} behind, ${comparison.aheadBy} ahead of ${base}`}
 				>
-					<div className="flex justify-between text-[11px] tabular-nums text-muted-foreground">
+					<div className="flex justify-between text-[11px] leading-none font-[450] tabular-nums text-muted-foreground">
 						<span>{comparison.behindBy}</span>
 						<span>{comparison.aheadBy}</span>
 					</div>
 					<div className="flex h-1 items-stretch gap-px">
-						<div className="flex flex-1 justify-end overflow-hidden rounded-l-full bg-surface-1">
+						<div className="flex flex-1 justify-end overflow-hidden rounded-l-full bg-pill-neutral">
 							<div
-								className="rounded-l-full bg-muted-foreground/50"
+								className="rounded-l-full bg-icon-faint"
 								style={{ width: `${barPercent(comparison.behindBy)}%` }}
 							/>
 						</div>
-						<div className="flex flex-1 overflow-hidden rounded-r-full bg-surface-1">
+						<div className="flex flex-1 overflow-hidden rounded-r-full bg-pill-neutral">
 							<div
-								className="rounded-r-full bg-blue-500/70"
+								className="rounded-r-full bg-indigo"
 								style={{ width: `${barPercent(comparison.aheadBy)}%` }}
 							/>
 						</div>

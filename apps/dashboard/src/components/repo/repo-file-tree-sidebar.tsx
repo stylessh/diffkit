@@ -1,343 +1,208 @@
 import { ChevronRightIcon, FileIcon, FolderIcon } from "@diffkit/icons";
 import { Spinner } from "@diffkit/ui/components/spinner";
 import { cn } from "@diffkit/ui/lib/utils";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Link, useNavigate } from "@tanstack/react-router";
-import { memo, useCallback, useMemo, useState } from "react";
-import { FileSearchCard } from "#/components/shared/file-search-card";
-import {
-	useExplorerPath,
-	useIsActivePath,
-	useIsAncestorPath,
-} from "#/lib/explorer-path-store";
-import type {
-	FileSearchEntry,
-	FileSearchResult,
-} from "#/lib/fuzzy-file-search";
-import {
-	type GitHubQueryScope,
-	githubQueryKeys,
-	githubRepoTreeQueryOptions,
-} from "#/lib/github.query";
+import { Link } from "@tanstack/react-router";
+import { memo, useState } from "react";
+import { useIsActivePath, useIsAncestorPath } from "#/lib/explorer-path-store";
+import type { GitHubQueryScope } from "#/lib/github.query";
 import type { RepoTreeEntry } from "#/lib/github.types";
-import { useHasMounted } from "#/lib/use-has-mounted";
+import { useDirectoryListing } from "./code/use-directory-listing";
 
-// ---------------------------------------------------------------------------
-// Hook to collect all cached tree entries
-// ---------------------------------------------------------------------------
-
-function useAllCachedFiles(
-	scope: GitHubQueryScope,
-	owner: string,
-	repo: string,
-	ref: string,
-): FileSearchEntry[] {
-	const queryClient = useQueryClient();
-
-	// Re-derive on every render — the cache is the source of truth
-	// and this is only consumed when search is active
-	const keyPrefix = githubQueryKeys.repo.tree(scope, {
-		owner,
-		repo,
-		ref,
-		path: "",
-	});
-
-	const allFiles: FileSearchEntry[] = [];
-
-	const cache = queryClient.getQueriesData<RepoTreeEntry[]>({
-		queryKey: keyPrefix.slice(0, 4) as readonly string[],
-	});
-
-	for (const [, data] of cache) {
-		if (!data) continue;
-		for (const entry of data) {
-			allFiles.push({
-				path: entry.path,
-				name: entry.name,
-				type: entry.type,
-			});
-		}
-	}
-
-	return allFiles;
-}
-
-// ---------------------------------------------------------------------------
-// Sidebar
-// ---------------------------------------------------------------------------
-
-export const RepoFileTreeSidebar = memo(function RepoFileTreeSidebar({
-	owner,
-	repoName,
-	currentRef,
-	scope,
-	entries,
-}: {
+type TreeContext = {
 	owner: string;
 	repoName: string;
 	currentRef: string;
 	scope: GitHubQueryScope;
-	entries: RepoTreeEntry[];
-}) {
-	const navigate = useNavigate();
-	const currentPath = useExplorerPath();
-	const allFiles = useAllCachedFiles(scope, owner, repoName, currentRef);
+};
 
-	const defaultEntries = useMemo(
-		() => allFiles.filter((f) => f.type === "file" && f.path.includes("/")),
-		[allFiles],
-	);
-
-	const handleSelect = useCallback(
-		(entry: FileSearchResult) => {
-			const isDir = entry.type === "dir";
-			void navigate({
-				to: isDir ? "/$owner/$repo/tree/$" : "/$owner/$repo/blob/$",
-				params: {
-					owner,
-					repo: repoName,
-					_splat: `${currentRef}/${entry.path}`,
-				},
-			});
-		},
-		[navigate, owner, repoName, currentRef],
-	);
-
+export const RepoFileTreeSidebar = memo(function RepoFileTreeSidebar(
+	context: TreeContext,
+) {
 	return (
 		<div className="flex h-full flex-col overflow-hidden">
-			<FileSearchCard
-				entries={allFiles}
-				defaultEntries={defaultEntries}
-				onSelect={handleSelect}
-				activePath={currentPath}
-				placeholder="Search files..."
-			/>
-
-			<div className="flex-1 overflow-y-auto py-1">
-				{entries.map((entry) => (
-					<TreeNode
-						key={entry.name}
-						entry={entry}
-						owner={owner}
-						repoName={repoName}
-						currentRef={currentRef}
-						scope={scope}
-						depth={0}
-						parentPath=""
-					/>
-				))}
+			<div className="flex h-11 shrink-0 items-center border-b-[0.5px] border-header-rule px-4 text-xs font-medium text-muted-foreground">
+				Files
 			</div>
+			<nav aria-label="Files" className="flex-1 overflow-y-auto px-2 py-2">
+				<DirectoryChildren context={context} path="" depth={0} />
+			</nav>
 		</div>
 	);
 });
 
-// ---------------------------------------------------------------------------
-// Tree nodes
-// ---------------------------------------------------------------------------
+const indent = (depth: number) => 6 + depth * 12;
 
-const TreeNode = memo(function TreeNode({
-	entry,
-	owner,
-	repoName,
-	currentRef,
-	scope,
+function DirectoryChildren({
+	context,
+	path,
 	depth,
-	parentPath,
 }: {
-	entry: RepoTreeEntry;
-	owner: string;
-	repoName: string;
-	currentRef: string;
-	scope: GitHubQueryScope;
+	context: TreeContext;
+	path: string;
 	depth: number;
-	parentPath: string;
 }) {
-	const entryPath = parentPath ? `${parentPath}/${entry.name}` : entry.name;
-	const isDir = entry.type === "dir";
+	const listing = useDirectoryListing(context.scope, {
+		owner: context.owner,
+		repo: context.repoName,
+		ref: context.currentRef,
+		path,
+	});
 
-	if (isDir) {
-		return (
-			<DirectoryNode
-				entry={entry}
-				owner={owner}
-				repoName={repoName}
-				currentRef={currentRef}
-				scope={scope}
-				depth={depth}
-				entryPath={entryPath}
-			/>
-		);
+	switch (listing.status) {
+		case "loading":
+			return (
+				<div
+					className="flex h-7 items-center gap-2 text-xs text-muted-foreground"
+					style={{ paddingLeft: indent(depth) + 22 }}
+				>
+					<Spinner className="size-3" />
+					Loading…
+				</div>
+			);
+		case "error":
+		case "missing":
+			return (
+				<p
+					className="flex h-7 items-center text-xs text-muted-foreground"
+					style={{ paddingLeft: indent(depth) + 22 }}
+				>
+					Couldn't load files
+				</p>
+			);
+		case "ready":
+			return (
+				<>
+					{listing.entries.map((entry) =>
+						entry.type === "dir" ? (
+							<DirectoryNode
+								key={entry.path}
+								entry={entry}
+								context={context}
+								depth={depth}
+							/>
+						) : (
+							<FileNode
+								key={entry.path}
+								entry={entry}
+								context={context}
+								depth={depth}
+							/>
+						),
+					)}
+				</>
+			);
 	}
+}
 
-	return (
-		<FileNode
-			entry={entry}
-			owner={owner}
-			repoName={repoName}
-			currentRef={currentRef}
-			depth={depth}
-			entryPath={entryPath}
-		/>
-	);
-});
+const treeRowClassName =
+	"flex h-7 w-full min-w-0 items-center gap-1.5 rounded-md pr-2 text-[13px] font-[450] transition-colors";
+
+function rowStateClassName(isActive: boolean) {
+	return isActive
+		? "bg-item-hover text-foreground"
+		: "text-text-header hover:bg-item-hover";
+}
 
 const DirectoryNode = memo(function DirectoryNode({
 	entry,
-	owner,
-	repoName,
-	currentRef,
-	scope,
+	context,
 	depth,
-	entryPath,
 }: {
 	entry: RepoTreeEntry;
-	owner: string;
-	repoName: string;
-	currentRef: string;
-	scope: GitHubQueryScope;
+	context: TreeContext;
 	depth: number;
-	entryPath: string;
 }) {
-	const isActive = useIsActivePath(entryPath);
-	const isAncestor = useIsAncestorPath(entryPath);
+	const isActive = useIsActivePath(entry.path);
+	const isAncestor = useIsAncestorPath(entry.path);
 	const [isOpen, setIsOpen] = useState(isAncestor || isActive);
-	const hasMounted = useHasMounted();
-
-	const treeQuery = useQuery({
-		...githubRepoTreeQueryOptions(scope, {
-			owner,
-			repo: repoName,
-			ref: currentRef,
-			path: entryPath,
-		}),
-		enabled: hasMounted && isOpen,
-	});
 
 	return (
 		<div>
 			<div
-				className={cn(
-					"flex w-full items-center text-[13px] transition-colors hover:bg-surface-1",
-					isActive && "bg-surface-1",
-				)}
+				className={cn(treeRowClassName, rowStateClassName(isActive))}
+				style={{ paddingLeft: indent(depth) }}
 			>
 				<button
 					type="button"
-					onClick={() => setIsOpen((prev) => !prev)}
-					className="shrink-0 py-1.5 pl-3 text-muted-foreground"
-					style={{ paddingLeft: `${depth * 12 + 12}px` }}
+					onClick={() => setIsOpen((open) => !open)}
+					aria-expanded={isOpen}
+					aria-label={`${isOpen ? "Collapse" : "Expand"} ${entry.name}`}
+					className="flex size-4 shrink-0 items-center justify-center rounded-sm text-muted-foreground hover:text-foreground"
 				>
 					<ChevronRightIcon
 						size={12}
-						className={cn(
-							"shrink-0 transition-transform",
-							isOpen && "rotate-90",
-						)}
+						strokeWidth={2}
+						className={cn("transition-transform", isOpen && "rotate-90")}
 					/>
 				</button>
 				<Link
 					to="/$owner/$repo/tree/$"
 					params={{
-						owner,
-						repo: repoName,
-						_splat: `${currentRef}/${entryPath}`,
+						owner: context.owner,
+						repo: context.repoName,
+						_splat: `${context.currentRef}/${entry.path}`,
 					}}
-					onClick={(e) => {
+					onClick={(event) => {
 						if (isActive) {
-							e.preventDefault();
-							setIsOpen((prev) => !prev);
+							event.preventDefault();
+							setIsOpen((open) => !open);
 							return;
 						}
-						if (!isOpen) setIsOpen(true);
+						setIsOpen(true);
 					}}
-					className="flex min-w-0 flex-1 items-center gap-1.5 py-1.5 pl-1.5 pr-3"
+					aria-current={isActive ? "page" : undefined}
+					className="flex h-full min-w-0 flex-1 items-center gap-1.5 rounded-sm"
 				>
 					<FolderIcon
-						size={15}
+						size={16}
 						strokeWidth={1.8}
-						className="shrink-0 text-accent-foreground"
+						className="shrink-0 text-muted-foreground"
 					/>
-					<span className="truncate text-foreground">{entry.name}</span>
+					<span className="truncate">{entry.name}</span>
 				</Link>
 			</div>
-
-			{isOpen && (
-				<div>
-					{treeQuery.isLoading && (
-						<div
-							className="flex items-center gap-2 px-3 py-1.5 text-xs text-muted-foreground"
-							style={{ paddingLeft: `${(depth + 1) * 12 + 12}px` }}
-						>
-							<Spinner className="size-3" />
-							<span>Loading...</span>
-						</div>
-					)}
-					{treeQuery.data?.map((child) => (
-						<TreeNode
-							key={child.name}
-							entry={child}
-							owner={owner}
-							repoName={repoName}
-							currentRef={currentRef}
-							scope={scope}
-							depth={depth + 1}
-							parentPath={entryPath}
-						/>
-					))}
-				</div>
-			)}
+			{isOpen ? (
+				<DirectoryChildren
+					context={context}
+					path={entry.path}
+					depth={depth + 1}
+				/>
+			) : null}
 		</div>
 	);
 });
 
 const FileNode = memo(function FileNode({
 	entry,
-	owner,
-	repoName,
-	currentRef,
+	context,
 	depth,
-	entryPath,
 }: {
 	entry: RepoTreeEntry;
-	owner: string;
-	repoName: string;
-	currentRef: string;
+	context: TreeContext;
 	depth: number;
-	entryPath: string;
 }) {
-	const isActive = useIsActivePath(entryPath);
-
+	const isActive = useIsActivePath(entry.path);
 	return (
 		<Link
 			to="/$owner/$repo/blob/$"
 			params={{
-				owner,
-				repo: repoName,
-				_splat: `${currentRef}/${entryPath}`,
+				owner: context.owner,
+				repo: context.repoName,
+				_splat: `${context.currentRef}/${entry.path}`,
 			}}
-			onClick={(e) => {
-				if (isActive) e.preventDefault();
+			onClick={(event) => {
+				if (isActive) event.preventDefault();
 			}}
-			className={cn(
-				"flex w-full items-center gap-1.5 px-3 py-1.5 text-[13px] transition-colors hover:bg-surface-1",
-				isActive && "bg-surface-1",
-			)}
-			style={{ paddingLeft: `${depth * 12 + 26}px` }}
+			aria-current={isActive ? "page" : undefined}
+			className={cn(treeRowClassName, rowStateClassName(isActive))}
+			style={{ paddingLeft: indent(depth) + 22 }}
 		>
 			<FileIcon
-				size={15}
+				size={16}
 				strokeWidth={1.8}
 				className="shrink-0 text-muted-foreground"
 			/>
-			<span
-				className={cn(
-					"truncate",
-					isActive ? "text-foreground" : "text-muted-foreground",
-				)}
-			>
-				{entry.name}
-			</span>
+			<span className="truncate">{entry.name}</span>
 		</Link>
 	);
 });

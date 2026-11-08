@@ -18,6 +18,7 @@ import {
 	AlertDialogTitle,
 } from "@diffkit/ui/components/alert-dialog";
 import { Button } from "@diffkit/ui/components/button";
+import { PageIconButton } from "@diffkit/ui/components/page-header";
 import { Skeleton } from "@diffkit/ui/components/skeleton";
 import { Spinner } from "@diffkit/ui/components/spinner";
 import { useQuery } from "@tanstack/react-query";
@@ -25,6 +26,7 @@ import { Link } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { ReviewSubmitPopover } from "#/components/pulls/review/review-submit-popover";
 import { encodeFileId } from "#/components/pulls/review/review-utils";
+import { ListPage } from "#/components/shared/list-page";
 import { formatRelativeTime } from "#/lib/format-relative-time";
 import { githubReviewDraftsQueryOptions } from "#/lib/github.query";
 import type { ReviewDraftComment, ReviewDraftPull } from "#/lib/github.types";
@@ -60,79 +62,60 @@ export function ReviewDraftsPage({ userId }: { userId: string }) {
 	);
 
 	return (
-		<div className="h-full overflow-auto py-10">
-			<div className="mx-auto grid max-w-7xl gap-14 px-3 md:px-6 xl:grid-cols-[minmax(15rem,18rem)_minmax(0,1fr)]">
-				<aside className="flex h-fit flex-col gap-5 xl:sticky xl:top-0">
-					<div className="flex flex-col gap-2">
-						<h1 className="text-2xl font-semibold tracking-tight">Drafts</h1>
-						<p className="text-sm text-muted-foreground">
-							{result ? (
-								<>
+		<>
+			<ListPage
+				title="Drafts"
+				count={result ? drafts.length : undefined}
+				actions={
+					<PageIconButton
+						type="button"
+						aria-label="Refresh drafts"
+						title="Refresh drafts"
+						disabled={query.isFetching}
+						onClick={() => void query.refetch()}
+					>
+						{query.isFetching ? (
+							<Spinner size={13} />
+						) : (
+							<RefreshCwIcon size={14} strokeWidth={2} />
+						)}
+					</PageIconButton>
+				}
+				toolbar={
+					<div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1 px-2 text-xs text-pretty text-muted-foreground">
+						{result ? (
+							<>
+								<span>
 									<span className="tabular-nums">{drafts.length}</span> pending{" "}
 									{drafts.length === 1 ? "review" : "reviews"} ·{" "}
 									<span className="tabular-nums">{commentTotal}</span>{" "}
 									{commentTotal === 1 ? "comment" : "comments"}
-								</>
-							) : (
-								"Looking for unsubmitted reviews…"
-							)}
-						</p>
+								</span>
+								<span>
+									Checked{" "}
+									<span className="tabular-nums">{result.checkedCount}</span>{" "}
+									open pull requests you're involved in.
+								</span>
+								{result.truncated ? (
+									<span>
+										Only your most relevant pull requests are checked; older
+										drafts may not appear here.
+									</span>
+								) : null}
+								{result.partial ? (
+									<span>
+										Some repositories couldn't be checked, so this list may be
+										incomplete.
+									</span>
+								) : null}
+							</>
+						) : (
+							<span>Looking for unsubmitted reviews…</span>
+						)}
 					</div>
-
-					<div className="flex items-center justify-between gap-4 rounded-xl bg-surface-1 px-3.5 py-3">
-						<div className="flex min-w-0 items-center gap-2">
-							<div className="shrink-0 text-muted-foreground">
-								<GitPullRequestDraftIcon size={15} strokeWidth={1.9} />
-							</div>
-							<p className="truncate text-sm font-medium">Pending reviews</p>
-						</div>
-						<p className="font-semibold tabular-nums leading-tight">
-							{result ? drafts.length : "–"}
-						</p>
-					</div>
-
-					<Button
-						type="button"
-						variant="ghost"
-						size="sm"
-						className="w-fit text-muted-foreground"
-						disabled={query.isFetching}
-						onClick={() => void query.refetch()}
-						iconLeft={
-							query.isFetching ? (
-								<Spinner size={13} />
-							) : (
-								<RefreshCwIcon size={14} strokeWidth={2} />
-							)
-						}
-					>
-						Refresh
-					</Button>
-
-					{result ? (
-						<div className="flex flex-col gap-1.5 text-xs text-muted-foreground">
-							<p>
-								Checked{" "}
-								<span className="tabular-nums">{result.checkedCount}</span> open
-								pull requests you're involved in.
-							</p>
-							{result.truncated ? (
-								<p>
-									Only your most relevant pull requests are checked; older
-									drafts may not appear here.
-								</p>
-							) : null}
-							{result.partial ? (
-								<p>
-									Some repositories couldn't be checked, so this list may be
-									incomplete.
-								</p>
-							) : null}
-						</div>
-					) : null}
-				</aside>
-
-				<div className="flex min-w-0 flex-col gap-4">
+				}
+			>
+				<div className="flex min-w-0 flex-col gap-4 pt-1">
 					{!result ? (
 						<ReviewDraftsSkeleton />
 					) : drafts.length === 0 ? (
@@ -149,7 +132,7 @@ export function ReviewDraftsPage({ userId }: { userId: string }) {
 						))
 					)}
 				</div>
-			</div>
+			</ListPage>
 
 			<AlertDialog
 				open={draftToDelete !== null}
@@ -184,7 +167,7 @@ export function ReviewDraftsPage({ userId }: { userId: string }) {
 					</AlertDialogFooter>
 				</AlertDialogContent>
 			</AlertDialog>
-		</div>
+		</>
 	);
 }
 
@@ -214,14 +197,14 @@ function ReviewDraftGroup({
 	return (
 		<section
 			aria-label={`Pending review on ${draft.repositoryFullName} #${draft.number}`}
-			className="overflow-hidden rounded-xl border bg-surface-0"
+			className="overflow-hidden rounded-xl border-[0.5px] bg-surface-0"
 		>
-			<header className="flex flex-wrap items-start gap-x-3 gap-y-2 border-b px-4 py-3">
+			<header className="flex flex-wrap items-start gap-x-3 gap-y-2 border-b-[0.5px] px-4 py-3">
 				<div
 					className={
 						draft.isDraft
 							? "mt-[3px] shrink-0 text-muted-foreground"
-							: "mt-[3px] shrink-0 text-green-500"
+							: "mt-[3px] shrink-0 text-success"
 					}
 				>
 					<StateIcon size={16} strokeWidth={2} />
@@ -288,14 +271,14 @@ function ReviewDraftGroup({
 			</header>
 
 			{review.body.trim() ? (
-				<p className="line-clamp-2 border-b bg-surface-1 px-4 py-2 text-xs text-muted-foreground">
+				<p className="line-clamp-2 border-b-[0.5px] bg-surface-1 px-4 py-2 text-xs text-muted-foreground">
 					<span className="font-medium text-foreground">Review summary: </span>
 					{reviewDraftBodyPreview(review.body, 240)}
 				</p>
 			) : null}
 
 			{review.comments.length > 0 ? (
-				<ul className="divide-y">
+				<ul className="divide-y-[0.5px]">
 					{review.comments.map((comment) => (
 						<li key={comment.id}>
 							<DraftCommentRow draft={draft} comment={comment} />
@@ -309,7 +292,7 @@ function ReviewDraftGroup({
 			)}
 
 			{hiddenComments > 0 ? (
-				<div className="flex items-center justify-between gap-2 border-t px-4 py-2 text-xs text-muted-foreground">
+				<div className="flex items-center justify-between gap-2 border-t-[0.5px] px-4 py-2 text-xs text-muted-foreground">
 					<span>
 						+<span className="tabular-nums">{hiddenComments}</span> more{" "}
 						{hiddenComments === 1 ? "comment" : "comments"}
@@ -353,11 +336,11 @@ function DraftCommentRow({
 				<span className="min-w-0 truncate font-mono text-foreground">
 					{comment.path}
 				</span>
-				<span className="shrink-0 rounded-md border bg-surface-1 px-1.5 py-px font-mono text-[11px] tabular-nums text-muted-foreground">
+				<span className="shrink-0 rounded-md border-[0.5px] bg-surface-1 px-1.5 py-px font-mono text-[11px] tabular-nums text-muted-foreground">
 					{location}
 				</span>
 				{comment.outdated && location !== "Outdated" ? (
-					<span className="shrink-0 text-[11px] text-amber-500">Outdated</span>
+					<span className="shrink-0 text-[11px] text-warning">Outdated</span>
 				) : null}
 			</span>
 			<span className="line-clamp-2 text-xs text-muted-foreground">
@@ -371,8 +354,8 @@ function ReviewDraftsSkeleton() {
 	return (
 		<>
 			{[0, 1].map((key) => (
-				<div key={key} className="overflow-hidden rounded-xl border">
-					<div className="flex items-start gap-3 border-b px-4 py-3">
+				<div key={key} className="overflow-hidden rounded-xl border-[0.5px]">
+					<div className="flex items-start gap-3 border-b-[0.5px] px-4 py-3">
 						<Skeleton className="mt-1 size-4 rounded-full" />
 						<div className="flex flex-1 flex-col gap-2">
 							<Skeleton className="h-4 w-2/3" />

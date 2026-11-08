@@ -1,5 +1,5 @@
 import { GitBranchIcon, GitCommitIcon } from "@diffkit/icons";
-import { Markdown } from "@diffkit/ui/components/markdown";
+import { Chip } from "@diffkit/ui/components/chip";
 import {
 	Tooltip,
 	TooltipContent,
@@ -8,6 +8,7 @@ import {
 import { cn } from "@diffkit/ui/lib/utils";
 import { Link } from "@tanstack/react-router";
 import { useCallback } from "react";
+import { AppMarkdown } from "#/components/markdown/app-markdown";
 import { TagIcon } from "#/components/repo/refs/tag-icon";
 import { resolveGitHubMarkdownAssetUrl } from "#/components/repo/repo-markdown-files";
 import { formatRelativeTime } from "#/lib/format-relative-time";
@@ -30,15 +31,15 @@ const STATUS_BADGE: Record<
 > = {
 	draft: {
 		label: "Draft",
-		className: "border-border text-muted-foreground",
+		className: "bg-pill-neutral text-muted-foreground",
 	},
 	prerelease: {
 		label: "Pre-release",
-		className: "border-amber-500/40 text-amber-600 dark:text-amber-400",
+		className: "bg-pill-warning text-pill-warning-text",
 	},
 	latest: {
 		label: "Latest",
-		className: "border-green-500/40 text-green-600 dark:text-green-400",
+		className: "bg-pill-ok text-pill-ok-text",
 	},
 };
 
@@ -61,7 +62,7 @@ export function ReleaseStatusBadges({ release }: { release: RepoRelease }) {
 				<span
 					key={badge}
 					className={cn(
-						"rounded-full border px-2 py-px text-[11px] font-medium",
+						"inline-flex h-5 items-center rounded-full px-2 text-[11px] font-medium",
 						STATUS_BADGE[badge].className,
 					)}
 				>
@@ -85,14 +86,18 @@ function ReleaseMeta({
 	const targetIsSha = SHA_RE.test(target);
 	return (
 		<div className="flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground">
-			<Link
-				to="/$owner/$repo/tree/$"
-				params={{ owner, repo, _splat: release.tagName }}
-				className="flex items-center gap-1 rounded-md bg-surface-1 px-1.5 py-0.5 font-mono text-foreground transition-colors hover:bg-surface-2"
+			<Chip
+				asChild
+				className="font-mono text-text-header hover:text-foreground"
 			>
-				<TagIcon size={12} />
-				{release.tagName}
-			</Link>
+				<Link
+					to="/$owner/$repo/tree/$"
+					params={{ owner, repo, _splat: release.tagName }}
+				>
+					<TagIcon size={12} strokeWidth={2} />
+					{release.tagName}
+				</Link>
+			</Chip>
 			{target ? (
 				<Tooltip>
 					<TooltipTrigger asChild>
@@ -100,7 +105,7 @@ function ReleaseMeta({
 							<Link
 								to="/$owner/$repo/commit/$sha"
 								params={{ owner, repo, sha: target }}
-								className="flex items-center gap-1 rounded-md px-1.5 py-0.5 font-mono transition-colors hover:bg-surface-1 hover:text-foreground"
+								className="flex h-6 items-center gap-1 rounded-full px-2 font-mono transition-colors hover:bg-ghost-hover hover:text-foreground"
 							>
 								<GitCommitIcon size={12} />
 								{target.slice(0, 7)}
@@ -109,7 +114,7 @@ function ReleaseMeta({
 							<Link
 								to="/$owner/$repo/commits/$"
 								params={{ owner, repo, _splat: target }}
-								className="flex min-w-0 items-center gap-1 rounded-md px-1.5 py-0.5 font-mono transition-colors hover:bg-surface-1 hover:text-foreground"
+								className="flex h-6 min-w-0 items-center gap-1 rounded-full px-2 font-mono transition-colors hover:bg-ghost-hover hover:text-foreground"
 							>
 								<GitBranchIcon size={12} />
 								<span className="max-w-32 truncate">{target}</span>
@@ -129,18 +134,18 @@ function ReleaseByline({ release }: { release: RepoRelease }) {
 	const when = release.publishedAt ?? release.createdAt;
 	const verb = release.isDraft ? "drafted" : "released";
 	return (
-		<p className="flex min-w-0 flex-wrap items-center gap-1.5 text-xs text-muted-foreground">
+		<p className="flex min-w-0 flex-wrap items-center gap-1.5 text-xs font-[450] text-muted-foreground">
 			{release.author ? (
 				<>
 					<img
 						src={release.author.avatarUrl}
 						alt=""
-						className="size-4 rounded-full"
+						className="size-4 rounded-full ring-[0.5px] ring-chip-border"
 					/>
 					<Link
 						to="/$owner"
 						params={{ owner: release.author.login }}
-						className="font-medium text-foreground hover:underline"
+						className="font-medium text-text-header hover:text-foreground"
 					>
 						{release.author.login}
 					</Link>
@@ -198,7 +203,7 @@ export function ReleaseCard({
 		<Link
 			to="/$owner/$repo/releases/$tag"
 			params={{ owner, repo, tag: release.tagName }}
-			className="underline-offset-4 hover:underline"
+			className="rounded-sm transition-colors hover:text-text-strong"
 		>
 			{release.name}
 		</Link>
@@ -208,10 +213,10 @@ export function ReleaseCard({
 		<article
 			aria-labelledby={`release-${release.id}-title`}
 			className={cn(
-				"group/release relative rounded-xl border bg-surface-0",
+				"group/release relative",
 				isDetail
-					? "flex flex-col gap-6 p-5 sm:p-6"
-					: "grid grid-cols-1 gap-5 p-5 lg:grid-cols-[minmax(11rem,14rem)_minmax(0,1fr)] lg:gap-8",
+					? "flex flex-col gap-8"
+					: "grid grid-cols-1 gap-5 rounded-lg bg-surface-0 p-5 shadow-card lg:grid-cols-[minmax(11rem,13rem)_minmax(0,1fr)] lg:gap-8",
 			)}
 		>
 			<header
@@ -241,8 +246,8 @@ export function ReleaseCard({
 				<Heading
 					id={`release-${release.id}-title`}
 					className={cn(
-						"font-semibold leading-snug tracking-tight text-foreground [overflow-wrap:anywhere]",
-						isDetail ? "text-2xl" : "text-lg",
+						"font-semibold text-foreground [overflow-wrap:anywhere]",
+						isDetail ? "text-[22px] leading-8" : "text-[15px] leading-[22px]",
 					)}
 				>
 					{titleNode}
@@ -259,24 +264,31 @@ export function ReleaseCard({
 							isLong && "max-h-[26rem] overflow-hidden",
 						)}
 					>
-						<Markdown
-							className="prose prose-sm dark:prose-invert max-w-none"
+						<AppMarkdown
+							owner={owner}
+							repo={repo}
+							className={cn(
+								"text-text-header",
+								isDetail
+									? "text-[15px] leading-6"
+									: "text-[13px] leading-[21px]",
+							)}
 							resolveAssetUrl={resolveAssetUrl}
 						>
 							{release.body}
-						</Markdown>
+						</AppMarkdown>
 						{isLong ? (
 							<div className="pointer-events-none absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-surface-0 to-transparent" />
 						) : null}
 					</div>
 				) : (
-					<p className="text-sm text-muted-foreground">No release notes.</p>
+					<p className="text-[13px] text-muted-foreground">No release notes.</p>
 				)}
 				{isLong ? (
 					<Link
 						to="/$owner/$repo/releases/$tag"
 						params={{ owner, repo, tag: release.tagName }}
-						className="w-fit text-sm font-medium text-muted-foreground hover:text-foreground hover:underline"
+						className="-ml-2 w-fit rounded-full px-2 py-1 text-xs font-medium text-muted-foreground transition-colors hover:bg-ghost-hover hover:text-foreground"
 					>
 						Read full release notes
 					</Link>

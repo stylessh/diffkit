@@ -1,50 +1,39 @@
-/**
- * Markdown typography + surfaces.
- *
- * Every class string the `Markdown` renderer uses lives here so a consumer (or a
- * later design pass) can retheme markdown in one place. Values use the Linear-derived
- * tokens from globals.css; keep the export names stable so overrides stay mechanical.
- */
 import { cn } from "./utils";
 
-export const markdownRootClassName = "not-prose break-words text-foreground";
+// Child sizes are in em so callers set the scale (13px lists, 15px documents).
+export const markdownRootClassName =
+	"not-prose break-words text-[13px] leading-[1.6] text-foreground";
 
 export const markdownLinkClassName =
-	"text-sm font-medium underline underline-offset-2 decoration-border hover:decoration-foreground transition-colors";
+	"font-medium underline underline-offset-2 decoration-chip-border hover:decoration-foreground transition-[text-decoration-color]";
 
 export const markdownHeadingClassNames = {
-	h1: "text-2xl font-semibold tracking-tight mb-3 mt-5 first:mt-0",
-	h2: "text-xl font-semibold tracking-tight mb-2 mt-4 first:mt-0",
-	h3: "text-lg font-semibold tracking-tight mb-2 mt-3 first:mt-0",
-	h4: "text-base font-semibold mb-1.5 mt-3 first:mt-0",
+	h1: "text-[1.6em] leading-[1.33] font-semibold tracking-tight text-foreground mt-[1.1em] mb-[0.4em] first:mt-0",
+	h2: "text-[1.133em] leading-[1.41] font-semibold text-foreground mt-[1.2em] mb-[0.35em] first:mt-0",
+	h3: "text-[1em] font-semibold text-foreground mt-[1.1em] mb-[0.3em] first:mt-0",
+	h4: "text-[1em] font-semibold text-foreground mt-[1em] mb-[0.25em] first:mt-0",
 } as const;
 
-export const markdownParagraphClassName =
-	"text-sm leading-relaxed mb-2 last:mb-0";
+export const markdownParagraphClassName = "mb-[0.6em] last:mb-0";
 
 export const markdownListClassNames = {
-	ul: "text-sm list-disc pl-5 mb-2 flex flex-col gap-1.5",
-	ol: "text-sm list-decimal pl-5 mb-2 flex flex-col gap-1.5",
-	li: "text-sm leading-relaxed",
+	ul: "list-disc pl-[1.4em] mb-[0.6em] flex flex-col gap-[0.2em] marker:text-icon-faint",
+	ol: "list-decimal pl-[1.4em] mb-[0.6em] flex flex-col gap-[0.2em] marker:text-muted-foreground",
+	li: "",
 } as const;
 
 export const markdownBlockquoteClassName =
-	"border-l-2 border-chip-border pl-3 text-sm text-muted-foreground italic mb-2";
+	"border-l-2 border-chip-border pl-[0.8em] text-muted-foreground mb-[0.6em]";
 
-/**
- * GitHub alerts (`> [!NOTE]`) are styled by the `.markdown-alert*` rules in
- * globals.css; the renderer adds nothing on top of the generated classes.
- */
 export const markdownAlertBlockquoteClassName = "";
 
-/** Alert titles keep only the generated `markdown-alert-title` class (see globals.css). */
 export const markdownAlertTitleClassName = "";
 
 export const markdownInlineCodeClassName =
-	"rounded-[4px] bg-inline-code px-1.5 py-0.5 text-xs font-mono shadow-chip";
+	"rounded-[4px] bg-inline-code px-[0.3em] py-[0.1em] text-[0.875em] font-mono shadow-chip";
 
 export const markdownCodeBlockShellClassName =
-	"group/code relative mb-2 [&_pre]:overflow-x-auto [&_pre]:rounded-lg [&_pre]:p-3 [&_pre]:text-xs [&_pre]:shadow-chip";
+	"group/code relative mb-[0.75em] [&_pre]:overflow-x-auto [&_pre]:rounded-lg [&_pre]:p-3 [&_pre]:text-xs [&_pre]:shadow-chip";
 
 export const markdownCodeBlockFallbackClassName =
 	"overflow-x-auto rounded-lg bg-inline-code p-3 text-xs text-foreground shadow-chip";
@@ -62,15 +51,15 @@ export const markdownHrClassName = "my-4 border-rule";
 export const markdownMediaClassName = "my-2 max-w-full rounded-lg";
 
 export const markdownImageClassName = cn(
-	"inline-block max-w-full rounded-lg my-2",
+	"my-2 inline-block max-w-full rounded-lg",
 );
 
 export const markdownTableShellClassName =
 	"flex flex-col overflow-hidden mb-2 rounded-lg bg-card shadow-card";
 
-export const markdownTableClassName = "w-full text-sm border-collapse";
+export const markdownTableClassName = "w-full text-[13px] border-collapse";
 
-export const markdownTheadClassName = "bg-surface-1";
+export const markdownTheadClassName = "bg-group";
 
 export const markdownThClassName =
 	"border-b-[0.5px] border-r-[0.5px] border-rule px-3 py-1.5 text-left text-xs font-medium text-muted-foreground last:border-r-0";
@@ -78,7 +67,14 @@ export const markdownThClassName =
 export const markdownTdClassName =
 	"border-b-[0.5px] border-r-[0.5px] border-rule px-3 py-1.5 text-xs last:border-r-0 [tr:last-child_&]:border-b-0";
 
-export const markdownTaskCheckboxClassName = "mr-1.5 rounded border-border";
+export const markdownTaskListClassName =
+	"mb-[0.6em] flex list-none flex-col gap-[0.2em] pl-0 [&_ul]:mb-0 [&_ul]:pl-[1.4em]";
+
+export const markdownTaskCheckboxClassName =
+	"mr-1.5 size-3.5 translate-y-[2px] accent-foreground";
+
+export const markdownFootnotesClassName =
+	"mt-[1em] border-t-[0.5px] border-rule pt-[0.6em] text-[0.875em] text-muted-foreground";
 
 export const markdownDetailsClassName =
 	"group/details mb-2 text-sm [&>:not(summary)]:mt-2";

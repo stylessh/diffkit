@@ -37,7 +37,7 @@ export function MatrixNode({
 				className={NODE_HANDLE_CLASS}
 			/>
 			<div
-				className="flex flex-col gap-1.5 rounded-xl border bg-muted/40 p-1.5"
+				className="flex flex-col gap-1.5 rounded-xl border-[0.5px] bg-muted/40 p-1.5"
 				style={{ width: NODE_WIDTH + 12 }}
 			>
 				<div
@@ -60,7 +60,7 @@ export function MatrixNode({
 						{canToggle ? <NodeChevron open={expanded} /> : null}
 					</button>
 					{expanded ? (
-						<div className="flex items-center justify-between gap-3 border-t px-3 py-1.5 text-xs">
+						<div className="flex items-center justify-between gap-3 border-t-[0.5px] px-3 py-1.5 text-xs">
 							<span className="text-muted-foreground">Matrix</span>
 							<span className="font-medium">
 								{completedCount} / {data.jobs.length} completed
@@ -75,7 +75,7 @@ export function MatrixNode({
 							return (
 								<div
 									key={job.id}
-									className="flex items-center gap-2 rounded-lg border bg-secondary px-3 py-2 text-left text-xs"
+									className="flex items-center gap-2 rounded-lg border-[0.5px] bg-secondary px-3 py-2 text-left text-xs"
 									style={{ width: NODE_WIDTH }}
 								>
 									<CheckStateIcon state={getCheckState(job)} />

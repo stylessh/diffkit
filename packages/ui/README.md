@@ -45,14 +45,45 @@ from Linear's live app and live in `src/styles/globals.css` in three layers:
 | Text steps | `text-foreground` › `text-text-strong` › `text-text-header` › `text-muted-foreground` › `text-icon-faint` |
 | Status colors | `text-success`, `text-warning`, `text-merged`, `text-danger`, `text-added`, `text-removed`, `bg-pill-ok`, `bg-pill-blocked`, `bg-pill-neutral` |
 | The one saturated action | `bg-indigo text-indigo-foreground` (`<Button variant="accent">`) |
+| GitHub state of a PR / issue (icon) | `text-state-open`, `text-state-draft`, `text-state-merged`, `text-state-closed` |
+| CI check conclusion (icon, dot) | `text-check-passed`, `text-check-running`, `text-check-failed`, `text-check-skipped` (and `bg-*`) |
+| Review verdict | `text-review-approved`, `text-review-changes`, `text-review-required` (and `bg-*`) |
+| Tinted state pill | `bg-pill-ok text-pill-ok-text`, `bg-pill-merged text-pill-merged-text`, `bg-pill-blocked text-pill-blocked-text`, `bg-pill-warning text-pill-warning-text`, `bg-pill-neutral text-muted-foreground` (`<StatePill tone>` / `<Badge variant>` use these) |
+| Row metadata chip (repo, label, branch) | `<Chip>`: `h-6 rounded-full bg-chip shadow-chip text-xs text-muted-foreground` |
+| Diff line tints | `bg-line-added`, `bg-line-removed`, `bg-word-added`, `bg-word-removed`, `text-line-number`; `@pierre/diffs` picks them up through its `--diffs-*-override` variables |
+| Top nav / tab items on the shell | `text-text-nav hover:bg-nav-hover [&.active]:bg-nav-selected` |
+| Tooltip surface | `bg-tooltip shadow-tooltip` |
+| Focus | `outline-focus` / the base `:focus-visible` rule (1px `--ln-focus`, offset -1px) |
 
-Rules of thumb: never add `border` + `shadow-sm`; use a ring token. Focus is a 1px indigo outline
+Motion: hover, selection and popover transitions share `--ln-duration` (140ms) and `--ln-ease`
+(`ease-ln`); `prefers-reduced-motion` collapses every animation and transition. Menus use Linear's 32px rows
+with 8px radii inside a 12px popover with 4px padding, so the corners stay concentric; 30px group
+labels; 1px separators.
+
+Rules of thumb: never add `border` + `shadow-sm`; use a ring token. Bare `border` utilities are
+written `border-[0.5px]` so they match the rings (Chrome rounds them to one device pixel on 1x
+screens). Never use raw Tailwind hues (`text-green-500`, `bg-yellow-400`) for state; use the state
+tokens above. Focus is a 1px indigo outline
 (`focus-visible:outline-1 focus-visible:-outline-offset-1 focus-visible:outline-ring`), not a glow.
 Keep corners ≤ 12px except fully-round pills and avatars.
 
 Existing `bg-surface-0/1/2`, `bg-container`, `text-destructive-foreground`, etc. keep working and
 resolve to the Linear set (card → group fill → selected nav). New code should prefer the semantic
 names above; `apps/dashboard` will migrate in a later pass.
+
+### Page chrome (measured off the Linear reference)
+
+| Component | What it is |
+| --- | --- |
+| `PageHeader` (`page-header.tsx`) | The page's first row: 44px, hairline under it, 20px left inset, 13px/500 title in the header gray, actions right. `PageHeaderCrumb` (asChild with a router link) adds `›` crumbs; `PageHeaderTitle` (asChild for a non-h1 title); `PageHeaderCount`; `PageIconButton` (round 28px, `raised` for the pill ring). |
+| `ViewTabs` / `ViewTab` / `ViewTabCount` (`view-tabs.tsx`) | The 44px row of 28px pill tabs under a header; `aria-current="page"` (router links set it) takes the selected fill and ring. |
+| `GroupHeader` (`group-header.tsx`) | A list group's 36px banner: caret centred 18px in, 16px icon box at 34px, title at 60px, count after it. |
+| `DetailLayout` + `PanelSection` / `PanelRow` / `PropertyRow` (`detail-layout.tsx`) | Detail pages: a content column (max 780px, 46px insets) and a properties panel taking ~34% that stays pinned; panel sections have a 13px muted label and 28px rows. Also `LineCounts` and `BranchBadge`. |
+| `Chip` (`chip.tsx`) | 24px hairline pill for row metadata (repository, label with a color dot, branch). |
+
+List rows follow Linear's grid: 44px, full width with the hover fill inset 8px, content from 42px to
+26px before the edge, 8px between columns, `#number` in a 42px column, 18px avatars and a 40px
+right-aligned time column (see `apps/dashboard/src/components/shared/list-row.tsx`).
 
 ## Components
 
@@ -90,15 +121,15 @@ allow-list plus `iframe[src]`, `video`, GFM alerts), so raw HTML in READMEs and 
 | --- | --- |
 | GitHub alerts (`> [!NOTE]`) with icons | on by default (`lib/rehype-alert-icons` re-attaches the icon after sanitizing) |
 | `@mentions` → links or a custom component | `resolveMentionHref`, `mentionComponent` |
-| `#123` references in the current repo | `resolveRepoNumberReference(number) => ResourceReference \| null`, `referenceComponent` |
-| Pasted GitHub URLs → rich references (user, repo, PR, issue, release) | `resolveReference(url) => ResourceReference \| null` |
+| `#123`, `owner/repo#123`, commit SHAs, `owner/repo@sha` | `resolveTextReference(token) => ResourceReference \| null`, `referenceComponent` (receives `origin: "text" \| "url"`) |
+| Pasted GitHub URLs → rich references (user, repo, PR, issue, commit, release) | `resolveReference(url) => ResourceReference \| null` |
 | Relative image/video/`srcset` rewriting | `resolveAssetUrl`; links: `resolveLinkUrl`; `imageComponent` for lightboxes |
 | Router-aware internal links | `internalLinkComponent` |
 | Extra remark plugins (run before the sanitizer) | `remarkPlugins` |
 | Highlighted code with copy button, hydration-safe, bounded LRU cache | `ShikiCode`, `PlainCodeBlock`, `highlightCode`, `MarkdownCodeBlockContext` |
 
 Retheme in one place: `lib/markdown-theme.ts`. Plugins: `lib/remark-profile-mentions`,
-`lib/remark-repo-number-references`, `lib/remark-resource-references`; schema: `lib/markdown-sanitize-schema`.
+`lib/remark-text-references`, `lib/remark-resource-references`, `lib/rehype-footnote-ids`; schema: `lib/markdown-sanitize-schema`.
 `MarkdownEditor` keeps its textarea-based API; upload placeholders live in `components/markdown-editor-upload`.
 
 ## Lib & hooks

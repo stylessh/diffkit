@@ -19,13 +19,17 @@ export function DashboardBottomBar() {
 					<div
 						key={warning.id}
 						className={cn(
-							"flex w-fit items-center gap-2 rounded-lg px-3 py-2 text-xs",
-							isError
-								? "bg-red-500 text-white dark:bg-red-500 dark:text-white"
-								: "bg-yellow-500 text-yellow-950 dark:bg-yellow-500 dark:text-yellow-950",
+							"flex min-h-8 w-fit items-center gap-2 rounded-lg bg-popover py-1 pr-1 pl-2.5 text-xs text-text-header shadow-popover",
 						)}
 					>
-						<AlertCircleIcon size={14} strokeWidth={2} className="shrink-0" />
+						<AlertCircleIcon
+							size={14}
+							strokeWidth={2}
+							className={cn(
+								"shrink-0",
+								isError ? "text-danger" : "text-warning",
+							)}
+						/>
 						<span className="min-w-0 flex-1">{warning.message}</span>
 						{warning.action
 							? (() => {
@@ -36,12 +40,7 @@ export function DashboardBottomBar() {
 											href={action.href}
 											target="_blank"
 											rel="noopener noreferrer"
-											className={cn(
-												"shrink-0 rounded-md px-2 py-0.5 font-medium transition-colors",
-												isError
-													? "bg-white/15 hover:bg-white/25"
-													: "bg-yellow-950/10 hover:bg-yellow-950/20",
-											)}
+											className="flex h-6 shrink-0 items-center rounded-md bg-button px-2 font-medium text-foreground shadow-button transition-colors hover:bg-button-hover"
 										>
 											{action.label}
 										</a>
@@ -57,12 +56,7 @@ export function DashboardBottomBar() {
 												});
 												void setShowOrgSetup(true);
 											}}
-											className={cn(
-												"shrink-0 rounded-md px-2 py-0.5 font-medium transition-colors",
-												isError
-													? "bg-white/15 hover:bg-white/25"
-													: "bg-yellow-950/10 hover:bg-yellow-950/20",
-											)}
+											className="flex h-6 shrink-0 items-center rounded-md bg-button px-2 font-medium text-foreground shadow-button transition-colors hover:bg-button-hover"
 										>
 											{action.label}
 										</button>
@@ -73,10 +67,8 @@ export function DashboardBottomBar() {
 							<button
 								type="button"
 								onClick={() => removeWarning(warning.id)}
-								className={cn(
-									"flex size-5 shrink-0 items-center justify-center rounded transition-colors",
-									isError ? "hover:bg-white/15" : "hover:bg-yellow-600/20",
-								)}
+								aria-label="Dismiss"
+								className="flex size-6 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-ghost-hover hover:text-foreground"
 							>
 								<XIcon size={12} strokeWidth={2} />
 							</button>

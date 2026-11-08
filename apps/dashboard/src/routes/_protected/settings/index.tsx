@@ -10,7 +10,8 @@ import { Logo } from "@diffkit/ui/components/logo";
 import { cn } from "@diffkit/ui/lib/utils";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useTheme } from "next-themes";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { ViewerOrganizations } from "#/components/org/settings/viewer-orgs-section";
 import { signOutToLogin } from "#/lib/auth-actions";
 import { isDiffKitExtensionPresent } from "#/lib/diffkit-extension-detect";
 import { getExtensionStoreInstallUrl } from "#/lib/extension-store-url";
@@ -40,6 +41,7 @@ export const Route = createFileRoute("/_protected/settings/")({
 
 function GeneralSettingsPage() {
 	const { user } = Route.useRouteContext();
+	const scope = useMemo(() => ({ userId: user.id }), [user.id]);
 
 	return (
 		<>
@@ -61,7 +63,7 @@ function GeneralSettingsPage() {
 				title="Repository access"
 				description="Manage which GitHub organizations and repositories DiffKit can access."
 			>
-				<div className="flex items-center justify-between gap-4 rounded-xl border border-border/70 px-4 py-3.5">
+				<div className="flex items-center justify-between gap-4 rounded-xl border-[0.5px] border-border/70 px-4 py-3.5">
 					<div className="min-w-0">
 						<p className="text-sm font-medium">GitHub App permissions</p>
 						<p className="text-sm text-muted-foreground">
@@ -75,10 +77,17 @@ function GeneralSettingsPage() {
 			</SettingsSection>
 
 			<SettingsSection
+				title="Organizations"
+				description="Manage members, teams and defaults for organizations you belong to."
+			>
+				<ViewerOrganizations scope={scope} />
+			</SettingsSection>
+
+			<SettingsSection
 				title="Account"
 				description="Manage your account and session."
 			>
-				<div className="flex items-center justify-between gap-4 rounded-xl border border-border/70 px-4 py-3.5">
+				<div className="flex items-center justify-between gap-4 rounded-xl border-[0.5px] border-border/70 px-4 py-3.5">
 					<div className="min-w-0">
 						<p className="text-sm font-medium">{user.name ?? "Account"}</p>
 						<p className="text-sm text-muted-foreground">{user.email}</p>
@@ -204,7 +213,7 @@ function LayoutPreview({ mode }: { mode: "light" | "dark" }) {
 			{/* Content card */}
 			<div
 				className={cn(
-					"mx-1 mb-1 flex flex-1 flex-col gap-[3px] rounded-md border p-1.5",
+					"mx-1 mb-1 flex flex-1 flex-col gap-[3px] rounded-md border-[0.5px] p-1.5",
 					card,
 					cardBorder,
 				)}
@@ -275,7 +284,7 @@ function ExtensionCard() {
 	const installHref = getExtensionStoreInstallUrl();
 
 	return (
-		<div className="flex items-center justify-between gap-4 rounded-xl border border-border/70 px-4 py-3.5">
+		<div className="flex items-center justify-between gap-4 rounded-xl border-[0.5px] border-border/70 px-4 py-3.5">
 			<div className="flex min-w-0 items-center gap-3">
 				<Logo className="size-5 shrink-0" aria-hidden />
 				<div className="min-w-0">
@@ -288,7 +297,7 @@ function ExtensionCard() {
 				</div>
 			</div>
 			{installed ? (
-				<span className="flex shrink-0 items-center gap-1.5 text-sm text-emerald-600 dark:text-emerald-400">
+				<span className="flex shrink-0 items-center gap-1.5 text-sm text-success">
 					<CheckIcon size={14} strokeWidth={2} />
 					Installed
 				</span>

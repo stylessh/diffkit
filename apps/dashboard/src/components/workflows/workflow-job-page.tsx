@@ -209,7 +209,7 @@ function WorkflowJobPageSkeleton() {
 				</div>
 			</StaggerItem>
 			<StaggerItem index={1}>
-				<div className="flex h-48 items-center rounded-xl border px-6">
+				<div className="flex h-48 items-center rounded-xl border-[0.5px] px-6">
 					<Skeleton className="h-12 w-52" />
 				</div>
 			</StaggerItem>
@@ -288,7 +288,7 @@ function JobContainer({
 
 	if (!job) {
 		return (
-			<div className="overflow-hidden rounded-xl border bg-surface-1">
+			<div className="overflow-hidden rounded-xl border-[0.5px] bg-surface-1">
 				<div className="flex items-center justify-center px-4 py-16 text-muted-foreground text-sm">
 					{isJobLoading ? (
 						<>
@@ -304,7 +304,7 @@ function JobContainer({
 	}
 
 	return (
-		<div className="overflow-hidden rounded-xl border bg-surface-1">
+		<div className="overflow-hidden rounded-xl border-[0.5px] bg-surface-1">
 			<JobHeader
 				job={job}
 				isLogsFetching={isLogsFetching}
@@ -419,7 +419,7 @@ function JobFooter({
 	runId: number;
 }) {
 	return (
-		<div className="border-t px-4 py-2 text-muted-foreground text-xs">
+		<div className="border-t-[0.5px] px-4 py-2 text-muted-foreground text-xs">
 			Part of workflow run{" "}
 			<Link
 				to="/$owner/$repo/actions/runs/$runId"
@@ -508,7 +508,7 @@ const JobStepRow = memo(function JobStepRow({
 		<div
 			ref={rowRef}
 			id={hashId}
-			className="scroll-mt-4 border-t first:border-t-0"
+			className="scroll-mt-4 border-t-[0.5px] first:border-t-0"
 		>
 			<button
 				type="button"
@@ -532,7 +532,10 @@ const JobStepRow = memo(function JobStepRow({
 				/>
 			</button>
 			{expanded ? (
-				<div id={`${hashId}-content`} className="border-t bg-background">
+				<div
+					id={`${hashId}-content`}
+					className="border-t-[0.5px] bg-background"
+				>
 					<StepLogContent
 						entries={entries}
 						totalLineCount={totalLineCount}

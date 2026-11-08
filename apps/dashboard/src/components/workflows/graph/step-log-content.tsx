@@ -238,23 +238,23 @@ const LEVEL_LABELS: Record<Exclude<LogLevel, null>, string> = {
 };
 
 const LEVEL_ROW_BG: Record<Exclude<LogLevel, null>, string> = {
-	error: "bg-red-500/10",
-	warning: "bg-amber-500/10",
-	notice: "bg-blue-500/10",
+	error: "bg-pill-blocked",
+	warning: "bg-pill-warning",
+	notice: "bg-indigo/10",
 	debug: "bg-muted/40",
 };
 
 const LEVEL_LINE_NO: Record<Exclude<LogLevel, null>, string> = {
-	error: "text-red-500",
-	warning: "text-amber-500",
-	notice: "text-blue-500",
+	error: "text-danger",
+	warning: "text-warning",
+	notice: "text-indigo",
 	debug: "text-muted-foreground",
 };
 
 const LEVEL_LABEL_TEXT: Record<Exclude<LogLevel, null>, string> = {
-	error: "text-red-500 dark:text-red-400",
-	warning: "text-amber-600 dark:text-amber-400",
-	notice: "text-blue-600 dark:text-blue-400",
+	error: "text-danger",
+	warning: "text-pill-warning-text",
+	notice: "text-indigo",
 	debug: "text-muted-foreground",
 };
 

@@ -7,6 +7,7 @@ import { ErrorScreen } from "#/components/layouts/error-screen";
 import { getSession } from "#/lib/auth.functions";
 import { readDocumentCookie } from "#/lib/cookies";
 import { checkSetupComplete } from "#/lib/github.functions";
+import { useGitHubChangeFeed } from "#/lib/github-change-feed";
 import { validateProtectedSessionInBackground } from "#/lib/protected-auth";
 import {
 	authFromSession,
@@ -17,15 +18,15 @@ import {
 	setProtectedRouteCachedAuth,
 } from "#/lib/protected-auth-cache";
 import { buildSeo, formatPageTitle, PRIVATE_ROUTE_HEADERS } from "#/lib/seo";
+import { parseSidebarLayout } from "#/lib/shell/sidebar-layout";
 import { parseViewerHint } from "#/lib/viewer-hint";
 
-/** Last known viewer, from the request cookie on the server or document.cookie. */
-const readViewerHint = createIsomorphicFn()
+const readRequestCookie = createIsomorphicFn()
 	.server(async () => {
 		const { getRequestHeader } = await import("@tanstack/react-start/server");
-		return parseViewerHint(getRequestHeader("cookie"));
+		return getRequestHeader("cookie");
 	})
-	.client(async () => parseViewerHint(readDocumentCookie()));
+	.client(async () => readDocumentCookie());
 
 /**
  * Optimistic auth.
@@ -42,46 +43,10 @@ const readViewerHint = createIsomorphicFn()
  * cookie, so rendering the shell from the hint never grants data access.
  */
 export const Route = createFileRoute("/_protected")({
-	beforeLoad: async ({ location }): Promise<ProtectedRouteCachedAuth> => {
-		const cachedAuth = getProtectedRouteCachedAuth();
-		if (cachedAuth) return cachedAuth;
-
-		const hint = await readViewerHint();
-		if (hint) {
-			const optimistic = authFromViewerHint(hint);
-			if (typeof window !== "undefined") {
-				setProtectedRouteCachedAuth(optimistic);
-				void validateProtectedSessionInBackground(optimistic);
-			}
-			return optimistic;
-		}
-
-		const [session, setupComplete] = await Promise.all([
-			getSession(),
-			checkSetupComplete(),
-		]);
-
-		if (!session) {
-			throw redirect({
-				to: "/login",
-				search: { redirect: location.href },
-			});
-		}
-
-		if (!setupComplete) {
-			throw redirect({ to: "/setup" });
-		}
-
-		const next = authFromSession(session);
-		if (!next) {
-			throw redirect({
-				to: "/login",
-				search: { redirect: location.href },
-			});
-		}
-
-		rememberConfirmedAuth(next);
-		return next;
+	beforeLoad: async ({ location }) => {
+		const cookie = await readRequestCookie();
+		const auth = await resolveProtectedAuth(location.href, cookie);
+		return { ...auth, sidebarLayout: parseSidebarLayout(cookie) };
 	},
 	headers: () => PRIVATE_ROUTE_HEADERS,
 	head: ({ match }) => {
@@ -97,6 +62,51 @@ export const Route = createFileRoute("/_protected")({
 	pendingComponent: DashboardViewportLoading,
 	errorComponent: ErrorScreen,
 });
+
+async function resolveProtectedAuth(
+	href: string,
+	cookie: string | null | undefined,
+): Promise<ProtectedRouteCachedAuth> {
+	const cachedAuth = getProtectedRouteCachedAuth();
+	if (cachedAuth) return cachedAuth;
+
+	const hint = parseViewerHint(cookie);
+	if (hint) {
+		const optimistic = authFromViewerHint(hint);
+		if (typeof window !== "undefined") {
+			setProtectedRouteCachedAuth(optimistic);
+			void validateProtectedSessionInBackground(optimistic);
+		}
+		return optimistic;
+	}
+
+	const [session, setupComplete] = await Promise.all([
+		getSession(),
+		checkSetupComplete(),
+	]);
+
+	if (!session) {
+		throw redirect({
+			to: "/login",
+			search: { redirect: href },
+		});
+	}
+
+	if (!setupComplete) {
+		throw redirect({ to: "/setup" });
+	}
+
+	const next = authFromSession(session);
+	if (!next) {
+		throw redirect({
+			to: "/login",
+			search: { redirect: href },
+		});
+	}
+
+	rememberConfirmedAuth(next);
+	return next;
+}
 
 /**
  * On a server-rendered cold load `beforeLoad` does not re-run in the browser,
@@ -117,6 +127,8 @@ function ProtectedLayout() {
 			rememberConfirmedAuth(auth);
 		}
 	}, [user, session, optimistic]);
+
+	useGitHubChangeFeed(user.id);
 
 	return <DashboardLayout />;
 }

@@ -33,6 +33,8 @@ Copy `.dev.vars.example` to `.dev.vars` and fill in the real values. GitHub comm
 
 ## Cloudflare Wrangler Configuration
 
+See [docs/local-dev.md](../../docs/local-dev.md) for the full local setup, including demo mode.
+
 Copy `wrangler.jsonc.example` to **`wrangler.dev.jsonc`** (gitignored). `pnpm dev` and local D1 migrations use that file so local bindings stay separate from deploy config. For a local production build or `wrangler deploy` without `--config`, you can also maintain **`wrangler.jsonc`** (gitignored).
 
 Fill in the Cloudflare-specific values:

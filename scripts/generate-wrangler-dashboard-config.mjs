@@ -45,6 +45,8 @@ const config = {
     "no_handle_cross_request_promise_resolution",
   ],
   main: "src/entry-worker.ts",
+  // Change-feed sweeper and D1 size check (scheduled-maintenance.server.ts).
+  triggers: { crons: ["*/5 * * * *"] },
   observability: {
     logs: { enabled: true, invocation_logs: true },
     traces: { enabled: false },

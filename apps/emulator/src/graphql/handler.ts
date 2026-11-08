@@ -14,6 +14,7 @@ import {
 } from "graphql";
 import type { ShimContext } from "../server.ts";
 import { getAuthUser } from "../shims/common.ts";
+import { blameResolvers, blameTypeDefs } from "./blame.ts";
 import {
 	ABSTRACT_TYPES,
 	createGraphQLContext,
@@ -28,8 +29,11 @@ export function getSchema() {
 	if (cachedSchema) {
 		return cachedSchema;
 	}
-	const schema = buildSchema(typeDefs);
-	for (const [typeName, fields] of Object.entries(resolvers)) {
+	const schema = buildSchema(`${typeDefs}\n${blameTypeDefs}`);
+	for (const [typeName, fields] of [
+		...Object.entries(resolvers),
+		...Object.entries(blameResolvers),
+	]) {
 		const type = schema.getType(typeName);
 		if (!(type instanceof GraphQLObjectType)) {
 			throw new Error(`resolvers reference unknown object type ${typeName}`);

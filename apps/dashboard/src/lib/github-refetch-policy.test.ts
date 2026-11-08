@@ -5,95 +5,57 @@ import {
 	classifyPullStatus,
 	classifyWorkflowJobs,
 	classifyWorkflowRun,
-	GITHUB_TERMINAL_POLL_STOP_AFTER_MS,
+	GITHUB_SETTLED_POLL_STOP_AFTER_MS,
+	type GitHubPollPhase,
 	getAdaptiveRefetchInterval,
 	getQueryDataLastChangedAt,
 	githubPollIntervalMs,
 } from "./github-refetch-policy";
 
-const TEN_MINUTES = GITHUB_TERMINAL_POLL_STOP_AFTER_MS;
+const TEN_MINUTES = GITHUB_SETTLED_POLL_STOP_AFTER_MS;
 
 describe("getAdaptiveRefetchInterval", () => {
-	it("polls fast while something is queued or running", () => {
-		expect(
-			getAdaptiveRefetchInterval({
-				isActive: true,
-				isTerminal: false,
-				lastChangedAt: 0,
-				now: TEN_MINUTES * 5,
-			}),
-		).toBe(5_000);
+	const at = (phase: GitHubPollPhase, lastChangedAt: number, now: number) =>
+		getAdaptiveRefetchInterval({ phase, lastChangedAt, now });
+
+	it("polls running work fast, however old", () => {
+		expect(at("running", 0, TEN_MINUTES * 5)).toBe(
+			githubPollIntervalMs.running,
+		);
 	});
 
-	it("polls at the idle rate when nothing is running", () => {
-		expect(
-			getAdaptiveRefetchInterval({
-				isActive: false,
-				isTerminal: false,
-				lastChangedAt: 0,
-				now: TEN_MINUTES * 5,
-			}),
-		).toBe(30_000);
+	it("keeps waiting at the idle rate, however old", () => {
+		expect(at("waiting", 0, TEN_MINUTES * 5)).toBe(githubPollIntervalMs.idle);
 	});
 
-	it("keeps polling a terminal entity that changed recently", () => {
-		expect(
-			getAdaptiveRefetchInterval({
-				isActive: false,
-				isTerminal: true,
-				lastChangedAt: 1_000,
-				now: 1_000 + TEN_MINUTES - 1,
-			}),
-		).toBe(30_000);
-	});
-
-	it("stops polling a terminal entity unchanged for ten minutes", () => {
-		expect(
-			getAdaptiveRefetchInterval({
-				isActive: false,
-				isTerminal: true,
-				lastChangedAt: 1_000,
-				now: 1_000 + TEN_MINUTES,
-			}),
-		).toBe(false);
+	it("stops a settled entity once it has been unchanged for ten minutes", () => {
+		expect(at("settled", 1_000, 1_000 + TEN_MINUTES - 1)).toBe(
+			githubPollIntervalMs.idle,
+		);
+		expect(at("settled", 1_000, 1_000 + TEN_MINUTES)).toBe(false);
 	});
 });
 
 describe("classifiers", () => {
 	it("classifies workflow runs by status", () => {
-		expect(classifyWorkflowRun({ status: "in_progress" })).toEqual({
-			isActive: true,
-			isTerminal: false,
-		});
-		expect(classifyWorkflowRun({ status: "queued" })).toEqual({
-			isActive: true,
-			isTerminal: false,
-		});
-		expect(classifyWorkflowRun({ status: "completed" })).toEqual({
-			isActive: false,
-			isTerminal: true,
-		});
-		expect(classifyWorkflowRun(null)).toEqual({
-			isActive: false,
-			isTerminal: false,
-		});
+		expect(classifyWorkflowRun({ status: "in_progress" })).toBe("running");
+		expect(classifyWorkflowRun({ status: "queued" })).toBe("running");
+		expect(classifyWorkflowRun({ status: "completed" })).toBe("settled");
+		expect(classifyWorkflowRun(null)).toBe("waiting");
 	});
 
-	it("classifies job lists as active until every job completes", () => {
+	it("classifies job lists as running until every job completes", () => {
 		expect(
 			classifyWorkflowJobs([{ status: "completed" }, { status: "queued" }]),
-		).toEqual({ isActive: true, isTerminal: false });
+		).toBe("running");
 		expect(
 			classifyWorkflowJobs([{ status: "completed" }, { status: "completed" }]),
-		).toEqual({ isActive: false, isTerminal: true });
-		expect(classifyWorkflowJobs([])).toEqual({
-			isActive: false,
-			isTerminal: false,
-		});
+		).toBe("settled");
+		expect(classifyWorkflowJobs([])).toBe("waiting");
 	});
 
-	it("classifies PR status by pending checks and PR state", () => {
-		const checks = (pending: number) => ({
+	it("settles a PR status once no checks are pending, open or not", () => {
+		const status = (pending: number) => ({
 			checks: {
 				total: 3,
 				passed: 3 - pending,
@@ -103,23 +65,9 @@ describe("classifiers", () => {
 				expected: 0,
 			},
 		});
-
-		expect(classifyPullStatus(checks(1))).toEqual({
-			isActive: true,
-			isTerminal: false,
-		});
-		expect(classifyPullStatus(checks(0))).toEqual({
-			isActive: false,
-			isTerminal: false,
-		});
-		expect(classifyPullStatus(checks(0), { isPullClosed: true })).toEqual({
-			isActive: false,
-			isTerminal: true,
-		});
-		expect(classifyPullStatus(checks(2), { isPullClosed: true })).toEqual({
-			isActive: true,
-			isTerminal: false,
-		});
+		expect(classifyPullStatus(status(1))).toBe("running");
+		expect(classifyPullStatus(status(0))).toBe("settled");
+		expect(classifyPullStatus(null)).toBe("waiting");
 	});
 });
 
@@ -159,38 +107,15 @@ describe("adaptiveRefetchInterval", () => {
 		vi.setSystemTime(TEN_MINUTES);
 		expect(refetchInterval(query)).toBe(30_000);
 	});
-
-	it("keeps polling fast while a run is in progress regardless of age", () => {
-		vi.useFakeTimers();
-		vi.setSystemTime(TEN_MINUTES * 3);
-		const refetchInterval = adaptiveRefetchInterval(classifyWorkflowRun);
-		expect(
-			refetchInterval({
-				state: { data: { status: "in_progress" }, dataUpdatedAt: 1 },
-			}),
-		).toBe(5_000);
-	});
 });
 
 describe("cache policy vs poll intervals", () => {
-	it("keeps every polled tier's staleTime at or below its interval", () => {
-		expect(githubCachePolicy.list.staleTimeMs).toBeLessThanOrEqual(
-			githubPollIntervalMs.list,
-		);
-		expect(githubCachePolicy.mine.staleTimeMs).toBeLessThanOrEqual(
-			githubPollIntervalMs.mine,
-		);
-		expect(githubCachePolicy.detail.staleTimeMs).toBeLessThanOrEqual(
-			githubPollIntervalMs.detail,
-		);
-		expect(githubCachePolicy.activity.staleTimeMs).toBeLessThanOrEqual(
-			githubPollIntervalMs.activity,
-		);
+	it("keeps every adaptively polled tier's staleTime at or below its interval", () => {
 		expect(githubCachePolicy.status.staleTimeMs).toBeLessThanOrEqual(
-			githubPollIntervalMs.active,
+			githubPollIntervalMs.running,
 		);
 		expect(githubCachePolicy.workflowRun.staleTimeMs).toBeLessThanOrEqual(
-			githubPollIntervalMs.active,
+			githubPollIntervalMs.running,
 		);
 	});
 });

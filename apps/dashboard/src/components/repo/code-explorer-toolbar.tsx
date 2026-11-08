@@ -4,16 +4,8 @@ import {
 	CodeIcon,
 	CopyIcon,
 	DownloadIcon,
-	GitPullRequestIcon,
+	GitBranchIcon,
 } from "@diffkit/icons";
-import { Button } from "@diffkit/ui/components/button";
-import {
-	Command,
-	CommandEmpty,
-	CommandInput,
-	CommandItem,
-	CommandList,
-} from "@diffkit/ui/components/command";
 import {
 	Popover,
 	PopoverContent,
@@ -26,14 +18,15 @@ import {
 	TabsTrigger,
 } from "@diffkit/ui/components/tabs";
 import { cn } from "@diffkit/ui/lib/utils";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { Link } from "@tanstack/react-router";
 import { useCallback, useState } from "react";
-import {
-	type GitHubQueryScope,
-	githubRepoBranchesQueryOptions,
-} from "#/lib/github.query";
+import { RepoRefPicker } from "#/components/repo/refs/repo-ref-picker";
+import { TagIcon } from "#/components/repo/refs/tag-icon";
+import type { GitHubQueryScope } from "#/lib/github.query";
 import type { RepoOverview } from "#/lib/github.types";
 import { useRepoCloneProtocol } from "#/lib/repo-clone-protocol-storage";
+import { FileFinder } from "./code/file-finder";
+import { ghostPillClassName, pillButtonClassName } from "./repo-ui";
 
 export function CodeExplorerToolbar({
 	repo,
@@ -47,133 +40,54 @@ export function CodeExplorerToolbar({
 	onBranchChange: (branch: string) => void;
 }) {
 	return (
-		<div className="flex items-center justify-between gap-3">
-			<BranchSelector
-				repo={repo}
-				currentRef={currentRef}
+		<div className="flex flex-wrap items-center gap-1.5">
+			<RepoRefPicker
+				owner={repo.owner}
+				repo={repo.name}
 				scope={scope}
-				onBranchChange={onBranchChange}
+				currentRef={currentRef}
+				defaultBranch={repo.defaultBranch}
+				onSelect={onBranchChange}
 			/>
-			<CodePopover repo={repo} />
-		</div>
-	);
-}
-
-function BranchSelector({
-	repo,
-	currentRef,
-	scope,
-	onBranchChange,
-}: {
-	repo: RepoOverview;
-	currentRef: string;
-	scope: GitHubQueryScope;
-	onBranchChange: (branch: string) => void;
-}) {
-	const [open, setOpen] = useState(false);
-	const queryClient = useQueryClient();
-	const branchesOptions = githubRepoBranchesQueryOptions(scope, {
-		owner: repo.owner,
-		repo: repo.name,
-	});
-
-	const branchesQuery = useQuery({
-		...branchesOptions,
-		enabled: open,
-	});
-
-	const prefetchBranches = useCallback(() => {
-		void queryClient.prefetchQuery(branchesOptions);
-	}, [queryClient, branchesOptions]);
-
-	return (
-		<Popover open={open} onOpenChange={setOpen}>
-			<PopoverTrigger asChild>
-				<Button
-					variant="secondary"
-					size="sm"
-					onMouseEnter={prefetchBranches}
-					onFocus={prefetchBranches}
-					className="max-w-[220px] border border-border dark:border-transparent"
+			<Link
+				to="/$owner/$repo/branches"
+				params={{ owner: repo.owner, repo: repo.name }}
+				className={cn(ghostPillClassName, "max-sm:hidden")}
+			>
+				<GitBranchIcon size={14} strokeWidth={2} />
+				<span className="tabular-nums">
+					{repo.branchCount} {repo.branchCount === 1 ? "branch" : "branches"}
+				</span>
+			</Link>
+			<Link
+				to="/$owner/$repo/tags"
+				params={{ owner: repo.owner, repo: repo.name }}
+				className={cn(ghostPillClassName, "max-sm:hidden")}
+			>
+				<TagIcon size={14} />
+				<span className="tabular-nums">
+					{repo.tagCount} {repo.tagCount === 1 ? "tag" : "tags"}
+				</span>
+			</Link>
+			<div className="ml-auto flex items-center gap-1.5">
+				<FileFinder
+					scope={scope}
+					owner={repo.owner}
+					repo={repo.name}
+					currentRef={currentRef}
+				/>
+				<Link
+					to="/$owner/$repo/search"
+					params={{ owner: repo.owner, repo: repo.name }}
+					aria-label="Search code"
+					className={cn(ghostPillClassName, "max-lg:hidden")}
 				>
-					<GitPullRequestIcon size={14} />
-					<span className="truncate">{currentRef}</span>
-					<ChevronDownIcon size={14} className="shrink-0 opacity-60" />
-				</Button>
-			</PopoverTrigger>
-			<PopoverContent className="w-72 p-0" align="start">
-				<Command>
-					<CommandInput placeholder="Find a branch…" />
-					<CommandList>
-						<CommandEmpty>
-							{branchesQuery.isLoading ? "Loading…" : "No branches found."}
-						</CommandEmpty>
-						{/* Default branch always first */}
-						<CommandItem
-							key={repo.defaultBranch}
-							value={repo.defaultBranch}
-							onSelect={(value) => {
-								onBranchChange(value);
-								setOpen(false);
-							}}
-							className={cn(
-								repo.defaultBranch === currentRef &&
-									"font-medium text-foreground",
-							)}
-						>
-							<CheckIcon
-								size={14}
-								className={cn(
-									"shrink-0",
-									repo.defaultBranch === currentRef
-										? "opacity-100"
-										: "opacity-0",
-								)}
-							/>
-							<span className="truncate">{repo.defaultBranch}</span>
-							<span className="ml-auto text-[10px] text-muted-foreground">
-								default
-							</span>
-						</CommandItem>
-						{branchesQuery.data
-							?.filter((b) => b.name !== repo.defaultBranch)
-							.map((branch) => (
-								<CommandItem
-									key={branch.name}
-									value={branch.name}
-									onSelect={(value) => {
-										onBranchChange(value);
-										setOpen(false);
-									}}
-									className={cn(
-										branch.name === currentRef && "font-medium text-foreground",
-									)}
-								>
-									<CheckIcon
-										size={14}
-										className={cn(
-											"shrink-0",
-											branch.name === currentRef ? "opacity-100" : "opacity-0",
-										)}
-									/>
-									<span className="truncate">{branch.name}</span>
-								</CommandItem>
-							))}
-					</CommandList>
-				</Command>
-				<div className="border-t px-3 py-2">
-					<span className="text-xs text-muted-foreground">
-						{repo.branchCount} branch{repo.branchCount !== 1 ? "es" : ""}
-						{repo.tagCount > 0 && (
-							<>
-								{" · "}
-								{repo.tagCount} tag{repo.tagCount !== 1 ? "s" : ""}
-							</>
-						)}
-					</span>
-				</div>
-			</PopoverContent>
-		</Popover>
+					<CodeIcon size={14} />
+					Search
+				</Link>
+				<CodePopover repo={repo} />
+			</div>
+		</div>
 	);
 }
 
@@ -201,15 +115,22 @@ function CodePopover({ repo }: { repo: RepoOverview }) {
 	return (
 		<Popover>
 			<PopoverTrigger asChild>
-				<Button variant="default" size="sm">
-					<CodeIcon size={14} />
+				<button
+					type="button"
+					className={cn(pillButtonClassName, "text-foreground")}
+				>
+					<CodeIcon size={14} strokeWidth={2} />
 					Code
-					<ChevronDownIcon size={14} className="opacity-60" />
-				</Button>
+					<ChevronDownIcon
+						size={12}
+						strokeWidth={2}
+						className="text-muted-foreground"
+					/>
+				</button>
 			</PopoverTrigger>
-			<PopoverContent align="end" className="w-96 p-0 overflow-hidden">
-				<div className="flex items-center gap-2 border-b px-4 py-3 bg-surface-1">
-					<span className="text-sm font-semibold">Clone {repo.fullName}</span>
+			<PopoverContent align="end" className="w-[340px] overflow-hidden p-0">
+				<div className="flex h-[30px] items-center px-3.5 pt-1.5 text-xs font-medium text-muted-foreground">
+					Clone {repo.fullName}
 				</div>
 
 				<Tabs
@@ -217,7 +138,7 @@ function CodePopover({ repo }: { repo: RepoOverview }) {
 					onValueChange={handleProtocolChange}
 					className="gap-0"
 				>
-					<TabsList className="mx-4 mt-3 h-8 w-fit">
+					<TabsList className="mx-3.5 mt-1.5 h-7 w-fit">
 						<TabsTrigger value="https" className="text-xs">
 							HTTPS
 						</TabsTrigger>
@@ -229,47 +150,47 @@ function CodePopover({ repo }: { repo: RepoOverview }) {
 						</TabsTrigger>
 					</TabsList>
 
-					<TabsContent value="https" className="px-4 pb-3 pt-4">
+					<TabsContent value="https" className="px-3.5 pt-3 pb-3.5">
 						<CloneInput
 							value={httpsUrl}
 							copied={copied}
 							onCopy={() => handleCopy(httpsUrl)}
 						/>
 
-						<p className="mt-1.5 text-xs text-muted-foreground">
+						<p className="mt-2 text-xs text-muted-foreground">
 							Clone using the web URL.
 						</p>
 					</TabsContent>
-					<TabsContent value="ssh" className="px-4 pb-3 pt-4">
+					<TabsContent value="ssh" className="px-3.5 pt-3 pb-3.5">
 						<CloneInput
 							value={sshUrl}
 							copied={copied}
 							onCopy={() => handleCopy(sshUrl)}
 						/>
 
-						<p className="mt-1.5 text-xs text-muted-foreground">
+						<p className="mt-2 text-xs text-muted-foreground">
 							Use a password-protected SSH key.
 						</p>
 					</TabsContent>
-					<TabsContent value="cli" className="px-4 pb-3 pt-4">
+					<TabsContent value="cli" className="px-3.5 pt-3 pb-3.5">
 						<CloneInput
 							value={cliCommand}
 							copied={copied}
 							onCopy={() => handleCopy(cliCommand)}
 						/>
-						<p className="mt-1.5 text-xs text-muted-foreground">
+						<p className="mt-2 text-xs text-muted-foreground">
 							Work fast with the official CLI.
 						</p>
 					</TabsContent>
 				</Tabs>
 
-				<div className="border-t">
+				<div className="border-t-[0.5px] border-popover-border p-1.5">
 					<a
 						href={zipUrl}
 						download
-						className="flex items-center gap-2 px-4 py-2.5 text-sm transition-colors hover:bg-surface-0"
+						className="flex h-8 items-center gap-2 rounded-md px-2 text-[13px] font-medium text-text-header transition-colors hover:bg-menu-hover hover:text-foreground"
 					>
-						<DownloadIcon size={15} className="text-muted-foreground" />
+						<DownloadIcon size={14} className="text-muted-foreground" />
 						Download ZIP
 					</a>
 				</div>
@@ -289,21 +210,21 @@ function CloneInput({
 }) {
 	return (
 		<div className="flex items-center gap-1.5">
-			<code className="flex-1 truncate rounded-md border bg-surface-0 px-2.5 py-1.5 text-xs">
+			<code className="flex h-8 min-w-0 flex-1 items-center truncate rounded-lg px-2.5 font-mono text-xs text-text-header shadow-field">
 				{value}
 			</code>
-			<Button
-				variant="ghost"
-				size="icon"
-				className="size-7 shrink-0"
+			<button
+				type="button"
+				className={cn(pillButtonClassName, "h-8 text-[13px]")}
 				onClick={onCopy}
 			>
 				{copied ? (
-					<CheckIcon size={14} className="text-green-500" />
+					<CheckIcon size={14} className="text-success" />
 				) : (
 					<CopyIcon size={14} />
 				)}
-			</Button>
+				{copied ? "Copied" : "Copy"}
+			</button>
 		</div>
 	);
 }

@@ -273,7 +273,7 @@ export function ContributionGraph({
 							ref={tooltipRef}
 							layout
 							key="tooltip"
-							className="pointer-events-none fixed z-50 whitespace-nowrap rounded-md bg-popover px-2.5 py-1.5 text-xs text-popover-foreground shadow-md border border-border"
+							className="pointer-events-none fixed z-50 whitespace-nowrap rounded-md bg-popover px-2.5 py-1.5 text-xs text-popover-foreground shadow-md border-[0.5px] border-border"
 							style={{ left: mouseX, top: mouseY, x: tooltipX }}
 							initial={{ opacity: 0, scale: 0.95 }}
 							animate={{ opacity: 1, scale: 1 }}

@@ -1,5 +1,4 @@
 import { IssuesIcon } from "@diffkit/icons";
-import { Markdown } from "@diffkit/ui/components/markdown";
 import {
 	StatePill,
 	type StatePillTone,
@@ -7,6 +6,7 @@ import {
 import { useState } from "react";
 import { IssueCommentReactionBar } from "#/components/details/comment-reaction-bar";
 import { DetailPageTitle } from "#/components/details/detail-page";
+import { AppMarkdown } from "#/components/markdown/app-markdown";
 import { formatRelativeTime } from "#/lib/format-relative-time";
 import type { GitHubQueryScope } from "#/lib/github.query";
 import type { IssueDetail } from "#/lib/github.types";
@@ -30,13 +30,13 @@ export function getIssueStateConfig(
 			};
 		}
 		return {
-			color: "text-purple-500",
+			color: "text-merged",
 			label: "Closed",
 			tone: "merged",
 		};
 	}
 	return {
-		color: "text-green-500",
+		color: "text-success",
 		label: "Open",
 		tone: "open",
 	};
@@ -74,11 +74,11 @@ export function IssueDetailHeader({
 					<div className="flex flex-wrap items-center gap-2">
 						<StatePill tone={stateConfig.tone}>{stateConfig.label}</StatePill>
 						{issue.author && (
-							<span className="flex items-center gap-1.5 text-sm text-muted-foreground">
+							<span className="flex items-center gap-1.5 text-xs font-[450] text-muted-foreground">
 								<img
 									src={issue.author.avatarUrl}
 									alt={issue.author.login}
-									className="size-4 rounded-full border border-border"
+									className="size-4 rounded-full ring-[0.5px] ring-chip-border"
 								/>
 								<span className="font-medium text-foreground">
 									{issue.author.login}
@@ -90,7 +90,7 @@ export function IssueDetailHeader({
 				}
 			/>
 
-			<div className="rounded-lg border bg-surface-0 p-5">
+			<div className="relative">
 				<div
 					className="group/description flex flex-col"
 					onPointerEnter={() => setDescActive(true)}
@@ -103,7 +103,13 @@ export function IssueDetailHeader({
 					}}
 				>
 					{issue.body ? (
-						<Markdown>{issue.body}</Markdown>
+						<AppMarkdown
+							owner={owner}
+							repo={repo}
+							className="text-[15px] leading-6 text-text-header"
+						>
+							{issue.body}
+						</AppMarkdown>
 					) : (
 						<p className="text-sm italic text-muted-foreground">
 							No description provided.

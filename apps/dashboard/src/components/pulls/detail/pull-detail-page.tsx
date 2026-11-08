@@ -1,9 +1,16 @@
+import { LineCounts } from "@diffkit/ui/components/detail-layout";
 import { Skeleton } from "@diffkit/ui/components/skeleton";
 import { StatePill } from "@diffkit/ui/components/state-pill";
+import {
+	ViewTab,
+	ViewTabCount,
+	ViewTabs,
+} from "@diffkit/ui/components/view-tabs";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { getRouteApi } from "@tanstack/react-router";
+import { getRouteApi, Link } from "@tanstack/react-router";
 import { useMemo } from "react";
 import {
+	DetailPageHeader,
 	DetailPageLayout,
 	DetailPageSkeletonLayout,
 	DetailPageTitle,
@@ -133,8 +140,51 @@ export function PullDetailContent({
 	if (!pr)
 		return <PullDetailPageSkeleton owner={owner} repo={repo} seed={seed} />;
 
+	const stateConfig = getPrStateConfig(pr);
+
 	return (
 		<DetailPageLayout
+			header={
+				<DetailPageHeader
+					collectionHref="/pulls"
+					collectionLabel="Pull Requests"
+					owner={owner}
+					repo={repo}
+					number={pr.number}
+					icon={stateConfig.icon}
+					iconClassName={stateConfig.color}
+					title={pr.title}
+					titleSuffix={
+						<LineCounts
+							additions={pr.additions}
+							deletions={pr.deletions}
+							className="text-[13px]"
+						/>
+					}
+				/>
+			}
+			tabs={
+				<ViewTabs label="Pull request views">
+					<ViewTab asChild>
+						<Link
+							to="/$owner/$repo/pull/$pullId"
+							params={{ owner, repo, pullId: String(pullNumber) }}
+							activeOptions={{ exact: true }}
+						>
+							Overview
+						</Link>
+					</ViewTab>
+					<ViewTab asChild>
+						<Link
+							to="/$owner/$repo/review/$pullId"
+							params={{ owner, repo, pullId: String(pullNumber) }}
+						>
+							Files changed
+							<ViewTabCount>{pr.changedFiles}</ViewTabCount>
+						</Link>
+					</ViewTab>
+				</ViewTabs>
+			}
 			main={
 				<>
 					<PullDetailHeader
@@ -211,14 +261,14 @@ function PullSeedTitle({
 			iconClassName={stateConfig.color}
 			title={seed.title}
 			subtitle={
-				<div className="flex min-w-0 items-center gap-1.5 text-sm text-muted-foreground">
+				<div className="flex min-w-0 items-center gap-1.5 text-xs font-[450] text-muted-foreground">
 					<StatePill tone={stateConfig.tone}>{stateConfig.label}</StatePill>
 					{seed.author && (
 						<>
 							<img
 								src={seed.author.avatarUrl}
 								alt={seed.author.login}
-								className="size-4 shrink-0 rounded-full border border-border"
+								className="size-4 shrink-0 rounded-full ring-[0.5px] ring-chip-border"
 							/>
 							<span className="shrink-0 font-medium text-foreground">
 								{seed.author.login}
@@ -271,7 +321,7 @@ function PullDetailPageSkeleton({
 			</StaggerItem>
 
 			<StaggerItem index={2}>
-				<div className="rounded-lg border bg-surface-0 p-5">
+				<div className="rounded-lg border-[0.5px] bg-surface-0 p-5">
 					<div className="flex flex-col gap-3">
 						<Skeleton className="h-4 w-full" />
 						<Skeleton className="h-4 w-5/6" />
@@ -319,7 +369,7 @@ function PullDetailPageSkeleton({
 			</StaggerItem>
 
 			<StaggerItem index={4}>
-				<div className="rounded-lg border p-4">
+				<div className="rounded-lg border-[0.5px] p-4">
 					<div className="flex flex-col gap-3">
 						<div className="flex items-center gap-2">
 							<Skeleton className="size-5 rounded-full" />

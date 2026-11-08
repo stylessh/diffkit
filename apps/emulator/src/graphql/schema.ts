@@ -505,6 +505,7 @@ export const typeDefs = /* GraphQL */ `
 		bodyText: String!
 		createdAt: DateTime!
 		updatedAt: DateTime!
+		lastEditedAt: DateTime
 		author: Actor
 		url: URI!
 		isMinimized: Boolean!

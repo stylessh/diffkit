@@ -7,6 +7,17 @@ import {
 	ViewIcon,
 } from "@diffkit/icons";
 import {
+	AlertDialog,
+	AlertDialogAction,
+	AlertDialogCancel,
+	AlertDialogContent,
+	AlertDialogDescription,
+	AlertDialogFooter,
+	AlertDialogHeader,
+	AlertDialogTitle,
+} from "@diffkit/ui/components/alert-dialog";
+import { buttonVariants } from "@diffkit/ui/components/button";
+import {
 	DropdownMenu,
 	DropdownMenuContent,
 	DropdownMenuItem,
@@ -14,16 +25,17 @@ import {
 	DropdownMenuTrigger,
 } from "@diffkit/ui/components/dropdown-menu";
 import { toast } from "@diffkit/ui/components/sonner";
-import { Spinner } from "@diffkit/ui/components/spinner";
 import { cn } from "@diffkit/ui/lib/utils";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
+import { minimizeComment } from "#/lib/github.functions";
+import { githubRepoViewerPermissionQueryOptions } from "#/lib/github.query";
 import {
-	deleteComment,
-	deleteReviewComment,
-	minimizeComment,
-} from "#/lib/github.functions";
-import { githubQueryKeys } from "#/lib/github.query";
+	invalidateGitHubEntities,
+	pullOrIssueEntityKeys,
+} from "#/lib/github-query-updates";
+import { useGitHubQueryScope } from "#/lib/use-github-query-scope";
+import type { CommentEditor } from "./comment-body";
 
 type CommentMoreMenuProps = {
 	commentId: number;
@@ -33,8 +45,18 @@ type CommentMoreMenuProps = {
 	number: number;
 	commentType: "issue" | "review";
 	isAuthor: boolean;
-	onStartEdit?: () => void;
+	editor: CommentEditor;
 };
+
+/** GitHub lets the author and anyone with write access edit, hide or delete. */
+function useCanModerate(owner: string, repo: string, isAuthor: boolean) {
+	const scope = useGitHubQueryScope();
+	const permission = useQuery({
+		...githubRepoViewerPermissionQueryOptions(scope, { owner, repo }),
+		enabled: !isAuthor,
+	});
+	return isAuthor || permission.data?.canPush === true;
+}
 
 export function CommentMoreMenu({
 	commentId,
@@ -44,11 +66,13 @@ export function CommentMoreMenu({
 	number,
 	commentType,
 	isAuthor,
-	onStartEdit,
+	editor,
 }: CommentMoreMenuProps) {
 	const queryClient = useQueryClient();
-	const [isDeleting, setIsDeleting] = useState(false);
-	const [isHiding, setIsHiding] = useState(false);
+	const canModerate = useCanModerate(owner, repo, isAuthor);
+	const [deleteDialog, setDeleteDialog] = useState<"closed" | "confirming">(
+		"closed",
+	);
 
 	const commentUrl = `https://github.com/${owner}/${repo}/${commentType === "review" ? "pull" : "issues"}/${number}#${commentType === "review" ? "discussion_r" : "issuecomment-"}${commentId}`;
 
@@ -63,106 +87,95 @@ export function CommentMoreMenu({
 	};
 
 	const handleHide = async () => {
-		setIsHiding(true);
-		try {
-			const result = await minimizeComment({
-				data: { owner, repo, commentId, commentType },
-			});
-			if (result.ok) {
-				toast.success("Comment hidden");
-				void queryClient.invalidateQueries({
-					queryKey: githubQueryKeys.all,
-				});
-			} else {
-				toast.error(result.error);
-			}
-		} catch {
-			toast.error("Failed to hide comment");
-		} finally {
-			setIsHiding(false);
+		const result = await minimizeComment({
+			data: { owner, repo, commentId, commentType },
+		}).catch(() => null);
+		if (!result?.ok) {
+			toast.error(result?.error ?? "Failed to hide comment");
+			return;
 		}
+		toast.success("Comment hidden");
+		void invalidateGitHubEntities(
+			queryClient,
+			null,
+			pullOrIssueEntityKeys({ owner, repo, number }),
+		);
 	};
 
 	const handleDelete = async () => {
-		setIsDeleting(true);
-		try {
-			const deleteFn =
-				commentType === "review" ? deleteReviewComment : deleteComment;
-			const result = await deleteFn({
-				data: { owner, repo, commentId },
-			});
-			if (result.ok) {
-				toast.success("Comment deleted");
-				void queryClient.invalidateQueries({
-					queryKey: githubQueryKeys.all,
-				});
-			} else {
-				toast.error(result.error);
-			}
-		} catch {
-			toast.error("Failed to delete comment");
-		} finally {
-			setIsDeleting(false);
-		}
+		setDeleteDialog("closed");
+		const result = await editor.remove();
+		if (!result.ok) toast.error(result.error);
 	};
 
 	return (
-		<DropdownMenu>
-			<DropdownMenuTrigger asChild>
-				<button
-					type="button"
-					className={cn(
-						"rounded-md p-0.5 text-muted-foreground opacity-0 transition-all hover:bg-surface-2 hover:text-foreground group-hover/comment:opacity-100",
-						"data-[state=open]:opacity-100",
-					)}
-				>
-					<MoreHorizontalIcon size={14} strokeWidth={2} />
-				</button>
-			</DropdownMenuTrigger>
-			<DropdownMenuContent align="end" className="min-w-[160px]">
-				<DropdownMenuItem onClick={handleCopyLink}>
-					<LinkIcon size={14} strokeWidth={2} />
-					Copy link
-				</DropdownMenuItem>
-				<DropdownMenuItem onClick={handleCopyMarkdown}>
-					<CopyIcon size={14} strokeWidth={2} />
-					Copy Markdown
-				</DropdownMenuItem>
-				{isAuthor && (
-					<>
-						<DropdownMenuSeparator />
-						{onStartEdit && (
-							<DropdownMenuItem onClick={onStartEdit}>
+		<>
+			<DropdownMenu>
+				<DropdownMenuTrigger asChild>
+					<button
+						type="button"
+						aria-label="Comment actions"
+						className={cn(
+							"rounded-md p-0.5 text-muted-foreground opacity-0 transition-all hover:bg-ghost-hover hover:text-foreground group-hover/comment:opacity-100 focus-visible:opacity-100",
+							"data-[state=open]:opacity-100",
+						)}
+					>
+						<MoreHorizontalIcon size={14} strokeWidth={2} />
+					</button>
+				</DropdownMenuTrigger>
+				<DropdownMenuContent align="end" className="min-w-[160px]">
+					<DropdownMenuItem onClick={handleCopyLink}>
+						<LinkIcon size={14} strokeWidth={2} />
+						Copy link
+					</DropdownMenuItem>
+					<DropdownMenuItem onClick={handleCopyMarkdown}>
+						<CopyIcon size={14} strokeWidth={2} />
+						Copy Markdown
+					</DropdownMenuItem>
+					{canModerate && (
+						<>
+							<DropdownMenuSeparator />
+							<DropdownMenuItem onClick={() => editor.start(body)}>
 								<EditIcon size={14} strokeWidth={2} />
 								Edit
 							</DropdownMenuItem>
-						)}
-						<DropdownMenuItem
-							onClick={() => void handleHide()}
-							disabled={isHiding}
-						>
-							{isHiding ? (
-								<Spinner className="size-3.5" />
-							) : (
+							<DropdownMenuItem onClick={() => void handleHide()}>
 								<ViewIcon size={14} strokeWidth={2} />
-							)}
-							Hide
-						</DropdownMenuItem>
-						<DropdownMenuItem
-							onClick={() => void handleDelete()}
-							disabled={isDeleting}
-							variant="destructive"
-						>
-							{isDeleting ? (
-								<Spinner className="size-3.5" />
-							) : (
+								Hide
+							</DropdownMenuItem>
+							<DropdownMenuItem
+								onClick={() => setDeleteDialog("confirming")}
+								variant="destructive"
+							>
 								<Delete01Icon size={14} strokeWidth={2} />
-							)}
-							Delete
-						</DropdownMenuItem>
-					</>
-				)}
-			</DropdownMenuContent>
-		</DropdownMenu>
+								Delete
+							</DropdownMenuItem>
+						</>
+					)}
+				</DropdownMenuContent>
+			</DropdownMenu>
+			<AlertDialog
+				open={deleteDialog === "confirming"}
+				onOpenChange={(open) => setDeleteDialog(open ? "confirming" : "closed")}
+			>
+				<AlertDialogContent>
+					<AlertDialogHeader>
+						<AlertDialogTitle>Delete this comment?</AlertDialogTitle>
+						<AlertDialogDescription>
+							It's removed from GitHub for everyone. This can't be undone.
+						</AlertDialogDescription>
+					</AlertDialogHeader>
+					<AlertDialogFooter>
+						<AlertDialogCancel>Cancel</AlertDialogCancel>
+						<AlertDialogAction
+							className={buttonVariants({ variant: "destructive" })}
+							onClick={() => void handleDelete()}
+						>
+							Delete comment
+						</AlertDialogAction>
+					</AlertDialogFooter>
+				</AlertDialogContent>
+			</AlertDialog>
+		</>
 	);
 }

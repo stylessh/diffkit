@@ -63,7 +63,7 @@ function VisibilityBadge({
 	return (
 		<span
 			role="img"
-			className="inline-flex size-6 shrink-0 items-center justify-center rounded-full bg-surface-2 text-muted-foreground"
+			className="inline-flex size-6 shrink-0 items-center justify-center rounded-full bg-group text-muted-foreground"
 			aria-label={label}
 			title={label}
 		>
@@ -131,12 +131,12 @@ export const RepositoryRow = memo(function RepositoryRow({
 		<Link
 			to="/$owner/$repo"
 			params={{ owner: repo.owner, repo: repo.name }}
-			className="grid w-full grid-cols-1 items-center gap-x-4 gap-y-2 px-4 py-3 text-left transition-colors hover:bg-surface-2 md:grid-cols-[minmax(10rem,22%)_minmax(0,1fr)_minmax(10rem,auto)_11rem] md:gap-y-1"
+			className="grid w-full grid-cols-1 items-center gap-x-4 gap-y-2 rounded-lg px-3 py-3 text-left transition-colors hover:bg-row-hover md:grid-cols-[minmax(10rem,22%)_minmax(0,1fr)_minmax(10rem,auto)_11rem] md:gap-y-1"
 		>
 			<div className="flex min-w-0 flex-col gap-0.5">
 				<div className="flex min-w-0 max-w-full items-center gap-x-2">
 					<p
-						className="flex min-w-0 items-baseline text-sm font-medium"
+						className="flex min-w-0 items-baseline text-[13px] font-medium"
 						title={repo.fullName}
 					>
 						<span className="min-w-0 flex-1 truncate text-muted-foreground">
@@ -154,7 +154,7 @@ export const RepositoryRow = memo(function RepositoryRow({
 						{repo.description}
 					</p>
 				) : (
-					<span className="text-xs text-muted-foreground/40">—</span>
+					<span className="text-xs text-icon-faint">—</span>
 				)}
 			</div>
 			{metaEntries.length > 0 ? (

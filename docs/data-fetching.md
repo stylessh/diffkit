@@ -1,6 +1,7 @@
 # Data Fetching, Caching and Revalidation
 
-Status: **phase 1 implemented** (L1, client cache); phases 2–4 proposed.
+Status: **phases 1–3 implemented** (L1 client cache, L2 change feed,
+call-site cleanup); phase 4 proposed.
 Replaces the server cache removed in #193; see
 [platform-plan.md, Incidents](./platform-plan.md#incidents).
 
@@ -197,6 +198,127 @@ incident:
 - **Hydration.** TanStack Router holds server-rendered pending matches for
   `pendingMinMs` after hydration (500 ms by default). The first load uses
   0 ms; later navigations use 200 ms.
+
+## Phase 2 decisions
+
+- **Entity keys** live in `src/lib/github-change-entities.ts` (shared by
+  the webhook handler and the client). The registry that maps them to queries
+  is `githubQueryEntityCoverage` / `githubQueryMatchesEntity` in
+  `src/lib/github/query-registry.ts`, re-exported from `github.query.ts`; a test
+  fails when a `githubQueryKeys` group is neither covered nor marked
+  `"exempt"`.
+- **Aggregates.** "My pulls/issues", user lists, repo lists and the inbox
+  refetch only when the changed item is already in their cached payload, so
+  one PR event in a busy org doesn't become a GitHub search request for every
+  member. New items arrive on focus or `staleTime`, except items the viewer
+  just created: mutations pass `change: "created"`.
+- **Access.** `/api/changes` returns public-repo changes to anyone and
+  private-repo changes only for repos the *user* can read through the GitHub
+  App: `GET /user/installations/{id}/repositories`, not the installation's
+  "all repos" coverage. Cached per user for 60 s in memory and 10 min in KV
+  (`change-access:v1:`, `expirationTtl`). OAuth-only repos refresh on focus.
+- **Cursor** is `<last id>.<issued at>`; `github_change.id` is
+  AUTOINCREMENT, so ids never go backwards when the table empties. A cursor
+  older than 14 minutes, or more than 2,000 rows behind, answers
+  `expired: true`. A D1 read failure answers "nothing changed" with the
+  client's own cursor, so an outage can't trigger a refetch storm.
+- **Cadence.** 15 s while visible, plus focus and reconnect. SSE stays out:
+  it would mean one held connection per tab again.
+- **No delivery de-duplication.** A redelivered webhook only invalidates the
+  same queries twice within one poll; a KV key per delivery would cost
+  ~50k KV writes a day for nothing.
+- **Sweeper.** A cron trigger every 5 minutes deletes rows older than 15
+  minutes in batches of at most 20k with 4 s pauses (at most 10 batches per
+  run).
+
+## Phase 3 decisions
+
+- **Module layout.** `github.functions.ts` and `github.query.ts` are barrels
+  over `src/lib/github/`. Modules that define server functions export only
+  server functions, types and client-safe helpers: TanStack Start strips
+  handler bodies from client and SSR-caller builds, but an exported helper
+  survives and pulls its server-only imports (`cloudflare:workers`, D1) into
+  those builds. Shared server code lives in helper modules (`client`,
+  `installations`, `mappers`, `shared`, `my-search`, `timeline`,
+  `permissions`) that are imported only from handler bodies. `validators.ts`
+  stays dependency-free because `.inputValidator(...)` runs in the caller.
+- **Reads.** `getOrRevalidateGitHubResource` became `dedupeGitHubRead`
+  (`github/request-dedup.ts`): identical reads within one server request
+  share a call, and nothing outlives the request. Fetchers return data. The
+  `GitHubFetchResult` / `"not-modified"` union and the response metadata are
+  gone: no conditional headers were sent, and nothing read the metadata.
+- **Mutations** invalidate through `invalidateGitHubEntities`
+  (`github-query-updates.ts`) with the same entity keys the webhook would
+  produce. None invalidates every GitHub query any more.
+- **No `notifications` entity.** It fired on every PR, issue, review and
+  release event, and each inbox refetch costs up to ~150 REST calls (see
+  below). The inbox is an aggregate instead: it refetches only for items it
+  already lists.
+
+### Rate-limit exposure after phase 3
+
+With polling gone, these are the remaining bursts. Fixed in phase 3:
+
+| Pattern | Before | After |
+| --- | --- | --- |
+| Inbox refetch on every PR/issue event in a readable repo | ≤150 REST calls per 15 s poll | only when a listed item changes |
+| PR status, CI running | ~7 REST calls every 5 s (~5,000/h per tab) | every 10 s |
+| PR status, checks finished | ~7 REST calls every 30 s, forever (closed PRs too) | stops after 10 min unchanged |
+| Comment, review, close/reopen mutations | refetched every active GitHub query | refetch the item's queries |
+
+Still open:
+
+- **Inbox enrichment** (`getNotifications`): subject, comments and reviews per
+  notification, up to 50 notifications, so ≤150 calls per load. One aliased
+  GraphQL query (`issueOrPullRequest { state participants }`) would make it
+  one call, but the emulator's GraphQL shim needs those fields first.
+- **Org-team reviewer picker** (`getOrgTeams`): one access check per org team.
+  `GET /repos/{owner}/{repo}/teams` is one call but needs Administration: read
+  and omits implicit-access teams on public repos.
+- **"My pulls/issues"**: one 5-alias GraphQL search per installation source,
+  bounded by an 18 s deadline; cost grows with installations.
+- **Participation stats**: up to 6 calls 1.5 s apart while GitHub computes
+  them (202).
+- **Hover preload** of PR rows: one page-data GraphQL call per hovered row,
+  once per row.
+- **Branches page**: one compare call per visible row (5 min `staleTime`).
+- **Live job logs**: every 4 s while the job runs and its page is open.
+
+## Monitoring and alerting
+
+The cron (`src/lib/scheduled-maintenance.server.ts`) logs one JSON line per
+run:
+
+```json
+{"task":"scheduled-maintenance","sweep":{"deleted":412,"batches":1,"complete":true},
+ "d1SizeBytes":81920,"d1SizeRatio":0.0000082,"changeRows":37}
+```
+
+Database size comes from D1's `meta.size_after`, the number
+`wrangler d1 info` reports. At 80% of the 10 GB limit, or when
+`github_change` exceeds 50k rows (a stuck sweeper), it also logs
+`{"level":"warn","alert":"d1_size_warning" | "d1_change_table_growth", …}`.
+
+Alerts (what exists, and what is still manual):
+
+1. **GitHub issues from a watchdog.** `.github/workflows/production-alerts.yml`
+   runs every 15 minutes and opens one issue per firing check, labelled
+   `production-alert` and de-duplicated by title. It closes the issue when the
+   check recovers. Checks: `/api/health` failing, D1 above 8 GB (from the D1
+   API, so it works when the Worker is down), the cron not completing a clean
+   run in 12 minutes (from `/api/health` → `maintenance`), and Worker error
+   rate above 5% over 15 minutes (Workers analytics). A check it cannot
+   evaluate opens a "(check unavailable)" issue rather than staying silent.
+2. Cloudflare Notifications has no type for Worker error rate, cron failures or
+   D1 size, which is why (1) exists. Optionally, in the Cloudflare dashboard,
+   open the Worker → **Observability** → Issues and add an automation, which
+   groups uncaught exceptions and 5xx responses.
+
+Runbooks: [d1-full.md](runbooks/d1-full.md),
+[deploy-rollback.md](runbooks/deploy-rollback.md).
+
+`sweep.complete: false` on consecutive runs means the backlog is outgrowing
+10 × 20k rows per 5 minutes; raise `GITHUB_CHANGE_SWEEP_MAX_BATCHES`.
 
 ## Open questions
 

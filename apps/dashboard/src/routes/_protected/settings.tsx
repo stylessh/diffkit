@@ -1,4 +1,8 @@
 import { ChevronRightIcon } from "@diffkit/icons";
+import {
+	PageHeader,
+	PageHeaderTitle,
+} from "@diffkit/ui/components/page-header";
 import { cn } from "@diffkit/ui/lib/utils";
 import {
 	createFileRoute,
@@ -30,46 +34,51 @@ function SettingsLayout() {
 	const currentPath = matches[matches.length - 1]?.pathname ?? "/settings";
 
 	return (
-		<div className="h-full overflow-auto py-10">
-			<div className="mx-auto grid max-w-3xl gap-10 px-3 md:px-6 lg:grid-cols-[12rem_minmax(0,1fr)]">
-				<aside className="flex h-fit flex-col gap-5 lg:sticky lg:top-0">
-					<h1 className="text-lg font-semibold tracking-tight">Settings</h1>
-					<nav className="-mx-3 flex flex-col gap-0.5" aria-label="Settings">
-						{settingsNav.map((item) => {
-							const normalizedPath =
-								currentPath.replace(/\/+$/, "") || "/settings";
-							const isActive =
-								normalizedPath === item.to ||
-								(item.to !== "/settings" && normalizedPath.startsWith(item.to));
-							return (
-								<Link
-									key={item.to}
-									to={item.to}
-									activeOptions={{ exact: item.to === "/settings" }}
-									className={cn(
-										"flex items-center justify-between rounded-lg px-3 py-2 text-sm transition-colors",
-										isActive
-											? "bg-surface-1 font-medium text-foreground"
-											: "text-muted-foreground hover:bg-surface-1 hover:text-foreground",
-									)}
-								>
-									{item.label}
-									<ChevronRightIcon
-										size={14}
-										strokeWidth={2}
+		<div className="flex h-full min-h-0 flex-col">
+			<PageHeader>
+				<PageHeaderTitle>Settings</PageHeaderTitle>
+			</PageHeader>
+			<div className="min-h-0 flex-1 overflow-auto py-8">
+				<div className="mx-auto grid max-w-3xl gap-10 px-4 md:px-6 lg:grid-cols-[12rem_minmax(0,1fr)]">
+					<aside className="flex h-fit flex-col gap-5 lg:sticky lg:top-0">
+						<nav className="-mx-2.5 flex flex-col gap-px" aria-label="Settings">
+							{settingsNav.map((item) => {
+								const normalizedPath =
+									currentPath.replace(/\/+$/, "") || "/settings";
+								const isActive =
+									normalizedPath === item.to ||
+									(item.to !== "/settings" &&
+										normalizedPath.startsWith(item.to));
+								return (
+									<Link
+										key={item.to}
+										to={item.to}
+										activeOptions={{ exact: item.to === "/settings" }}
 										className={cn(
-											"transition-opacity",
-											isActive ? "opacity-100" : "opacity-0",
+											"flex h-7 items-center justify-between rounded-lg px-2.5 text-[13px] font-medium transition-colors",
+											isActive
+												? "bg-nav-selected text-foreground"
+												: "text-text-nav hover:bg-nav-hover hover:text-foreground",
 										)}
-									/>
-								</Link>
-							);
-						})}
-					</nav>
-				</aside>
+									>
+										{item.label}
+										<ChevronRightIcon
+											size={14}
+											strokeWidth={2}
+											className={cn(
+												"transition-opacity",
+												isActive ? "opacity-100" : "opacity-0",
+											)}
+										/>
+									</Link>
+								);
+							})}
+						</nav>
+					</aside>
 
-				<div className="flex flex-col gap-8">
-					<Outlet />
+					<div className="flex flex-col gap-8">
+						<Outlet />
+					</div>
 				</div>
 			</div>
 		</div>

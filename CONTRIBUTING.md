@@ -6,7 +6,7 @@ Thanks for your interest in contributing to DiffKit! This guide will help you ge
 
 Follow the [Getting Started](README.md#getting-started) section in the README to set up your local environment. You'll need both a GitHub OAuth App and a GitHub App configured.
 
-For UI work you can skip all of that: `pnpm dev:demo` runs DiffKit against a local GitHub emulator with seeded data (see [docs/local-demo-mode.md](docs/local-demo-mode.md)). If you change a GraphQL query, run `pnpm --filter @diffkit/emulator test`; it executes every query in `github.functions.ts` against the emulator and tells you which fields the shim still needs.
+For UI work you can skip all of that: `pnpm dev:demo` runs DiffKit against a local GitHub emulator with seeded data (see [docs/local-demo-mode.md](docs/local-demo-mode.md)). If you change a GraphQL query, run `pnpm --filter @diffkit/emulator test`; it executes every query in `apps/dashboard/src/lib/github/` against the emulator and tells you which fields the shim still needs.
 
 For webhook testing during local development, use an ngrok tunnel (or similar) and set `DEV_TUNNEL_URL` in your `.dev.vars`.
 
@@ -64,35 +64,19 @@ Auth callbacks:
 
 Environment variables are documented in `apps/dashboard/.dev.vars.example`. Do not commit real `.dev.vars` values or private keys. If a private key is exposed, revoke it in GitHub App settings and generate a replacement.
 
-### Caching & Revalidation
+### Data Fetching & Revalidation
 
-DiffKit uses a split-cache architecture to minimize GitHub API calls while keeping data fresh. For a deep dive, see [`docs/github-cache-architecture.md`](docs/github-cache-architecture.md). Here's the overview:
+Server functions read from GitHub directly; there is no server-side response cache (the D1/KV cache was removed after it filled the production database, see [`docs/platform-plan.md`](docs/platform-plan.md#incidents)). Freshness comes from the client. For the full design, see [`docs/data-fetching.md`](docs/data-fetching.md). The overview:
 
-**Split KV/D1 cache** — GitHub API responses are cached in Cloudflare KV for fast reads, with D1 as the authoritative control plane for invalidation state. Key files:
+- **Client cache** — React Query persists to IndexedDB (`apps/dashboard/src/lib/query-persister.ts`, `github-query-persistence.ts`), so previously seen data paints instantly and revalidates in the background.
+- **Change feed** — The GitHub webhook handler maps each delivery to entity keys (`github-change-entities.ts`) and records them in the `github_change` D1 table. Clients poll `GET /api/changes` and refetch only the affected queries. Responses only include repos the viewer can read.
+- **Bounded storage** — Change-feed rows live for 15 minutes. A cron trigger (every 5 minutes, `scheduled-maintenance.server.ts`) deletes expired rows and logs a warning when D1 nears its size limit.
 
-- `apps/dashboard/src/lib/github-cache.ts` — Core cache read/write logic
-- `apps/dashboard/src/lib/github-revalidation.ts` — Signal key definitions and webhook-to-signal mapping
-- `apps/dashboard/src/lib/github.functions.ts` — GitHub API operations with cache mode opt-ins
-
-**Invalidation flow** — When a GitHub webhook arrives or a mutation runs:
-
-1. Affected signal keys are resolved (e.g. `pull:{owner}/{repo}#{number}`, `pulls.mine`)
-2. D1 revalidation signal timestamps and namespace versions are bumped
-3. The next server read for any resource that lists those signal keys skips its cached entry (even if it is still inside its freshness window) and fetches from GitHub; split-cache reads also build a different KV key from the new namespace version
-
-**Client polling** — There is no push channel. Mounted React Query queries poll on per-tier intervals while the tab is visible and refetch on focus/reconnect when stale (`apps/dashboard/src/lib/github-refetch-policy.ts`, wired into the `github*QueryOptions` in `apps/dashboard/src/lib/github.query.ts`):
-
-- Lists, notifications, repo overview and the "mine" aggregates: 30s
-- PR / issue detail pages and review activity: 20s
-- PR status and workflow run/job pages: 5s while anything is queued or running, 30s otherwise, and no polling once terminal and unchanged for 10 minutes
-
-When you add a query for data that webhooks can change, give it a tier via `githubPollOptions(...)` (or `adaptiveRefetchInterval(...)`) and make sure its server read passes the matching `signalKeys`. Keep the tier's `githubCachePolicy` `staleTimeMs` at or below its poll interval.
-
-**Rate-limit resilience** — The cache layer extends freshness when GitHub quota is low (≤100 remaining: 2-min floor; ≤25 remaining: 5-min floor or until reset). If GitHub returns a rate-limit error and a cached payload exists, the stale payload is served instead of failing.
+Rules for any new server-side storage: ship a TTL or retention rule and a sweeper in the same PR, never await a storage write on the request path, and treat a storage failure as a cache miss, not an error.
 
 ### Webhook Handler
 
-The webhook endpoint at `apps/dashboard/src/routes/api/webhooks/github.ts` verifies the HMAC-SHA256 signature, maps events to cache signal keys, and writes invalidation state to D1. Clients pick the change up on their next poll. Supported events include `pull_request`, `issues`, `issue_comment`, `check_run`, `check_suite`, `pull_request_review`, and more.
+The webhook endpoint at `apps/dashboard/src/routes/api/webhooks/github.ts` verifies the HMAC-SHA256 signature, maps the event to change-feed entity keys, and records them in D1 from `waitUntil` so a storage failure never fails the delivery. Installation events also drop the cached installation token. Supported events include `pull_request`, `issues`, `issue_comment`, `check_run`, `check_suite`, `pull_request_review`, and more.
 
 ### Adding a New Route
 

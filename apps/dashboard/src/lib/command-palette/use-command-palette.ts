@@ -1,26 +1,30 @@
 import { useRouter } from "@tanstack/react-router";
-import { useCallback, useState } from "react";
+import {
+	closeShellOverlay,
+	openCommandPalette,
+	toggleCommandPalette,
+	useShellOverlay,
+} from "#/lib/shell/shell-overlay";
 import { useGlobalShortcuts } from "#/lib/shortcuts";
 import { getRegisteredCommands } from "./registry";
 
 export function useCommandPalette() {
-	const [open, setOpen] = useState(false);
+	const overlay = useShellOverlay();
 	const router = useRouter();
+	const open = overlay.kind === "command-palette";
 
 	useGlobalShortcuts([
 		{
 			shortcut: { key: "k", mod: true },
 			allowInEditable: true,
-			onTrigger: () => {
-				setOpen((prev) => !prev);
-			},
+			onTrigger: toggleCommandPalette,
 		},
 		...getRegisteredCommands().flatMap((cmd) => {
 			if (!cmd.shortcut) return [];
 			return [
 				{
 					shortcut: cmd.shortcut.map((key) => ({ key })),
-					enabled: !open,
+					enabled: overlay.kind === "none",
 					onTrigger: () => {
 						if (cmd.action.type === "navigate") {
 							void router.navigate({ to: cmd.action.to });
@@ -33,7 +37,8 @@ export function useCommandPalette() {
 		}),
 	]);
 
-	const close = useCallback(() => setOpen(false), []);
+	const setOpen = (nextOpen: boolean) =>
+		nextOpen ? openCommandPalette() : closeShellOverlay();
 
-	return { open, setOpen, close };
+	return { open, setOpen, close: closeShellOverlay };
 }

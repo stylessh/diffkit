@@ -1,73 +1,58 @@
 import type { PullStatus, WorkflowRun, WorkflowRunJob } from "./github.types";
 
 /**
- * Client polling tiers.
+ * Client polling — only for things that change without a webhook we receive.
  *
- * Freshness model: GitHub webhooks mark D1 revalidation signals (and bump
- * cache namespaces) so the next server read for an affected resource bypasses
- * its cached payload. The client just needs to ask again — these intervals
- * decide how often it does while the tab is visible. Every tier's
- * `githubCachePolicy.*.staleTimeMs` must stay <= its interval here so focus /
- * mount refetches and polling agree on what "stale" means.
+ * Freshness comes from the change feed (`/api/changes`, see
+ * github-change-feed.ts): webhooks record which entities changed and the
+ * client refetches only the active queries they affect. Lists and details no
+ * longer poll on a fixed interval.
+ *
+ * What still polls: PR status and workflow runs/jobs, adaptively, while
+ * something is queued or running (check runs from third-party CI and repos
+ * without the app installed send us nothing). Everything else refetches on
+ * focus, reconnect and mount once past its `staleTime`.
  */
 export const githubPollIntervalMs = {
-	/** Repo lists, notifications, the "mine" aggregates, repo overview. */
-	list: 30 * 1000,
-	mine: 30 * 1000,
-	/** PR / issue detail pages and their activity timelines. */
-	detail: 20 * 1000,
-	activity: 20 * 1000,
-	/** Adaptive tiers (PR status, workflow runs/jobs) while something runs. */
-	active: 5 * 1000,
-	/** Adaptive tiers when nothing is queued or running. */
+	/**
+	 * A PR status poll costs ~7 REST calls; at 5 s one open PR page with
+	 * running CI spent ~5,000 requests an hour, the user's whole budget.
+	 */
+	running: 10 * 1000,
 	idle: 30 * 1000,
 } as const;
 
-/** Adaptive tiers stop polling once terminal and unchanged for this long. */
-export const GITHUB_TERMINAL_POLL_STOP_AFTER_MS = 10 * 60 * 1000;
-
-type StaticPollTier = "list" | "mine" | "detail" | "activity";
+export const GITHUB_SETTLED_POLL_STOP_AFTER_MS = 10 * 60 * 1000;
 
 /**
- * Spread into a query options object for fixed-interval polling. Polling is
- * paused while the tab is hidden; `refetchOnWindowFocus` catches up on return.
+ * - `running`: something is queued or in progress.
+ * - `waiting`: nothing to classify yet (no run, no jobs, no status).
+ * - `settled`: nothing left to finish (completed run, PR with no pending
+ *   checks). Late results such as third-party statuses still land within the
+ *   stop window; after that the change feed and focus refetch take over.
  */
-export function githubPollOptions(tier: StaticPollTier) {
-	return {
-		refetchInterval: githubPollIntervalMs[tier],
-		refetchIntervalInBackground: false,
-	} as const;
-}
-
-export type GitHubAdaptivePollState = {
-	/** Something is queued or in progress — poll fast. */
-	isActive: boolean;
-	/** The entity can no longer change on its own (completed run, closed PR). */
-	isTerminal: boolean;
-};
+export type GitHubPollPhase = "running" | "waiting" | "settled";
 
 export function getAdaptiveRefetchInterval({
-	isActive,
-	isTerminal,
+	phase,
 	lastChangedAt,
 	now,
-}: GitHubAdaptivePollState & {
+}: {
+	phase: GitHubPollPhase;
 	lastChangedAt: number | null;
 	now: number;
 }): number | false {
-	if (isActive) {
-		return githubPollIntervalMs.active;
+	switch (phase) {
+		case "running":
+			return githubPollIntervalMs.running;
+		case "waiting":
+			return githubPollIntervalMs.idle;
+		case "settled":
+			return lastChangedAt !== null &&
+				now - lastChangedAt >= GITHUB_SETTLED_POLL_STOP_AFTER_MS
+				? false
+				: githubPollIntervalMs.idle;
 	}
-
-	if (
-		isTerminal &&
-		lastChangedAt !== null &&
-		now - lastChangedAt >= GITHUB_TERMINAL_POLL_STOP_AFTER_MS
-	) {
-		return false;
-	}
-
-	return githubPollIntervalMs.idle;
 }
 
 const lastDataChangeByQuery = new WeakMap<
@@ -108,13 +93,13 @@ export function getQueryDataLastChangedAt(query: {
  * on whether something is still running.
  */
 export function adaptiveRefetchInterval<TData>(
-	classify: (data: TData | undefined) => GitHubAdaptivePollState,
+	classify: (data: TData | undefined) => GitHubPollPhase,
 ) {
 	return (query: {
 		state: { data: TData | undefined; dataUpdatedAt: number };
 	}): number | false =>
 		getAdaptiveRefetchInterval({
-			...classify(query.state.data),
+			phase: classify(query.state.data),
 			lastChangedAt: getQueryDataLastChangedAt(query),
 			now: Date.now(),
 		});
@@ -122,33 +107,21 @@ export function adaptiveRefetchInterval<TData>(
 
 export function classifyWorkflowRun(
 	run: Pick<WorkflowRun, "status"> | null | undefined,
-): GitHubAdaptivePollState {
-	if (!run) {
-		return { isActive: false, isTerminal: false };
-	}
-
-	const isTerminal = run.status === "completed";
-	return { isActive: !isTerminal, isTerminal };
+): GitHubPollPhase {
+	if (!run) return "waiting";
+	return run.status === "completed" ? "settled" : "running";
 }
 
 export function classifyWorkflowJobs(
 	jobs: ReadonlyArray<Pick<WorkflowRunJob, "status">> | null | undefined,
-): GitHubAdaptivePollState {
-	if (!jobs || jobs.length === 0) {
-		return { isActive: false, isTerminal: false };
-	}
-
-	const isActive = jobs.some((job) => job.status !== "completed");
-	return { isActive, isTerminal: !isActive };
+): GitHubPollPhase {
+	if (!jobs || jobs.length === 0) return "waiting";
+	return jobs.some((job) => job.status !== "completed") ? "running" : "settled";
 }
 
 export function classifyPullStatus(
 	status: Pick<PullStatus, "checks"> | null | undefined,
-	{ isPullClosed = false }: { isPullClosed?: boolean } = {},
-): GitHubAdaptivePollState {
-	const hasRunningChecks = (status?.checks.pending ?? 0) > 0;
-	return {
-		isActive: hasRunningChecks,
-		isTerminal: isPullClosed && !hasRunningChecks,
-	};
+): GitHubPollPhase {
+	if (!status) return "waiting";
+	return status.checks.pending > 0 ? "running" : "settled";
 }

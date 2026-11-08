@@ -148,7 +148,9 @@ export function SidePanelToggle() {
 		<button
 			type="button"
 			onClick={toggle}
-			className="absolute right-0 top-1/2 hidden -translate-y-1/2 items-center justify-center rounded-l-md border border-r-0 bg-surface-1 py-2.5 pl-0.5 pr-1 text-muted-foreground transition-colors hover:bg-surface-2 hover:text-foreground xl:flex"
+			aria-label={collapsed ? "Show side panel" : "Hide side panel"}
+			aria-expanded={!collapsed}
+			className="absolute top-1/2 right-0 hidden h-8 w-4 -translate-y-1/2 items-center justify-center rounded-l-md bg-button text-muted-foreground shadow-button transition-colors hover:bg-button-hover hover:text-foreground xl:flex"
 		>
 			{collapsed ? (
 				<ChevronLeftIcon size={12} strokeWidth={2} />

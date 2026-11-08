@@ -10,8 +10,15 @@ on:
       - "packages/typescript-config/**"
       - "scripts/generate-wrangler-dashboard-config.mjs"
       - "scripts/run-d1-migrations.mjs"
+      - "scripts/deploy-dashboard.mjs"
       - ".github/workflows/dashboard-deploy-production.yml"
   workflow_dispatch:
+    inputs:
+      health_gate:
+        description: "enforce: roll back if /login or /api/health fail after deploy. skip: deploy even while D1 or KV is degraded."
+        type: choice
+        options: [enforce, skip]
+        default: enforce
 
 concurrency:
   group: dashboard-production
@@ -20,6 +27,7 @@ concurrency:
 jobs:
   deploy:
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     permissions:
       contents: read
     steps:
@@ -47,24 +55,31 @@ jobs:
           DASHBOARD_PROD_R2_BUCKET: ${{ secrets.DASHBOARD_PROD_R2_BUCKET }}
           DASHBOARD_PROD_R2_PREVIEW_BUCKET: ${{ secrets.DASHBOARD_PROD_R2_PREVIEW_BUCKET }}
 
+      # /api/health reports the serving version, which the health gate matches
+      # against the version just deployed.
+      - name: Add version metadata binding
+        working-directory: apps/dashboard
+        run: |
+          jq '.version_metadata = { binding: "CF_VERSION_METADATA" }' wrangler.deploy.json > wrangler.deploy.tmp.json
+          mv wrangler.deploy.tmp.json wrangler.deploy.json
+
       # @cloudflare/vite-plugin resolves `wrangler.jsonc` during `vite build` (deploy:ci).
       - name: Stage Wrangler config for Vite
         working-directory: apps/dashboard
         run: cp wrangler.deploy.json wrangler.jsonc
 
-      - name: Apply D1 migrations (remote)
+      - name: Build Worker
         working-directory: apps/dashboard
-        env:
-          WRANGLER_CONFIG: wrangler.deploy.json
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-        run: node --experimental-strip-types ../../scripts/run-d1-migrations.mjs DB --remote
+        run: pnpm run build
 
-      - name: Build and deploy Worker
+      - name: Bookmark D1, migrate, deploy, verify
         working-directory: apps/dashboard
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-        run: |
-          pnpm run build
-          pnpm exec wrangler deploy --message "$(git -C "$GITHUB_WORKSPACE" log -1 --pretty=format:'%h %s')"
+          WORKER_NAME: ${{ secrets.DASHBOARD_PROD_WORKER_NAME }}
+          D1_DATABASE_NAME: ${{ secrets.DASHBOARD_PROD_D1_DATABASE_NAME }}
+          WRANGLER_CONFIG: wrangler.deploy.json
+          HEALTH_GATE: ${{ inputs.health_gate || 'enforce' }}
+          MIGRATION_TIMEOUT_SECONDS: "300"
+        run: node ../../scripts/deploy-dashboard.mjs

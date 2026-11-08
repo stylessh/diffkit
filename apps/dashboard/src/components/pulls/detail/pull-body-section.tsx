@@ -10,11 +10,11 @@ import {
 	DropdownMenuItem,
 	DropdownMenuTrigger,
 } from "@diffkit/ui/components/dropdown-menu";
-import { Markdown } from "@diffkit/ui/components/markdown";
 import { MarkdownEditor } from "@diffkit/ui/components/markdown-editor";
 import { Spinner } from "@diffkit/ui/components/spinner";
 import { useState } from "react";
 import { IssueCommentReactionBar } from "#/components/details/comment-reaction-bar";
+import { AppMarkdown } from "#/components/markdown/app-markdown";
 import { updatePullBody } from "#/lib/github.functions";
 import { type GitHubQueryScope, githubQueryKeys } from "#/lib/github.query";
 import type { PullDetail, PullPageData } from "#/lib/github.types";
@@ -41,9 +41,10 @@ export function PullBodySection({
 	const { mutate } = useOptimisticMutation();
 	const [bodyActive, setBodyActive] = useState(false);
 	const prefersNoHover = usePrefersNoHover();
-	const [isEditing, setIsEditing] = useState(false);
+	const [mode, setMode] = useState<"viewing" | "editing" | "saving">("viewing");
+	const isEditing = mode !== "viewing";
+	const isSaving = mode === "saving";
 	const [draft, setDraft] = useState(pr.body);
-	const [isSaving, setIsSaving] = useState(false);
 
 	const pageQueryKey = githubQueryKeys.pulls.page(scope, {
 		owner,
@@ -53,11 +54,11 @@ export function PullBodySection({
 
 	const startEditing = () => {
 		setDraft(pr.body);
-		setIsEditing(true);
+		setMode("editing");
 	};
 
 	const saveBody = async () => {
-		setIsSaving(true);
+		setMode("saving");
 		try {
 			await mutate({
 				mutationFn: () =>
@@ -76,9 +77,10 @@ export function PullBodySection({
 					},
 				],
 			});
-			setIsEditing(false);
-		} finally {
-			setIsSaving(false);
+			setMode("viewing");
+		} catch (error) {
+			setMode("editing");
+			throw error;
 		}
 	};
 
@@ -93,7 +95,7 @@ export function PullBodySection({
 				<div className="flex items-center justify-end gap-2 pt-2">
 					<button
 						type="button"
-						onClick={() => setIsEditing(false)}
+						onClick={() => setMode("viewing")}
 						disabled={isSaving}
 						className="rounded-md px-3 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:text-foreground disabled:opacity-50"
 					>
@@ -103,7 +105,7 @@ export function PullBodySection({
 						type="button"
 						onClick={saveBody}
 						disabled={isSaving}
-						className="flex items-center gap-1.5 rounded-md bg-foreground px-3 py-1.5 text-xs font-medium text-background transition-opacity hover:opacity-90 disabled:opacity-50"
+						className="flex h-7 items-center gap-1.5 rounded-full bg-indigo px-3 text-xs font-medium text-indigo-foreground shadow-[0_1px_1px_0_lch(0_0_0/0.12),0_3px_6px_-2px_lch(0_0_0/0.12)] transition-colors hover:bg-indigo/90 disabled:opacity-50"
 					>
 						{isSaving ? (
 							<Spinner size={13} />
@@ -120,13 +122,13 @@ export function PullBodySection({
 	const hasDropdownOptions = !!pr.body || isAuthor;
 
 	return (
-		<div className="relative rounded-lg border bg-surface-0 p-5">
+		<div className="relative">
 			{hasDropdownOptions && (
 				<DropdownMenu>
 					<DropdownMenuTrigger asChild>
 						<button
 							type="button"
-							className="absolute right-3 top-3 z-20 flex size-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-surface-1 hover:text-foreground"
+							className="absolute -top-1 right-0 z-20 flex size-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-ghost-hover hover:text-foreground"
 						>
 							<MoreHorizontalIcon size={15} strokeWidth={2} />
 						</button>
@@ -163,7 +165,13 @@ export function PullBodySection({
 				}}
 			>
 				{pr.body ? (
-					<Markdown>{pr.body}</Markdown>
+					<AppMarkdown
+						owner={owner}
+						repo={repo}
+						className="text-[15px] leading-6 text-text-header"
+					>
+						{pr.body}
+					</AppMarkdown>
 				) : (
 					<p className="text-sm italic text-muted-foreground">
 						No description provided.

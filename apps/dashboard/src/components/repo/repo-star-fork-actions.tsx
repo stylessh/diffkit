@@ -9,6 +9,7 @@ import { forkRepository, setRepoStarred } from "#/lib/github.functions";
 import { type GitHubQueryScope, githubQueryKeys } from "#/lib/github.query";
 import type { RepoOverview } from "#/lib/github.types";
 import { checkPermissionWarning } from "#/lib/warning-store";
+import { pillButtonClassName } from "./repo-ui";
 
 function formatCount(n: number): string {
 	if (n >= 1000) return `${(n / 1000).toFixed(1).replace(/\.0$/, "")}k`;
@@ -97,33 +98,26 @@ export function RepoStarForkActions({
 	};
 
 	return (
-		<div className="flex shrink-0 items-center gap-2">
+		<div className="flex shrink-0 items-center gap-1.5">
 			<button
 				type="button"
 				onClick={() => void handleStar()}
-				className={cn(
-					"inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-medium transition-colors",
-					repo.viewerHasStarred
-						? "bg-yellow-400 text-neutral-900 hover:bg-yellow-400/90 dark:bg-yellow-500 dark:text-neutral-950 dark:hover:bg-yellow-500/90"
-						: "border border-border bg-secondary text-secondary-foreground hover:bg-secondary/80",
-				)}
+				aria-pressed={repo.viewerHasStarred}
+				className={pillButtonClassName}
 			>
 				<StarIcon
 					size={14}
 					strokeWidth={2}
 					className={cn(
-						repo.viewerHasStarred && "fill-neutral-900 dark:fill-neutral-950",
-					)}
-				/>
-				<span>{repo.viewerHasStarred ? "Starred" : "Star"}</span>
-				<span
-					className={cn(
-						"tabular-nums",
 						repo.viewerHasStarred
-							? "text-neutral-800/85 dark:text-neutral-950/85"
+							? "fill-warning text-warning"
 							: "text-muted-foreground",
 					)}
-				>
+				/>
+				<span className="max-sm:sr-only">
+					{repo.viewerHasStarred ? "Starred" : "Star"}
+				</span>
+				<span className="tabular-nums text-muted-foreground">
 					{formatCount(repo.stars)}
 				</span>
 			</button>
@@ -131,14 +125,18 @@ export function RepoStarForkActions({
 				type="button"
 				disabled={forkPending}
 				onClick={() => void handleFork()}
-				className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-secondary px-2.5 py-1 text-xs font-medium text-secondary-foreground transition-colors hover:bg-secondary/80 disabled:opacity-60"
+				className={pillButtonClassName}
 			>
 				{forkPending ? (
 					<Spinner size={12} />
 				) : (
-					<GitForkIcon size={14} strokeWidth={2} />
+					<GitForkIcon
+						size={14}
+						strokeWidth={2}
+						className="text-muted-foreground"
+					/>
 				)}
-				<span>Fork</span>
+				<span className="max-sm:sr-only">Fork</span>
 				<span className="tabular-nums text-muted-foreground">
 					{formatCount(repo.forks)}
 				</span>

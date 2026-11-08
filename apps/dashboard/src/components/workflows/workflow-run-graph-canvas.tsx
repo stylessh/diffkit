@@ -414,7 +414,7 @@ export function WorkflowRunGraphCanvas({
 		<div
 			ref={containerRef}
 			className={cn(
-				"relative flex flex-col overflow-hidden rounded-xl border bg-surface-1",
+				"relative flex flex-col overflow-hidden rounded-xl border-[0.5px] bg-surface-1",
 				isFullscreen && "h-screen w-screen rounded-none",
 			)}
 		>

@@ -1,11 +1,22 @@
 import type { QueryClient } from "@tanstack/react-query";
-import { type GitHubQueryScope, githubQueryKeys } from "./github.query";
+import {
+	type GitHubEntityChange,
+	type GitHubQueryScope,
+	githubQueryKeys,
+	githubQueryMatchesEntity,
+} from "./github.query";
 import type {
 	IssueSummary,
 	MyPullsResult,
 	PullSummary,
 	RepoOverview,
 } from "./github.types";
+import {
+	formatEntityKey,
+	type GitHubChangeEntity,
+	normalizeRepoFullName,
+	parseEntityKey,
+} from "./github-change-entities";
 
 function matchesPull(
 	pull: Pick<PullSummary, "number" | "repository">,
@@ -116,10 +127,6 @@ export function removePullFromOpenViews(
 	);
 }
 
-// ---------------------------------------------------------------------------
-// List → detail seeding
-// ---------------------------------------------------------------------------
-
 type ListItem = {
 	number: number;
 	updatedAt: string;
@@ -196,7 +203,6 @@ export function findPullSummaryInLists(
 	});
 }
 
-/** Issue counterpart of `findPullSummaryInLists`. */
 export function findIssueSummaryInLists(
 	queryClient: QueryClient,
 	scope: GitHubQueryScope,
@@ -207,4 +213,115 @@ export function findIssueSummaryInLists(
 		repo: input.repo,
 		number: input.issueNumber,
 	});
+}
+
+/**
+ * Same entity → query registry as the change feed, so a mutation and the
+ * webhook it triggers invalidate the same queries.
+ */
+export function invalidateGitHubEntities(
+	queryClient: QueryClient,
+	scope: GitHubQueryScope | null,
+	entityKeys: string[],
+	change: GitHubEntityChange = "updated",
+) {
+	const entities = entityKeys
+		.map(parseEntityKey)
+		.filter((entity): entity is GitHubChangeEntity => entity !== null);
+	return queryClient.invalidateQueries({
+		queryKey: scope ? ["github", scope.userId] : ["github"],
+		predicate: (query) =>
+			entities.some((entity) =>
+				githubQueryMatchesEntity(
+					query.queryKey,
+					entity,
+					query.state.data,
+					change,
+				),
+			),
+	});
+}
+
+type RepoInput = { owner: string; repo: string };
+
+export function pullEntityKey(input: RepoInput & { pullNumber: number }) {
+	return formatEntityKey({
+		kind: "pull",
+		repo: normalizeRepoFullName(input.owner, input.repo),
+		number: input.pullNumber,
+	});
+}
+
+export function issueEntityKey(input: RepoInput & { issueNumber: number }) {
+	return formatEntityKey({
+		kind: "issue",
+		repo: normalizeRepoFullName(input.owner, input.repo),
+		number: input.issueNumber,
+	});
+}
+
+/**
+ * Both entity keys for item `#number`, for code that can't tell a pull request
+ * from an issue (e.g. conversation comments). They share one number sequence
+ * per repo, so this still targets a single item.
+ */
+export function pullOrIssueEntityKeys(input: RepoInput & { number: number }) {
+	return [
+		pullEntityKey({ ...input, pullNumber: input.number }),
+		issueEntityKey({ ...input, issueNumber: input.number }),
+	];
+}
+
+export function repoEntityKey(input: RepoInput) {
+	return formatEntityKey({
+		kind: "repo",
+		repo: normalizeRepoFullName(input.owner, input.repo),
+	});
+}
+
+export function releaseEntityKey(input: RepoInput) {
+	return formatEntityKey({
+		kind: "release",
+		repo: normalizeRepoFullName(input.owner, input.repo),
+	});
+}
+
+export function milestonesEntityKey(input: RepoInput) {
+	return formatEntityKey({
+		kind: "milestones",
+		repo: normalizeRepoFullName(input.owner, input.repo),
+	});
+}
+
+export function runEntityKey(input: RepoInput & { runId: number }) {
+	return formatEntityKey({
+		kind: "run",
+		repo: normalizeRepoFullName(input.owner, input.repo),
+		runId: input.runId,
+	});
+}
+
+export function labelsEntityKey(input: RepoInput) {
+	return formatEntityKey({
+		kind: "labels",
+		repo: normalizeRepoFullName(input.owner, input.repo),
+	});
+}
+
+export function collaboratorsEntityKey(input: RepoInput) {
+	return formatEntityKey({
+		kind: "collaborators",
+		repo: normalizeRepoFullName(input.owner, input.repo),
+	});
+}
+
+export function settingsEntityKey(input: RepoInput) {
+	return formatEntityKey({
+		kind: "settings",
+		repo: normalizeRepoFullName(input.owner, input.repo),
+	});
+}
+
+export function orgEntityKey(org: string) {
+	return formatEntityKey({ kind: "org", org: org.toLowerCase() });
 }

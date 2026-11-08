@@ -23,6 +23,7 @@ import type {
 } from "#/lib/github.types";
 import { getRegisteredCommands, subscribeCommands } from "./registry";
 import { getRepoSectionCommands } from "./repo-commands";
+import { useShellCommandItems } from "./shell-commands";
 import type { CommandItem } from "./types";
 import { useRefreshGitHubData } from "./use-refresh-github-data";
 
@@ -34,12 +35,12 @@ function getPrIcon(pr: PullSummary) {
 		};
 	}
 	if (pr.mergedAt) {
-		return { icon: GitMergeIcon, iconClassName: "text-purple-500" };
+		return { icon: GitMergeIcon, iconClassName: "text-merged" };
 	}
 	if (pr.state === "closed") {
-		return { icon: GitPullRequestClosedIcon, iconClassName: "text-red-500" };
+		return { icon: GitPullRequestClosedIcon, iconClassName: "text-danger" };
 	}
-	return { icon: GitPullRequestIcon, iconClassName: "text-green-500" };
+	return { icon: GitPullRequestIcon, iconClassName: "text-success" };
 }
 
 function getIssueIcon(issue: IssueSummary) {
@@ -47,9 +48,9 @@ function getIssueIcon(issue: IssueSummary) {
 		if (issue.stateReason === "not_planned") {
 			return { icon: IssuesIcon, iconClassName: "text-muted-foreground" };
 		}
-		return { icon: IssuesIcon, iconClassName: "text-purple-500" };
+		return { icon: IssuesIcon, iconClassName: "text-merged" };
 	}
-	return { icon: IssuesIcon, iconClassName: "text-green-500" };
+	return { icon: IssuesIcon, iconClassName: "text-success" };
 }
 
 const routeApi = getRouteApi("/_protected");
@@ -59,6 +60,7 @@ export function useCommandItems(): CommandItem[] {
 	const scope = { userId: user.id };
 	const queryClient = useQueryClient();
 	const refreshGitHubData = useRefreshGitHubData();
+	const shellItems = useShellCommandItems(user.id);
 
 	const staticCommands = useSyncExternalStore(
 		subscribeCommands,
@@ -219,7 +221,7 @@ export function useCommandItems(): CommandItem[] {
 		return bTime.localeCompare(aTime);
 	});
 
-	return [...staticCommands, ...repoItems, ...dynamicItems];
+	return [...staticCommands, ...shellItems, ...repoItems, ...dynamicItems];
 }
 
 export function getCommandSearchItems(

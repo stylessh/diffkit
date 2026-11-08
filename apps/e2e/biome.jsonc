@@ -1,0 +1,13 @@
+{
+	"$schema": "https://biomejs.dev/schemas/2.4.5/schema.json",
+	"root": false,
+	"extends": ["ultracite/biome/react", "ultracite/biome/vitest"],
+	"files": {
+		"includes": ["**", "!playwright-report", "!test-results"]
+	},
+	"linter": {
+		"rules": {
+			"performance": { "useTopLevelRegex": "off" }
+		}
+	}
+}

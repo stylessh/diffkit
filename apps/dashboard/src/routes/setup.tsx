@@ -92,7 +92,7 @@ function SetupPage() {
 						{state ? (
 							<SetupAccessList state={state} />
 						) : (
-							<div className="rounded-xl border border-border/70 px-4 py-10">
+							<div className="rounded-xl border-[0.5px] border-border/70 px-4 py-10">
 								<p className="text-center text-sm text-muted-foreground">
 									Could not load installation status. Please authorize the app
 									to continue.
@@ -173,19 +173,19 @@ function SetupAccessList({ state }: { state: GitHubAppAccessState }) {
 	];
 
 	return (
-		<ul className="overflow-hidden rounded-xl border border-border/70">
+		<ul className="overflow-hidden rounded-xl border-[0.5px] border-border/70">
 			{targets.map((target) => (
 				<li
 					key={target.login}
-					className="flex items-center gap-3 px-3.5 py-2.5 not-first:border-t not-first:border-border/70"
+					className="flex items-center gap-3 px-3.5 py-2.5 not-first:border-t-[0.5px] not-first:border-border/70"
 				>
 					<div
 						className={
 							"flex size-2 shrink-0 rounded-full " +
 							(target.status === "installed"
-								? "bg-green-500"
+								? "bg-success"
 								: target.status === "not-installed"
-									? "bg-yellow-500"
+									? "bg-warning"
 									: "bg-muted-foreground/40")
 						}
 					/>
@@ -226,7 +226,7 @@ function SetupAccessList({ state }: { state: GitHubAppAccessState }) {
 				</li>
 			))}
 			{targets.length === 1 && (
-				<li className="border-t border-border/70 px-3.5 py-6">
+				<li className="border-t-[0.5px] border-border/70 px-3.5 py-6">
 					<p className="text-center text-xs text-muted-foreground">
 						No organizations detected on this account.
 					</p>

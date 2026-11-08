@@ -94,7 +94,7 @@ function printResults(linked, skipped) {
   }
 }
 
-async function main() {
+export async function linkWorktreeDevFiles() {
   const { repoRoot, primaryRoot } = resolveRoots();
 
   if (path.resolve(repoRoot) === path.resolve(primaryRoot)) {
@@ -123,7 +123,12 @@ async function main() {
   printResults(linked, skipped);
 }
 
-main().catch((error) => {
-  console.error("worktree dev file link failed:", error.message);
-  process.exit(1);
-});
+if (
+  process.argv[1] &&
+  import.meta.url === new URL(process.argv[1], "file:").href
+) {
+  linkWorktreeDevFiles().catch((error) => {
+    console.error("worktree dev file link failed:", error.message);
+    process.exit(1);
+  });
+}

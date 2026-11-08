@@ -137,14 +137,14 @@ function DialogContent({
 				data-slot="dialog-content"
 				className={cn(
 					liftedDialogSurfaceClassName,
-					"data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 fixed top-[50%] left-[50%] z-50 grid w-full max-w-[calc(100%-2rem)] translate-x-[-50%] translate-y-[-50%] gap-4 overflow-hidden rounded-xl duration-200 sm:max-w-lg",
+					"data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 fixed top-[50%] left-[50%] z-50 grid w-full max-w-[calc(100%-2rem)] translate-x-[-50%] translate-y-[-50%] gap-4 overflow-hidden rounded-xl duration-150 sm:max-w-lg",
 					className,
 				)}
 				{...props}
 			>
 				{children}
 				{showCloseButton ? (
-					<DialogPrimitive.Close className="ring-offset-background focus:ring-ring absolute top-3.5 right-3.5 rounded-md p-1.5 text-muted-foreground/80 outline-hidden transition-colors hover:bg-accent hover:text-foreground focus:ring-2 focus:ring-offset-2 disabled:pointer-events-none [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4">
+					<DialogPrimitive.Close className="absolute top-3.5 right-3.5 flex size-7 items-center justify-center rounded-md text-muted-foreground outline-none transition-colors hover:bg-ghost-hover hover:text-foreground focus-visible:outline-1 focus-visible:-outline-offset-1 focus-visible:outline-ring disabled:pointer-events-none [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4">
 						<XIcon />
 						<span className="sr-only">Close</span>
 					</DialogPrimitive.Close>

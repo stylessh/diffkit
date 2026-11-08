@@ -23,3 +23,31 @@ describe("normalizeAuthRedirect", () => {
 		expect(normalizeAuthRedirect("/login?redirect=/pulls")).toBe("/");
 	});
 });
+
+describe("normalizeAuthRedirect: open-redirect attempts", () => {
+	it("falls back for every form a browser could read as another origin", () => {
+		const attempts = [
+			"/\\evil.com",
+			"/\\\\evil.com",
+			"/\t/evil.com",
+			"/\n/evil.com",
+			" //evil.com",
+			"///evil.com",
+			"/.//evil.com",
+			"/..//evil.com",
+			"/a/..//evil.com",
+			"javascript:alert(1)",
+			"https:evil.com",
+			"",
+		];
+		for (const attempt of attempts) {
+			expect(normalizeAuthRedirect(attempt), attempt).toBe("/");
+			expect(normalizeAuthRedirect(attempt, "/setup"), attempt).toBe("/setup");
+		}
+	});
+
+	it("keeps an encoded double slash as path text rather than a host", () => {
+		const result = normalizeAuthRedirect("/%2F%2Fevil.com");
+		expect(new URL(result, "https://app.test").origin).toBe("https://app.test");
+	});
+});

@@ -4,6 +4,7 @@ import {
 } from "rehype-sanitize";
 import {
 	MARKDOWN_MENTION_TAG,
+	MARKDOWN_REFERENCE_ATTRIBUTES,
 	MARKDOWN_REFERENCE_TAG,
 } from "./markdown-resource-reference";
 
@@ -25,15 +26,7 @@ export const markdownSanitizeSchema: RehypeSanitizeSchema = {
 	attributes: {
 		...defaultSchema.attributes,
 		[MARKDOWN_MENTION_TAG]: ["login", "href"],
-		[MARKDOWN_REFERENCE_TAG]: [
-			"kind",
-			"href",
-			"owner",
-			"repo",
-			"num",
-			"tag",
-			"login",
-		],
+		[MARKDOWN_REFERENCE_TAG]: [...MARKDOWN_REFERENCE_ATTRIBUTES],
 		blockquote: [
 			...(defaultSchema.attributes?.blockquote ?? []),
 			["className", /^markdown-alert/],

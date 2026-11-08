@@ -23,7 +23,7 @@ export const Pagination = memo(function Pagination({
 				disabled={page === 1}
 				onClick={() => onPageChange(page - 1)}
 				className={cn(
-					"flex items-center gap-1.5 rounded-lg border border-border/50 px-3 py-1.5 text-sm transition-colors",
+					"flex items-center gap-1.5 rounded-lg border-[0.5px] border-border/50 px-3 py-1.5 text-sm transition-colors",
 					page === 1
 						? "cursor-not-allowed text-muted-foreground/40"
 						: "text-muted-foreground hover:bg-surface-1 hover:text-foreground",
@@ -42,7 +42,7 @@ export const Pagination = memo(function Pagination({
 				disabled={!hasNextPage}
 				onClick={() => onPageChange(page + 1)}
 				className={cn(
-					"flex items-center gap-1.5 rounded-lg border border-border/50 px-3 py-1.5 text-sm transition-colors",
+					"flex items-center gap-1.5 rounded-lg border-[0.5px] border-border/50 px-3 py-1.5 text-sm transition-colors",
 					!hasNextPage
 						? "cursor-not-allowed text-muted-foreground/40"
 						: "text-muted-foreground hover:bg-surface-1 hover:text-foreground",

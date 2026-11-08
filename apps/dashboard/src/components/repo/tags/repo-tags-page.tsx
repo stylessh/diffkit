@@ -4,7 +4,8 @@ import {
 	PackageIcon,
 	PlusSignIcon,
 } from "@diffkit/icons";
-import { Button } from "@diffkit/ui/components/button";
+import { Chip } from "@diffkit/ui/components/chip";
+import { GroupHeader } from "@diffkit/ui/components/group-header";
 import { Skeleton } from "@diffkit/ui/components/skeleton";
 import { Spinner } from "@diffkit/ui/components/spinner";
 import {
@@ -12,6 +13,7 @@ import {
 	TooltipContent,
 	TooltipTrigger,
 } from "@diffkit/ui/components/tooltip";
+import { cn } from "@diffkit/ui/lib/utils";
 import {
 	keepPreviousData,
 	useInfiniteQuery,
@@ -27,6 +29,11 @@ import {
 	RepoListSearchInput,
 	RepoPageHeader,
 } from "#/components/repo/repo-page-header";
+import {
+	listRowClassName,
+	RowStateIcon,
+	RowTime,
+} from "#/components/shared/list-row";
 import { encodeRefPath } from "#/lib/commits-route";
 import { formatRelativeTime } from "#/lib/format-relative-time";
 import {
@@ -40,6 +47,13 @@ import {
 import type { RepoRelease, RepoTagListItem } from "#/lib/github.types";
 import { useHasMounted } from "#/lib/use-has-mounted";
 import { useUrlSearchInput } from "#/lib/use-url-search-input";
+import {
+	ghostPillClassName,
+	HairlineBadge,
+	iconButtonClassName,
+	pillButtonClassName,
+	RepoEmptyState,
+} from "../repo-ui";
 
 /**
  * Tags, newest first (GraphQL orders by tag/commit date), 30 per request.
@@ -109,71 +123,70 @@ export function RepoTagsPage({
 
 	return (
 		<>
-			<div className="h-full overflow-auto py-10">
-				<div className="mx-auto flex min-h-full max-w-4xl flex-col gap-6 px-3 md:px-6">
-					<RepoPageHeader
-						owner={owner}
-						repo={repo}
-						repoData={repoData}
-						active="tags"
-						title="Tags"
-						subtitle={
-							totalCount > 0 ? (
-								<span className="tabular-nums">
-									{totalCount} tag{totalCount === 1 ? "" : "s"}
-								</span>
-							) : undefined
-						}
-						actions={
-							<Button variant="secondary" size="sm" asChild>
-								<Link to="/$owner/$repo/releases" params={{ owner, repo }}>
-									<PackageIcon size={14} />
-									Releases
-								</Link>
-							</Button>
-						}
-					/>
-
-					<RepoListSearchInput
-						value={searchInput}
-						onChange={setSearchInput}
-						placeholder="Find a tag…"
-						className="sm:w-[280px]"
-					/>
-
-					{isLoading ? (
-						<div className="divide-y overflow-hidden rounded-lg border">
-							{["a", "b", "c", "d"].map((key) => (
-								<div key={key} className="flex items-center gap-3 px-4 py-3">
-									<Skeleton className="size-4 rounded" />
-									<div className="flex flex-1 flex-col gap-1.5">
-										<Skeleton className="h-4 w-32 rounded" />
-										<Skeleton className="h-3 w-48 rounded" />
-									</div>
-								</div>
-							))}
-						</div>
-					) : tagsQuery.isError ? (
-						<p className="py-12 text-center text-sm text-muted-foreground">
-							Couldn't load tags.{" "}
+			<RepoPageHeader
+				owner={owner}
+				repo={repo}
+				scope={scope}
+				active="tags"
+				toolbar={
+					<>
+						<RepoListSearchInput
+							value={searchInput}
+							onChange={setSearchInput}
+							placeholder="Find a tag…"
+							className="w-full sm:w-60"
+						/>
+						<Link
+							to="/$owner/$repo/releases"
+							params={{ owner, repo }}
+							className={cn(ghostPillClassName, "ml-auto")}
+						>
+							<PackageIcon size={14} strokeWidth={2} />
+							Releases
+						</Link>
+					</>
+				}
+			>
+				{isLoading ? (
+					<div className="flex flex-col">
+						{["a", "b", "c", "d"].map((key) => (
+							<div key={key} className={listRowClassName}>
+								<RowStateIcon>
+									<Skeleton className="size-3.5 rounded-full" />
+								</RowStateIcon>
+								<Skeleton className="h-3.5 w-32 rounded" />
+								<Skeleton className="h-3.5 w-48 rounded" />
+							</div>
+						))}
+					</div>
+				) : tagsQuery.isError ? (
+					<RepoEmptyState
+						icon={<TagIcon />}
+						title="Couldn't load tags"
+						action={
 							<button
 								type="button"
 								onClick={() => void tagsQuery.refetch()}
-								className="underline underline-offset-2 hover:text-foreground"
+								className={pillButtonClassName}
 							>
 								Try again
 							</button>
-						</p>
-					) : tags.length === 0 ? (
-						<div className="flex flex-col items-center gap-2 py-16 text-center">
-							<TagIcon size={20} className="text-muted-foreground" />
-							<p className="text-sm text-muted-foreground">
-								{query ? `No tags match “${query}”.` : "No tags yet."}
-							</p>
-						</div>
-					) : (
+						}
+					/>
+				) : tags.length === 0 ? (
+					<RepoEmptyState
+						icon={<TagIcon />}
+						title={query ? `No tags match “${query}”` : "No tags yet"}
+					/>
+				) : (
+					<section aria-label="Tags">
+						<GroupHeader
+							className="sticky top-0 z-10"
+							title="Tags"
+							count={totalCount}
+						/>
 						<ol
-							className="divide-y overflow-hidden rounded-lg border transition-opacity"
+							className="flex flex-col py-0.5 transition-opacity"
 							style={{ opacity: tagsQuery.isPlaceholderData ? 0.6 : 1 }}
 						>
 							{tags.map((tag) => (
@@ -181,7 +194,7 @@ export function RepoTagsPage({
 									key={tag.name}
 									style={{
 										contentVisibility: "auto",
-										containIntrinsicSize: "auto 60px",
+										containIntrinsicSize: "auto 44px",
 									}}
 								>
 									<TagRow
@@ -194,23 +207,23 @@ export function RepoTagsPage({
 								</li>
 							))}
 						</ol>
-					)}
+					</section>
+				)}
 
-					{tagsQuery.hasNextPage ? (
-						<div className="flex justify-center">
-							<Button
-								variant="secondary"
-								size="sm"
-								disabled={tagsQuery.isFetchingNextPage}
-								onClick={() => void tagsQuery.fetchNextPage()}
-							>
-								{tagsQuery.isFetchingNextPage ? <Spinner size={14} /> : null}
-								Load more tags
-							</Button>
-						</div>
-					) : null}
-				</div>
-			</div>
+				{tagsQuery.hasNextPage ? (
+					<div className="mt-6 flex justify-center">
+						<button
+							type="button"
+							className={pillButtonClassName}
+							disabled={tagsQuery.isFetchingNextPage}
+							onClick={() => void tagsQuery.fetchNextPage()}
+						>
+							{tagsQuery.isFetchingNextPage ? <Spinner size={14} /> : null}
+							Load more tags
+						</button>
+					</div>
+				) : null}
+			</RepoPageHeader>
 			{repoData ? (
 				<SidePanelPortal>
 					<RepoActivityCards
@@ -224,9 +237,6 @@ export function RepoTagsPage({
 		</>
 	);
 }
-
-const iconLinkClass =
-	"flex size-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-surface-2 hover:text-foreground";
 
 const TagRow = memo(function TagRow({
 	owner,
@@ -244,56 +254,71 @@ const TagRow = memo(function TagRow({
 	const archiveBase = `https://github.com/${owner}/${repo}/archive/refs/tags/${encodeRefPath(tag.name)}`;
 	const messageLine = tag.message?.split("\n")[0];
 
+	const time = tag.date
+		? formatRelativeTime(tag.date, undefined, { compact: true })
+		: null;
+
 	return (
-		<div className="flex items-center gap-3 px-4 py-2.5">
-			<TagIcon size={16} className="shrink-0 text-muted-foreground" />
-			<div className="flex min-w-0 flex-1 flex-col gap-1">
-				<div className="flex min-w-0 items-center gap-2">
+		<div
+			className={cn(
+				listRowClassName,
+				"hover:[&:not(:has([data-action]:hover))]:before:bg-row-hover",
+			)}
+		>
+			<RowStateIcon className="text-muted-foreground">
+				<TagIcon size={14} strokeWidth={2} />
+			</RowStateIcon>
+			<div className="flex min-w-0 flex-1 flex-col gap-1 md:flex-row md:items-center md:gap-2">
+				<span className="flex min-w-0 items-center gap-2">
 					<Link
 						to="/$owner/$repo/tree/$"
 						params={{ owner, repo, _splat: tag.name }}
-						className="min-w-0 truncate font-mono text-sm font-medium text-foreground hover:underline"
+						title={tag.name}
+						className="min-w-0 truncate rounded-sm font-mono text-[13px] font-medium text-foreground after:absolute after:inset-0 after:content-['']"
 					>
 						{tag.name}
 					</Link>
 					{release ? (
-						<Link
-							to="/$owner/$repo/releases/$tag"
-							params={{ owner, repo, tag: tag.name }}
-							className="shrink-0 rounded-full border border-border/60 px-1.5 text-[10px] text-muted-foreground transition-colors hover:text-foreground"
-						>
-							{release.isDraft ? "Draft release" : "Release"}
-						</Link>
-					) : null}
-				</div>
-				<div className="flex min-w-0 items-center gap-1.5 text-xs text-muted-foreground">
-					{tag.date ? (
-						<time dateTime={tag.date} className="shrink-0">
-							{formatRelativeTime(tag.date)}
-						</time>
-					) : null}
-					{tag.commitSha ? (
-						<>
-							<span aria-hidden>·</span>
+						<HairlineBadge className="relative z-[1] transition-colors hover:text-foreground">
 							<Link
-								to="/$owner/$repo/commit/$sha"
-								params={{ owner, repo, sha: tag.commitSha }}
-								className="flex shrink-0 items-center gap-1 font-mono hover:text-foreground hover:underline"
+								to="/$owner/$repo/releases/$tag"
+								params={{ owner, repo, tag: tag.name }}
+								data-action
 							>
-								<GitCommitIcon size={12} />
-								{tag.commitSha.slice(0, 7)}
+								{release.isDraft ? "Draft release" : "Release"}
 							</Link>
-						</>
+						</HairlineBadge>
 					) : null}
-					{messageLine ? (
-						<>
-							<span aria-hidden>·</span>
-							<span className="truncate">{messageLine}</span>
-						</>
+				</span>
+				{messageLine ? (
+					<span className="min-w-0 truncate text-[13px] font-[450] text-muted-foreground">
+						{messageLine}
+					</span>
+				) : null}
+				<p className="flex min-w-0 items-center gap-1 truncate text-xs text-muted-foreground md:hidden">
+					{tag.commitSha ? (
+						<span className="font-mono">{tag.commitSha.slice(0, 7)}</span>
 					) : null}
-				</div>
+					{tag.commitSha && time ? <span aria-hidden>·</span> : null}
+					{time ? <span className="tabular-nums">{time}</span> : null}
+				</p>
 			</div>
-			<div className="flex shrink-0 items-center gap-0.5">
+			<div className="relative z-[1] flex shrink-0 items-center gap-0.5">
+				{tag.commitSha ? (
+					<Chip
+						asChild
+						className="mr-1 font-mono transition-colors hover:text-foreground max-md:hidden"
+					>
+						<Link
+							to="/$owner/$repo/commit/$sha"
+							params={{ owner, repo, sha: tag.commitSha }}
+							data-action
+						>
+							<GitCommitIcon size={12} />
+							{tag.commitSha.slice(0, 7)}
+						</Link>
+					</Chip>
+				) : null}
 				{!release && canPush ? (
 					<Tooltip>
 						<TooltipTrigger asChild>
@@ -301,8 +326,9 @@ const TagRow = memo(function TagRow({
 								to="/$owner/$repo/releases/new"
 								params={{ owner, repo }}
 								search={{ tag: tag.name }}
+								data-action
 								aria-label={`Create a release from ${tag.name}`}
-								className={iconLinkClass}
+								className={iconButtonClassName}
 							>
 								<PlusSignIcon size={14} />
 							</Link>
@@ -315,8 +341,9 @@ const TagRow = memo(function TagRow({
 						<Link
 							to="/$owner/$repo/commits/$"
 							params={{ owner, repo, _splat: tag.name }}
+							data-action
 							aria-label={`Commits up to ${tag.name}`}
-							className={iconLinkClass}
+							className={iconButtonClassName}
 						>
 							<GitCommitIcon size={14} />
 						</Link>
@@ -327,8 +354,9 @@ const TagRow = memo(function TagRow({
 					<TooltipTrigger asChild>
 						<a
 							href={`${archiveBase}.zip`}
+							data-action
 							aria-label={`Download ${tag.name} source (zip)`}
-							className="flex h-7 items-center gap-1 rounded-md px-1.5 text-xs text-muted-foreground transition-colors hover:bg-surface-2 hover:text-foreground"
+							className={ghostPillClassName}
 						>
 							<DownloadIcon size={14} />
 							zip
@@ -340,8 +368,9 @@ const TagRow = memo(function TagRow({
 					<TooltipTrigger asChild>
 						<a
 							href={`${archiveBase}.tar.gz`}
+							data-action
 							aria-label={`Download ${tag.name} source (tar.gz)`}
-							className="hidden h-7 items-center gap-1 rounded-md px-1.5 text-xs text-muted-foreground transition-colors hover:bg-surface-2 hover:text-foreground sm:flex"
+							className={cn(ghostPillClassName, "max-sm:hidden")}
 						>
 							<DownloadIcon size={14} />
 							tar.gz
@@ -350,6 +379,15 @@ const TagRow = memo(function TagRow({
 					<TooltipContent>Source code (tar.gz)</TooltipContent>
 				</Tooltip>
 			</div>
+			<span className="hidden shrink-0 md:flex">
+				{tag.date ? (
+					<time dateTime={tag.date}>
+						<RowTime>{time}</RowTime>
+					</time>
+				) : (
+					<RowTime>—</RowTime>
+				)}
+			</span>
 		</div>
 	);
 });

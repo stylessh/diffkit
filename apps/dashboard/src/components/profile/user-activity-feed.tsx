@@ -218,7 +218,7 @@ export function UserActivityFeed({ events }: { events: UserActivityEvent[] }) {
 							groupIdx === 0 ? "pt-4 pb-2" : "pt-5 pb-2",
 						)}
 					>
-						<span className="inline-block rounded-full border border-border bg-surface-1 px-2.5 py-0.5 text-[11px] font-medium text-muted-foreground">
+						<span className="inline-block rounded-full border-[0.5px] border-border bg-surface-1 px-2.5 py-0.5 text-[11px] font-medium text-muted-foreground">
 							{group.label}
 						</span>
 					</div>
@@ -251,7 +251,7 @@ export function UserActivityFeed({ events }: { events: UserActivityEvent[] }) {
 function CommitsSummaryRow({ summary }: { summary: CommitsSummary }) {
 	return (
 		<div className="flex items-start gap-3 py-2">
-			<div className="relative z-10 flex size-5 shrink-0 items-center justify-center rounded-full border border-border bg-card">
+			<div className="relative z-10 flex size-5 shrink-0 items-center justify-center rounded-full border-[0.5px] border-border bg-card">
 				<GitCommitIcon
 					size={12}
 					strokeWidth={2}
@@ -307,7 +307,7 @@ function PrGroupRow({
 			))}
 			{summary && (
 				<div className="flex items-start gap-3 py-2">
-					<div className="relative z-10 flex size-5 shrink-0 items-center justify-center rounded-full border border-border bg-card">
+					<div className="relative z-10 flex size-5 shrink-0 items-center justify-center rounded-full border-[0.5px] border-border bg-card">
 						<GitPullRequestIcon
 							size={12}
 							strokeWidth={2}
@@ -343,15 +343,13 @@ function PrGroupRow({
 									</a>
 									<div className="flex items-center gap-1.5 text-[11px]">
 										{repo.closed > 0 && (
-											<span className="text-red-500">{repo.closed} closed</span>
+											<span className="text-danger">{repo.closed} closed</span>
 										)}
 										{repo.merged > 0 && (
-											<span className="text-purple-500">
-												{repo.merged} merged
-											</span>
+											<span className="text-merged">{repo.merged} merged</span>
 										)}
 										{repo.open > 0 && (
-											<span className="text-green-500">{repo.open} open</span>
+											<span className="text-success">{repo.open} open</span>
 										)}
 									</div>
 								</div>
@@ -371,7 +369,7 @@ function ActivityEventRow({ event }: { event: UserActivityEvent }) {
 
 	return (
 		<div className="flex items-start gap-3 py-2">
-			<div className="relative z-10 flex size-5 shrink-0 items-center justify-center rounded-full border border-border bg-card">
+			<div className="relative z-10 flex size-5 shrink-0 items-center justify-center rounded-full border-[0.5px] border-border bg-card">
 				{icon}
 			</div>
 			<div className="flex min-w-0 flex-1 flex-col gap-1 pt-px">
@@ -435,7 +433,7 @@ function PrCard({
 					{title ?? `#${pr.number}`}
 				</span>
 				{pr.isDraft && (
-					<span className="shrink-0 rounded-full border border-border px-1.5 py-px text-[10px] text-muted-foreground">
+					<span className="shrink-0 rounded-full border-[0.5px] border-border px-1.5 py-px text-[10px] text-muted-foreground">
 						Draft
 					</span>
 				)}
@@ -464,10 +462,10 @@ function PrCard({
 			<div className="flex items-center gap-3 text-[11px] text-muted-foreground">
 				{hasDiff && (
 					<>
-						<span className="text-green-600 dark:text-green-400">
+						<span className="text-success">
 							+{pr.additions.toLocaleString()}
 						</span>
-						<span className="text-red-600 dark:text-red-400">
+						<span className="text-danger">
 							-{pr.deletions.toLocaleString()}
 						</span>
 					</>
@@ -525,9 +523,7 @@ function IssueCard({
 					strokeWidth={2}
 					className={cn(
 						"shrink-0",
-						issue.state === "open"
-							? "text-green-600 dark:text-green-400"
-							: "text-violet-600 dark:text-violet-400",
+						issue.state === "open" ? "text-success" : "text-merged",
 					)}
 				/>
 				<span className="truncate text-xs font-medium text-foreground">

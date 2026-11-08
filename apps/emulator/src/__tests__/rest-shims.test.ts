@@ -74,6 +74,22 @@ describe("REST shims", () => {
 		expect(accounts.sort()).toEqual(["lumen-labs", "nova"]);
 	});
 
+	it("compares against an owner-qualified head the way GitHub does", async () => {
+		const octokit = client();
+		const plain = await octokit.rest.repos.compareCommitsWithBasehead({
+			owner: "lumen-labs",
+			repo: "beacon",
+			basehead: "main...feat/sse-headers",
+		});
+		const qualified = await octokit.rest.repos.compareCommitsWithBasehead({
+			owner: "lumen-labs",
+			repo: "beacon",
+			basehead: "main...lumen-labs:feat/sse-headers",
+		});
+		expect(qualified.data.ahead_by).toBeGreaterThan(0);
+		expect(qualified.data.ahead_by).toBe(plain.data.ahead_by);
+	});
+
 	it("serves seeded notifications and marks threads read", async () => {
 		const octokit = client();
 		const { data } =

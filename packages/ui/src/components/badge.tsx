@@ -14,14 +14,13 @@ const badgeVariants = cva(
 					"bg-primary text-primary-foreground [a&]:hover:bg-primary/90 data-[interactive=true]:hover:bg-primary/90",
 				secondary:
 					"bg-secondary text-secondary-foreground [a&]:hover:bg-secondary/90 data-[interactive=true]:hover:bg-secondary/90",
-				destructive: "bg-pill-blocked text-danger",
+				destructive: "bg-pill-blocked text-pill-blocked-text",
 				outline:
 					"bg-chip text-muted-foreground shadow-chip [a&]:hover:bg-accent [a&]:hover:text-foreground data-[interactive=true]:hover:bg-accent data-[interactive=true]:hover:text-foreground",
-				// Tinted status tones — same recipe as StatePill.
-				success: "bg-pill-ok text-success",
-				warning: "bg-amber-500/12 text-amber-700 dark:text-amber-400",
-				purple: "bg-merged/12 text-merged",
-				gold: "bg-yellow-500/12 text-yellow-700 dark:text-yellow-400",
+				success: "bg-pill-ok text-pill-ok-text",
+				warning: "bg-pill-warning text-pill-warning-text",
+				purple: "bg-pill-merged text-pill-merged-text",
+				gold: "bg-pill-warning text-pill-warning-text",
 			},
 			size: {
 				sm: "gap-1 px-2 py-0.5 text-[10px] leading-none [&>svg]:size-2.5",
@@ -36,12 +35,10 @@ const badgeVariants = cva(
 	},
 );
 
-// Toggle (pressed/unpressed) styling for button-mode badges (filters, chips).
 const pressedStateClass =
 	"data-[pressed=true]:bg-tab-selected data-[pressed=true]:text-foreground data-[pressed=true]:shadow-tab-selected data-[pressed=false]:text-muted-foreground hover:data-[pressed=false]:text-foreground";
 
 type BadgeBaseProps = VariantProps<typeof badgeVariants> & {
-	/** Leading icon, rendered before `children`. */
 	icon?: React.ReactNode;
 	className?: string;
 	children?: React.ReactNode;
@@ -50,7 +47,6 @@ type BadgeBaseProps = VariantProps<typeof badgeVariants> & {
 type BadgeAsSpan = BadgeBaseProps &
 	Omit<React.ComponentProps<"span">, "onClick" | "color"> & {
 		asChild?: boolean;
-		/** Renders a trailing remove (×) button — for removable filter chips. */
 		onRemove?: (event: React.MouseEvent<HTMLButtonElement>) => void;
 		removeAriaLabel?: string;
 		onClick?: never;
@@ -61,7 +57,6 @@ type BadgeAsButton = BadgeBaseProps &
 	Omit<React.ComponentProps<"button">, "color"> & {
 		asChild?: false;
 		onClick: React.MouseEventHandler<HTMLButtonElement>;
-		/** Toggle state; omit for a plain clickable badge. */
 		pressed?: boolean;
 		onRemove?: never;
 	};
@@ -72,7 +67,6 @@ function Badge(props: BadgeProps) {
 	const { className, variant, size, icon, children, ...rest } = props;
 	const resolvedSize = size ?? "default";
 
-	// Button mode — clickable / toggleable.
 	if (
 		"onClick" in rest &&
 		rest.onClick != null &&
@@ -147,7 +141,7 @@ function Badge(props: BadgeProps) {
 					aria-label={removeAriaLabel ?? "Remove"}
 					data-slot="badge-remove"
 					className={cn(
-						"flex shrink-0 items-center self-stretch border-l-[0.5px] border-current/20 opacity-70 transition-[opacity,background-color] hover:bg-foreground/10 hover:opacity-100 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring",
+						"flex shrink-0 items-center self-stretch border-l-[0.5px] border-current/20 opacity-70 transition-[opacity,background-color] hover:bg-foreground/10 hover:opacity-100 focus-visible:outline-1 focus-visible:-outline-offset-1 focus-visible:outline-ring",
 						removePadding,
 					)}
 				>

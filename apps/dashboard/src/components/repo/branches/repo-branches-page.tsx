@@ -1,7 +1,6 @@
 import { GitBranchIcon } from "@diffkit/icons";
-import { Button } from "@diffkit/ui/components/button";
+import { GroupHeader } from "@diffkit/ui/components/group-header";
 import { Spinner } from "@diffkit/ui/components/spinner";
-import { cn } from "@diffkit/ui/lib/utils";
 import {
 	keepPreviousData,
 	useInfiniteQuery,
@@ -29,10 +28,17 @@ import {
 	type GitHubQueryScope,
 	githubRepoBranchesListInfiniteQueryOptions,
 	githubRepoOverviewQueryOptions,
+	githubRepoViewerPermissionQueryOptions,
 } from "#/lib/github.query";
 import type { RepoBranchListItem } from "#/lib/github.types";
 import { useHasMounted } from "#/lib/use-has-mounted";
 import { useUrlSearchInput } from "#/lib/use-url-search-input";
+import {
+	ghostPillClassName,
+	pillButtonClassName,
+	pillTabClassName,
+	RepoEmptyState,
+} from "../repo-ui";
 import { BranchRow, BranchRowSkeleton } from "./branch-row";
 
 const VIEWS = ["overview", "active", "stale", "all"] as const;
@@ -88,6 +94,11 @@ export function RepoBranchesPage({
 		enabled: hasMounted,
 	});
 	const repoData = overviewQuery.data;
+	const permissionQuery = useQuery({
+		...githubRepoViewerPermissionQueryOptions(scope, { owner, repo }),
+		enabled: hasMounted,
+	});
+	const canCreatePullRequest = permissionQuery.data?.canPush ?? false;
 
 	const query = params.q?.trim() || undefined;
 	const branchesQuery = useInfiniteQuery({
@@ -149,157 +160,153 @@ export function RepoBranchesPage({
 	const isLoading =
 		!hasMounted || (branchesQuery.isPending && !branchesQuery.data);
 
-	const rowProps = { owner, repo, scope, defaultBranch };
+	const rowProps = {
+		owner,
+		repo,
+		scope,
+		defaultBranch,
+		canCreatePullRequest,
+	};
+
+	const toolbar = (
+		<>
+			<div
+				role="tablist"
+				aria-label="Branch views"
+				className="flex items-center gap-[7px] p-px"
+			>
+				{VIEWS.map((value) => (
+					<button
+						key={value}
+						type="button"
+						role="tab"
+						aria-selected={view === value}
+						onClick={() => setView(value)}
+						className={pillTabClassName}
+					>
+						{VIEW_LABELS[value]}
+					</button>
+				))}
+			</div>
+			<RepoListSearchInput
+				value={searchInput}
+				onChange={setSearchInput}
+				placeholder="Search branches…"
+				className="w-full sm:ml-auto sm:w-60"
+			/>
+		</>
+	);
 
 	return (
 		<>
-			<div className="h-full overflow-auto py-10">
-				<div className="mx-auto flex min-h-full max-w-4xl flex-col gap-6 px-3 md:px-6">
-					<RepoPageHeader
-						owner={owner}
-						repo={repo}
-						repoData={repoData}
-						active="branches"
-						title="Branches"
-						subtitle={
-							totalCount > 0 ? (
-								<span className="tabular-nums">
-									{totalCount} branch{totalCount === 1 ? "" : "es"}
-								</span>
-							) : undefined
-						}
-					/>
-
-					<div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-						<div
-							role="tablist"
-							aria-label="Branch views"
-							className="flex items-center gap-0.5 rounded-lg border border-border/50 p-0.5"
-						>
-							{VIEWS.map((value) => (
-								<button
-									key={value}
-									type="button"
-									role="tab"
-									aria-selected={view === value}
-									onClick={() => setView(value)}
-									className={cn(
-										"rounded-md px-2.5 py-1 text-sm transition-colors",
-										view === value
-											? "bg-surface-1 font-medium text-foreground"
-											: "text-muted-foreground hover:text-foreground",
-									)}
-								>
-									{VIEW_LABELS[value]}
-								</button>
-							))}
-						</div>
-						<RepoListSearchInput
-							value={searchInput}
-							onChange={setSearchInput}
-							placeholder="Search branches…"
-							className="sm:ml-auto sm:w-[260px]"
-						/>
-					</div>
-
-					{isLoading ? (
-						<BranchSection title="Branches">
-							<BranchRowSkeleton />
-							<BranchRowSkeleton />
-							<BranchRowSkeleton />
-						</BranchSection>
-					) : branchesQuery.isError ? (
-						<p className="py-12 text-center text-sm text-muted-foreground">
-							Couldn't load branches.{" "}
+			<RepoPageHeader
+				owner={owner}
+				repo={repo}
+				scope={scope}
+				active="branches"
+				toolbar={toolbar}
+			>
+				{isLoading ? (
+					<BranchSection title="Branches">
+						<BranchRowSkeleton />
+						<BranchRowSkeleton />
+						<BranchRowSkeleton />
+					</BranchSection>
+				) : branchesQuery.isError ? (
+					<RepoEmptyState
+						icon={<GitBranchIcon />}
+						title="Couldn't load branches"
+						action={
 							<button
 								type="button"
 								onClick={() => void branchesQuery.refetch()}
-								className="underline underline-offset-2 hover:text-foreground"
+								className={pillButtonClassName}
 							>
 								Try again
 							</button>
-						</p>
-					) : all.length === 0 ? (
-						<div className="flex flex-col items-center gap-2 py-16 text-center">
-							<GitBranchIcon size={20} className="text-muted-foreground" />
-							<p className="text-sm text-muted-foreground">
-								{query ? `No branches match “${query}”.` : "No branches yet."}
-							</p>
-						</div>
-					) : view === "overview" ? (
-						<div
-							className="flex flex-col gap-8 transition-opacity"
-							style={{ opacity: branchesQuery.isPlaceholderData ? 0.6 : 1 }}
-						>
-							{sections.default ? (
-								<BranchSection title="Default">
-									<BranchRow branch={sections.default} {...rowProps} />
-								</BranchSection>
-							) : null}
-							{sections.active.length > 0 ? (
-								<BranchSection
-									title="Active branches"
-									count={sections.active.length}
-									onViewMore={
-										sections.active.length > OVERVIEW_SECTION_LIMIT
-											? () => setView("active")
-											: undefined
-									}
-								>
-									{sections.active
-										.slice(0, OVERVIEW_SECTION_LIMIT)
-										.map((branch) => (
-											<BranchRow
-												key={branch.name}
-												branch={branch}
-												{...rowProps}
-											/>
-										))}
-								</BranchSection>
-							) : null}
-							{sections.stale.length > 0 ? (
-								<BranchSection
-									title="Stale branches"
-									count={sections.stale.length}
-									onViewMore={
-										sections.stale.length > OVERVIEW_SECTION_LIMIT
-											? () => setView("stale")
-											: undefined
-									}
-								>
-									{sections.stale
-										.slice(0, OVERVIEW_SECTION_LIMIT)
-										.map((branch) => (
-											<BranchRow
-												key={branch.name}
-												branch={branch}
-												{...rowProps}
-											/>
-										))}
-								</BranchSection>
-							) : null}
-						</div>
-					) : pagedList.length === 0 ? (
-						<p className="py-12 text-center text-sm text-muted-foreground">
-							No {view === "all" ? "" : `${view} `}branches.
-						</p>
-					) : (
-						<BranchSection
-							title={
-								view === "active"
-									? "Active branches"
-									: view === "stale"
-										? "Stale branches"
-										: "All branches"
-							}
-							count={listForView.length}
-						>
-							{pagedList.map((branch) => (
-								<BranchRow key={branch.name} branch={branch} {...rowProps} />
-							))}
-						</BranchSection>
-					)}
+						}
+					/>
+				) : all.length === 0 ? (
+					<RepoEmptyState
+						icon={<GitBranchIcon />}
+						title={query ? `No branches match “${query}”` : "No branches yet"}
+					/>
+				) : view === "overview" ? (
+					<div
+						className="flex flex-col transition-opacity"
+						style={{ opacity: branchesQuery.isPlaceholderData ? 0.6 : 1 }}
+					>
+						{sections.default ? (
+							<BranchSection title="Default">
+								<BranchRow branch={sections.default} {...rowProps} />
+							</BranchSection>
+						) : null}
+						{sections.active.length > 0 ? (
+							<BranchSection
+								title="Active branches"
+								count={sections.active.length}
+								onViewMore={
+									sections.active.length > OVERVIEW_SECTION_LIMIT
+										? () => setView("active")
+										: undefined
+								}
+							>
+								{sections.active
+									.slice(0, OVERVIEW_SECTION_LIMIT)
+									.map((branch) => (
+										<BranchRow
+											key={branch.name}
+											branch={branch}
+											{...rowProps}
+										/>
+									))}
+							</BranchSection>
+						) : null}
+						{sections.stale.length > 0 ? (
+							<BranchSection
+								title="Stale branches"
+								count={sections.stale.length}
+								onViewMore={
+									sections.stale.length > OVERVIEW_SECTION_LIMIT
+										? () => setView("stale")
+										: undefined
+								}
+							>
+								{sections.stale
+									.slice(0, OVERVIEW_SECTION_LIMIT)
+									.map((branch) => (
+										<BranchRow
+											key={branch.name}
+											branch={branch}
+											{...rowProps}
+										/>
+									))}
+							</BranchSection>
+						) : null}
+					</div>
+				) : pagedList.length === 0 ? (
+					<RepoEmptyState
+						icon={<GitBranchIcon />}
+						title={`No ${view === "all" ? "" : `${view} `}branches`}
+					/>
+				) : (
+					<BranchSection
+						title={
+							view === "active"
+								? "Active branches"
+								: view === "stale"
+									? "Stale branches"
+									: "All branches"
+						}
+						count={listForView.length}
+					>
+						{pagedList.map((branch) => (
+							<BranchRow key={branch.name} branch={branch} {...rowProps} />
+						))}
+					</BranchSection>
+				)}
 
+				<div className="mt-6 flex flex-col items-center gap-4">
 					{view !== "overview" ? (
 						<Pagination
 							page={page}
@@ -311,15 +318,15 @@ export function RepoBranchesPage({
 					) : null}
 
 					{branchesQuery.hasNextPage ? (
-						<div className="flex flex-col items-center gap-2 text-center">
+						<div className="flex flex-col items-center gap-3 text-center">
 							<p className="text-xs text-muted-foreground">
 								Sorted by recent activity across the first{" "}
 								<span className="tabular-nums">{loadedCount}</span> of{" "}
 								<span className="tabular-nums">{totalCount}</span> branches.
 							</p>
-							<Button
-								variant="secondary"
-								size="sm"
+							<button
+								type="button"
+								className={pillButtonClassName}
 								disabled={branchesQuery.isFetchingNextPage}
 								onClick={() => void branchesQuery.fetchNextPage()}
 							>
@@ -327,11 +334,11 @@ export function RepoBranchesPage({
 									<Spinner size={14} />
 								) : null}
 								Load more branches
-							</Button>
+							</button>
 						</div>
 					) : null}
 				</div>
-			</div>
+			</RepoPageHeader>
 			{repoData ? (
 				<SidePanelPortal>
 					<RepoActivityCards
@@ -358,29 +365,24 @@ function BranchSection({
 	children: React.ReactNode;
 }) {
 	return (
-		<section className="flex flex-col gap-2">
-			<div className="flex items-baseline justify-between gap-2">
-				<h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-					{title}
-					{count != null ? (
-						<span className="ml-1.5 font-normal tabular-nums tracking-normal">
-							{count}
-						</span>
-					) : null}
-				</h2>
-				{onViewMore ? (
-					<button
-						type="button"
-						onClick={onViewMore}
-						className="text-xs text-muted-foreground hover:text-foreground hover:underline"
-					>
-						View all
-					</button>
-				) : null}
-			</div>
-			<div className="divide-y overflow-hidden rounded-lg border">
-				{children}
-			</div>
+		<section aria-label={title}>
+			<GroupHeader
+				className="sticky top-0 z-10"
+				title={title}
+				count={count}
+				actions={
+					onViewMore ? (
+						<button
+							type="button"
+							onClick={onViewMore}
+							className={ghostPillClassName}
+						>
+							View all
+						</button>
+					) : undefined
+				}
+			/>
+			<div className="flex flex-col py-0.5">{children}</div>
 		</section>
 	);
 }

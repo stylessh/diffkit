@@ -1,136 +1,134 @@
-import { ArchiveIcon, ArrowMoveDownRightIcon } from "@diffkit/icons";
-import { Badge } from "@diffkit/ui/components/badge";
-import { cn } from "@diffkit/ui/lib/utils";
+import { LockIcon, RepoIcon } from "@diffkit/icons";
+import {
+	PageHeader,
+	PageHeaderCrumb,
+	PageHeaderTitle,
+} from "@diffkit/ui/components/page-header";
+import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
-import { useMemo, useState } from "react";
-import { RepoNav } from "#/components/repo/repo-nav";
+import type { ReactNode } from "react";
+import {
+	RepoNav,
+	type RepoNavKey,
+	repoSectionLabel,
+} from "#/components/repo/repo-nav";
 import { RepoStarForkActions } from "#/components/repo/repo-star-fork-actions";
-import type { GitHubQueryScope } from "#/lib/github.query";
-import type { RepoOverview } from "#/lib/github.types";
-
-function parseOwnerRepo(
-	fullName: string,
-): { owner: string; repo: string } | null {
-	const i = fullName.indexOf("/");
-	if (i <= 0 || i === fullName.length - 1) {
-		return null;
-	}
-	return { owner: fullName.slice(0, i), repo: fullName.slice(i + 1) };
-}
+import {
+	type GitHubQueryScope,
+	githubRepoOverviewQueryOptions,
+	githubRepoViewerPermissionQueryOptions,
+} from "#/lib/github.query";
+import { repoSettingsCapabilities } from "#/lib/settings/permissions";
+import { useHasMounted } from "#/lib/use-has-mounted";
+import { HairlineBadge } from "./repo-ui";
 
 export function RepoHeader({
+	owner,
 	repo,
 	scope,
+	active,
+	trail,
+	tabActions,
 }: {
-	repo: RepoOverview;
+	owner: string;
+	repo: string;
 	scope: GitHubQueryScope;
+	active?: RepoNavKey;
+	trail?: ReactNode;
+	tabActions?: ReactNode;
 }) {
-	const [imgError, setImgError] = useState(false);
-	const [forkImgError, setForkImgError] = useState(false);
+	const hasMounted = useHasMounted();
+	const overviewQuery = useQuery({
+		...githubRepoOverviewQueryOptions(scope, { owner, repo }),
+		enabled: hasMounted,
+	});
+	const permissionQuery = useQuery({
+		...githubRepoViewerPermissionQueryOptions(scope, { owner, repo }),
+		enabled: hasMounted,
+	});
+	const showSettings = repoSettingsCapabilities(
+		permissionQuery.data?.permission ?? null,
+	).openSettings;
+	const repoData = overviewQuery.data;
+	const name = repoData?.name ?? repo;
+	const section = active && active !== "code" ? active : null;
 
-	const forkLink = useMemo(() => {
-		if (!repo.isFork || !repo.forkParentFullName) {
-			return null;
-		}
-		return parseOwnerRepo(repo.forkParentFullName);
-	}, [repo.isFork, repo.forkParentFullName]);
+	const repoIcon = (
+		<RepoIcon size={14} strokeWidth={2} className="text-muted-foreground" />
+	);
+
+	const title = (
+		<>
+			{repoIcon}
+			<span className="truncate">
+				<Link
+					to="/$owner"
+					params={{ owner }}
+					className="rounded-sm text-text-header transition-colors hover:text-foreground"
+				>
+					{owner}
+				</Link>
+				<span className="text-muted-foreground">/</span>
+				{name}
+			</span>
+		</>
+	);
 
 	return (
-		<div className="flex min-w-0 flex-col gap-4">
-			<div className="flex min-w-0 flex-wrap items-start justify-between gap-3">
-				<div className="flex min-w-0 flex-1 flex-col gap-1">
-					<div className="flex min-w-0 items-center gap-2">
-						{repo.ownerAvatarUrl && !imgError ? (
-							<img
-								src={repo.ownerAvatarUrl}
-								alt={repo.owner}
-								className="size-5 shrink-0 rounded-md"
-								onError={() => setImgError(true)}
-							/>
-						) : (
-							<ArchiveIcon
-								size={16}
-								className="shrink-0 text-muted-foreground"
-							/>
-						)}
-						<div className="flex min-w-0 items-center gap-1.5 text-lg">
-							<Link
-								to="/$owner"
-								params={{ owner: repo.owner }}
-								className="inline-block min-w-0 max-w-[min(100%,14rem)] truncate font-medium text-accent-foreground transition-colors hover:underline"
-							>
-								{repo.owner}
+		<>
+			<PageHeader
+				actions={
+					repoData ? (
+						<RepoStarForkActions repo={repoData} scope={scope} />
+					) : null
+				}
+			>
+				<span className="flex min-w-0 shrink items-center max-md:hidden">
+					<PageHeaderCrumb asChild>
+						<Link to="/repos">Repositories</Link>
+					</PageHeaderCrumb>
+				</span>
+				{trail ? (
+					<>
+						<PageHeaderCrumb asChild>
+							<Link to="/$owner/$repo" params={{ owner, repo }}>
+								{repoIcon}
+								<span className="truncate">
+									{owner}/{name}
+								</span>
 							</Link>
-							<span className="text-muted-foreground">/</span>
-							<span className="min-w-0 max-w-[min(100%,20rem)] truncate font-semibold">
-								{repo.name}
-							</span>
-						</div>
-						<Badge
-							variant="outline"
-							className={cn(
-								"ml-1 translate-y-px shrink-0 rounded-full px-2 py-0.5 text-[11px] font-medium",
-								"border-border/60 text-muted-foreground",
-							)}
-						>
-							{repo.isPrivate ? "Private" : "Public"}
-						</Badge>
-					</div>
-					{forkLink && (
-						<p className="flex min-w-0 flex-wrap items-center gap-2 text-sm md:ml-7">
-							<ArrowMoveDownRightIcon
-								size={14}
-								strokeWidth={2}
-								className="shrink-0 text-muted-foreground opacity-80"
-								aria-hidden
-							/>
-							<span className="shrink-0 text-muted-foreground">
-								forked from
-							</span>
-							{repo.forkParentOwnerAvatarUrl && !forkImgError ? (
-								<img
-									src={repo.forkParentOwnerAvatarUrl}
-									alt=""
-									className="size-4 shrink-0 rounded-sm object-cover"
-									onError={() => setForkImgError(true)}
-								/>
-							) : (
-								<ArchiveIcon
-									size={14}
-									className="shrink-0 text-muted-foreground opacity-80"
-								/>
-							)}
-							<span className="flex min-w-0 items-center gap-1.5">
-								<Link
-									to="/$owner"
-									params={{ owner: forkLink.owner }}
-									className="inline-block min-w-0 max-w-[min(100%,12rem)] shrink-0 truncate font-medium text-foreground transition-colors hover:underline"
-								>
-									{forkLink.owner}
-								</Link>
-								<span className="text-muted-foreground">/</span>
-								<Link
-									to="/$owner/$repo"
-									params={{
-										owner: forkLink.owner,
-										repo: forkLink.repo,
-									}}
-									className="min-w-0 max-w-[min(100%,18rem)] truncate font-semibold text-foreground transition-colors hover:underline"
-								>
-									{forkLink.repo}
-								</Link>
-							</span>
-						</p>
-					)}
-				</div>
-				<RepoStarForkActions repo={repo} scope={scope} />
-			</div>
+						</PageHeaderCrumb>
+						{trail}
+					</>
+				) : (
+					<>
+						{section ? (
+							<PageHeaderTitle className="gap-2" asChild>
+								<span>{title}</span>
+							</PageHeaderTitle>
+						) : (
+							<PageHeaderTitle className="gap-2">{title}</PageHeaderTitle>
+						)}
+						{repoData ? (
+							<HairlineBadge className="ml-2 gap-1">
+								{repoData.isPrivate ? <LockIcon size={10} /> : null}
+								{repoData.isPrivate ? "Private" : "Public"}
+							</HairlineBadge>
+						) : null}
+					</>
+				)}
+			</PageHeader>
+			{section ? (
+				<h1 className="sr-only">{repoSectionLabel(section)}</h1>
+			) : null}
 			<RepoNav
-				owner={repo.owner}
-				repo={repo.name}
-				active="code"
-				repoData={repo}
+				owner={owner}
+				repo={repo}
+				active={active}
+				repoData={repoData}
+				actions={tabActions}
+				showSettings={showSettings}
 			/>
-		</div>
+		</>
 	);
 }

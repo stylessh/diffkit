@@ -52,13 +52,15 @@ export const WorkflowRunRow = memo(function WorkflowRunRow({
 			onMouseEnter={preloadDetail}
 			onFocus={preloadDetail}
 			onTouchStart={preloadDetail}
-			className="group flex items-start gap-3 rounded-lg px-3 py-2.5 transition-colors hover:bg-surface-1"
+			className="group flex items-start gap-3 rounded-lg px-3 py-2.5 transition-colors hover:bg-row-hover"
 		>
-			<div className="mt-[3px] shrink-0">
+			<div className="mt-0.5 flex shrink-0">
 				<CheckStateIcon state={state} />
 			</div>
 			<div className="flex min-w-0 flex-1 flex-col gap-1">
-				<p className="truncate text-sm font-medium">{run.displayTitle}</p>
+				<p className="truncate text-[13px] font-medium text-foreground">
+					{run.displayTitle}
+				</p>
 				<p className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-xs text-muted-foreground">
 					<span className="font-medium">{workflowName}</span>
 					<span>·</span>
@@ -80,7 +82,7 @@ export const WorkflowRunRow = memo(function WorkflowRunRow({
 							<img
 								src={run.actor.avatarUrl}
 								alt={run.actor.login}
-								className="size-3.5 rounded-full border border-border"
+								className="size-3.5 rounded-full ring-[0.5px] ring-chip-border"
 							/>
 							<span className="truncate">{run.actor.login}</span>
 						</>
@@ -124,9 +126,9 @@ const RunDuration = memo(function RunDuration({
 	if (!duration) return null;
 
 	return (
-		<div className="mt-[3px] hidden shrink-0 items-center gap-1.5 md:flex">
+		<div className="mt-0.5 hidden shrink-0 items-center gap-1.5 text-xs tabular-nums text-muted-foreground md:flex">
 			{isLive ? (
-				<span className="inline-flex size-1.5 animate-pulse rounded-full bg-yellow-500" />
+				<span className="inline-flex size-1.5 animate-pulse rounded-full bg-check-running" />
 			) : null}
 			<span
 				className={cn(

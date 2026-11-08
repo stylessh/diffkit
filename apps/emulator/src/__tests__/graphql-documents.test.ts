@@ -50,6 +50,7 @@ function variablesFor(
 		number,
 		username: "nova",
 		ref: "main",
+		path: "src/client.ts",
 		first: 20,
 		after: null,
 		cursor: null,
@@ -135,9 +136,9 @@ afterAll(async () => {
 });
 
 describe("DiffKit GraphQL documents", () => {
-	it("finds every document in github.functions.ts", () => {
+	it("finds every document in the dashboard GitHub modules", () => {
 		// Bump this when DiffKit adds a query, and make sure it runs below.
-		expect(documents.length).toBe(24);
+		expect(documents.length).toBe(25);
 	});
 
 	it.each(
@@ -189,6 +190,35 @@ describe("DiffKit GraphQL documents", () => {
 });
 
 describe("GraphQL behaviour DiffKit depends on", () => {
+	it("blames every line of a file to the commit that last changed it", async () => {
+		const { repository } = await octokit.graphql<{
+			repository: {
+				object: {
+					blame: {
+						ranges: Array<{
+							startingLine: number;
+							endingLine: number;
+							commit: { messageHeadline: string };
+						}>;
+					};
+				};
+			};
+		}>(
+			`query { repository(owner: "lumen-labs", name: "beacon") { object(expression: "main") { ... on Commit { blame(path: "src/client.ts") { ranges { startingLine endingLine commit { messageHeadline } } } } } } }`,
+		);
+		const ranges = repository.object.blame.ranges;
+		ranges.forEach((range, index) => {
+			expect(range.startingLine).toBe(
+				index === 0 ? 1 : (ranges[index - 1]?.endingLine ?? 0) + 1,
+			);
+		});
+		const headlines = new Set(
+			ranges.map((range) => range.commit.messageHeadline),
+		);
+		expect(headlines.size).toBeGreaterThan(1);
+		expect(headlines).toContain("Expose connection status through onStatus");
+	});
+
 	it("returns NOT_FOUND typed errors for missing repositories", async () => {
 		const response = await fetch(`${emulator.url}/graphql`, {
 			method: "POST",

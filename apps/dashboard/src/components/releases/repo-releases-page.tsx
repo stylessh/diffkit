@@ -1,6 +1,6 @@
-import { PlusSignIcon } from "@diffkit/icons";
-import { Button } from "@diffkit/ui/components/button";
+import { PackageIcon, PlusSignIcon } from "@diffkit/icons";
 import { Skeleton } from "@diffkit/ui/components/skeleton";
+import { cn } from "@diffkit/ui/lib/utils";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import { parseAsInteger, useQueryState } from "nuqs";
@@ -9,6 +9,11 @@ import { Pagination } from "#/components/pagination";
 import { TagIcon } from "#/components/repo/refs/tag-icon";
 import { RepoActivityCards } from "#/components/repo/repo-activity-cards";
 import { RepoPageHeader } from "#/components/repo/repo-page-header";
+import {
+	ghostPillClassName,
+	pillButtonClassName,
+	RepoEmptyState,
+} from "#/components/repo/repo-ui";
 import {
 	type GitHubQueryScope,
 	githubRepoOverviewQueryOptions,
@@ -72,75 +77,76 @@ export function RepoReleasesPage({
 
 	return (
 		<>
-			<div className="h-full overflow-auto py-10">
-				<div className="mx-auto flex min-h-full max-w-5xl flex-col gap-6 px-3 md:px-6">
-					<RepoPageHeader
-						owner={owner}
-						repo={repo}
-						repoData={repoData}
-						active="releases"
-						title="Releases"
-						actions={
-							<>
-								<Button variant="ghost" size="sm" asChild>
-									<Link to="/$owner/$repo/tags" params={{ owner, repo }}>
-										<TagIcon size={14} />
-										Tags
-									</Link>
-								</Button>
-								{canPush ? (
-									<Button size="sm" asChild>
-										<Link
-											to="/$owner/$repo/releases/new"
-											params={{ owner, repo }}
-										>
-											<PlusSignIcon size={14} />
-											New release
-										</Link>
-									</Button>
-								) : null}
-							</>
-						}
-					/>
-
+			<RepoPageHeader
+				owner={owner}
+				repo={repo}
+				scope={scope}
+				active="releases"
+				tabActions={
+					<>
+						<Link
+							to="/$owner/$repo/tags"
+							params={{ owner, repo }}
+							className={cn(ghostPillClassName, "max-lg:hidden")}
+						>
+							<TagIcon size={14} strokeWidth={2} />
+							Tags
+						</Link>
+						{canPush ? (
+							<Link
+								to="/$owner/$repo/releases/new"
+								params={{ owner, repo }}
+								className={cn(pillButtonClassName, "text-foreground")}
+							>
+								<PlusSignIcon size={14} strokeWidth={2} />
+								New release
+							</Link>
+						) : null}
+					</>
+				}
+				bodyClassName="px-0"
+			>
+				<div className="mx-auto flex w-full max-w-[940px] flex-col gap-4 px-4 pt-4 md:px-6">
 					{isLoading ? (
 						<ReleasesSkeleton />
 					) : releasesQuery.isError ? (
-						<p className="py-12 text-center text-sm text-muted-foreground">
-							Couldn't load releases.{" "}
-							<button
-								type="button"
-								onClick={() => void releasesQuery.refetch()}
-								className="underline underline-offset-2 hover:text-foreground"
-							>
-								Try again
-							</button>
-						</p>
+						<RepoEmptyState
+							icon={<PackageIcon />}
+							title="Couldn't load releases"
+							action={
+								<button
+									type="button"
+									onClick={() => void releasesQuery.refetch()}
+									className={pillButtonClassName}
+								>
+									Try again
+								</button>
+							}
+						/>
 					) : releases.length === 0 ? (
-						<div className="flex flex-col items-center gap-3 rounded-xl border border-dashed py-16 text-center">
-							<p className="text-sm font-medium">
-								{page > 1
-									? "No more releases"
-									: "There aren't any releases here"}
-							</p>
-							<p className="max-w-sm text-sm text-muted-foreground">
-								Releases package software with release notes and binaries for
-								people to download.
-							</p>
-							{canPush && page === 1 ? (
-								<Button size="sm" asChild>
+						<RepoEmptyState
+							icon={<PackageIcon />}
+							title={
+								page > 1 ? "No more releases" : "There aren't any releases here"
+							}
+							action={
+								canPush && page === 1 ? (
 									<Link
 										to="/$owner/$repo/releases/new"
 										params={{ owner, repo }}
+										className={cn(pillButtonClassName, "text-foreground")}
 									>
 										Create a new release
 									</Link>
-								</Button>
-							) : null}
-						</div>
+								) : undefined
+							}
+						>
+							Releases package software with release notes and binaries for
+							people to download.
+						</RepoEmptyState>
 					) : (
 						<div
-							className="flex flex-col gap-6 transition-opacity"
+							className="flex flex-col gap-4 transition-opacity"
 							style={{ opacity: releasesQuery.isPlaceholderData ? 0.6 : 1 }}
 						>
 							{releases.map((release) => (
@@ -162,7 +168,7 @@ export function RepoReleasesPage({
 						onPageChange={(next) => void setPage(next === 1 ? null : next)}
 					/>
 				</div>
-			</div>
+			</RepoPageHeader>
 			{repoData ? (
 				<SidePanelPortal>
 					<RepoActivityCards
@@ -179,22 +185,22 @@ export function RepoReleasesPage({
 
 function ReleasesSkeleton() {
 	return (
-		<div className="flex flex-col gap-6">
+		<div className="flex flex-col gap-4">
 			{["a", "b"].map((key) => (
 				<div
 					key={key}
-					className="grid gap-5 rounded-xl border p-5 lg:grid-cols-[14rem_minmax(0,1fr)] lg:gap-8"
+					className="grid gap-5 rounded-lg bg-surface-0 p-5 shadow-card lg:grid-cols-[13rem_minmax(0,1fr)] lg:gap-8"
 				>
 					<div className="flex flex-col gap-3">
-						<Skeleton className="h-4 w-16 rounded-full" />
-						<Skeleton className="h-6 w-40 rounded" />
+						<Skeleton className="h-5 w-16 rounded-full" />
+						<Skeleton className="h-5 w-40 rounded" />
 						<Skeleton className="h-3 w-32 rounded" />
 					</div>
 					<div className="flex flex-col gap-2">
-						<Skeleton className="h-4 w-3/4 rounded" />
-						<Skeleton className="h-4 w-full rounded" />
-						<Skeleton className="h-4 w-5/6 rounded" />
-						<Skeleton className="h-4 w-2/3 rounded" />
+						<Skeleton className="h-3.5 w-3/4 rounded" />
+						<Skeleton className="h-3.5 w-full rounded" />
+						<Skeleton className="h-3.5 w-5/6 rounded" />
+						<Skeleton className="h-3.5 w-2/3 rounded" />
 					</div>
 				</div>
 			))}

@@ -34,7 +34,7 @@ function getErrorInfo(error: Error): ErrorInfo {
 	if (lower.includes("rate limit") || lower.includes("429")) {
 		return {
 			icon: AlertCircleIcon,
-			iconClassName: "bg-amber-500/10 text-amber-500",
+			iconClassName: "bg-pill-warning text-warning",
 			title: "Rate limit reached",
 			description:
 				"You've made too many requests. Wait a moment and try again.",
@@ -49,7 +49,7 @@ function getErrorInfo(error: Error): ErrorInfo {
 	) {
 		return {
 			icon: LockIcon,
-			iconClassName: "bg-amber-500/10 text-amber-500",
+			iconClassName: "bg-pill-warning text-warning",
 			title: "GitHub access needs review",
 			description:
 				"Approve DiffKit again on GitHub — for example after the app’s permissions or credentials changed.",
@@ -65,7 +65,7 @@ function getErrorInfo(error: Error): ErrorInfo {
 	) {
 		return {
 			icon: LockIcon,
-			iconClassName: "bg-amber-500/10 text-amber-500",
+			iconClassName: "bg-pill-warning text-warning",
 			title: "Access not configured",
 			description:
 				"DiffKit doesn't have access to this resource. Add the repository or organization in your GitHub app settings.",
@@ -93,7 +93,7 @@ function getErrorInfo(error: Error): ErrorInfo {
 	) {
 		return {
 			icon: WifiOffIcon,
-			iconClassName: "bg-amber-500/10 text-amber-500",
+			iconClassName: "bg-pill-warning text-warning",
 			title: "Connection failed",
 			description:
 				"Could not reach the server. Check your internet connection and try again.",
@@ -104,7 +104,7 @@ function getErrorInfo(error: Error): ErrorInfo {
 	if (lower.includes("timeout") || lower.includes("timed out")) {
 		return {
 			icon: AlertCircleIcon,
-			iconClassName: "bg-amber-500/10 text-amber-500",
+			iconClassName: "bg-pill-warning text-warning",
 			title: "Request timed out",
 			description:
 				"The request took too long to complete. Try again in a moment.",

@@ -62,7 +62,7 @@ const RUN_STATUS_META: readonly {
 		value: "in_progress",
 		label: "In progress",
 		icon: LoaderCircleIcon,
-		colorClass: "text-yellow-500",
+		colorClass: "text-warning",
 	},
 	{
 		value: "queued",
@@ -74,13 +74,13 @@ const RUN_STATUS_META: readonly {
 		value: "success",
 		label: "Success",
 		icon: CheckIcon,
-		colorClass: "text-green-500",
+		colorClass: "text-success",
 	},
 	{
 		value: "failure",
 		label: "Failure",
 		icon: XIcon,
-		colorClass: "text-red-500",
+		colorClass: "text-danger",
 	},
 	{
 		value: "cancelled",

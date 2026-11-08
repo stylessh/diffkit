@@ -9,7 +9,10 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useCallback, useRef, useState } from "react";
 import { useCommentMediaUpload } from "#/hooks/use-comment-media-upload";
 import { createComment } from "#/lib/github.functions";
-import { githubQueryKeys } from "#/lib/github.query";
+import {
+	invalidateGitHubEntities,
+	pullOrIssueEntityKeys,
+} from "#/lib/github-query-updates";
 import { checkPermissionWarning } from "#/lib/warning-store";
 
 export function CommentReplyForm({
@@ -64,9 +67,11 @@ export function CommentReplyForm({
 			if (result.ok) {
 				setValue("");
 				onClose();
-				void queryClient.invalidateQueries({
-					queryKey: githubQueryKeys.all,
-				});
+				void invalidateGitHubEntities(
+					queryClient,
+					null,
+					pullOrIssueEntityKeys({ owner, repo, number: issueNumber }),
+				);
 			} else {
 				toast.error(result.error);
 				checkPermissionWarning(result, `${owner}/${repo}`);
@@ -118,7 +123,7 @@ export function CommentReplyForm({
 					type="button"
 					onClick={() => void handleSend()}
 					disabled={!value.trim() || isSending || hasPendingUploads}
-					className="flex items-center gap-1.5 rounded-md bg-foreground px-3 py-1.5 text-xs font-medium text-background transition-opacity disabled:opacity-50"
+					className="flex h-7 items-center gap-1.5 rounded-full bg-indigo px-3 text-xs font-medium text-indigo-foreground shadow-[0_1px_1px_0_lch(0_0_0/0.12),0_3px_6px_-2px_lch(0_0_0/0.12)] transition-colors hover:bg-indigo/90 disabled:opacity-50"
 				>
 					{isSending ? (
 						<Spinner className="size-3" />

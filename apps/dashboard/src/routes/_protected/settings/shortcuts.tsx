@@ -150,10 +150,6 @@ function ReturnIcon() {
 	);
 }
 
-// ---------------------------------------------------------------------------
-// Key rendering: maps special key names to SVG icons, falls back to text
-// ---------------------------------------------------------------------------
-
 type KeyToken = string | { icon: ReactNode; label: string };
 
 const specialKeys: Record<string, { icon: ReactNode; label: string }> = {
@@ -175,10 +171,6 @@ const specialKeys: Record<string, { icon: ReactNode; label: string }> = {
 function resolveKey(key: string): KeyToken {
 	return specialKeys[key.toLowerCase()] ?? key;
 }
-
-// ---------------------------------------------------------------------------
-// Shortcut data
-// ---------------------------------------------------------------------------
 
 type Shortcut = {
 	keys: string[];
@@ -206,16 +198,18 @@ const shortcutGroups: ShortcutGroup[] = [
 			{ keys: ["G", "P"], description: "Go to Pull Requests" },
 			{ keys: ["G", "I"], description: "Go to Issues" },
 			{ keys: ["G", "R"], description: "Go to Reviews" },
+			{ keys: ["G", "D"], description: "Go to Review Drafts" },
 			{ keys: ["G", "S"], description: "Go to Settings" },
 		],
 	},
 	{
-		title: "Tabs",
+		title: "Workspace",
 		shortcuts: [
-			{ keys: ["Shift", "1\u20139"], description: "Switch to tab by position" },
-			{ keys: ["Shift", "W"], description: "Close current tab" },
-			{ keys: ["Shift", "\u2190"], description: "Previous tab" },
-			{ keys: ["Shift", "\u2192"], description: "Next tab" },
+			{ keys: ["O", "R"], description: "Switch repository" },
+			{ keys: ["N", "I"], description: "New issue" },
+			{ keys: ["N", "P"], description: "New pull request" },
+			{ keys: ["N", "R"], description: "New release" },
+			{ keys: ["["], description: "Collapse or expand the sidebar" },
 		],
 	},
 	{
@@ -237,10 +231,6 @@ const shortcutGroups: ShortcutGroup[] = [
 	},
 ];
 
-// ---------------------------------------------------------------------------
-// Route & component
-// ---------------------------------------------------------------------------
-
 export const Route = createFileRoute("/_protected/settings/shortcuts")({
 	component: ShortcutsPage,
 });
@@ -258,16 +248,16 @@ function ShortcutsPage() {
 			<div className="flex flex-col gap-6">
 				{shortcutGroups.map((group) => (
 					<section key={group.title} className="flex flex-col gap-2">
-						<h3 className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+						<h3 className="text-xs font-medium text-muted-foreground">
 							{group.title}
 						</h3>
-						<div className="overflow-hidden rounded-xl border border-border/70">
+						<div className="overflow-hidden rounded-xl border-[0.5px] border-border/70">
 							{group.shortcuts.map((shortcut, i) => (
 								<div
 									key={shortcut.description}
 									className={cn(
 										"flex items-center justify-between px-4 py-2.5",
-										i > 0 && "border-t border-border/70",
+										i > 0 && "border-t-[0.5px] border-border/70",
 									)}
 								>
 									<span className="text-sm">{shortcut.description}</span>
@@ -278,7 +268,7 @@ function ShortcutsPage() {
 											return (
 												<span
 													key={key}
-													className="inline-flex h-6 min-w-6 items-center justify-center gap-1 rounded-md border border-border bg-surface-1 px-1.5 text-xs font-medium text-muted-foreground"
+													className="inline-flex h-6 min-w-6 items-center justify-center gap-1 rounded-md border-[0.5px] border-border bg-surface-1 px-1.5 text-xs font-medium text-muted-foreground"
 												>
 													{isSpecial ? token.icon : token}
 												</span>

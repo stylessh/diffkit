@@ -1,4 +1,5 @@
 import {
+	GitBranchIcon,
 	GitCommitIcon,
 	GitCompareIcon,
 	GitMergeIcon,
@@ -6,6 +7,7 @@ import {
 	GitPullRequestDraftIcon,
 	GitPullRequestIcon,
 } from "@diffkit/icons";
+import { Chip } from "@diffkit/ui/components/chip";
 import { Skeleton } from "@diffkit/ui/components/skeleton";
 import {
 	Tooltip,
@@ -15,10 +17,18 @@ import {
 import { cn } from "@diffkit/ui/lib/utils";
 import { Link } from "@tanstack/react-router";
 import { memo } from "react";
+import {
+	listRowClassName,
+	RowAvatar,
+	RowStateIcon,
+	RowTime,
+} from "#/components/shared/list-row";
 import { formatRelativeTime } from "#/lib/format-relative-time";
 import type { GitHubQueryScope } from "#/lib/github.query";
 import type { RepoBranchListItem } from "#/lib/github.types";
+import { HairlineBadge, iconButtonClassName } from "../repo-ui";
 import { BranchAheadBehind } from "./branch-ahead-behind";
+import { BranchCreatePullRequest } from "./branch-create-pull-request";
 
 function PullRequestBadge({
 	owner,
@@ -31,35 +41,37 @@ function PullRequestBadge({
 }) {
 	const { Icon, className } =
 		pullRequest.state === "MERGED"
-			? { Icon: GitMergeIcon, className: "text-purple-500" }
+			? { Icon: GitMergeIcon, className: "text-state-merged" }
 			: pullRequest.state === "CLOSED"
-				? { Icon: GitPullRequestClosedIcon, className: "text-red-500" }
+				? { Icon: GitPullRequestClosedIcon, className: "text-state-closed" }
 				: pullRequest.isDraft
 					? {
 							Icon: GitPullRequestDraftIcon,
-							className: "text-muted-foreground",
+							className: "text-state-draft",
 						}
-					: { Icon: GitPullRequestIcon, className: "text-green-500" };
+					: { Icon: GitPullRequestIcon, className: "text-state-open" };
 
 	return (
 		<Tooltip>
 			<TooltipTrigger asChild>
-				<Link
-					to="/$owner/$repo/pull/$pullId"
-					params={{ owner, repo, pullId: String(pullRequest.number) }}
-					className="flex items-center gap-1 rounded-md border border-border/60 px-1.5 py-0.5 text-xs tabular-nums text-muted-foreground transition-colors hover:bg-surface-1 hover:text-foreground"
+				<Chip
+					asChild
+					className="tabular-nums transition-colors hover:text-foreground"
 				>
-					<Icon size={12} strokeWidth={2} className={className} />#
-					{pullRequest.number}
-				</Link>
+					<Link
+						to="/$owner/$repo/pull/$pullId"
+						params={{ owner, repo, pullId: String(pullRequest.number) }}
+						data-action
+					>
+						<Icon size={12} strokeWidth={2} className={className} />#
+						{pullRequest.number}
+					</Link>
+				</Chip>
 			</TooltipTrigger>
 			<TooltipContent className="max-w-xs">{pullRequest.title}</TooltipContent>
 		</Tooltip>
 	);
 }
-
-const iconLinkClass =
-	"flex size-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-surface-2 hover:text-foreground";
 
 export const BranchRow = memo(function BranchRow({
 	owner,
@@ -67,68 +79,63 @@ export const BranchRow = memo(function BranchRow({
 	scope,
 	branch,
 	defaultBranch,
+	canCreatePullRequest,
 }: {
 	owner: string;
 	repo: string;
 	scope: GitHubQueryScope;
 	branch: RepoBranchListItem;
 	defaultBranch: string;
+	canCreatePullRequest: boolean;
 }) {
 	const isDefault = branch.name === defaultBranch;
+	const offersCreatePullRequest =
+		canCreatePullRequest && !isDefault && branch.pullRequest?.state !== "OPEN";
 	const commit = branch.commit;
 	const authorLabel = commit?.author?.login ?? commit?.authorName;
 
+	const time = commit?.date
+		? formatRelativeTime(commit.date, undefined, { compact: true })
+		: null;
+
 	return (
-		<div className="flex items-center gap-3 px-4 py-2.5">
-			<div className="flex min-w-0 flex-1 flex-col gap-1">
-				<div className="flex min-w-0 items-center gap-2">
+		<div
+			className={cn(
+				listRowClassName,
+				"hover:[&:not(:has([data-action]:hover))]:before:bg-row-hover",
+			)}
+		>
+			<RowStateIcon className="text-muted-foreground">
+				<GitBranchIcon size={14} strokeWidth={2} />
+			</RowStateIcon>
+			<div className="flex min-w-0 flex-1 flex-col gap-1 md:flex-row md:items-center md:gap-2">
+				<span className="flex min-w-0 items-center gap-2">
 					<Link
 						to="/$owner/$repo/tree/$"
 						params={{ owner, repo, _splat: branch.name }}
-						className="min-w-0 truncate rounded bg-surface-1 px-1.5 py-0.5 font-mono text-xs font-medium text-foreground hover:underline"
+						title={branch.name}
+						className="min-w-0 truncate rounded-sm font-mono text-[13px] font-medium text-foreground after:absolute after:inset-0 after:content-['']"
 					>
 						{branch.name}
 					</Link>
-					{isDefault ? (
-						<span className="shrink-0 rounded-full border border-border/60 px-1.5 text-[10px] text-muted-foreground">
-							default
-						</span>
-					) : null}
-				</div>
+					{isDefault ? <HairlineBadge>Default</HairlineBadge> : null}
+				</span>
 				{commit ? (
-					<div className="flex min-w-0 items-center gap-1.5 text-xs text-muted-foreground">
-						{commit.author ? (
-							<img
-								src={commit.author.avatarUrl}
-								alt=""
-								className="size-4 shrink-0 rounded-full"
-								loading="lazy"
-							/>
-						) : null}
+					<p className="flex min-w-0 items-center gap-1.5 truncate text-xs font-[450] text-muted-foreground md:ml-auto md:max-w-[40%] md:shrink-0">
 						<span className="truncate">
 							{authorLabel ? (
-								<span className="font-medium text-foreground">
-									{authorLabel}
-								</span>
+								<span className="text-text-header">{authorLabel}</span>
 							) : null}{" "}
-							updated{" "}
-							{commit.date ? (
-								<time dateTime={commit.date}>
-									{formatRelativeTime(commit.date)}
-								</time>
-							) : (
-								"at an unknown time"
-							)}
+							updated
+							<span className="md:hidden"> {time ?? "at an unknown time"}</span>
 						</span>
-					</div>
+					</p>
 				) : null}
 			</div>
 
-			<div className="hidden shrink-0 sm:block">
+			<div className="relative z-[1] hidden shrink-0 sm:block">
 				{isDefault ? (
-					<span className="block w-24 text-center text-xs text-muted-foreground">
-						Default
-					</span>
+					<span className="block w-24" />
 				) : (
 					<BranchAheadBehind
 						owner={owner}
@@ -140,7 +147,7 @@ export const BranchRow = memo(function BranchRow({
 				)}
 			</div>
 
-			<div className="hidden w-16 shrink-0 justify-end md:flex">
+			<div className="relative z-[1] hidden min-w-16 shrink-0 items-center justify-end gap-1.5 md:flex">
 				{branch.pullRequest ? (
 					<PullRequestBadge
 						owner={owner}
@@ -148,16 +155,26 @@ export const BranchRow = memo(function BranchRow({
 						pullRequest={branch.pullRequest}
 					/>
 				) : null}
+				{offersCreatePullRequest ? (
+					<BranchCreatePullRequest
+						owner={owner}
+						repo={repo}
+						scope={scope}
+						base={defaultBranch}
+						head={branch.name}
+					/>
+				) : null}
 			</div>
 
-			<div className="flex shrink-0 items-center gap-0.5">
+			<div className="relative z-[1] flex shrink-0 items-center">
 				<Tooltip>
 					<TooltipTrigger asChild>
 						<Link
 							to="/$owner/$repo/commits/$"
 							params={{ owner, repo, _splat: branch.name }}
+							data-action
 							aria-label={`Commits on ${branch.name}`}
-							className={iconLinkClass}
+							className={iconButtonClassName}
 						>
 							<GitCommitIcon size={14} />
 						</Link>
@@ -173,33 +190,44 @@ export const BranchRow = memo(function BranchRow({
 								repo,
 								_splat: `${defaultBranch}...${branch.name}`,
 							}}
+							data-action
 							aria-label={`Compare ${branch.name} with ${defaultBranch}`}
 							aria-disabled={isDefault}
 							tabIndex={isDefault ? -1 : undefined}
-							className={cn(
-								iconLinkClass,
-								isDefault && "pointer-events-none opacity-30",
-							)}
+							className={iconButtonClassName}
 						>
 							<GitCompareIcon size={14} />
 						</Link>
 					</TooltipTrigger>
-					<TooltipContent>Compare &amp; open pull request</TooltipContent>
+					<TooltipContent>Compare</TooltipContent>
 				</Tooltip>
 			</div>
+
+			<span className="hidden shrink-0 items-center gap-2 md:flex">
+				<RowAvatar actor={commit?.author ?? null} />
+				{commit?.date ? (
+					<time dateTime={commit.date}>
+						<RowTime>{time}</RowTime>
+					</time>
+				) : (
+					<RowTime>—</RowTime>
+				)}
+			</span>
 		</div>
 	);
 });
 
 export function BranchRowSkeleton() {
 	return (
-		<div className="flex items-center gap-3 px-4 py-3">
-			<div className="flex flex-1 flex-col gap-1.5">
-				<Skeleton className="h-4 w-40 rounded" />
-				<Skeleton className="h-3 w-56 rounded" />
+		<div className={listRowClassName}>
+			<RowStateIcon>
+				<Skeleton className="size-3.5 rounded-full" />
+			</RowStateIcon>
+			<div className="flex flex-1 items-center gap-2">
+				<Skeleton className="h-3.5 w-40 rounded" />
 			</div>
-			<Skeleton className="hidden h-4 w-24 rounded sm:block" />
-			<Skeleton className="h-6 w-14 rounded-md" />
+			<Skeleton className="hidden h-3.5 w-24 rounded sm:block" />
+			<Skeleton className="h-6 w-14 rounded-full" />
 		</div>
 	);
 }

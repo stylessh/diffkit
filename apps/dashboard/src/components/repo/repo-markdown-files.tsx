@@ -1,3 +1,4 @@
+import { FileIcon } from "@diffkit/icons";
 import { Skeleton } from "@diffkit/ui/components/skeleton";
 import { cn } from "@diffkit/ui/lib/utils";
 import {
@@ -5,17 +6,10 @@ import {
 	useQuery,
 	useQueryClient,
 } from "@tanstack/react-query";
-import {
-	lazy,
-	Suspense,
-	useCallback,
-	useEffect,
-	useMemo,
-	useState,
-} from "react";
+import { lazy, Suspense, useCallback, useMemo, useState } from "react";
 import {
 	type GitHubQueryScope,
-	githubRepoFileContentQueryOptions,
+	githubRepoBlobQueryOptions,
 } from "#/lib/github.query";
 import type { RepoTreeEntry } from "#/lib/github.types";
 
@@ -64,65 +58,64 @@ export function RepoMarkdownFiles({
 	currentRef: string;
 	scope: GitHubQueryScope;
 }) {
-	const mdFiles = useMemo(() => {
-		const fileNames = new Set(entries.map((e) => e.name));
-		return KNOWN_MD_FILES.filter((name) => fileNames.has(name));
-	}, [entries]);
+	const mdFiles = useMemo(
+		() =>
+			KNOWN_MD_FILES.flatMap(
+				(name) =>
+					entries.find(
+						(entry) => entry.name === name && entry.type === "file",
+					) ?? [],
+			),
+		[entries],
+	);
 
-	// Prefetch all MD files in background so tab switches are instant
 	const queryClient = useQueryClient();
-	useEffect(() => {
-		for (const file of mdFiles) {
-			void queryClient.prefetchQuery(
-				githubRepoFileContentQueryOptions(scope, {
-					owner,
-					repo,
-					ref: currentRef,
-					path: file,
-				}),
-			);
-		}
-	}, [queryClient, mdFiles, scope, owner, repo, currentRef]);
+	const prefetch = (path: string) => {
+		void queryClient.prefetchQuery(
+			githubRepoBlobQueryOptions(scope, { owner, repo, ref: currentRef, path }),
+		);
+	};
 
 	const [activeTab, setActiveTab] = useState<string | null>(null);
-	const selectedFile = activeTab ?? mdFiles[0] ?? null;
+	const selectedFile =
+		mdFiles.find((file) => file.path === activeTab) ?? mdFiles[0] ?? null;
 
 	if (mdFiles.length === 0) return null;
 
 	return (
-		<div className="flex flex-col gap-2">
-			{/* Tab bar */}
-			<div className="flex items-center gap-1">
+		<section aria-label="Repository documents" className="flex flex-col gap-5">
+			<div role="tablist" className="flex flex-wrap items-center gap-[7px]">
 				{mdFiles.map((file) => (
 					<button
-						key={file}
+						key={file.path}
 						type="button"
-						onClick={() => setActiveTab(file)}
+						role="tab"
+						aria-selected={file === selectedFile}
+						onClick={() => setActiveTab(file.path)}
+						onMouseEnter={() => prefetch(file.path)}
 						className={cn(
-							"rounded-md px-3 py-1.5 text-sm font-medium transition-colors",
-							file === selectedFile
-								? "bg-secondary text-secondary-foreground"
-								: "text-muted-foreground hover:bg-accent hover:text-accent-foreground",
+							"inline-flex h-7 items-center gap-1.5 rounded-full bg-button pr-[10.5px] pl-2 text-xs font-medium whitespace-nowrap text-muted-foreground shadow-button transition-colors hover:bg-button-hover hover:text-foreground",
+							"aria-selected:bg-tab-selected aria-selected:text-foreground aria-selected:shadow-tab-selected",
 						)}
 					>
-						{TAB_LABELS[file] ?? file}
+						<FileIcon size={14} strokeWidth={2} className="shrink-0" />
+						{TAB_LABELS[file.name] ?? file.name}
 					</button>
 				))}
 			</div>
 
-			{/* Content */}
 			{selectedFile && (
-				<div className="overflow-hidden rounded-lg border">
+				<div role="tabpanel">
 					<MarkdownFileContent
 						owner={owner}
 						repo={repo}
-						path={selectedFile}
+						path={selectedFile.path}
 						currentRef={currentRef}
 						scope={scope}
 					/>
 				</div>
 			)}
-		</div>
+		</section>
 	);
 }
 
@@ -140,7 +133,7 @@ function MarkdownFileContent({
 	scope: GitHubQueryScope;
 }) {
 	const contentQuery = useQuery({
-		...githubRepoFileContentQueryOptions(scope, {
+		...githubRepoBlobQueryOptions(scope, {
 			owner,
 			repo,
 			ref: currentRef,
@@ -160,7 +153,7 @@ function MarkdownFileContent({
 
 	if (contentQuery.isLoading) {
 		return (
-			<div className="flex flex-col gap-3 p-6">
+			<div className="flex flex-col gap-3">
 				<Skeleton className="h-6 w-48 rounded-md" />
 				<Skeleton className="h-4 w-full rounded-md" />
 				<Skeleton className="h-4 w-[90%] rounded-md" />
@@ -171,16 +164,17 @@ function MarkdownFileContent({
 		);
 	}
 
-	if (!contentQuery.data) {
+	const blob = contentQuery.data;
+	if (blob?.kind !== "text") {
 		return (
-			<div className="p-6 text-sm text-muted-foreground">
+			<p className="text-[13px] text-muted-foreground">
 				Unable to load file content.
-			</div>
+			</p>
 		);
 	}
 
 	return (
-		<div className="px-6 py-16">
+		<div>
 			<Suspense
 				fallback={
 					<div className="flex flex-col gap-3">
@@ -191,10 +185,10 @@ function MarkdownFileContent({
 				}
 			>
 				<Markdown
-					className="prose prose-sm dark:prose-invert mx-auto max-w-3xl"
+					className="text-[15px] leading-6 text-text-header"
 					resolveAssetUrl={resolveAssetUrl}
 				>
-					{contentQuery.data}
+					{blob.text}
 				</Markdown>
 			</Suspense>
 		</div>

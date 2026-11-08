@@ -295,7 +295,7 @@ export const FileSearchCard = memo(function FileSearchCard({
 									animate={{ opacity: 1, scale: 1 }}
 									exit={{ opacity: 0, scale: 0.8 }}
 									transition={spring}
-									className="absolute right-2 hidden size-5 items-center justify-center rounded border border-border/60 bg-surface-1 text-[10px] font-medium text-muted-foreground md:flex"
+									className="absolute right-2 hidden size-5 items-center justify-center rounded border-[0.5px] border-border/60 bg-surface-1 text-[10px] font-medium text-muted-foreground md:flex"
 								>
 									{shortcutKey.toUpperCase()}
 								</motion.kbd>
@@ -312,7 +312,7 @@ export const FileSearchCard = memo(function FileSearchCard({
 							animate={{ height: "auto", opacity: 1 }}
 							exit={{ height: 0, opacity: 0 }}
 							transition={spring}
-							className="overflow-hidden border-t"
+							className="overflow-hidden border-t-[0.5px]"
 						>
 							<div className="max-h-[min(400px,60vh)] overflow-y-auto">
 								{visibleResults.length > 0 ? (

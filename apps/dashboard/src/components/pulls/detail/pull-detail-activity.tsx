@@ -2,6 +2,7 @@ import {
 	AlertCircleIcon,
 	CheckIcon,
 	ChevronDownIcon,
+	ChevronRightIcon,
 	ChevronUpIcon,
 	CircleIcon,
 	CommentIcon,
@@ -33,8 +34,8 @@ import {
 	DropdownMenuItem,
 	DropdownMenuTrigger,
 } from "@diffkit/ui/components/dropdown-menu";
-import { Markdown } from "@diffkit/ui/components/markdown";
 import { MarkdownEditor } from "@diffkit/ui/components/markdown-editor";
+import { MenuCheck } from "@diffkit/ui/components/menu";
 import { Skeleton } from "@diffkit/ui/components/skeleton";
 import { toast } from "@diffkit/ui/components/sonner";
 import { Spinner } from "@diffkit/ui/components/spinner";
@@ -59,6 +60,11 @@ import {
 	CheckStateIcon,
 	getCheckState,
 } from "#/components/checks/check-state-icon";
+import {
+	CommentBody,
+	EditedMark,
+	useCommentEditor,
+} from "#/components/details/comment-body";
 import { CommentMoreMenu } from "#/components/details/comment-more-menu";
 import { IssueCommentReactionBar } from "#/components/details/comment-reaction-bar";
 import { CommentReplyForm } from "#/components/details/comment-reply-form";
@@ -74,6 +80,7 @@ import {
 	groupTimelineEvents,
 } from "#/components/details/grouped-label-event";
 import { LabelPill } from "#/components/details/label-pill";
+import { AppMarkdown } from "#/components/markdown/app-markdown";
 import { useMergeBypass } from "#/components/pulls/detail/use-merge-bypass";
 import { formatRelativeTime } from "#/lib/format-relative-time";
 import {
@@ -113,7 +120,12 @@ import type {
 	PullWorkflowApproval,
 	TimelineEvent,
 } from "#/lib/github.types";
-import { removePullFromOpenViews } from "#/lib/github-query-updates";
+import {
+	invalidateGitHubEntities,
+	pullEntityKey,
+	removePullFromOpenViews,
+	repoEntityKey,
+} from "#/lib/github-query-updates";
 import {
 	mergeIssueStateIntoCloseEvent,
 	parseCloseReason,
@@ -278,9 +290,9 @@ export function PullDetailActivitySection({
 					issueNumber={pullNumber}
 					scope={scope}
 					involvedUsers={getInvolvedUsers(pr, comments)}
-					pullState={
+					stateToggle={
 						!pr.isMerged && (pr.state === "open" || pr.state === "closed")
-							? pr.state
+							? { kind: "pull", state: pr.state }
 							: undefined
 					}
 				/>
@@ -381,40 +393,42 @@ function MergedBranchBanner({
 	branchName: string;
 	headRefDeleted: boolean;
 }) {
-	const [isDeleting, setIsDeleting] = useState(false);
-	const [isDeleted, setIsDeleted] = useState(false);
+	const [branchStatus, setBranchStatus] = useState<
+		"present" | "deleting" | "deleted"
+	>("present");
+	const isDeleting = branchStatus === "deleting";
 
-	const deleted = headRefDeleted || isDeleted;
+	const deleted = headRefDeleted || branchStatus === "deleted";
 
 	const handleDelete = async () => {
-		setIsDeleting(true);
+		setBranchStatus("deleting");
 		try {
 			const result = await deleteBranch({
 				data: { owner, repo, branch: branchName, pullNumber },
 			});
 			if (result.ok) {
-				setIsDeleted(true);
+				setBranchStatus("deleted");
 			} else {
 				toast.error(result.error);
 				checkPermissionWarning(result, `${owner}/${repo}`);
-				setIsDeleting(false);
+				setBranchStatus("present");
 			}
 		} catch {
 			toast.error("Failed to delete branch");
-			setIsDeleting(false);
+			setBranchStatus("present");
 		}
 	};
 
 	return (
-		<div className="flex items-center gap-3 rounded-lg bg-purple-500/15 px-4 py-3">
-			<div className="flex size-5 shrink-0 items-center justify-center rounded-full bg-purple-500 text-white">
+		<div className="flex items-center gap-3 rounded-lg bg-pill-merged px-4 py-3">
+			<div className="flex size-5 shrink-0 items-center justify-center rounded-full bg-merged text-white">
 				<GitMergeIcon size={12} strokeWidth={2} />
 			</div>
-			<p className="flex-1 text-sm text-purple-900 dark:text-purple-200">
+			<p className="flex-1 text-[13px] text-pill-merged-text">
 				{deleted ? (
 					<>
 						Branch{" "}
-						<code className="rounded bg-purple-500/20 px-1 py-0.5 font-mono text-xs">
+						<code className="rounded bg-pill-merged px-1 py-0.5 font-mono text-xs">
 							{branchName}
 						</code>{" "}
 						has been deleted.
@@ -422,7 +436,7 @@ function MergedBranchBanner({
 				) : (
 					<>
 						Branch{" "}
-						<code className="rounded bg-purple-500/20 px-1 py-0.5 font-mono text-xs">
+						<code className="rounded bg-pill-merged px-1 py-0.5 font-mono text-xs">
 							{branchName}
 						</code>{" "}
 						has been merged.
@@ -434,7 +448,7 @@ function MergedBranchBanner({
 					variant="ghost"
 					size="xs"
 					disabled={isDeleting}
-					className="shrink-0 text-purple-700 hover:bg-purple-500/10 hover:text-purple-800 dark:text-purple-300 dark:hover:bg-purple-500/10 dark:hover:text-purple-200"
+					className="shrink-0 text-pill-merged-text hover:bg-pill-merged"
 					iconLeft={
 						isDeleting ? (
 							<Spinner size={12} />
@@ -512,7 +526,7 @@ function MergeStatusCard({
 	});
 
 	return (
-		<div className="flex flex-col overflow-hidden rounded-lg border">
+		<div className="-mx-3 flex flex-col overflow-hidden rounded-lg bg-card shadow-card">
 			{/* Reviews section */}
 			<ReviewsSection
 				approvedReviews={approvedReviews}
@@ -642,32 +656,35 @@ function ReviewsSection({
 			<CollapsibleTrigger asChild>
 				<button
 					type="button"
-					className="flex w-full items-start gap-3 border-b border-border/50 px-4 py-3 text-left transition-colors hover:bg-surface-1/50"
+					className="flex w-full items-start gap-3 border-b-[0.5px] border-card-border px-4 py-3 text-left transition-colors hover:bg-item-hover"
 				>
 					<div className="mt-0.5 shrink-0">
 						<StatusIcon status={reviewStatus} />
 					</div>
 					<div className="flex min-w-0 flex-1 flex-col gap-0.5">
-						<p className="text-sm font-medium">{title}</p>
+						<p className="text-[13px] font-medium text-foreground">{title}</p>
 						<p className="text-xs text-muted-foreground">{description}</p>
 					</div>
 					<div className="mt-0.5 shrink-0 text-muted-foreground">
-						{open ? (
-							<ChevronUpIcon size={16} strokeWidth={2} />
-						) : (
-							<ChevronDownIcon size={16} strokeWidth={2} />
-						)}
+						<ChevronRightIcon
+							size={14}
+							strokeWidth={2}
+							className={cn(
+								"transition-transform duration-150",
+								open && "rotate-90",
+							)}
+						/>
 					</div>
 				</button>
 			</CollapsibleTrigger>
 			<CollapsibleContent>
 				{allReviews.length === 0 && (
-					<div className="border-b border-border/50 bg-surface-1/50 px-4 py-3 pl-11">
+					<div className="border-b-[0.5px] border-card-border px-4 py-3 pl-11">
 						<p className="text-xs text-muted-foreground">No reviewers added</p>
 					</div>
 				)}
 				{allReviews.length > 0 && (
-					<div className="flex flex-col border-b border-border/50 bg-surface-1/50 py-1">
+					<div className="flex flex-col border-b-[0.5px] border-card-border py-1">
 						{allReviews.map((review) => (
 							<div
 								key={review.id}
@@ -680,7 +697,7 @@ function ReviewsSection({
 									<img
 										src={review.author.avatarUrl}
 										alt={review.author.login}
-										className="size-4 rounded-full border border-border"
+										className="size-4 rounded-full ring-[0.5px] ring-chip-border"
 									/>
 								)}
 								<span className="text-xs">
@@ -690,8 +707,8 @@ function ReviewsSection({
 									className={cn(
 										"ml-auto text-xs",
 										review.state === "APPROVED"
-											? "text-green-600 dark:text-green-400"
-											: "text-red-600 dark:text-red-400",
+											? "text-success"
+											: "text-danger",
 									)}
 								>
 									{review.state === "APPROVED"
@@ -702,7 +719,7 @@ function ReviewsSection({
 									<DropdownMenuTrigger asChild>
 										<button
 											type="button"
-											className="flex size-5 shrink-0 items-center justify-center rounded text-muted-foreground transition-colors hover:bg-surface-2 hover:text-foreground"
+											className="flex size-5 shrink-0 items-center justify-center rounded text-muted-foreground transition-colors hover:bg-ghost-hover hover:text-foreground"
 										>
 											<MoreHorizontalIcon size={14} strokeWidth={2} />
 										</button>
@@ -721,9 +738,9 @@ function ReviewsSection({
 												})
 													.then((result) => {
 														if (result.ok) {
-															void queryClient.invalidateQueries({
-																queryKey: ["github"],
-															});
+															void invalidateGitHubEntities(queryClient, null, [
+																pullEntityKey({ owner, repo, pullNumber }),
+															]);
 														} else {
 															toast.error(result.error);
 															checkPermissionWarning(
@@ -752,9 +769,11 @@ function ReviewsSection({
 													})
 														.then((result) => {
 															if (result.ok) {
-																void queryClient.invalidateQueries({
-																	queryKey: ["github"],
-																});
+																void invalidateGitHubEntities(
+																	queryClient,
+																	null,
+																	[pullEntityKey({ owner, repo, pullNumber })],
+																);
 															} else {
 																toast.error(result.error);
 																checkPermissionWarning(
@@ -806,8 +825,11 @@ function ChecksSection({
 	pullNumber: number;
 }) {
 	const [open, setOpen] = useState(true);
-	const [isRerunning, setIsRerunning] = useState(false);
-	const [isApproving, setIsApproving] = useState(false);
+	const [pendingAction, setPendingAction] = useState<
+		"rerun" | "approve" | null
+	>(null);
+	const isRerunning = pendingAction === "rerun";
+	const isApproving = pendingAction === "approve";
 	const queryClient = useQueryClient();
 	const statusQueryKey = useMemo(
 		() => githubQueryKeys.pulls.status(scope, { owner, repo, pullNumber }),
@@ -879,16 +901,14 @@ function ChecksSection({
 	];
 
 	const handleRerun = async (failedOnly: boolean) => {
-		setIsRerunning(true);
+		setPendingAction("rerun");
 		try {
 			const result = await rerunChecks({
 				data: { owner, repo, pullNumber, failedOnly },
 			});
 			if (result.ok) {
-				const rerun = result.rerun ?? 0;
-				const skipped = result.skipped ?? 0;
-				const failed = result.failed ?? 0;
-				if (result.partial) {
+				const { rerun, skipped, failed } = result;
+				if (failed > 0) {
 					toast.warning(
 						`Re-running ${rerun} check${rerun !== 1 ? "s" : ""}, but ${failed} failed`,
 					);
@@ -901,7 +921,9 @@ function ChecksSection({
 				} else if (skipped > 0) {
 					toast.info("No checks are eligible for rerun");
 				}
-				await queryClient.invalidateQueries({ queryKey: ["github"] });
+				await invalidateGitHubEntities(queryClient, scope, [
+					pullEntityKey({ owner, repo, pullNumber }),
+				]);
 			} else {
 				toast.error(result.error);
 				checkPermissionWarning(result, `${owner}/${repo}`);
@@ -909,12 +931,12 @@ function ChecksSection({
 		} catch {
 			toast.error("Failed to rerun checks");
 		} finally {
-			setIsRerunning(false);
+			setPendingAction(null);
 		}
 	};
 
 	const handleApprove = async () => {
-		setIsApproving(true);
+		setPendingAction("approve");
 		try {
 			const result = await approveWorkflowRuns({
 				data: {
@@ -925,9 +947,8 @@ function ChecksSection({
 				},
 			});
 			if (result.ok) {
-				if (result.partial) {
-					const approved = result.approved ?? 0;
-					const failed = result.failed ?? 0;
+				const { approved, failed } = result;
+				if (failed > 0) {
 					toast.warning(
 						`Approved ${approved} workflow${approved !== 1 ? "s" : ""}, but ${failed} failed`,
 					);
@@ -948,7 +969,7 @@ function ChecksSection({
 		} catch {
 			toast.error("Failed to approve workflows");
 		} finally {
-			setIsApproving(false);
+			setPendingAction(null);
 		}
 	};
 
@@ -957,27 +978,30 @@ function ChecksSection({
 			<CollapsibleTrigger asChild>
 				<button
 					type="button"
-					className="flex w-full items-start gap-3 border-b border-border/50 px-4 py-3 text-left transition-colors hover:bg-surface-1/50"
+					className="flex w-full items-start gap-3 border-b-[0.5px] border-card-border px-4 py-3 text-left transition-colors hover:bg-item-hover"
 				>
 					<div className="mt-0.5 shrink-0">
 						<StatusIcon status={checkStatus} />
 					</div>
 					<div className="flex min-w-0 flex-1 flex-col gap-0.5">
-						<p className="text-sm font-medium">{title}</p>
+						<p className="text-[13px] font-medium text-foreground">{title}</p>
 						<p className="text-xs text-muted-foreground">{description}</p>
 					</div>
 					<div className="mt-0.5 shrink-0 text-muted-foreground">
-						{open ? (
-							<ChevronUpIcon size={16} strokeWidth={2} />
-						) : (
-							<ChevronDownIcon size={16} strokeWidth={2} />
-						)}
+						<ChevronRightIcon
+							size={14}
+							strokeWidth={2}
+							className={cn(
+								"transition-transform duration-150",
+								open && "rotate-90",
+							)}
+						/>
 					</div>
 				</button>
 			</CollapsibleTrigger>
 			{pendingWorkflowApprovals.length > 0 && (
-				<div className="flex items-start gap-3 border-b border-border/50 bg-surface-1/50 px-4 py-3">
-					<div className="mt-0.5 shrink-0 text-yellow-600 dark:text-yellow-400">
+				<div className="flex items-start gap-3 border-b-[0.5px] border-card-border px-4 py-3">
+					<div className="mt-0.5 shrink-0 text-pill-warning-text">
 						<AlertCircleIcon size={16} strokeWidth={2} />
 					</div>
 					<div className="flex min-w-0 flex-1 flex-col gap-0.5">
@@ -1003,7 +1027,7 @@ function ChecksSection({
 				</div>
 			)}
 			<CollapsibleContent>
-				<div className="flex max-h-64 flex-col overflow-y-auto border-b border-border/50 bg-surface-1/50">
+				<div className="flex max-h-64 flex-col overflow-y-auto border-b-[0.5px] border-card-border bg-surface-1/50">
 					{checkRunGroups.map(({ key, label }) => {
 						const runs = groupedRuns[key];
 						if (runs.length === 0) return null;
@@ -1041,7 +1065,7 @@ function ChecksSection({
 												<img
 													src={run.appAvatarUrl}
 													alt=""
-													className="size-4 shrink-0 rounded border border-border"
+													className="size-4 shrink-0 rounded border-[0.5px] border-border"
 												/>
 											)}
 											{run.workflowRunId != null ? (
@@ -1074,7 +1098,7 @@ function ChecksSection({
 											{run.required && (
 												<StatePill
 													tone="muted"
-													className="-my-0.5 border border-border bg-transparent"
+													className="-my-0.5 border-[0.5px] border-border bg-transparent"
 												>
 													Required
 												</StatePill>
@@ -1082,14 +1106,10 @@ function ChecksSection({
 											<span
 												className={cn(
 													"shrink-0 text-xs capitalize",
-													runStatus === "success" &&
-														"text-green-600 dark:text-green-400",
-													runStatus === "failure" &&
-														"text-red-600 dark:text-red-400",
-													runStatus === "pending" &&
-														"text-yellow-600 dark:text-yellow-400",
-													runStatus === "expected" &&
-														"text-yellow-600 dark:text-yellow-400",
+													runStatus === "success" && "text-success",
+													runStatus === "failure" && "text-danger",
+													runStatus === "pending" && "text-pill-warning-text",
+													runStatus === "expected" && "text-pill-warning-text",
 													runStatus === "skipped" && "text-muted-foreground",
 												)}
 											>
@@ -1111,7 +1131,7 @@ function ChecksSection({
 					})}
 				</div>
 				{(hasCheckFailures || checks.total > 0) && (
-					<div className="flex items-center gap-2 border-b border-border/50 bg-surface-1/50 px-4 py-1.5 pl-11">
+					<div className="flex items-center gap-2 border-b-[0.5px] border-card-border px-4 py-1.5 pl-11">
 						{hasCheckFailures && (
 							<Button
 								variant="ghost"
@@ -1180,7 +1200,7 @@ function ConflictsSection({
 			<CollapsibleTrigger asChild>
 				<button
 					type="button"
-					className="flex w-full items-start gap-3 border-b border-border/50 px-4 py-3 text-left transition-colors hover:bg-surface-1/50"
+					className="flex w-full items-start gap-3 border-b-[0.5px] border-card-border px-4 py-3 text-left transition-colors hover:bg-item-hover"
 				>
 					<div className="mt-0.5 shrink-0">
 						<StatusIcon status="error" />
@@ -1195,16 +1215,19 @@ function ConflictsSection({
 						</p>
 					</div>
 					<div className="mt-0.5 shrink-0 text-muted-foreground">
-						{open ? (
-							<ChevronUpIcon size={16} strokeWidth={2} />
-						) : (
-							<ChevronDownIcon size={16} strokeWidth={2} />
-						)}
+						<ChevronRightIcon
+							size={14}
+							strokeWidth={2}
+							className={cn(
+								"transition-transform duration-150",
+								open && "rotate-90",
+							)}
+						/>
 					</div>
 				</button>
 			</CollapsibleTrigger>
 			<CollapsibleContent>
-				<div className="flex max-h-64 flex-col overflow-y-auto border-b border-border/50 bg-surface-1/50 py-1">
+				<div className="flex max-h-64 flex-col overflow-y-auto border-b-[0.5px] border-card-border py-1">
 					{conflictingFiles.map((file) => (
 						<div
 							key={file}
@@ -1240,7 +1263,10 @@ function UpdateBranchButton({
 				data: { owner, repo, pullNumber },
 			});
 			if (result.ok) {
-				await queryClient.invalidateQueries({ queryKey: ["github"] });
+				await invalidateGitHubEntities(queryClient, null, [
+					pullEntityKey({ owner, repo, pullNumber }),
+					repoEntityKey({ owner, repo }),
+				]);
 			} else {
 				toast.error(result.error);
 				checkPermissionWarning(result, `${owner}/${repo}`);
@@ -1253,9 +1279,9 @@ function UpdateBranchButton({
 	};
 
 	return (
-		<div className="flex overflow-hidden rounded-md">
+		<div className="flex overflow-hidden rounded-md shadow-button">
 			<Button
-				variant="secondary"
+				variant="outline"
 				size="xs"
 				disabled={isUpdating}
 				className="rounded-r-none"
@@ -1275,10 +1301,10 @@ function UpdateBranchButton({
 			<DropdownMenu>
 				<DropdownMenuTrigger asChild>
 					<Button
-						variant="secondary"
+						variant="outline"
 						size="xs"
 						disabled={isUpdating}
-						className="rounded-l-none border-l border-l-secondary-foreground/10 px-1"
+						className="rounded-l-none border-l-[0.5px] border-l-secondary-foreground/10 px-1"
 					>
 						<ChevronDownIcon size={12} strokeWidth={2} />
 					</Button>
@@ -1345,7 +1371,9 @@ function ReadyForReviewFooter({
 				data: { owner, repo, pullNumber, pullId },
 			});
 			if (result.ok) {
-				await queryClient.invalidateQueries({ queryKey: ["github"] });
+				await invalidateGitHubEntities(queryClient, null, [
+					pullEntityKey({ owner, repo, pullNumber }),
+				]);
 			} else {
 				toast.error(result.error);
 				checkPermissionWarning(result, `${owner}/${repo}`);
@@ -1415,8 +1443,9 @@ function MergeFooter({
 	const [mergeMethod, setMergeMethod] = useState<"merge" | "squash" | "rebase">(
 		"squash",
 	);
-	const [isMerging, setIsMerging] = useState(false);
-	const [showCommitForm, setShowCommitForm] = useState(false);
+	const [phase, setPhase] = useState<"idle" | "confirming" | "merging">("idle");
+	const isMerging = phase === "merging";
+	const showCommitForm = phase !== "idle";
 	const [commitTitle, setCommitTitle] = useState("");
 	const [commitDescription, setCommitDescription] = useState("");
 	const queryClient = useQueryClient();
@@ -1437,11 +1466,11 @@ function MergeFooter({
 	const openCommitForm = () => {
 		setCommitTitle(getDefaultCommitTitle());
 		setCommitDescription("");
-		setShowCommitForm(true);
+		setPhase("confirming");
 	};
 
 	const handleMerge = async () => {
-		setIsMerging(true);
+		setPhase("merging");
 		try {
 			const result = await mergePullRequest({
 				data: {
@@ -1460,15 +1489,18 @@ function MergeFooter({
 					repo,
 					pullNumber,
 				});
-				await queryClient.invalidateQueries({ queryKey: ["github"] });
+				await invalidateGitHubEntities(queryClient, scope, [
+					pullEntityKey({ owner, repo, pullNumber }),
+					repoEntityKey({ owner, repo }),
+				]);
 			} else {
 				toast.error(result.error);
 				checkPermissionWarning(result, `${owner}/${repo}`);
-				setIsMerging(false);
+				setPhase("confirming");
 			}
 		} catch {
 			toast.error("Failed to merge pull request");
-			setIsMerging(false);
+			setPhase("confirming");
 		}
 	};
 
@@ -1479,7 +1511,7 @@ function MergeFooter({
 
 	if (showCommitForm) {
 		return (
-			<div className="flex flex-col gap-3 bg-surface-1/50 px-4 py-3">
+			<div className="flex flex-col gap-3 px-4 py-3">
 				<div className="flex flex-col gap-1.5">
 					<label htmlFor="merge-commit-title" className="text-xs font-medium">
 						Commit message
@@ -1488,7 +1520,7 @@ function MergeFooter({
 						id="merge-commit-title"
 						value={commitTitle}
 						onChange={(e) => setCommitTitle(e.target.value)}
-						className="flex h-9 w-full rounded-md border bg-transparent px-3 py-1 text-sm shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+						className="flex h-9 w-full rounded-md border-[0.5px] bg-transparent px-3 py-1 text-sm shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-1 focus-visible:-outline-offset-1 focus-visible:outline-ring"
 					/>
 				</div>
 				<div className="flex flex-col gap-1.5">
@@ -1501,7 +1533,7 @@ function MergeFooter({
 						onChange={(e) => setCommitDescription(e.target.value)}
 						placeholder="Add an optional extended description..."
 						rows={3}
-						className="flex w-full rounded-md border bg-transparent px-3 py-2 text-sm shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring resize-none"
+						className="flex w-full rounded-md border-[0.5px] bg-transparent px-3 py-2 text-sm shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-1 focus-visible:-outline-offset-1 focus-visible:outline-ring resize-none"
 					/>
 				</div>
 				<div className="flex items-center gap-2">
@@ -1524,7 +1556,7 @@ function MergeFooter({
 					<Button
 						variant="ghost"
 						size="sm"
-						onClick={() => setShowCommitForm(false)}
+						onClick={() => setPhase("idle")}
 						disabled={isMerging}
 					>
 						Cancel
@@ -1537,63 +1569,52 @@ function MergeFooter({
 	return (
 		<div className="flex flex-col gap-3 px-4 py-3">
 			<div className="flex items-center gap-3">
-				<div className="flex items-center gap-2">
-					<div className="flex overflow-hidden rounded-md">
-						<Button
-							size="sm"
-							disabled={isDisabled}
-							onClick={openCommitForm}
-							className="rounded-r-none"
-							iconLeft={
-								isMerging ? (
-									<Spinner size={14} />
-								) : (
-									<GitMergeIcon size={14} strokeWidth={2} />
-								)
-							}
-						>
-							{currentStrategy.label}
-						</Button>
-						<DropdownMenu>
-							<DropdownMenuTrigger asChild>
-								<Button
-									size="sm"
-									disabled={isDisabled}
-									className="rounded-l-none border-l border-primary-foreground/20 px-1.5"
+				<p className="min-w-0 flex-1 text-xs font-[450] text-muted-foreground">
+					{isMergeBlocked && !bypass.shouldBypass
+						? "Merging is blocked until the required checks and reviews pass."
+						: "Ready to merge"}
+				</p>
+				<div className="flex shrink-0 overflow-hidden rounded-full shadow-[0_1px_1px_0_lch(0_0_0/0.12),0_3px_6px_-2px_lch(0_0_0/0.12)]">
+					<button
+						type="button"
+						disabled={isDisabled}
+						onClick={openCommitForm}
+						className="flex h-7 items-center gap-1.5 bg-merge pr-2.5 pl-3 text-xs font-medium text-white transition-colors hover:bg-merge-hover disabled:opacity-50"
+					>
+						{isMerging ? (
+							<Spinner size={12} />
+						) : (
+							<GitMergeIcon size={13} strokeWidth={2} />
+						)}
+						{currentStrategy.label}
+					</button>
+					<DropdownMenu>
+						<DropdownMenuTrigger asChild>
+							<button
+								type="button"
+								disabled={isDisabled}
+								aria-label="Merge options"
+								className="flex h-7 items-center border-l-[0.5px] border-white/25 bg-merge pr-2 pl-1.5 text-white transition-colors hover:bg-merge-hover disabled:opacity-50"
+							>
+								<ChevronDownIcon size={13} strokeWidth={2} />
+							</button>
+						</DropdownMenuTrigger>
+						<DropdownMenuContent align="end" className="w-52">
+							{MERGE_STRATEGIES.map((strategy) => (
+								<DropdownMenuItem
+									key={strategy.value}
+									onClick={() => setMergeMethod(strategy.value)}
 								>
-									<ChevronDownIcon size={14} strokeWidth={2} />
-								</Button>
-							</DropdownMenuTrigger>
-							<DropdownMenuContent align="end">
-								{MERGE_STRATEGIES.map((strategy) => (
-									<DropdownMenuItem
-										key={strategy.value}
-										onClick={() => setMergeMethod(strategy.value)}
-									>
-										<span className="flex items-center gap-2">
-											{strategy.value === mergeMethod && (
-												<CheckIcon size={14} strokeWidth={2} />
-											)}
-											<span
-												className={cn(strategy.value !== mergeMethod && "pl-5")}
-											>
-												{strategy.label}
-											</span>
-										</span>
-									</DropdownMenuItem>
-								))}
-							</DropdownMenuContent>
-						</DropdownMenu>
-					</div>
+									<span className="flex-1">{strategy.label}</span>
+									{strategy.value === mergeMethod ? <MenuCheck /> : null}
+								</DropdownMenuItem>
+							))}
+						</DropdownMenuContent>
+					</DropdownMenu>
 				</div>
-				{isMergeBlocked && !bypass.shouldBypass ? (
-					<p className="text-xs text-muted-foreground">
-						Merging is blocked — all required conditions have not been met.
-					</p>
-				) : null}
 			</div>
 			{bypass.showOption && (
-				<div className="flex items-center gap-2 text-xs text-yellow-600 dark:text-yellow-500">
+				<div className="flex items-center gap-2 text-xs text-pill-warning-text">
 					<Checkbox
 						id="bypass-checks"
 						checked={bypass.checked}
@@ -1623,10 +1644,10 @@ function StatusRow({
 	action?: React.ReactNode;
 }) {
 	return (
-		<div className="flex items-start gap-3 border-b border-border/50 px-4 py-3">
+		<div className="flex items-start gap-3 border-b-[0.5px] border-card-border px-4 py-3">
 			<div className="mt-0.5 shrink-0">{icon}</div>
 			<div className="flex min-w-0 flex-1 flex-col gap-0.5">
-				<p className="text-sm font-medium">{title}</p>
+				<p className="text-[13px] font-medium text-foreground">{title}</p>
 				<p className="text-xs text-muted-foreground">{description}</p>
 			</div>
 			{action && <div className="shrink-0">{action}</div>}
@@ -1639,20 +1660,20 @@ type StatusType = "success" | "error" | "pending";
 function StatusIcon({ status }: { status: StatusType }) {
 	if (status === "success") {
 		return (
-			<div className="flex size-4 items-center justify-center rounded-full bg-green-600 text-white dark:bg-green-500">
+			<div className="flex size-4 items-center justify-center rounded-full bg-review-approved text-white">
 				<CheckIcon size={10} strokeWidth={3} />
 			</div>
 		);
 	}
 	if (status === "error") {
 		return (
-			<div className="flex size-4 items-center justify-center rounded-full bg-red-600 text-white dark:bg-red-500">
+			<div className="flex size-4 items-center justify-center rounded-full bg-review-changes text-white">
 				<XIcon size={10} strokeWidth={3} />
 			</div>
 		);
 	}
 	return (
-		<div className="flex size-4 items-center justify-center rounded-full border-2 border-yellow-500 text-yellow-500">
+		<div className="flex size-4 items-center justify-center rounded-full border-2 border-review-required text-review-required">
 			<div className="size-1.5 rounded-full bg-current" />
 		</div>
 	);
@@ -1660,13 +1681,13 @@ function StatusIcon({ status }: { status: StatusType }) {
 
 function MergeStatusSkeleton() {
 	return (
-		<div className="flex flex-col rounded-lg border">
+		<div className="-mx-3 flex flex-col overflow-hidden rounded-lg bg-card shadow-card">
 			{[0, 1, 2].map((item) => (
 				<div
 					key={item}
 					className={cn(
 						"flex items-start gap-3 px-4 py-3",
-						item < 2 && "border-b border-border/50",
+						item < 2 && "border-b-[0.5px] border-card-border",
 					)}
 				>
 					<Skeleton className="mt-0.5 size-4 rounded-full" />
@@ -1997,7 +2018,7 @@ function ActivityTimeline({
 	if (visibleItems.length === 0 && !pr.isMerged) return null;
 
 	return (
-		<div className="relative flex flex-col md:pl-8 md:before:absolute md:before:left-4 md:before:top-0 md:before:h-full md:before:w-px md:before:bg-[linear-gradient(to_bottom,var(--color-border)_80%,transparent)]">
+		<div className="relative flex flex-col">
 			{visibleItems.map((item, index) => {
 				const previousType = index > 0 ? visibleItems[index - 1].type : null;
 				const nextType =
@@ -2046,12 +2067,12 @@ function ActivityTimeline({
 							<div
 								key={`commit-${commit.sha}`}
 								className={cn(
-									"flex items-center gap-1.5",
+									"flex items-start gap-[9px]",
 									index === 0 ? "pt-5" : isConsecutiveCommit ? "pt-2" : "pt-5",
 									isLastInCommitRun ? "pb-5" : "pb-2",
 								)}
 							>
-								<div className="flex size-5 shrink-0 items-center justify-center rounded-full border border-border bg-surface-1">
+								<div className="flex h-[17px] w-[18px] shrink-0 items-center justify-center rounded-[4px] bg-main text-muted-foreground [&_svg]:size-3.5">
 									<GitCommitIcon
 										size={12}
 										strokeWidth={2}
@@ -2062,18 +2083,18 @@ function ActivityTimeline({
 									<img
 										src={commit.author.avatarUrl}
 										alt={commit.author.login}
-										className="size-5 shrink-0 rounded-full border border-border self-start"
+										className="mt-[3px] size-3.5 shrink-0 self-start rounded-full ring-[0.5px] ring-chip-border"
 									/>
 								) : (
-									<div className="size-5 shrink-0 rounded-full bg-surface-2" />
+									<div className="size-3.5 shrink-0 rounded-full bg-group" />
 								)}
-								<span className="min-w-0 truncate text-[13px]">
+								<span className="min-w-0 truncate text-xs leading-5 font-[450] text-text-header">
 									{firstLine}
 								</span>
-								<code className="ml-auto shrink-0 rounded bg-surface-1 px-1.5 py-0.5 font-mono text-[10px] text-muted-foreground">
+								<code className="ml-auto shrink-0 font-mono text-[11px] text-icon-faint">
 									{commit.sha.slice(0, 7)}
 								</code>
-								<span className="shrink-0 text-[13px] text-muted-foreground">
+								<span className="shrink-0 text-xs font-[450] tabular-nums text-icon-faint">
 									{formatRelativeTime(commit.createdAt)}
 								</span>
 							</div>
@@ -2090,17 +2111,17 @@ function ActivityTimeline({
 									index === 0 ? "pt-5" : "pt-5",
 								)}
 							>
-								<div className="flex size-5 shrink-0 items-center justify-center rounded-full bg-purple-500 text-white">
+								<div className="flex size-5 shrink-0 items-center justify-center rounded-full bg-merged text-white">
 									<GitMergeIcon size={12} strokeWidth={2} />
 								</div>
 								{mergedPr.mergedBy ? (
 									<img
 										src={mergedPr.mergedBy.avatarUrl}
 										alt={mergedPr.mergedBy.login}
-										className="size-5 shrink-0 rounded-full border border-border self-start"
+										className="mt-[3px] size-3.5 shrink-0 self-start rounded-full ring-[0.5px] ring-chip-border"
 									/>
 								) : (
-									<div className="size-5 shrink-0 rounded-full bg-surface-2" />
+									<div className="size-3.5 shrink-0 rounded-full bg-group" />
 								)}
 								<span className="text-[13px]">
 									<span className="font-medium">
@@ -2108,16 +2129,16 @@ function ActivityTimeline({
 									</span>
 									{" merged commit "}
 									{mergedPr.mergeCommitSha && (
-										<code className="rounded bg-surface-1 px-1 py-0.5 font-mono text-[10px] text-muted-foreground">
+										<code className="font-mono text-[11px] text-icon-faint">
 											{mergedPr.mergeCommitSha.slice(0, 7)}
 										</code>
 									)}
 									{" into "}
-									<code className="rounded bg-surface-1 px-1 py-0.5 font-mono text-[10px] text-muted-foreground">
+									<code className="font-mono text-[11px] text-icon-faint">
 										{mergedPr.baseRefName}
 									</code>
 								</span>
-								<span className="ml-auto shrink-0 text-[13px] text-muted-foreground">
+								<span className="ml-auto shrink-0 text-xs font-[450] tabular-nums text-icon-faint">
 									{formatRelativeTime(mergedPr.mergedAt as string)}
 								</span>
 							</div>
@@ -2151,7 +2172,7 @@ function ActivityTimeline({
 							<div
 								key={`${item.type}-${group.createdAt}`}
 								className={cn(
-									"flex items-center gap-1.5",
+									"flex items-start gap-[9px]",
 									index === 0 ? "pt-5" : isConsecutiveEvent ? "pt-2" : "pt-5",
 									isLastInEventRun ? "pb-5" : "pb-2",
 								)}
@@ -2160,14 +2181,14 @@ function ActivityTimeline({
 									<img
 										src={group.actor?.avatarUrl}
 										alt={group.actor?.login}
-										className="size-5 shrink-0 rounded-full border border-border self-start"
+										className="mt-[3px] size-3.5 shrink-0 self-start rounded-full ring-[0.5px] ring-chip-border"
 									/>
 								) : (
-									<div className="flex size-5 shrink-0 items-center justify-center rounded-full border border-border bg-surface-1 self-start">
+									<div className="flex h-[17px] w-[18px] shrink-0 items-center justify-center self-start rounded-[4px] bg-main text-muted-foreground mt-[1.5px] [&_svg]:size-3.5">
 										{icon}
 									</div>
 								)}
-								<span className="min-w-0 text-[13px] text-muted-foreground">
+								<span className="min-w-0 text-xs leading-5 font-[450] text-muted-foreground">
 									{item.type === "label_group" ? (
 										<GroupedLabelDescription
 											group={item.data as GroupedLabelEvent}
@@ -2178,7 +2199,7 @@ function ActivityTimeline({
 										/>
 									)}
 								</span>
-								<span className="ml-auto shrink-0 text-[13px] text-muted-foreground">
+								<span className="ml-auto shrink-0 text-xs font-[450] tabular-nums text-icon-faint">
 									{formatRelativeTime(group.createdAt)}
 								</span>
 							</div>
@@ -2206,7 +2227,7 @@ function ActivityTimeline({
 							<div
 								key={`issue_state_toggle_group-${toggleKey}-${group.createdAt}`}
 								className={cn(
-									"flex items-center gap-1.5",
+									"flex items-start gap-[9px]",
 									index === 0 ? "pt-5" : isConsecutiveEvent ? "pt-2" : "pt-5",
 									isLastInEventRun ? "pb-5" : "pb-2",
 								)}
@@ -2215,14 +2236,14 @@ function ActivityTimeline({
 									<img
 										src={group.actor?.avatarUrl}
 										alt={group.actor?.login}
-										className="size-5 shrink-0 rounded-full border border-border self-start"
+										className="mt-[3px] size-3.5 shrink-0 self-start rounded-full ring-[0.5px] ring-chip-border"
 									/>
 								) : (
-									<div className="flex size-5 shrink-0 items-center justify-center rounded-full border border-border bg-surface-1 self-start">
+									<div className="flex h-[17px] w-[18px] shrink-0 items-center justify-center self-start rounded-[4px] bg-main text-muted-foreground mt-[1.5px] [&_svg]:size-3.5">
 										{icon}
 									</div>
 								)}
-								<span className="min-w-0 text-[13px] text-muted-foreground">
+								<span className="min-w-0 text-xs leading-5 font-[450] text-muted-foreground">
 									<GroupedIssueStateToggleDescription
 										group={group}
 										subject="pull"
@@ -2237,7 +2258,7 @@ function ActivityTimeline({
 										}
 									/>
 								</span>
-								<span className="ml-auto shrink-0 text-[13px] text-muted-foreground">
+								<span className="ml-auto shrink-0 text-xs font-[450] tabular-nums text-icon-faint">
 									{formatRelativeTime(group.createdAt)}
 								</span>
 							</div>
@@ -2311,10 +2332,10 @@ function LoadMoreDivider({
 				onClick={onLoadMore}
 				disabled={isPending}
 				className={cn(
-					"flex shrink-0 items-center gap-1.5 rounded-full border border-border bg-surface-1 px-3 py-1 text-xs text-muted-foreground transition-colors",
+					"flex shrink-0 items-center gap-1.5 rounded-full border-[0.5px] border-border bg-surface-1 px-3 py-1 text-xs text-muted-foreground transition-colors",
 					isPending
 						? "cursor-not-allowed opacity-60"
-						: "hover:bg-surface-2 hover:text-foreground",
+						: "hover:bg-ghost-hover hover:text-foreground",
 				)}
 			>
 				{isPending ? (
@@ -2398,19 +2419,23 @@ function TimelineEventRow({
 			<div className={cn("flex flex-col gap-2 py-5", isFirst && "pt-5")}>
 				<div className="flex items-center gap-1.5">
 					{icon}
-					<span className="min-w-0 text-[13px] text-muted-foreground">
+					<span className="min-w-0 text-xs leading-5 font-[450] text-muted-foreground">
 						{description}
 					</span>
 					{event.createdAt && (
-						<span className="ml-auto shrink-0 text-[13px] text-muted-foreground">
+						<span className="ml-auto shrink-0 text-xs font-[450] tabular-nums text-icon-faint">
 							{formatRelativeTime(event.createdAt)}
 						</span>
 					)}
 				</div>
 				{hasReviewBody && (
-					<Markdown className="text-muted-foreground">
+					<AppMarkdown
+						owner={owner}
+						repo={repo}
+						className="text-muted-foreground"
+					>
 						{event.body as string}
-					</Markdown>
+					</AppMarkdown>
 				)}
 				{hasReviewComments && (
 					<div className="flex flex-col gap-2">
@@ -2435,7 +2460,7 @@ function TimelineEventRow({
 	return (
 		<div
 			className={cn(
-				"flex items-center gap-1.5",
+				"flex items-start gap-[9px]",
 				isFirst ? "pt-5" : isConsecutive ? "pt-2" : "pt-5",
 				isLastInRun ? "pb-5" : "pb-2",
 			)}
@@ -2444,18 +2469,18 @@ function TimelineEventRow({
 				<img
 					src={event.actor?.avatarUrl}
 					alt={event.actor?.login}
-					className="size-5 shrink-0 rounded-full border border-border self-start"
+					className="mt-[3px] size-3.5 shrink-0 self-start rounded-full ring-[0.5px] ring-chip-border"
 				/>
 			) : (
-				<div className="flex size-5 shrink-0 items-center justify-center rounded-full border border-border bg-surface-1 self-start">
+				<div className="flex h-[17px] w-[18px] shrink-0 items-center justify-center self-start rounded-[4px] bg-main text-muted-foreground mt-[1.5px] [&_svg]:size-3.5">
 					{icon}
 				</div>
 			)}
-			<span className="min-w-0 text-[13px] text-muted-foreground">
+			<span className="min-w-0 text-xs leading-5 font-[450] text-muted-foreground">
 				{description}
 			</span>
 			{event.createdAt && (
-				<span className="ml-auto shrink-0 text-[13px] text-muted-foreground">
+				<span className="ml-auto shrink-0 text-xs font-[450] tabular-nums text-icon-faint">
 					{formatRelativeTime(event.createdAt)}
 				</span>
 			)}
@@ -2561,14 +2586,18 @@ function PullCommentBubble({
 	isReply?: boolean;
 }) {
 	const [commentActive, setCommentActive] = useState(false);
+	const editor = useCommentEditor({
+		kind: "issue",
+		owner: owner,
+		repo: repo,
+		number: pullNumber,
+		commentId: comment.id,
+	});
 	const prefersNoHover = usePrefersNoHover();
 
 	return (
 		<div
-			className={cn(
-				"group/comment relative flex flex-col gap-1",
-				isReply ? "py-2" : "py-5",
-			)}
+			className="group/comment relative flex flex-col gap-1.5 px-4 py-3"
 			onPointerEnter={() => setCommentActive(true)}
 			onPointerLeave={() => setCommentActive(false)}
 			onFocusCapture={() => setCommentActive(true)}
@@ -2578,43 +2607,30 @@ function PullCommentBubble({
 				}
 			}}
 		>
-			<div className="flex items-center gap-1.5">
+			<div className="flex h-[18.5px] items-center gap-2">
 				{comment.author ? (
 					<img
 						src={comment.author.avatarUrl}
 						alt={comment.author.login}
-						className={cn(
-							"rounded-full border border-border",
-							isReply ? "size-3.5" : "size-4",
-						)}
+						className="size-[18px] rounded-full ring-[0.5px] ring-chip-border"
 					/>
 				) : (
-					<div
-						className={cn(
-							"rounded-full bg-surface-2",
-							isReply ? "size-3.5" : "size-4",
-						)}
-					/>
+					<div className="size-[18px] rounded-full bg-group" />
 				)}
-				<span
-					className={cn("font-medium", isReply ? "text-xs" : "text-[13px]")}
-				>
+				<span className="text-[13px] font-medium text-foreground">
 					{comment.author?.login ?? "Unknown"}
 				</span>
-				<span
-					className={cn(
-						"text-muted-foreground",
-						isReply ? "text-xs" : "text-[13px]",
-					)}
-				>
+				<span className="ml-0.5 text-[13px] font-[450] text-icon-faint">
 					{formatRelativeTime(comment.createdAt)}
 				</span>
+				<EditedMark editedAt={comment.editedAt} />
 				<div className="ml-auto flex items-center gap-1">
 					{onReply && (
 						<button
 							type="button"
 							onClick={onReply}
-							className="rounded-md p-0.5 text-muted-foreground opacity-0 transition-all hover:bg-surface-2 hover:text-foreground group-hover/comment:opacity-100"
+							aria-label="Reply"
+							className="flex size-7 items-center justify-center rounded-full text-text-header opacity-0 transition-opacity hover:bg-ghost-hover group-hover/comment:opacity-100 focus-visible:opacity-100"
 						>
 							<CommentIcon size={14} strokeWidth={2} />
 						</button>
@@ -2626,17 +2642,30 @@ function PullCommentBubble({
 						repo={repo}
 						number={pullNumber}
 						commentType="issue"
+						editor={editor}
 						isAuthor={
 							viewerLogin != null && comment.author?.login === viewerLogin
 						}
 					/>
 				</div>
 			</div>
-			<div className={cn("relative", comment.graphqlId != null && "mb-14")}>
-				<Markdown className="text-muted-foreground">{comment.body}</Markdown>
+			<div
+				className={cn(
+					"relative",
+					isReply && "pl-[27px]",
+					comment.graphqlId != null && "mb-7",
+				)}
+			>
+				<CommentBody
+					editor={editor}
+					body={comment.body}
+					owner={owner}
+					repo={repo}
+					className="text-[15px] leading-6 text-text-strong"
+				/>
 				{comment.graphqlId ? (
 					<IssueCommentReactionBar
-						className="absolute left-0 right-0 top-full z-10 mt-1.5"
+						className="absolute left-0 right-0 top-full z-10 mt-1"
 						revealZeroCount={commentActive || prefersNoHover}
 						viewerLogin={viewerLogin}
 						owner={owner}
@@ -2676,7 +2705,12 @@ function PullCommentWithThread({
 	const hasReplies = replies && replies.length > 0;
 
 	return (
-		<div className={cn("relative flex flex-col", isFirst && "pt-0")}>
+		<div
+			className={cn(
+				"relative -mx-3 my-2 flex flex-col rounded-lg bg-card shadow-card",
+				isFirst && "mt-0",
+			)}
+		>
 			<PullCommentBubble
 				comment={comment}
 				owner={owner}
@@ -2688,7 +2722,7 @@ function PullCommentWithThread({
 			/>
 
 			{hasReplies && (
-				<div className="ml-4 border-l-2 border-border pl-4">
+				<div className="flex flex-col divide-y-[0.5px] divide-header-rule border-t-[0.5px] border-header-rule">
 					{replies.map((reply) => (
 						<PullCommentBubble
 							key={reply.id}
@@ -2706,7 +2740,7 @@ function PullCommentWithThread({
 			)}
 
 			{showReplyForm && (
-				<div className={cn(hasReplies && "ml-4 border-l-2 border-border pl-4")}>
+				<div className="border-t-[0.5px] border-header-rule px-3 py-3">
 					<CommentReplyForm
 						owner={owner}
 						repo={repo}
@@ -2735,6 +2769,13 @@ function ReviewCommentBubble({
 	pullNumber?: number;
 	viewerLogin?: string;
 }) {
+	const editor = useCommentEditor({
+		kind: "review",
+		owner: owner ?? "",
+		repo: repo ?? "",
+		number: pullNumber ?? 0,
+		commentId: comment.id,
+	});
 	return (
 		<div className="group/comment relative px-3 py-2.5">
 			<div className="mb-1.5 flex items-center gap-1.5">
@@ -2742,7 +2783,7 @@ function ReviewCommentBubble({
 					<img
 						src={comment.author.avatarUrl}
 						alt={comment.author.login}
-						className="size-4 rounded-full border border-border"
+						className="size-4 rounded-full ring-[0.5px] ring-chip-border"
 					/>
 				) : (
 					<div className="size-4 rounded-full bg-surface-2" />
@@ -2753,6 +2794,7 @@ function ReviewCommentBubble({
 				<span className="text-[13px] text-muted-foreground">
 					{formatRelativeTime(comment.createdAt)}
 				</span>
+				<EditedMark editedAt={comment.editedAt} />
 				{owner && repo && pullNumber != null && (
 					<div className="ml-auto">
 						<CommentMoreMenu
@@ -2762,6 +2804,7 @@ function ReviewCommentBubble({
 							repo={repo}
 							number={pullNumber}
 							commentType="review"
+							editor={editor}
 							isAuthor={
 								viewerLogin != null && comment.author?.login === viewerLogin
 							}
@@ -2769,7 +2812,13 @@ function ReviewCommentBubble({
 					</div>
 				)}
 			</div>
-			<Markdown className="text-muted-foreground">{comment.body}</Markdown>
+			<CommentBody
+				editor={editor}
+				body={comment.body}
+				owner={owner}
+				repo={repo}
+				className="text-[15px] leading-6 text-text-strong"
+			/>
 		</div>
 	);
 }
@@ -2794,9 +2843,12 @@ function ReviewCommentBlock({
 	const { resolvedTheme } = useTheme();
 	const isDark = resolvedTheme === "dark";
 	const queryClient = useQueryClient();
-	const [showReplyForm, setShowReplyForm] = useState(false);
+	const [replyStatus, setReplyStatus] = useState<"closed" | "open" | "sending">(
+		"closed",
+	);
+	const showReplyForm = replyStatus !== "closed";
+	const isSending = replyStatus === "sending";
 	const [replyBody, setReplyBody] = useState("");
-	const [isSending, setIsSending] = useState(false);
 	const [isCollapsed, setIsCollapsed] = useState(
 		threadInfo?.isResolved ?? false,
 	);
@@ -2857,7 +2909,7 @@ function ReviewCommentBlock({
 
 	const handleReply = useCallback(async () => {
 		if (!replyBody.trim() || !owner || !repo || pullNumber == null) return;
-		setIsSending(true);
+		setReplyStatus("sending");
 		try {
 			const result = await replyToReviewComment({
 				data: {
@@ -2870,17 +2922,17 @@ function ReviewCommentBlock({
 			});
 			if (result) {
 				setReplyBody("");
-				setShowReplyForm(false);
-				void queryClient.invalidateQueries({
-					queryKey: githubQueryKeys.all,
-				});
+				setReplyStatus("closed");
+				void invalidateGitHubEntities(queryClient, null, [
+					pullEntityKey({ owner, repo, pullNumber }),
+				]);
 			} else {
 				toast.error("Failed to send reply");
+				setReplyStatus("open");
 			}
 		} catch {
 			toast.error("Failed to send reply");
-		} finally {
-			setIsSending(false);
+			setReplyStatus("open");
 		}
 	}, [replyBody, owner, repo, pullNumber, comment.id, queryClient]);
 
@@ -2896,7 +2948,13 @@ function ReviewCommentBlock({
 			});
 			if (result.ok) {
 				if (!threadInfo.isResolved) setIsCollapsed(true);
-				void queryClient.invalidateQueries({ queryKey: githubQueryKeys.all });
+				void invalidateGitHubEntities(
+					queryClient,
+					null,
+					owner && repo && pullNumber != null
+						? [pullEntityKey({ owner, repo, pullNumber })]
+						: [],
+				);
 			} else {
 				toast.error(result.error);
 			}
@@ -2905,7 +2963,7 @@ function ReviewCommentBlock({
 		} finally {
 			setIsResolving(false);
 		}
-	}, [threadInfo, owner, repo, queryClient]);
+	}, [threadInfo, owner, repo, pullNumber, queryClient]);
 
 	const canReply = owner && repo && pullNumber != null;
 
@@ -2914,7 +2972,7 @@ function ReviewCommentBlock({
 			const data = annotation.metadata;
 			if (!data) return null;
 			return (
-				<div className="m-2 divide-y overflow-hidden rounded-lg border bg-surface-0">
+				<div className="m-2 divide-y-[0.5px] overflow-hidden rounded-lg border-[0.5px] bg-surface-0">
 					<ReviewCommentBubble
 						comment={data}
 						owner={owner}
@@ -2945,7 +3003,7 @@ function ReviewCommentBlock({
 									<button
 										type="button"
 										onClick={() => {
-											setShowReplyForm(false);
+											setReplyStatus("closed");
 											setReplyBody("");
 										}}
 										className="rounded-md px-3 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:text-foreground"
@@ -2956,7 +3014,7 @@ function ReviewCommentBlock({
 										type="button"
 										onClick={() => void handleReply()}
 										disabled={!replyBody.trim() || isSending}
-										className="flex items-center gap-1.5 rounded-md bg-foreground px-3 py-1.5 text-xs font-medium text-background transition-opacity disabled:opacity-50"
+										className="flex h-7 items-center gap-1.5 rounded-full bg-indigo px-3 text-xs font-medium text-indigo-foreground shadow-[0_1px_1px_0_lch(0_0_0/0.12),0_3px_6px_-2px_lch(0_0_0/0.12)] transition-colors hover:bg-indigo/90 disabled:opacity-50"
 									>
 										{isSending ? (
 											<Spinner className="size-3" />
@@ -2972,7 +3030,7 @@ function ReviewCommentBlock({
 								{canReply && (
 									<button
 										type="button"
-										onClick={() => setShowReplyForm(true)}
+										onClick={() => setReplyStatus("open")}
 										className="flex items-center gap-1.5 text-xs text-muted-foreground transition-colors hover:text-foreground"
 									>
 										<CommentIcon size={12} strokeWidth={2} />
@@ -3024,10 +3082,10 @@ function ReviewCommentBlock({
 	);
 
 	return (
-		<div className="overflow-hidden rounded-lg border">
+		<div className="overflow-hidden rounded-lg border-[0.5px]">
 			<div className="flex items-center gap-1.5 bg-surface-1 px-3 py-2 text-[13px] text-muted-foreground">
 				{threadInfo?.isResolved && (
-					<span className="flex items-center gap-1 text-xs font-medium text-green-600 dark:text-green-400">
+					<span className="flex items-center gap-1 text-xs font-medium text-success">
 						<CheckIcon size={12} strokeWidth={2} />
 						Resolved
 					</span>
@@ -3098,11 +3156,11 @@ function getEventIcon(event: TimelineEvent) {
 			const s = event.reviewState?.toLowerCase();
 			let reviewIconClass = "text-muted-foreground";
 			if (s === "approved") {
-				reviewIconClass = "text-green-600 dark:text-green-400";
+				reviewIconClass = "text-success";
 			} else if (s === "changes_requested") {
-				reviewIconClass = "text-red-600 dark:text-red-400";
+				reviewIconClass = "text-danger";
 			} else if (s === "commented") {
-				reviewIconClass = "text-sky-600 dark:text-sky-400";
+				reviewIconClass = "text-indigo";
 			} else if (s === "dismissed") {
 				reviewIconClass = "text-muted-foreground";
 			}
@@ -3121,7 +3179,7 @@ function getEventIcon(event: TimelineEvent) {
 					<IssueClosedCompletedIcon
 						size={12}
 						strokeWidth={2}
-						className="text-violet-500"
+						className="text-merged"
 					/>
 				);
 			}
@@ -3138,7 +3196,7 @@ function getEventIcon(event: TimelineEvent) {
 				<GitPullRequestClosedIcon
 					size={12}
 					strokeWidth={2}
-					className="text-rose-600 dark:text-rose-400"
+					className="text-danger"
 				/>
 			);
 		}
@@ -3147,7 +3205,7 @@ function getEventIcon(event: TimelineEvent) {
 				<GitPullRequestIcon
 					size={12}
 					strokeWidth={2}
-					className="text-green-600 dark:text-green-400"
+					className="text-success"
 				/>
 			);
 		case "cross-referenced":
@@ -3184,7 +3242,7 @@ function getEventIcon(event: TimelineEvent) {
 				<GitPullRequestIcon
 					size={12}
 					strokeWidth={2}
-					className="text-green-600 dark:text-green-400"
+					className="text-success"
 				/>
 			);
 		case "head_ref_deleted":
@@ -3221,7 +3279,7 @@ function ActorMention({
 				<img
 					src={actor.avatarUrl}
 					alt={login}
-					className="inline-block size-3.5 rounded-full border border-border align-text-bottom"
+					className="inline-block size-3.5 rounded-full border-[0.5px] border-border align-text-bottom"
 				/>
 			)}
 			{login}
@@ -3304,24 +3362,16 @@ function getEventDescription(
 			if (state === "approved") {
 				action = (
 					<>
-						<span className="font-medium text-green-600 dark:text-green-400">
-							approved
-						</span>
+						<span className="font-medium text-success">approved</span>
 						{" this pull request"}
 					</>
 				);
 			} else if (state === "changes_requested") {
 				action = (
-					<span className="font-medium text-red-600 dark:text-red-400">
-						requested changes
-					</span>
+					<span className="font-medium text-danger">requested changes</span>
 				);
 			} else if (state === "commented") {
-				action = (
-					<span className="font-medium text-sky-600 dark:text-sky-400">
-						left a review
-					</span>
-				);
+				action = <span className="font-medium text-indigo">left a review</span>;
 			} else if (state === "dismissed") {
 				action = (
 					<span className="font-medium text-muted-foreground">
@@ -3359,7 +3409,7 @@ function getEventDescription(
 					{kind === "completed" && (
 						<>
 							{" as "}
-							<span className="font-medium text-violet-500">completed</span>
+							<span className="font-medium text-merged">completed</span>
 						</>
 					)}
 					{kind === "not_planned" && (
@@ -3377,9 +3427,7 @@ function getEventDescription(
 			return (
 				<span className="inline-flex items-center gap-1 flex-wrap">
 					<ActorMention actor={event.actor} hideAvatar />
-					<span className="font-medium text-green-600 dark:text-green-400">
-						reopened
-					</span>
+					<span className="font-medium text-success">reopened</span>
 					{" this pull request"}
 				</span>
 			);
@@ -3441,7 +3489,7 @@ function getEventDescription(
 				<span className="inline-flex items-center gap-1 flex-wrap">
 					<ActorMention actor={event.actor} hideAvatar />
 					{" deleted "}
-					<code className="rounded bg-surface-1 px-1 py-0.5 font-mono text-[10px] text-muted-foreground">
+					<code className="font-mono text-[11px] text-icon-faint">
 						{headRefName}
 					</code>
 					{" branch"}
@@ -3452,7 +3500,7 @@ function getEventDescription(
 				<span className="inline-flex items-center gap-1 flex-wrap">
 					<ActorMention actor={event.actor} hideAvatar />
 					{" restored "}
-					<code className="rounded bg-surface-1 px-1 py-0.5 font-mono text-[10px] text-muted-foreground">
+					<code className="font-mono text-[11px] text-icon-faint">
 						{headRefName}
 					</code>
 					{" branch"}
