@@ -30,6 +30,8 @@ export type GitHubQueryScope = {
 	userId: string;
 };
 
+export type RepoSettingsInput = { owner: string; repo: string };
+
 export type PullsFromUserQueryInput = {
 	username?: string;
 	state?: RepoState;
@@ -146,6 +148,9 @@ export const githubQueryPersistOptOut = [
 	["reviewDrafts"],
 	// Transient, per-keystroke results.
 	["search", "commandPalette"],
+	// Payload URLs often embed tokens.
+	["repoSettings", "webhooks"],
+	["repoSettings", "webhookDeliveries"],
 ] as const satisfies ReadonlyArray<
 	readonly [string] | readonly [string, string]
 >;
@@ -409,5 +414,44 @@ export const githubQueryKeys = {
 	reviewDrafts: {
 		mine: (scope: GitHubQueryScope) =>
 			["github", scope.userId, "reviewDrafts", "mine"] as const,
+	},
+	repoSettings: {
+		general: (scope: GitHubQueryScope, input: RepoSettingsInput) =>
+			["github", scope.userId, "repoSettings", "general", input] as const,
+		rulesets: (scope: GitHubQueryScope, input: RepoSettingsInput) =>
+			["github", scope.userId, "repoSettings", "rulesets", input] as const,
+		protections: (scope: GitHubQueryScope, input: RepoSettingsInput) =>
+			["github", scope.userId, "repoSettings", "protections", input] as const,
+		access: (scope: GitHubQueryScope, input: RepoSettingsInput) =>
+			["github", scope.userId, "repoSettings", "access", input] as const,
+		webhooks: (scope: GitHubQueryScope, input: RepoSettingsInput) =>
+			["github", scope.userId, "repoSettings", "webhooks", input] as const,
+		webhookDeliveries: (
+			scope: GitHubQueryScope,
+			input: RepoSettingsInput & { hookId: number },
+		) =>
+			[
+				"github",
+				scope.userId,
+				"repoSettings",
+				"webhookDeliveries",
+				input,
+			] as const,
+		actionsSecrets: (scope: GitHubQueryScope, input: RepoSettingsInput) =>
+			[
+				"github",
+				scope.userId,
+				"repoSettings",
+				"actionsSecrets",
+				input,
+			] as const,
+		actionsVariables: (scope: GitHubQueryScope, input: RepoSettingsInput) =>
+			[
+				"github",
+				scope.userId,
+				"repoSettings",
+				"actionsVariables",
+				input,
+			] as const,
 	},
 };
