@@ -892,10 +892,8 @@ function ChecksSection({
 				data: { owner, repo, pullNumber, failedOnly },
 			});
 			if (result.ok) {
-				const rerun = result.rerun ?? 0;
-				const skipped = result.skipped ?? 0;
-				const failed = result.failed ?? 0;
-				if (result.partial) {
+				const { rerun, skipped, failed } = result;
+				if (failed > 0) {
 					toast.warning(
 						`Re-running ${rerun} check${rerun !== 1 ? "s" : ""}, but ${failed} failed`,
 					);
@@ -934,9 +932,8 @@ function ChecksSection({
 				},
 			});
 			if (result.ok) {
-				if (result.partial) {
-					const approved = result.approved ?? 0;
-					const failed = result.failed ?? 0;
+				const { approved, failed } = result;
+				if (failed > 0) {
 					toast.warning(
 						`Approved ${approved} workflow${approved !== 1 ? "s" : ""}, but ${failed} failed`,
 					);

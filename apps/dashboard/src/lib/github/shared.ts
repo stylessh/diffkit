@@ -105,9 +105,13 @@ export type PullSearchRole =
 
 export type IssueSearchRole = "all" | "assigned" | "author" | "mentioned";
 
-export type MutationResult =
-	| { ok: true }
-	| { ok: false; error: string; installUrl?: string };
+export type MutationFailure = {
+	ok: false;
+	error: string;
+	installUrl?: string;
+};
+
+export type MutationResult = { ok: true } | MutationFailure;
 
 /** GitHub sometimes returns 403 for resource-shape errors rather than auth — don't show the "install app" nudge for these. */
 export function is403ResourceError(message: string): boolean {
@@ -121,7 +125,7 @@ export function is403ResourceError(message: string): boolean {
 export function toMutationError(
 	action: string,
 	error: unknown,
-): MutationResult {
+): MutationFailure {
 	console.error(`[${action}]`, error);
 	if (error instanceof RequestError) {
 		const msg =

@@ -37,6 +37,7 @@ import {
 	type GitHubClient,
 	type GitHubContext,
 	type GitHubGraphQLRateLimit,
+	type MutationFailure,
 	type MutationResult,
 	toMutationError,
 } from "./shared";
@@ -481,15 +482,7 @@ export type ForkRepoInput = {
 
 export type ForkRepoResult =
 	| { ok: true; forkOwner: string; forkName: string; htmlUrl: string }
-	| { ok: false; error: string; installUrl?: string };
-
-function toForkRepoError(error: unknown): ForkRepoResult {
-	const result = toMutationError("fork repository", error);
-	if (result.ok) {
-		return { ok: false, error: "Failed to fork repository" };
-	}
-	return { ok: false, error: result.error, installUrl: result.installUrl };
-}
+	| MutationFailure;
 
 export const forkRepository = createServerFn({ method: "POST" })
 	.inputValidator(identityValidator<ForkRepoInput>)
@@ -512,7 +505,7 @@ export const forkRepository = createServerFn({ method: "POST" })
 				htmlUrl: response.data.html_url,
 			};
 		} catch (error) {
-			return toForkRepoError(error);
+			return toMutationError("fork repository", error);
 		}
 	});
 

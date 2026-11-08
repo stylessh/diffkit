@@ -62,6 +62,7 @@ import {
 	type GitHubGraphQLRateLimit,
 	type GitHubGraphQLRepositoryRef,
 	is403ResourceError,
+	type MutationFailure,
 	type MutationResult,
 	type PullFromRepoInput,
 	type RepoState,
@@ -1593,16 +1594,15 @@ export type RerunChecksInput = PullFromRepoInput & {
 	failedOnly: boolean;
 };
 
-export type RerunChecksResult = MutationResult & {
-	/** Number of checks that were successfully re-requested. */
-	rerun?: number;
-	/** Number of checks GitHub refused to rerun because they're not eligible. */
-	skipped?: number;
-	/** Number of checks that failed for non-permissions reasons (real errors). */
-	failed?: number;
-	/** True when at least one rerun succeeded but some checks hit hard errors. */
-	partial?: boolean;
-};
+export type RerunChecksResult =
+	| {
+			ok: true;
+			rerun: number;
+			/** Checks GitHub refused to rerun because they aren't eligible. */
+			skipped: number;
+			failed: number;
+	  }
+	| MutationFailure;
 
 export const rerunChecks = createServerFn({ method: "POST" })
 	.inputValidator(identityValidator<RerunChecksInput>)
@@ -1648,7 +1648,7 @@ export const rerunChecks = createServerFn({ method: "POST" })
 				: dedupedRuns;
 
 			if (runsToRerun.length === 0) {
-				return { ok: true, rerun: 0, skipped: 0 };
+				return { ok: true, rerun: 0, skipped: 0, failed: 0 };
 			}
 
 			// Route each check run to the correct rerun endpoint:
@@ -1756,17 +1756,7 @@ export const rerunChecks = createServerFn({ method: "POST" })
 				return toMutationError("rerun checks", hardFailures[0].reason);
 			}
 
-			if (hardFailures.length > 0) {
-				return {
-					ok: true,
-					rerun,
-					skipped,
-					failed,
-					partial: true,
-				};
-			}
-
-			return { ok: true, rerun, skipped };
+			return { ok: true, rerun, skipped, failed };
 		} catch (error) {
 			return toMutationError("rerun checks", error);
 		}
@@ -1776,14 +1766,9 @@ export type ApproveWorkflowRunsInput = PullFromRepoInput & {
 	workflowRunIds: number[];
 };
 
-export type ApproveWorkflowRunsResult = MutationResult & {
-	/** Number of workflow runs successfully approved. */
-	approved?: number;
-	/** Number of workflow runs that failed to approve. */
-	failed?: number;
-	/** True when at least one approval succeeded but some hit errors. */
-	partial?: boolean;
-};
+export type ApproveWorkflowRunsResult =
+	| { ok: true; approved: number; failed: number }
+	| MutationFailure;
 
 export const approveWorkflowRuns = createServerFn({ method: "POST" })
 	.inputValidator(identityValidator<ApproveWorkflowRunsInput>)
@@ -1817,16 +1802,7 @@ export const approveWorkflowRuns = createServerFn({ method: "POST" })
 				return toMutationError("approve workflow runs", rejected[0].reason);
 			}
 
-			if (rejected.length > 0) {
-				return {
-					ok: true,
-					approved,
-					failed: rejected.length,
-					partial: true,
-				};
-			}
-
-			return { ok: true, approved, failed: 0 };
+			return { ok: true, approved, failed: rejected.length };
 		} catch (error) {
 			return toMutationError("approve workflow runs", error);
 		}
