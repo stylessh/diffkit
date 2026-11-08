@@ -77,9 +77,7 @@ describe("isGitHubQueryKeyPersistable", () => {
 			isGitHubQueryKeyPersistable(githubQueryKeys.pulls.files(scope, pull)),
 		).toBe(false);
 		expect(
-			isGitHubQueryKeyPersistable(
-				githubQueryKeys.repo.fileContent(scope, file),
-			),
+			isGitHubQueryKeyPersistable(githubQueryKeys.code.blob(scope, file)),
 		).toBe(false);
 		expect(
 			isGitHubQueryKeyPersistable(

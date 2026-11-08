@@ -1,5 +1,12 @@
 /** Compatibility barrel: existing "#/lib/github.query" imports resolve to the split modules. */
 
+export {
+	githubRepoBlameQueryOptions,
+	githubRepoBlobQueryOptions,
+	githubRepoCodeSearchQueryOptions,
+	githubRepoGitTreeQueryOptions,
+	githubRepoTreeIndexQueryOptions,
+} from "./github/code-browsing-query-options";
 export type {
 	GitHubQueryScope,
 	IssueFromRepoQueryInput,
@@ -56,7 +63,6 @@ export {
 	githubRepoCommitsQueryOptions,
 	githubRepoContributorsQueryOptions,
 	githubRepoDiscussionsQueryOptions,
-	githubRepoFileContentQueryOptions,
 	githubRepoLabelsQueryOptions,
 	githubRepoOverviewQueryOptions,
 	githubRepoParticipationQueryOptions,
@@ -99,6 +105,24 @@ export {
 	githubQueryRepo,
 	queryFiltersForEntity,
 } from "./github/query-registry";
+export {
+	githubOrgMembersQueryOptions,
+	githubOrgSettingsQueryOptions,
+	githubOrgTeamListQueryOptions,
+	githubOrgTeamMembersQueryOptions,
+	githubOrgViewerRoleQueryOptions,
+	githubViewerOrganizationsQueryOptions,
+} from "./github/settings-org-query-options";
+export {
+	githubRepoAccessQueryOptions,
+	githubRepoActionsSecretsQueryOptions,
+	githubRepoActionsVariablesQueryOptions,
+	githubRepoBranchProtectionsQueryOptions,
+	githubRepoGeneralSettingsQueryOptions,
+	githubRepoRulesetsQueryOptions,
+	githubRepoWebhookDeliveriesQueryOptions,
+	githubRepoWebhooksQueryOptions,
+} from "./github/settings-query-options";
 /** Re-exported so client code can compute the sanitized job-name lookup key
  *  the same way the server stores entries in the bundle. */
 export { workflowZipJobName } from "./github.functions";

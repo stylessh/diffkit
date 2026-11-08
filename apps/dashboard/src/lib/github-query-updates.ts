@@ -293,3 +293,28 @@ export function runEntityKey(input: RepoInput & { runId: number }) {
 		runId: input.runId,
 	});
 }
+
+export function labelsEntityKey(input: RepoInput) {
+	return formatEntityKey({
+		kind: "labels",
+		repo: normalizeRepoFullName(input.owner, input.repo),
+	});
+}
+
+export function collaboratorsEntityKey(input: RepoInput) {
+	return formatEntityKey({
+		kind: "collaborators",
+		repo: normalizeRepoFullName(input.owner, input.repo),
+	});
+}
+
+export function settingsEntityKey(input: RepoInput) {
+	return formatEntityKey({
+		kind: "settings",
+		repo: normalizeRepoFullName(input.owner, input.repo),
+	});
+}
+
+export function orgEntityKey(org: string) {
+	return formatEntityKey({ kind: "org", org: org.toLowerCase() });
+}

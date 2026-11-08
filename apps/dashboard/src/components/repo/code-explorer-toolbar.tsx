@@ -4,18 +4,8 @@ import {
 	CodeIcon,
 	CopyIcon,
 	DownloadIcon,
-	FileIcon,
-	FolderIcon,
 	GitBranchIcon,
-	SearchIcon,
 } from "@diffkit/icons";
-import {
-	Command,
-	CommandEmpty,
-	CommandInput,
-	CommandItem,
-	CommandList,
-} from "@diffkit/ui/components/command";
 import {
 	Popover,
 	PopoverContent,
@@ -28,19 +18,15 @@ import {
 	TabsTrigger,
 } from "@diffkit/ui/components/tabs";
 import { cn } from "@diffkit/ui/lib/utils";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Link, useNavigate } from "@tanstack/react-router";
-import { useCallback, useDeferredValue, useMemo, useState } from "react";
+import { Link } from "@tanstack/react-router";
+import { useCallback, useState } from "react";
+import { RepoRefPicker } from "#/components/repo/refs/repo-ref-picker";
 import { TagIcon } from "#/components/repo/refs/tag-icon";
-import { type FileSearchEntry, searchFiles } from "#/lib/fuzzy-file-search";
-import {
-	type GitHubQueryScope,
-	githubRepoBranchesQueryOptions,
-} from "#/lib/github.query";
-import type { RepoOverview, RepoTreeEntry } from "#/lib/github.types";
+import type { GitHubQueryScope } from "#/lib/github.query";
+import type { RepoOverview } from "#/lib/github.types";
 import { useRepoCloneProtocol } from "#/lib/repo-clone-protocol-storage";
-import { useGlobalShortcuts } from "#/lib/shortcuts";
-import { ghostPillClassName, KeyHint, pillButtonClassName } from "./repo-ui";
+import { FileFinder } from "./code/file-finder";
+import { ghostPillClassName, pillButtonClassName } from "./repo-ui";
 
 export function CodeExplorerToolbar({
 	repo,
@@ -55,11 +41,13 @@ export function CodeExplorerToolbar({
 }) {
 	return (
 		<div className="flex flex-wrap items-center gap-1.5">
-			<BranchSelector
-				repo={repo}
-				currentRef={currentRef}
+			<RepoRefPicker
+				owner={repo.owner}
+				repo={repo.name}
 				scope={scope}
-				onBranchChange={onBranchChange}
+				currentRef={currentRef}
+				defaultBranch={repo.defaultBranch}
+				onSelect={onBranchChange}
 			/>
 			<Link
 				to="/$owner/$repo/branches"
@@ -82,136 +70,24 @@ export function CodeExplorerToolbar({
 				</span>
 			</Link>
 			<div className="ml-auto flex items-center gap-1.5">
-				<GoToFile repo={repo} currentRef={currentRef} scope={scope} />
+				<FileFinder
+					scope={scope}
+					owner={repo.owner}
+					repo={repo.name}
+					currentRef={currentRef}
+				/>
+				<Link
+					to="/$owner/$repo/search"
+					params={{ owner: repo.owner, repo: repo.name }}
+					aria-label="Search code"
+					className={cn(ghostPillClassName, "max-lg:hidden")}
+				>
+					<CodeIcon size={14} />
+					Search
+				</Link>
 				<CodePopover repo={repo} />
 			</div>
 		</div>
-	);
-}
-
-export function BranchSelector({
-	repo,
-	currentRef,
-	scope,
-	onBranchChange,
-	className,
-}: {
-	repo: RepoOverview;
-	currentRef: string;
-	scope: GitHubQueryScope;
-	onBranchChange: (branch: string) => void;
-	className?: string;
-}) {
-	const [open, setOpen] = useState(false);
-	const queryClient = useQueryClient();
-	const branchesOptions = githubRepoBranchesQueryOptions(scope, {
-		owner: repo.owner,
-		repo: repo.name,
-	});
-
-	const branchesQuery = useQuery({
-		...branchesOptions,
-		enabled: open,
-	});
-
-	const prefetchBranches = useCallback(() => {
-		void queryClient.prefetchQuery(branchesOptions);
-	}, [queryClient, branchesOptions]);
-
-	return (
-		<Popover open={open} onOpenChange={setOpen}>
-			<PopoverTrigger asChild>
-				<button
-					type="button"
-					onMouseEnter={prefetchBranches}
-					onFocus={prefetchBranches}
-					aria-label={`Switch branch, current ${currentRef}`}
-					className={cn(pillButtonClassName, className)}
-				>
-					<GitBranchIcon size={14} strokeWidth={2} />
-					<span className="min-w-0 max-w-56 truncate font-mono font-[450]">
-						{currentRef}
-					</span>
-					<ChevronDownIcon
-						size={12}
-						strokeWidth={2}
-						className="text-muted-foreground"
-					/>
-				</button>
-			</PopoverTrigger>
-			<PopoverContent className="w-72 p-0" align="start">
-				<Command>
-					<CommandInput placeholder="Find a branch…" />
-					<CommandList>
-						<CommandEmpty>
-							{branchesQuery.isLoading ? "Loading…" : "No branches found."}
-						</CommandEmpty>
-						{/* Default branch always first */}
-						<CommandItem
-							key={repo.defaultBranch}
-							value={repo.defaultBranch}
-							onSelect={(value) => {
-								onBranchChange(value);
-								setOpen(false);
-							}}
-							className={cn(
-								repo.defaultBranch === currentRef &&
-									"font-medium text-foreground",
-							)}
-						>
-							<CheckIcon
-								size={14}
-								className={cn(
-									"shrink-0",
-									repo.defaultBranch === currentRef
-										? "opacity-100"
-										: "opacity-0",
-								)}
-							/>
-							<span className="truncate">{repo.defaultBranch}</span>
-							<span className="ml-auto text-xs text-muted-foreground">
-								default
-							</span>
-						</CommandItem>
-						{branchesQuery.data
-							?.filter((b) => b.name !== repo.defaultBranch)
-							.map((branch) => (
-								<CommandItem
-									key={branch.name}
-									value={branch.name}
-									onSelect={(value) => {
-										onBranchChange(value);
-										setOpen(false);
-									}}
-									className={cn(
-										branch.name === currentRef && "font-medium text-foreground",
-									)}
-								>
-									<CheckIcon
-										size={14}
-										className={cn(
-											"shrink-0",
-											branch.name === currentRef ? "opacity-100" : "opacity-0",
-										)}
-									/>
-									<span className="truncate">{branch.name}</span>
-								</CommandItem>
-							))}
-					</CommandList>
-				</Command>
-				<div className="border-t-[0.5px] border-popover-border px-3 py-2">
-					<span className="text-xs tabular-nums text-muted-foreground">
-						{repo.branchCount} branch{repo.branchCount !== 1 ? "es" : ""}
-						{repo.tagCount > 0 && (
-							<>
-								{" · "}
-								{repo.tagCount} tag{repo.tagCount !== 1 ? "s" : ""}
-							</>
-						)}
-					</span>
-				</div>
-			</PopoverContent>
-		</Popover>
 	);
 }
 
@@ -350,148 +226,5 @@ function CloneInput({
 				{copied ? "Copied" : "Copy"}
 			</button>
 		</div>
-	);
-}
-
-function useCachedTreeEntries(
-	open: boolean,
-	repo: RepoOverview,
-	currentRef: string,
-): FileSearchEntry[] {
-	const queryClient = useQueryClient();
-	return useMemo(() => {
-		if (!open) return [];
-		const entries = new Map<string, FileSearchEntry>();
-		const cached = queryClient.getQueriesData<RepoTreeEntry[]>({
-			predicate: (query) => {
-				const [root, , kind, tree, input] = query.queryKey as [
-					string,
-					unknown,
-					string,
-					string,
-					{ owner?: string; repo?: string; ref?: string } | undefined,
-				];
-				return (
-					root === "github" &&
-					kind === "repo" &&
-					tree === "tree" &&
-					input?.owner === repo.owner &&
-					input?.repo === repo.name &&
-					input?.ref === currentRef
-				);
-			},
-		});
-		for (const [, data] of cached) {
-			for (const entry of data ?? []) {
-				entries.set(entry.path, {
-					path: entry.path,
-					name: entry.name,
-					type: entry.type,
-				});
-			}
-		}
-		return [...entries.values()];
-	}, [open, queryClient, repo.owner, repo.name, currentRef]);
-}
-
-function GoToFile({
-	repo,
-	currentRef,
-}: {
-	repo: RepoOverview;
-	currentRef: string;
-	scope: GitHubQueryScope;
-}) {
-	const [open, setOpen] = useState(false);
-	const [query, setQuery] = useState("");
-	const deferredQuery = useDeferredValue(query);
-	const navigate = useNavigate();
-	const entries = useCachedTreeEntries(open, repo, currentRef);
-	const results = useMemo(
-		() =>
-			deferredQuery.trim()
-				? searchFiles(deferredQuery, entries, 30)
-				: entries
-						.filter((entry) => entry.type === "file")
-						.slice(0, 12)
-						.map((entry) => ({ ...entry, score: 0 })),
-		[deferredQuery, entries],
-	);
-
-	useGlobalShortcuts([
-		{
-			shortcut: { key: "t" },
-			onTrigger: () => setOpen(true),
-		},
-	]);
-
-	const select = (entry: FileSearchEntry) => {
-		setOpen(false);
-		setQuery("");
-		void navigate({
-			to:
-				entry.type === "dir" ? "/$owner/$repo/tree/$" : "/$owner/$repo/blob/$",
-			params: {
-				owner: repo.owner,
-				repo: repo.name,
-				_splat: `${currentRef}/${entry.path}`,
-			},
-		});
-	};
-
-	return (
-		<Popover
-			open={open}
-			onOpenChange={(next) => {
-				setOpen(next);
-				if (!next) setQuery("");
-			}}
-		>
-			<PopoverTrigger asChild>
-				<button
-					type="button"
-					aria-keyshortcuts="t"
-					className={cn(
-						pillButtonClassName,
-						"w-44 gap-2 font-[450] text-muted-foreground max-md:hidden",
-					)}
-				>
-					<SearchIcon size={14} />
-					Go to file
-					<KeyHint className="ml-auto">T</KeyHint>
-				</button>
-			</PopoverTrigger>
-			<PopoverContent align="end" className="w-80 p-0">
-				<Command shouldFilter={false}>
-					<CommandInput
-						value={query}
-						onValueChange={setQuery}
-						placeholder="Go to file…"
-					/>
-					<CommandList>
-						<CommandEmpty>No files found.</CommandEmpty>
-						{results.map((entry) => (
-							<CommandItem
-								key={entry.path}
-								value={entry.path}
-								onSelect={() => select(entry)}
-							>
-								{entry.type === "dir" ? (
-									<FolderIcon size={14} className="text-muted-foreground" />
-								) : (
-									<FileIcon size={14} className="text-muted-foreground" />
-								)}
-								<span className="truncate">{entry.name}</span>
-								{entry.path !== entry.name ? (
-									<span className="min-w-0 truncate text-xs text-muted-foreground">
-										{entry.path.slice(0, -entry.name.length - 1)}
-									</span>
-								) : null}
-							</CommandItem>
-						))}
-					</CommandList>
-				</Command>
-			</PopoverContent>
-		</Popover>
 	);
 }

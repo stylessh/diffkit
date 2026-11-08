@@ -8,6 +8,7 @@ import { commitsBetween } from "../graphql/git.ts";
 import { DEMO_GITHUB_APP } from "../seed/identity.ts";
 import type { ShimContext } from "../server.ts";
 import type { CommitStatusRow } from "../store-extras.ts";
+import { registerCodeSearchTextMatches } from "./code-search.ts";
 import {
 	apiRepoJson,
 	apiUserJson,
@@ -272,6 +273,7 @@ export function registerRestShims(context: ShimContext) {
 	const { app, baseUrl } = context;
 
 	registerSearchRoute(context);
+	registerCodeSearchTextMatches(context);
 
 	app.get("/_diffkit/health", (c) =>
 		json(c, {
@@ -565,15 +567,6 @@ export function registerRestShims(context: ShimContext) {
 			paginate(c, repos).map((repo) => apiRepoJson(gh, repo, baseUrl)),
 		);
 	});
-
-	// --- Rulesets (none configured in the demo) ------------------------------
-	app.get("/repos/:owner/:repo/rules/branches/:branch{.+}", (c) =>
-		assertRepo(context, c) ? json(c, []) : notFound(c),
-	);
-	app.get("/repos/:owner/:repo/rulesets", (c) =>
-		assertRepo(context, c) ? json(c, []) : notFound(c),
-	);
-	app.get("/repos/:owner/:repo/rulesets/:id", (c) => notFound(c));
 
 	// emulate lists collaborators; GitHub counts commit authors.
 	app.get("/repos/:owner/:repo/contributors", (c) => {
