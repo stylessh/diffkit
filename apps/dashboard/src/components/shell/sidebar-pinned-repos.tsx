@@ -82,7 +82,7 @@ function PinnedRepoRow({
 					<button
 						type="button"
 						aria-label={`${fullName} options`}
-						className="absolute top-0.5 right-4 flex size-6 items-center justify-center rounded-md text-muted-foreground opacity-0 transition-opacity hover:text-foreground group-hover/pin:opacity-100 focus-visible:opacity-100 data-[state=open]:opacity-100"
+						className="absolute top-0.5 right-4 flex size-6 items-center justify-center rounded-md text-muted-foreground opacity-0 transition-opacity hover:text-foreground group-hover/pin:opacity-100 focus-visible:opacity-100 data-[state=open]:opacity-100 pointer-coarse:opacity-100"
 					>
 						<MoreHorizontalIcon size={14} strokeWidth={2} />
 					</button>

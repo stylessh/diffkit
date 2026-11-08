@@ -173,7 +173,7 @@ export function SidebarSection({
 					/>
 				</button>
 				{action ? (
-					<span className="ml-auto flex opacity-0 transition-opacity group-focus-within/section:opacity-100 group-hover/section:opacity-100">
+					<span className="ml-auto flex opacity-0 transition-opacity group-focus-within/section:opacity-100 group-hover/section:opacity-100 pointer-coarse:opacity-100">
 						{action}
 					</span>
 				) : null}

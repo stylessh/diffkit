@@ -8,7 +8,7 @@ import {
 	useRouter,
 } from "@tanstack/react-router";
 import { motion } from "motion/react";
-import { lazy, Suspense, useEffect, useRef, useState } from "react";
+import { lazy, Suspense, useEffect, useState } from "react";
 import { AppSidebar } from "#/components/shell/app-sidebar";
 import { MobileShellBar } from "#/components/shell/mobile-shell-bar";
 import { SidebarToggleButton } from "#/components/shell/sidebar-toggle-button";
@@ -214,8 +214,6 @@ const primaryNavRoutes = [
 
 function usePreloadPrimaryRoutes(ready: boolean) {
 	const router = useRouter();
-	const routerRef = useRef(router);
-	routerRef.current = router;
 
 	useEffect(() => {
 		if (!ready) return;
@@ -225,12 +223,12 @@ function usePreloadPrimaryRoutes(ready: boolean) {
 			for (const to of primaryNavRoutes) {
 				if (cancelled) break;
 				try {
-					await routerRef.current.preloadRoute({ to });
+					await router.preloadRoute({ to });
 				} catch {}
 			}
 		})();
 		return () => {
 			cancelled = true;
 		};
-	}, [ready]);
+	}, [ready, router]);
 }
