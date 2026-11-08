@@ -283,9 +283,9 @@ export function PullDetailActivitySection({
 					issueNumber={pullNumber}
 					scope={scope}
 					involvedUsers={getInvolvedUsers(pr, comments)}
-					pullState={
+					stateToggle={
 						!pr.isMerged && (pr.state === "open" || pr.state === "closed")
-							? pr.state
+							? { kind: "pull", state: pr.state }
 							: undefined
 					}
 				/>
@@ -726,9 +726,9 @@ function ReviewsSection({
 												})
 													.then((result) => {
 														if (result.ok) {
-															void queryClient.invalidateQueries({
-																queryKey: ["github"],
-															});
+															void invalidateGitHubEntities(queryClient, null, [
+																pullEntityKey({ owner, repo, pullNumber }),
+															]);
 														} else {
 															toast.error(result.error);
 															checkPermissionWarning(
@@ -757,9 +757,11 @@ function ReviewsSection({
 													})
 														.then((result) => {
 															if (result.ok) {
-																void queryClient.invalidateQueries({
-																	queryKey: ["github"],
-																});
+																void invalidateGitHubEntities(
+																	queryClient,
+																	null,
+																	[pullEntityKey({ owner, repo, pullNumber })],
+																);
 															} else {
 																toast.error(result.error);
 																checkPermissionWarning(
@@ -2886,9 +2888,9 @@ function ReviewCommentBlock({
 			if (result) {
 				setReplyBody("");
 				setShowReplyForm(false);
-				void queryClient.invalidateQueries({
-					queryKey: githubQueryKeys.all,
-				});
+				void invalidateGitHubEntities(queryClient, null, [
+					pullEntityKey({ owner, repo, pullNumber }),
+				]);
 			} else {
 				toast.error("Failed to send reply");
 			}

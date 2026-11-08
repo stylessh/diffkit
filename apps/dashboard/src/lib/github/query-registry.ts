@@ -78,7 +78,7 @@ export const githubQueryEntityCoverage: Record<
 	"releases.list": ["release"],
 	"releases.detail": ["release"],
 	"releases.viewerPermission": "exempt",
-	"refs.names": ["repo"],
+	"refs.names": ["repo", "release"],
 	"refs.branches": ["repo"],
 	"refs.tags": ["repo", "release"],
 	"refs.comparison": ["repo"],
@@ -89,8 +89,9 @@ export const githubQueryEntityCoverage: Record<
 /**
  * User-wide aggregates whose payload lists items across many repos. A pull or
  * issue change only refetches them when the changed item is already in the
- * cached payload; new items arrive on focus / staleTime instead of turning
- * every PR event in an org into a GitHub search request.
+ * cached payload, so one PR event in a busy org doesn't become a GitHub search
+ * per member. The exception is an item the viewer just created
+ * (`change: "created"`), which no cached payload can contain yet.
  */
 const AGGREGATE_PATHS = new Set([
 	"pulls.mine",
@@ -200,10 +201,13 @@ function aggregateContains(data: unknown, entity: GitHubChangeEntity) {
  * Whether a cached query is affected by a change-feed entity. `data` is the
  * query's cached payload, used for user-wide aggregates.
  */
+export type GitHubEntityChange = "updated" | "created";
+
 export function githubQueryMatchesEntity(
 	queryKey: readonly unknown[],
 	entity: GitHubChangeEntity,
 	data?: unknown,
+	change: GitHubEntityChange = "updated",
 ): boolean {
 	const path = githubQueryPath(queryKey);
 	if (!path) return false;
@@ -215,7 +219,7 @@ export function githubQueryMatchesEntity(
 
 	const repo = githubQueryRepo(queryKey);
 	if (AGGREGATE_PATHS.has(path) && (repo === null || repo === entity.repo)) {
-		return aggregateContains(data, entity);
+		return change === "created" || aggregateContains(data, entity);
 	}
 	if (repo !== entity.repo) return false;
 

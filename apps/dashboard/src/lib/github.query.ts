@@ -89,6 +89,7 @@ export {
 	REPO_COMMITS_PER_PAGE,
 	REPO_RELEASES_PER_PAGE,
 } from "./github/query-options";
+export type { GitHubEntityChange } from "./github/query-registry";
 export {
 	githubQueryEntityCoverage,
 	githubQueryMatchesEntity,

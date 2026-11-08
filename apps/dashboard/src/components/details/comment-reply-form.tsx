@@ -9,7 +9,10 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useCallback, useRef, useState } from "react";
 import { useCommentMediaUpload } from "#/hooks/use-comment-media-upload";
 import { createComment } from "#/lib/github.functions";
-import { githubQueryKeys } from "#/lib/github.query";
+import {
+	invalidateGitHubEntities,
+	pullOrIssueEntityKeys,
+} from "#/lib/github-query-updates";
 import { checkPermissionWarning } from "#/lib/warning-store";
 
 export function CommentReplyForm({
@@ -64,9 +67,11 @@ export function CommentReplyForm({
 			if (result.ok) {
 				setValue("");
 				onClose();
-				void queryClient.invalidateQueries({
-					queryKey: githubQueryKeys.all,
-				});
+				void invalidateGitHubEntities(
+					queryClient,
+					null,
+					pullOrIssueEntityKeys({ owner, repo, number: issueNumber }),
+				);
 			} else {
 				toast.error(result.error);
 				checkPermissionWarning(result, `${owner}/${repo}`);

@@ -30,12 +30,17 @@ import {
 } from "#/lib/github.functions";
 import {
 	type GitHubQueryScope,
-	githubQueryKeys,
 	githubRepoCollaboratorsQueryOptions,
 	githubViewerQueryOptions,
 } from "#/lib/github.query";
 import type { GitHubActor } from "#/lib/github.types";
-import { removePullFromOpenViews } from "#/lib/github-query-updates";
+import {
+	invalidateGitHubEntities,
+	issueEntityKey,
+	pullEntityKey,
+	pullOrIssueEntityKeys,
+	removePullFromOpenViews,
+} from "#/lib/github-query-updates";
 import { checkPermissionWarning } from "#/lib/warning-store";
 
 export function DetailActivityHeader({
@@ -63,21 +68,21 @@ export function DetailCommentBox({
 	issueNumber,
 	scope,
 	involvedUsers,
-	pullState,
-	issueState,
+	stateToggle,
 }: {
 	owner: string;
 	repo: string;
 	issueNumber: number;
 	scope: GitHubQueryScope;
 	involvedUsers?: GitHubActor[];
-	pullState?: "open" | "closed";
-	issueState?: "open" | "closed";
+	/** Omitted when the item can't be closed or reopened (e.g. a merged PR). */
+	stateToggle?: { kind: "pull" | "issue"; state: "open" | "closed" };
 }) {
 	const [value, setValue] = useState("");
-	const [isSending, setIsSending] = useState(false);
-	const [isTogglingState, setIsTogglingState] = useState(false);
-	const [isTogglingIssueState, setIsTogglingIssueState] = useState(false);
+	const [pendingAction, setPendingAction] = useState<
+		"send" | "toggle-state" | null
+	>(null);
+	const isBusy = pendingAction !== null;
 	const [mentionActivated, setMentionActivated] = useState(false);
 	const queryClient = useQueryClient();
 	const editorRef = useRef<MarkdownEditorHandle>(null);
@@ -135,16 +140,18 @@ export function DetailCommentBox({
 
 	const handleSend = async () => {
 		if (!value.trim()) return;
-		setIsSending(true);
+		setPendingAction("send");
 		try {
 			const result = await createComment({
 				data: { owner, repo, issueNumber, body: value.trim() },
 			});
 			if (result.ok) {
 				setValue("");
-				void queryClient.invalidateQueries({
-					queryKey: githubQueryKeys.all,
-				});
+				void invalidateGitHubEntities(
+					queryClient,
+					scope,
+					pullOrIssueEntityKeys({ owner, repo, number: issueNumber }),
+				);
 			} else {
 				toast.error(result.error);
 				checkPermissionWarning(result, `${owner}/${repo}`);
@@ -152,14 +159,15 @@ export function DetailCommentBox({
 		} catch {
 			toast.error("Failed to send comment");
 		} finally {
-			setIsSending(false);
+			setPendingAction(null);
 		}
 	};
 
 	const handleTogglePullState = async () => {
-		if (!pullState) return;
+		if (stateToggle?.kind !== "pull") return;
+		const pullState = stateToggle.state;
 		const newState = pullState === "open" ? "closed" : "open";
-		setIsTogglingState(true);
+		setPendingAction("toggle-state");
 		try {
 			if (value.trim()) {
 				const commentResult = await createComment({
@@ -188,9 +196,9 @@ export function DetailCommentBox({
 						pullNumber: issueNumber,
 					});
 				}
-				void queryClient.invalidateQueries({
-					queryKey: githubQueryKeys.all,
-				});
+				void invalidateGitHubEntities(queryClient, scope, [
+					pullEntityKey({ owner, repo, pullNumber: issueNumber }),
+				]);
 			} else {
 				toast.error(result.error);
 				checkPermissionWarning(result, `${owner}/${repo}`);
@@ -200,7 +208,7 @@ export function DetailCommentBox({
 				`Failed to ${pullState === "open" ? "close" : "reopen"} pull request`,
 			);
 		} finally {
-			setIsTogglingState(false);
+			setPendingAction(null);
 		}
 	};
 
@@ -208,7 +216,7 @@ export function DetailCommentBox({
 		next: "open" | "closed",
 		closeReason?: "completed" | "not_planned",
 	) => {
-		setIsTogglingIssueState(true);
+		setPendingAction("toggle-state");
 		try {
 			if (value.trim()) {
 				const commentResult = await createComment({
@@ -231,9 +239,9 @@ export function DetailCommentBox({
 				},
 			});
 			if (result.ok) {
-				void queryClient.invalidateQueries({
-					queryKey: githubQueryKeys.all,
-				});
+				void invalidateGitHubEntities(queryClient, scope, [
+					issueEntityKey({ owner, repo, issueNumber }),
+				]);
 			} else {
 				toast.error(result.error);
 				checkPermissionWarning(result, `${owner}/${repo}`);
@@ -241,7 +249,7 @@ export function DetailCommentBox({
 		} catch {
 			toast.error(`Failed to ${next === "closed" ? "close" : "reopen"} issue`);
 		} finally {
-			setIsTogglingIssueState(false);
+			setPendingAction(null);
 		}
 	};
 
@@ -266,16 +274,16 @@ export function DetailCommentBox({
 				ref={commentActionsRef}
 				className="flex items-center justify-end gap-2 pb-3"
 			>
-				{issueState &&
-					(issueState === "open" ? (
+				{stateToggle?.kind === "issue" &&
+					(stateToggle.state === "open" ? (
 						<DropdownMenu>
 							<DropdownMenuTrigger asChild>
 								<button
 									type="button"
-									disabled={isTogglingIssueState}
+									disabled={isBusy}
 									className="flex items-center gap-1.5 rounded-lg border bg-secondary px-3 py-1.5 text-xs font-medium text-secondary-foreground transition-opacity hover:bg-secondary/80 disabled:opacity-40"
 								>
-									{isTogglingIssueState ? (
+									{pendingAction === "toggle-state" ? (
 										<Spinner size={12} />
 									) : (
 										<>
@@ -292,7 +300,7 @@ export function DetailCommentBox({
 							</DropdownMenuTrigger>
 							<DropdownMenuContent align="end" className="min-w-[12rem]">
 								<DropdownMenuItem
-									disabled={isTogglingIssueState}
+									disabled={isBusy}
 									className="text-violet-500 focus:bg-violet-500/15 focus:text-violet-500 data-[highlighted]:bg-violet-500/15 data-[highlighted]:text-violet-500"
 									onClick={() =>
 										void runIssueStateChange("closed", "completed")
@@ -306,7 +314,7 @@ export function DetailCommentBox({
 									Close as completed
 								</DropdownMenuItem>
 								<DropdownMenuItem
-									disabled={isTogglingIssueState}
+									disabled={isBusy}
 									className="text-muted-foreground focus:bg-muted focus:text-muted-foreground data-[highlighted]:bg-muted data-[highlighted]:text-muted-foreground"
 									onClick={() =>
 										void runIssueStateChange("closed", "not_planned")
@@ -324,11 +332,11 @@ export function DetailCommentBox({
 					) : (
 						<button
 							type="button"
-							disabled={isTogglingIssueState}
+							disabled={isBusy}
 							onClick={() => void runIssueStateChange("open")}
 							className="flex items-center gap-1.5 rounded-lg border bg-secondary px-3 py-1.5 text-xs font-medium text-secondary-foreground transition-opacity hover:bg-secondary/80 disabled:opacity-40"
 						>
-							{isTogglingIssueState ? (
+							{pendingAction === "toggle-state" ? (
 								<Spinner size={12} />
 							) : (
 								<IssuesIcon size={12} strokeWidth={2} />
@@ -336,30 +344,30 @@ export function DetailCommentBox({
 							Re-open issue
 						</button>
 					))}
-				{pullState && (
+				{stateToggle?.kind === "pull" && (
 					<button
 						type="button"
-						disabled={isTogglingState || hasPendingUploads}
+						disabled={isBusy || hasPendingUploads}
 						onClick={handleTogglePullState}
 						className="flex items-center gap-1.5 rounded-lg border bg-secondary px-3 py-1.5 text-xs font-medium text-secondary-foreground transition-opacity hover:bg-secondary/80 disabled:opacity-40"
 					>
-						{isTogglingState ? (
+						{pendingAction === "toggle-state" ? (
 							<Spinner size={12} />
-						) : pullState === "open" ? (
+						) : stateToggle.state === "open" ? (
 							<GitPullRequestClosedIcon size={12} strokeWidth={2} />
 						) : (
 							<GitPullRequestIcon size={12} strokeWidth={2} />
 						)}
-						{pullState === "open" ? "Close PR" : "Re-open PR"}
+						{stateToggle.state === "open" ? "Close PR" : "Re-open PR"}
 					</button>
 				)}
 				<button
 					type="button"
-					disabled={!value.trim() || isSending || hasPendingUploads}
+					disabled={!value.trim() || isBusy || hasPendingUploads}
 					onClick={handleSend}
 					className="flex items-center gap-1.5 rounded-lg bg-foreground px-3 py-1.5 text-xs font-medium text-background transition-opacity disabled:opacity-40"
 				>
-					{isSending ? (
+					{pendingAction === "send" ? (
 						<Spinner size={12} />
 					) : (
 						<CommentIcon size={12} strokeWidth={2} />

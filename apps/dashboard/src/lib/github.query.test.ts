@@ -148,6 +148,26 @@ describe("entity → query registry", () => {
 		).toBe(true);
 	});
 
+	it("refetches user-wide aggregates for an item the viewer just created", () => {
+		const created = { kind: "pull", repo: "acme/api", number: 77 } as const;
+		const otherPull = githubQueryKeys.pulls.page(scope, {
+			owner: "acme",
+			repo: "api",
+			pullNumber: 12,
+		});
+		expect(
+			githubQueryMatchesEntity(
+				githubQueryKeys.pulls.mine(scope),
+				created,
+				aggregateData,
+				"created",
+			),
+		).toBe(true);
+		expect(
+			githubQueryMatchesEntity(otherPull, created, undefined, "created"),
+		).toBe(false);
+	});
+
 	it("queryFiltersForEntity invalidates only matching queries of the user", async () => {
 		const queryClient = new QueryClient();
 		const hit = githubQueryKeys.pulls.page(scope, {

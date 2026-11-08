@@ -51,6 +51,10 @@ import type {
 	PullFileSummary,
 	PullReviewComment,
 } from "#/lib/github.types";
+import {
+	invalidateGitHubEntities,
+	pullEntityKey,
+} from "#/lib/github-query-updates";
 import { usePageTitle } from "#/lib/use-page-title";
 import { useRegisterTab } from "#/lib/use-register-tab";
 import { checkPermissionWarning } from "#/lib/warning-store";
@@ -446,29 +450,9 @@ export function ReviewPage() {
 
 				if (success) {
 					setPendingComments([]);
-					// Only invalidate queries scoped to this specific PR. Invalidating
-					// `githubQueryKeys.all` would refetch every GitHub query in the
-					// client (other repos, notifications, signals) for no reason.
-					void queryClient.invalidateQueries({
-						predicate: (query) => {
-							const key = query.queryKey;
-							if (key[0] !== "github") return false;
-							for (let i = 2; i < key.length; i++) {
-								const part = key[i];
-								if (!part || typeof part !== "object") continue;
-								const rec = part as Record<string, unknown>;
-								if (
-									rec.owner === owner &&
-									rec.repo === repo &&
-									(rec.pullNumber === pullNumber ||
-										rec.issueNumber === pullNumber)
-								) {
-									return true;
-								}
-							}
-							return false;
-						},
-					});
+					void invalidateGitHubEntities(queryClient, scope, [
+						pullEntityKey({ owner, repo, pullNumber }),
+					]);
 					void navigate({
 						to: "/$owner/$repo/pull/$pullId",
 						params: { owner, repo, pullId },
@@ -499,7 +483,16 @@ export function ReviewPage() {
 				setIsSubmitting(false);
 			}
 		},
-		[navigate, owner, pendingComments, pullId, pullNumber, queryClient, repo],
+		[
+			navigate,
+			owner,
+			pendingComments,
+			pullId,
+			pullNumber,
+			queryClient,
+			repo,
+			scope,
+		],
 	);
 
 	// Ref-stable onLoadMore — avoids busting ReviewDiffPane memo
