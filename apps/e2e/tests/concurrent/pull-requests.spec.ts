@@ -54,7 +54,11 @@ test("a pull request shows its review state and checks, and its diff carries rev
 	page,
 }) => {
 	await page.goto("/pulls");
-	await page.getByRole("link", { name: sseHeaders }).first().click();
+	await page
+		.getByRole("link", { name: sseHeaders })
+		.first()
+		.getByText(sseHeaders)
+		.click();
 
 	await expect(page).toHaveURL(/\/lumen-labs\/beacon\/pull\/15$/);
 	await expect(
