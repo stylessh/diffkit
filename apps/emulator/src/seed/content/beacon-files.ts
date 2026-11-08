@@ -350,7 +350,7 @@ describe("nextDelay", () => {
 });
 `;
 
-export const beaconWebSocket = `import type { Listener, Transport } from "../types";
+export const beaconWebSocket = `import type { Listener, Transport } from "../types.ts";
 
 export class WebSocketTransport implements Transport {
 	#socket: WebSocket | null = null;
@@ -392,7 +392,7 @@ export class WebSocketTransport implements Transport {
 }
 `;
 
-export const beaconSse = `import type { Listener, Transport } from "../types";
+export const beaconSse = `import type { Listener, Transport } from "../types.ts";
 
 /** Receive-only transport over Server-Sent Events. */
 export class ServerSentEventsTransport implements Transport {
@@ -437,7 +437,7 @@ export class ServerSentEventsTransport implements Transport {
 `;
 
 /** SSE over fetch so custom headers work (EventSource cannot set them). */
-export const beaconSseHeaders = `import type { Listener, Transport } from "../types";
+export const beaconSseHeaders = `import type { Listener, Transport } from "../types.ts";
 
 /**
  * Receive-only transport over Server-Sent Events.
@@ -611,7 +611,7 @@ export const beaconChangelog130 = beaconChangelog120.replace(
 `,
 );
 
-export const beaconTransportInterface = `import type { Listener } from "../types";
+export const beaconTransportInterface = `import type { Listener } from "../types.ts";
 
 export type CloseEvent = { code: number; reason: string };
 
@@ -646,7 +646,7 @@ export function createTransport(kind: string, headers?: Record<string, string>) 
 }
 `;
 
-export const beaconWebTransport = `import type { Listener } from "../types";
+export const beaconWebTransport = `import type { Listener } from "../types.ts";
 import type { CloseEvent, Transport } from "./transport";
 
 /**

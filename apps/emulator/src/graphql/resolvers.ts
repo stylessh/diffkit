@@ -17,22 +17,22 @@ import type {
 	GitHubUser,
 } from "@emulators/github";
 import { GraphQLError } from "graphql";
-import type { ShimContext } from "../server";
+import type { ShimContext } from "../server.ts";
 import {
 	canReadRepo,
 	GITHUB_WEB_URL,
 	hashString,
 	ownerLogin,
 	stores,
-} from "../shims/common";
-import { decodeNodeId, encodeNodeId } from "../shims/enrich";
-import { searchIssues } from "../shims/search";
+} from "../shims/common.ts";
+import { decodeNodeId, encodeNodeId } from "../shims/enrich.ts";
+import { searchIssues } from "../shims/search.ts";
 import type {
 	DiscussionRow,
 	ExtrasStore,
 	ReactionRow,
 	ReactionSubjectType,
-} from "../store-extras";
+} from "../store-extras.ts";
 import {
 	type ConnectionArgs,
 	commitsBetween,
@@ -41,7 +41,7 @@ import {
 	historyForPath,
 	lookupPath,
 	resolveRevision,
-} from "./git";
+} from "./git.ts";
 
 export type GraphQLContext = {
 	shim: ShimContext;

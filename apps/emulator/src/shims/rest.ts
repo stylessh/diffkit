@@ -4,9 +4,9 @@
  */
 import type { GitHubAppInstallation, GitHubComment } from "@emulators/github";
 import { zipSync } from "fflate";
-import { commitsBetween } from "../graphql/git";
-import type { ShimContext } from "../server";
-import type { CommitStatusRow } from "../store-extras";
+import { commitsBetween } from "../graphql/git.ts";
+import type { ShimContext } from "../server.ts";
+import type { CommitStatusRow } from "../store-extras.ts";
 import {
 	apiRepoJson,
 	apiUserJson,
@@ -25,9 +25,9 @@ import {
 	requiresAuth,
 	type ShimRequestContext,
 	stores,
-} from "./common";
-import { buildUserEvents } from "./events";
-import { registerSearchRoute } from "./search";
+} from "./common.ts";
+import { buildUserEvents } from "./events.ts";
+import { registerSearchRoute } from "./search.ts";
 
 const AVATAR_COLORS = [
 	"#0f766e",
@@ -561,6 +561,30 @@ export function registerRestShims(context: ShimContext) {
 		assertRepo(context, c) ? json(c, []) : notFound(c),
 	);
 	app.get("/repos/:owner/:repo/rulesets/:id", (c) => notFound(c));
+
+	// emulate lists collaborators; GitHub counts commit authors.
+	app.get("/repos/:owner/:repo/contributors", (c) => {
+		const { gh } = stores(context);
+		const repo = assertRepo(context, c);
+		if (!repo) {
+			return notFound(c);
+		}
+		const counts = new Map<number, number>();
+		for (const commit of gh.commits.findBy("repo_id", repo.id)) {
+			if (commit.user_id && commit.parent_shas.length < 2) {
+				counts.set(commit.user_id, (counts.get(commit.user_id) ?? 0) + 1);
+			}
+		}
+		const contributors = [...counts.entries()]
+			.map(([id, contributions]) => ({ user: gh.users.get(id), contributions }))
+			.filter((row) => row.user !== undefined)
+			.sort((a, b) => b.contributions - a.contributions)
+			.map(({ user, contributions }) => ({
+				...apiUserJson(user as NonNullable<typeof user>, baseUrl),
+				contributions,
+			}));
+		return json(c, paginate(c, contributors));
+	});
 
 	// --- Repo insights -------------------------------------------------------
 	app.get("/repos/:owner/:repo/stats/participation", (c) => {

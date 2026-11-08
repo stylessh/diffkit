@@ -9,8 +9,8 @@
 import { randomBytes } from "node:crypto";
 import { parseCookies } from "@emulators/core";
 import { getGitHubStore } from "@emulators/github";
-import { DEMO_GITHUB_APP } from "../seed/identity";
-import type { ShimContext } from "../server";
+import { DEMO_GITHUB_APP } from "../seed/identity.ts";
+import type { ShimContext } from "../server.ts";
 
 type PendingCode = {
 	login: string;

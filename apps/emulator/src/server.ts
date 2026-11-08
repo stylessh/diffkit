@@ -33,8 +33,8 @@ import {
 	githubPlugin,
 	seedFromConfig,
 } from "@emulators/github";
-import { registerGraphQLRoute } from "./graphql/handler";
-import { org, people } from "./seed/content/people";
+import { registerGraphQLRoute } from "./graphql/handler.ts";
+import { org, people } from "./seed/content/people.ts";
 import {
 	DEFAULT_DASHBOARD_URL,
 	DEFAULT_EMULATOR_PORT,
@@ -44,13 +44,14 @@ import {
 	oauthRedirectUris,
 	SEED_ADMIN_TOKEN,
 	seedTokenFor,
-} from "./seed/identity";
-import { enrichResponse } from "./shims/enrich";
-import { registerNotificationRoutes } from "./shims/notifications";
-import { autoApproveAppAuthorize } from "./shims/oauth-auto-approve";
-import { bridgePullIssueRequest } from "./shims/pull-issue-bridge";
-import { registerRestShims } from "./shims/rest";
-import { getExtrasStore } from "./store-extras";
+} from "./seed/identity.ts";
+import { enrichResponse } from "./shims/enrich.ts";
+import { registerNotificationRoutes } from "./shims/notifications.ts";
+import { autoApproveAppAuthorize } from "./shims/oauth-auto-approve.ts";
+import { bridgeOrgAsUser } from "./shims/org-user-bridge.ts";
+import { bridgePullIssueRequest } from "./shims/pull-issue-bridge.ts";
+import { registerRestShims } from "./shims/rest.ts";
+import { getExtrasStore } from "./store-extras.ts";
 
 export type ShimContext = {
 	app: Hono<AppEnv>;
@@ -269,6 +270,7 @@ export async function createDiffkitEmulator(
 	const persistence = options.persistence ?? null;
 	const fingerprint = options.seedFingerprint ?? "unversioned";
 	let restored = false;
+	let carriedTokens: TokenEntry[] = [];
 	if (persistence) {
 		const raw = await persistence.load();
 		if (raw) {
@@ -281,6 +283,11 @@ export async function createDiffkitEmulator(
 					store.restore(state.store);
 					restoreTokenMap(tokenMap, state.tokens);
 					restored = true;
+				} else {
+					// The seed changed, so the store is rebuilt. Seeding is deterministic
+					// (same user and installation ids), so tokens the dashboard already
+					// holds (sessions, cached installation tokens) stay valid.
+					carriedTokens = state.tokens ?? [];
 				}
 			} catch (error) {
 				console.warn("[emulator] ignoring unreadable persisted state", error);
@@ -291,6 +298,16 @@ export async function createDiffkitEmulator(
 	if (!restored) {
 		githubPlugin.seed?.(store, baseUrl);
 		seedFromConfig(store, baseUrl, buildSeedConfig(dashboardUrl));
+	}
+	for (const entry of carriedTokens) {
+		if (!tokenMap.has(entry.token)) {
+			tokenMap.set(entry.token, {
+				login: entry.login,
+				id: entry.id,
+				scopes: entry.scopes,
+				...(entry.installation ? { installation: entry.installation } : {}),
+			});
+		}
 	}
 	syncTokenUserIds(store, tokenMap);
 
@@ -341,6 +358,10 @@ export async function createDiffkitEmulator(
 			const approved = autoApproveAppAuthorize(context, inner);
 			if (approved) {
 				return approved;
+			}
+			const orgAsUser = await bridgeOrgAsUser(context, inner, app.fetch);
+			if (orgAsUser) {
+				return orgAsUser;
 			}
 			const bridged = await bridgePullIssueRequest(context, inner);
 			return bridged ?? app.fetch(inner);

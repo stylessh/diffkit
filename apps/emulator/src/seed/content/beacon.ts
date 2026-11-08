@@ -1,4 +1,4 @@
-import type { RepoSpec } from "../types";
+import type { RepoSpec } from "../types.ts";
 import {
 	beaconBackoff,
 	beaconBackoffJitter,
@@ -28,8 +28,8 @@ import {
 	beaconTypes,
 	beaconWebSocket,
 	beaconWebTransport,
-} from "./beacon-files";
-import { ciJobs, inProgressJobs, publishJob } from "./ci";
+} from "./beacon-files.ts";
+import { ciJobs, inProgressJobs, publishJob } from "./ci.ts";
 
 const clientTest = `import { describe, expect, it, vi } from "vitest";
 import { createClient } from "../client";

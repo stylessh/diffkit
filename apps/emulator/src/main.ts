@@ -14,15 +14,15 @@ import { createHash } from "node:crypto";
 import { readdirSync, readFileSync, rmSync, statSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { filePersistence } from "@emulators/core";
-import { resolveAnchor } from "./seed/anchor";
-import { workspace } from "./seed/content";
+import { resolveAnchor } from "./seed/anchor.ts";
+import { workspace } from "./seed/content/index.ts";
 import {
 	DEFAULT_DASHBOARD_URL,
 	DEFAULT_EMULATOR_PORT,
 	DEMO_VIEWER_LOGIN,
-} from "./seed/identity";
-import { seedWorkspace } from "./seed/seed-workspace";
-import { createDiffkitEmulator } from "./server";
+} from "./seed/identity.ts";
+import { seedWorkspace } from "./seed/seed-workspace.ts";
+import { createDiffkitEmulator } from "./server.ts";
 
 const args = new Set(process.argv.slice(2));
 const port = Number(process.env.EMULATOR_PORT ?? DEFAULT_EMULATOR_PORT);

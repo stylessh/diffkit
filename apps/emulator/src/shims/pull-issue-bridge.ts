@@ -9,8 +9,8 @@ import type {
 	GitHubPullRequest,
 	GitHubRepo,
 } from "@emulators/github";
-import type { ShimContext } from "../server";
-import { findRepo, stores } from "./common";
+import type { ShimContext } from "../server.ts";
+import { findRepo, stores } from "./common.ts";
 
 const ISSUE_PATH =
 	/^\/repos\/([^/]+)\/([^/]+)\/issues\/(\d+)(\/assignees)?\/?$/u;

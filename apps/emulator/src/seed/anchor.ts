@@ -4,7 +4,7 @@
  * `DIFFKIT_DEMO_ANCHOR=now` to make the data look fresh instead, or pass any
  * ISO date.
  */
-import type { Ago } from "./types";
+import type { Ago } from "./types.ts";
 
 export const DEFAULT_DEMO_ANCHOR = "2026-11-02T17:00:00.000Z";
 

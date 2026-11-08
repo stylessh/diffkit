@@ -1,4 +1,4 @@
-import type { JobSpec, StepSpec } from "../types";
+import type { JobSpec, StepSpec } from "../types.ts";
 
 type Outcome = "success" | "failure" | "skipped" | "cancelled" | null;
 

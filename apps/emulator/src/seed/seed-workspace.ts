@@ -8,17 +8,17 @@
  */
 import { type GitHubStore, getGitHubStore } from "@emulators/github";
 import { Octokit } from "octokit";
-import { commitsBetween } from "../graphql/git";
-import type { DiffkitEmulator } from "../server";
-import { encodeNodeId } from "../shims/enrich";
-import { upsertNotification } from "../shims/notifications";
+import { commitsBetween } from "../graphql/git.ts";
+import type { DiffkitEmulator } from "../server.ts";
+import { encodeNodeId } from "../shims/enrich.ts";
+import { upsertNotification } from "../shims/notifications.ts";
 import {
 	type ExtrasStore,
 	getExtrasStore,
 	setTimestamps,
-} from "../store-extras";
-import { type Clock, createClock } from "./anchor";
-import { DEMO_GITHUB_APP, seedTokenFor } from "./identity";
+} from "../store-extras.ts";
+import { type Clock, createClock } from "./anchor.ts";
+import { DEMO_GITHUB_APP, seedTokenFor } from "./identity.ts";
 import type {
 	CommentSpec,
 	CommitSpec,
@@ -29,7 +29,7 @@ import type {
 	RepoSpec,
 	WorkflowRunSpec,
 	WorkspaceSpec,
-} from "./types";
+} from "./types.ts";
 
 type Api = Octokit;
 

@@ -5,8 +5,8 @@ import {
 	type GitHubUser,
 	getGitHubStore,
 } from "@emulators/github";
-import type { ShimContext } from "../server";
-import { getExtrasStore } from "../store-extras";
+import type { ShimContext } from "../server.ts";
+import { getExtrasStore } from "../store-extras.ts";
 
 /** Public-facing links ("open on GitHub") keep pointing at github.com. */
 export const GITHUB_WEB_URL = "https://github.com";

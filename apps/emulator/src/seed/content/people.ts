@@ -1,4 +1,4 @@
-import type { PersonSpec, WorkspaceSpec } from "../types";
+import type { PersonSpec, WorkspaceSpec } from "../types.ts";
 
 export const people: PersonSpec[] = [
 	{

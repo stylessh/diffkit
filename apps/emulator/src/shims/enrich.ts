@@ -2,9 +2,9 @@
  * Post-processes emulate's JSON responses with data it does not track:
  * reaction counts and multi-line ranges on review comments.
  */
-import type { ShimContext } from "../server";
-import type { ReactionRow } from "../store-extras";
-import { stores } from "./common";
+import type { ShimContext } from "../server.ts";
+import type { ReactionRow } from "../store-extras.ts";
+import { stores } from "./common.ts";
 
 const REST_REACTION_KEYS: Record<string, string> = {
 	THUMBS_UP: "+1",

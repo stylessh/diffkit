@@ -1,8 +1,8 @@
-import type { WorkspaceSpec } from "../types";
-import { beacon } from "./beacon";
-import { orbit } from "./orbit";
-import { org, people } from "./people";
-import { dotfiles, handbook, infra } from "./small-repos";
+import type { WorkspaceSpec } from "../types.ts";
+import { beacon } from "./beacon.ts";
+import { orbit } from "./orbit.ts";
+import { org, people } from "./people.ts";
+import { dotfiles, handbook, infra } from "./small-repos.ts";
 
 /**
  * The whole demo workspace. Edit freely: the seed fingerprint changes with this

@@ -3,8 +3,8 @@
 	"private": true,
 	"type": "module",
 	"scripts": {
-		"dev": "tsx src/main.ts",
-		"start": "tsx src/main.ts",
+		"dev": "node --experimental-strip-types --disable-warning=ExperimentalWarning src/main.ts",
+		"start": "node --experimental-strip-types --disable-warning=ExperimentalWarning src/main.ts",
 		"test": "vitest run",
 		"lint": "biome lint",
 		"format": "biome format",
@@ -21,7 +21,6 @@
 	"devDependencies": {
 		"@diffkit/typescript-config": "workspace:*",
 		"@types/node": "22.19.17",
-		"tsx": "4.23.15",
 		"typescript": "5.9.3",
 		"vitest": "3.2.4"
 	}

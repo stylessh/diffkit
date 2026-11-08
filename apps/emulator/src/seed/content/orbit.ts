@@ -1,5 +1,5 @@
-import type { RepoSpec } from "../types";
-import { ciJobs } from "./ci";
+import type { RepoSpec } from "../types.ts";
+import { ciJobs } from "./ci.ts";
 
 const rootPackage = (turbo: string, ts: string) => `{
 	"name": "orbit",

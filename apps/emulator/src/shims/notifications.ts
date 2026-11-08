@@ -5,8 +5,8 @@
  */
 import type { Store } from "@emulators/core";
 import type { GitHubStore } from "@emulators/github";
-import type { ShimContext } from "../server";
-import { getExtrasStore, type NotificationRow } from "../store-extras";
+import type { ShimContext } from "../server.ts";
+import { getExtrasStore, type NotificationRow } from "../store-extras.ts";
 import {
 	apiRepoJson,
 	getViewer,
@@ -16,7 +16,7 @@ import {
 	requiresAuth,
 	type ShimRequestContext,
 	stores,
-} from "./common";
+} from "./common.ts";
 
 function subjectFor(
 	gh: GitHubStore,

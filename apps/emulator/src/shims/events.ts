@@ -3,8 +3,8 @@
  * is not part of emulate).
  */
 import type { GitHubRepo } from "@emulators/github";
-import type { ShimContext } from "../server";
-import { apiUserJson, GITHUB_WEB_URL, stores } from "./common";
+import type { ShimContext } from "../server.ts";
+import { apiUserJson, GITHUB_WEB_URL, stores } from "./common.ts";
 
 type UserEvent = {
 	id: string;

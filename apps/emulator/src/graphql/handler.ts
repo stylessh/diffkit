@@ -12,15 +12,15 @@ import {
 	specifiedRules,
 	validate,
 } from "graphql";
-import type { ShimContext } from "../server";
-import { getAuthUser } from "../shims/common";
+import type { ShimContext } from "../server.ts";
+import { getAuthUser } from "../shims/common.ts";
 import {
 	ABSTRACT_TYPES,
 	createGraphQLContext,
 	type GraphQLContext,
 	resolvers,
-} from "./resolvers";
-import { typeDefs } from "./schema";
+} from "./resolvers.ts";
+import { typeDefs } from "./schema.ts";
 
 let cachedSchema: GraphQLSchema | null = null;
 

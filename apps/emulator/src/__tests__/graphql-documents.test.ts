@@ -2,13 +2,16 @@ import { getGitHubStore } from "@emulators/github";
 import { type OperationDefinitionNode, parse } from "graphql";
 import { Octokit } from "octokit";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { buildPendingReviewsQuery } from "../../../dashboard/src/lib/review-drafts";
-import { workspace } from "../seed/content";
-import { seedTokenFor } from "../seed/identity";
-import { seedWorkspace } from "../seed/seed-workspace";
-import { createDiffkitEmulator, type DiffkitEmulator } from "../server";
-import { encodeNodeId } from "../shims/enrich";
-import { extractDocuments, renderDynamicDocument } from "./dashboard-documents";
+import { buildPendingReviewsQuery } from "../../../dashboard/src/lib/review-drafts.ts";
+import { workspace } from "../seed/content/index.ts";
+import { seedTokenFor } from "../seed/identity.ts";
+import { seedWorkspace } from "../seed/seed-workspace.ts";
+import { createDiffkitEmulator, type DiffkitEmulator } from "../server.ts";
+import { encodeNodeId } from "../shims/enrich.ts";
+import {
+	extractDocuments,
+	renderDynamicDocument,
+} from "./dashboard-documents.ts";
 
 const ANCHOR = new Date("2026-11-02T17:00:00.000Z");
 const documents = extractDocuments();

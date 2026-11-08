@@ -13,7 +13,7 @@ import type {
 	GitHubRepo,
 	GitHubStore,
 } from "@emulators/github";
-import type { ShimContext } from "../server";
+import type { ShimContext } from "../server.ts";
 import {
 	canReadRepo,
 	getAuthUser,
@@ -22,7 +22,7 @@ import {
 	parseIntParam,
 	type ShimRequestContext,
 	stores,
-} from "./common";
+} from "./common.ts";
 
 type Qualifier = { key: string; value: string; negated: boolean };
 

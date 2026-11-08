@@ -1,4 +1,4 @@
-import type { RepoSpec } from "../types";
+import type { RepoSpec } from "../types.ts";
 
 const handbookReadme = `# Lumen Labs Handbook
 
