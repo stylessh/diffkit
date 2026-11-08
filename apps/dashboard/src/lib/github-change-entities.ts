@@ -14,6 +14,9 @@
  *   settings:owner/repo       webhooks, Actions secrets and variables; no
  *                             webhook reports these, so only this app's own
  *                             mutations raise it
+ *   org:login                 organization settings, members and teams; the
+ *                             feed is keyed by repository, so only this app's
+ *                             own mutations raise it
  *
  * Repo names are stored lowercased; GitHub logins and repo names are
  * case-insensitive.
@@ -21,7 +24,7 @@
  * Shared by the webhook handler (server) and the change-feed client.
  */
 
-export type GitHubChangeEntity =
+export type GitHubRepoEntity =
 	| { kind: "pull"; repo: string; number: number }
 	| { kind: "issue"; repo: string; number: number }
 	| { kind: "repo"; repo: string }
@@ -32,6 +35,10 @@ export type GitHubChangeEntity =
 	| { kind: "collaborators"; repo: string }
 	| { kind: "discussions"; repo: string }
 	| { kind: "settings"; repo: string };
+
+export type GitHubOrgEntity = { kind: "org"; org: string };
+
+export type GitHubChangeEntity = GitHubRepoEntity | GitHubOrgEntity;
 
 export type GitHubChangeEntityKind = GitHubChangeEntity["kind"];
 
@@ -48,6 +55,8 @@ export function formatEntityKey(entity: GitHubChangeEntity): string {
 			return `run:${entity.repo}#${entity.runId}`;
 		case "checks":
 			return `checks:${entity.repo}@${entity.sha}`;
+		case "org":
+			return `org:${entity.org}`;
 		default:
 			return `${entity.kind}:${entity.repo}`;
 	}
@@ -60,7 +69,11 @@ const REPO_ONLY = new RegExp(
 	`^(repo|release|labels|collaborators|discussions|settings):${REPO_PATTERN}$`,
 );
 
+const ORG_ONLY = /^org:([^/\s#@]+)$/;
+
 export function parseEntityKey(key: string): GitHubChangeEntity | null {
+	const org = ORG_ONLY.exec(key);
+	if (org) return { kind: "org", org: org[1].toLowerCase() };
 	const numbered = NUMBERED.exec(key);
 	if (numbered) {
 		const [, kind, repo, raw] = numbered;
@@ -156,7 +169,7 @@ function pullNumbersFrom(list: unknown): number[] {
 export function getWebhookChangeEntities(
 	event: string,
 	payload: unknown,
-): GitHubChangeEntity[] {
+): GitHubRepoEntity[] {
 	const repository = getWebhookRepository(payload);
 	if (!repository || !isRecord(payload)) return [];
 	const repo = repository.fullName;
@@ -170,7 +183,7 @@ export function getWebhookChangeEntities(
 				? getNumber(payload.pull_request.number)
 				: null;
 			if (number === null) return [];
-			const entities: GitHubChangeEntity[] = [{ kind: "pull", repo, number }];
+			const entities: GitHubRepoEntity[] = [{ kind: "pull", repo, number }];
 			// New commits change the head; the code view follows the branch.
 			if (event === "pull_request" && payload.action === "synchronize") {
 				entities.push({ kind: "repo", repo });
@@ -257,7 +270,7 @@ export function getWebhookChangeEntities(
 
 function dedupe() {
 	const seen = new Set<string>();
-	return (entity: GitHubChangeEntity) => {
+	return (entity: GitHubRepoEntity) => {
 		const key = formatEntityKey(entity);
 		if (seen.has(key)) return false;
 		seen.add(key);

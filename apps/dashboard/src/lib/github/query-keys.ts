@@ -32,6 +32,8 @@ export type GitHubQueryScope = {
 
 export type RepoSettingsInput = { owner: string; repo: string };
 
+export type OrgSettingsInput = { org: string };
+
 export type PullsFromUserQueryInput = {
 	username?: string;
 	state?: RepoState;
@@ -453,5 +455,21 @@ export const githubQueryKeys = {
 				"actionsVariables",
 				input,
 			] as const,
+	},
+	orgSettings: {
+		general: (scope: GitHubQueryScope, input: OrgSettingsInput) =>
+			["github", scope.userId, "orgSettings", "general", input] as const,
+		role: (scope: GitHubQueryScope, input: OrgSettingsInput) =>
+			["github", scope.userId, "orgSettings", "role", input] as const,
+		members: (scope: GitHubQueryScope, input: OrgSettingsInput) =>
+			["github", scope.userId, "orgSettings", "members", input] as const,
+		teams: (scope: GitHubQueryScope, input: OrgSettingsInput) =>
+			["github", scope.userId, "orgSettings", "teams", input] as const,
+		teamMembers: (
+			scope: GitHubQueryScope,
+			input: OrgSettingsInput & { teamSlug: string },
+		) => ["github", scope.userId, "orgSettings", "teamMembers", input] as const,
+		viewerOrgs: (scope: GitHubQueryScope) =>
+			["github", scope.userId, "orgSettings", "viewerOrgs"] as const,
 	},
 };
