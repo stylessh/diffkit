@@ -8,11 +8,9 @@ import { cn } from "../lib/utils";
 
 type KeyboardShortcutKeysVariant = "elevated" | "flat";
 
-/** Plain text keys, aligned with the key boxes' inset so flat and elevated line up in menus. */
 const flatShortcutClassName =
 	"inline-flex items-center px-1 py-1 leading-none font-medium";
 
-/** Linear draws shortcuts as hairline boxes in the muted color. */
 const keyBoxClassName =
 	"inline-flex h-[17px] min-w-[17px] shrink-0 items-center justify-center rounded-[4px] px-1 font-sans text-[11px] leading-none font-medium text-muted-foreground shadow-key";
 
@@ -60,10 +58,21 @@ function KeyboardShortcutKeys({
 
 	if (shouldCombineShortcutKeys(keys)) {
 		return (
-			<kbd className={cn("flex items-center gap-1", className)}>
-				<span className={keyBoxClassName}>
-					{formatCombinedShortcutKeys(keys)}
-				</span>
+			<kbd
+				aria-label={formatCombinedShortcutKeys(keys)}
+				className={cn("flex items-center gap-1", className)}
+			>
+				{keys.map((key, index) => (
+					// biome-ignore lint/suspicious/noArrayIndexKey: a sequence can repeat a key
+					<span key={index} className="flex items-center gap-1">
+						{index > 0 ? (
+							<span className="font-sans text-[11px] font-[450] text-muted-foreground">
+								then
+							</span>
+						) : null}
+						<span className={keyBoxClassName}>{render(key)}</span>
+					</span>
+				))}
 			</kbd>
 		);
 	}

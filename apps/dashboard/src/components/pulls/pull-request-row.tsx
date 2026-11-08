@@ -4,6 +4,16 @@ import { cn } from "@diffkit/ui/lib/utils";
 import { useQuery } from "@tanstack/react-query";
 import { Link, useRouter } from "@tanstack/react-router";
 import { lazy, memo, Suspense, useState } from "react";
+import {
+	listRowClassName,
+	RepoChip,
+	RowAvatar,
+	RowLabels,
+	RowNumber,
+	RowStateIcon,
+	RowTime,
+	rowAccessibleName,
+} from "#/components/shared/list-row";
 import { formatRelativeTime } from "#/lib/format-relative-time";
 import {
 	type GitHubQueryScope,
@@ -22,9 +32,11 @@ const Markdown = lazy(() =>
 export const PullRequestRow = memo(function PullRequestRow({
 	pr,
 	scope,
+	showRepository = true,
 }: {
 	pr: PullSummary;
 	scope: GitHubQueryScope;
+	showRepository?: boolean;
 }) {
 	const { icon: Icon, color } = getPrStateConfig(pr);
 	const href = `/${pr.repository.owner}/${pr.repository.name}/pull/${pr.number}`;
@@ -43,74 +55,86 @@ export const PullRequestRow = memo(function PullRequestRow({
 		enabled: expanded,
 	});
 
+	const time = formatRelativeTime(pr.updatedAt, undefined, { compact: true });
+
 	return (
-		<div className="rounded-lg">
+		<div>
 			<Link
 				to={href}
 				preload={false}
 				onMouseEnter={preloadDetail}
 				onFocus={preloadDetail}
 				onTouchStart={preloadDetail}
+				aria-label={rowAccessibleName(pr)}
 				className={cn(
-					"group flex items-start gap-3 rounded-lg px-3 py-2.5 transition-colors hover:[&:not(:has([data-action]:hover))]:bg-surface-1",
-					expanded && "bg-surface-1",
+					listRowClassName,
+					"hover:[&:not(:has([data-action]:hover))]:before:bg-row-hover",
+					expanded && "before:bg-row-selected",
 				)}
 			>
-				<div className={cn("mt-[3px] shrink-0", color)}>
-					<Icon size={16} strokeWidth={2} />
-				</div>
-				<div className="min-w-0 flex-1 flex flex-col gap-1">
-					<p className="text-sm font-medium md:truncate">{pr.title}</p>
-					<p className="flex items-center gap-1 truncate text-xs text-muted-foreground">
-						{pr.repository.fullName} #{pr.number}
-						{pr.author && (
-							<>
-								<span>·</span>
-								<img
-									src={pr.author.avatarUrl}
-									alt={pr.author.login}
-									className="size-3.5 rounded-full border border-border"
-								/>
-								<span>{pr.author.login}</span>
-							</>
-						)}
-						<span>·</span>
-						<span>{formatRelativeTime(pr.updatedAt)}</span>
+				<RowStateIcon className={color}>
+					<Icon size={14} strokeWidth={2} />
+				</RowStateIcon>
+				<RowNumber number={pr.number} />
+				<div className="flex min-w-0 flex-1 flex-col gap-1 md:flex-row md:items-center md:gap-2">
+					<p
+						title={pr.title}
+						className="text-[13px] font-medium text-foreground md:truncate"
+					>
+						{pr.title}
+					</p>
+					{pr.comments > 0 && (
+						<span
+							className="hidden shrink-0 items-center gap-1 text-xs tabular-nums text-muted-foreground md:flex"
+							title={`${pr.comments} comments`}
+						>
+							<CommentIcon size={12} strokeWidth={2} />
+							{pr.comments}
+						</span>
+					)}
+					<p className="flex min-w-0 items-center gap-1 truncate text-xs text-muted-foreground md:hidden">
+						<span className="truncate">{pr.repository.fullName}</span>
+						<span className="tabular-nums">#{pr.number}</span>
+						<span aria-hidden>·</span>
+						<span className="tabular-nums">{time}</span>
 					</p>
 				</div>
-				<div className="mt-[3px] hidden shrink-0 items-center gap-4 md:flex">
+				<div className="hidden min-w-0 shrink items-center gap-1 md:flex">
 					<button
 						type="button"
 						data-action
+						aria-expanded={expanded}
 						onClick={(e) => {
 							e.preventDefault();
 							setExpanded((v) => !v);
 						}}
-						className="flex items-center gap-1 rounded-md border bg-surface-1 px-2 py-0.5 text-xs font-medium text-muted-foreground opacity-0 transition-opacity hover:bg-surface-2 hover:text-foreground group-hover:opacity-100"
+						className="mr-1 flex h-6 shrink-0 items-center gap-1 rounded-full bg-button px-2 text-xs font-medium text-text-header opacity-0 shadow-button transition-[opacity,background-color] hover:bg-button-hover hover:text-foreground group-hover/row:opacity-100 focus-visible:opacity-100 aria-expanded:opacity-100"
 					>
 						{expanded && commentsQuery.isPending ? (
-							<Spinner size={13} />
+							<Spinner size={12} />
 						) : (
-							<ViewIcon size={13} strokeWidth={2} />
+							<ViewIcon size={12} strokeWidth={2} />
 						)}
 						Preview
 					</button>
-					{pr.comments > 0 && (
-						<span className="flex items-center gap-1 text-xs tabular-nums text-muted-foreground">
-							<CommentIcon size={13} strokeWidth={2} />
-							{pr.comments}
-						</span>
-					)}
+					<RowLabels labels={pr.labels} />
+					{showRepository ? (
+						<RepoChip fullName={pr.repository.fullName} />
+					) : null}
 				</div>
+				<span className="hidden shrink-0 items-center gap-2 md:flex">
+					<RowAvatar actor={pr.author} />
+					<RowTime>{time}</RowTime>
+				</span>
 			</Link>
 
 			{expanded && commentsQuery.data && (
-				<div className="relative ml-[31px] pb-2 pl-4 pr-3 pt-4 before:absolute before:left-0 before:top-0 before:h-full before:w-px before:bg-[linear-gradient(to_bottom,var(--color-border)_80%,transparent)]">
+				<div className="relative ml-[19px] pt-3 pr-3 pb-2 pl-[18px] md:ml-[42px] before:absolute before:top-0 before:left-0 before:h-full before:w-px before:bg-[linear-gradient(to_bottom,var(--color-border)_80%,transparent)]">
 					{commentsQuery.data.length === 0 && (
 						<p className="text-xs text-muted-foreground">No comments yet.</p>
 					)}
 					{commentsQuery.data.length > 0 && (
-						<div className="flex flex-col gap-8">
+						<div className="flex flex-col gap-6">
 							{commentsQuery.data.map((comment, i) => (
 								<div
 									key={comment.id}
@@ -124,7 +148,7 @@ export const PullRequestRow = memo(function PullRequestRow({
 											<img
 												src={comment.author.avatarUrl}
 												alt={comment.author.login}
-												className="size-4 rounded-full border border-border"
+												className="size-4 rounded-full ring-[0.5px] ring-chip-border"
 											/>
 										)}
 										<span className="text-xs font-medium">

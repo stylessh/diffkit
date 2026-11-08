@@ -1,5 +1,6 @@
 import { DownloadIcon, FileIcon, PackageIcon } from "@diffkit/icons";
 import { cn } from "@diffkit/ui/lib/utils";
+import { cardRowClassName } from "#/components/repo/repo-ui";
 import { encodeRefPath } from "#/lib/commits-route";
 import type { RepoRelease } from "#/lib/github.types";
 import { formatBytes } from "./release-save-utils";
@@ -74,13 +75,13 @@ export function ReleaseAssets({
 	if (rows.length === 0) return null;
 
 	const list = (
-		<ul className="divide-y divide-border/60">
+		<ul>
 			{rows.map((row) => (
 				<li key={row.id}>
 					<a
 						href={row.href}
 						rel="noopener noreferrer"
-						className="flex items-center gap-3 px-3 py-2 text-sm transition-colors hover:bg-surface-1"
+						className={cardRowClassName}
 					>
 						{row.isSource ? (
 							<FileIcon size={14} className="shrink-0 text-muted-foreground" />
@@ -92,9 +93,9 @@ export function ReleaseAssets({
 						)}
 						<span
 							className={cn(
-								"min-w-0 flex-1 truncate",
+								"min-w-0 flex-1 truncate text-[13px]",
 								row.isSource
-									? "text-muted-foreground"
+									? "font-[450] text-muted-foreground"
 									: "font-medium text-foreground",
 							)}
 						>
@@ -122,9 +123,9 @@ export function ReleaseAssets({
 	);
 
 	const header = (
-		<span className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+		<span className="flex items-center gap-2 text-[13px] font-medium text-text-header">
 			Assets
-			<span className="rounded-full bg-surface-2 px-1.5 font-normal tabular-nums tracking-normal">
+			<span className="font-[450] tabular-nums text-muted-foreground">
 				{rows.length}
 			</span>
 		</span>
@@ -133,9 +134,12 @@ export function ReleaseAssets({
 	if (collapsible) {
 		return (
 			<details
-				className={cn("group overflow-hidden rounded-lg border", className)}
+				className={cn(
+					"group overflow-hidden rounded-lg bg-surface-0 shadow-card",
+					className,
+				)}
 			>
-				<summary className="flex cursor-pointer list-none items-center justify-between px-3 py-2 transition-colors hover:bg-surface-1 [&::-webkit-details-marker]:hidden">
+				<summary className="flex h-9 cursor-pointer list-none items-center justify-between px-4 transition-colors hover:bg-item-hover [&::-webkit-details-marker]:hidden">
 					{header}
 					<span className="text-xs text-muted-foreground group-open:hidden">
 						Show
@@ -144,14 +148,21 @@ export function ReleaseAssets({
 						Hide
 					</span>
 				</summary>
-				<div className="border-t">{list}</div>
+				<div className="border-t-[0.5px] border-card-border">{list}</div>
 			</details>
 		);
 	}
 
 	return (
-		<section className={cn("overflow-hidden rounded-lg border", className)}>
-			<div className="border-b px-3 py-2">{header}</div>
+		<section
+			className={cn(
+				"overflow-hidden rounded-lg bg-surface-0 shadow-card",
+				className,
+			)}
+		>
+			<div className="flex h-9 items-center border-b-[0.5px] border-card-border px-4">
+				{header}
+			</div>
 			{list}
 		</section>
 	);

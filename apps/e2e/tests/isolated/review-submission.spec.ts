@@ -11,9 +11,10 @@ test("approving from the review page records the review and unblocks the pull re
 
 	const dialog = page.getByRole("dialog");
 	await dialog
-		.getByRole("textbox", { name: "Leave a comment" })
+		.getByRole("textbox", { name: "Review summary" })
 		.fill("Headers look right, shipping it.");
-	await dialog.getByRole("radio", { name: /^Approve/ }).check();
+	await dialog.getByText("Approve", { exact: true }).click();
+	await expect(dialog.getByRole("radio", { name: /^Approve/ })).toBeChecked();
 	await dialog.getByRole("button", { name: "Submit review" }).click();
 
 	await expect(page).toHaveURL(/\/lumen-labs\/beacon\/pull\/15$/);

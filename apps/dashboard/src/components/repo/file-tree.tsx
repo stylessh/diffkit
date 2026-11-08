@@ -10,6 +10,7 @@ import {
 	githubTreeEntryCommitsQueryOptions,
 } from "#/lib/github.query";
 import type { FileLastCommit, RepoTreeEntry } from "#/lib/github.types";
+import { cardRowClassName } from "./repo-ui";
 
 export function FileTree({
 	entries,
@@ -37,8 +38,8 @@ export function FileTree({
 	);
 
 	return (
-		<div className="overflow-hidden rounded-b-lg border">
-			{entries.map((entry, index) => (
+		<div>
+			{entries.map((entry) => (
 				<FileTreeRow
 					key={entry.sha}
 					entry={entry}
@@ -47,7 +48,6 @@ export function FileTree({
 					currentRef={currentRef}
 					commit={commitsQuery.data?.[entry.name] ?? null}
 					isCommitLoading={commitsQuery.isLoading}
-					isLast={index === entries.length - 1}
 				/>
 			))}
 		</div>
@@ -61,7 +61,6 @@ function FileTreeRow({
 	currentRef,
 	commit,
 	isCommitLoading,
-	isLast,
 }: {
 	entry: RepoTreeEntry;
 	owner: string;
@@ -69,7 +68,6 @@ function FileTreeRow({
 	currentRef: string;
 	commit: FileLastCommit | null;
 	isCommitLoading: boolean;
-	isLast: boolean;
 }) {
 	const Icon = entry.type === "dir" ? FolderIcon : FileIcon;
 	const isDir = entry.type === "dir";
@@ -82,41 +80,36 @@ function FileTreeRow({
 				repo,
 				_splat: `${currentRef}/${entry.name}`,
 			}}
-			className={cn(
-				"grid grid-cols-[200px_minmax(0,1fr)_80px] items-center gap-4 px-4 py-2 text-sm hover:bg-surface-1",
-				!isLast && "border-b",
-			)}
+			className={cardRowClassName}
 		>
-			<div className="flex min-w-0 items-center gap-2.5">
-				<Icon
-					size={15}
-					strokeWidth={1.8}
-					className={cn(
-						"shrink-0",
-						isDir ? "text-accent-foreground" : "text-muted-foreground",
-					)}
-				/>
-				<span
-					className={cn(
-						"truncate",
-						isDir ? "font-medium text-accent-foreground" : "text-foreground",
-					)}
-				>
-					{entry.name}
-				</span>
-			</div>
-			<span className="truncate text-muted-foreground">
+			<Icon
+				size={16}
+				strokeWidth={1.8}
+				className={cn(
+					"shrink-0",
+					isDir ? "text-text-header" : "text-muted-foreground",
+				)}
+			/>
+			<span
+				className={cn(
+					"w-28 shrink-0 truncate text-[13px] sm:w-40",
+					isDir ? "font-medium text-foreground" : "font-[450] text-text-header",
+				)}
+			>
+				{entry.name}
+			</span>
+			<span className="min-w-0 flex-1 truncate text-[13px] font-[450] text-muted-foreground">
 				{commit ? (
 					commit.message.split("\n")[0]
 				) : isCommitLoading ? (
-					<Skeleton className="h-3.5 w-48 rounded" />
+					<Skeleton className="h-3.5 w-48 max-w-full rounded" />
 				) : null}
 			</span>
-			<span className="text-right text-xs text-muted-foreground">
+			<span className="w-10 shrink-0 text-right text-xs font-[450] tabular-nums text-muted-foreground">
 				{commit?.date ? (
-					formatRelativeTime(commit.date)
+					formatRelativeTime(commit.date, undefined, { compact: true })
 				) : isCommitLoading ? (
-					<Skeleton className="ml-auto h-3.5 w-12 rounded" />
+					<Skeleton className="ml-auto h-3.5 w-8 rounded" />
 				) : null}
 			</span>
 		</Link>

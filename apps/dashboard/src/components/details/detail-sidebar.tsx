@@ -12,11 +12,7 @@ type DetailRowIcon = React.ComponentType<{
 }>;
 
 export function DetailSidebar({ children }: { children: React.ReactNode }) {
-	return (
-		<aside className="flex h-fit flex-col gap-6 xl:sticky xl:top-10">
-			{children}
-		</aside>
-	);
+	return <div className="flex flex-col">{children}</div>;
 }
 
 export function DetailSidebarSection({
@@ -29,19 +25,19 @@ export function DetailSidebarSection({
 	children: React.ReactNode;
 }) {
 	return (
-		<div className="flex flex-col gap-2.5">
-			<div className="flex items-baseline justify-between gap-2">
-				<h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+		<section className="mb-7 flex flex-col gap-1.5">
+			<div className="flex h-6 items-center justify-between gap-2">
+				<h3 className="text-[13px] font-[450] text-muted-foreground">
 					{title}
 				</h3>
 				{titleRight != null ? (
-					<span className="shrink-0 text-xs font-normal tabular-nums tracking-normal text-muted-foreground">
+					<span className="flex shrink-0 items-center text-xs font-normal tabular-nums tracking-normal text-muted-foreground">
 						{titleRight}
 					</span>
 				) : null}
 			</div>
 			{children}
-		</div>
+		</section>
 	);
 }
 
@@ -55,12 +51,16 @@ export function DetailSidebarRow({
 	children: React.ReactNode;
 }) {
 	return (
-		<div className="flex items-center justify-between gap-4">
-			<span className="flex items-center gap-1.5 text-muted-foreground">
-				{Icon ? <Icon size={13} strokeWidth={2} /> : null}
-				{label}
+		<div className="flex min-h-7 items-center gap-2 text-[13px] font-medium">
+			{Icon ? (
+				<span className="flex size-3.5 shrink-0 items-center justify-center text-muted-foreground">
+					<Icon size={14} strokeWidth={2} />
+				</span>
+			) : null}
+			<span className="font-[450] text-muted-foreground">{label}</span>
+			<span className="min-w-0 truncate tabular-nums text-text-header">
+				{children}
 			</span>
-			<span className="text-foreground">{children}</span>
 		</div>
 	);
 }
@@ -82,12 +82,12 @@ export function DetailParticipantAvatars({
 							to="/$owner"
 							params={{ owner: actor.login }}
 							style={index > 0 ? { marginLeft: -6 } : undefined}
-							className="relative block transition-[margin] duration-200 group-hover/participants:ml-0"
+							className="relative block transition-[margin] duration-150 group-hover/participants:ml-0"
 						>
 							<img
 								src={actor.avatarUrl}
 								alt={actor.login}
-								className="size-6 rounded-full border-2 border-card"
+								className="size-6 rounded-full ring-2 ring-main"
 							/>
 						</Link>
 					</TooltipTrigger>

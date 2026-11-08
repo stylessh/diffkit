@@ -22,7 +22,7 @@ import { TagIcon } from "#/components/repo/refs/tag-icon";
 import { validateReleaseTag } from "./release-save-utils";
 
 const triggerClass =
-	"flex h-9 w-full items-center justify-between gap-2 rounded-md border bg-surface-1 px-3 text-left text-sm outline-none transition-[box-shadow,border-color] focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:cursor-not-allowed disabled:opacity-50 aria-invalid:border-destructive";
+	"flex h-9 w-full items-center justify-between gap-2 rounded-md border-[0.5px] bg-surface-1 px-3 text-left text-sm outline-none transition-[box-shadow,border-color] focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:cursor-not-allowed disabled:opacity-50 aria-invalid:border-destructive";
 
 /**
  * Tag combobox over the first 100 tags. With `allowCreate`, a typed name that

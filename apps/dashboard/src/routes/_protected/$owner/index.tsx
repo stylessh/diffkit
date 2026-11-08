@@ -340,7 +340,7 @@ function ProfilePage() {
 										</p>
 									) : (
 										<>
-											<div className="divide-y divide-border overflow-hidden rounded-xl border border-border bg-surface-1">
+											<div className="divide-y-[0.5px] divide-border overflow-hidden rounded-xl border-[0.5px] border-border bg-surface-1">
 												{paginatedProfileRepos.map((repo) => (
 													<div
 														key={repo.id}

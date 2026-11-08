@@ -49,30 +49,32 @@ export function CompareSidebar({
 }) {
 	return (
 		<DetailSidebar>
-			<ReviewersPicker
-				owner={owner}
-				repo={repo}
-				scope={scope}
-				viewerLogin={viewerLogin}
-				selectedReviewers={selectedReviewers}
-				onToggleReviewer={onToggleReviewer}
-				selectedTeamReviewers={selectedTeamReviewers}
-				onToggleTeamReviewer={onToggleTeamReviewer}
-			/>
-			<AssigneesPicker
-				owner={owner}
-				repo={repo}
-				scope={scope}
-				selectedAssignees={selectedAssignees}
-				onToggleAssignee={onToggleAssignee}
-			/>
-			<LabelsPicker
-				owner={owner}
-				repo={repo}
-				scope={scope}
-				selectedLabels={selectedLabels}
-				onToggleLabel={onToggleLabel}
-			/>
+			<div className="flex flex-col gap-7">
+				<ReviewersPicker
+					owner={owner}
+					repo={repo}
+					scope={scope}
+					viewerLogin={viewerLogin}
+					selectedReviewers={selectedReviewers}
+					onToggleReviewer={onToggleReviewer}
+					selectedTeamReviewers={selectedTeamReviewers}
+					onToggleTeamReviewer={onToggleTeamReviewer}
+				/>
+				<AssigneesPicker
+					owner={owner}
+					repo={repo}
+					scope={scope}
+					selectedAssignees={selectedAssignees}
+					onToggleAssignee={onToggleAssignee}
+				/>
+				<LabelsPicker
+					owner={owner}
+					repo={repo}
+					scope={scope}
+					selectedLabels={selectedLabels}
+					onToggleLabel={onToggleLabel}
+				/>
+			</div>
 		</DetailSidebar>
 	);
 }
@@ -85,10 +87,8 @@ function SidebarSectionHeader({
 	children: React.ReactNode;
 }) {
 	return (
-		<div className="flex items-center justify-between">
-			<h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-				{title}
-			</h3>
+		<div className="flex h-6 items-center justify-between">
+			<h3 className="text-[13px] font-[450] text-muted-foreground">{title}</h3>
 			{children}
 		</div>
 	);
@@ -118,7 +118,7 @@ const PickerTrigger = forwardRef<
 				onFocus?.(e);
 			}}
 			className={cn(
-				"flex size-5 items-center justify-center rounded text-muted-foreground transition-colors hover:bg-surface-2 hover:text-foreground",
+				"flex size-6 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-ghost-hover hover:text-foreground",
 				className,
 			)}
 			{...props}
@@ -140,14 +140,14 @@ function PickerSearchInput({
 	placeholder: string;
 }) {
 	return (
-		<div className="flex items-center gap-2 border-b px-3 py-2">
+		<div className="flex h-9 items-center gap-2 border-b-[0.5px] border-popover-border px-3">
 			<SearchIcon className="size-3.5 shrink-0 text-muted-foreground" />
 			<input
 				value={value}
 				onChange={(e) => onChange(e.target.value)}
 				onKeyDown={onKeyDown}
 				placeholder={placeholder}
-				className="w-full bg-transparent text-sm outline-none placeholder:text-muted-foreground"
+				className="w-full bg-transparent text-[13px] outline-none placeholder:text-muted-foreground focus-visible:outline-none"
 			/>
 		</div>
 	);
@@ -165,7 +165,7 @@ function EmptyPickerState({
 	emptySearchLabel: string;
 }) {
 	return (
-		<p className="px-3 py-4 text-center text-xs text-muted-foreground">
+		<p className="px-3 py-4 text-center text-xs font-[450] text-muted-foreground">
 			{isLoading ? "Loading…" : hasSearch ? emptySearchLabel : emptyLabel}
 		</p>
 	);
@@ -230,7 +230,7 @@ function LabelsPicker({
 	};
 
 	return (
-		<div className="flex flex-col gap-2.5">
+		<div className="flex flex-col gap-1.5">
 			<SidebarSectionHeader title="Labels">
 				<Popover
 					open={pickerOpen}
@@ -274,8 +274,8 @@ function LabelsPicker({
 											onClick={() => onToggleLabel(label)}
 											onMouseEnter={() => setFocusedIndex(i)}
 											className={cn(
-												"flex w-full items-center gap-2 px-3 py-1.5 text-left text-sm transition-colors hover:bg-surface-1",
-												focusedIndex === i && "bg-surface-1",
+												"mx-1 flex h-8 w-[calc(100%-0.5rem)] items-center gap-2 rounded-md px-2 text-left text-[13px] transition-colors hover:bg-menu-hover",
+												focusedIndex === i && "bg-menu-hover",
 											)}
 										>
 											<span
@@ -289,7 +289,7 @@ function LabelsPicker({
 												<CheckIcon
 													size={14}
 													strokeWidth={2}
-													className="shrink-0 text-green-500"
+													className="shrink-0 text-foreground"
 												/>
 											)}
 										</button>
@@ -324,7 +324,9 @@ function LabelsPicker({
 					))}
 				</div>
 			) : (
-				<p className="text-xs text-muted-foreground">No labels</p>
+				<p className="text-[13px] font-[450] text-muted-foreground">
+					No labels
+				</p>
 			)}
 		</div>
 	);
@@ -400,7 +402,7 @@ function AssigneesPicker({
 	};
 
 	return (
-		<div className="flex flex-col gap-2.5">
+		<div className="flex flex-col gap-1.5">
 			<SidebarSectionHeader title="Assignees">
 				<Popover
 					open={pickerOpen}
@@ -444,21 +446,21 @@ function AssigneesPicker({
 											onClick={() => onToggleAssignee(c)}
 											onMouseEnter={() => setFocusedIndex(i)}
 											className={cn(
-												"flex w-full items-center gap-2 px-3 py-1.5 text-left text-sm transition-colors hover:bg-surface-1",
-												focusedIndex === i && "bg-surface-1",
+												"mx-1 flex h-8 w-[calc(100%-0.5rem)] items-center gap-2 rounded-md px-2 text-left text-[13px] transition-colors hover:bg-menu-hover",
+												focusedIndex === i && "bg-menu-hover",
 											)}
 										>
 											<img
 												src={c.avatarUrl}
 												alt={c.login}
-												className="size-5 rounded-full border border-border"
+												className="size-5 rounded-full ring-[0.5px] ring-chip-border"
 											/>
 											<span className="min-w-0 flex-1 truncate">{c.login}</span>
 											{isSelected && (
 												<CheckIcon
 													size={14}
 													strokeWidth={2}
-													className="shrink-0 text-green-500"
+													className="shrink-0 text-foreground"
 												/>
 											)}
 										</button>
@@ -479,13 +481,15 @@ function AssigneesPicker({
 							<img
 								src={a.avatarUrl}
 								alt={a.login}
-								className="size-5 rounded-full border border-border"
+								className="size-5 rounded-full ring-[0.5px] ring-chip-border"
 							/>
-							<span className="min-w-0 flex-1 truncate text-sm">{a.login}</span>
+							<span className="min-w-0 flex-1 truncate text-[13px] font-medium text-text-header">
+								{a.login}
+							</span>
 							<button
 								type="button"
 								onClick={() => onToggleAssignee(a)}
-								className="flex size-4 shrink-0 items-center justify-center rounded opacity-0 transition-opacity hover:text-red-400 group-hover/assignee:opacity-100"
+								className="flex size-4 shrink-0 items-center justify-center rounded opacity-0 transition-opacity hover:text-danger group-hover/assignee:opacity-100"
 							>
 								<CloseIcon size={12} strokeWidth={2} />
 							</button>
@@ -493,7 +497,9 @@ function AssigneesPicker({
 					))}
 				</div>
 			) : (
-				<p className="text-xs text-muted-foreground">No one assigned</p>
+				<p className="text-[13px] font-[450] text-muted-foreground">
+					No one assigned
+				</p>
 			)}
 		</div>
 	);
@@ -616,7 +622,7 @@ function ReviewersPicker({
 		selectedReviewers.length > 0 || selectedTeamReviewers.length > 0;
 
 	return (
-		<div className="flex flex-col gap-2.5">
+		<div className="flex flex-col gap-1.5">
 			<SidebarSectionHeader title="Reviewers">
 				<Popover
 					open={pickerOpen}
@@ -672,15 +678,15 @@ function ReviewersPicker({
 											}}
 											onMouseEnter={() => setFocusedIndex(i)}
 											className={cn(
-												"flex w-full items-center gap-2 px-3 py-1.5 text-left text-sm transition-colors hover:bg-surface-1",
-												focusedIndex === i && "bg-surface-1",
+												"mx-1 flex h-8 w-[calc(100%-0.5rem)] items-center gap-2 rounded-md px-2 text-left text-[13px] transition-colors hover:bg-menu-hover",
+												focusedIndex === i && "bg-menu-hover",
 											)}
 										>
 											{item.kind === "user" ? (
 												<img
 													src={item.data.avatarUrl}
 													alt={item.data.login}
-													className="size-5 rounded-full border border-border"
+													className="size-5 rounded-full ring-[0.5px] ring-chip-border"
 												/>
 											) : (
 												<div className="flex size-5 items-center justify-center rounded-full bg-surface-2 text-[10px] font-medium">
@@ -696,7 +702,7 @@ function ReviewersPicker({
 												<CheckIcon
 													size={14}
 													strokeWidth={2}
-													className="shrink-0 text-green-500"
+													className="shrink-0 text-foreground"
 												/>
 											)}
 										</button>
@@ -717,13 +723,13 @@ function ReviewersPicker({
 							<div className="flex size-5 items-center justify-center rounded-full bg-surface-2 text-[10px] font-medium">
 								T
 							</div>
-							<span className="min-w-0 flex-1 truncate text-sm">
+							<span className="min-w-0 flex-1 truncate text-[13px] font-medium text-text-header">
 								{owner}/{t.slug}
 							</span>
 							<button
 								type="button"
 								onClick={() => onToggleTeamReviewer(t)}
-								className="flex size-4 shrink-0 items-center justify-center rounded opacity-0 transition-opacity hover:text-red-400 group-hover/reviewer:opacity-100"
+								className="flex size-4 shrink-0 items-center justify-center rounded opacity-0 transition-opacity hover:text-danger group-hover/reviewer:opacity-100"
 							>
 								<CloseIcon size={12} strokeWidth={2} />
 							</button>
@@ -737,13 +743,15 @@ function ReviewersPicker({
 							<img
 								src={r.avatarUrl}
 								alt={r.login}
-								className="size-5 rounded-full border border-border"
+								className="size-5 rounded-full ring-[0.5px] ring-chip-border"
 							/>
-							<span className="min-w-0 flex-1 truncate text-sm">{r.login}</span>
+							<span className="min-w-0 flex-1 truncate text-[13px] font-medium text-text-header">
+								{r.login}
+							</span>
 							<button
 								type="button"
 								onClick={() => onToggleReviewer(r)}
-								className="flex size-4 shrink-0 items-center justify-center rounded opacity-0 transition-opacity hover:text-red-400 group-hover/reviewer:opacity-100"
+								className="flex size-4 shrink-0 items-center justify-center rounded opacity-0 transition-opacity hover:text-danger group-hover/reviewer:opacity-100"
 							>
 								<CloseIcon size={12} strokeWidth={2} />
 							</button>
@@ -751,7 +759,9 @@ function ReviewersPicker({
 					))}
 				</div>
 			) : (
-				<p className="text-xs text-muted-foreground">No reviewers</p>
+				<p className="text-[13px] font-[450] text-muted-foreground">
+					No reviewers
+				</p>
 			)}
 		</div>
 	);

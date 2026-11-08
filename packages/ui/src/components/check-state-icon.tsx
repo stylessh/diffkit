@@ -56,34 +56,22 @@ function PendingSpinner() {
 export function CheckStateIcon({ state }: { state: CheckState }) {
 	if (state === "success") {
 		return (
-			<span
-				aria-hidden
-				className={cn(
-					STATUS_BADGE_CLASS,
-					"bg-[var(--button-success)] dark:bg-green-600",
-				)}
-			>
+			<span aria-hidden className={cn(STATUS_BADGE_CLASS, "bg-check-passed")}>
 				<CheckIcon {...STATUS_GLYPH} />
 			</span>
 		);
 	}
 	if (state === "failure") {
 		return (
-			<span
-				aria-hidden
-				className={cn(STATUS_BADGE_CLASS, "bg-destructive dark:bg-red-600")}
-			>
+			<span aria-hidden className={cn(STATUS_BADGE_CLASS, "bg-check-failed")}>
 				<XIcon {...STATUS_COMPACT_GLYPH} />
 			</span>
 		);
 	}
 	if (state === "cancelled") {
 		return (
-			<span
-				aria-hidden
-				className={cn(STATUS_BADGE_CLASS, "bg-muted-foreground")}
-			>
-				<MinusSignIcon className="text-black" size={10} strokeWidth={3} />
+			<span aria-hidden className={cn(STATUS_BADGE_CLASS, "bg-check-skipped")}>
+				<MinusSignIcon className="text-main" size={10} strokeWidth={3} />
 			</span>
 		);
 	}
@@ -93,7 +81,7 @@ export function CheckStateIcon({ state }: { state: CheckState }) {
 				aria-hidden
 				className={cn(
 					STATUS_BADGE_CLASS,
-					"border-[1.5px] border-muted-foreground bg-transparent",
+					"border-[1.5px] border-check-skipped bg-transparent",
 				)}
 			/>
 		);
@@ -112,7 +100,7 @@ export function CheckStateIcon({ state }: { state: CheckState }) {
 		return (
 			<span
 				aria-hidden
-				className="flex size-3.5 shrink-0 items-center justify-center text-yellow-500"
+				className="flex size-3.5 shrink-0 items-center justify-center text-check-running"
 			>
 				<span className="size-1.5 rounded-full bg-current" />
 			</span>
@@ -121,7 +109,7 @@ export function CheckStateIcon({ state }: { state: CheckState }) {
 	return (
 		<span
 			aria-hidden
-			className="flex size-3.5 shrink-0 items-center justify-center text-yellow-500"
+			className="flex size-3.5 shrink-0 items-center justify-center text-check-running"
 		>
 			<PendingSpinner />
 		</span>

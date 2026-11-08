@@ -290,9 +290,7 @@ export function GroupedIssueStateToggleDescription({
 		if (ev.event === "reopened") {
 			segments.push(
 				<Fragment key={`r-${ev.id}-${idx}`}>
-					<span className="font-medium text-green-600 dark:text-green-400">
-						reopened
-					</span>
+					<span className="font-medium text-success">reopened</span>
 					{isFirst ? ` ${noun}` : " it"}
 				</Fragment>,
 			);
@@ -303,12 +301,10 @@ export function GroupedIssueStateToggleDescription({
 					<span
 						className={cn(
 							"font-medium",
-							kind === "completed" && "text-violet-500",
+							kind === "completed" && "text-merged",
 							kind === "not_planned" && "text-muted-foreground",
 							kind === "other" &&
-								(subject === "pull"
-									? "text-rose-600 dark:text-rose-400"
-									: "text-violet-500"),
+								(subject === "pull" ? "text-danger" : "text-merged"),
 						)}
 					>
 						closed
@@ -317,7 +313,7 @@ export function GroupedIssueStateToggleDescription({
 					{kind === "completed" && (
 						<>
 							{" as "}
-							<span className="font-medium text-violet-500">completed</span>
+							<span className="font-medium text-merged">completed</span>
 						</>
 					)}
 					{kind === "not_planned" && (

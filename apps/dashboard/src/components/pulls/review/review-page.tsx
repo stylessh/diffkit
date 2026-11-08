@@ -1,17 +1,27 @@
-import { FileIcon, GitPullRequestIcon, PanelLeftIcon } from "@diffkit/icons";
+import { PanelLeftIcon } from "@diffkit/icons";
 import {
 	Drawer,
 	DrawerContent,
 	DrawerTitle,
 } from "@diffkit/ui/components/drawer";
 import type { MentionConfig } from "@diffkit/ui/components/markdown-editor";
+import { PageIconButton } from "@diffkit/ui/components/page-header";
 import {
 	ResizableHandle,
 	ResizablePanel,
 	ResizablePanelGroup,
 } from "@diffkit/ui/components/resizable";
 import { toast } from "@diffkit/ui/components/sonner";
-import { cn } from "@diffkit/ui/lib/utils";
+import {
+	Tooltip,
+	TooltipContent,
+	TooltipTrigger,
+} from "@diffkit/ui/components/tooltip";
+import {
+	ViewTab,
+	ViewTabCount,
+	ViewTabs,
+} from "@diffkit/ui/components/view-tabs";
 import type { SelectedLineRange } from "@pierre/diffs";
 import type { DiffLineAnnotation } from "@pierre/diffs/react";
 import {
@@ -23,6 +33,7 @@ import { getRouteApi, Link, useNavigate } from "@tanstack/react-router";
 import {
 	lazy,
 	memo,
+	type ReactNode,
 	Suspense,
 	useCallback,
 	useEffect,
@@ -31,6 +42,7 @@ import {
 	useState,
 	useSyncExternalStore,
 } from "react";
+import { DetailPageHeader } from "#/components/details/detail-page";
 import { getPrStateConfig } from "#/components/pulls/detail/pull-detail-header";
 import { PullStackBadge } from "#/components/pulls/stack/pull-stack-badge";
 import { FileSearchCard } from "#/components/shared/file-search-card";
@@ -47,7 +59,7 @@ import {
 } from "#/lib/github.query";
 import type {
 	GitHubActor,
-	PullDetail,
+	PullCommit,
 	PullFileSummary,
 	PullReviewComment,
 } from "#/lib/github.types";
@@ -60,10 +72,17 @@ import { useRegisterTab } from "#/lib/use-register-tab";
 import { checkPermissionWarning } from "#/lib/warning-store";
 import type { ReviewDiffPaneHandle } from "./review-diff-pane";
 import {
+	DiffCommitList,
+	type DiffStyle,
+	DiffToolbar,
+	type DiffView,
+} from "./review-diff-toolbar";
+import {
 	type ActiveFileStore,
 	createActiveFileStore,
 	ReviewVirtualizedFileTree,
 } from "./review-file-tree";
+import { SplitDiffGlyph, UnifiedDiffGlyph } from "./review-icons";
 import { ReviewSubmitPopover } from "./review-submit-popover";
 import type {
 	ActiveCommentForm,
@@ -71,6 +90,8 @@ import type {
 	ReviewEvent,
 } from "./review-types";
 import { buildFileTree, encodeFileId } from "./review-utils";
+
+const EMPTY_COMMITS: PullCommit[] = [];
 
 const routeApi = getRouteApi("/_protected/$owner/$repo/review/$pullId");
 const reviewDiffPaneImport = import("./review-diff-pane");
@@ -257,7 +278,9 @@ export function ReviewPage() {
 		mentionActivated,
 	]);
 
-	const [diffStyle, setDiffStyle] = useState<"unified" | "split">("split");
+	const [diffStyle, setDiffStyle] = useState<DiffStyle>("split");
+	const [diffView, setDiffView] = useState<DiffView>("files");
+	const [wrapLines, setWrapLines] = useState(false);
 	const [pendingComments, setPendingComments] = useState<PendingComment[]>([]);
 	const [activeCommentForm, setActiveCommentForm] =
 		useState<ActiveCommentForm | null>(null);
@@ -348,14 +371,8 @@ export function ReviewPage() {
 		return map;
 	}, [pendingComments]);
 
-	// Read totals off the PR node (one cheap GraphQL call) instead of summing
-	// streamed file summaries — otherwise the toolbar chip can't show real
-	// numbers until every summary page arrives (~seconds for a 3k-file PR).
-	const diffStats = {
-		totalAdditions: pr?.additions ?? 0,
-		totalDeletions: pr?.deletions ?? 0,
-	};
 	const prChangedFiles = pr?.changedFiles ?? 0;
+	const commits = pageQuery.data?.commits ?? EMPTY_COMMITS;
 
 	const addPendingComment = useCallback((comment: PendingComment) => {
 		setPendingComments((previous) => [...previous, comment]);
@@ -521,13 +538,34 @@ export function ReviewPage() {
 	const isStreamingSummaries =
 		fileSummariesQuery.isFetching || fileSummariesQuery.hasNextPage;
 
+	const toolbar = (
+		<DiffToolbar
+			view={diffView}
+			onViewChange={setDiffView}
+			fileCount={prChangedFiles}
+			commitCount={pr.commits}
+			commentCount={reviewComments.length}
+			diffStyle={diffStyle}
+			onDiffStyleChange={setDiffStyle}
+			wrapLines={wrapLines}
+			onWrapLinesChange={setWrapLines}
+		/>
+	);
+
 	const diffContent = hasDiffPayload ? (
-		<Suspense fallback={<ReviewDiffPanePlaceholder />}>
+		<Suspense fallback={<ReviewDiffPanePlaceholder toolbar={toolbar} />}>
 			<ReviewDiffPane
 				ref={diffPaneRef}
 				files={diffFiles}
 				totalFileCount={sidebarFileCount}
 				diffStyle={diffStyle}
+				wrapLines={wrapLines}
+				toolbar={toolbar}
+				alternateView={
+					diffView === "commits" ? (
+						<DiffCommitList commits={commits} owner={owner} repo={repo} />
+					) : undefined
+				}
 				annotationsByFile={annotationsByFile}
 				repliesByCommentId={repliesByCommentId}
 				owner={owner}
@@ -550,18 +588,29 @@ export function ReviewPage() {
 			/>
 		</Suspense>
 	) : (
-		<ReviewDiffPanePlaceholder />
+		<ReviewDiffPanePlaceholder toolbar={toolbar} />
 	);
 
+	const stateConfig = getPrStateConfig(pr);
+
 	return (
-		<div className="flex h-full flex-col">
-			<ReviewToolbar
+		<div className="flex h-full min-h-0 flex-col">
+			<DetailPageHeader
+				collectionHref="/pulls"
+				collectionLabel="Pull Requests"
+				owner={owner}
+				repo={repo}
+				number={pr.number}
+				icon={stateConfig.icon}
+				iconClassName={stateConfig.color}
+				title={pr.title}
+				actions={<PullStackBadge owner={owner} repo={repo} pr={pr} />}
+			/>
+			<ReviewTabs
 				owner={owner}
 				repo={repo}
 				pullId={pullId}
-				pr={pr}
-				sidebarFileCount={prChangedFiles}
-				diffStats={diffStats}
+				changedFiles={prChangedFiles}
 				diffStyle={diffStyle}
 				onSetDiffStyle={setDiffStyle}
 				pendingCount={pendingComments.length}
@@ -572,7 +621,7 @@ export function ReviewPage() {
 			/>
 
 			{isDesktop ? (
-				<ResizablePanelGroup direction="horizontal" className="flex-1">
+				<ResizablePanelGroup direction="horizontal" className="min-h-0 flex-1">
 					<ResizablePanel defaultSize={20} minSize={12} maxSize={40}>
 						<ReviewSidebar
 							sidebarFiles={sidebarFiles}
@@ -589,7 +638,7 @@ export function ReviewPage() {
 				</ResizablePanelGroup>
 			) : (
 				<>
-					<div className="flex-1 overflow-hidden">{diffContent}</div>
+					<div className="min-h-0 flex-1 overflow-hidden">{diffContent}</div>
 					<Drawer open={fileSheetOpen} onOpenChange={setFileSheetOpen}>
 						<DrawerContent className="max-h-[70dvh]">
 							<DrawerTitle className="sr-only">Files</DrawerTitle>
@@ -609,16 +658,13 @@ export function ReviewPage() {
 }
 
 // ---------------------------------------------------------------------------
-// ReviewToolbar — memoized, only re-renders when its own props change
 // ---------------------------------------------------------------------------
 
-const ReviewToolbar = memo(function ReviewToolbar({
+const ReviewTabs = memo(function ReviewTabs({
 	owner,
 	repo,
 	pullId,
-	pr,
-	sidebarFileCount,
-	diffStats,
+	changedFiles,
 	diffStyle,
 	onSetDiffStyle,
 	pendingCount,
@@ -630,111 +676,79 @@ const ReviewToolbar = memo(function ReviewToolbar({
 	owner: string;
 	repo: string;
 	pullId: string;
-	pr: PullDetail;
-	sidebarFileCount: number;
-	diffStats: { totalAdditions: number; totalDeletions: number };
-	diffStyle: "unified" | "split";
-	onSetDiffStyle: (style: "unified" | "split") => void;
+	changedFiles: number;
+	diffStyle: DiffStyle;
+	onSetDiffStyle: (style: DiffStyle) => void;
 	pendingCount: number;
 	isSubmitting: boolean;
 	onSubmitReview: (body: string, event: ReviewEvent) => Promise<boolean>;
 	onOpenFileSheet: () => void;
 	isDesktop: boolean;
 }) {
-	const stateConfig = getPrStateConfig(pr);
-	const StateIcon = stateConfig.icon;
+	const nextStyle = diffStyle === "split" ? "unified" : "split";
+	const diffStyleLabel =
+		nextStyle === "unified" ? "Show unified diff" : "Show split diff";
 
 	return (
-		<div className="flex shrink-0 items-center gap-2 border-b bg-surface-0 px-3 py-2 md:gap-3 md:px-4">
-			{!isDesktop && (
-				<button
-					type="button"
-					onClick={onOpenFileSheet}
-					className="flex size-8 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-surface-1 hover:text-foreground"
-					aria-label="Open file tree"
+		<ViewTabs
+			label="Pull request views"
+			actions={
+				<>
+					{!isDesktop ? (
+						<PageIconButton
+							raised
+							type="button"
+							onClick={onOpenFileSheet}
+							aria-label="Open file tree"
+						>
+							<PanelLeftIcon size={14} strokeWidth={2} />
+						</PageIconButton>
+					) : (
+						<Tooltip>
+							<TooltipTrigger asChild>
+								<PageIconButton
+									raised
+									type="button"
+									onClick={() => onSetDiffStyle(nextStyle)}
+									aria-label={diffStyleLabel}
+								>
+									{diffStyle === "split" ? (
+										<SplitDiffGlyph />
+									) : (
+										<UnifiedDiffGlyph />
+									)}
+								</PageIconButton>
+							</TooltipTrigger>
+							<TooltipContent>{diffStyleLabel}</TooltipContent>
+						</Tooltip>
+					)}
+					<ReviewSubmitPopover
+						pendingCount={pendingCount}
+						isSubmitting={isSubmitting}
+						onSubmit={onSubmitReview}
+					/>
+				</>
+			}
+		>
+			<ViewTab asChild>
+				<Link
+					to="/$owner/$repo/pull/$pullId"
+					params={{ owner, repo, pullId }}
+					activeOptions={{ exact: true }}
 				>
-					<PanelLeftIcon size={16} strokeWidth={2} />
-				</button>
-			)}
-
-			<Link
-				to="/$owner/$repo/pull/$pullId"
-				params={{ owner, repo, pullId }}
-				className="flex shrink-0 items-center gap-1.5 text-xs text-muted-foreground transition-colors hover:text-foreground"
-			>
-				<GitPullRequestIcon size={14} strokeWidth={2} />
-				<span>#{pr.number}</span>
-			</Link>
-
-			<div className="hidden mx-1 h-4 w-px bg-border md:block" />
-
-			<div className="hidden min-w-0 items-center gap-2 md:flex">
-				<div className={cn("shrink-0", stateConfig.color)}>
-					<StateIcon size={14} strokeWidth={2} />
-				</div>
-				<span className="truncate text-sm font-medium">{pr.title}</span>
-			</div>
-
-			<PullStackBadge owner={owner} repo={repo} pr={pr} />
-
-			<div className="ml-auto flex items-center gap-2 md:gap-3">
-				<div className="flex items-center gap-2 text-xs text-muted-foreground">
-					<span className="flex items-center gap-1">
-						<FileIcon size={13} strokeWidth={2} />
-						<span className="font-mono tabular-nums font-medium text-foreground">
-							{sidebarFileCount}
-						</span>
-						<span className="hidden md:inline">
-							{" "}
-							{sidebarFileCount === 1 ? "file" : "files"}
-						</span>
-					</span>
-					<span className="font-mono tabular-nums font-medium text-green-500">
-						+{diffStats.totalAdditions}
-					</span>
-					<span className="font-mono tabular-nums font-medium text-red-500">
-						-{diffStats.totalDeletions}
-					</span>
-				</div>
-
-				<div className="h-4 w-px bg-border" />
-
-				<div className="hidden items-center rounded-md border bg-surface-1 md:flex">
-					<button
-						type="button"
-						className={cn(
-							"rounded-l-md px-2.5 py-1 text-xs font-medium transition-colors",
-							diffStyle === "unified"
-								? "bg-surface-0 text-foreground shadow-sm"
-								: "text-muted-foreground hover:text-foreground",
-						)}
-						onClick={() => onSetDiffStyle("unified")}
-					>
-						Unified
-					</button>
-					<button
-						type="button"
-						className={cn(
-							"rounded-r-md px-2.5 py-1 text-xs font-medium transition-colors",
-							diffStyle === "split"
-								? "bg-surface-0 text-foreground shadow-sm"
-								: "text-muted-foreground hover:text-foreground",
-						)}
-						onClick={() => onSetDiffStyle("split")}
-					>
-						Split
-					</button>
-				</div>
-
-				<div className="hidden h-4 w-px bg-border md:block" />
-
-				<ReviewSubmitPopover
-					pendingCount={pendingCount}
-					isSubmitting={isSubmitting}
-					onSubmit={onSubmitReview}
-				/>
-			</div>
-		</div>
+					Overview
+				</Link>
+			</ViewTab>
+			<ViewTab asChild>
+				<Link
+					to="/$owner/$repo/review/$pullId"
+					params={{ owner, repo, pullId }}
+				>
+					Files changed
+					<ViewTabCount>{changedFiles}</ViewTabCount>
+				</Link>
+			</ViewTab>
+		</ViewTabs>
 	);
 });
 
@@ -799,15 +813,15 @@ export const ReviewSidebar = memo(function ReviewSidebar({
 				onFileClick={onFileClick}
 			/>
 
-			<div className="flex items-center gap-2 border-t px-3 py-2 text-xs text-muted-foreground">
-				<span>
+			<div className="flex h-9 shrink-0 items-center gap-2 border-t-[0.5px] border-header-rule px-4 text-xs font-[450] text-muted-foreground">
+				<span className="tabular-nums">
 					{sidebarFileCount} {sidebarFileCount === 1 ? "file" : "files"}
 					{isStreamingSummaries ? " loaded…" : " changed"}
 				</span>
 				{isStreamingSummaries && (
 					<output
 						aria-label="Loading more files"
-						className="ml-auto inline-block size-2.5 shrink-0 animate-spin rounded-full border border-muted-foreground/60 border-t-transparent"
+						className="ml-auto inline-block size-2.5 shrink-0 animate-spin rounded-full border-[0.5px] border-muted-foreground/60 border-t-transparent"
 					/>
 				)}
 			</div>
@@ -815,6 +829,10 @@ export const ReviewSidebar = memo(function ReviewSidebar({
 	);
 });
 
-function ReviewDiffPanePlaceholder() {
-	return <div className="h-full" />;
+function ReviewDiffPanePlaceholder({ toolbar }: { toolbar?: ReactNode }) {
+	return (
+		<div className="h-full overflow-hidden px-[14px] max-md:px-2">
+			{toolbar}
+		</div>
+	);
 }

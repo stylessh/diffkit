@@ -1,20 +1,28 @@
 import {
 	CalendarIcon,
-	CheckIcon,
 	ClockIcon,
 	CloseIcon,
 	CommentIcon,
+	FileIcon,
+	GitCommitIcon,
 	GitMergeIcon,
 	MessageIcon,
-	PlusSignIcon,
-	SearchIcon,
 } from "@diffkit/icons";
 import {
-	Popover,
-	PopoverContent,
-	PopoverTrigger,
-} from "@diffkit/ui/components/popover";
+	LineCounts,
+	PanelAddButton,
+	PanelGoButton,
+	PanelPill,
+	PanelRow,
+	PanelSection,
+} from "@diffkit/ui/components/detail-layout";
+import {
+	MenuHead,
+	MenuRowEnd,
+	menuRowClassName,
+} from "@diffkit/ui/components/menu";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { Link } from "@tanstack/react-router";
 import { useCallback, useMemo, useRef, useState } from "react";
 import {
 	DetailParticipantAvatars,
@@ -22,6 +30,10 @@ import {
 	DetailSidebarRow,
 	DetailSidebarSection,
 } from "#/components/details/detail-sidebar";
+import {
+	PanelPicker,
+	PanelPickerEmpty,
+} from "#/components/details/panel-picker";
 import { LabelsSection } from "#/components/issues/labels-section";
 import { PullStackSection } from "#/components/pulls/stack/pull-stack-section";
 import { formatRelativeTime } from "#/lib/format-relative-time";
@@ -42,6 +54,7 @@ import type {
 	PullDetail,
 	PullPageData,
 } from "#/lib/github.types";
+import { getPrStateConfig } from "#/lib/pr-state";
 import { useOptimisticMutation } from "#/lib/use-optimistic-mutation";
 
 export function PullDetailSidebar({
@@ -64,6 +77,8 @@ export function PullDetailSidebar({
 	return (
 		<DetailSidebar>
 			<PullStackSection pr={pr} owner={owner} repo={repo} scope={scope} />
+
+			<PullPropertiesSection pr={pr} />
 
 			<LabelsSection
 				currentLabels={pr.labels}
@@ -91,7 +106,7 @@ export function PullDetailSidebar({
 			</DetailSidebarSection>
 
 			<DetailSidebarSection title="Details">
-				<div className="flex flex-col gap-2 text-xs">
+				<div className="flex flex-col gap-1">
 					<DetailSidebarRow icon={CalendarIcon} label="Created">
 						{formatRelativeTime(pr.createdAt)}
 					</DetailSidebarRow>
@@ -348,7 +363,7 @@ function ReviewersSection({
 		}
 	}, []);
 
-	const handleKeyDown = (event: React.KeyboardEvent) => {
+	const handleKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
 		if (flatItems.length === 0) return;
 
 		if (event.key === "ArrowDown") {
@@ -370,234 +385,222 @@ function ReviewersSection({
 			} else {
 				toggleReviewer(item.login);
 			}
+		} else if (!search && /^[1-9]$/.test(event.key)) {
+			const item = flatItems[Number(event.key) - 1];
+			if (!item) return;
+			event.preventDefault();
+			if (item.kind === "team") {
+				toggleTeam(item.slug);
+			} else {
+				toggleReviewer(item.login);
+			}
 		}
 	};
 
-	return (
-		<div className="flex flex-col gap-2.5">
-			<div className="flex items-center justify-between">
-				<h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-					Reviewers
-				</h3>
-				{isOpen && (
-					<Popover
-						open={pickerOpen}
-						onOpenChange={(open) => {
-							setPickerOpen(open);
-							if (!open) {
-								setSearch("");
-								setFocusedIndex(-1);
-							}
-						}}
-					>
-						<PopoverTrigger asChild>
+	const openPicker = () => {
+		prefetchReviewers();
+		setPickerOpen(true);
+	};
+
+	const renderOption = (
+		item: ReviewerItem,
+		index: number,
+		content: React.ReactNode,
+		selected: boolean,
+	) => (
+		<button
+			key={item.kind === "team" ? `team-${item.slug}` : item.login}
+			type="button"
+			role="option"
+			aria-selected={selected}
+			data-index={index}
+			data-active={focusedIndex === index}
+			onClick={() =>
+				item.kind === "team"
+					? toggleTeam(item.slug)
+					: toggleReviewer(item.login)
+			}
+			onMouseEnter={() => setFocusedIndex(index)}
+			className={menuRowClassName}
+		>
+			{content}
+			<MenuRowEnd
+				checked={selected}
+				shortcut={!search && index < 9 ? index + 1 : undefined}
+			/>
+		</button>
+	);
+
+	const reviewerRows = (
+		<>
+			{pr.requestedTeams.map((team) => (
+				<PanelRow key={`team-${team.slug}`}>
+					{isOpen ? (
+						<PanelPill asChild icon={<TeamMark />}>
 							<button
 								type="button"
-								onMouseEnter={prefetchReviewers}
-								onFocus={prefetchReviewers}
-								className="flex size-5 items-center justify-center rounded text-muted-foreground transition-colors hover:bg-surface-2 hover:text-foreground"
+								aria-haspopup="listbox"
+								aria-expanded={pickerOpen}
+								onClick={openPicker}
 							>
-								<PlusSignIcon size={14} strokeWidth={2} />
-							</button>
-						</PopoverTrigger>
-						<PopoverContent align="end" className="w-64 p-0">
-							<div className="flex items-center gap-2 border-b px-3 py-2">
-								<SearchIcon className="size-3.5 shrink-0 text-muted-foreground" />
-								<input
-									value={search}
-									onChange={(event) => {
-										setSearch(event.target.value);
-										setFocusedIndex(-1);
-									}}
-									onKeyDown={handleKeyDown}
-									placeholder="Search people, bots, and teams..."
-									className="w-full bg-transparent text-sm outline-none placeholder:text-muted-foreground"
-								/>
-							</div>
-							<div ref={listRef} className="max-h-64 overflow-y-auto py-1">
-								{isLoading ? (
-									<p className="px-3 py-4 text-center text-xs text-muted-foreground">
-										Loading…
-									</p>
-								) : filteredUsers.length === 0 &&
-									filteredBots.length === 0 &&
-									filteredTeams.length === 0 ? (
-									<p className="px-3 py-4 text-center text-xs text-muted-foreground">
-										No results found
-									</p>
-								) : (
-									<>
-										{filteredTeams.length > 0 && (
-											<>
-												<p className="px-3 py-1.5 text-[11px] font-medium text-muted-foreground">
-													Teams
-												</p>
-												{filteredTeams.map((team, index) => {
-													const isSelected = requestedTeamSlugs.has(team.slug);
-													return (
-														<button
-															key={`team-${team.slug}`}
-															type="button"
-															data-index={index}
-															onClick={() => toggleTeam(team.slug)}
-															onMouseEnter={() => setFocusedIndex(index)}
-															className={`flex w-full items-center gap-2 px-3 py-1.5 text-left text-sm transition-colors hover:bg-surface-1 disabled:opacity-50 ${focusedIndex === index ? "bg-surface-1" : ""}`}
-														>
-															<div className="flex size-5 shrink-0 items-center justify-center rounded-md border border-border bg-surface-1 text-[10px] font-semibold text-muted-foreground">
-																T
-															</div>
-															<span className="min-w-0 flex-1 truncate">
-																{team.name}
-															</span>
-															{isSelected && (
-																<CheckIcon
-																	size={14}
-																	strokeWidth={2}
-																	className="shrink-0 text-green-500"
-																/>
-															)}
-														</button>
-													);
-												})}
-											</>
-										)}
-										{filteredBots.length > 0 && (
-											<>
-												<p className="px-3 py-1.5 text-[11px] font-medium text-muted-foreground">
-													Bots
-												</p>
-												{filteredBots.map((bot, index) => {
-													const itemIndex = filteredTeams.length + index;
-													const isSelected = requestedLogins.has(bot.login);
-													return (
-														<button
-															key={bot.login}
-															type="button"
-															data-index={itemIndex}
-															onClick={() => toggleReviewer(bot.login)}
-															onMouseEnter={() => setFocusedIndex(itemIndex)}
-															className={`flex w-full items-center gap-2 px-3 py-1.5 text-left text-sm transition-colors hover:bg-surface-1 disabled:opacity-50 ${focusedIndex === itemIndex ? "bg-surface-1" : ""}`}
-														>
-															<img
-																src={bot.avatarUrl}
-																alt={bot.login}
-																className="size-5 rounded-full border border-border"
-															/>
-															<span className="min-w-0 flex-1 truncate">
-																{bot.login}
-															</span>
-															{isSelected && (
-																<CheckIcon
-																	size={14}
-																	strokeWidth={2}
-																	className="shrink-0 text-green-500"
-																/>
-															)}
-														</button>
-													);
-												})}
-											</>
-										)}
-										{filteredUsers.length > 0 && (
-											<>
-												<p className="px-3 py-1.5 text-[11px] font-medium text-muted-foreground">
-													People
-												</p>
-												{filteredUsers.map((collaborator, index) => {
-													const itemIndex =
-														filteredTeams.length + filteredBots.length + index;
-													const isSelected = requestedLogins.has(
-														collaborator.login,
-													);
-													return (
-														<button
-															key={collaborator.login}
-															type="button"
-															data-index={itemIndex}
-															onClick={() => toggleReviewer(collaborator.login)}
-															onMouseEnter={() => setFocusedIndex(itemIndex)}
-															className={`flex w-full items-center gap-2 px-3 py-1.5 text-left text-sm transition-colors hover:bg-surface-1 disabled:opacity-50 ${focusedIndex === itemIndex ? "bg-surface-1" : ""}`}
-														>
-															<img
-																src={collaborator.avatarUrl}
-																alt={collaborator.login}
-																className="size-5 rounded-full border border-border"
-															/>
-															<span className="min-w-0 flex-1 truncate">
-																{collaborator.login}
-															</span>
-															{isSelected && (
-																<CheckIcon
-																	size={14}
-																	strokeWidth={2}
-																	className="shrink-0 text-green-500"
-																/>
-															)}
-														</button>
-													);
-												})}
-											</>
-										)}
-									</>
-								)}
-							</div>
-						</PopoverContent>
-					</Popover>
-				)}
-			</div>
-			{hasReviewers ? (
-				<div className="flex flex-col gap-2">
-					{pr.requestedTeams.map((team) => (
-						<div
-							key={`team-${team.slug}`}
-							className="group/reviewer flex items-center gap-2"
-						>
-							<div className="flex size-5 shrink-0 items-center justify-center rounded-md border border-border bg-surface-1 text-[10px] font-semibold text-muted-foreground">
-								T
-							</div>
-							<span className="min-w-0 flex-1 truncate text-sm">
 								{team.name}
-							</span>
-							{isOpen && (
-								<button
-									type="button"
-									onClick={() => toggleTeam(team.slug)}
-									className="flex size-4 shrink-0 items-center justify-center rounded opacity-0 transition-opacity hover:text-red-400 group-hover/reviewer:opacity-100 disabled:opacity-50"
-								>
-									<CloseIcon size={12} strokeWidth={2} />
-								</button>
-							)}
-						</div>
-					))}
-					{pr.requestedReviewers.map((reviewer) => (
-						<div
-							key={reviewer.login}
-							className="group/reviewer flex items-center gap-2"
-						>
-							<img
-								src={reviewer.avatarUrl}
-								alt={reviewer.login}
-								className="size-5 rounded-full border border-border"
-							/>
-							<span className="min-w-0 flex-1 truncate text-sm">
+							</button>
+						</PanelPill>
+					) : (
+						<PanelPill icon={<TeamMark />}>{team.name}</PanelPill>
+					)}
+				</PanelRow>
+			))}
+			{pr.requestedReviewers.map((reviewer) => (
+				<div
+					key={reviewer.login}
+					className="group/row flex w-fit max-w-full items-center gap-2.5"
+				>
+					{isOpen ? (
+						<PanelPill asChild icon={<PanelAvatar src={reviewer.avatarUrl} />}>
+							<button
+								type="button"
+								aria-haspopup="listbox"
+								aria-expanded={pickerOpen}
+								onClick={openPicker}
+							>
 								{reviewer.login}
-							</span>
-							{isOpen && (
-								<button
-									type="button"
-									onClick={() => toggleReviewer(reviewer.login)}
-									className="flex size-4 shrink-0 items-center justify-center rounded opacity-0 transition-opacity hover:text-red-400 group-hover/reviewer:opacity-100 disabled:opacity-50"
-								>
-									<CloseIcon size={12} strokeWidth={2} />
-								</button>
-							)}
-						</div>
-					))}
+							</button>
+						</PanelPill>
+					) : (
+						<PanelPill icon={<PanelAvatar src={reviewer.avatarUrl} />}>
+							{reviewer.login}
+						</PanelPill>
+					)}
+					<PanelGoButton asChild aria-label={`Open ${reviewer.login}`}>
+						<Link to="/$owner" params={{ owner: reviewer.login }} />
+					</PanelGoButton>
 				</div>
-			) : (
-				<p className="text-xs text-muted-foreground">No reviewers requested</p>
-			)}
-		</div>
+			))}
+			{!hasReviewers ? (
+				isOpen ? (
+					<PanelPill asChild muted>
+						<button
+							type="button"
+							aria-haspopup="listbox"
+							aria-expanded={pickerOpen}
+							onMouseEnter={prefetchReviewers}
+							onClick={openPicker}
+						>
+							Request reviewers
+						</button>
+					</PanelPill>
+				) : (
+					<PanelPill muted>No reviewers</PanelPill>
+				)
+			) : isOpen ? (
+				<PanelAddButton
+					aria-label="Add reviewer"
+					aria-haspopup="listbox"
+					aria-expanded={pickerOpen}
+					onMouseEnter={prefetchReviewers}
+					onClick={openPicker}
+				/>
+			) : null}
+		</>
+	);
+
+	return (
+		<PanelSection label="Reviewers">
+			<PanelPicker
+				open={pickerOpen}
+				onOpenChange={(open) => {
+					setPickerOpen(open);
+					if (!open) {
+						setSearch("");
+						setFocusedIndex(-1);
+					}
+				}}
+				search={search}
+				onSearchChange={(value) => {
+					setSearch(value);
+					setFocusedIndex(-1);
+				}}
+				onKeyDown={handleKeyDown}
+				placeholder="Request review from…"
+				listRef={listRef}
+				anchor={reviewerRows}
+			>
+				{isLoading ? (
+					<PanelPickerEmpty>Loading…</PanelPickerEmpty>
+				) : flatItems.length === 0 ? (
+					<PanelPickerEmpty>
+						{search ? `No one matches “${search}”` : "No one to request"}
+					</PanelPickerEmpty>
+				) : (
+					<>
+						{filteredTeams.length > 0 ? <MenuHead>Teams</MenuHead> : null}
+						{filteredTeams.map((team, index) =>
+							renderOption(
+								{ kind: "team", slug: team.slug },
+								index,
+								<>
+									<TeamMark />
+									<span className="truncate">{team.name}</span>
+								</>,
+								requestedTeamSlugs.has(team.slug),
+							),
+						)}
+						{filteredBots.length > 0 ? <MenuHead>Bots</MenuHead> : null}
+						{filteredBots.map((bot, index) =>
+							renderOption(
+								{ kind: "user", login: bot.login },
+								filteredTeams.length + index,
+								<>
+									<PanelAvatar src={bot.avatarUrl} size={16} />
+									<span className="truncate">{bot.login}</span>
+								</>,
+								requestedLogins.has(bot.login),
+							),
+						)}
+						{filteredUsers.length > 0 &&
+						(filteredTeams.length > 0 || filteredBots.length > 0) ? (
+							<MenuHead>People</MenuHead>
+						) : null}
+						{filteredUsers.map((collaborator, index) =>
+							renderOption(
+								{ kind: "user", login: collaborator.login },
+								filteredTeams.length + filteredBots.length + index,
+								<>
+									<PanelAvatar src={collaborator.avatarUrl} size={16} />
+									<span className="truncate">{collaborator.login}</span>
+								</>,
+								requestedLogins.has(collaborator.login),
+							),
+						)}
+					</>
+				)}
+			</PanelPicker>
+		</PanelSection>
+	);
+}
+
+function PanelAvatar({ src, size = 14 }: { src: string; size?: number }) {
+	return (
+		<img
+			src={src}
+			alt=""
+			width={size}
+			height={size}
+			className="shrink-0 rounded-full ring-[0.5px] ring-chip-border"
+			style={{ width: size, height: size }}
+		/>
+	);
+}
+
+function TeamMark() {
+	return (
+		<span
+			aria-hidden
+			className="flex size-4 shrink-0 items-center justify-center rounded-[4px] bg-pill-neutral text-[9px] font-semibold text-muted-foreground"
+		>
+			T
+		</span>
 	);
 }
 
@@ -633,4 +636,29 @@ function ParticipantsList({
 	}
 
 	return <DetailParticipantAvatars actors={participants} />;
+}
+
+function PullPropertiesSection({ pr }: { pr: PullDetail }) {
+	const state = getPrStateConfig(pr);
+	const StateIcon = state.icon;
+	return (
+		<PanelSection label="Properties">
+			<PanelRow
+				icon={<StateIcon size={14} strokeWidth={2} className={state.color} />}
+			>
+				{state.label}
+			</PanelRow>
+			<PanelRow icon={<FileIcon size={14} strokeWidth={2} />}>
+				<span className="tabular-nums">
+					{pr.changedFiles} {pr.changedFiles === 1 ? "file" : "files"}
+				</span>
+				<LineCounts additions={pr.additions} deletions={pr.deletions} />
+			</PanelRow>
+			<PanelRow icon={<GitCommitIcon size={14} strokeWidth={2} />}>
+				<span className="tabular-nums">
+					{pr.commits} {pr.commits === 1 ? "commit" : "commits"}
+				</span>
+			</PanelRow>
+		</PanelSection>
+	);
 }

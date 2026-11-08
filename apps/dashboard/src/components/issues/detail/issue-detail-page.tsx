@@ -5,6 +5,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { getRouteApi } from "@tanstack/react-router";
 import { useMemo } from "react";
 import {
+	DetailPageHeader,
 	DetailPageLayout,
 	DetailPageSkeletonLayout,
 	DetailPageTitle,
@@ -113,6 +114,18 @@ export function IssueDetailContent({
 
 	return (
 		<DetailPageLayout
+			header={
+				<DetailPageHeader
+					collectionHref="/issues"
+					collectionLabel="Issues"
+					owner={owner}
+					repo={repo}
+					number={issue.number}
+					icon={IssuesIcon}
+					iconClassName={getIssueStateConfig(issue).color}
+					title={issue.title}
+				/>
+			}
 			main={
 				<>
 					<IssueDetailHeader
@@ -179,11 +192,11 @@ function IssueSeedTitle({
 				<div className="flex flex-wrap items-center gap-2">
 					<StatePill tone={stateConfig.tone}>{stateConfig.label}</StatePill>
 					{seed.author && (
-						<span className="flex items-center gap-1.5 text-sm text-muted-foreground">
+						<span className="flex items-center gap-1.5 text-xs font-[450] text-muted-foreground">
 							<img
 								src={seed.author.avatarUrl}
 								alt={seed.author.login}
-								className="size-4 rounded-full border border-border"
+								className="size-4 rounded-full ring-[0.5px] ring-chip-border"
 							/>
 							<span className="font-medium text-foreground">
 								{seed.author.login}
@@ -236,7 +249,7 @@ function IssueDetailPageSkeleton({
 			</StaggerItem>
 
 			<StaggerItem index={2}>
-				<div className="rounded-lg border bg-surface-0 p-5">
+				<div className="rounded-lg border-[0.5px] bg-surface-0 p-5">
 					<div className="flex flex-col gap-3">
 						<Skeleton className="h-4 w-full rounded-md" />
 						<Skeleton className="h-4 w-5/6 rounded-md" />

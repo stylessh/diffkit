@@ -4,12 +4,14 @@ import {
 	CalloutAction,
 	CalloutContent,
 } from "@diffkit/ui/components/callout";
+import { BranchBadge } from "@diffkit/ui/components/detail-layout";
 import { Skeleton } from "@diffkit/ui/components/skeleton";
 import { useQuery } from "@tanstack/react-query";
 import {
 	type GitHubQueryScope,
 	githubBranchComparisonQueryOptions,
 } from "#/lib/github.query";
+import { iconButtonClassName, pillButtonClassName } from "./repo-ui";
 
 export function BranchComparisonBanner({
 	owner,
@@ -63,7 +65,7 @@ export function BranchComparisonBanner({
 				{aheadBy > 0 && (
 					<a
 						href={compareUrl}
-						className="font-medium text-primary hover:underline"
+						className="font-medium text-foreground tabular-nums hover:underline"
 					>
 						{aheadBy} {aheadBy === 1 ? "commit" : "commits"} ahead
 					</a>
@@ -73,30 +75,25 @@ export function BranchComparisonBanner({
 				{behindBy > 0 && (
 					<a
 						href={compareUrl}
-						className="font-medium text-primary hover:underline"
+						className="font-medium text-foreground tabular-nums hover:underline"
 					>
 						{behindBy} {behindBy === 1 ? "commit" : "commits"} behind
 					</a>
 				)}
-				<code className="rounded bg-surface-2 px-1.5 py-0.5 font-mono text-xs">
-					{defaultBranch}
-				</code>
+				<BranchBadge>{defaultBranch}</BranchBadge>
 				<span>.</span>
 			</CalloutContent>
-			<CalloutAction className="flex items-center gap-3">
+			<CalloutAction className="flex items-center gap-1.5">
 				<a
 					href={compareUrl}
 					aria-label="Open compare view"
-					className="flex size-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-surface-2 hover:text-foreground"
+					className={iconButtonClassName}
 				>
 					<GitCompareIcon size={14} />
 				</a>
 				{aheadBy > 0 && (
-					<a
-						href={createPrUrl}
-						className="inline-flex items-center gap-1.5 rounded-md bg-foreground px-3 py-1 text-xs font-medium text-background transition-opacity hover:opacity-90"
-					>
-						<GitPullRequestIcon size={13} />
+					<a href={createPrUrl} className={pillButtonClassName}>
+						<GitPullRequestIcon size={14} strokeWidth={2} />
 						Create pull request
 					</a>
 				)}

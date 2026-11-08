@@ -3,7 +3,7 @@ import { Spinner } from "@diffkit/ui/components/spinner";
 import { cn } from "@diffkit/ui/lib/utils";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, useNavigate } from "@tanstack/react-router";
-import { memo, useCallback, useMemo, useState } from "react";
+import { memo, type ReactNode, useCallback, useMemo, useState } from "react";
 import { FileSearchCard } from "#/components/shared/file-search-card";
 import {
 	useExplorerPath,
@@ -73,12 +73,14 @@ export const RepoFileTreeSidebar = memo(function RepoFileTreeSidebar({
 	currentRef,
 	scope,
 	entries,
+	header,
 }: {
 	owner: string;
 	repoName: string;
 	currentRef: string;
 	scope: GitHubQueryScope;
 	entries: RepoTreeEntry[];
+	header?: ReactNode;
 }) {
 	const navigate = useNavigate();
 	const currentPath = useExplorerPath();
@@ -106,15 +108,21 @@ export const RepoFileTreeSidebar = memo(function RepoFileTreeSidebar({
 
 	return (
 		<div className="flex h-full flex-col overflow-hidden">
-			<FileSearchCard
-				entries={allFiles}
-				defaultEntries={defaultEntries}
-				onSelect={handleSelect}
-				activePath={currentPath}
-				placeholder="Search files..."
-			/>
+			<div className="flex h-7 shrink-0 items-center gap-1.5 px-3 mt-3 text-xs font-medium text-muted-foreground">
+				<span className="shrink-0">Files</span>
+				{header ? <span className="ml-auto flex min-w-0">{header}</span> : null}
+			</div>
+			<div className="-mt-2">
+				<FileSearchCard
+					entries={allFiles}
+					defaultEntries={defaultEntries}
+					onSelect={handleSelect}
+					activePath={currentPath}
+					placeholder="Go to file"
+				/>
+			</div>
 
-			<div className="flex-1 overflow-y-auto py-1">
+			<nav aria-label="Files" className="flex-1 overflow-y-auto px-2 pb-3">
 				{entries.map((entry) => (
 					<TreeNode
 						key={entry.name}
@@ -127,7 +135,7 @@ export const RepoFileTreeSidebar = memo(function RepoFileTreeSidebar({
 						parentPath=""
 					/>
 				))}
-			</div>
+			</nav>
 		</div>
 	);
 });
@@ -135,6 +143,9 @@ export const RepoFileTreeSidebar = memo(function RepoFileTreeSidebar({
 // ---------------------------------------------------------------------------
 // Tree nodes
 // ---------------------------------------------------------------------------
+
+const treeRowClassName =
+	"flex h-7 w-full min-w-0 items-center gap-1.5 rounded-md pr-2 text-[13px] font-[450] transition-colors";
 
 const TreeNode = memo(function TreeNode({
 	entry,
@@ -218,22 +229,24 @@ const DirectoryNode = memo(function DirectoryNode({
 		<div>
 			<div
 				className={cn(
-					"flex w-full items-center text-[13px] transition-colors hover:bg-surface-1",
-					isActive && "bg-surface-1",
+					treeRowClassName,
+					isActive
+						? "bg-item-hover text-foreground"
+						: "text-text-header hover:bg-item-hover",
 				)}
+				style={{ paddingLeft: `${6 + depth * 12}px` }}
 			>
 				<button
 					type="button"
 					onClick={() => setIsOpen((prev) => !prev)}
-					className="shrink-0 py-1.5 pl-3 text-muted-foreground"
-					style={{ paddingLeft: `${depth * 12 + 12}px` }}
+					aria-expanded={isOpen}
+					aria-label={`${isOpen ? "Collapse" : "Expand"} ${entry.name}`}
+					className="flex size-4 shrink-0 items-center justify-center rounded-sm text-muted-foreground hover:text-foreground"
 				>
 					<ChevronRightIcon
 						size={12}
-						className={cn(
-							"shrink-0 transition-transform",
-							isOpen && "rotate-90",
-						)}
+						strokeWidth={2}
+						className={cn("transition-transform", isOpen && "rotate-90")}
 					/>
 				</button>
 				<Link
@@ -251,14 +264,15 @@ const DirectoryNode = memo(function DirectoryNode({
 						}
 						if (!isOpen) setIsOpen(true);
 					}}
-					className="flex min-w-0 flex-1 items-center gap-1.5 py-1.5 pl-1.5 pr-3"
+					aria-current={isActive ? "page" : undefined}
+					className="flex h-full min-w-0 flex-1 items-center gap-1.5 rounded-sm"
 				>
 					<FolderIcon
-						size={15}
+						size={16}
 						strokeWidth={1.8}
-						className="shrink-0 text-accent-foreground"
+						className="shrink-0 text-muted-foreground"
 					/>
-					<span className="truncate text-foreground">{entry.name}</span>
+					<span className="truncate">{entry.name}</span>
 				</Link>
 			</div>
 
@@ -266,8 +280,8 @@ const DirectoryNode = memo(function DirectoryNode({
 				<div>
 					{treeQuery.isLoading && (
 						<div
-							className="flex items-center gap-2 px-3 py-1.5 text-xs text-muted-foreground"
-							style={{ paddingLeft: `${(depth + 1) * 12 + 12}px` }}
+							className="flex h-7 items-center gap-2 text-xs text-muted-foreground"
+							style={{ paddingLeft: `${6 + (depth + 1) * 12 + 22}px` }}
 						>
 							<Spinner className="size-3" />
 							<span>Loading...</span>
@@ -319,25 +333,21 @@ const FileNode = memo(function FileNode({
 			onClick={(e) => {
 				if (isActive) e.preventDefault();
 			}}
+			aria-current={isActive ? "page" : undefined}
 			className={cn(
-				"flex w-full items-center gap-1.5 px-3 py-1.5 text-[13px] transition-colors hover:bg-surface-1",
-				isActive && "bg-surface-1",
+				treeRowClassName,
+				isActive
+					? "bg-item-hover text-foreground"
+					: "text-text-header hover:bg-item-hover",
 			)}
-			style={{ paddingLeft: `${depth * 12 + 26}px` }}
+			style={{ paddingLeft: `${6 + depth * 12 + 22}px` }}
 		>
 			<FileIcon
-				size={15}
+				size={16}
 				strokeWidth={1.8}
 				className="shrink-0 text-muted-foreground"
 			/>
-			<span
-				className={cn(
-					"truncate",
-					isActive ? "text-foreground" : "text-muted-foreground",
-				)}
-			>
-				{entry.name}
-			</span>
+			<span className="truncate">{entry.name}</span>
 		</Link>
 	);
 });

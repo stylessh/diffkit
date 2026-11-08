@@ -1,8 +1,8 @@
 import { cn } from "@diffkit/ui/lib/utils";
 
 const sizes = {
-	sm: "px-1.5 py-px text-[10px]",
-	md: "px-2.5 py-0.5 text-xs",
+	sm: "h-[18px] gap-[5px] pr-1.5 pl-[7px] text-xs",
+	md: "h-6 gap-1.5 px-2 text-xs",
 };
 
 export function LabelPill({
@@ -18,12 +18,19 @@ export function LabelPill({
 	return (
 		<span
 			className={cn(
-				"label-pill inline-flex items-center rounded-full font-medium",
+				"relative inline-flex max-w-[220px] items-center rounded-full bg-chip align-middle font-[450] whitespace-nowrap text-muted-foreground shadow-chip",
 				sizes[size],
 			)}
-			style={{ "--label-color": hex } as React.CSSProperties}
 		>
-			{name}
+			<span
+				aria-hidden
+				className={cn(
+					"shrink-0 rounded-full",
+					size === "sm" ? "size-[7px]" : "size-2",
+				)}
+				style={{ backgroundColor: hex }}
+			/>
+			<span className="truncate">{name}</span>
 		</span>
 	);
 }

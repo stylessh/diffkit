@@ -16,9 +16,9 @@ import { useStepLogActions } from "./step-log-context";
 export function getJobCardRingClass(state: CheckState): string {
 	if (state === "success") return "ring-4 ring-muted/80 dark:ring-muted/50";
 	if (state === "failure")
-		return "border-transparent hover:border-transparent ring-4 ring-red-500/25";
+		return "border-transparent hover:border-transparent ring-1 ring-check-failed";
 	if (state === "pending" || state === "expected")
-		return "border-transparent hover:border-transparent ring-4 ring-amber-500/20";
+		return "border-transparent hover:border-transparent ring-1 ring-check-running";
 	return "";
 }
 
@@ -123,7 +123,7 @@ export function JobCard({
 			{expanded ? (
 				<div
 					id={`job-steps-${job.id}`}
-					className="flex flex-col border-t text-xs"
+					className="flex flex-col border-t-[0.5px] text-xs"
 				>
 					{job.steps.length === 0 ? (
 						<div className="px-3 py-2 text-muted-foreground">No steps</div>

@@ -370,7 +370,7 @@ export function IssueDetailActivitySection({
 			)}
 
 			{visibleItems.length > 0 && (
-				<div className="relative flex flex-col pl-8 before:absolute before:left-4 before:top-0 before:h-full before:w-px before:bg-[linear-gradient(to_bottom,var(--color-border)_80%,transparent)]">
+				<div className="relative flex flex-col">
 					{visibleItems.map((item, index) => {
 						const previousType =
 							index > 0 ? visibleItems[index - 1].type : null;
@@ -451,14 +451,14 @@ export function IssueDetailActivitySection({
 											<img
 												src={group.actor?.avatarUrl}
 												alt={group.actor?.login}
-												className="size-5 shrink-0 rounded-full border border-border self-start"
+												className="mt-[3px] size-3.5 shrink-0 self-start rounded-full ring-[0.5px] ring-chip-border"
 											/>
 										) : (
-											<div className="flex size-5 shrink-0 items-center justify-center rounded-full border border-border bg-surface-1 self-start">
+											<div className="flex h-[17px] w-[18px] shrink-0 items-center justify-center self-start rounded-[4px] bg-main text-muted-foreground mt-[1.5px] [&_svg]:size-3.5">
 												{icon}
 											</div>
 										)}
-										<span className="min-w-0 text-[13px] text-muted-foreground">
+										<span className="min-w-0 text-xs leading-5 font-[450] text-muted-foreground">
 											{item.type === "label_group" ? (
 												<GroupedLabelDescription
 													group={item.data as GroupedLabelEvent}
@@ -469,7 +469,7 @@ export function IssueDetailActivitySection({
 												/>
 											)}
 										</span>
-										<span className="ml-auto shrink-0 text-[13px] text-muted-foreground">
+										<span className="ml-auto shrink-0 text-xs font-[450] tabular-nums text-icon-faint">
 											{formatRelativeTime(group.createdAt)}
 										</span>
 									</div>
@@ -508,14 +508,14 @@ export function IssueDetailActivitySection({
 											<img
 												src={group.actor?.avatarUrl}
 												alt={group.actor?.login}
-												className="size-5 shrink-0 rounded-full border border-border self-start"
+												className="mt-[3px] size-3.5 shrink-0 self-start rounded-full ring-[0.5px] ring-chip-border"
 											/>
 										) : (
-											<div className="flex size-5 shrink-0 items-center justify-center rounded-full border border-border bg-surface-1 self-start">
+											<div className="flex h-[17px] w-[18px] shrink-0 items-center justify-center self-start rounded-[4px] bg-main text-muted-foreground mt-[1.5px] [&_svg]:size-3.5">
 												{icon}
 											</div>
 										)}
-										<span className="min-w-0 text-[13px] text-muted-foreground">
+										<span className="min-w-0 text-xs leading-5 font-[450] text-muted-foreground">
 											<GroupedIssueStateToggleDescription
 												group={group}
 												subject="issue"
@@ -530,7 +530,7 @@ export function IssueDetailActivitySection({
 												}
 											/>
 										</span>
-										<span className="ml-auto shrink-0 text-[13px] text-muted-foreground">
+										<span className="ml-auto shrink-0 text-xs font-[450] tabular-nums text-icon-faint">
 											{formatRelativeTime(group.createdAt)}
 										</span>
 									</div>
@@ -564,18 +564,18 @@ export function IssueDetailActivitySection({
 										<img
 											src={event.actor?.avatarUrl}
 											alt={event.actor?.login}
-											className="size-5 shrink-0 rounded-full border border-border self-start"
+											className="mt-[3px] size-3.5 shrink-0 self-start rounded-full ring-[0.5px] ring-chip-border"
 										/>
 									) : (
-										<div className="flex size-5 shrink-0 items-center justify-center rounded-full border border-border bg-surface-1 self-start">
+										<div className="flex h-[17px] w-[18px] shrink-0 items-center justify-center self-start rounded-[4px] bg-main text-muted-foreground mt-[1.5px] [&_svg]:size-3.5">
 											{icon}
 										</div>
 									)}
-									<span className="min-w-0 text-[13px] text-muted-foreground">
+									<span className="min-w-0 text-xs leading-5 font-[450] text-muted-foreground">
 										{description}
 									</span>
 									{event.createdAt && (
-										<span className="ml-auto shrink-0 text-[13px] text-muted-foreground">
+										<span className="ml-auto shrink-0 text-xs font-[450] tabular-nums text-icon-faint">
 											{formatRelativeTime(event.createdAt)}
 										</span>
 									)}
@@ -641,10 +641,7 @@ function IssueCommentBubble({
 
 	return (
 		<div
-			className={cn(
-				"group/comment relative flex flex-col gap-1",
-				isReply ? "py-2" : "py-4",
-			)}
+			className="group/comment relative flex flex-col gap-1.5 px-4 py-3"
 			onPointerEnter={() => setCommentActive(true)}
 			onPointerLeave={() => setCommentActive(false)}
 			onFocusCapture={() => setCommentActive(true)}
@@ -654,35 +651,20 @@ function IssueCommentBubble({
 				}
 			}}
 		>
-			<div className="flex items-center gap-1.5">
+			<div className="flex h-[18.5px] items-center gap-2">
 				{comment.author ? (
 					<img
 						src={comment.author.avatarUrl}
 						alt={comment.author.login}
-						className={cn(
-							"rounded-full border border-border",
-							isReply ? "size-3.5" : "size-4",
-						)}
+						className="size-[18px] rounded-full ring-[0.5px] ring-chip-border"
 					/>
 				) : (
-					<div
-						className={cn(
-							"rounded-full bg-surface-2",
-							isReply ? "size-3.5" : "size-4",
-						)}
-					/>
+					<div className="size-[18px] rounded-full bg-group" />
 				)}
-				<span
-					className={cn("font-medium", isReply ? "text-xs" : "text-[13px]")}
-				>
+				<span className="text-[13px] font-medium text-foreground">
 					{comment.author?.login ?? "Unknown"}
 				</span>
-				<span
-					className={cn(
-						"text-muted-foreground",
-						isReply ? "text-xs" : "text-[13px]",
-					)}
-				>
+				<span className="ml-0.5 text-[13px] font-[450] text-icon-faint">
 					{formatRelativeTime(comment.createdAt)}
 				</span>
 				<div className="ml-auto flex items-center gap-1">
@@ -690,7 +672,8 @@ function IssueCommentBubble({
 						<button
 							type="button"
 							onClick={onReply}
-							className="rounded-md p-0.5 text-muted-foreground opacity-0 transition-all hover:bg-surface-2 hover:text-foreground group-hover/comment:opacity-100"
+							aria-label="Reply"
+							className="flex size-7 items-center justify-center rounded-full text-text-header opacity-0 transition-opacity hover:bg-ghost-hover group-hover/comment:opacity-100 focus-visible:opacity-100"
 						>
 							<CommentIcon size={14} strokeWidth={2} />
 						</button>
@@ -708,11 +691,19 @@ function IssueCommentBubble({
 					/>
 				</div>
 			</div>
-			<div className={cn("relative", comment.graphqlId != null && "mb-14")}>
-				<Markdown className="text-muted-foreground">{comment.body}</Markdown>
+			<div
+				className={cn(
+					"relative",
+					isReply && "pl-[27px]",
+					comment.graphqlId != null && "mb-7",
+				)}
+			>
+				<Markdown className="text-[15px] leading-6 text-text-strong">
+					{comment.body}
+				</Markdown>
 				{comment.graphqlId ? (
 					<IssueCommentReactionBar
-						className="absolute left-0 right-0 top-full z-10 mt-1.5"
+						className="absolute left-0 right-0 top-full z-10 mt-1"
 						revealZeroCount={commentActive || prefersNoHover}
 						viewerLogin={viewerLogin}
 						owner={owner}
@@ -752,7 +743,12 @@ function IssueCommentWithThread({
 	const hasReplies = replies && replies.length > 0;
 
 	return (
-		<div className={cn("relative flex flex-col", isFirst && "pt-1")}>
+		<div
+			className={cn(
+				"relative -mx-3 my-2 flex flex-col rounded-lg bg-card shadow-card",
+				isFirst && "mt-0",
+			)}
+		>
 			<IssueCommentBubble
 				comment={comment}
 				owner={owner}
@@ -764,7 +760,7 @@ function IssueCommentWithThread({
 			/>
 
 			{hasReplies && (
-				<div className="ml-4 border-l-2 border-border pl-4">
+				<div className="flex flex-col divide-y-[0.5px] divide-header-rule border-t-[0.5px] border-header-rule">
 					{replies.map((reply) => (
 						<IssueCommentBubble
 							key={reply.id}
@@ -782,7 +778,7 @@ function IssueCommentWithThread({
 			)}
 
 			{showReplyForm && (
-				<div className={cn(hasReplies && "ml-4 border-l-2 border-border pl-4")}>
+				<div className="border-t-[0.5px] border-header-rule px-3 py-3">
 					<CommentReplyForm
 						owner={owner}
 						repo={repo}
@@ -850,10 +846,10 @@ function LoadMoreDivider({
 				onClick={onLoadMore}
 				disabled={isPending}
 				className={cn(
-					"flex shrink-0 items-center gap-1.5 rounded-full border border-border bg-surface-1 px-3 py-1 text-xs text-muted-foreground transition-colors",
+					"flex shrink-0 items-center gap-1.5 rounded-full border-[0.5px] border-border bg-surface-1 px-3 py-1 text-xs text-muted-foreground transition-colors",
 					isPending
 						? "cursor-not-allowed opacity-60"
-						: "hover:bg-surface-2 hover:text-foreground",
+						: "hover:bg-ghost-hover hover:text-foreground",
 				)}
 			>
 				{isPending ? (
@@ -924,7 +920,7 @@ function getIssueEventIcon(event: TimelineEvent) {
 					<IssueClosedCompletedIcon
 						size={12}
 						strokeWidth={2}
-						className="text-violet-500"
+						className="text-merged"
 					/>
 				);
 			}
@@ -937,18 +933,10 @@ function getIssueEventIcon(event: TimelineEvent) {
 					/>
 				);
 			}
-			return (
-				<IssuesIcon size={12} strokeWidth={2} className="text-violet-500" />
-			);
+			return <IssuesIcon size={12} strokeWidth={2} className="text-merged" />;
 		}
 		case "reopened":
-			return (
-				<IssuesIcon
-					size={12}
-					strokeWidth={2}
-					className="text-green-600 dark:text-green-400"
-				/>
-			);
+			return <IssuesIcon size={12} strokeWidth={2} className="text-success" />;
 		case "cross-referenced":
 		case "referenced":
 			return (
@@ -1004,7 +992,7 @@ function ActorMention({
 				<img
 					src={actor.avatarUrl}
 					alt={login}
-					className="inline-block size-3.5 rounded-full border border-border align-text-bottom"
+					className="inline-block size-3.5 rounded-full border-[0.5px] border-border align-text-bottom"
 				/>
 			)}
 			{login}
@@ -1083,7 +1071,7 @@ function getIssueEventDescription(event: TimelineEvent): React.ReactNode {
 					{kind === "completed" && (
 						<>
 							{" as "}
-							<span className="font-medium text-violet-500">completed</span>
+							<span className="font-medium text-merged">completed</span>
 						</>
 					)}
 					{kind === "not_planned" && (
@@ -1101,9 +1089,7 @@ function getIssueEventDescription(event: TimelineEvent): React.ReactNode {
 			return (
 				<span className="inline-flex items-center gap-1 flex-wrap">
 					<ActorMention actor={event.actor} hideAvatar />
-					<span className="font-medium text-green-600 dark:text-green-400">
-						reopened
-					</span>
+					<span className="font-medium text-success">reopened</span>
 					{" this issue"}
 				</span>
 			);

@@ -34,12 +34,12 @@ function getPrIcon(pr: PullSummary) {
 		};
 	}
 	if (pr.mergedAt) {
-		return { icon: GitMergeIcon, iconClassName: "text-purple-500" };
+		return { icon: GitMergeIcon, iconClassName: "text-merged" };
 	}
 	if (pr.state === "closed") {
-		return { icon: GitPullRequestClosedIcon, iconClassName: "text-red-500" };
+		return { icon: GitPullRequestClosedIcon, iconClassName: "text-danger" };
 	}
-	return { icon: GitPullRequestIcon, iconClassName: "text-green-500" };
+	return { icon: GitPullRequestIcon, iconClassName: "text-success" };
 }
 
 function getIssueIcon(issue: IssueSummary) {
@@ -47,9 +47,9 @@ function getIssueIcon(issue: IssueSummary) {
 		if (issue.stateReason === "not_planned") {
 			return { icon: IssuesIcon, iconClassName: "text-muted-foreground" };
 		}
-		return { icon: IssuesIcon, iconClassName: "text-purple-500" };
+		return { icon: IssuesIcon, iconClassName: "text-merged" };
 	}
-	return { icon: IssuesIcon, iconClassName: "text-green-500" };
+	return { icon: IssuesIcon, iconClassName: "text-success" };
 }
 
 const routeApi = getRouteApi("/_protected");

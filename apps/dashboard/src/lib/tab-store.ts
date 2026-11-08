@@ -134,7 +134,7 @@ export function isMergedTab(t: Tab): boolean {
 	return (
 		t.merged === true ||
 		((t.type === "pull" || t.type === "review") &&
-			t.iconColor === "text-purple-500")
+			t.iconColor === "text-merged")
 	);
 }
 

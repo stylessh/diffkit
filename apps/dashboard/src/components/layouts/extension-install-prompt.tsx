@@ -60,7 +60,7 @@ export function ExtensionInstallPrompt() {
 	return (
 		<div
 			className={
-				"flex w-fit max-w-full items-center gap-2 rounded-lg bg-surface-1 px-3 py-2 text-xs text-foreground"
+				"flex min-h-8 w-fit max-w-full items-center gap-2 rounded-lg bg-popover py-1 pr-1 pl-2.5 text-xs text-text-header shadow-popover"
 			}
 		>
 			<Logo className="size-4 shrink-0" aria-hidden />
@@ -72,14 +72,14 @@ export function ExtensionInstallPrompt() {
 				href={installHref}
 				target="_blank"
 				rel="noopener noreferrer"
-				className="shrink-0 rounded-md bg-foreground/10 px-2 py-0.5 font-medium transition-colors hover:bg-foreground/15"
+				className="flex h-6 shrink-0 items-center rounded-md bg-button px-2 font-medium text-foreground shadow-button transition-colors hover:bg-button-hover"
 			>
 				Install
 			</a>
 			<button
 				type="button"
 				onClick={dismiss}
-				className="flex size-5 shrink-0 items-center justify-center rounded text-muted-foreground transition-colors hover:bg-foreground/10 hover:text-foreground"
+				className="flex size-6 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-ghost-hover hover:text-foreground"
 				aria-label="Dismiss"
 			>
 				<XIcon size={12} strokeWidth={2} />

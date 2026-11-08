@@ -1,4 +1,3 @@
-import { GitCommitIcon } from "@diffkit/icons";
 import { Skeleton } from "@diffkit/ui/components/skeleton";
 import {
 	Tooltip,
@@ -14,6 +13,7 @@ import {
 } from "#/lib/github.query";
 import type { RepoOverview } from "#/lib/github.types";
 import { CommitHistoryLink } from "./commits/commit-history-link";
+import { RepoAvatar, RepoCardHead } from "./repo-ui";
 
 export function LatestCommitBar({
 	owner,
@@ -49,12 +49,12 @@ export function LatestCommitBar({
 
 	if (tipQuery.isPending && commit == null) {
 		return (
-			<div className="flex items-center gap-3 rounded-t-lg border border-b-0 bg-surface-1 px-4 py-2.5 text-sm">
-				<Skeleton className="size-5 shrink-0 rounded-full" />
-				<Skeleton className="h-4 w-20 shrink-0 rounded" />
-				<Skeleton className="h-4 min-w-0 flex-1 rounded" />
-				<Skeleton className="h-4 w-24 shrink-0 rounded" />
-			</div>
+			<RepoCardHead>
+				<Skeleton className="size-[18px] shrink-0 rounded-full" />
+				<Skeleton className="h-3.5 w-20 shrink-0 rounded" />
+				<Skeleton className="h-3.5 min-w-0 flex-1 rounded" />
+				<Skeleton className="h-3.5 w-16 shrink-0 rounded" />
+			</RepoCardHead>
 		);
 	}
 
@@ -64,47 +64,52 @@ export function LatestCommitBar({
 	const firstLine = commit.message.split("\n")[0];
 
 	return (
-		<div className="flex items-center gap-3 rounded-t-lg border border-b-0 bg-surface-1 px-4 py-2.5 text-sm">
-			{commit.author && (
-				<img
-					src={commit.author.avatarUrl}
-					alt={commit.author.login}
-					className="size-5 shrink-0 rounded-full"
-				/>
-			)}
-			<span className="font-medium">{commit.author?.login ?? "Unknown"}</span>
-			<Link
-				to="/$owner/$repo/commit/$sha"
-				params={{
-					owner,
-					repo: repoName,
-					sha: commit.sha,
-				}}
-				className="min-w-0 flex-1 truncate text-left text-muted-foreground transition-colors hover:text-foreground hover:underline"
-			>
-				{firstLine}
-			</Link>
-			<div className="flex shrink-0 items-center gap-3 text-xs text-muted-foreground">
+		<RepoCardHead>
+			{commit.author ? (
+				<RepoAvatar src={commit.author.avatarUrl} alt={commit.author.login} />
+			) : null}
+			<p className="min-w-0 flex-1 truncate font-[450] text-muted-foreground">
+				<span className="font-medium text-foreground">
+					{commit.author?.login ?? "Unknown"}
+				</span>{" "}
+				<Link
+					to="/$owner/$repo/commit/$sha"
+					params={{
+						owner,
+						repo: repoName,
+						sha: commit.sha,
+					}}
+					className="rounded-sm transition-colors hover:text-foreground"
+				>
+					{firstLine}
+				</Link>
+			</p>
+			<div className="flex shrink-0 items-center gap-1 text-xs font-[450] text-muted-foreground">
 				<Tooltip>
 					<TooltipTrigger asChild>
-						<span className="flex items-center gap-1">
-							<GitCommitIcon size={14} />
-							<code>{shortSha}</code>
-						</span>
+						<Link
+							to="/$owner/$repo/commit/$sha"
+							params={{ owner, repo: repoName, sha: commit.sha }}
+							className="mr-2 rounded-sm font-mono transition-colors hover:text-foreground max-sm:hidden"
+						>
+							{shortSha}
+						</Link>
 					</TooltipTrigger>
 					<TooltipContent side="bottom">
 						<code>{commit.sha}</code>
 					</TooltipContent>
 				</Tooltip>
-				<span>{formatRelativeTime(commit.date)}</span>
+				<time dateTime={commit.date} className="mr-1 tabular-nums">
+					{formatRelativeTime(commit.date)}
+				</time>
 				<CommitHistoryLink
 					owner={owner}
 					repo={repoName}
 					ref={ref}
 					path={path}
-					className="-mr-1.5"
+					className="-mr-2"
 				/>
 			</div>
-		</div>
+		</RepoCardHead>
 	);
 }

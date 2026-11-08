@@ -120,7 +120,7 @@ export function CommentMoreMenu({
 				<button
 					type="button"
 					className={cn(
-						"rounded-md p-0.5 text-muted-foreground opacity-0 transition-all hover:bg-surface-2 hover:text-foreground group-hover/comment:opacity-100",
+						"rounded-md p-0.5 text-muted-foreground opacity-0 transition-all hover:bg-ghost-hover hover:text-foreground group-hover/comment:opacity-100",
 						"data-[state=open]:opacity-100",
 					)}
 				>

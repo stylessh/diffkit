@@ -338,11 +338,11 @@ export function IssueCommentReactionBar(props: IssueCommentReactionBarProps) {
 								transition={reactionSpring}
 								onClick={() => void handleToggle(content)}
 								className={cn(
-									"relative inline-flex h-6 items-center gap-2 rounded-full border px-2.5 text-xs transition-colors",
-									"border-transparent text-muted-foreground hover:bg-surface-2 hover:text-foreground",
+									"relative inline-flex h-6 items-center gap-2 rounded-full border-[0.5px] px-2.5 text-xs transition-colors",
+									"border-transparent text-muted-foreground hover:bg-ghost-hover hover:text-foreground",
 									active
-										? "bg-surface-2 hover:bg-surface-1 hover:text-foreground"
-										: "bg-surface-1 hover:bg-surface-2 hover:text-foreground",
+										? "bg-surface-2 hover:bg-ghost-hover hover:text-foreground"
+										: "bg-surface-1 hover:bg-ghost-hover hover:text-foreground",
 								)}
 								aria-label={`React with ${content}`}
 							>

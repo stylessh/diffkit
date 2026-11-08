@@ -25,7 +25,7 @@ export function WorkflowRunArtifacts({
 	return (
 		<section
 			id="artifacts"
-			className="flex flex-col gap-3 overflow-hidden rounded-xl border bg-surface-1"
+			className="flex flex-col gap-3 overflow-hidden rounded-xl border-[0.5px] bg-surface-1"
 		>
 			<div className="flex items-center justify-between px-4 pt-3">
 				<h2 className="font-medium text-sm">Artifacts</h2>
@@ -35,7 +35,7 @@ export function WorkflowRunArtifacts({
 			</div>
 			<Table className="text-sm">
 				<TableHeader>
-					<TableRow className="border-b hover:bg-transparent">
+					<TableRow className="border-b-[0.5px] hover:bg-transparent">
 						<TableHead className="pl-4 font-normal text-muted-foreground text-xs">
 							Name
 						</TableHead>
@@ -82,7 +82,7 @@ function ArtifactRow({ artifact }: { artifact: WorkflowRunArtifact }) {
 						</span>
 					)}
 					{artifact.expired ? (
-						<span className="shrink-0 rounded bg-muted px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground uppercase tracking-wide">
+						<span className="shrink-0 rounded bg-muted px-1.5 py-0.5 text-[11px] font-medium text-muted-foreground">
 							Expired
 						</span>
 					) : null}

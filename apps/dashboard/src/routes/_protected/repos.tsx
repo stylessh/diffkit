@@ -1,5 +1,4 @@
 import {
-	ArchiveIcon,
 	ChevronDownIcon,
 	FilterIcon,
 	LockIcon,
@@ -20,6 +19,7 @@ import {
 } from "#/components/filters";
 import { DashboardContentLoading } from "#/components/layouts/dashboard-content-loading";
 import { RepositoryRow } from "#/components/repo/repository-row";
+import { ListEmpty, ListPage } from "#/components/shared/list-page";
 import {
 	githubReposHubQueryOptions,
 	githubUserReposQueryOptions,
@@ -211,104 +211,63 @@ function RepositoriesPage() {
 	const displayedRepos = hub?.repos ?? [];
 
 	return (
-		<div className="overflow-stable h-full overflow-auto py-10">
-			<div className="mx-auto grid max-w-7xl gap-14 px-3 md:px-6 xl:grid-cols-[minmax(15rem,18rem)_minmax(0,1fr)]">
-				<aside className="flex h-fit flex-col gap-5 xl:sticky xl:top-0">
-					<div className="flex flex-col gap-2">
-						<h1 className="text-2xl font-semibold tracking-tight">
-							Repositories
-						</h1>
-						<p className="text-sm text-muted-foreground">
-							Browse and filter the repositories you can access.
-						</p>
-					</div>
-
-					<div className="flex flex-col gap-2">
-						<RepositoryMetricCard
-							icon={ArchiveIcon}
-							label="All repositories"
-							value={totals.all}
-						/>
-						<RepositoryMetricCard
-							icon={ViewIcon}
-							label="Public"
-							value={totals.public}
-						/>
-						<RepositoryMetricCard
-							icon={LockIcon}
-							label="Private"
-							value={totals.private}
-						/>
-					</div>
-				</aside>
-
-				<div className="flex flex-col gap-2">
-					<FilterBar state={filterState} searchPlaceholder="Search by title…" />
-
-					{totals.all === 0 ? (
-						<p className="py-12 text-center text-sm text-muted-foreground">
-							No repositories found.
-						</p>
-					) : matchingCount === 0 ? (
-						<p className="py-12 text-center text-sm text-muted-foreground">
-							No repositories match these filters.
-						</p>
-					) : (
-						<>
-							<div className="divide-y divide-border overflow-hidden rounded-xl border border-border bg-surface-1">
-								{displayedRepos.map((repo) => (
-									<div
-										key={repo.id}
-										style={{
-											contentVisibility: "auto",
-											containIntrinsicSize: "auto 72px",
-										}}
-									>
-										<RepositoryRow repo={repo} scope={scope} />
-									</div>
-								))}
+		<ListPage
+			title="Repositories"
+			count={totals.all}
+			className="overflow-stable"
+			actions={
+				<span className="hidden items-center gap-3 pr-2 text-xs tabular-nums sm:flex">
+					<span className="flex items-center gap-1.5">
+						<ViewIcon size={13} strokeWidth={2} />
+						{totals.public} public
+					</span>
+					<span className="flex items-center gap-1.5">
+						<LockIcon size={13} strokeWidth={2} />
+						{totals.private} private
+					</span>
+				</span>
+			}
+			toolbar={
+				<FilterBar state={filterState} searchPlaceholder="Search by title…" />
+			}
+		>
+			{totals.all === 0 ? (
+				<ListEmpty>No repositories found.</ListEmpty>
+			) : matchingCount === 0 ? (
+				<ListEmpty>No repositories match these filters.</ListEmpty>
+			) : (
+				<>
+					<div className="flex flex-col">
+						{displayedRepos.map((repo) => (
+							<div
+								key={repo.id}
+								style={{
+									contentVisibility: "auto",
+									containIntrinsicSize: "auto 72px",
+								}}
+							>
+								<RepositoryRow repo={repo} scope={scope} />
 							</div>
-							{repoListHasNextPage(safePage, matchingCount) ? (
-								<Button
-									type="button"
-									variant="secondary"
-									size="sm"
-									className="mx-auto mt-6 rounded-full"
-									onClick={() => {
-										void setPage(safePage + 1);
-									}}
-								>
-									<ChevronDownIcon size={14} strokeWidth={2} />
-									Load more
-								</Button>
-							) : null}
-						</>
-					)}
-				</div>
-			</div>
-		</div>
-	);
-}
-
-function RepositoryMetricCard({
-	icon: Icon,
-	label,
-	value,
-}: {
-	icon: React.ComponentType<{ size?: number; strokeWidth?: number }>;
-	label: string;
-	value: number;
-}) {
-	return (
-		<div className="flex items-center justify-between gap-4 rounded-xl bg-surface-1 px-3.5 py-3">
-			<div className="flex min-w-0 items-center gap-2">
-				<div className="shrink-0 text-muted-foreground">
-					<Icon size={15} strokeWidth={1.9} />
-				</div>
-				<p className="truncate text-sm font-medium">{label}</p>
-			</div>
-			<p className="font-semibold tabular-nums leading-tight">{value}</p>
-		</div>
+						))}
+					</div>
+					{repoListHasNextPage(safePage, matchingCount) ? (
+						<div className="flex justify-center pt-4">
+							<Button
+								type="button"
+								variant="pill"
+								size="sm"
+								onClick={() => {
+									void setPage(safePage + 1);
+								}}
+								iconLeft={<ChevronDownIcon size={14} strokeWidth={2} />}
+							>
+								Load more
+							</Button>
+						</div>
+					) : null}
+				</>
+			)}
+		</ListPage>
 	);
 }
 

@@ -17,10 +17,6 @@ import {
 	searchFiles,
 } from "#/lib/fuzzy-file-search";
 
-// ---------------------------------------------------------------------------
-// Highlighted text for fuzzy match results
-// ---------------------------------------------------------------------------
-
 function HighlightedText({
 	text,
 	indices,
@@ -55,32 +51,18 @@ function HighlightedText({
 	return <span className={className}>{parts}</span>;
 }
 
-// ---------------------------------------------------------------------------
-// Spring config
-// ---------------------------------------------------------------------------
-
 const spring = {
 	type: "spring" as const,
 	duration: 0.18,
 	bounce: 0.05,
 };
 
-// ---------------------------------------------------------------------------
-// FileSearchCard
-// ---------------------------------------------------------------------------
-
 export type FileSearchCardProps = {
-	/** All searchable file entries. */
 	entries: FileSearchEntry[];
-	/** Called when the user selects a result (Enter key or click). */
 	onSelect: (entry: FileSearchResult) => void;
-	/** Placeholder text for the search input. */
 	placeholder?: string;
-	/** Entries to display when the query is empty. If not provided, shows first 5 file entries. */
 	defaultEntries?: FileSearchEntry[];
-	/** Whether the currently selected path matches a result (for active highlight). */
 	activePath?: string;
-	/** Global keyboard shortcut character to focus the input (default: "f"). Set to null to disable. */
 	shortcutKey?: string | null;
 };
 
@@ -116,7 +98,6 @@ export const FileSearchCard = memo(function FileSearchCard({
 
 	const visibleResults = hasResults ? searchResults : computedDefaults;
 
-	// Reset active index when results change
 	// biome-ignore lint/correctness/useExhaustiveDependencies: reset index when query or result count changes
 	useEffect(() => {
 		setActiveIndex(0);
@@ -158,7 +139,6 @@ export const FileSearchCard = memo(function FileSearchCard({
 		[visibleResults, activeIndex, handleSelect],
 	);
 
-	// Close card on click outside
 	useEffect(() => {
 		if (!isExpanded) return;
 		function handlePointerDown(e: PointerEvent) {
@@ -171,7 +151,6 @@ export const FileSearchCard = memo(function FileSearchCard({
 		return () => document.removeEventListener("pointerdown", handlePointerDown);
 	}, [isExpanded]);
 
-	// Close on Escape + global shortcut
 	useEffect(() => {
 		function handleKeyDown(e: KeyboardEvent) {
 			if (e.key === "Escape" && isExpanded) {
@@ -200,11 +179,10 @@ export const FileSearchCard = memo(function FileSearchCard({
 		<div className="relative z-10 shrink-0 px-3 pt-4 pb-2">
 			<div className="h-8" />
 
-			{/* Floating card — absolutely positioned over the tree */}
 			<div
 				ref={cardRef}
 				className={cn(
-					"absolute overflow-hidden rounded-lg border bg-surface-0 transition-[inset-inline,top,box-shadow] duration-150 ease-out",
+					"absolute overflow-hidden rounded-lg border-[0.5px] bg-surface-0 transition-[inset-inline,top,box-shadow] duration-150 ease-out",
 					isExpanded
 						? "inset-x-2 top-3 shadow-lg ring-1 ring-accent/20"
 						: "inset-x-3 top-4",
@@ -259,7 +237,7 @@ export const FileSearchCard = memo(function FileSearchCard({
 									animate={{ opacity: 1, scale: 1 }}
 									exit={{ opacity: 0, scale: 0.8 }}
 									transition={spring}
-									className="absolute right-2 flex size-5 items-center justify-center rounded border border-border/60 bg-surface-1 text-[10px] font-medium text-muted-foreground"
+									className="absolute right-2 flex size-5 items-center justify-center rounded border-[0.5px] border-border/60 bg-surface-1 text-[10px] font-medium text-muted-foreground"
 								>
 									{shortcutKey.toUpperCase()}
 								</motion.kbd>
@@ -276,7 +254,7 @@ export const FileSearchCard = memo(function FileSearchCard({
 							animate={{ height: "auto", opacity: 1 }}
 							exit={{ height: 0, opacity: 0 }}
 							transition={spring}
-							className="overflow-hidden border-t"
+							className="overflow-hidden border-t-[0.5px]"
 						>
 							<div className="max-h-[min(400px,60vh)] overflow-y-auto">
 								{visibleResults.length > 0 ? (
@@ -303,10 +281,6 @@ export const FileSearchCard = memo(function FileSearchCard({
 		</div>
 	);
 });
-
-// ---------------------------------------------------------------------------
-// Search result row
-// ---------------------------------------------------------------------------
 
 const SearchResultRow = memo(function SearchResultRow({
 	result,
@@ -336,7 +310,6 @@ const SearchResultRow = memo(function SearchResultRow({
 		[query, dir],
 	);
 
-	// Scroll highlighted item into view
 	useEffect(() => {
 		if (isHighlighted && ref.current) {
 			ref.current.scrollIntoView({ block: "nearest" });

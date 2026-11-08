@@ -1,15 +1,18 @@
-import { FileIcon, GitCommitIcon } from "@diffkit/icons";
 import { cn } from "@diffkit/ui/lib/utils";
 import type { DiffLineAnnotation } from "@pierre/diffs/react";
-import { Link } from "@tanstack/react-router";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { type ReactNode, useEffect, useMemo, useRef, useState } from "react";
+import {
+	DiffCommitList,
+	type DiffStyle,
+	DiffToolbar,
+	type DiffView,
+} from "#/components/pulls/review/review-diff-toolbar";
 import { ReviewFileDiffBlock } from "#/components/pulls/review/review-file-diff-block";
 import type {
 	PendingComment,
 	ReviewAnnotation,
 } from "#/components/pulls/review/review-types";
 import { encodeFileId } from "#/components/pulls/review/review-utils";
-import { formatRelativeTime } from "#/lib/format-relative-time";
 import type {
 	PullCommit,
 	PullFile,
@@ -40,14 +43,18 @@ export function CompareDiffView({
 	filesTruncated = false,
 	owner,
 	repo,
+	header,
 }: {
 	commits: PullCommit[];
 	files: PullFile[];
 	filesTruncated?: boolean;
 	owner: string;
 	repo: string;
+	header?: ReactNode;
 }) {
-	const [diffStyle, setDiffStyle] = useState<"unified" | "split">("split");
+	const [diffStyle, setDiffStyle] = useState<DiffStyle>("split");
+	const [view, setView] = useState<DiffView>("files");
+	const [wrapLines, setWrapLines] = useState(false);
 	const [visibleCount, setVisibleCount] = useState(() =>
 		Math.min(files.length, INITIAL_VISIBLE_COUNT),
 	);
@@ -82,144 +89,45 @@ export function CompareDiffView({
 		[files, visibleCount],
 	);
 
-	const totals = useMemo(() => {
-		let additions = 0;
-		let deletions = 0;
-		for (const f of files) {
-			additions += f.additions;
-			deletions += f.deletions;
-		}
-		return { additions, deletions };
-	}, [files]);
-
 	return (
-		<div className="flex flex-col gap-16">
-			<section className="flex flex-col gap-3">
-				<h2 className="flex items-center gap-2 text-sm font-semibold">
-					<GitCommitIcon size={15} strokeWidth={2} />
-					Commits
-					<span className="text-xs font-normal text-muted-foreground">
-						({commits.length})
-					</span>
-				</h2>
-				{commits.length === 0 ? (
-					<p className="rounded-lg border bg-surface-0 px-4 py-3 text-sm text-muted-foreground">
-						No new commits.
-					</p>
-				) : (
-					<ol className="flex flex-col divide-y rounded-lg border bg-surface-0">
-						{commits.map((commit) => {
-							const firstLine = commit.message.split("\n")[0];
-							return (
-								<li
-									key={commit.sha}
-									className="flex items-center gap-3 px-4 py-2.5 text-sm"
-								>
-									<div className="flex size-5 shrink-0 items-center justify-center rounded-full border border-border bg-surface-1">
-										<GitCommitIcon
-											size={12}
-											strokeWidth={2}
-											className="text-muted-foreground"
-										/>
-									</div>
-									{commit.author ? (
-										<img
-											src={commit.author.avatarUrl}
-											alt={commit.author.login}
-											className="size-5 shrink-0 rounded-full border border-border"
-										/>
-									) : (
-										<div className="size-5 shrink-0 rounded-full bg-surface-2" />
-									)}
-									<Link
-										to="/$owner/$repo/commit/$sha"
-										params={{ owner, repo, sha: commit.sha }}
-										className="min-w-0 flex-1 truncate text-left text-foreground transition-colors hover:text-foreground hover:underline"
-									>
-										{firstLine}
-									</Link>
-									<code className="shrink-0 rounded bg-surface-1 px-1.5 py-0.5 font-mono text-[10px] text-muted-foreground">
-										{commit.sha.slice(0, 7)}
-									</code>
-									{commit.createdAt ? (
-										<span className="shrink-0 text-xs text-muted-foreground">
-											{formatRelativeTime(commit.createdAt)}
-										</span>
-									) : null}
-								</li>
-							);
-						})}
-					</ol>
-				)}
-			</section>
-
-			<section className="flex flex-col gap-3">
-				<div className="flex items-center justify-between gap-3">
-					<h2 className="flex items-center gap-2 text-sm font-semibold">
-						<FileIcon size={15} strokeWidth={2} />
-						Files changed
-						<span className="text-xs font-normal text-muted-foreground">
-							({files.length})
-						</span>
-						{files.length > 0 ? (
-							<span className="ml-2 flex items-center gap-1.5 text-xs">
-								<span className="tabular-nums font-medium text-green-500">
-									+{totals.additions}
-								</span>
-								<span className="tabular-nums font-medium text-red-500">
-									-{totals.deletions}
-								</span>
-							</span>
-						) : null}
-					</h2>
-					{files.length > 0 ? (
-						<div className="flex items-center rounded-md border bg-surface-1">
-							<button
-								type="button"
-								className={cn(
-									"rounded-l-md px-2.5 py-1 text-xs font-medium transition-colors",
-									diffStyle === "unified"
-										? "bg-surface-0 text-foreground shadow-sm"
-										: "text-muted-foreground hover:text-foreground",
-								)}
-								onClick={() => setDiffStyle("unified")}
-							>
-								Unified
-							</button>
-							<button
-								type="button"
-								className={cn(
-									"rounded-r-md px-2.5 py-1 text-xs font-medium transition-colors",
-									diffStyle === "split"
-										? "bg-surface-0 text-foreground shadow-sm"
-										: "text-muted-foreground hover:text-foreground",
-								)}
-								onClick={() => setDiffStyle("split")}
-							>
-								Split
-							</button>
-						</div>
-					) : null}
-				</div>
+		<div className="flex min-w-0 flex-col gap-2">
+			{header}
+			<DiffToolbar
+				view={view}
+				onViewChange={setView}
+				fileCount={files.length}
+				commitCount={commits.length}
+				diffStyle={diffStyle}
+				onDiffStyleChange={setDiffStyle}
+				wrapLines={wrapLines}
+				onWrapLinesChange={setWrapLines}
+			/>
+			{view === "commits" ? (
+				<DiffCommitList commits={commits} owner={owner} repo={repo} />
+			) : null}
+			<div
+				className={cn("flex flex-col gap-2", view === "commits" && "hidden")}
+			>
 				{filesTruncated ? (
-					<p className="rounded-lg border border-yellow-500/40 bg-yellow-500/10 px-4 py-2.5 text-xs text-yellow-700 dark:text-yellow-400">
+					<p className="rounded-lg bg-pill-warning px-4 py-3 text-xs font-[450] text-pill-warning-text">
 						This comparison includes more than {files.length} files; GitHub only
 						returns the first {files.length}. Push fewer changes or open the PR
 						to view the full set.
 					</p>
 				) : null}
 				{files.length === 0 ? (
-					<p className="rounded-lg border bg-surface-0 px-4 py-3 text-sm text-muted-foreground">
+					<p className="px-4 py-10 text-center text-[13px] font-[450] text-muted-foreground">
 						No files changed.
 					</p>
 				) : (
-					<div className="flex flex-col gap-4">
+					<>
 						{visibleFiles.map((file) => (
 							<ReviewFileDiffBlock
 								key={file.filename}
 								id={encodeFileId(file.filename)}
 								file={file}
 								diffStyle={diffStyle}
+								wrapLines={wrapLines}
 								isNearViewport
 								readOnly
 								annotations={EMPTY_ANNOTATIONS}
@@ -241,14 +149,14 @@ export function CompareDiffView({
 						{visibleCount < files.length ? (
 							<>
 								<div ref={loadMoreRef} className="h-8" />
-								<div className="rounded-lg border bg-surface-0 px-3 py-2 text-xs text-muted-foreground">
+								<p className="rounded-lg border-[0.5px] border-card-border bg-surface-0 px-4 py-3 text-xs font-[450] text-muted-foreground">
 									Showing {visibleCount} of {files.length} files
-								</div>
+								</p>
 							</>
 						) : null}
-					</div>
+					</>
 				)}
-			</section>
+			</div>
 		</div>
 	);
 }

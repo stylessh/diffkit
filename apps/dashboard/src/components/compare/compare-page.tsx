@@ -1,8 +1,23 @@
+import { GitCompareIcon, GitPullRequestIcon } from "@diffkit/icons";
+import { BranchBadge } from "@diffkit/ui/components/detail-layout";
 import type { MentionCandidate } from "@diffkit/ui/components/markdown-editor";
+import {
+	PageHeader,
+	PageHeaderCrumb,
+	PageHeaderTitle,
+} from "@diffkit/ui/components/page-header";
 import { toast } from "@diffkit/ui/components/sonner";
+import { cn } from "@diffkit/ui/lib/utils";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useRouter } from "@tanstack/react-router";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Link, useRouter } from "@tanstack/react-router";
+import {
+	type ReactNode,
+	useCallback,
+	useEffect,
+	useMemo,
+	useRef,
+	useState,
+} from "react";
 import {
 	DetailPageSkeletonLayout,
 	StaggerItem,
@@ -237,35 +252,57 @@ export function ComparePage({
 	if (!repoData) return <ComparePageSkeleton />;
 	if (!compare) {
 		return (
-			<div className="mx-auto flex max-w-2xl flex-col items-center gap-3 px-6 py-20 text-center">
-				<h1 className="text-lg font-semibold">Nothing to compare</h1>
-				<p className="text-sm text-muted-foreground">
-					<code className="rounded bg-surface-2 px-1.5 py-0.5 font-mono text-xs">
-						{base}
-					</code>{" "}
-					and{" "}
-					<code className="rounded bg-surface-2 px-1.5 py-0.5 font-mono text-xs">
-						{head}
-					</code>{" "}
-					are identical, or one of them doesn't exist.
-				</p>
+			<div className="flex h-full min-h-0 flex-col">
+				<ComparePageHeader owner={owner} repo={repo} title="Compare changes" />
+				<div className="mx-auto flex max-w-2xl flex-col items-center gap-2 px-6 py-20 text-center">
+					<h2 className="text-[15px] font-medium text-foreground">
+						Nothing to compare
+					</h2>
+					<p className="text-[13px] font-[450] text-muted-foreground">
+						<BranchBadge>{base}</BranchBadge> and{" "}
+						<BranchBadge>{head}</BranchBadge> are identical, or one of them
+						doesn't exist.
+					</p>
+				</div>
 			</div>
 		);
 	}
 
+	const refs = (
+		<CompareHeader
+			owner={owner}
+			repo={repo}
+			base={base}
+			head={head}
+			compare={compare}
+		/>
+	);
+
 	return (
-		<div className="h-full overflow-auto">
-			<div className="mx-auto flex max-w-7xl flex-col gap-10 px-3 py-10 md:px-6">
+		<div className="flex h-full min-h-0 flex-col">
+			<ComparePageHeader
+				owner={owner}
+				repo={repo}
+				title={showForm ? "Open a pull request" : "Compare changes"}
+				actions={
+					!showForm && compare.aheadBy > 0 ? (
+						<Link
+							to="/$owner/$repo/compare/$"
+							params={{ owner, repo, _splat: `${base}...${head}` }}
+							search={{ expand: 1 }}
+							className="flex h-7 shrink-0 items-center gap-1.5 rounded-full bg-indigo px-3 text-xs font-medium text-indigo-foreground shadow-[0_1px_1px_0_lch(0_0_0/0.12),0_3px_6px_-2px_lch(0_0_0/0.12)] transition-colors hover:bg-indigo/90"
+						>
+							<GitPullRequestIcon size={14} strokeWidth={2} />
+							Create pull request
+						</Link>
+					) : undefined
+				}
+			/>
+			<div className="min-h-0 flex-1 overflow-y-auto">
 				{showForm ? (
-					<div className="grid gap-16 xl:grid-cols-[minmax(0,1fr)_minmax(16rem,20rem)]">
-						<div className="flex min-w-0 flex-col gap-8">
-							<CompareHeader
-								owner={owner}
-								repo={repo}
-								base={base}
-								head={head}
-								compare={compare}
-							/>
+					<div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_minmax(17rem,34%)]">
+						<div className="mx-auto flex w-full max-w-[780px] min-w-0 flex-col gap-6 px-4 pt-6 pb-12 md:px-[46px]">
+							{refs}
 							<CompareForm
 								owner={owner}
 								repo={repo}
@@ -280,40 +317,77 @@ export function ComparePage({
 								mentionConfig={mentionConfig}
 							/>
 						</div>
-						<CompareSidebar
-							owner={owner}
-							repo={repo}
-							scope={scope}
-							viewerLogin={viewer?.login ?? null}
-							selectedLabels={selectedLabels}
-							onToggleLabel={toggleLabel}
-							selectedAssignees={selectedAssignees}
-							onToggleAssignee={toggleAssignee}
-							selectedReviewers={selectedReviewers}
-							onToggleReviewer={toggleReviewer}
-							selectedTeamReviewers={selectedTeamReviewers}
-							onToggleTeamReviewer={toggleTeamReviewer}
-						/>
+						<aside
+							aria-label="Pull request properties"
+							className="min-w-0 self-start px-4 pt-2 pb-10 md:px-[46px] lg:pt-6 lg:pr-3 lg:pl-0"
+						>
+							<div className="flex max-w-80 flex-col">
+								<CompareSidebar
+									owner={owner}
+									repo={repo}
+									scope={scope}
+									viewerLogin={viewer?.login ?? null}
+									selectedLabels={selectedLabels}
+									onToggleLabel={toggleLabel}
+									selectedAssignees={selectedAssignees}
+									onToggleAssignee={toggleAssignee}
+									selectedReviewers={selectedReviewers}
+									onToggleReviewer={toggleReviewer}
+									selectedTeamReviewers={selectedTeamReviewers}
+									onToggleTeamReviewer={toggleTeamReviewer}
+								/>
+							</div>
+						</aside>
 					</div>
-				) : (
-					<CompareHeader
+				) : null}
+
+				<div
+					className={cn(
+						"px-[14px] pb-6 max-md:px-2",
+						showForm ? "border-t-[0.5px] border-header-rule pt-4" : "pt-2",
+					)}
+				>
+					<CompareDiffView
+						header={showForm ? undefined : refs}
+						commits={compare.commits}
+						files={compare.files}
+						filesTruncated={compare.filesTruncated}
 						owner={owner}
 						repo={repo}
-						base={base}
-						head={head}
-						compare={compare}
 					/>
-				)}
-
-				<CompareDiffView
-					commits={compare.commits}
-					files={compare.files}
-					filesTruncated={compare.filesTruncated}
-					owner={owner}
-					repo={repo}
-				/>
+				</div>
 			</div>
 		</div>
+	);
+}
+
+function ComparePageHeader({
+	owner,
+	repo,
+	title,
+	actions,
+}: {
+	owner: string;
+	repo: string;
+	title: string;
+	actions?: ReactNode;
+}) {
+	return (
+		<PageHeader actions={actions}>
+			<PageHeaderCrumb asChild>
+				<Link to="/$owner/$repo" params={{ owner, repo }}>
+					{owner}/{repo}
+				</Link>
+			</PageHeaderCrumb>
+			<PageHeaderTitle>
+				<GitCompareIcon
+					size={14}
+					strokeWidth={2}
+					className="text-muted-foreground"
+				/>
+				{title}
+			</PageHeaderTitle>
+		</PageHeader>
 	);
 }
 
@@ -327,7 +401,7 @@ function ComparePageSkeleton() {
 				</div>
 			</StaggerItem>
 			<StaggerItem index={1}>
-				<div className="flex flex-col gap-3 rounded-lg border p-4">
+				<div className="flex flex-col gap-3 rounded-lg border-[0.5px] p-4">
 					<div className="h-9 w-full animate-pulse rounded bg-surface-1" />
 					<div className="h-32 w-full animate-pulse rounded bg-surface-1" />
 				</div>

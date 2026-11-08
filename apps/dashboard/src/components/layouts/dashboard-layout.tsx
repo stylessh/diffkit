@@ -89,7 +89,7 @@ export function DashboardLayout() {
 	const showPanel = isXl && sidePanel.hasContent && !sidePanel.collapsed;
 
 	return (
-		<div className="isolate flex h-dvh flex-col bg-muted">
+		<div className="isolate flex h-dvh flex-col bg-shell">
 			<DashboardTopbar
 				user={user}
 				tabsReady={tabsReady}
@@ -118,9 +118,9 @@ export function DashboardLayout() {
 							: "minmax(0, 1fr) 0px",
 					}}
 					transition={{ type: "spring", stiffness: 400, damping: 35 }}
-					className="grid flex-1 overflow-hidden p-2 pt-0"
+					className="grid flex-1 overflow-hidden md:p-2 md:pt-0"
 				>
-					<div className="relative overflow-hidden rounded-xl border bg-card shadow-[0_1px_4px_0_rgba(0,0,0,0.03)]">
+					<div className="relative overflow-hidden bg-main md:rounded-xl md:shadow-main">
 						<div className="h-full">
 							<Outlet />
 						</div>

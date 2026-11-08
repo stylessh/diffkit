@@ -133,6 +133,7 @@ export { CodeTabIcon } from "./code-tab-icon";
 export { FileEmpty02Icon } from "./file-empty-02-icon";
 export { FullScreenIcon } from "./full-screen-icon";
 export { LayersIcon } from "./layers-icon";
+export { DisplayOptionsIcon, FilterLinesIcon } from "./linear-glyphs";
 export { PasskeyIcon } from "./passkey-icon";
 export { PenIcon } from "./pen-icon";
 export { SeparatorHorizontalIcon } from "./separator-horizontal-icon";

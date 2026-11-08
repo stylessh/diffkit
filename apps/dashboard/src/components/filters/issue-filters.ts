@@ -28,11 +28,11 @@ const ISSUE_STATUS_META: {
 	label: string;
 	colorClass: string;
 }[] = [
-	{ value: "open", label: "Open", colorClass: "text-green-500" },
+	{ value: "open", label: "Open", colorClass: "text-success" },
 	{
 		value: "completed",
 		label: "Closed (completed)",
-		colorClass: "text-purple-500",
+		colorClass: "text-merged",
 	},
 	{
 		value: "not_planned",

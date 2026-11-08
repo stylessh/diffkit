@@ -21,6 +21,7 @@ import { cn } from "@diffkit/ui/lib/utils";
 import { useQueryClient } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import { useState } from "react";
+import { iconButtonClassName } from "#/components/repo/repo-ui";
 import { deleteRepoRelease } from "#/lib/github.functions";
 import type { GitHubQueryScope } from "#/lib/github.query";
 import type { RepoRelease } from "#/lib/github.types";
@@ -29,8 +30,7 @@ import {
 	releaseEntityKey,
 } from "#/lib/github-query-updates";
 
-const iconButtonClass =
-	"flex size-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-surface-2 hover:text-foreground";
+const iconButtonClass = iconButtonClassName;
 
 /** Edit / delete controls, rendered only for viewers with push access. */
 export function ReleaseCardActions({
@@ -91,20 +91,23 @@ export function ReleaseDeleteButton({
 	variant?: "icon" | "button";
 }) {
 	const queryClient = useQueryClient();
-	const [open, setOpen] = useState(false);
-	const [deleting, setDeleting] = useState(false);
+	const [dialog, setDialog] = useState<"closed" | "confirming" | "deleting">(
+		"closed",
+	);
+	const deleting = dialog === "deleting";
 
 	const handleDelete = async () => {
-		setDeleting(true);
+		setDialog("deleting");
 		try {
 			const result = await deleteRepoRelease({
 				data: { owner, repo, releaseId: release.id },
 			});
 			if (!result.ok) {
 				toast.error(result.error);
+				setDialog("confirming");
 				return;
 			}
-			setOpen(false);
+			setDialog("closed");
 			toast.success(`Deleted release ${release.tagName}`, {
 				description: "The git tag was kept.",
 			});
@@ -114,8 +117,7 @@ export function ReleaseDeleteButton({
 			]);
 		} catch {
 			toast.error("Failed to delete release");
-		} finally {
-			setDeleting(false);
+			setDialog("confirming");
 		}
 	};
 
@@ -124,7 +126,7 @@ export function ReleaseDeleteButton({
 			<button
 				type="button"
 				aria-label={`Delete release ${release.tagName}`}
-				className={cn(iconButtonClass, "hover:text-destructive")}
+				className={cn(iconButtonClass, "hover:text-danger")}
 			>
 				<Delete01Icon size={14} />
 			</button>
@@ -133,7 +135,7 @@ export function ReleaseDeleteButton({
 				type="button"
 				className={cn(
 					buttonVariants({ variant: "ghost", size: "sm" }),
-					"text-destructive hover:bg-destructive/10 hover:text-destructive",
+					"rounded-full text-danger hover:bg-pill-blocked hover:text-danger",
 				)}
 			>
 				<Delete01Icon size={14} />
@@ -142,7 +144,12 @@ export function ReleaseDeleteButton({
 		);
 
 	return (
-		<AlertDialog open={open} onOpenChange={setOpen}>
+		<AlertDialog
+			open={dialog !== "closed"}
+			onOpenChange={(open) => {
+				if (!deleting) setDialog(open ? "confirming" : "closed");
+			}}
+		>
 			{variant === "icon" ? (
 				<Tooltip>
 					<TooltipTrigger asChild>

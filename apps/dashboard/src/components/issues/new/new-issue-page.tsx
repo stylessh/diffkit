@@ -186,7 +186,7 @@ function NewIssueForm({
 
 					{/* Header */}
 					<div className="flex items-center gap-3">
-						<div className="shrink-0 text-green-500">
+						<div className="shrink-0 text-success">
 							<IssuesIcon size={20} strokeWidth={2} />
 						</div>
 						<h1 className="text-xl font-semibold tracking-tight">
@@ -207,7 +207,7 @@ function NewIssueForm({
 							value={title}
 							onChange={(e) => setTitle(e.target.value)}
 							placeholder="Issue title"
-							className="flex h-9 w-full rounded-md border bg-surface-1 px-3 py-1 text-sm outline-none transition-[box-shadow,border-color] placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px]"
+							className="flex h-9 w-full rounded-md border-[0.5px] bg-surface-1 px-3 py-1 text-sm outline-none transition-[box-shadow,border-color] placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px]"
 						/>
 					</div>
 
@@ -226,7 +226,7 @@ function NewIssueForm({
 
 					{/* Error */}
 					{error && (
-						<div className="rounded-lg border border-destructive/50 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+						<div className="rounded-lg border-[0.5px] border-destructive/50 bg-destructive/10 px-4 py-3 text-sm text-destructive">
 							{error}
 						</div>
 					)}
@@ -370,9 +370,7 @@ function NewIssueLabelsPicker({
 	return (
 		<div className="flex flex-col gap-2.5">
 			<div className="flex items-center justify-between">
-				<h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-					Labels
-				</h3>
+				<h3 className="text-[13px] font-[450] text-muted-foreground">Labels</h3>
 				<Popover
 					open={pickerOpen}
 					onOpenChange={(open) => {
@@ -386,13 +384,13 @@ function NewIssueLabelsPicker({
 					<PopoverTrigger asChild>
 						<button
 							type="button"
-							className="flex size-5 items-center justify-center rounded text-muted-foreground transition-colors hover:bg-surface-2 hover:text-foreground"
+							className="flex size-5 items-center justify-center rounded text-muted-foreground transition-colors hover:bg-ghost-hover hover:text-foreground"
 						>
 							<PlusSignIcon size={14} strokeWidth={2} />
 						</button>
 					</PopoverTrigger>
 					<PopoverContent align="end" className="w-64 p-0">
-						<div className="flex items-center gap-2 border-b px-3 py-2">
+						<div className="flex items-center gap-2 border-b-[0.5px] px-3 py-2">
 							<SearchIcon className="size-3.5 shrink-0 text-muted-foreground" />
 							<input
 								value={search}
@@ -424,7 +422,7 @@ function NewIssueLabelsPicker({
 											data-index={i}
 											onClick={() => onToggleLabel(label)}
 											onMouseEnter={() => setFocusedIndex(i)}
-											className={`flex w-full items-center gap-2 px-3 py-1.5 text-left text-sm transition-colors hover:bg-surface-1 ${focusedIndex === i ? "bg-surface-1" : ""}`}
+											className={`flex w-full items-center gap-2 px-3 py-1.5 text-left text-sm transition-colors hover:bg-ghost-hover ${focusedIndex === i ? "bg-surface-1" : ""}`}
 										>
 											<span
 												className="size-3 shrink-0 rounded-full"
@@ -439,7 +437,7 @@ function NewIssueLabelsPicker({
 												<CheckIcon
 													size={14}
 													strokeWidth={2}
-													className="shrink-0 text-green-500"
+													className="shrink-0 text-success"
 												/>
 											)}
 										</button>
@@ -559,7 +557,7 @@ function AssigneesSection({
 	return (
 		<div className="flex flex-col gap-2.5">
 			<div className="flex items-center justify-between">
-				<h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+				<h3 className="text-[13px] font-[450] text-muted-foreground">
 					Assignees
 				</h3>
 				<Popover
@@ -577,13 +575,13 @@ function AssigneesSection({
 							type="button"
 							onMouseEnter={prefetchCollaborators}
 							onFocus={prefetchCollaborators}
-							className="flex size-5 items-center justify-center rounded text-muted-foreground transition-colors hover:bg-surface-2 hover:text-foreground"
+							className="flex size-5 items-center justify-center rounded text-muted-foreground transition-colors hover:bg-ghost-hover hover:text-foreground"
 						>
 							<PlusSignIcon size={14} strokeWidth={2} />
 						</button>
 					</PopoverTrigger>
 					<PopoverContent align="end" className="w-64 p-0">
-						<div className="flex items-center gap-2 border-b px-3 py-2">
+						<div className="flex items-center gap-2 border-b-[0.5px] px-3 py-2">
 							<SearchIcon className="size-3.5 shrink-0 text-muted-foreground" />
 							<input
 								value={search}
@@ -615,12 +613,12 @@ function AssigneesSection({
 											data-index={i}
 											onClick={() => onToggleAssignee(collaborator)}
 											onMouseEnter={() => setFocusedIndex(i)}
-											className={`flex w-full items-center gap-2 px-3 py-1.5 text-left text-sm transition-colors hover:bg-surface-1 ${focusedIndex === i ? "bg-surface-1" : ""}`}
+											className={`flex w-full items-center gap-2 px-3 py-1.5 text-left text-sm transition-colors hover:bg-ghost-hover ${focusedIndex === i ? "bg-surface-1" : ""}`}
 										>
 											<img
 												src={collaborator.avatarUrl}
 												alt={collaborator.login}
-												className="size-5 rounded-full border border-border"
+												className="size-5 rounded-full ring-[0.5px] ring-chip-border"
 											/>
 											<span className="min-w-0 flex-1 truncate">
 												{collaborator.login}
@@ -629,7 +627,7 @@ function AssigneesSection({
 												<CheckIcon
 													size={14}
 													strokeWidth={2}
-													className="shrink-0 text-green-500"
+													className="shrink-0 text-success"
 												/>
 											)}
 										</button>
@@ -650,7 +648,7 @@ function AssigneesSection({
 							<img
 								src={assignee.avatarUrl}
 								alt={assignee.login}
-								className="size-5 rounded-full border border-border"
+								className="size-5 rounded-full ring-[0.5px] ring-chip-border"
 							/>
 							<span className="min-w-0 flex-1 truncate text-sm">
 								{assignee.login}
@@ -658,7 +656,7 @@ function AssigneesSection({
 							<button
 								type="button"
 								onClick={() => onToggleAssignee(assignee)}
-								className="flex size-4 shrink-0 items-center justify-center rounded opacity-0 transition-opacity hover:text-red-400 group-hover/assignee:opacity-100"
+								className="flex size-4 shrink-0 items-center justify-center rounded opacity-0 transition-opacity hover:text-danger group-hover/assignee:opacity-100"
 							>
 								<CloseIcon size={12} strokeWidth={2} />
 							</button>

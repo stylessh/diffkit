@@ -4,9 +4,11 @@ import {
 	CodeIcon,
 	CopyIcon,
 	DownloadIcon,
-	GitPullRequestIcon,
+	FileIcon,
+	FolderIcon,
+	GitBranchIcon,
+	SearchIcon,
 } from "@diffkit/icons";
-import { Button } from "@diffkit/ui/components/button";
 import {
 	Command,
 	CommandEmpty,
@@ -27,13 +29,18 @@ import {
 } from "@diffkit/ui/components/tabs";
 import { cn } from "@diffkit/ui/lib/utils";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useCallback, useState } from "react";
+import { Link, useNavigate } from "@tanstack/react-router";
+import { useCallback, useDeferredValue, useMemo, useState } from "react";
+import { TagIcon } from "#/components/repo/refs/tag-icon";
+import { type FileSearchEntry, searchFiles } from "#/lib/fuzzy-file-search";
 import {
 	type GitHubQueryScope,
 	githubRepoBranchesQueryOptions,
 } from "#/lib/github.query";
-import type { RepoOverview } from "#/lib/github.types";
+import type { RepoOverview, RepoTreeEntry } from "#/lib/github.types";
 import { useRepoCloneProtocol } from "#/lib/repo-clone-protocol-storage";
+import { useGlobalShortcuts } from "#/lib/shortcuts";
+import { ghostPillClassName, KeyHint, pillButtonClassName } from "./repo-ui";
 
 export function CodeExplorerToolbar({
 	repo,
@@ -47,28 +54,53 @@ export function CodeExplorerToolbar({
 	onBranchChange: (branch: string) => void;
 }) {
 	return (
-		<div className="flex items-center justify-between gap-3">
+		<div className="flex flex-wrap items-center gap-1.5">
 			<BranchSelector
 				repo={repo}
 				currentRef={currentRef}
 				scope={scope}
 				onBranchChange={onBranchChange}
 			/>
-			<CodePopover repo={repo} />
+			<Link
+				to="/$owner/$repo/branches"
+				params={{ owner: repo.owner, repo: repo.name }}
+				className={cn(ghostPillClassName, "max-sm:hidden")}
+			>
+				<GitBranchIcon size={14} strokeWidth={2} />
+				<span className="tabular-nums">
+					{repo.branchCount} {repo.branchCount === 1 ? "branch" : "branches"}
+				</span>
+			</Link>
+			<Link
+				to="/$owner/$repo/tags"
+				params={{ owner: repo.owner, repo: repo.name }}
+				className={cn(ghostPillClassName, "max-sm:hidden")}
+			>
+				<TagIcon size={14} />
+				<span className="tabular-nums">
+					{repo.tagCount} {repo.tagCount === 1 ? "tag" : "tags"}
+				</span>
+			</Link>
+			<div className="ml-auto flex items-center gap-1.5">
+				<GoToFile repo={repo} currentRef={currentRef} scope={scope} />
+				<CodePopover repo={repo} />
+			</div>
 		</div>
 	);
 }
 
-function BranchSelector({
+export function BranchSelector({
 	repo,
 	currentRef,
 	scope,
 	onBranchChange,
+	className,
 }: {
 	repo: RepoOverview;
 	currentRef: string;
 	scope: GitHubQueryScope;
 	onBranchChange: (branch: string) => void;
+	className?: string;
 }) {
 	const [open, setOpen] = useState(false);
 	const queryClient = useQueryClient();
@@ -89,17 +121,23 @@ function BranchSelector({
 	return (
 		<Popover open={open} onOpenChange={setOpen}>
 			<PopoverTrigger asChild>
-				<Button
-					variant="secondary"
-					size="sm"
+				<button
+					type="button"
 					onMouseEnter={prefetchBranches}
 					onFocus={prefetchBranches}
-					className="max-w-[220px] border border-border dark:border-transparent"
+					aria-label={`Switch branch, current ${currentRef}`}
+					className={cn(pillButtonClassName, className)}
 				>
-					<GitPullRequestIcon size={14} />
-					<span className="truncate">{currentRef}</span>
-					<ChevronDownIcon size={14} className="shrink-0 opacity-60" />
-				</Button>
+					<GitBranchIcon size={14} strokeWidth={2} />
+					<span className="min-w-0 max-w-56 truncate font-mono font-[450]">
+						{currentRef}
+					</span>
+					<ChevronDownIcon
+						size={12}
+						strokeWidth={2}
+						className="text-muted-foreground"
+					/>
+				</button>
 			</PopoverTrigger>
 			<PopoverContent className="w-72 p-0" align="start">
 				<Command>
@@ -131,7 +169,7 @@ function BranchSelector({
 								)}
 							/>
 							<span className="truncate">{repo.defaultBranch}</span>
-							<span className="ml-auto text-[10px] text-muted-foreground">
+							<span className="ml-auto text-xs text-muted-foreground">
 								default
 							</span>
 						</CommandItem>
@@ -161,8 +199,8 @@ function BranchSelector({
 							))}
 					</CommandList>
 				</Command>
-				<div className="border-t px-3 py-2">
-					<span className="text-xs text-muted-foreground">
+				<div className="border-t-[0.5px] border-popover-border px-3 py-2">
+					<span className="text-xs tabular-nums text-muted-foreground">
 						{repo.branchCount} branch{repo.branchCount !== 1 ? "es" : ""}
 						{repo.tagCount > 0 && (
 							<>
@@ -201,15 +239,22 @@ function CodePopover({ repo }: { repo: RepoOverview }) {
 	return (
 		<Popover>
 			<PopoverTrigger asChild>
-				<Button variant="default" size="sm">
-					<CodeIcon size={14} />
+				<button
+					type="button"
+					className={cn(pillButtonClassName, "text-foreground")}
+				>
+					<CodeIcon size={14} strokeWidth={2} />
 					Code
-					<ChevronDownIcon size={14} className="opacity-60" />
-				</Button>
+					<ChevronDownIcon
+						size={12}
+						strokeWidth={2}
+						className="text-muted-foreground"
+					/>
+				</button>
 			</PopoverTrigger>
-			<PopoverContent align="end" className="w-96 p-0 overflow-hidden">
-				<div className="flex items-center gap-2 border-b px-4 py-3 bg-surface-1">
-					<span className="text-sm font-semibold">Clone {repo.fullName}</span>
+			<PopoverContent align="end" className="w-[340px] overflow-hidden p-0">
+				<div className="flex h-[30px] items-center px-3.5 pt-1.5 text-xs font-medium text-muted-foreground">
+					Clone {repo.fullName}
 				</div>
 
 				<Tabs
@@ -217,7 +262,7 @@ function CodePopover({ repo }: { repo: RepoOverview }) {
 					onValueChange={handleProtocolChange}
 					className="gap-0"
 				>
-					<TabsList className="mx-4 mt-3 h-8 w-fit">
+					<TabsList className="mx-3.5 mt-1.5 h-7 w-fit">
 						<TabsTrigger value="https" className="text-xs">
 							HTTPS
 						</TabsTrigger>
@@ -229,47 +274,47 @@ function CodePopover({ repo }: { repo: RepoOverview }) {
 						</TabsTrigger>
 					</TabsList>
 
-					<TabsContent value="https" className="px-4 pb-3 pt-4">
+					<TabsContent value="https" className="px-3.5 pt-3 pb-3.5">
 						<CloneInput
 							value={httpsUrl}
 							copied={copied}
 							onCopy={() => handleCopy(httpsUrl)}
 						/>
 
-						<p className="mt-1.5 text-xs text-muted-foreground">
+						<p className="mt-2 text-xs text-muted-foreground">
 							Clone using the web URL.
 						</p>
 					</TabsContent>
-					<TabsContent value="ssh" className="px-4 pb-3 pt-4">
+					<TabsContent value="ssh" className="px-3.5 pt-3 pb-3.5">
 						<CloneInput
 							value={sshUrl}
 							copied={copied}
 							onCopy={() => handleCopy(sshUrl)}
 						/>
 
-						<p className="mt-1.5 text-xs text-muted-foreground">
+						<p className="mt-2 text-xs text-muted-foreground">
 							Use a password-protected SSH key.
 						</p>
 					</TabsContent>
-					<TabsContent value="cli" className="px-4 pb-3 pt-4">
+					<TabsContent value="cli" className="px-3.5 pt-3 pb-3.5">
 						<CloneInput
 							value={cliCommand}
 							copied={copied}
 							onCopy={() => handleCopy(cliCommand)}
 						/>
-						<p className="mt-1.5 text-xs text-muted-foreground">
+						<p className="mt-2 text-xs text-muted-foreground">
 							Work fast with the official CLI.
 						</p>
 					</TabsContent>
 				</Tabs>
 
-				<div className="border-t">
+				<div className="border-t-[0.5px] border-popover-border p-1.5">
 					<a
 						href={zipUrl}
 						download
-						className="flex items-center gap-2 px-4 py-2.5 text-sm transition-colors hover:bg-surface-0"
+						className="flex h-8 items-center gap-2 rounded-md px-2 text-[13px] font-medium text-text-header transition-colors hover:bg-menu-hover hover:text-foreground"
 					>
-						<DownloadIcon size={15} className="text-muted-foreground" />
+						<DownloadIcon size={14} className="text-muted-foreground" />
 						Download ZIP
 					</a>
 				</div>
@@ -289,21 +334,164 @@ function CloneInput({
 }) {
 	return (
 		<div className="flex items-center gap-1.5">
-			<code className="flex-1 truncate rounded-md border bg-surface-0 px-2.5 py-1.5 text-xs">
+			<code className="flex h-8 min-w-0 flex-1 items-center truncate rounded-lg px-2.5 font-mono text-xs text-text-header shadow-field">
 				{value}
 			</code>
-			<Button
-				variant="ghost"
-				size="icon"
-				className="size-7 shrink-0"
+			<button
+				type="button"
+				className={cn(pillButtonClassName, "h-8 text-[13px]")}
 				onClick={onCopy}
 			>
 				{copied ? (
-					<CheckIcon size={14} className="text-green-500" />
+					<CheckIcon size={14} className="text-success" />
 				) : (
 					<CopyIcon size={14} />
 				)}
-			</Button>
+				{copied ? "Copied" : "Copy"}
+			</button>
 		</div>
+	);
+}
+
+function useCachedTreeEntries(
+	open: boolean,
+	repo: RepoOverview,
+	currentRef: string,
+): FileSearchEntry[] {
+	const queryClient = useQueryClient();
+	return useMemo(() => {
+		if (!open) return [];
+		const entries = new Map<string, FileSearchEntry>();
+		const cached = queryClient.getQueriesData<RepoTreeEntry[]>({
+			predicate: (query) => {
+				const [root, , kind, tree, input] = query.queryKey as [
+					string,
+					unknown,
+					string,
+					string,
+					{ owner?: string; repo?: string; ref?: string } | undefined,
+				];
+				return (
+					root === "github" &&
+					kind === "repo" &&
+					tree === "tree" &&
+					input?.owner === repo.owner &&
+					input?.repo === repo.name &&
+					input?.ref === currentRef
+				);
+			},
+		});
+		for (const [, data] of cached) {
+			for (const entry of data ?? []) {
+				entries.set(entry.path, {
+					path: entry.path,
+					name: entry.name,
+					type: entry.type,
+				});
+			}
+		}
+		return [...entries.values()];
+	}, [open, queryClient, repo.owner, repo.name, currentRef]);
+}
+
+function GoToFile({
+	repo,
+	currentRef,
+}: {
+	repo: RepoOverview;
+	currentRef: string;
+	scope: GitHubQueryScope;
+}) {
+	const [open, setOpen] = useState(false);
+	const [query, setQuery] = useState("");
+	const deferredQuery = useDeferredValue(query);
+	const navigate = useNavigate();
+	const entries = useCachedTreeEntries(open, repo, currentRef);
+	const results = useMemo(
+		() =>
+			deferredQuery.trim()
+				? searchFiles(deferredQuery, entries, 30)
+				: entries
+						.filter((entry) => entry.type === "file")
+						.slice(0, 12)
+						.map((entry) => ({ ...entry, score: 0 })),
+		[deferredQuery, entries],
+	);
+
+	useGlobalShortcuts([
+		{
+			shortcut: { key: "t" },
+			onTrigger: () => setOpen(true),
+		},
+	]);
+
+	const select = (entry: FileSearchEntry) => {
+		setOpen(false);
+		setQuery("");
+		void navigate({
+			to:
+				entry.type === "dir" ? "/$owner/$repo/tree/$" : "/$owner/$repo/blob/$",
+			params: {
+				owner: repo.owner,
+				repo: repo.name,
+				_splat: `${currentRef}/${entry.path}`,
+			},
+		});
+	};
+
+	return (
+		<Popover
+			open={open}
+			onOpenChange={(next) => {
+				setOpen(next);
+				if (!next) setQuery("");
+			}}
+		>
+			<PopoverTrigger asChild>
+				<button
+					type="button"
+					aria-keyshortcuts="t"
+					className={cn(
+						pillButtonClassName,
+						"w-44 gap-2 font-[450] text-muted-foreground max-md:hidden",
+					)}
+				>
+					<SearchIcon size={14} />
+					Go to file
+					<KeyHint className="ml-auto">T</KeyHint>
+				</button>
+			</PopoverTrigger>
+			<PopoverContent align="end" className="w-80 p-0">
+				<Command shouldFilter={false}>
+					<CommandInput
+						value={query}
+						onValueChange={setQuery}
+						placeholder="Go to file…"
+					/>
+					<CommandList>
+						<CommandEmpty>No files found.</CommandEmpty>
+						{results.map((entry) => (
+							<CommandItem
+								key={entry.path}
+								value={entry.path}
+								onSelect={() => select(entry)}
+							>
+								{entry.type === "dir" ? (
+									<FolderIcon size={14} className="text-muted-foreground" />
+								) : (
+									<FileIcon size={14} className="text-muted-foreground" />
+								)}
+								<span className="truncate">{entry.name}</span>
+								{entry.path !== entry.name ? (
+									<span className="min-w-0 truncate text-xs text-muted-foreground">
+										{entry.path.slice(0, -entry.name.length - 1)}
+									</span>
+								) : null}
+							</CommandItem>
+						))}
+					</CommandList>
+				</Command>
+			</PopoverContent>
+		</Popover>
 	);
 }

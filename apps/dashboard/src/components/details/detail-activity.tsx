@@ -1,6 +1,6 @@
 import {
+	ArrowUpIcon,
 	ChevronDownIcon,
-	CommentIcon,
 	GitPullRequestClosedIcon,
 	GitPullRequestIcon,
 	IssueClosedCompletedIcon,
@@ -51,10 +51,12 @@ export function DetailActivityHeader({
 	count?: number;
 }) {
 	return (
-		<div className="flex items-center justify-between gap-2 rounded-lg bg-surface-1 px-4 py-2.5">
-			<h2 className="text-xs font-medium">{title}</h2>
+		<div className="flex items-center justify-between gap-2 border-t-[0.5px] border-header-rule pt-6 pb-4">
+			<h2 className="text-[15px] leading-[1.5] font-semibold text-foreground">
+				{title}
+			</h2>
 			{count != null && (
-				<span className="text-xs tabular-nums text-muted-foreground">
+				<span className="text-[13px] tabular-nums text-muted-foreground">
 					{count}
 				</span>
 			)}
@@ -251,13 +253,13 @@ export function DetailCommentBox({
 	};
 
 	return (
-		<div className="flex flex-col gap-2">
+		<div className="-mx-3 flex flex-col">
 			<MarkdownEditor
 				ref={editorRef}
 				scrollAnchorRef={commentActionsRef}
 				value={value}
 				onChange={setValue}
-				placeholder="Leave a comment..."
+				placeholder="Leave a comment…"
 				compact
 				media={mediaUpload}
 				onPaste={onMediaPaste}
@@ -266,112 +268,112 @@ export function DetailCommentBox({
 					onActivate: () => setMentionActivated(true),
 					isLoading: collaboratorsQuery.isLoading && mentionActivated,
 				}}
-			/>
-			<div
-				ref={commentActionsRef}
-				className="flex items-center justify-end gap-2 pb-3"
-			>
-				{stateToggle?.kind === "issue" &&
-					(stateToggle.state === "open" ? (
-						<DropdownMenu>
-							<DropdownMenuTrigger asChild>
+				footer={
+					<div ref={commentActionsRef} className="flex items-center gap-2">
+						{stateToggle?.kind === "issue" &&
+							(stateToggle.state === "open" ? (
+								<DropdownMenu>
+									<DropdownMenuTrigger asChild>
+										<button
+											type="button"
+											disabled={isBusy}
+											className="flex h-7 items-center gap-1.5 rounded-full bg-button px-2.5 text-xs font-medium text-text-header shadow-button transition-colors hover:bg-button-hover hover:text-foreground disabled:opacity-40"
+										>
+											{pendingAction === "toggle-state" ? (
+												<Spinner size={12} />
+											) : (
+												<>
+													<IssuesIcon size={12} strokeWidth={2} />
+													<span>Close issue as</span>
+													<ChevronDownIcon
+														size={12}
+														strokeWidth={2}
+														className="opacity-70"
+													/>
+												</>
+											)}
+										</button>
+									</DropdownMenuTrigger>
+									<DropdownMenuContent align="end" className="min-w-[12rem]">
+										<DropdownMenuItem
+											disabled={isBusy}
+											className="text-merged focus:bg-pill-merged focus:text-merged data-[highlighted]:bg-pill-merged data-[highlighted]:text-merged"
+											onClick={() =>
+												void runIssueStateChange("closed", "completed")
+											}
+										>
+											<IssueClosedCompletedIcon
+												className="size-4 shrink-0 text-merged"
+												size={16}
+												strokeWidth={2}
+											/>
+											Close as completed
+										</DropdownMenuItem>
+										<DropdownMenuItem
+											disabled={isBusy}
+											className="text-muted-foreground focus:bg-muted focus:text-muted-foreground data-[highlighted]:bg-muted data-[highlighted]:text-muted-foreground"
+											onClick={() =>
+												void runIssueStateChange("closed", "not_planned")
+											}
+										>
+											<IssueClosedNotPlannedIcon
+												className="size-4 shrink-0 text-muted-foreground"
+												size={16}
+												strokeWidth={2}
+											/>
+											Close as not planned
+										</DropdownMenuItem>
+									</DropdownMenuContent>
+								</DropdownMenu>
+							) : (
 								<button
 									type="button"
 									disabled={isBusy}
-									className="flex items-center gap-1.5 rounded-lg border bg-secondary px-3 py-1.5 text-xs font-medium text-secondary-foreground transition-opacity hover:bg-secondary/80 disabled:opacity-40"
+									onClick={() => void runIssueStateChange("open")}
+									className="flex h-7 items-center gap-1.5 rounded-full bg-button px-2.5 text-xs font-medium text-text-header shadow-button transition-colors hover:bg-button-hover hover:text-foreground disabled:opacity-40"
 								>
 									{pendingAction === "toggle-state" ? (
 										<Spinner size={12} />
 									) : (
-										<>
-											<IssuesIcon size={12} strokeWidth={2} />
-											<span>Close issue as</span>
-											<ChevronDownIcon
-												size={12}
-												strokeWidth={2}
-												className="opacity-70"
-											/>
-										</>
+										<IssuesIcon size={12} strokeWidth={2} />
 									)}
+									Re-open issue
 								</button>
-							</DropdownMenuTrigger>
-							<DropdownMenuContent align="end" className="min-w-[12rem]">
-								<DropdownMenuItem
-									disabled={isBusy}
-									className="text-violet-500 focus:bg-violet-500/15 focus:text-violet-500 data-[highlighted]:bg-violet-500/15 data-[highlighted]:text-violet-500"
-									onClick={() =>
-										void runIssueStateChange("closed", "completed")
-									}
-								>
-									<IssueClosedCompletedIcon
-										className="size-4 shrink-0 text-violet-500"
-										size={16}
-										strokeWidth={2}
-									/>
-									Close as completed
-								</DropdownMenuItem>
-								<DropdownMenuItem
-									disabled={isBusy}
-									className="text-muted-foreground focus:bg-muted focus:text-muted-foreground data-[highlighted]:bg-muted data-[highlighted]:text-muted-foreground"
-									onClick={() =>
-										void runIssueStateChange("closed", "not_planned")
-									}
-								>
-									<IssueClosedNotPlannedIcon
-										className="size-4 shrink-0 text-muted-foreground"
-										size={16}
-										strokeWidth={2}
-									/>
-									Close as not planned
-								</DropdownMenuItem>
-							</DropdownMenuContent>
-						</DropdownMenu>
-					) : (
+							))}
+						{stateToggle?.kind === "pull" && (
+							<button
+								type="button"
+								disabled={isBusy || hasPendingUploads}
+								onClick={handleTogglePullState}
+								className="flex h-7 items-center gap-1.5 rounded-full bg-button px-2.5 text-xs font-medium text-text-header shadow-button transition-colors hover:bg-button-hover hover:text-foreground disabled:opacity-40"
+							>
+								{pendingAction === "toggle-state" ? (
+									<Spinner size={12} />
+								) : stateToggle.state === "open" ? (
+									<GitPullRequestClosedIcon size={12} strokeWidth={2} />
+								) : (
+									<GitPullRequestIcon size={12} strokeWidth={2} />
+								)}
+								{stateToggle.state === "open" ? "Close PR" : "Re-open PR"}
+							</button>
+						)}
 						<button
 							type="button"
-							disabled={isBusy}
-							onClick={() => void runIssueStateChange("open")}
-							className="flex items-center gap-1.5 rounded-lg border bg-secondary px-3 py-1.5 text-xs font-medium text-secondary-foreground transition-opacity hover:bg-secondary/80 disabled:opacity-40"
+							aria-label="Send comment"
+							title="Send comment"
+							disabled={!value.trim() || isBusy || hasPendingUploads}
+							onClick={handleSend}
+							className="flex size-7 items-center justify-center rounded-full bg-send text-text-strong shadow-send transition-opacity hover:text-foreground disabled:opacity-40"
 						>
-							{pendingAction === "toggle-state" ? (
+							{pendingAction === "send" ? (
 								<Spinner size={12} />
 							) : (
-								<IssuesIcon size={12} strokeWidth={2} />
+								<ArrowUpIcon size={14} strokeWidth={2} />
 							)}
-							Re-open issue
 						</button>
-					))}
-				{stateToggle?.kind === "pull" && (
-					<button
-						type="button"
-						disabled={isBusy || hasPendingUploads}
-						onClick={handleTogglePullState}
-						className="flex items-center gap-1.5 rounded-lg border bg-secondary px-3 py-1.5 text-xs font-medium text-secondary-foreground transition-opacity hover:bg-secondary/80 disabled:opacity-40"
-					>
-						{pendingAction === "toggle-state" ? (
-							<Spinner size={12} />
-						) : stateToggle.state === "open" ? (
-							<GitPullRequestClosedIcon size={12} strokeWidth={2} />
-						) : (
-							<GitPullRequestIcon size={12} strokeWidth={2} />
-						)}
-						{stateToggle.state === "open" ? "Close PR" : "Re-open PR"}
-					</button>
-				)}
-				<button
-					type="button"
-					disabled={!value.trim() || isBusy || hasPendingUploads}
-					onClick={handleSend}
-					className="flex items-center gap-1.5 rounded-lg bg-foreground px-3 py-1.5 text-xs font-medium text-background transition-opacity disabled:opacity-40"
-				>
-					{pendingAction === "send" ? (
-						<Spinner size={12} />
-					) : (
-						<CommentIcon size={12} strokeWidth={2} />
-					)}
-					Send
-				</button>
-			</div>
+					</div>
+				}
+			/>
 		</div>
 	);
 }
