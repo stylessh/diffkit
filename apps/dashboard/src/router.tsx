@@ -19,7 +19,11 @@ export function getRouter() {
 		scrollRestoration: true,
 		defaultPreload: "intent",
 		defaultPreloadStaleTime: 0,
-		defaultPendingMs: 0,
+		// Loaders never await data, so a route only pends on genuinely slow,
+		// uncached work. Wait 300 ms before showing a pending component, and
+		// keep it for at least 200 ms once shown so it never flashes.
+		defaultPendingMs: 300,
+		defaultPendingMinMs: 200,
 		defaultPendingComponent: DashboardContentLoading,
 		defaultErrorComponent: DashboardErrorScreen,
 		defaultNotFoundComponent: NotFoundScreen,
