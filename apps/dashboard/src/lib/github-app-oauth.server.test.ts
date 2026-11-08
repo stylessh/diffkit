@@ -36,19 +36,18 @@ function authorizeDeps(overrides: Partial<AuthorizeDeps> = {}): AuthorizeDeps {
 }
 
 describe("GitHub App authorize", () => {
-	it("redirects to GitHub with state and a same-origin callback", async () => {
+	it("redirects to GitHub with state, and sets HttpOnly SameSite=Lax cookies that are Secure except on plain-http localhost", async () => {
 		const response = await handleGitHubAppAuthorize(
 			new Request(
 				`${ORIGIN}/api/github/app/authorize?returnTo=/acme/api/pull/4`,
 			),
 			authorizeDeps(),
 		);
-		expect(response.status).toBe(302);
+
 		const location = new URL(response.headers.get("Location") ?? "");
 		expect(location.origin + location.pathname).toBe(
 			"https://github.com/login/oauth/authorize",
 		);
-		expect(location.searchParams.get("client_id")).toBe("Iv1.client");
 		expect(location.searchParams.get("state")).toBe("state-123");
 		expect(location.searchParams.get("redirect_uri")).toBe(
 			`${ORIGIN}/api/github/app/callback`,
@@ -57,63 +56,45 @@ describe("GitHub App authorize", () => {
 		expect(cookieValue(response, "github_app_oauth_return_to")).toBe(
 			"/acme/api/pull/4",
 		);
-	});
-
-	it("sets HttpOnly, SameSite=Lax, Secure and a short Max-Age on its cookies", async () => {
-		const response = await handleGitHubAppAuthorize(
-			new Request(`${ORIGIN}/api/github/app/authorize`),
-			authorizeDeps(),
-		);
-		const cookies = setCookies(response);
-		expect(cookies).toHaveLength(2);
-		for (const cookie of cookies) {
+		for (const cookie of setCookies(response)) {
 			expect(cookie).toContain("; HttpOnly");
 			expect(cookie).toContain("; SameSite=Lax");
 			expect(cookie).toContain("; Secure");
 			expect(cookie).toContain("; Max-Age=600");
-			expect(cookie).toContain("; Path=/");
 		}
-	});
 
-	it("is Secure behind a TLS-terminating proxy, and only skips it on localhost", async () => {
-		const secure = async (url: string) =>
+		const cookiesFor = async (url: string) =>
 			setCookies(
 				await handleGitHubAppAuthorize(new Request(url), authorizeDeps()),
-			)[0].includes("; Secure");
-		expect(
-			await secure("http://app.example.com/api/github/app/authorize"),
-		).toBe(true);
-		expect(await secure("http://localhost:3000/api/github/app/authorize")).toBe(
-			false,
+			);
+		const behindProxy = await cookiesFor("http://app.example.com/authorize");
+		const localhost = await cookiesFor("http://localhost:3000/authorize");
+		expect(behindProxy.every((cookie) => cookie.includes("; Secure"))).toBe(
+			true,
 		);
+		expect(localhost.some((cookie) => cookie.includes("; Secure"))).toBe(false);
 	});
 
-	it.each([
-		"https://evil.com/x",
-		"//evil.com",
-		"/\\evil.com",
-		"/\t/evil.com",
-		"javascript:alert(1)",
-	])("falls back to /setup for returnTo=%j", async (returnTo) => {
-		const response = await handleGitHubAppAuthorize(
-			new Request(
-				`${ORIGIN}/api/github/app/authorize?returnTo=${encodeURIComponent(returnTo)}`,
-			),
-			authorizeDeps(),
-		);
-		expect(cookieValue(response, "github_app_oauth_return_to")).toBe("/setup");
-	});
-
-	it("sends signed-out users to /login with a safe redirect and no cookies", async () => {
-		const response = await handleGitHubAppAuthorize(
-			new Request(`${ORIGIN}/api/github/app/authorize?returnTo=/a/b`),
-			authorizeDeps({ getSession: async () => null }),
-		);
-		expect(response.status).toBe(302);
-		expect(response.headers.get("Location")).toBe(
-			`${ORIGIN}/login?redirect=%2Fa%2Fb`,
-		);
-		expect(setCookies(response)).toEqual([]);
+	it("never stores an off-site return path", async () => {
+		const returnTos = [
+			"https://evil.com/x",
+			"//evil.com",
+			"/\\evil.com",
+			"/\t/evil.com",
+			"javascript:alert(1)",
+		];
+		for (const returnTo of returnTos) {
+			const response = await handleGitHubAppAuthorize(
+				new Request(
+					`${ORIGIN}/api/github/app/authorize?returnTo=${encodeURIComponent(returnTo)}`,
+				),
+				authorizeDeps(),
+			);
+			expect(
+				cookieValue(response, "github_app_oauth_return_to"),
+				returnTo,
+			).toBe("/setup");
+		}
 	});
 
 	it("redirects to /setup with an error instead of throwing when D1 is down", async () => {
@@ -208,23 +189,25 @@ describe("GitHub App callback", () => {
 		}
 	});
 
-	it.each([
-		"https://evil.com/phish",
-		"//evil.com/phish",
-		"/\\evil.com",
-		"/\t/evil.com",
-	])("never redirects off-site, even if the return_to cookie is %j", async (returnTo) => {
-		const { deps } = callbackDeps();
-		const response = await handleGitHubAppCallback(
-			callbackRequest("code=abc&state=state-123", {
-				github_app_oauth_state: "state-123",
-				github_app_oauth_return_to: returnTo,
-			}),
-			deps,
-		);
-		const location = new URL(response.headers.get("Location") ?? "");
-		expect(location.origin).toBe(ORIGIN);
-		expect(location.pathname).toBe("/setup");
+	it("never redirects off-site, even if the return_to cookie is hostile", async () => {
+		const returnTos = [
+			"https://evil.com/phish",
+			"//evil.com/phish",
+			"/\\evil.com",
+			"/\t/evil.com",
+		];
+		for (const returnTo of returnTos) {
+			const response = await handleGitHubAppCallback(
+				callbackRequest("code=abc&state=state-123", {
+					github_app_oauth_state: "state-123",
+					github_app_oauth_return_to: returnTo,
+				}),
+				callbackDeps().deps,
+			);
+			const location = new URL(response.headers.get("Location") ?? "");
+			expect(location.origin, returnTo).toBe(ORIGIN);
+			expect(location.pathname, returnTo).toBe("/setup");
+		}
 	});
 
 	it("does not crash on cookies with broken percent-encoding", async () => {

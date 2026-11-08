@@ -209,11 +209,13 @@ export default {};`;
 	};
 }
 
-// `@hugeicons/react`'s barrel re-exports ~3,900 icon modules (45 MB). In dev,
-// Vite pre-bundles all of them into one 38 MB chunk (+46 MB source map) that
-// the Worker must parse, which can exhaust workerd's heap on the first request.
-// Rewrite named imports to per-icon modules instead. Dev only: production
-// builds tree-shake the barrel already.
+// Root cause of the dev-server OOM on the first request: `@hugeicons/react`'s
+// barrel re-exports ~3,900 icon modules, and Vite pre-bundles them into a single
+// 39.7 MB SSR module. The Cloudflare module runner evaluates each module with
+// one synchronous `eval` inside workerd, whose isolate heap is capped at ~1.4 GB;
+// compiling that one module exhausts it (with or without source maps). Rewriting
+// named imports to per-icon modules keeps the barrel out of the dependency
+// optimizer. Dev only: production builds tree-shake the barrel.
 function hugeiconsDeepImports(): import("vite").Plugin {
 	const iconsPackage = path.dirname(
 		createRequire(
@@ -238,6 +240,11 @@ function hugeiconsDeepImports(): import("vite").Plugin {
 		for (const match of exportList.matchAll(/([\w$]+) as (\w+)/gu)) {
 			const file = localToFile.get(match[1]);
 			if (file) iconFiles.set(match[2], file);
+		}
+		if (iconFiles.size === 0) {
+			throw new Error(
+				"hugeicons-deep-imports: found no icons in @hugeicons/react/dist/esm/icons/index.js. Its build format changed; update the parser, or the barrel is pre-bundled again and workerd runs out of memory.",
+			);
 		}
 		return iconFiles;
 	};

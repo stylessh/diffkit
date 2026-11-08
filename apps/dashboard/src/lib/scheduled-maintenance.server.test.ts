@@ -51,47 +51,31 @@ describe("runScheduledMaintenance", () => {
 		expect(JSON.parse(String(log.mock.calls[0][0]))).toEqual(summary);
 	});
 
-	it("records a sweep failure but still checks health", async () => {
+	it("reports a failing task in the log line and never lets it stop the other", async () => {
 		quiet();
-		const { db } = createTestD1(["0006_github_change.sql"]);
-		const realPrepare = db.prepare.bind(db);
-		db.prepare = ((sql: string) => {
-			if (sql.startsWith("DELETE"))
-				throw new Error("D1_ERROR: too many requests");
-			return realPrepare(sql);
-		}) as D1Database["prepare"];
+		const failing = (pattern: string) => {
+			const { db } = createTestD1(["0006_github_change.sql"]);
+			const realPrepare = db.prepare.bind(db);
+			db.prepare = ((sql: string) => {
+				if (sql.includes(pattern)) throw new Error("D1_ERROR: unavailable");
+				return realPrepare(sql);
+			}) as D1Database["prepare"];
+			return db;
+		};
 
-		const summary = await runScheduledMaintenance(db, NOW);
+		const sweepDown = await runScheduledMaintenance(failing("DELETE"), NOW);
+		expect(sweepDown.sweepError).toContain("unavailable");
+		expect(sweepDown.changeRows).toBe(0);
 
-		expect(summary.sweepError).toContain("too many requests");
-		expect(summary.sweep).toBeUndefined();
-		expect(summary.changeRows).toBe(0);
-	});
+		const healthDown = await runScheduledMaintenance(failing("COUNT(*)"), NOW);
+		expect(healthDown.healthError).toContain("unavailable");
+		expect(healthDown.sweep).toMatchObject({ complete: true });
 
-	it("records a health failure but still sweeps", async () => {
-		quiet();
-		const { db } = createTestD1(["0006_github_change.sql"]);
-		const realPrepare = db.prepare.bind(db);
-		db.prepare = ((sql: string) => {
-			if (sql.includes("COUNT(*)")) throw new Error("D1_ERROR: unavailable");
-			return realPrepare(sql);
-		}) as D1Database["prepare"];
-
-		const summary = await runScheduledMaintenance(db, NOW);
-
-		expect(summary.healthError).toContain("unavailable");
-		expect(summary.sweep).toMatchObject({ complete: true });
-	});
-
-	it("never rejects, even when the whole database is unreachable", async () => {
-		quiet();
-		const db = {
-			prepare: () => {
-				throw new Error("D1 binding missing");
-			},
-		} as unknown as D1Database;
-		const summary = await runScheduledMaintenance(db, NOW);
-		expect(summary.sweepError).toBeDefined();
-		expect(summary.healthError).toBeDefined();
+		const bothDown = await runScheduledMaintenance(
+			failing("github_change"),
+			NOW,
+		);
+		expect(bothDown.sweepError).toBeDefined();
+		expect(bothDown.healthError).toBeDefined();
 	});
 });

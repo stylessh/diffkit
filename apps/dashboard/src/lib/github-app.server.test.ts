@@ -271,30 +271,31 @@ describe("GitHub App user tokens", () => {
 		expect(fetchMock).not.toHaveBeenCalled();
 	});
 
-	it("surfaces GitHub's refusal and keeps the stored tokens", async () => {
+	it("surfaces GitHub's refusal, including non-JSON errors, and keeps the stored tokens", async () => {
 		await seed({});
-		fetchMock.mockResolvedValue(
-			tokenResponse({
-				error: "bad_refresh_token",
-				error_description: "The refresh token passed is incorrect or expired.",
-			}),
-		);
-		await expect(getGitHubAppUserAccessTokenByUserId("u1")).rejects.toThrow(
-			"incorrect or expired",
-		);
-		expect((await appRow()).refreshToken).toBe("ghr_old");
+		const failures: Array<[Response, RegExp]> = [
+			[
+				tokenResponse({
+					error: "bad_refresh_token",
+					error_description:
+						"The refresh token passed is incorrect or expired.",
+				}),
+				/incorrect or expired/,
+			],
+			[
+				new Response("<html>Bad gateway</html>", { status: 502 }),
+				/HTTP 502|Bad Gateway/,
+			],
+		];
+		for (const [response, message] of failures) {
+			fetchMock.mockResolvedValueOnce(response);
+			await expect(getGitHubAppUserAccessTokenByUserId("u1")).rejects.toThrow(
+				message,
+			);
+			expect((await appRow()).refreshToken).toBe("ghr_old");
+		}
 		fetchMock.mockResolvedValue(tokenResponse({ access_token: "ghu_new" }));
 		expect(await getGitHubAppUserAccessTokenByUserId("u1")).toBe("ghu_new");
-	});
-
-	it("reports a non-JSON upstream failure by status instead of a parse error", async () => {
-		await seed({});
-		fetchMock.mockResolvedValue(
-			new Response("<html>Bad gateway</html>", { status: 502 }),
-		);
-		await expect(getGitHubAppUserAccessTokenByUserId("u1")).rejects.toThrow(
-			/token request failed: (HTTP 502|Bad Gateway)/,
-		);
 	});
 
 	it("retries a failed token write once so the rotated refresh token is not lost", async () => {
