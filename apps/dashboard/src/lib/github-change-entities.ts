@@ -9,6 +9,7 @@
  *   run:owner/repo#123        a workflow run and its jobs
  *   release:owner/repo        releases
  *   labels:owner/repo         the label set
+ *   milestones:owner/repo     the milestone set
  *   collaborators:owner/repo  collaborators
  *   discussions:owner/repo    discussions
  *   settings:owner/repo       webhooks, Actions secrets and variables; no
@@ -32,6 +33,7 @@ export type GitHubRepoEntity =
 	| { kind: "run"; repo: string; runId: number }
 	| { kind: "release"; repo: string }
 	| { kind: "labels"; repo: string }
+	| { kind: "milestones"; repo: string }
 	| { kind: "collaborators"; repo: string }
 	| { kind: "discussions"; repo: string }
 	| { kind: "settings"; repo: string };
@@ -66,7 +68,7 @@ const REPO_PATTERN = "([^/\\s#@]+/[^/\\s#@]+)";
 const NUMBERED = new RegExp(`^(pull|issue|run):${REPO_PATTERN}#(\\d+)$`);
 const CHECKS = new RegExp(`^checks:${REPO_PATTERN}@([0-9a-f]{7,40})$`);
 const REPO_ONLY = new RegExp(
-	`^(repo|release|labels|collaborators|discussions|settings):${REPO_PATTERN}$`,
+	`^(repo|release|labels|milestones|collaborators|discussions|settings):${REPO_PATTERN}$`,
 );
 
 const ORG_ONLY = /^org:([^/\s#@]+)$/;
@@ -101,6 +103,7 @@ export function parseEntityKey(key: string): GitHubChangeEntity | null {
 			case "repo":
 			case "release":
 			case "labels":
+			case "milestones":
 			case "collaborators":
 			case "discussions":
 			case "settings":
@@ -253,6 +256,9 @@ export function getWebhookChangeEntities(
 
 		case "label":
 			return [{ kind: "labels", repo }];
+
+		case "milestone":
+			return [{ kind: "milestones", repo }];
 
 		case "member":
 		case "membership":

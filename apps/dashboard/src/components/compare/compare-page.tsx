@@ -1,4 +1,10 @@
 import { GitCompareIcon, GitPullRequestIcon } from "@diffkit/icons";
+import { Button } from "@diffkit/ui/components/button";
+import {
+	Callout,
+	CalloutAction,
+	CalloutContent,
+} from "@diffkit/ui/components/callout";
 import { BranchBadge } from "@diffkit/ui/components/detail-layout";
 import type { MentionCandidate } from "@diffkit/ui/components/markdown-editor";
 import {
@@ -6,354 +12,223 @@ import {
 	PageHeaderCrumb,
 	PageHeaderTitle,
 } from "@diffkit/ui/components/page-header";
+import { Skeleton } from "@diffkit/ui/components/skeleton";
 import { toast } from "@diffkit/ui/components/sonner";
-import { cn } from "@diffkit/ui/lib/utils";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import {
+	useInfiniteQuery,
+	useQuery,
+	useQueryClient,
+} from "@tanstack/react-query";
 import { Link, useRouter } from "@tanstack/react-router";
+import { type ReactNode, useMemo, useReducer, useState } from "react";
 import {
-	type ReactNode,
-	useCallback,
-	useEffect,
-	useMemo,
-	useRef,
-	useState,
-} from "react";
-import {
-	DetailPageSkeletonLayout,
-	StaggerItem,
-} from "#/components/details/detail-page";
+	type CompareRefs,
+	formatCompareSplat,
+	pullHeadFilter,
+	resolveCompareRefs,
+} from "#/lib/compare-ref";
+import type { CompareDetail } from "#/lib/github.functions";
 import { createPullRequest } from "#/lib/github.functions";
 import {
 	type GitHubQueryScope,
 	githubCompareDetailQueryOptions,
+	githubOpenPullForRefsQueryOptions,
+	githubRepoBranchesListInfiniteQueryOptions,
 	githubRepoCollaboratorsQueryOptions,
 	githubRepoOverviewQueryOptions,
 	githubRepoTemplateQueryOptions,
+	githubRepoViewerPermissionQueryOptions,
 	githubViewerQueryOptions,
 } from "#/lib/github.query";
-import type {
-	GitHubLabel,
-	OrgTeam,
-	RepoCollaborator,
-} from "#/lib/github.types";
 import {
 	invalidateGitHubEntities,
+	milestonesEntityKey,
 	pullEntityKey,
 	repoEntityKey,
 } from "#/lib/github-query-updates";
+import {
+	buildCreatePullRequestInput,
+	emptyPullRequestDraft,
+	type PullRequestAccess,
+	permissionLookup,
+	pullRequestAccess,
+	pullRequestBody,
+	pullRequestDraftReducer,
+	pullRequestTitle,
+	suggestPullRequestTitle,
+} from "#/lib/pull-request-draft";
 import { useHasMounted } from "#/lib/use-has-mounted";
+import { CompareBranchBar, type CompareBranches } from "./compare-branch-bar";
 import { CompareDiffView } from "./compare-diff-view";
-import { CompareForm } from "./compare-form";
-import { CompareHeader } from "./compare-header";
-import { CompareSidebar } from "./compare-sidebar";
+import { CompareForm, type SubmitState } from "./compare-form";
+import { CompareProperties } from "./compare-properties";
+import { CompareRecentBranches } from "./compare-recent-branches";
+
+type CompareView =
+	| { kind: "choose-branch" }
+	| { kind: "loading" }
+	| { kind: "unavailable" }
+	| { kind: "ready"; compare: CompareDetail };
+
+function resolveCompareView(
+	head: string | null,
+	query: { isPending: boolean; data: CompareDetail | null | undefined },
+): CompareView {
+	if (head === null) return { kind: "choose-branch" };
+	if (query.isPending) return { kind: "loading" };
+	return query.data
+		? { kind: "ready", compare: query.data }
+		: { kind: "unavailable" };
+}
 
 export function ComparePage({
 	owner,
 	repo,
-	base,
-	head,
+	refs,
 	scope,
-	showForm = false,
+	showForm,
 }: {
 	owner: string;
 	repo: string;
-	base: string;
-	head: string;
+	refs: CompareRefs;
 	scope: GitHubQueryScope;
-	showForm?: boolean;
+	showForm: boolean;
 }) {
 	const hasMounted = useHasMounted();
 	const router = useRouter();
-	const queryClient = useQueryClient();
 
 	const overviewQuery = useQuery({
 		...githubRepoOverviewQueryOptions(scope, { owner, repo }),
 		enabled: hasMounted,
 	});
-	const viewerQuery = useQuery({
-		...githubViewerQueryOptions(scope),
+	const branchesQuery = useInfiniteQuery({
+		...githubRepoBranchesListInfiniteQueryOptions(scope, { owner, repo }),
+		enabled: hasMounted,
+	});
+
+	const defaultBranch = overviewQuery.data?.defaultBranch ?? null;
+	const resolved = defaultBranch
+		? resolveCompareRefs(refs, defaultBranch)
+		: null;
+
+	const permissionQuery = useQuery({
+		...githubRepoViewerPermissionQueryOptions(scope, { owner, repo }),
 		enabled: hasMounted,
 	});
 	const compareQuery = useQuery({
-		...githubCompareDetailQueryOptions(scope, { owner, repo, base, head }),
-		enabled: hasMounted,
-	});
-	const collaboratorsQuery = useQuery({
-		...githubRepoCollaboratorsQueryOptions(scope, { owner, repo }),
-		enabled: hasMounted,
-	});
-	const templateQuery = useQuery({
-		...githubRepoTemplateQueryOptions(scope, { owner, repo, kind: "pr" }),
-		enabled: hasMounted && showForm,
-	});
-
-	const repoData = overviewQuery.data;
-	const viewer = viewerQuery.data ?? null;
-	const compare = compareQuery.data;
-
-	const mentionCandidates: MentionCandidate[] = useMemo(
-		() =>
-			(collaboratorsQuery.data ?? []).map((c) => ({
-				id: c.login,
-				label: c.login,
-				avatarUrl: c.avatarUrl,
-			})),
-		[collaboratorsQuery.data],
-	);
-	const mentionConfig = useMemo(
-		() => ({
-			candidates: mentionCandidates,
-			isLoading: collaboratorsQuery.isLoading,
-		}),
-		[mentionCandidates, collaboratorsQuery.isLoading],
-	);
-
-	const [title, setTitle] = useState("");
-	const [body, setBody] = useState("");
-	const templateAppliedRef = useRef(false);
-	useEffect(() => {
-		if (!showForm) return;
-		if (templateAppliedRef.current) return;
-		const template = templateQuery.data;
-		if (!template) return;
-		templateAppliedRef.current = true;
-		setBody((current) => (current ? current : template));
-	}, [showForm, templateQuery.data]);
-	const [selectedLabels, setSelectedLabels] = useState<GitHubLabel[]>([]);
-	const [selectedAssignees, setSelectedAssignees] = useState<
-		RepoCollaborator[]
-	>([]);
-	const [selectedReviewers, setSelectedReviewers] = useState<
-		RepoCollaborator[]
-	>([]);
-	const [selectedTeamReviewers, setSelectedTeamReviewers] = useState<OrgTeam[]>(
-		[],
-	);
-	const [submitting, setSubmitting] = useState(false);
-	const [error, setError] = useState<string | null>(null);
-
-	const toggleLabel = useCallback((label: GitHubLabel) => {
-		setSelectedLabels((prev) =>
-			prev.some((l) => l.name === label.name)
-				? prev.filter((l) => l.name !== label.name)
-				: [...prev, label],
-		);
-	}, []);
-
-	const toggleAssignee = useCallback((c: RepoCollaborator) => {
-		setSelectedAssignees((prev) =>
-			prev.some((a) => a.login === c.login)
-				? prev.filter((a) => a.login !== c.login)
-				: [...prev, c],
-		);
-	}, []);
-
-	const toggleReviewer = useCallback((c: RepoCollaborator) => {
-		setSelectedReviewers((prev) =>
-			prev.some((r) => r.login === c.login)
-				? prev.filter((r) => r.login !== c.login)
-				: [...prev, c],
-		);
-	}, []);
-
-	const toggleTeamReviewer = useCallback((t: OrgTeam) => {
-		setSelectedTeamReviewers((prev) =>
-			prev.some((r) => r.slug === t.slug)
-				? prev.filter((r) => r.slug !== t.slug)
-				: [...prev, t],
-		);
-	}, []);
-
-	const handleSubmit = useCallback(
-		async (draft: boolean) => {
-			if (!title.trim()) return;
-			setSubmitting(true);
-			setError(null);
-
-			try {
-				const result = await createPullRequest({
-					data: {
-						owner,
-						repo,
-						base,
-						head,
-						title: title.trim(),
-						body: body.trim() || undefined,
-						draft,
-						labels:
-							selectedLabels.length > 0
-								? selectedLabels.map((l) => l.name)
-								: undefined,
-						assignees:
-							selectedAssignees.length > 0
-								? selectedAssignees.map((a) => a.login)
-								: undefined,
-						reviewers:
-							selectedReviewers.length > 0
-								? selectedReviewers.map((r) => r.login)
-								: undefined,
-						teamReviewers:
-							selectedTeamReviewers.length > 0
-								? selectedTeamReviewers.map((t) => t.slug)
-								: undefined,
-					},
-				});
-
-				if (result.ok) {
-					await invalidateGitHubEntities(
-						queryClient,
-						scope,
-						[
-							pullEntityKey({ owner, repo, pullNumber: result.pullNumber }),
-							repoEntityKey({ owner, repo }),
-						],
-						"created",
-					);
-					if (result.warnings && result.warnings.length > 0) {
-						toast.warning("Pull request created with some issues", {
-							description: result.warnings.join("\n"),
-						});
-					}
-					router.navigate({
-						to: "/$owner/$repo/pull/$pullId",
-						params: { owner, repo, pullId: String(result.pullNumber) },
-					});
-				} else {
-					setError(result.error || "Failed to create pull request.");
-				}
-			} catch {
-				setError("Failed to create pull request. Please try again.");
-			} finally {
-				setSubmitting(false);
-			}
-		},
-		[
-			base,
-			body,
-			head,
+		...githubCompareDetailQueryOptions(scope, {
 			owner,
-			queryClient,
 			repo,
-			router,
-			selectedAssignees,
-			selectedLabels,
-			selectedReviewers,
-			selectedTeamReviewers,
-			title,
-			scope,
-		],
-	);
+			base: resolved?.base ?? "",
+			head: resolved?.head ?? "",
+		}),
+		enabled: hasMounted && Boolean(resolved?.base && resolved.head),
+	});
+	const openPullQuery = useQuery({
+		...githubOpenPullForRefsQueryOptions(scope, {
+			owner,
+			repo,
+			base: resolved?.base ?? "",
+			head: pullHeadFilter(resolved?.head ?? "", owner),
+		}),
+		enabled: hasMounted && Boolean(resolved?.base && resolved.head),
+	});
 
 	if (overviewQuery.error) throw overviewQuery.error;
-	if (compareQuery.error) throw compareQuery.error;
-	if (overviewQuery.isPending || compareQuery.isPending) {
-		return <ComparePageSkeleton />;
-	}
-	if (!repoData) return <ComparePageSkeleton />;
-	if (!compare) {
-		return (
-			<div className="flex h-full min-h-0 flex-col">
-				<ComparePageHeader owner={owner} repo={repo} title="Compare changes" />
-				<div className="mx-auto flex max-w-2xl flex-col items-center gap-2 px-6 py-20 text-center">
-					<h2 className="text-[15px] font-medium text-foreground">
-						Nothing to compare
-					</h2>
-					<p className="text-[13px] font-[450] text-muted-foreground">
-						<BranchBadge>{base}</BranchBadge> and{" "}
-						<BranchBadge>{head}</BranchBadge> are identical, or one of them
-						doesn't exist.
-					</p>
-				</div>
-			</div>
-		);
-	}
+	if (!resolved?.base || !defaultBranch) return <ComparePageSkeleton />;
 
-	const refs = (
-		<CompareHeader
-			owner={owner}
-			repo={repo}
-			base={base}
-			head={head}
-			compare={compare}
-		/>
-	);
+	const firstBranchPage = branchesQuery.data?.pages[0];
+	const branches: CompareBranches = {
+		items: firstBranchPage?.branches ?? [],
+		loading: branchesQuery.isPending,
+		truncated: firstBranchPage?.hasNextPage ?? false,
+	};
+	const { base, head } = resolved;
+	const view = resolveCompareView(head, compareQuery);
+	const access = pullRequestAccess({
+		lookup: permissionLookup(permissionQuery),
+		head: head ?? "",
+		repoOwner: owner,
+	});
+	const compare = view.kind === "ready" ? view.compare : null;
+	const openPull = openPullQuery.data ?? null;
+
+	const navigateTo = (next: { base: string; head: string | null }) => {
+		void router.navigate({
+			to: "/$owner/$repo/compare/$",
+			params: {
+				owner,
+				repo,
+				_splat: formatCompareSplat(next.base, next.head),
+			},
+			search: showForm ? { expand: 1 } : {},
+		});
+	};
 
 	return (
 		<div className="flex h-full min-h-0 flex-col">
-			<ComparePageHeader
-				owner={owner}
-				repo={repo}
-				title={showForm ? "Open a pull request" : "Compare changes"}
+			<PageHeader
 				actions={
-					!showForm && compare.aheadBy > 0 ? (
-						<Link
-							to="/$owner/$repo/compare/$"
-							params={{ owner, repo, _splat: `${base}...${head}` }}
-							search={{ expand: 1 }}
-							className="flex h-7 shrink-0 items-center gap-1.5 rounded-full bg-indigo px-3 text-xs font-medium text-indigo-foreground shadow-[0_1px_1px_0_lch(0_0_0/0.12),0_3px_6px_-2px_lch(0_0_0/0.12)] transition-colors hover:bg-indigo/90"
-						>
-							<GitPullRequestIcon size={14} strokeWidth={2} />
-							Create pull request
-						</Link>
-					) : undefined
-				}
-			/>
-			<div className="min-h-0 flex-1 overflow-y-auto">
-				{showForm ? (
-					<div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_minmax(17rem,34%)]">
-						<div className="mx-auto flex w-full max-w-[780px] min-w-0 flex-col gap-6 px-4 pt-6 pb-12 md:px-[46px]">
-							{refs}
-							<CompareForm
+					view.kind === "ready" &&
+					view.compare.aheadBy > 0 &&
+					!showForm &&
+					access === "allowed" ? (
+						openPull ? (
+							<Button asChild variant="outline" size="sm">
+								<Link
+									to="/$owner/$repo/pull/$pullId"
+									params={{ owner, repo, pullId: String(openPull.number) }}
+								>
+									<GitPullRequestIcon size={14} strokeWidth={2} />
+									View <ShortPullRequest /> #{openPull.number}
+								</Link>
+							</Button>
+						) : (
+							<CreatePullRequestLink
 								owner={owner}
 								repo={repo}
-								title={title}
-								body={body}
-								onTitleChange={setTitle}
-								onBodyChange={setBody}
-								onSubmit={handleSubmit}
-								submitting={submitting}
-								error={error}
-								canSubmit={title.trim().length > 0 && compare.aheadBy > 0}
-								mentionConfig={mentionConfig}
+								base={base}
+								head={head}
 							/>
-						</div>
-						<aside
-							aria-label="Pull request properties"
-							className="min-w-0 self-start px-4 pt-2 pb-10 md:px-[46px] lg:pt-6 lg:pr-3 lg:pl-0"
-						>
-							<div className="flex max-w-80 flex-col">
-								<CompareSidebar
-									owner={owner}
-									repo={repo}
-									scope={scope}
-									viewerLogin={viewer?.login ?? null}
-									selectedLabels={selectedLabels}
-									onToggleLabel={toggleLabel}
-									selectedAssignees={selectedAssignees}
-									onToggleAssignee={toggleAssignee}
-									selectedReviewers={selectedReviewers}
-									onToggleReviewer={toggleReviewer}
-									selectedTeamReviewers={selectedTeamReviewers}
-									onToggleTeamReviewer={toggleTeamReviewer}
-								/>
-							</div>
-						</aside>
-					</div>
-				) : null}
-
-				<div
-					className={cn(
-						"px-[14px] pb-6 max-md:px-2",
-						showForm ? "border-t-[0.5px] border-header-rule pt-4" : "pt-2",
-					)}
-				>
-					<CompareDiffView
-						header={showForm ? undefined : refs}
-						commits={compare.commits}
-						files={compare.files}
-						filesTruncated={compare.filesTruncated}
+						)
+					) : undefined
+				}
+			>
+				<PageHeaderCrumb asChild>
+					<Link to="/$owner/$repo" params={{ owner, repo }}>
+						{owner}/{repo}
+					</Link>
+				</PageHeaderCrumb>
+				<PageHeaderTitle>
+					<GitCompareIcon
+						size={14}
+						strokeWidth={2}
+						className="text-muted-foreground"
+					/>
+					{showForm ? "Open a pull request" : "Compare changes"}
+				</PageHeaderTitle>
+			</PageHeader>
+			<div className="min-h-0 flex-1 overflow-y-auto">
+				<div className="flex flex-col gap-4 px-3 pt-3 pb-10 md:px-[14px]">
+					<CompareBranchBar
+						base={base}
+						head={head}
+						defaultBranch={defaultBranch}
+						branches={branches}
+						compare={compare}
+						onBaseChange={(next) => navigateTo({ base: next, head })}
+						onHeadChange={(next) => navigateTo({ base, head: next })}
+					/>
+					<CompareBody
+						view={view}
 						owner={owner}
 						repo={repo}
+						scope={scope}
+						base={base}
+						head={head}
+						branches={branches}
+						showForm={showForm}
+						access={access}
 					/>
 				</div>
 			</div>
@@ -361,54 +236,392 @@ export function ComparePage({
 	);
 }
 
-function ComparePageHeader({
+function CompareBody({
+	view,
 	owner,
 	repo,
-	title,
-	actions,
+	scope,
+	base,
+	head,
+	branches,
+	showForm,
+	access,
+}: {
+	view: CompareView;
+	owner: string;
+	repo: string;
+	scope: GitHubQueryScope;
+	base: string;
+	head: string | null;
+	branches: CompareBranches;
+	showForm: boolean;
+	access: PullRequestAccess;
+}) {
+	switch (view.kind) {
+		case "choose-branch":
+			return (
+				<CompareRecentBranches
+					owner={owner}
+					repo={repo}
+					base={base}
+					branches={branches}
+				/>
+			);
+		case "loading":
+			return <CompareBodySkeleton />;
+		case "unavailable":
+			return <NothingToCompare base={base} head={head} />;
+		case "ready":
+			return (
+				<CompareReady
+					compare={view.compare}
+					owner={owner}
+					repo={repo}
+					scope={scope}
+					base={base}
+					head={head as string}
+					showForm={showForm}
+					access={access}
+				/>
+			);
+	}
+}
+
+function CompareReady({
+	compare,
+	owner,
+	repo,
+	scope,
+	base,
+	head,
+	showForm,
+	access,
+}: {
+	compare: CompareDetail;
+	owner: string;
+	repo: string;
+	scope: GitHubQueryScope;
+	base: string;
+	head: string;
+	showForm: boolean;
+	access: PullRequestAccess;
+}) {
+	const noCommits = showForm && compare.aheadBy === 0;
+
+	return (
+		<>
+			{noCommits ? (
+				<Notice>
+					{head} has no commits that {base} doesn't, so there is nothing to open
+					a pull request for.
+				</Notice>
+			) : null}
+			{!noCommits && access === "unavailable" ? (
+				<AccessUnavailable owner={owner} repo={repo} scope={scope} />
+			) : null}
+			{showForm && !noCommits && access !== "unavailable" ? (
+				<PullRequestComposer
+					compare={compare}
+					access={access}
+					owner={owner}
+					repo={repo}
+					scope={scope}
+					base={base}
+					head={head}
+				/>
+			) : null}
+			<CompareDiffView
+				commits={compare.commits}
+				files={compare.files}
+				filesTruncated={compare.filesTruncated}
+				owner={owner}
+				repo={repo}
+			/>
+		</>
+	);
+}
+
+function PullRequestComposer({
+	compare,
+	access,
+	owner,
+	repo,
+	scope,
+	base,
+	head,
+}: {
+	compare: CompareDetail;
+	access: PullRequestAccess;
+	owner: string;
+	repo: string;
+	scope: GitHubQueryScope;
+	base: string;
+	head: string;
+}) {
+	const router = useRouter();
+	const queryClient = useQueryClient();
+	const [draft, dispatch] = useReducer(
+		pullRequestDraftReducer,
+		emptyPullRequestDraft,
+	);
+	const [submit, setSubmit] = useState<SubmitState>({ status: "idle" });
+
+	const viewerQuery = useQuery(githubViewerQueryOptions(scope));
+	const collaboratorsQuery = useQuery(
+		githubRepoCollaboratorsQueryOptions(scope, { owner, repo }),
+	);
+	const templateQuery = useQuery(
+		githubRepoTemplateQueryOptions(scope, { owner, repo, kind: "pr" }),
+	);
+
+	const mentionConfig = useMemo(() => {
+		const candidates: MentionCandidate[] = (collaboratorsQuery.data ?? []).map(
+			(collaborator) => ({
+				id: collaborator.login,
+				label: collaborator.login,
+				avatarUrl: collaborator.avatarUrl,
+			}),
+		);
+		return { candidates, isLoading: collaboratorsQuery.isLoading };
+	}, [collaboratorsQuery.data, collaboratorsQuery.isLoading]);
+
+	const titleSuggestion = suggestPullRequestTitle(compare.commits, head);
+	const bodyTemplate = templateQuery.data ?? "";
+	const title = pullRequestTitle(draft, titleSuggestion);
+	const body = pullRequestBody(draft, bodyTemplate);
+
+	if (access === "checking") return <ComposerSkeleton />;
+	if (access === "read-only") {
+		return (
+			<Notice>
+				You don't have push access to {owner}/{repo}. To open a pull request,
+				compare from a fork by choosing its branch as{" "}
+				<span className="font-mono">owner:branch</span>.
+			</Notice>
+		);
+	}
+
+	const handleSubmit = async () => {
+		const input = buildCreatePullRequestInput({
+			owner,
+			repo,
+			base,
+			head,
+			draft,
+			titleSuggestion,
+			bodyTemplate,
+		});
+		if (!input) return;
+
+		setSubmit({ status: "submitting" });
+		try {
+			const result = await createPullRequest({ data: input });
+			if (!result.ok) {
+				setSubmit({
+					status: "failed",
+					message: result.error || "Failed to create pull request.",
+				});
+				return;
+			}
+			await invalidateGitHubEntities(
+				queryClient,
+				scope,
+				[
+					pullEntityKey({ owner, repo, pullNumber: result.pullNumber }),
+					repoEntityKey({ owner, repo }),
+					...(draft.milestone ? [milestonesEntityKey({ owner, repo })] : []),
+				],
+				"created",
+			);
+			if (result.warnings && result.warnings.length > 0) {
+				toast.warning("Pull request created with some issues", {
+					description: result.warnings.join("\n"),
+				});
+			}
+			await router.navigate({
+				to: "/$owner/$repo/pull/$pullId",
+				params: { owner, repo, pullId: String(result.pullNumber) },
+			});
+		} catch {
+			setSubmit({
+				status: "failed",
+				message: "Failed to create pull request. Please try again.",
+			});
+		}
+	};
+
+	return (
+		<div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(17rem,34%)]">
+			<div className="mx-auto w-full max-w-[780px] min-w-0">
+				<CompareForm
+					owner={owner}
+					repo={repo}
+					title={title}
+					body={body}
+					isDraft={draft.isDraft}
+					submit={submit}
+					canSubmit={title.trim() !== ""}
+					mentionConfig={mentionConfig}
+					onTitleChange={(value) => dispatch({ type: "title-edited", value })}
+					onBodyChange={(value) => dispatch({ type: "body-edited", value })}
+					onDraftChange={(value) => dispatch({ type: "draft-set", value })}
+					onSubmit={handleSubmit}
+				/>
+			</div>
+			<aside aria-label="Pull request properties" className="min-w-0">
+				<div className="flex max-w-80 flex-col">
+					<CompareProperties
+						owner={owner}
+						repo={repo}
+						scope={scope}
+						viewerLogin={viewerQuery.data?.login ?? null}
+						draft={draft}
+						dispatch={dispatch}
+					/>
+				</div>
+			</aside>
+		</div>
+	);
+}
+
+function CreatePullRequestLink({
+	owner,
+	repo,
+	base,
+	head,
 }: {
 	owner: string;
 	repo: string;
-	title: string;
-	actions?: ReactNode;
+	base: string;
+	head: string | null;
 }) {
 	return (
-		<PageHeader actions={actions}>
-			<PageHeaderCrumb asChild>
-				<Link to="/$owner/$repo" params={{ owner, repo }}>
-					{owner}/{repo}
-				</Link>
-			</PageHeaderCrumb>
-			<PageHeaderTitle>
-				<GitCompareIcon
-					size={14}
-					strokeWidth={2}
-					className="text-muted-foreground"
-				/>
-				{title}
-			</PageHeaderTitle>
-		</PageHeader>
+		<Button asChild variant="accent" size="sm">
+			<Link
+				to="/$owner/$repo/compare/$"
+				params={{ owner, repo, _splat: formatCompareSplat(base, head) }}
+				search={{ expand: 1 }}
+			>
+				<GitPullRequestIcon size={14} strokeWidth={2} />
+				Create <ShortPullRequest />
+			</Link>
+		</Button>
+	);
+}
+
+function ShortPullRequest() {
+	return (
+		<>
+			<span className="max-sm:hidden">pull request</span>
+			<span className="sm:hidden">PR</span>
+		</>
+	);
+}
+
+function Notice({
+	children,
+	action,
+}: {
+	children: ReactNode;
+	action?: ReactNode;
+}) {
+	return (
+		<Callout>
+			<CalloutContent className="text-muted-foreground">
+				<span>{children}</span>
+			</CalloutContent>
+			{action ? <CalloutAction>{action}</CalloutAction> : null}
+		</Callout>
+	);
+}
+
+function AccessUnavailable({
+	owner,
+	repo,
+	scope,
+}: {
+	owner: string;
+	repo: string;
+	scope: GitHubQueryScope;
+}) {
+	const permissionQuery = useQuery(
+		githubRepoViewerPermissionQueryOptions(scope, { owner, repo }),
+	);
+	return (
+		<Notice
+			action={
+				<Button
+					variant="outline"
+					size="sm"
+					disabled={permissionQuery.isFetching}
+					onClick={() => void permissionQuery.refetch()}
+				>
+					Retry
+				</Button>
+			}
+		>
+			Couldn't check your access to {owner}/{repo}, so pull request actions are
+			hidden.
+		</Notice>
+	);
+}
+
+function NothingToCompare({
+	base,
+	head,
+}: {
+	base: string;
+	head: string | null;
+}) {
+	return (
+		<div className="mx-auto flex max-w-2xl flex-col items-center gap-2 px-6 py-16 text-center">
+			<h2 className="text-[15px] font-medium text-foreground">
+				Nothing to compare
+			</h2>
+			<p className="text-[13px] font-[450] text-muted-foreground">
+				<BranchBadge>{base}</BranchBadge> and{" "}
+				{head ? <BranchBadge>{head}</BranchBadge> : null} are identical, or one
+				of them doesn't exist.
+			</p>
+		</div>
+	);
+}
+
+function ComposerSkeleton() {
+	return (
+		<div className="flex flex-col gap-3">
+			<Skeleton className="h-9 w-full rounded-lg" />
+			<Skeleton className="h-48 w-full rounded-lg" />
+		</div>
+	);
+}
+
+function CompareBodySkeleton() {
+	return (
+		<div className="flex flex-col gap-2">
+			<Skeleton className="h-9 w-full rounded-lg" />
+			<Skeleton className="h-40 w-full rounded-lg" />
+		</div>
 	);
 }
 
 function ComparePageSkeleton() {
 	return (
-		<DetailPageSkeletonLayout mainItemCount={3}>
-			<StaggerItem index={0}>
-				<div className="flex flex-col gap-3">
-					<div className="h-4 w-32 animate-pulse rounded bg-surface-1" />
-					<div className="h-7 w-3/5 animate-pulse rounded bg-surface-1" />
-				</div>
-			</StaggerItem>
-			<StaggerItem index={1}>
-				<div className="flex flex-col gap-3 rounded-lg border-[0.5px] p-4">
-					<div className="h-9 w-full animate-pulse rounded bg-surface-1" />
-					<div className="h-32 w-full animate-pulse rounded bg-surface-1" />
-				</div>
-			</StaggerItem>
-			<StaggerItem index={2}>
-				<div className="h-40 w-full animate-pulse rounded-lg bg-surface-1" />
-			</StaggerItem>
-		</DetailPageSkeletonLayout>
+		<div className="flex h-full min-h-0 flex-col">
+			<PageHeader>
+				<PageHeaderTitle>
+					<GitCompareIcon
+						size={14}
+						strokeWidth={2}
+						className="text-muted-foreground"
+					/>
+					Compare changes
+				</PageHeaderTitle>
+			</PageHeader>
+			<div className="flex flex-col gap-4 px-3 pt-3 md:px-[14px]">
+				<Skeleton className="h-12 w-full rounded-lg" />
+				<CompareBodySkeleton />
+			</div>
+		</div>
 	);
 }

@@ -14,6 +14,7 @@ import type {
 	UserRepoSummary,
 } from "../github.types";
 import { isRepoVisibleWithInstallationAccess } from "../github-access";
+import { isRecentPush } from "../recent-push";
 import {
 	filterUserRepoSummaries,
 	type ReposHubInput,
@@ -996,6 +997,7 @@ export const getRecentPushableBranch = createServerFn({ method: "GET" })
 						if (!ref.startsWith("refs/heads/")) continue;
 						const branch = ref.slice("refs/heads/".length);
 						if (branch === defaultBranch) continue;
+						if (!isRecentPush(activity.timestamp)) continue;
 						if (seen.has(branch)) continue;
 						seen.add(branch);
 

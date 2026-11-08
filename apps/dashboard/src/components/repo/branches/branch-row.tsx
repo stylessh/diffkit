@@ -28,6 +28,7 @@ import type { GitHubQueryScope } from "#/lib/github.query";
 import type { RepoBranchListItem } from "#/lib/github.types";
 import { HairlineBadge, iconButtonClassName } from "../repo-ui";
 import { BranchAheadBehind } from "./branch-ahead-behind";
+import { BranchCreatePullRequest } from "./branch-create-pull-request";
 
 function PullRequestBadge({
 	owner,
@@ -78,14 +79,18 @@ export const BranchRow = memo(function BranchRow({
 	scope,
 	branch,
 	defaultBranch,
+	canCreatePullRequest,
 }: {
 	owner: string;
 	repo: string;
 	scope: GitHubQueryScope;
 	branch: RepoBranchListItem;
 	defaultBranch: string;
+	canCreatePullRequest: boolean;
 }) {
 	const isDefault = branch.name === defaultBranch;
+	const offersCreatePullRequest =
+		canCreatePullRequest && !isDefault && branch.pullRequest?.state !== "OPEN";
 	const commit = branch.commit;
 	const authorLabel = commit?.author?.login ?? commit?.authorName;
 
@@ -142,12 +147,21 @@ export const BranchRow = memo(function BranchRow({
 				)}
 			</div>
 
-			<div className="relative z-[1] hidden w-16 shrink-0 justify-end md:flex">
+			<div className="relative z-[1] hidden min-w-16 shrink-0 items-center justify-end gap-1.5 md:flex">
 				{branch.pullRequest ? (
 					<PullRequestBadge
 						owner={owner}
 						repo={repo}
 						pullRequest={branch.pullRequest}
+					/>
+				) : null}
+				{offersCreatePullRequest ? (
+					<BranchCreatePullRequest
+						owner={owner}
+						repo={repo}
+						scope={scope}
+						base={defaultBranch}
+						head={branch.name}
 					/>
 				) : null}
 			</div>
@@ -185,7 +199,7 @@ export const BranchRow = memo(function BranchRow({
 							<GitCompareIcon size={14} />
 						</Link>
 					</TooltipTrigger>
-					<TooltipContent>Compare &amp; open pull request</TooltipContent>
+					<TooltipContent>Compare</TooltipContent>
 				</Tooltip>
 			</div>
 

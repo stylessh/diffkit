@@ -1,22 +1,6 @@
 import type { RepoBranch } from "#/lib/github.types";
 
 /**
- * Parse a compare splat like "main...feature" or "main...org:feature"
- * into { base, head }. Returns null when the format is invalid.
- */
-export function parseCompareRef(
-	splat: string,
-): { base: string; head: string } | null {
-	if (!splat) return null;
-	const sep = splat.indexOf("...");
-	if (sep <= 0 || sep >= splat.length - 3) return null;
-	const base = splat.slice(0, sep);
-	const head = splat.slice(sep + 3);
-	if (!base || !head) return null;
-	return { base, head };
-}
-
-/**
  * Parse a splat string like "main/src/lib/foo.ts" into { ref, path }.
  *
  * Strategy:

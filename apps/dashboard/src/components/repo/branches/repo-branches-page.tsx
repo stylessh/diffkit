@@ -28,6 +28,7 @@ import {
 	type GitHubQueryScope,
 	githubRepoBranchesListInfiniteQueryOptions,
 	githubRepoOverviewQueryOptions,
+	githubRepoViewerPermissionQueryOptions,
 } from "#/lib/github.query";
 import type { RepoBranchListItem } from "#/lib/github.types";
 import { useHasMounted } from "#/lib/use-has-mounted";
@@ -93,6 +94,11 @@ export function RepoBranchesPage({
 		enabled: hasMounted,
 	});
 	const repoData = overviewQuery.data;
+	const permissionQuery = useQuery({
+		...githubRepoViewerPermissionQueryOptions(scope, { owner, repo }),
+		enabled: hasMounted,
+	});
+	const canCreatePullRequest = permissionQuery.data?.canPush ?? false;
 
 	const query = params.q?.trim() || undefined;
 	const branchesQuery = useInfiniteQuery({
@@ -154,7 +160,13 @@ export function RepoBranchesPage({
 	const isLoading =
 		!hasMounted || (branchesQuery.isPending && !branchesQuery.data);
 
-	const rowProps = { owner, repo, scope, defaultBranch };
+	const rowProps = {
+		owner,
+		repo,
+		scope,
+		defaultBranch,
+		canCreatePullRequest,
+	};
 
 	const toolbar = (
 		<>

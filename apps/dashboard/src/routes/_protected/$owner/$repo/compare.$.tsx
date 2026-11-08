@@ -1,12 +1,15 @@
-import { createFileRoute, redirect } from "@tanstack/react-router";
+import { createFileRoute } from "@tanstack/react-router";
 import { useMemo } from "react";
 import { ComparePage } from "#/components/compare/compare-page";
+import { parseCompareSplat, pullHeadFilter } from "#/lib/compare-ref";
 import {
 	githubCompareDetailQueryOptions,
+	githubOpenPullForRefsQueryOptions,
+	githubRepoBranchesListInfiniteQueryOptions,
 	githubRepoOverviewQueryOptions,
+	githubRepoViewerPermissionQueryOptions,
 	githubViewerQueryOptions,
 } from "#/lib/github.query";
-import { parseCompareRef } from "#/lib/parse-repo-ref";
 import { buildSeo, formatPageTitle } from "#/lib/seo";
 
 type CompareSearch = {
@@ -19,52 +22,58 @@ export const Route = createFileRoute("/_protected/$owner/$repo/compare/$")({
 		expand: search.expand === 1 || search.expand === "1" ? 1 : undefined,
 	}),
 	loader: ({ context, params }) => {
-		const splat = params._splat ?? "";
-		const parsed = parseCompareRef(splat);
-		if (!parsed) {
-			throw redirect({
-				to: "/$owner/$repo",
-				params: { owner: params.owner, repo: params.repo },
-			});
-		}
-
+		const refs = parseCompareSplat(params._splat ?? "");
 		const scope = { userId: context.user.id };
+		const repoInput = { owner: params.owner, repo: params.repo };
+
 		void context.queryClient.prefetchQuery(
-			githubRepoOverviewQueryOptions(scope, {
-				owner: params.owner,
-				repo: params.repo,
-			}),
+			githubRepoOverviewQueryOptions(scope, repoInput),
 		);
 		void context.queryClient.prefetchQuery(githubViewerQueryOptions(scope));
-		void context.queryClient.prefetchQuery(
-			githubCompareDetailQueryOptions(scope, {
-				owner: params.owner,
-				repo: params.repo,
-				base: parsed.base,
-				head: parsed.head,
-			}),
+		void context.queryClient.prefetchInfiniteQuery(
+			githubRepoBranchesListInfiniteQueryOptions(scope, repoInput),
 		);
+		void context.queryClient.prefetchQuery(
+			githubRepoViewerPermissionQueryOptions(scope, repoInput),
+		);
+		if (refs.base && refs.head) {
+			void context.queryClient.prefetchQuery(
+				githubCompareDetailQueryOptions(scope, {
+					...repoInput,
+					base: refs.base,
+					head: refs.head,
+				}),
+			);
+			void context.queryClient.prefetchQuery(
+				githubOpenPullForRefsQueryOptions(scope, {
+					...repoInput,
+					base: refs.base,
+					head: pullHeadFilter(refs.head, params.owner),
+				}),
+			);
+		}
 
-		return parsed;
+		return refs;
 	},
-	head: ({ match, params }) =>
-		buildSeo({
+	head: ({ match, params }) => {
+		const { base, head } = match.loaderData ?? { base: null, head: null };
+		const subject = head
+			? `Compare ${base ? `${base}...` : ""}${head}`
+			: "Compare changes";
+		return buildSeo({
 			path: match.pathname,
-			title: formatPageTitle(
-				match.loaderData
-					? `Compare ${match.loaderData.base}...${match.loaderData.head} — ${params.owner}/${params.repo}`
-					: `Compare — ${params.owner}/${params.repo}`,
-			),
+			title: formatPageTitle(`${subject} — ${params.owner}/${params.repo}`),
 			description: `Compare changes and open a pull request in ${params.owner}/${params.repo}.`,
 			robots: "noindex",
-		}),
+		});
+	},
 	component: CompareRoute,
 });
 
 function CompareRoute() {
 	const { user } = Route.useRouteContext();
 	const { owner, repo } = Route.useParams();
-	const { base, head } = Route.useLoaderData();
+	const refs = Route.useLoaderData();
 	const { expand } = Route.useSearch();
 	const scope = useMemo(() => ({ userId: user.id }), [user.id]);
 
@@ -72,8 +81,7 @@ function CompareRoute() {
 		<ComparePage
 			owner={owner}
 			repo={repo}
-			base={base}
-			head={head}
+			refs={refs}
 			scope={scope}
 			showForm={expand === 1}
 		/>

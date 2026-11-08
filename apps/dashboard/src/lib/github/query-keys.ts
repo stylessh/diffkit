@@ -195,6 +195,10 @@ export const githubQueryKeys = {
 			["github", scope.userId, "pulls", "user", input] as const,
 		repo: (scope: GitHubQueryScope, input: PullsFromRepoQueryInput) =>
 			["github", scope.userId, "pulls", "repo", input] as const,
+		forRefs: (
+			scope: GitHubQueryScope,
+			input: { owner: string; repo: string; base: string; head: string },
+		) => ["github", scope.userId, "pulls", "forRefs", input] as const,
 		page: (scope: GitHubQueryScope, input: PullFromRepoQueryInput) =>
 			["github", scope.userId, "pulls", "page", input] as const,
 		detail: (scope: GitHubQueryScope, input: PullFromRepoQueryInput) =>
@@ -220,6 +224,10 @@ export const githubQueryKeys = {
 		scope: GitHubQueryScope,
 		input: { owner: string; repo: string },
 	) => ["github", scope.userId, "repoLabels", input] as const,
+	repoMilestones: (
+		scope: GitHubQueryScope,
+		input: { owner: string; repo: string },
+	) => ["github", scope.userId, "repoMilestones", input] as const,
 	orgTeams: (
 		scope: GitHubQueryScope,
 		input: { org: string; owner: string; repo: string },

@@ -86,6 +86,8 @@ export {
 	saveRepoLabel,
 	setIssueLabels,
 } from "./github/labels";
+export type { RepoMilestonesInput } from "./github/milestones";
+export { getRepoMilestones } from "./github/milestones";
 export {
 	getNotifications,
 	markAllNotificationsRead,
@@ -93,6 +95,11 @@ export {
 	markNotificationRead,
 	unsubscribeNotification,
 } from "./github/notifications";
+export type {
+	OpenPullForRefs,
+	OpenPullForRefsInput,
+} from "./github/pull-for-refs";
+export { getOpenPullForRefs } from "./github/pull-for-refs";
 export type {
 	ApproveWorkflowRunsInput,
 	ApproveWorkflowRunsResult,

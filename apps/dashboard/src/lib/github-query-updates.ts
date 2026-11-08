@@ -286,6 +286,13 @@ export function releaseEntityKey(input: RepoInput) {
 	});
 }
 
+export function milestonesEntityKey(input: RepoInput) {
+	return formatEntityKey({
+		kind: "milestones",
+		repo: normalizeRepoFullName(input.owner, input.repo),
+	});
+}
+
 export function runEntityKey(input: RepoInput & { runId: number }) {
 	return formatEntityKey({
 		kind: "run",

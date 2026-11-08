@@ -59,9 +59,11 @@ user.
 | `concurrent/issues` | issue queue and issue detail |
 | `concurrent/code-browsing` | folder view, `t` file finder, `#L` line links, blame with its commit card, in-repository code search |
 | `concurrent/repository` | commits, branches and releases pages |
+| `concurrent/compare` | the compare page's recent-branch chooser and owner-qualified (`owner:branch`) head |
 | `isolated/auth` | protected redirect, sign-in through the emulator, sign-out |
 | `isolated/review-submission` | approving from the review page |
 | `isolated/new-issue` | creating an issue |
+| `isolated/create-pull-request` | "Create PR" on a branch row, the prefilled compare form, and a draft pull request created with a label and milestone |
 | `isolated/inbox` | marking a notification as read |
 | `isolated/instant-ui` | a revisited pull request paints from IndexedDB with no skeleton while every server function is held |
 | `isolated/repo-settings` | repository settings: saving the description, the last-merge-method guard, labels, an Actions secret and variable, collaborators and invitations, a webhook and its redelivery |
