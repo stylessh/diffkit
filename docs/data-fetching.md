@@ -244,14 +244,23 @@ Database size comes from D1's `meta.size_after`, the number
 `github_change` exceeds 50k rows (a stuck sweeper), it also logs
 `{"level":"warn","alert":"d1_size_warning" | "d1_change_table_growth", …}`.
 
-To alert:
+Alerts (what exists, and what is still manual):
 
-1. In the Cloudflare dashboard, open the Worker → **Observability**, filter
-   on `alert = d1_size_warning OR alert = d1_change_table_growth`, and save
-   the query as an alert. Notify on any match in 15 minutes.
-2. Or, with Logpush, push Workers trace events and alert on the same field.
-3. Also add a **Notifications → D1** usage alert for the database as a second
-   signal that doesn't depend on the Worker running.
+1. **GitHub issues from a watchdog.** `.github/workflows/production-alerts.yml`
+   runs every 15 minutes and opens one issue per firing check, labelled
+   `production-alert` and de-duplicated by title. It closes the issue when the
+   check recovers. Checks: `/api/health` failing, D1 above 8 GB (from the D1
+   API, so it works when the Worker is down), the cron not completing a clean
+   run in 12 minutes (from `/api/health` → `maintenance`), and Worker error
+   rate above 5% over 15 minutes (Workers analytics). A check it cannot
+   evaluate opens a "(check unavailable)" issue rather than staying silent.
+2. Cloudflare Notifications has no type for Worker error rate, cron failures or
+   D1 size, which is why (1) exists. Optionally, in the Cloudflare dashboard,
+   open the Worker → **Observability** → Issues and add an automation, which
+   groups uncaught exceptions and 5xx responses.
+
+Runbooks: [d1-full.md](runbooks/d1-full.md),
+[deploy-rollback.md](runbooks/deploy-rollback.md).
 
 `sweep.complete: false` on consecutive runs means the backlog is outgrowing
 10 × 20k rows per 5 minutes; raise `GITHUB_CHANGE_SWEEP_MAX_BATCHES`.

@@ -16,6 +16,7 @@ import { Route as LoginRouteImport } from './routes/login'
 import { Route as ProtectedRouteImport } from './routes/_protected'
 import { Route as SplatRouteImport } from './routes/$'
 import { Route as ProtectedIndexRouteImport } from './routes/_protected/index'
+import { Route as ApiHealthRouteImport } from './routes/api/health'
 import { Route as ApiChangesRouteImport } from './routes/api/changes'
 import { Route as ProtectedSettingsRouteImport } from './routes/_protected/settings'
 import { Route as ProtectedReviewsRouteImport } from './routes/_protected/reviews'
@@ -87,6 +88,11 @@ const ProtectedIndexRoute = ProtectedIndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => ProtectedRoute,
+} as any)
+const ApiHealthRoute = ApiHealthRouteImport.update({
+  id: '/api/health',
+  path: '/api/health',
+  getParentRoute: () => rootRouteImport,
 } as any)
 const ApiChangesRoute = ApiChangesRouteImport.update({
   id: '/api/changes',
@@ -309,6 +315,7 @@ export interface FileRoutesByFullPath {
   '/reviews': typeof ProtectedReviewsRoute
   '/settings': typeof ProtectedSettingsRouteWithChildren
   '/api/changes': typeof ApiChangesRoute
+  '/api/health': typeof ApiHealthRoute
   '/settings/shortcuts': typeof ProtectedSettingsShortcutsRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/webhooks/github': typeof ApiWebhooksGithubRoute
@@ -352,6 +359,7 @@ export interface FileRoutesByTo {
   '/repos': typeof ProtectedReposRoute
   '/reviews': typeof ProtectedReviewsRoute
   '/api/changes': typeof ApiChangesRoute
+  '/api/health': typeof ApiHealthRoute
   '/': typeof ProtectedIndexRoute
   '/settings/shortcuts': typeof ProtectedSettingsShortcutsRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
@@ -399,6 +407,7 @@ export interface FileRoutesById {
   '/_protected/reviews': typeof ProtectedReviewsRoute
   '/_protected/settings': typeof ProtectedSettingsRouteWithChildren
   '/api/changes': typeof ApiChangesRoute
+  '/api/health': typeof ApiHealthRoute
   '/_protected/': typeof ProtectedIndexRoute
   '/_protected/settings/shortcuts': typeof ProtectedSettingsShortcutsRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
@@ -447,6 +456,7 @@ export interface FileRouteTypes {
     | '/reviews'
     | '/settings'
     | '/api/changes'
+    | '/api/health'
     | '/settings/shortcuts'
     | '/api/auth/$'
     | '/api/webhooks/github'
@@ -490,6 +500,7 @@ export interface FileRouteTypes {
     | '/repos'
     | '/reviews'
     | '/api/changes'
+    | '/api/health'
     | '/'
     | '/settings/shortcuts'
     | '/api/auth/$'
@@ -536,6 +547,7 @@ export interface FileRouteTypes {
     | '/_protected/reviews'
     | '/_protected/settings'
     | '/api/changes'
+    | '/api/health'
     | '/_protected/'
     | '/_protected/settings/shortcuts'
     | '/api/auth/$'
@@ -576,6 +588,7 @@ export interface RootRouteChildren {
   SetupRoute: typeof SetupRoute
   TermsRoute: typeof TermsRoute
   ApiChangesRoute: typeof ApiChangesRoute
+  ApiHealthRoute: typeof ApiHealthRoute
   ApiAuthSplatRoute: typeof ApiAuthSplatRoute
   ApiWebhooksGithubRoute: typeof ApiWebhooksGithubRoute
   ApiGithubAppAuthorizeRoute: typeof ApiGithubAppAuthorizeRoute
@@ -632,6 +645,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/'
       preLoaderRoute: typeof ProtectedIndexRouteImport
       parentRoute: typeof ProtectedRoute
+    }
+    '/api/health': {
+      id: '/api/health'
+      path: '/api/health'
+      fullPath: '/api/health'
+      preLoaderRoute: typeof ApiHealthRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/api/changes': {
       id: '/api/changes'
@@ -991,6 +1011,7 @@ const rootRouteChildren: RootRouteChildren = {
   SetupRoute: SetupRoute,
   TermsRoute: TermsRoute,
   ApiChangesRoute: ApiChangesRoute,
+  ApiHealthRoute: ApiHealthRoute,
   ApiAuthSplatRoute: ApiAuthSplatRoute,
   ApiWebhooksGithubRoute: ApiWebhooksGithubRoute,
   ApiGithubAppAuthorizeRoute: ApiGithubAppAuthorizeRoute,
