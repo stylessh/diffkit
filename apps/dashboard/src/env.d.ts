@@ -17,6 +17,5 @@ declare namespace Cloudflare {
 		GITHUB_CLIENT_SECRET?: string;
 		BETTER_AUTH_SECRET: string;
 		BETTER_AUTH_URL: string;
-		SIGNAL_RELAY: DurableObjectNamespace;
 	}
 }
