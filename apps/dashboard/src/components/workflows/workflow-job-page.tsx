@@ -29,8 +29,6 @@ import {
 	workflowZipJobName,
 } from "#/lib/github.query";
 import type { WorkflowRunJob, WorkflowRunStep } from "#/lib/github.types";
-import { githubRevalidationSignalKeys } from "#/lib/github-revalidation";
-import { useGitHubSignalStream } from "#/lib/use-github-signal-stream";
 import { useHasMounted } from "#/lib/use-has-mounted";
 import { useNow } from "#/lib/use-now";
 import { useRegisterTab } from "#/lib/use-register-tab";
@@ -87,42 +85,6 @@ export function WorkflowJobPage() {
 	);
 	const isJobLive = job ? job.status !== "completed" : true;
 	const isRunCompleted = runQuery.data?.status === "completed";
-
-	const webhookTargets = useMemo(() => {
-		const runInput = { owner, repo, runId: runIdNum };
-		const runSignal = githubRevalidationSignalKeys.workflowRunEntity(runInput);
-		const jobSignal = githubRevalidationSignalKeys.workflowJobEntity({
-			owner,
-			repo,
-			jobId: jobIdNum,
-		});
-		return [
-			{
-				queryKey: githubQueryKeys.actions.workflowRun(scope, runInput),
-				signalKeys: [runSignal],
-			},
-			{
-				queryKey: githubQueryKeys.actions.workflowRunJobs(scope, runInput),
-				signalKeys: [runSignal, jobSignal],
-			},
-			{
-				queryKey: githubQueryKeys.actions.workflowJobLogs(scope, {
-					owner,
-					repo,
-					jobId: jobIdNum,
-				}),
-				signalKeys: [runSignal, jobSignal],
-			},
-			{
-				queryKey: githubQueryKeys.actions.workflowRunLogsBundle(scope, {
-					...runInput,
-					attempt: runQuery.data?.runAttempt,
-				}),
-				signalKeys: [runSignal],
-			},
-		];
-	}, [scope, owner, repo, runIdNum, jobIdNum, runQuery.data?.runAttempt]);
-	useGitHubSignalStream(webhookTargets);
 
 	const logsQuery = useQuery({
 		...githubWorkflowJobLogsQueryOptions(scope, {

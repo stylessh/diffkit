@@ -45,18 +45,16 @@
 			"migrations_dir": "drizzle"
 		}
 	],
-	"durable_objects": {
-		"bindings": [
-			{
-				"name": "SIGNAL_RELAY",
-				"class_name": "SignalRelay"
-			}
-		]
-	},
+	// The SignalRelay Durable Object was removed. Keep both migration tags so
+	// Workers that already applied v1 delete the class on their next deploy.
 	"migrations": [
 		{
 			"tag": "v1",
 			"new_classes": ["SignalRelay"]
+		},
+		{
+			"tag": "v2",
+			"deleted_classes": ["SignalRelay"]
 		}
 	],
 	"kv_namespaces": [

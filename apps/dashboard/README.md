@@ -42,7 +42,7 @@ Fill in the Cloudflare-specific values:
 - `kv_namespaces[].id` and `kv_namespaces[].preview_id`
 - `r2_buckets[].bucket_name` and `r2_buckets[].preview_bucket_name`
 
-Keep the `DB`, `GITHUB_CACHE_KV`, `COMMENT_MEDIA`, and `SignalRelay` names aligned with the codebase. Deployments are manual and use `pnpm run deploy`.
+Keep the `DB`, `GITHUB_CACHE_KV`, and `COMMENT_MEDIA` names aligned with the codebase. Deployments are manual and use `pnpm run deploy`.
 
 # Building For Production
 

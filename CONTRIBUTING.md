@@ -43,7 +43,6 @@ diffkit/
 - **Better Auth** — Authentication with a GitHub OAuth App, plus GitHub App user and installation tokens for installed repos
 - **Cloudflare D1** — SQLite database at the edge (auth data, cache control state)
 - **Cloudflare KV** — Hot payload cache for GitHub API responses (`GITHUB_CACHE_KV` binding)
-- **Cloudflare Durable Objects** — `SignalRelay` for real-time webhook-to-client revalidation over WebSocket
 - **Vite** — Build tooling via `@cloudflare/vite-plugin`
 - **Vitest** — Test framework (`pnpm --filter dashboard test`)
 - **Biome** — Linting and formatting
@@ -77,16 +76,21 @@ DiffKit uses a split-cache architecture to minimize GitHub API calls while keepi
 
 1. Affected signal keys are resolved (e.g. `pull:{owner}/{repo}#{number}`, `pulls.mine`)
 2. D1 revalidation signal timestamps and namespace versions are bumped
-3. Future cache reads build a different KV key from the new namespace version, naturally bypassing stale entries
-4. Connected clients are notified in real time via the `SignalRelay` Durable Object
+3. The next server read for any resource that lists those signal keys skips its cached entry (even if it is still inside its freshness window) and fetches from GitHub; split-cache reads also build a different KV key from the new namespace version
 
-**Real-time revalidation** — The `SignalRelay` Durable Object (`apps/dashboard/src/lib/signal-relay.server.ts`) maintains WebSocket connections per user. When the webhook handler broadcasts signal keys, subscribed clients receive them instantly. Detail routes use a one-shot signal check (`apps/dashboard/src/lib/use-github-signal-stream.ts`) to invalidate only the active query when a newer server-side signal exists.
+**Client polling** — There is no push channel. Mounted React Query queries poll on per-tier intervals while the tab is visible and refetch on focus/reconnect when stale (`apps/dashboard/src/lib/github-refetch-policy.ts`, wired into the `github*QueryOptions` in `apps/dashboard/src/lib/github.query.ts`):
+
+- Lists, notifications, repo overview and the "mine" aggregates: 30s
+- PR / issue detail pages and review activity: 20s
+- PR status and workflow run/job pages: 5s while anything is queued or running, 30s otherwise, and no polling once terminal and unchanged for 10 minutes
+
+When you add a query for data that webhooks can change, give it a tier via `githubPollOptions(...)` (or `adaptiveRefetchInterval(...)`) and make sure its server read passes the matching `signalKeys`. Keep the tier's `githubCachePolicy` `staleTimeMs` at or below its poll interval.
 
 **Rate-limit resilience** — The cache layer extends freshness when GitHub quota is low (≤100 remaining: 2-min floor; ≤25 remaining: 5-min floor or until reset). If GitHub returns a rate-limit error and a cached payload exists, the stale payload is served instead of failing.
 
 ### Webhook Handler
 
-The webhook endpoint at `apps/dashboard/src/routes/api/webhooks/github.ts` verifies the HMAC-SHA256 signature, maps events to cache signal keys, writes invalidation state to D1, and broadcasts to connected WebSocket clients. Supported events include `pull_request`, `issues`, `issue_comment`, `check_run`, `check_suite`, `pull_request_review`, and more.
+The webhook endpoint at `apps/dashboard/src/routes/api/webhooks/github.ts` verifies the HMAC-SHA256 signature, maps events to cache signal keys, and writes invalidation state to D1. Clients pick the change up on their next poll. Supported events include `pull_request`, `issues`, `issue_comment`, `check_run`, `check_suite`, `pull_request_review`, and more.
 
 ### Adding a New Route
 
