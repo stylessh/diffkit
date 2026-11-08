@@ -18,6 +18,8 @@ export default defineConfig({
 		: [["list"], ["html", { open: "never" }]],
 	use: {
 		baseURL: dashboardUrl,
+		locale: "en-US",
+		timezoneId: "UTC",
 		trace: "retain-on-failure",
 		...devices["Desktop Chrome"],
 	},

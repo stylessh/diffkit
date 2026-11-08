@@ -70,7 +70,7 @@ spec posts reach `/api/webhooks/github`.
 
 ## Debugging
 
-- Failed tests keep a trace: `pnpm --filter @diffkit/e2e exec playwright show-trace apps/e2e/test-results/<test>/trace.zip`.
+- Failed tests keep a trace: `pnpm --filter @diffkit/e2e exec playwright show-trace test-results/<test>/trace.zip`.
 - `--headed` and `PWDEBUG=1` work as usual; add `--workers=1` to read the output.
 - The dev server's output is printed with a `[WebServer]` prefix.
 - To poke the data a spec sees, run `pnpm dev:demo` instead (the same
@@ -85,6 +85,7 @@ spec posts reach `/api/webhooks/github`.
 - Server-rendered buttons ignore clicks until React hydrates: wrap them in
   `whenInteractive(locator)` before clicking.
 - Never sleep. Wait on a locator, `expect.poll`, a response, or the emulator.
+- Dates render in the browser's time zone and locale; the config pins both to UTC and en-US.
 - Do not assert relative times ("6d ago"); the seed is anchored at
   2026-11-02, not at today.
 
