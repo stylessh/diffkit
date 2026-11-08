@@ -84,7 +84,7 @@ export const userForbiddenOrg = sqliteTable(
 /**
  * Change feed: one row per entity a GitHub webhook changed (see
  * docs/data-fetching.md, L2). Rows are only useful for 15 minutes; the cron
- * sweeper in entry-worker.ts deletes older ones, so the table stays at a few
+ * sweeper in scheduled-maintenance.server.ts deletes older ones, so the table stays at a few
  * hundred rows. `id` is AUTOINCREMENT so cursors stay monotonic even when the
  * table is empty.
  */

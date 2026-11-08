@@ -19,19 +19,18 @@ import {
 
 export const GITHUB_CHANGE_RETENTION_MS = 15 * 60 * 1000;
 /** Cursors older than this are expired: rows after them may be swept. */
-export const GITHUB_CHANGE_CURSOR_MAX_AGE_MS =
-	GITHUB_CHANGE_RETENTION_MS - 60 * 1000;
+const GITHUB_CHANGE_CURSOR_MAX_AGE_MS = GITHUB_CHANGE_RETENTION_MS - 60 * 1000;
 /** A response never carries more rows than this; more means "refetch all". */
-export const GITHUB_CHANGE_READ_LIMIT = 2000;
+const GITHUB_CHANGE_READ_LIMIT = 2000;
 
 /** Batch limits that stayed clear of D1's 7429 and query time limits. */
-export const GITHUB_CHANGE_SWEEP_BATCH_SIZE = 20_000;
-export const GITHUB_CHANGE_SWEEP_PAUSE_MS = 4_000;
-export const GITHUB_CHANGE_SWEEP_MAX_BATCHES = 10;
+const GITHUB_CHANGE_SWEEP_BATCH_SIZE = 20_000;
+const GITHUB_CHANGE_SWEEP_PAUSE_MS = 4_000;
+const GITHUB_CHANGE_SWEEP_MAX_BATCHES = 10;
 
 /** Cloudflare's per-database D1 limit. */
-export const D1_DATABASE_LIMIT_BYTES = 10 * 1000 * 1000 * 1000;
-export const D1_SIZE_WARN_RATIO = 0.8;
+const D1_DATABASE_LIMIT_BYTES = 10 * 1000 * 1000 * 1000;
+const D1_SIZE_WARN_RATIO = 0.8;
 
 export type GitHubChangeRow = {
 	repo: string;
