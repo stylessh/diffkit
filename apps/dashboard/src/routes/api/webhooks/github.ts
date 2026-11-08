@@ -5,16 +5,18 @@ import {
 	getGitHubWebhookSecret,
 	verifyGitHubWebhookSignature,
 } from "#/lib/github-app.server";
-import {
-	markGitHubRevalidationSignals,
-	markGitHubWebhookEventFailed,
-	markGitHubWebhookEventProcessed,
-	recordGitHubWebhookEvent,
-} from "#/lib/github-cache";
-import { getGitHubWebhookRevalidationSignalKeys } from "#/lib/github-revalidation";
 import { getGitHubWebhookPayloadMetadata } from "#/lib/github-webhook-debug";
 import { PRIVATE_ROUTE_HEADERS } from "#/lib/seo";
 
+/**
+ * GitHub App webhook receiver.
+ *
+ * The only remaining job is dropping cached installation tokens when an
+ * installation changes. Webhook-driven cache revalidation (signals, cache
+ * namespaces, the delivery log) was removed; see docs/platform-plan.md,
+ * "Incidents". Other events are acknowledged and ignored, and nothing is
+ * written to D1.
+ */
 const INSTALLATION_TOKEN_INVALIDATION_EVENTS = new Set([
 	"installation",
 	"installation_repositories",
@@ -60,14 +62,6 @@ export const Route = createFileRoute("/api/webhooks/github")({
 				}
 
 				const requestBody = await request.text();
-				debug("github-webhook", "received webhook request", {
-					deliveryId,
-					event,
-					bodyLength: requestBody.length,
-					hasSignature: Boolean(signature),
-					userAgent: request.headers.get("user-agent"),
-				});
-
 				const isValid = await verifyGitHubWebhookSignature({
 					body: requestBody,
 					secret: webhookSecret,
@@ -85,109 +79,41 @@ export const Route = createFileRoute("/api/webhooks/github")({
 				}
 
 				if (!event) {
-					debug("github-webhook", "rejected webhook due to missing event", {
-						deliveryId,
-					});
 					return new Response("Missing GitHub event header.", {
 						status: 400,
 					});
+				}
+
+				if (!INSTALLATION_TOKEN_INVALIDATION_EVENTS.has(event)) {
+					return Response.json({ ok: true, event, ignored: true });
 				}
 
 				let payload: unknown;
 				try {
 					payload = JSON.parse(requestBody) as unknown;
 				} catch {
-					debug("github-webhook", "rejected webhook due to invalid json", {
-						deliveryId,
-						event,
-						bodyLength: requestBody.length,
-					});
 					return new Response("Invalid JSON payload.", {
 						status: 400,
 					});
 				}
 
-				debug("github-webhook", "parsed webhook payload", {
+				const installationId = getWebhookInstallationId(payload);
+				if (installationId !== null) {
+					await invalidateGitHubInstallationToken(installationId);
+				}
+
+				debug("github-webhook", "processed installation webhook", {
 					deliveryId,
 					event,
+					installationId,
 					...getGitHubWebhookPayloadMetadata(payload),
 				});
 
-				const signalKeys = getGitHubWebhookRevalidationSignalKeys(
+				return Response.json({
+					ok: true,
 					event,
-					payload,
-				);
-				const installationId = getWebhookInstallationId(payload);
-
-				let recordedNewEvent = false;
-				if (deliveryId) {
-					recordedNewEvent = await recordGitHubWebhookEvent({
-						deliveryId,
-						event,
-						signalKeys,
-					});
-				}
-
-				try {
-					let invalidatedInstallationToken = false;
-
-					if (
-						installationId !== null &&
-						INSTALLATION_TOKEN_INVALIDATION_EVENTS.has(event)
-					) {
-						await invalidateGitHubInstallationToken(installationId);
-						invalidatedInstallationToken = true;
-					}
-
-					const updatedSignalCount =
-						await markGitHubRevalidationSignals(signalKeys);
-
-					if (deliveryId) {
-						await markGitHubWebhookEventProcessed(deliveryId);
-					}
-
-					debug("github-webhook", "processed webhook", {
-						deliveryId,
-						event,
-						installationId,
-						invalidatedInstallationToken,
-						signalKeys,
-						updatedSignalCount,
-						recordedNewEvent,
-					});
-
-					return Response.json(
-						{
-							ok: true,
-							event,
-							signalCount: signalKeys.length,
-							updatedSignalCount,
-						},
-						{ status: 202 },
-					);
-				} catch (error) {
-					const errorMessage =
-						error instanceof Error ? error.message : String(error);
-
-					if (deliveryId) {
-						try {
-							await markGitHubWebhookEventFailed(deliveryId, errorMessage);
-						} catch (logError) {
-							debug("github-webhook", "failed to record processing error", {
-								deliveryId,
-								logError,
-							});
-						}
-					}
-
-					debug("github-webhook", "processing failed", {
-						deliveryId,
-						event,
-						errorMessage,
-					});
-
-					return new Response("Webhook processing failed.", { status: 500 });
-				}
+					invalidatedInstallationToken: installationId !== null,
+				});
 			},
 		},
 	},
