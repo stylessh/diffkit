@@ -168,9 +168,8 @@ export function ReviewPage() {
 
 	const pr = pageQuery.data?.detail ?? null;
 
-	// The diff queries are large paginated payloads, so they don't poll. The
-	// page query does (detail tier); when it reports a new head commit, refetch
-	// the diff so the review reflects the push.
+	// Repos without the GitHub App get no change feed, so a push only shows up
+	// when the page query refetches on focus; follow its head commit here.
 	const headSha = pr?.headSha;
 	const lastHeadShaRef = useRef(headSha);
 	useEffect(() => {

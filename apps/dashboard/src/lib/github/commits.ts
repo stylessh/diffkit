@@ -96,18 +96,11 @@ export const getRepoCommit = createServerFn({ method: "GET" })
 		}
 	});
 
-// ===========================================================================
-// Repository commits, releases, branches and tags
-// ---------------------------------------------------------------------------
-// Reads go through the split D1 cache; commits/branches/tags are invalidated
-// by `repoCode` signals (push), releases by `repoMeta` (release webhooks).
-// Every read is a single GitHub request per call so pages stay bounded:
-//   commits list ......... 1 REST call (or 1 search call when filtering by message)
-//   releases list ........ 1 REST call + 1 cached `latest` lookup
+// Rate-limit budget: one GitHub request per page, so cost stays bounded.
+//   commits list ......... 1 REST call (1 search call when filtering by message)
 //   branches list ........ 1 GraphQL call per 100 branches
 //   tags list ............ 1 GraphQL call per 30 tags
 //   ref names (pickers) .. 1 REST call (first 100 refs)
-// ===========================================================================
 
 type GitHubCommitListItem = {
 	sha: string;

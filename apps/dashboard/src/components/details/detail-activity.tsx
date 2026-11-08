@@ -106,10 +106,8 @@ export function DetailCommentBox({
 		const seen = new Set<string>();
 		const candidates: MentionCandidate[] = [];
 
-		// Exclude the current user
 		if (viewerLogin) seen.add(viewerLogin);
 
-		// Involved users first (commenters, reviewers, author)
 		if (involvedUsers) {
 			for (const user of involvedUsers) {
 				if (seen.has(user.login)) continue;
@@ -123,7 +121,6 @@ export function DetailCommentBox({
 			}
 		}
 
-		// Remaining collaborators
 		for (const c of collaboratorsQuery.data ?? []) {
 			if (seen.has(c.login)) continue;
 			seen.add(c.login);

@@ -488,11 +488,6 @@ export function githubUserActivityQueryOptions(
 	});
 }
 
-// ---------------------------------------------------------------------------
-// Repository
-// ---------------------------------------------------------------------------
-
-// Repo metadata — aggressively cached, revalidated via webhooks
 export function githubRepoOverviewQueryOptions(
 	scope: GitHubQueryScope,
 	input: { owner: string; repo: string },
@@ -500,8 +495,6 @@ export function githubRepoOverviewQueryOptions(
 	return queryOptions({
 		queryKey: githubQueryKeys.repo.overview(scope, input),
 		queryFn: () => getRepoOverview({ data: input }),
-		// Server keeps the repoMeta freshness window (webhooks bust it); the
-		// client polls on the list tier, so its staleTime must not exceed that.
 		staleTime: githubCachePolicy.list.staleTimeMs,
 		gcTime: githubCachePolicy.repoMeta.gcTimeMs,
 	});
@@ -591,7 +584,6 @@ export function githubRepoContributorsQueryOptions(
 	});
 }
 
-// Code content — shorter cache, will be webhook-revalidated on push
 export function githubRepoTreeQueryOptions(
 	scope: GitHubQueryScope,
 	input: { owner: string; repo: string; ref: string; path: string },
@@ -795,10 +787,6 @@ export function githubWorkflowRunLogsBundleQueryOptions(
 	});
 }
 
-// ---------------------------------------------------------------------------
-// Repository commits, releases, branches and tags
-// ---------------------------------------------------------------------------
-
 export const REPO_COMMITS_PER_PAGE = 35;
 export const REPO_RELEASES_PER_PAGE = 10;
 
@@ -917,7 +905,7 @@ export function githubRepoRefComparisonQueryOptions(
 	});
 }
 
-/** Splits a slashed `/commits/$` splat into ref + path (one cached GraphQL call). */
+/** Splits a slashed `/commits/$` splat into ref + path (one GraphQL call). */
 export function githubRepoRefSplatQueryOptions(
 	scope: GitHubQueryScope,
 	input: RepoRefSplatInput,

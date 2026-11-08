@@ -6,10 +6,6 @@ import {
 } from "../github-change-entities";
 import type { GitHubQueryScope } from "./query-keys";
 
-// ---------------------------------------------------------------------------
-// Entity → query registry (change feed and mutations)
-// ---------------------------------------------------------------------------
-
 /**
  * Which change-feed entity kinds affect each `githubQueryKeys` group. Every
  * group must be listed (enforced by github.query.test.ts); `"exempt"` groups
@@ -160,7 +156,6 @@ function* itemsOf(data: unknown): Generator<Record<string, unknown>> {
 			}
 		}
 	}
-	// Infinite queries
 	if (data && typeof data === "object" && "pages" in data) {
 		const pages = (data as { pages?: unknown }).pages;
 		if (Array.isArray(pages)) {
@@ -247,12 +242,6 @@ export function githubQueryMatchesEntity(
 	}
 }
 
-/**
- * Query filters for every query of `scope` that an entity key affects. Used
- * by the change feed and by mutations:
- * `queryClient.invalidateQueries(queryFiltersForEntity(key, scope))` marks
- * them all stale and refetches the active ones.
- */
 export function queryFiltersForEntity(
 	entity: GitHubChangeEntity | string,
 	scope: GitHubQueryScope,

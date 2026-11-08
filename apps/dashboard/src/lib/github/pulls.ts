@@ -207,10 +207,6 @@ export type PullsFromRepoInput = {
 	direction?: "asc" | "desc";
 };
 
-// ---------------------------------------------------------------------------
-// Check run helpers — shared between computePullStatus and rerunChecks
-// ---------------------------------------------------------------------------
-
 type CheckRunPayload = {
 	id: number;
 	name: string;
@@ -218,7 +214,6 @@ type CheckRunPayload = {
 	conclusion: string | null;
 };
 
-/** Deduplicate check runs by name — keep the most recent run (highest id) per name. */
 export function deduplicateCheckRuns<T extends CheckRunPayload>(
 	checkRuns: T[],
 ): T[] {
@@ -232,7 +227,7 @@ export function deduplicateCheckRuns<T extends CheckRunPayload>(
 	return Array.from(latestByName.values());
 }
 
-/** Whether a completed check run counts as failed (mirrors the UI's `getCheckRunStatus`). */
+/** Must agree with the UI's `getCheckRunStatus`. */
 export function isFailedCheckRun(run: CheckRunPayload): boolean {
 	return (
 		run.status === "completed" &&
@@ -244,11 +239,7 @@ export function isFailedCheckRun(run: CheckRunPayload): boolean {
 	);
 }
 
-/**
- * Fetch the set of required status check contexts for a branch, via GitHub's
- * unified branch-rules endpoint (covers both rulesets and classic protection).
- * Cached per repo — invalidated by repository_ruleset / branch_protection_rule webhooks.
- */
+/** The branch-rules endpoint covers both rulesets and classic branch protection. */
 async function getRequiredStatusContexts(
 	context: GitHubContext,
 	params: { owner: string; repo: string; branch: string },
@@ -871,7 +862,6 @@ async function computePullStatus(
 		});
 	}
 
-	// Deduplicate by name — keep the most recent run (highest id) per check name
 	const checkRuns = deduplicateCheckRuns(allCheckRuns);
 	const requiredContextSet = new Set(requiredContexts);
 
@@ -1590,7 +1580,6 @@ export const deleteBranch = createServerFn({ method: "POST" })
 	});
 
 export type RerunChecksInput = PullFromRepoInput & {
-	/** Rerun only failed checks. When false, rerun all checks. */
 	failedOnly: boolean;
 };
 
@@ -1613,14 +1602,12 @@ export const rerunChecks = createServerFn({ method: "POST" })
 		}
 
 		try {
-			// Fetch the PR to get the head SHA
 			const pr = await context.octokit.rest.pulls.get({
 				owner: data.owner,
 				repo: data.repo,
 				pull_number: data.pullNumber,
 			});
 
-			// List all check runs for the head SHA (paginated)
 			type CheckRunItem = Awaited<
 				ReturnType<GitHubClient["rest"]["checks"]["listForRef"]>
 			>["data"]["check_runs"][number];
@@ -1639,10 +1626,8 @@ export const rerunChecks = createServerFn({ method: "POST" })
 						[]) as CheckRunItem[],
 			});
 
-			// Deduplicate: keep the latest run per check name
 			const dedupedRuns = deduplicateCheckRuns(checkRuns);
 
-			// Determine which checks to rerun
 			const runsToRerun = data.failedOnly
 				? dedupedRuns.filter(isFailedCheckRun)
 				: dedupedRuns;
@@ -1679,7 +1664,6 @@ export const rerunChecks = createServerFn({ method: "POST" })
 			}
 
 			type Task = {
-				/** Which run ids this task covers — for reporting counts back to UI. */
 				coveredCheckRunIds: number[];
 				promise: Promise<unknown>;
 			};
@@ -1907,11 +1891,8 @@ const PULL_FILE_SUMMARIES_GRAPHQL_QUERY = `query($owner: String!, $repo: String!
 // from ~30 client round-trips down to ~6.
 const PULL_FILE_SUMMARIES_PAGES_PER_BATCH = 5;
 
-// File summaries power the sidebar tree and the "N files / +A / -D" chip.
-// Returns one batch (up to ~500 files) so the client can render incrementally
-// — otherwise a 3k-file PR blocks the sidebar for ~9s while all 30 pages
-// load server-side. Each batch is cached independently by its starting
-// cursor, so revisits hit the cache for every batch.
+// One batch (up to ~500 files) per call so the client renders incrementally;
+// loading all pages server-side blocks a 3k-file PR's sidebar for ~9s.
 async function getPullFileSummariesResult(
 	context: GitHubContext,
 	data: PullFileSummariesPageInput,

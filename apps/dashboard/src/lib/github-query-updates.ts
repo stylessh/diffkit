@@ -127,10 +127,6 @@ export function removePullFromOpenViews(
 	);
 }
 
-// ---------------------------------------------------------------------------
-// List → detail seeding
-// ---------------------------------------------------------------------------
-
 type ListItem = {
 	number: number;
 	updatedAt: string;
@@ -207,7 +203,6 @@ export function findPullSummaryInLists(
 	});
 }
 
-/** Issue counterpart of `findPullSummaryInLists`. */
 export function findIssueSummaryInLists(
 	queryClient: QueryClient,
 	scope: GitHubQueryScope,

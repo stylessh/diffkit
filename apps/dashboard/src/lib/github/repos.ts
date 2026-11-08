@@ -392,8 +392,6 @@ export const getProfileRepos = createServerFn({ method: "GET" })
 		}
 	});
 
-// ── Star / fork repository ───────────────────────────────────────
-
 export type SetRepoStarredInput = {
 	owner: string;
 	repo: string;
@@ -508,10 +506,6 @@ export const forkRepository = createServerFn({ method: "POST" })
 			return toMutationError("fork repository", error);
 		}
 	});
-
-// ---------------------------------------------------------------------------
-// Repository overview
-// ---------------------------------------------------------------------------
 
 type RepoOverviewInput = {
 	owner: string;
@@ -683,10 +677,6 @@ export const getRepoOverview = createServerFn({ method: "GET" })
 		});
 	});
 
-// ---------------------------------------------------------------------------
-// Repository discussions (GraphQL-only)
-// ---------------------------------------------------------------------------
-
 type RepoDiscussionsInput = {
 	owner: string;
 	repo: string;
@@ -791,10 +781,6 @@ function parseLinkHeaderLastPage(link: string | undefined): number | null {
 	return match ? Number(match[1]) : null;
 }
 
-// ---------------------------------------------------------------------------
-// Repository branches
-// ---------------------------------------------------------------------------
-
 type RepoBranchesInput = {
 	owner: string;
 	repo: string;
@@ -828,10 +814,6 @@ export const getRepoBranches = createServerFn({ method: "GET" })
 				})),
 		});
 	});
-
-// ---------------------------------------------------------------------------
-// Branch comparison (ahead/behind vs base branch)
-// ---------------------------------------------------------------------------
 
 type BranchComparisonInput = {
 	owner: string;
@@ -871,10 +853,6 @@ export const getBranchComparison = createServerFn({ method: "GET" })
 			}),
 		}).catch(() => null);
 	});
-
-// ---------------------------------------------------------------------------
-// Repo templates — PR / issue body templates (single-file, simple case only).
-// ---------------------------------------------------------------------------
 
 export type RepoTemplateKind = "pr" | "issue";
 
@@ -961,12 +939,6 @@ export const getRepoTemplate = createServerFn({ method: "GET" })
 			return null;
 		}
 	});
-
-// ---------------------------------------------------------------------------
-// Recent pushable branch — viewer's most recent push to a non-default branch
-// that has no open PR and is ahead of the default branch. Used to render the
-// "had recent pushes" banner on the repo overview.
-// ---------------------------------------------------------------------------
 
 export type RecentPushableBranch = {
 	branch: string;
@@ -1059,10 +1031,6 @@ export const getRecentPushableBranch = createServerFn({ method: "GET" })
 			return null;
 		}
 	});
-
-// ---------------------------------------------------------------------------
-// Compare detail (commits + files between two refs, for the compare page)
-// ---------------------------------------------------------------------------
 
 export type CompareDetail = {
 	aheadBy: number;
@@ -1160,10 +1128,6 @@ export const getCompareDetail = createServerFn({ method: "GET" })
 			return null;
 		}
 	});
-
-// ---------------------------------------------------------------------------
-// Repository contributors
-// ---------------------------------------------------------------------------
 
 type RepoContributorsInput = {
 	owner: string;

@@ -434,8 +434,6 @@ export const getPullReviewComments = createServerFn({ method: "GET" })
 		return getPullReviewCommentsResult(context, data);
 	});
 
-// ── Get review thread resolution statuses ────────────────────────
-
 type GraphQLReviewThread = {
 	id: string;
 	isResolved: boolean;
@@ -514,8 +512,6 @@ export const getReviewThreadStatuses = createServerFn({ method: "GET" })
 			return [];
 		}
 	});
-
-// ── Resolve / unresolve review thread ────────────────────────────
 
 export type ResolveThreadInput = {
 	owner: string;
@@ -883,14 +879,10 @@ export const dismissPullReview = createServerFn({ method: "POST" })
 		}
 	});
 
-// ═══════════════════════════════════════════════════════════════════
-// Review drafts — the viewer's pending (unsubmitted) reviews
-// ═══════════════════════════════════════════════════════════════════
-//
 // GitHub has no "list my pending reviews" endpoint, and pending reviews are
-// only visible to their author. We probe the viewer's open PRs (the cached
+// only visible to their author. We probe the viewer's open PRs (the
 // `getMyPullsResult` aggregate) with one aliased GraphQL request per 25 PRs,
-// capped at 50 PRs, i.e. at most two GraphQL requests per uncached load.
+// capped at 50 PRs, i.e. at most two GraphQL requests per load.
 
 const REVIEW_DRAFTS_RESOURCE = "reviewDrafts.graphql.v1";
 const REVIEW_DRAFT_SUBMIT_EVENTS: readonly ReviewDraftSubmitEvent[] = [

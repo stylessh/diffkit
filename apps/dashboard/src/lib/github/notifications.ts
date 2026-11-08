@@ -11,8 +11,6 @@ import { getInstallationAccessIndex } from "./installations";
 import { dedupeGitHubRead } from "./request-dedup";
 import { identityValidator } from "./validators";
 
-// ── Notifications ──────────────────────────────────────────────────────
-
 type GetNotificationsInput = {
 	all?: boolean;
 	participating?: boolean;

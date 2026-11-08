@@ -84,7 +84,6 @@ export async function getGitHubAppUserInstallations(userId: string): Promise<{
 	installations: GitHubAppInstallation[];
 	/** `true` when the app-user token is configured and the API responded. */
 	installationsAvailable: boolean;
-	/** The app-user Octokit instance (for follow-up calls like listing repos). */
 	appUserOctokit: GitHubClient | null;
 }> {
 	const { getGitHubAppUserClientByUserId } = await import("../auth-runtime");
@@ -98,9 +97,8 @@ export async function getGitHubAppUserInstallations(userId: string): Promise<{
 		};
 	}
 
-	// The app-user token exists — any failures from here on are transient
-	// and should propagate so the cache layer can serve stale data or the
-	// outer catch handles them (rather than silently failing open).
+	// The app-user token exists, so failures from here on are transient:
+	// propagate them to the caller instead of failing open.
 	const PAGE_SIZE = 100;
 	const firstResponse = await appUserOctokit.request(
 		"GET /user/installations",
@@ -172,10 +170,6 @@ export async function getGitHubAuthenticatedOrganizations(
 		return [];
 	}
 }
-
-// ---------------------------------------------------------------------------
-// Installation access index — cached list of repos accessible via the app
-// ---------------------------------------------------------------------------
 
 type SerializableInstallationAccessIndex = {
 	available: boolean;
@@ -321,9 +315,8 @@ export async function getInstallationAccessIndex(
 			selectedRepos: new Set(serializable.selectedRepos),
 		};
 	} catch (error) {
-		// Transient failure (network, 500, etc.) — not cached, so the next
-		// request will retry.  Fail-open so the current request doesn't block
-		// all private repos for the user.
+		// Transient failure (network, 500): fail open so one bad request doesn't
+		// hide every private repo from the user.
 		debug(
 			"installation-access",
 			"transient error building access index, failing open",

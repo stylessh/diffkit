@@ -6,10 +6,6 @@ import { dedupeGitHubRead } from "./request-dedup";
 import type { GitHubClient, GitHubGraphQLRateLimit } from "./shared";
 import { identityValidator } from "./validators";
 
-// ---------------------------------------------------------------------------
-// Repository tree contents
-// ---------------------------------------------------------------------------
-
 type RepoTreeInput = {
 	owner: string;
 	repo: string;
@@ -65,10 +61,6 @@ export const getRepoTree = createServerFn({ method: "GET" })
 		});
 	});
 
-// ---------------------------------------------------------------------------
-// Repository file content
-// ---------------------------------------------------------------------------
-
 type RepoFileContentInput = {
 	owner: string;
 	repo: string;
@@ -102,10 +94,6 @@ export const getRepoFileContent = createServerFn({ method: "GET" })
 			},
 		}).catch(() => null);
 	});
-
-// ---------------------------------------------------------------------------
-// File last commit
-// ---------------------------------------------------------------------------
 
 type FileLastCommitInput = {
 	owner: string;
@@ -162,7 +150,6 @@ type RefHeadCommitInput = {
 	ref: string;
 };
 
-/** Tip commit for a branch/tag/SHA (first page of `listCommits` for `ref`, no path filter). */
 export const getRefHeadCommit = createServerFn({ method: "GET" })
 	.inputValidator(identityValidator<RefHeadCommitInput>)
 	.handler(async ({ data }): Promise<FileLastCommit | null> => {
@@ -204,17 +191,12 @@ export const getRefHeadCommit = createServerFn({ method: "GET" })
 		}).catch(() => null);
 	});
 
-// ---------------------------------------------------------------------------
-// Batch tree entry commits (single GraphQL query for all entries in a dir)
-// ---------------------------------------------------------------------------
-
 type TreeEntryCommitsInput = {
 	owner: string;
 	repo: string;
 	ref: string;
-	/** Directory path (empty string for root). */
+	/** Empty string for the repository root. */
 	dirPath: string;
-	/** Entry names within the directory. */
 	entries: string[];
 };
 
@@ -236,7 +218,6 @@ export const getTreeEntryCommits = createServerFn({ method: "GET" })
 				dirPath: data.dirPath,
 			},
 			fetcher: async () => {
-				// Build aliased history fields — one per entry
 				const aliases = data.entries.map((name, i) => {
 					const entryPath = data.dirPath ? `${data.dirPath}/${name}` : name;
 					return `e${i}: history(first: 1, path: ${JSON.stringify(entryPath)}) {

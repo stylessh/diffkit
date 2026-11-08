@@ -161,10 +161,6 @@ async function persistForbiddenOrgs(userId: string, orgs: string[]) {
 	}
 }
 
-/**
- * Extract an organization name from a GitHub FORBIDDEN/OAuth App access
- * restriction error.  Returns `null` when the error is unrelated.
- */
 function extractForbiddenOrg(error: unknown): string | null {
 	const message = error instanceof Error ? error.message : String(error ?? "");
 	if (

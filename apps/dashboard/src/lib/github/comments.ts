@@ -42,8 +42,6 @@ export const getTimelineEventPage = createServerFn({ method: "GET" })
 		return getRestTimelineEventsPage(context, data, data.page);
 	});
 
-// ── Create issue/PR comment ────────────────────────────────────────
-
 export type CreateCommentInput = {
 	owner: string;
 	repo: string;
@@ -72,8 +70,6 @@ export const createComment = createServerFn({ method: "POST" })
 			return toMutationError("create comment", error);
 		}
 	});
-
-// ── Issue/PR comment reactions ───────────────────────────────────
 
 export type ToggleIssueCommentReactionInput = {
 	owner: string;
@@ -156,8 +152,6 @@ export const toggleIssueCommentReaction = createServerFn({ method: "POST" })
 		}
 	});
 
-// ── Edit issue/PR comment ─────────────────────────────────────────
-
 export type EditCommentInput = {
 	owner: string;
 	repo: string;
@@ -186,8 +180,6 @@ export const editComment = createServerFn({ method: "POST" })
 		}
 	});
 
-// ── Delete issue/PR comment ──────────────────────────────────────
-
 export type DeleteCommentInput = {
 	owner: string;
 	repo: string;
@@ -213,8 +205,6 @@ export const deleteComment = createServerFn({ method: "POST" })
 			return toMutationError("delete comment", error);
 		}
 	});
-
-// ── Edit review comment ──────────────────────────────────────────
 
 export type EditReviewCommentInput = {
 	owner: string;
@@ -244,8 +234,6 @@ export const editReviewComment = createServerFn({ method: "POST" })
 		}
 	});
 
-// ── Delete review comment ────────────────────────────────────────
-
 export type DeleteReviewCommentInput = {
 	owner: string;
 	repo: string;
@@ -271,8 +259,6 @@ export const deleteReviewComment = createServerFn({ method: "POST" })
 			return toMutationError("delete review comment", error);
 		}
 	});
-
-// ── Minimize (hide) comment ──────────────────────────────────────
 
 export type MinimizeCommentInput = {
 	owner: string;

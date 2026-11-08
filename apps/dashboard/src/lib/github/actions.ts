@@ -649,7 +649,7 @@ async function parseLogsZip(
 	return jobs;
 }
 
-async function fetchWorkflowRunLogsBundleUncached(
+async function fetchWorkflowRunLogsBundle(
 	data: WorkflowRunLogsBundleInput,
 ): Promise<WorkflowRunLogsBundle | null> {
 	const repoInput = { owner: data.owner, repo: data.repo };
@@ -764,13 +764,9 @@ export const getWorkflowRunLogsBundle = createServerFn({ method: "GET" })
 	.handler(async ({ data }): Promise<WorkflowRunLogsBundle | null> => {
 		const context = await getGitHubContextForRepository(data);
 		if (!context) {
-			return fetchWorkflowRunLogsBundleUncached(data);
+			return fetchWorkflowRunLogsBundle(data);
 		}
 
-		// Cache the parsed bundle. Once a run+attempt completes its data is
-		// immutable, so we use a long fresh window and rely on the
-		// workflowRunEntity signal (bumped by `workflow_run` and `workflow_job`
-		// webhooks) to invalidate while the run is still in-flight.
 		return dedupeGitHubRead<WorkflowRunLogsBundle | null>({
 			userId: context.session.user.id,
 			resource: "actions.run.logsBundle",
@@ -780,14 +776,10 @@ export const getWorkflowRunLogsBundle = createServerFn({ method: "GET" })
 				runId: data.runId,
 				attempt: data.attempt ?? null,
 			},
-			fetcher: async () => {
-				const bundle = await fetchWorkflowRunLogsBundleUncached(data);
-				return bundle;
-			},
+			fetcher: () => fetchWorkflowRunLogsBundle(data),
 		});
 	});
 
-/** Build the zip-file job name for a given API job name. Exported for tests/clients. */
 export function workflowZipJobName(jobName: string): string {
 	return sanitizeJobNameForZip(jobName);
 }

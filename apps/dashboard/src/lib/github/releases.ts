@@ -62,7 +62,6 @@ function mapRepoRelease(
 	};
 }
 
-/** Tag of the repo's "Latest" release, or null when there is none. */
 async function getLatestReleaseTagName(
 	context: GitHubContext,
 	data: { owner: string; repo: string },
