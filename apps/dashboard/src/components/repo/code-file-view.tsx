@@ -25,6 +25,7 @@ import {
 	githubRepoTreeQueryOptions,
 } from "#/lib/github.query";
 import type { FileLastCommit } from "#/lib/github.types";
+import { CommitHistoryLink } from "./commits/commit-history-link";
 
 const IMAGE_EXTENSIONS = new Set([
 	"png",
@@ -217,7 +218,13 @@ export function CodeFileView({
 		const rawUrl = `https://raw.githubusercontent.com/${owner}/${repo}/${currentRef}/${path}`;
 		return (
 			<div className="flex flex-col gap-4">
-				<FileCommitBar owner={owner} repo={repo} commit={commit} />
+				<FileCommitBar
+					owner={owner}
+					repo={repo}
+					commit={commit}
+					currentRef={currentRef}
+					path={path}
+				/>
 				<div className="overflow-hidden rounded-lg border">
 					<FileViewHeader
 						fileName={fileName}
@@ -278,7 +285,13 @@ export function CodeFileView({
 
 	return (
 		<div className="flex flex-col gap-4">
-			<FileCommitBar owner={owner} repo={repo} commit={commit} />
+			<FileCommitBar
+				owner={owner}
+				repo={repo}
+				commit={commit}
+				currentRef={currentRef}
+				path={path}
+			/>
 			<div className="overflow-hidden rounded-lg border">
 				<FileViewHeader
 					fileName={fileName}
@@ -328,7 +341,13 @@ function SvgFileView({
 
 	return (
 		<div className="flex flex-col gap-4">
-			<FileCommitBar owner={owner} repo={repo} commit={commit} />
+			<FileCommitBar
+				owner={owner}
+				repo={repo}
+				commit={commit}
+				currentRef={currentRef}
+				path={path}
+			/>
 			<div className="overflow-hidden rounded-lg border">
 				<FileViewHeader
 					fileName={fileName}
@@ -468,10 +487,14 @@ function FileCommitBar({
 	owner,
 	repo,
 	commit,
+	currentRef,
+	path,
 }: {
 	owner: string;
 	repo: string;
 	commit: FileLastCommit | null | undefined;
+	currentRef: string;
+	path: string;
 }) {
 	if (!commit) {
 		return (
@@ -515,6 +538,13 @@ function FileCommitBar({
 					</TooltipContent>
 				</Tooltip>
 				<span>{formatRelativeTime(commit.date)}</span>
+				<CommitHistoryLink
+					owner={owner}
+					repo={repo}
+					ref={currentRef}
+					path={path}
+					className="-mr-1.5"
+				/>
 			</div>
 		</div>
 	);
