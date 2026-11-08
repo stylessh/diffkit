@@ -166,7 +166,7 @@ export function ComparePage({
 									params={{ owner, repo, pullId: String(openPull.number) }}
 								>
 									<GitPullRequestIcon size={14} strokeWidth={2} />
-									View pull request #{openPull.number}
+									View <ShortPullRequest /> #{openPull.number}
 								</Link>
 							</Button>
 						) : (
@@ -489,9 +489,18 @@ function CreatePullRequestLink({
 				search={{ expand: 1 }}
 			>
 				<GitPullRequestIcon size={14} strokeWidth={2} />
-				Create pull request
+				Create <ShortPullRequest />
 			</Link>
 		</Button>
+	);
+}
+
+function ShortPullRequest() {
+	return (
+		<>
+			<span className="max-sm:hidden">pull request</span>
+			<span className="sm:hidden">PR</span>
+		</>
 	);
 }
 

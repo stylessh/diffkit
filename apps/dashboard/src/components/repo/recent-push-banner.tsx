@@ -39,10 +39,10 @@ export function RecentPushBanner({
 		<Callout variant="warning" className={className}>
 			<CalloutContent>
 				<GitBranchIcon size={14} strokeWidth={2} />
-				<span className="max-w-[16rem] min-w-0 shrink-0 truncate font-mono text-xs font-medium">
+				<span className="min-w-0 truncate font-mono text-xs font-medium">
 					{recent.branch}
 				</span>
-				<span className="min-w-0 truncate text-pill-warning-text max-sm:hidden">
+				<span className="shrink-0 text-pill-warning-text max-sm:hidden">
 					had recent pushes {formatRelativeTime(recent.pushedAt)}
 				</span>
 			</CalloutContent>

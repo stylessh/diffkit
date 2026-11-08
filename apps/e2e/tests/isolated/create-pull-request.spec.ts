@@ -4,7 +4,7 @@ import { expect, isolatedTest as test } from "../../support/test.ts";
 test("a branch row opens the compare form, and the pull request is created with its properties", async ({
 	page,
 }) => {
-	await page.goto("/lumen-labs/beacon/branches");
+	await page.goto("/lumen-labs/beacon/branches?view=all");
 	await page
 		.getByRole("link", { name: "Create pull request from refactor/on-event" })
 		.click();

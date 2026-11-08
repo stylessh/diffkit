@@ -29,7 +29,7 @@ test("the compare page opens on a recent branch and accepts an owner-qualified h
 		.click();
 
 	await expect(page).toHaveURL(
-		/\/lumen-labs\/beacon\/compare\/main\.\.\.lumen-labs:feat\/sse-headers$/,
+		/\/lumen-labs\/beacon\/compare\/main\.\.\.lumen-labs(:|%3A)feat\/sse-headers$/,
 	);
 	await expect(
 		page.getByRole("button", {

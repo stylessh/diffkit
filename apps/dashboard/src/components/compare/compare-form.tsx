@@ -90,10 +90,10 @@ export function CompareForm({
 				</div>
 			) : null}
 
-			<div className="flex items-center justify-end gap-3">
+			<div className="flex flex-wrap items-center justify-end gap-x-3 gap-y-2">
 				<label
 					htmlFor="pr-draft"
-					className="mr-auto flex cursor-pointer items-center gap-2 text-[13px] font-[450] text-text-header"
+					className="mr-auto flex cursor-pointer items-center gap-2 whitespace-nowrap text-[13px] font-[450] text-text-header"
 				>
 					<Checkbox
 						id="pr-draft"
