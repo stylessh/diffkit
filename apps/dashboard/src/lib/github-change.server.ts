@@ -1,9 +1,5 @@
 import type { GitHubChangeEntity } from "./github-change-entities";
-import {
-	entityRepo,
-	formatEntityKey,
-	parseEntityKey,
-} from "./github-change-entities";
+import { formatEntityKey, parseEntityKey } from "./github-change-entities";
 
 // Storage rules from the 2026-11-08 incident (docs/platform-plan.md): rows
 // expire after 15 minutes and the cron sweeper deletes them in throttled
@@ -44,7 +40,7 @@ export function toGitHubChangeRows(
 		if (seen.has(entityKey)) continue;
 		seen.add(entityKey);
 		rows.push({
-			repo: entityRepo(entity) ?? repository.fullName,
+			repo: entity.repo,
 			entityKey,
 			isPrivate: repository.isPrivate,
 			changedAt,
@@ -187,12 +183,7 @@ export async function readGitHubChanges(
 		if (!access.canRead(row.repo, row.is_private !== 0)) continue;
 		const parsed = parseEntityKey(row.entity_key);
 		if (!parsed) continue;
-		// Notifications are user-wide; everything else only for watched repos.
-		if (
-			parsed.kind !== "notifications" &&
-			access.watched !== "all" &&
-			!access.watched.has(row.repo)
-		) {
+		if (access.watched !== "all" && !access.watched.has(row.repo)) {
 			continue;
 		}
 		entities.add(row.entity_key);

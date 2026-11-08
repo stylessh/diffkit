@@ -19,15 +19,10 @@ import type {
 	RepoTagsListInput,
 	RepoTagsListPage,
 } from "../github.types";
-import {
-	createGitHubResponseMetadata,
-	getOrRevalidateGitHubResource,
-} from "../github-cache";
-import { githubCachePolicy } from "../github-cache-policy";
-import { githubRevalidationSignalKeys } from "../github-revalidation";
-import { executeGitHubGraphQL, getCachedGitHubRequest } from "./client";
+import { executeGitHubGraphQL, fetchGitHubResource } from "./client";
 import { getGitHubContextForRepository } from "./installations";
 import { mapActor, mapGraphQLActor } from "./mappers";
+import { dedupeGitHubRead } from "./request-dedup";
 import {
 	clampPage,
 	clampPerPage,
@@ -40,25 +35,15 @@ async function getRepoCommitResult(
 	context: GitHubContext,
 	data: RepoCommitInput,
 ): Promise<RepoCommitDetail> {
-	const repoCodeKey = githubRevalidationSignalKeys.repoCode({
-		owner: data.owner,
-		repo: data.repo,
-	});
-
-	return getCachedGitHubRequest({
+	return fetchGitHubResource({
 		context,
 		resource: "repos.commit",
 		params: data,
-		freshForMs: githubCachePolicy.detail.staleTimeMs,
-		signalKeys: [repoCodeKey],
-		namespaceKeys: [repoCodeKey],
-		cacheMode: "split",
-		request: (headers, signal) =>
+		request: (signal) =>
 			context.octokit.rest.repos.getCommit({
 				owner: data.owner,
 				repo: data.repo,
 				ref: data.sha,
-				headers,
 				request: { signal },
 			}),
 		mapData: (commit) => ({
@@ -111,18 +96,11 @@ export const getRepoCommit = createServerFn({ method: "GET" })
 		}
 	});
 
-// ===========================================================================
-// Repository commits, releases, branches and tags
-// ---------------------------------------------------------------------------
-// Reads go through the split D1 cache; commits/branches/tags are invalidated
-// by `repoCode` signals (push), releases by `repoMeta` (release webhooks).
-// Every read is a single GitHub request per call so pages stay bounded:
-//   commits list ......... 1 REST call (or 1 search call when filtering by message)
-//   releases list ........ 1 REST call + 1 cached `latest` lookup
+// Rate-limit budget: one GitHub request per page, so cost stays bounded.
+//   commits list ......... 1 REST call (1 search call when filtering by message)
 //   branches list ........ 1 GraphQL call per 100 branches
 //   tags list ............ 1 GraphQL call per 30 tags
 //   ref names (pickers) .. 1 REST call (first 100 refs)
-// ===========================================================================
 
 type GitHubCommitListItem = {
 	sha: string;
@@ -183,27 +161,21 @@ export const getRepoCommits = createServerFn({ method: "GET" })
 		const path = data.path?.trim() || undefined;
 		const author = data.author?.trim() || undefined;
 		const query = data.query?.trim() || undefined;
-		const repoCodeKey = githubRevalidationSignalKeys.repoCode(data);
 
 		try {
 			if (query) {
 				const q = buildCommitSearchQuery(data, query);
-				return await getCachedGitHubRequest({
+				return await fetchGitHubResource({
 					context,
 					resource: "repo.commits.search.v1",
 					params: { owner: data.owner, repo: data.repo, q, page, perPage },
-					freshForMs: githubCachePolicy.list.staleTimeMs,
-					signalKeys: [repoCodeKey],
-					namespaceKeys: [repoCodeKey],
-					cacheMode: "split",
-					request: (headers, signal) =>
+					request: (signal) =>
 						context.octokit.rest.search.commits({
 							q,
 							sort: "author-date",
 							order: "desc",
 							per_page: perPage,
 							page,
-							headers,
 							request: { signal },
 						}),
 					mapData: (result): RepoCommitsPage => ({
@@ -218,7 +190,7 @@ export const getRepoCommits = createServerFn({ method: "GET" })
 				});
 			}
 
-			return await getCachedGitHubRequest({
+			return await fetchGitHubResource({
 				context,
 				resource: "repo.commits.v1",
 				params: {
@@ -230,11 +202,7 @@ export const getRepoCommits = createServerFn({ method: "GET" })
 					page,
 					perPage,
 				},
-				freshForMs: githubCachePolicy.list.staleTimeMs,
-				signalKeys: [repoCodeKey],
-				namespaceKeys: [repoCodeKey],
-				cacheMode: "split",
-				request: (headers, signal) =>
+				request: (signal) =>
 					context.octokit.rest.repos.listCommits({
 						owner: data.owner,
 						repo: data.repo,
@@ -243,7 +211,6 @@ export const getRepoCommits = createServerFn({ method: "GET" })
 						author,
 						per_page: perPage,
 						page,
-						headers,
 						request: { signal },
 					}),
 				mapData: (items): RepoCommitsPage => ({
@@ -271,8 +238,6 @@ export const getRepoRefNames = createServerFn({ method: "GET" })
 	.handler(async ({ data }): Promise<RepoRefNames> => {
 		const context = await getGitHubContextForRepository(data);
 		if (!context) return { names: [], truncated: false };
-
-		const repoCodeKey = githubRevalidationSignalKeys.repoCode(data);
 		const perPage = 100;
 		const mapNames = (items: Array<{ name: string }>): RepoRefNames => ({
 			names: items.map((item) => item.name),
@@ -281,40 +246,30 @@ export const getRepoRefNames = createServerFn({ method: "GET" })
 
 		try {
 			if (data.kind === "tags") {
-				return await getCachedGitHubRequest({
+				return await fetchGitHubResource({
 					context,
 					resource: "repo.refNames.tags.v1",
 					params: { owner: data.owner, repo: data.repo },
-					freshForMs: githubCachePolicy.repoMeta.staleTimeMs,
-					signalKeys: [repoCodeKey],
-					namespaceKeys: [repoCodeKey],
-					cacheMode: "split",
-					request: (headers, signal) =>
+					request: (signal) =>
 						context.octokit.rest.repos.listTags({
 							owner: data.owner,
 							repo: data.repo,
 							per_page: perPage,
-							headers,
 							request: { signal },
 						}),
 					mapData: mapNames,
 				});
 			}
 
-			return await getCachedGitHubRequest({
+			return await fetchGitHubResource({
 				context,
 				resource: "repo.refNames.branches.v1",
 				params: { owner: data.owner, repo: data.repo },
-				freshForMs: githubCachePolicy.repoMeta.staleTimeMs,
-				signalKeys: [repoCodeKey],
-				namespaceKeys: [repoCodeKey],
-				cacheMode: "split",
-				request: (headers, signal) =>
+				request: (signal) =>
 					context.octokit.rest.repos.listBranches({
 						owner: data.owner,
 						repo: data.repo,
 						per_page: perPage,
-						headers,
 						request: { signal },
 					}),
 				mapData: mapNames,
@@ -424,19 +379,13 @@ export const getRepoBranchesList = createServerFn({ method: "GET" })
 		};
 		const context = await getGitHubContextForRepository(data);
 		if (!context) return empty;
-
-		const repoCodeKey = githubRevalidationSignalKeys.repoCode(data);
 		const query = data.query?.trim() || null;
 		const after = data.after ?? null;
 
-		return getOrRevalidateGitHubResource<RepoBranchesListPage>({
+		return dedupeGitHubRead<RepoBranchesListPage>({
 			userId: context.session.user.id,
 			resource: "repo.branchesList.v1",
 			params: { owner: data.owner, repo: data.repo, query, after },
-			freshForMs: githubCachePolicy.list.staleTimeMs,
-			signalKeys: [repoCodeKey],
-			namespaceKeys: [repoCodeKey],
-			cacheMode: "split",
 			fetcher: async () => {
 				const response =
 					await executeGitHubGraphQL<GitHubGraphQLBranchesResponse>(
@@ -463,25 +412,21 @@ export const getRepoBranchesList = createServerFn({ method: "GET" })
 
 				const repository = response.repository;
 				const refs = repository?.refs;
-				return {
-					kind: "success",
-					data: refs
-						? {
-								defaultBranch: repository?.defaultBranchRef
-									? mapGraphQLBranchNode(repository.defaultBranchRef)
-									: null,
-								branches: refs.nodes
-									.filter((node): node is GitHubGraphQLBranchNode =>
-										Boolean(node),
-									)
-									.map(mapGraphQLBranchNode),
-								totalCount: refs.totalCount,
-								endCursor: refs.pageInfo.endCursor,
-								hasNextPage: refs.pageInfo.hasNextPage,
-							}
-						: empty,
-					metadata: createGitHubResponseMetadata(200, {}),
-				};
+				return refs
+					? {
+							defaultBranch: repository?.defaultBranchRef
+								? mapGraphQLBranchNode(repository.defaultBranchRef)
+								: null,
+							branches: refs.nodes
+								.filter((node): node is GitHubGraphQLBranchNode =>
+									Boolean(node),
+								)
+								.map(mapGraphQLBranchNode),
+							totalCount: refs.totalCount,
+							endCursor: refs.pageInfo.endCursor,
+							hasNextPage: refs.pageInfo.hasNextPage,
+						}
+					: empty;
 			},
 		});
 	});
@@ -544,19 +489,13 @@ export const getRepoTagsList = createServerFn({ method: "GET" })
 		};
 		const context = await getGitHubContextForRepository(data);
 		if (!context) return empty;
-
-		const repoCodeKey = githubRevalidationSignalKeys.repoCode(data);
 		const query = data.query?.trim() || null;
 		const after = data.after ?? null;
 
-		return getOrRevalidateGitHubResource<RepoTagsListPage>({
+		return dedupeGitHubRead<RepoTagsListPage>({
 			userId: context.session.user.id,
 			resource: "repo.tagsList.v1",
 			params: { owner: data.owner, repo: data.repo, query, after },
-			freshForMs: githubCachePolicy.list.staleTimeMs,
-			signalKeys: [repoCodeKey],
-			namespaceKeys: [repoCodeKey],
-			cacheMode: "split",
 			fetcher: async () => {
 				const response = await executeGitHubGraphQL<GitHubGraphQLTagsResponse>(
 					context,
@@ -605,20 +544,16 @@ export const getRepoTagsList = createServerFn({ method: "GET" })
 				);
 
 				const refs = response.repository?.refs;
-				return {
-					kind: "success",
-					data: refs
-						? {
-								tags: refs.nodes
-									.filter((node): node is GitHubGraphQLTagNode => Boolean(node))
-									.map(mapGraphQLTagNode),
-								totalCount: refs.totalCount,
-								endCursor: refs.pageInfo.endCursor,
-								hasNextPage: refs.pageInfo.hasNextPage,
-							}
-						: empty,
-					metadata: createGitHubResponseMetadata(200, {}),
-				};
+				return refs
+					? {
+							tags: refs.nodes
+								.filter((node): node is GitHubGraphQLTagNode => Boolean(node))
+								.map(mapGraphQLTagNode),
+							totalCount: refs.totalCount,
+							endCursor: refs.pageInfo.endCursor,
+							hasNextPage: refs.pageInfo.hasNextPage,
+						}
+					: empty;
 			},
 		});
 	});
@@ -644,8 +579,6 @@ export const resolveRepoRefSplat = createServerFn({ method: "GET" })
 
 		const context = await getGitHubContextForRepository(data);
 		if (!context) return fallback();
-
-		const repoCodeKey = githubRevalidationSignalKeys.repoCode(data);
 		const variables: Record<string, string> = {
 			owner: data.owner,
 			repo: data.repo,
@@ -663,14 +596,10 @@ export const resolveRepoRefSplat = createServerFn({ method: "GET" })
 		});
 
 		try {
-			return await getOrRevalidateGitHubResource<RepoRefSplatResolution>({
+			return await dedupeGitHubRead<RepoRefSplatResolution>({
 				userId: context.session.user.id,
 				resource: "repo.refSplat.v1",
 				params: { owner: data.owner, repo: data.repo, splat: data.splat },
-				freshForMs: githubCachePolicy.repoMeta.staleTimeMs,
-				signalKeys: [repoCodeKey],
-				namespaceKeys: [repoCodeKey],
-				cacheMode: "split",
 				fetcher: async () => {
 					const response =
 						await executeGitHubGraphQL<GitHubGraphQLRefSplatResponse>(
@@ -697,11 +626,7 @@ export const resolveRepoRefSplat = createServerFn({ method: "GET" })
 							break;
 						}
 					}
-					return {
-						kind: "success",
-						data: resolved,
-						metadata: createGitHubResponseMetadata(200, {}),
-					};
+					return resolved;
 				},
 			});
 		} catch (error) {

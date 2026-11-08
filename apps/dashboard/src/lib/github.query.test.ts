@@ -61,7 +61,6 @@ const samples: Record<string, GitHubChangeEntity> = {
 	labels: { kind: "labels", repo: "acme/api" },
 	collaborators: { kind: "collaborators", repo: "acme/api" },
 	discussions: { kind: "discussions", repo: "acme/api" },
-	notifications: { kind: "notifications" },
 };
 
 /** Cached payload of an aggregate that contains the sample item. */
@@ -146,6 +145,47 @@ describe("entity → query registry", () => {
 				assigned: [],
 			}),
 		).toBe(true);
+	});
+
+	it("refetches the inbox only for items it lists", () => {
+		const inbox = githubQueryKeys.notifications.list(scope, {});
+		const data = {
+			notifications: [
+				{
+					repository: { fullName: "Acme/Api", owner: { login: "Acme" } },
+					subject: { url: "https://api.github.com/repos/Acme/Api/pulls/12" },
+				},
+			],
+		};
+		expect(githubQueryMatchesEntity(inbox, samples.pull, data)).toBe(true);
+		expect(
+			githubQueryMatchesEntity(
+				inbox,
+				{ kind: "pull", repo: "acme/api", number: 13 },
+				data,
+			),
+		).toBe(false);
+		expect(githubQueryMatchesEntity(inbox, samples.repo, data)).toBe(false);
+	});
+
+	it("refetches user-wide aggregates for an item the viewer just created", () => {
+		const created = { kind: "pull", repo: "acme/api", number: 77 } as const;
+		const otherPull = githubQueryKeys.pulls.page(scope, {
+			owner: "acme",
+			repo: "api",
+			pullNumber: 12,
+		});
+		expect(
+			githubQueryMatchesEntity(
+				githubQueryKeys.pulls.mine(scope),
+				created,
+				aggregateData,
+				"created",
+			),
+		).toBe(true);
+		expect(
+			githubQueryMatchesEntity(otherPull, created, undefined, "created"),
+		).toBe(false);
 	});
 
 	it("queryFiltersForEntity invalidates only matching queries of the user", async () => {

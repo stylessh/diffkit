@@ -56,10 +56,9 @@ export function WorkflowRunPage() {
 		enabled: hasMounted,
 		// Artifacts carry no status of their own; follow the run. They settle
 		// once the run completes, so stop polling after the terminal window.
-		refetchInterval: adaptiveRefetchInterval(() => ({
-			isActive: false,
-			isTerminal: isRunCompleted,
-		})),
+		refetchInterval: adaptiveRefetchInterval(() =>
+			isRunCompleted ? "settled" : "waiting",
+		),
 		refetchIntervalInBackground: false,
 	});
 	useQuery({

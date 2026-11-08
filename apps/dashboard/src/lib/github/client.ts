@@ -1,12 +1,5 @@
-import { RequestError } from "octokit";
 import { debug } from "../debug";
-import {
-	createGitHubResponseMetadata,
-	type GitHubConditionalHeaders,
-	type GitHubFetchResult,
-	getOrRevalidateGitHubResource,
-} from "../github-cache";
-import { githubCachePolicy } from "../github-cache-policy";
+import { dedupeGitHubRead } from "./request-dedup";
 import {
 	GITHUB_MIN_OPERATION_TIMEOUT_MS,
 	GITHUB_OPERATION_TIMEOUT_MS,
@@ -148,142 +141,38 @@ export async function getGitHubContext(): Promise<GitHubContext | null> {
 	});
 }
 
-export function buildConditionalHeaders(
-	conditionals: GitHubConditionalHeaders,
-) {
-	const headers: Record<string, string> = {};
-
-	if (conditionals.etag) {
-		headers["if-none-match"] = conditionals.etag;
-	}
-
-	if (conditionals.lastModified) {
-		headers["if-modified-since"] = conditionals.lastModified;
-	}
-
-	return headers;
-}
-
-export function normalizeResponseHeaders(headers: Record<string, unknown>) {
-	return Object.entries(headers).reduce<Record<string, string | null>>(
-		(accumulator, [key, value]) => {
-			if (typeof value === "string") {
-				accumulator[key.toLowerCase()] = value;
-			} else if (typeof value === "number") {
-				accumulator[key.toLowerCase()] = String(value);
-			} else if (Array.isArray(value) && typeof value[0] === "string") {
-				accumulator[key.toLowerCase()] = value[0];
-			}
-
-			return accumulator;
-		},
-		{},
-	);
-}
-
-async function executeGitHubRequest<TData>(
-	request: (
-		headers: Record<string, string>,
-		signal: AbortSignal,
-	) => Promise<GitHubRestResponse<TData>>,
-	conditionals: GitHubConditionalHeaders,
-	label = "github request",
-): Promise<GitHubFetchResult<TData>> {
-	try {
-		const response = await withGitHubOperationTimeout(
-			label,
-			GITHUB_OPERATION_TIMEOUT_MS,
-			(signal) => request(buildConditionalHeaders(conditionals), signal),
-		);
-
-		return {
-			kind: "success",
-			data: response.data,
-			metadata: createGitHubResponseMetadata(
-				response.status,
-				normalizeResponseHeaders(response.headers),
-			),
-		};
-	} catch (error) {
-		if (
-			error instanceof RequestError &&
-			error.status === 304 &&
-			error.response?.headers
-		) {
-			return {
-				kind: "not-modified",
-				metadata: createGitHubResponseMetadata(
-					304,
-					normalizeResponseHeaders(
-						error.response.headers as Record<string, unknown>,
-					),
-				),
-			};
-		}
-
-		throw error;
-	}
-}
-
-export async function getCachedGitHubRequest<TGitHubData, TResult>({
+export async function fetchGitHubResource<TGitHubData, TResult>({
 	context,
 	resource,
 	params,
-	freshForMs,
-	signalKeys,
-	namespaceKeys,
-	cacheMode,
 	request,
 	mapData,
 }: {
 	context: GitHubContext;
 	resource: string;
 	params: unknown;
-	freshForMs: number;
-	signalKeys?: string[];
-	namespaceKeys?: string[];
-	cacheMode?: "legacy" | "split";
-	request: (
-		headers: Record<string, string>,
-		signal: AbortSignal,
-	) => Promise<GitHubRestResponse<TGitHubData>>;
+	request: (signal: AbortSignal) => Promise<GitHubRestResponse<TGitHubData>>;
 	mapData: (data: TGitHubData) => TResult;
 }) {
-	return getOrRevalidateGitHubResource<TResult>({
+	return dedupeGitHubRead<TResult>({
 		userId: context.session.user.id,
 		resource,
 		params,
-		freshForMs,
-		signalKeys,
-		namespaceKeys,
-		cacheMode,
-		fetcher: async (conditionals) => {
-			const result = await executeGitHubRequest(
-				request,
-				conditionals,
+		fetcher: async () => {
+			const response = await withGitHubOperationTimeout(
 				`github ${resource}`,
+				GITHUB_OPERATION_TIMEOUT_MS,
+				request,
 			);
-
-			if (result.kind === "not-modified") {
-				return result;
-			}
-
-			return {
-				...result,
-				data: mapData(result.data),
-			};
+			return mapData(response.data);
 		},
 	});
 }
 
-export async function getCachedPaginatedGitHubRequest<TGitHubItem, TResult>({
+export async function fetchPaginatedGitHubResource<TGitHubItem, TResult>({
 	context,
 	resource,
 	params,
-	freshForMs,
-	signalKeys,
-	namespaceKeys,
-	cacheMode,
 	request,
 	mapData,
 	pageSize = 100,
@@ -291,10 +180,6 @@ export async function getCachedPaginatedGitHubRequest<TGitHubItem, TResult>({
 	context: GitHubContext;
 	resource: string;
 	params: unknown;
-	freshForMs: number;
-	signalKeys?: string[];
-	namespaceKeys?: string[];
-	cacheMode?: "legacy" | "split";
 	request: (
 		page: number,
 		signal: AbortSignal,
@@ -302,58 +187,19 @@ export async function getCachedPaginatedGitHubRequest<TGitHubItem, TResult>({
 	mapData: (items: TGitHubItem[]) => TResult;
 	pageSize?: number;
 }) {
-	return getOrRevalidateGitHubResource<TResult>({
+	return dedupeGitHubRead<TResult>({
 		userId: context.session.user.id,
 		resource,
 		params,
-		freshForMs,
-		signalKeys,
-		namespaceKeys,
-		cacheMode,
-		fetcher: async () => {
-			const items: TGitHubItem[] = [];
-			let page = 1;
-			let metadata = createGitHubResponseMetadata(200, {});
-			const deadlineAt = Date.now() + GITHUB_PAGINATED_OPERATION_TIMEOUT_MS;
-
-			while (true) {
-				const timeoutMs = getRemainingSearchTimeoutMs(
-					deadlineAt,
-					GITHUB_OPERATION_TIMEOUT_MS,
-				);
-				if (timeoutMs < GITHUB_MIN_OPERATION_TIMEOUT_MS) {
-					throw new GitHubOperationTimeoutError(
-						`github ${resource} page ${page}`,
-						timeoutMs,
-					);
-				}
-
-				const response = await withGitHubOperationTimeout(
-					`github ${resource} page ${page}`,
-					timeoutMs,
-					(signal) => request(page, signal),
-				);
-				if (page === 1) {
-					metadata = createGitHubResponseMetadata(
-						response.status,
-						normalizeResponseHeaders(response.headers),
-					);
-				}
-
-				items.push(...response.data);
-				if (response.data.length < pageSize) {
-					break;
-				}
-
-				page += 1;
-			}
-
-			return {
-				kind: "success",
-				data: mapData(items),
-				metadata,
-			};
-		},
+		fetcher: async () =>
+			mapData(
+				await listPaginatedGitHubItems({
+					request,
+					getItems: (data) => data as TGitHubItem[],
+					label: `github ${resource}`,
+					pageSize,
+				}),
+			),
 	});
 }
 
@@ -405,15 +251,11 @@ export async function listPaginatedGitHubItems<TItem>({
 export async function getViewer(
 	context: GitHubContext,
 ): Promise<AuthenticatedUser> {
-	return getCachedGitHubRequest<AuthenticatedUser, AuthenticatedUser>({
+	return fetchGitHubResource<AuthenticatedUser, AuthenticatedUser>({
 		context,
 		resource: "viewer",
 		params: null,
-		freshForMs: githubCachePolicy.viewer.staleTimeMs,
-		namespaceKeys: ["viewer"],
-		cacheMode: "split",
-		request: (headers) =>
-			context.octokit.rest.users.getAuthenticated({ headers }),
+		request: () => context.octokit.rest.users.getAuthenticated({}),
 		mapData: (viewer) => viewer,
 	});
 }

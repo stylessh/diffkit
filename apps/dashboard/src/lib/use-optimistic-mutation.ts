@@ -8,21 +8,17 @@ type OptimisticUpdate = {
 };
 
 type MutateOptions<TResult> = {
-	/** The server function call, e.g. () => removeReviewRequest({ data: ... }) */
 	mutationFn: () => Promise<TResult>;
-	/** One or more optimistic cache updates to apply before the server call */
-	updates?: OptimisticUpdate[];
-	/**
-	 * Query key prefix to invalidate on success.
-	 * Defaults to ["github"].
-	 */
-	invalidateQueryKey?: readonly unknown[];
-	/**
-	 * Custom success check. Defaults to Boolean(result).
-	 */
+	updates: OptimisticUpdate[];
+	/** Defaults to `Boolean(result)`. */
 	isSuccess?: (result: TResult) => boolean;
 };
 
+/**
+ * Nothing is refetched on success: GitHub can serve the pre-write state for a
+ * moment, so an immediate refetch would flash the old value. The change feed
+ * (or focus refetch for repos without the app) reconciles later.
+ */
 export function useOptimisticMutation() {
 	const queryClient = useQueryClient();
 
@@ -32,12 +28,9 @@ export function useOptimisticMutation() {
 		): Promise<TResult | undefined> => {
 			const {
 				mutationFn,
-				updates = [],
-				invalidateQueryKey = ["github"],
+				updates,
 				isSuccess = (result: TResult) => Boolean(result),
 			} = options;
-
-			const hasOptimisticUpdates = updates.length > 0;
 
 			const snapshots = updates.map((u) => ({
 				queryKey: u.queryKey,
@@ -55,16 +48,6 @@ export function useOptimisticMutation() {
 				const result = await mutationFn();
 
 				if (isSuccess(result)) {
-					// Skip immediate invalidation when optimistic updates were applied.
-					// The optimistic cache already reflects the expected state, and an
-					// immediate refetch can return stale data from GitHub before the
-					// write has propagated — causing a flash. Webhook-driven revalidation
-					// will bring in the canonical data once GitHub has processed the event.
-					if (!hasOptimisticUpdates) {
-						await queryClient.invalidateQueries({
-							queryKey: invalidateQueryKey,
-						});
-					}
 					return result;
 				}
 

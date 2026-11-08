@@ -15,40 +15,29 @@ import type {
 } from "../github.types";
 import { isRepoVisibleWithInstallationAccess } from "../github-access";
 import {
-	bumpGitHubCacheNamespaces,
-	createGitHubResponseMetadata,
-	getOrRevalidateGitHubResource,
-} from "../github-cache";
-import { githubCachePolicy } from "../github-cache-policy";
-import { githubRevalidationSignalKeys } from "../github-revalidation";
-import {
 	filterUserRepoSummaries,
 	type ReposHubInput,
 	type ReposHubResult,
 } from "../repos-hub-filter";
 import {
-	buildConditionalHeaders,
 	executeGitHubGraphQL,
-	getCachedGitHubRequest,
-	getCachedPaginatedGitHubRequest,
+	fetchGitHubResource,
+	fetchPaginatedGitHubResource,
 	getGitHubContext,
 	getViewer,
-	normalizeResponseHeaders,
 } from "./client";
 import {
 	getGitHubContextForRepository,
 	getGitHubUserContextForRepository,
 	getInstallationAccessIndex,
 } from "./installations";
-import {
-	createGraphQLResponseMetadata,
-	mapActor,
-	mapGraphQLActor,
-} from "./mappers";
+import { mapActor, mapGraphQLActor } from "./mappers";
+import { dedupeGitHubRead } from "./request-dedup";
 import {
 	type GitHubClient,
 	type GitHubContext,
 	type GitHubGraphQLRateLimit,
+	type MutationFailure,
 	type MutationResult,
 	toMutationError,
 } from "./shared";
@@ -262,14 +251,10 @@ async function fetchInstallationFilteredAuthenticatedRepos(
 	context: GitHubContext,
 ): Promise<UserRepoSummary[]> {
 	const [repos, accessIndex] = await Promise.all([
-		getCachedPaginatedGitHubRequest<AuthenticatedUserRepo, UserRepoSummary[]>({
+		fetchPaginatedGitHubResource<AuthenticatedUserRepo, UserRepoSummary[]>({
 			context,
 			resource: "repos.list",
 			params: { sort: "updated", perPage: 100 },
-			freshForMs: githubCachePolicy.reposList.staleTimeMs,
-			signalKeys: [githubRevalidationSignalKeys.installationAccess],
-			namespaceKeys: ["repos.list"],
-			cacheMode: "split",
 			pageSize: 100,
 			request: (page) =>
 				context.octokit.rest.repos.listForAuthenticatedUser({
@@ -322,13 +307,10 @@ async function fetchPublicReposForUser(
 	context: GitHubContext,
 	username: string,
 ): Promise<UserRepoSummary[]> {
-	return getCachedPaginatedGitHubRequest<ListForUserRepo, UserRepoSummary[]>({
+	return fetchPaginatedGitHubResource<ListForUserRepo, UserRepoSummary[]>({
 		context,
 		resource: "repos.listForUser",
 		params: { username, sort: "updated", perPage: 100 },
-		freshForMs: githubCachePolicy.reposList.staleTimeMs,
-		namespaceKeys: ["repos.listForUser"],
-		cacheMode: "split",
 		pageSize: 100,
 		request: (page, signal) =>
 			context.octokit.rest.repos.listForUser({
@@ -410,8 +392,6 @@ export const getProfileRepos = createServerFn({ method: "GET" })
 		}
 	});
 
-// ── Star / fork repository ───────────────────────────────────────
-
 export type SetRepoStarredInput = {
 	owner: string;
 	repo: string;
@@ -464,14 +444,7 @@ export const setRepoStarred = createServerFn({ method: "POST" })
 				});
 			}
 
-			await bumpGitHubCacheNamespaces([
-				githubRevalidationSignalKeys.repoMeta({
-					owner: data.owner,
-					repo: data.repo,
-				}),
-			]);
-
-			debug("github-star", "success + cache namespace bumped", { target });
+			debug("github-star", "success", { target });
 			console.info("[github-star] ok", { target, starred: data.starred });
 
 			return { ok: true };
@@ -507,15 +480,7 @@ export type ForkRepoInput = {
 
 export type ForkRepoResult =
 	| { ok: true; forkOwner: string; forkName: string; htmlUrl: string }
-	| { ok: false; error: string; installUrl?: string };
-
-function toForkRepoError(error: unknown): ForkRepoResult {
-	const result = toMutationError("fork repository", error);
-	if (result.ok) {
-		return { ok: false, error: "Failed to fork repository" };
-	}
-	return { ok: false, error: result.error, installUrl: result.installUrl };
-}
+	| MutationFailure;
 
 export const forkRepository = createServerFn({ method: "POST" })
 	.inputValidator(identityValidator<ForkRepoInput>)
@@ -531,23 +496,6 @@ export const forkRepository = createServerFn({ method: "POST" })
 				repo: data.repo,
 			});
 
-			const namespaces = [
-				githubRevalidationSignalKeys.repoMeta({
-					owner: response.data.owner.login,
-					repo: response.data.name,
-				}),
-			];
-			const parent = response.data.parent;
-			if (parent?.owner?.login && parent?.name) {
-				namespaces.push(
-					githubRevalidationSignalKeys.repoMeta({
-						owner: parent.owner.login,
-						repo: parent.name,
-					}),
-				);
-			}
-			await bumpGitHubCacheNamespaces(namespaces);
-
 			return {
 				ok: true,
 				forkOwner: response.data.owner.login,
@@ -555,13 +503,9 @@ export const forkRepository = createServerFn({ method: "POST" })
 				htmlUrl: response.data.html_url,
 			};
 		} catch (error) {
-			return toForkRepoError(error);
+			return toMutationError("fork repository", error);
 		}
 	});
-
-// ---------------------------------------------------------------------------
-// Repository overview
-// ---------------------------------------------------------------------------
 
 type RepoOverviewInput = {
 	owner: string;
@@ -576,63 +520,28 @@ export const getRepoParticipationStats = createServerFn({ method: "GET" })
 			return { weeklyCommits: [] };
 		}
 
-		const repoMetaKey = githubRevalidationSignalKeys.repoMeta(data);
-		const repoCodeKey = githubRevalidationSignalKeys.repoCode(data);
-
-		return getOrRevalidateGitHubResource<RepoParticipationStats>({
+		return dedupeGitHubRead<RepoParticipationStats>({
 			userId: context.session.user.id,
 			resource: "repos.participationStats",
 			params: data,
-			freshForMs: githubCachePolicy.repoParticipation.staleTimeMs,
-			signalKeys: [repoMetaKey, repoCodeKey],
-			namespaceKeys: [repoMetaKey, repoCodeKey],
-			cacheMode: "split",
-			fetcher: async (conditionals) => {
+			fetcher: async () => {
 				const maxAttempts = 6;
 				const retryDelayMs = 1_500;
 
 				for (let attempt = 0; attempt < maxAttempts; attempt++) {
-					const headers = buildConditionalHeaders(
-						attempt === 0 ? conditionals : { etag: null, lastModified: null },
-					);
-
 					try {
 						const response =
 							await context.octokit.rest.repos.getParticipationStats({
 								owner: data.owner,
 								repo: data.repo,
-								headers,
 							});
 
 						const weeklyCommits = Array.isArray(response.data?.all)
 							? response.data.all
 							: [];
 
-						return {
-							kind: "success",
-							data: { weeklyCommits },
-							metadata: createGitHubResponseMetadata(
-								response.status,
-								normalizeResponseHeaders(response.headers),
-							),
-						};
+						return { weeklyCommits };
 					} catch (error) {
-						if (
-							error instanceof RequestError &&
-							error.status === 304 &&
-							error.response?.headers
-						) {
-							return {
-								kind: "not-modified",
-								metadata: createGitHubResponseMetadata(
-									304,
-									normalizeResponseHeaders(
-										error.response.headers as Record<string, unknown>,
-									),
-								),
-							};
-						}
-
 						if (error instanceof RequestError && error.status === 202) {
 							if (attempt < maxAttempts - 1) {
 								await new Promise((resolve) =>
@@ -645,18 +554,7 @@ export const getRepoParticipationStats = createServerFn({ method: "GET" })
 
 						if (error instanceof RequestError) {
 							if (error.status === 404 || error.status === 403) {
-								return {
-									kind: "success",
-									data: { weeklyCommits: [] },
-									metadata: createGitHubResponseMetadata(
-										error.status,
-										error.response?.headers
-											? normalizeResponseHeaders(
-													error.response.headers as Record<string, unknown>,
-												)
-											: {},
-									),
-								};
+								return { weeklyCommits: [] };
 							}
 						}
 
@@ -675,17 +573,10 @@ export const getRepoOverview = createServerFn({ method: "GET" })
 		const context = await getGitHubContextForRepository(data);
 		if (!context) return null;
 
-		const repoMetaKey = githubRevalidationSignalKeys.repoMeta(data);
-		const repoCodeKey = githubRevalidationSignalKeys.repoCode(data);
-
-		return getOrRevalidateGitHubResource<RepoOverview>({
+		return dedupeGitHubRead<RepoOverview>({
 			userId: context.session.user.id,
 			resource: "repo.overview.v2",
 			params: data,
-			freshForMs: githubCachePolicy.repoMeta.staleTimeMs,
-			signalKeys: [repoMetaKey, repoCodeKey],
-			namespaceKeys: [repoMetaKey, repoCodeKey],
-			cacheMode: "split",
 			fetcher: async () => {
 				const response =
 					await executeGitHubGraphQL<GitHubGraphQLRepoOverviewResponse>(
@@ -781,18 +672,10 @@ export const getRepoOverview = createServerFn({ method: "GET" })
 				const overview = mapGraphQLRepoOverview(response.repository);
 				overview.viewerHasStarred = await resolveViewerHasStarredForRepo(data);
 
-				return {
-					kind: "success",
-					data: overview,
-					metadata: createGraphQLResponseMetadata(response.rateLimit),
-				};
+				return overview;
 			},
 		});
 	});
-
-// ---------------------------------------------------------------------------
-// Repository discussions (GraphQL-only)
-// ---------------------------------------------------------------------------
 
 type RepoDiscussionsInput = {
 	owner: string;
@@ -825,7 +708,7 @@ export const getRepoDiscussions = createServerFn({ method: "GET" })
 		const context = await getGitHubContextForRepository(data);
 		if (!context) return { discussions: [], totalCount: 0 };
 
-		return getOrRevalidateGitHubResource<DiscussionsResult>({
+		return dedupeGitHubRead<DiscussionsResult>({
 			userId: context.session.user.id,
 			resource: "repo.discussions.v1",
 			params: {
@@ -833,10 +716,6 @@ export const getRepoDiscussions = createServerFn({ method: "GET" })
 				repo: data.repo,
 				first: data.first ?? 5,
 			},
-			freshForMs: githubCachePolicy.list.staleTimeMs,
-			signalKeys: [githubRevalidationSignalKeys.repoMeta(data)],
-			namespaceKeys: [githubRevalidationSignalKeys.repoMeta(data)],
-			cacheMode: "split",
 			fetcher: async () => {
 				try {
 					const response =
@@ -869,22 +748,18 @@ export const getRepoDiscussions = createServerFn({ method: "GET" })
 						);
 
 					return {
-						kind: "success",
-						data: {
-							totalCount: response.repository.discussions.totalCount,
-							discussions: response.repository.discussions.nodes.map((d) => ({
-								number: d.number,
-								title: d.title,
-								createdAt: d.createdAt,
-								updatedAt: d.updatedAt,
-								author: d.author,
-								category: d.category?.name ?? null,
-								comments: d.comments.totalCount,
-								isAnswered: d.answerChosenAt !== null,
-								url: d.url,
-							})),
-						},
-						metadata: createGitHubResponseMetadata(200, {}),
+						totalCount: response.repository.discussions.totalCount,
+						discussions: response.repository.discussions.nodes.map((d) => ({
+							number: d.number,
+							title: d.title,
+							createdAt: d.createdAt,
+							updatedAt: d.updatedAt,
+							author: d.author,
+							category: d.category?.name ?? null,
+							comments: d.comments.totalCount,
+							isAnswered: d.answerChosenAt !== null,
+							url: d.url,
+						})),
 					};
 				} catch (error) {
 					if (
@@ -894,11 +769,7 @@ export const getRepoDiscussions = createServerFn({ method: "GET" })
 						throw error;
 					}
 
-					return {
-						kind: "success",
-						data: { discussions: [], totalCount: 0 },
-						metadata: createGitHubResponseMetadata(200, {}),
-					};
+					return { discussions: [], totalCount: 0 };
 				}
 			},
 		});
@@ -909,10 +780,6 @@ function parseLinkHeaderLastPage(link: string | undefined): number | null {
 	const match = link.match(/[&?]page=(\d+)[^>]*>;\s*rel="last"/);
 	return match ? Number(match[1]) : null;
 }
-
-// ---------------------------------------------------------------------------
-// Repository branches
-// ---------------------------------------------------------------------------
 
 type RepoBranchesInput = {
 	owner: string;
@@ -925,7 +792,7 @@ export const getRepoBranches = createServerFn({ method: "GET" })
 		const context = await getGitHubContextForRepository(data);
 		if (!context) return [];
 
-		return getCachedGitHubRequest<
+		return fetchGitHubResource<
 			Awaited<
 				ReturnType<GitHubClient["rest"]["repos"]["listBranches"]>
 			>["data"],
@@ -934,16 +801,11 @@ export const getRepoBranches = createServerFn({ method: "GET" })
 			context,
 			resource: "repo.branches.v1",
 			params: data,
-			freshForMs: githubCachePolicy.repoMeta.staleTimeMs,
-			signalKeys: [githubRevalidationSignalKeys.repoCode(data)],
-			namespaceKeys: [githubRevalidationSignalKeys.repoCode(data)],
-			cacheMode: "split",
-			request: (headers) =>
+			request: () =>
 				context.octokit.rest.repos.listBranches({
 					owner: data.owner,
 					repo: data.repo,
 					per_page: 25,
-					headers,
 				}),
 			mapData: (branches) =>
 				branches.map((b) => ({
@@ -952,10 +814,6 @@ export const getRepoBranches = createServerFn({ method: "GET" })
 				})),
 		});
 	});
-
-// ---------------------------------------------------------------------------
-// Branch comparison (ahead/behind vs base branch)
-// ---------------------------------------------------------------------------
 
 type BranchComparisonInput = {
 	owner: string;
@@ -971,7 +829,7 @@ export const getBranchComparison = createServerFn({ method: "GET" })
 		const context = await getGitHubContextForRepository(data);
 		if (!context) return null;
 
-		return getCachedGitHubRequest<
+		return fetchGitHubResource<
 			Awaited<
 				ReturnType<GitHubClient["rest"]["repos"]["compareCommitsWithBasehead"]>
 			>["data"],
@@ -980,17 +838,12 @@ export const getBranchComparison = createServerFn({ method: "GET" })
 			context,
 			resource: "repo.branchComparison.v1",
 			params: data,
-			freshForMs: githubCachePolicy.detail.staleTimeMs,
-			signalKeys: [githubRevalidationSignalKeys.repoCode(data)],
-			namespaceKeys: [githubRevalidationSignalKeys.repoCode(data)],
-			cacheMode: "split",
-			request: (headers) =>
+			request: () =>
 				context.octokit.rest.repos.compareCommitsWithBasehead({
 					owner: data.owner,
 					repo: data.repo,
 					basehead: `${data.base}...${data.head}`,
 					per_page: 1,
-					headers,
 				}),
 			mapData: (comparison) => ({
 				aheadBy: comparison.ahead_by,
@@ -1000,10 +853,6 @@ export const getBranchComparison = createServerFn({ method: "GET" })
 			}),
 		}).catch(() => null);
 	});
-
-// ---------------------------------------------------------------------------
-// Repo templates — PR / issue body templates (single-file, simple case only).
-// ---------------------------------------------------------------------------
 
 export type RepoTemplateKind = "pr" | "issue";
 
@@ -1043,20 +892,11 @@ export const getRepoTemplate = createServerFn({ method: "GET" })
 		const context = await getGitHubContextForRepository(data);
 		if (!context) return null;
 
-		const repoCodeKey = githubRevalidationSignalKeys.repoCode({
-			owner: data.owner,
-			repo: data.repo,
-		});
-
 		try {
-			return await getOrRevalidateGitHubResource<string | null>({
+			return await dedupeGitHubRead<string | null>({
 				userId: context.session.user.id,
 				resource: `repo.template.${data.kind}.v1`,
 				params: data,
-				freshForMs: githubCachePolicy.repoMeta.staleTimeMs,
-				signalKeys: [repoCodeKey],
-				namespaceKeys: [repoCodeKey],
-				cacheMode: "split",
 				fetcher: async () => {
 					const paths =
 						data.kind === "pr" ? PR_TEMPLATE_PATHS : ISSUE_TEMPLATE_PATHS;
@@ -1092,23 +932,13 @@ export const getRepoTemplate = createServerFn({ method: "GET" })
 						}
 					}
 
-					return {
-						kind: "success",
-						data: body,
-						metadata: createGitHubResponseMetadata(200, {}),
-					};
+					return body;
 				},
 			});
 		} catch {
 			return null;
 		}
 	});
-
-// ---------------------------------------------------------------------------
-// Recent pushable branch — viewer's most recent push to a non-default branch
-// that has no open PR and is ahead of the default branch. Used to render the
-// "had recent pushes" banner on the repo overview.
-// ---------------------------------------------------------------------------
 
 export type RecentPushableBranch = {
 	branch: string;
@@ -1130,26 +960,15 @@ export const getRecentPushableBranch = createServerFn({ method: "GET" })
 		const userContext = await getGitHubUserContextForRepository(data);
 		if (!userContext) return null;
 
-		const repoCodeKey = githubRevalidationSignalKeys.repoCode(data);
-		const repoMetaKey = githubRevalidationSignalKeys.repoMeta(data);
-
 		try {
-			return await getOrRevalidateGitHubResource<RecentPushableBranch | null>({
+			return await dedupeGitHubRead<RecentPushableBranch | null>({
 				userId: context.session.user.id,
 				resource: "repo.recentPushableBranch.v1",
 				params: data,
-				freshForMs: githubCachePolicy.detail.staleTimeMs,
-				signalKeys: [repoCodeKey, repoMetaKey],
-				namespaceKeys: [repoCodeKey, repoMetaKey],
-				cacheMode: "split",
 				fetcher: async () => {
 					const viewer = await getViewer(userContext);
 					if (!viewer.login) {
-						return {
-							kind: "success",
-							data: null,
-							metadata: createGitHubResponseMetadata(200, {}),
-						};
+						return null;
 					}
 
 					const overview = await context.octokit.rest.repos.get({
@@ -1158,11 +977,7 @@ export const getRecentPushableBranch = createServerFn({ method: "GET" })
 					});
 					const defaultBranch = overview.data.default_branch;
 					if (!defaultBranch) {
-						return {
-							kind: "success",
-							data: null,
-							metadata: createGitHubResponseMetadata(200, {}),
-						};
+						return null;
 					}
 
 					const activities =
@@ -1203,31 +1018,19 @@ export const getRecentPushableBranch = createServerFn({ method: "GET" })
 						if (comparison.data.ahead_by === 0) continue;
 
 						return {
-							kind: "success",
-							data: {
-								branch,
-								pushedAt: activity.timestamp,
-								aheadBy: comparison.data.ahead_by,
-							},
-							metadata: createGitHubResponseMetadata(200, {}),
+							branch,
+							pushedAt: activity.timestamp,
+							aheadBy: comparison.data.ahead_by,
 						};
 					}
 
-					return {
-						kind: "success",
-						data: null,
-						metadata: createGitHubResponseMetadata(200, {}),
-					};
+					return null;
 				},
 			});
 		} catch {
 			return null;
 		}
 	});
-
-// ---------------------------------------------------------------------------
-// Compare detail (commits + files between two refs, for the compare page)
-// ---------------------------------------------------------------------------
 
 export type CompareDetail = {
 	aheadBy: number;
@@ -1252,14 +1055,10 @@ export const getCompareDetail = createServerFn({ method: "GET" })
 		if (!context) return null;
 
 		try {
-			return await getOrRevalidateGitHubResource<CompareDetail>({
+			return await dedupeGitHubRead<CompareDetail>({
 				userId: context.session.user.id,
 				resource: "repo.compareDetail.v2",
 				params: data,
-				freshForMs: githubCachePolicy.detail.staleTimeMs,
-				signalKeys: [githubRevalidationSignalKeys.repoCode(data)],
-				namespaceKeys: [githubRevalidationSignalKeys.repoCode(data)],
-				cacheMode: "split",
 				fetcher: async () => {
 					const first =
 						await context.octokit.rest.repos.compareCommitsWithBasehead({
@@ -1300,32 +1099,28 @@ export const getCompareDetail = createServerFn({ method: "GET" })
 					}
 
 					return {
-						kind: "success",
-						data: {
-							aheadBy: first.data.ahead_by,
-							behindBy: first.data.behind_by,
-							status: first.data.status as CompareDetail["status"],
-							totalCommits,
-							commits: commitsRaw.map((c) => ({
-								sha: c.sha,
-								message: c.commit.message,
-								createdAt:
-									c.commit.committer?.date ?? c.commit.author?.date ?? "",
-								author: mapActor(c.author),
-							})),
-							files: files.map((f) => ({
-								sha: f.sha ?? null,
-								filename: f.filename,
-								status: f.status as PullFile["status"],
-								additions: f.additions,
-								deletions: f.deletions,
-								changes: f.changes,
-								patch: f.patch ?? null,
-								previousFilename: f.previous_filename ?? null,
-							})),
-							filesTruncated,
-						},
-						metadata: createGitHubResponseMetadata(200, {}),
+						aheadBy: first.data.ahead_by,
+						behindBy: first.data.behind_by,
+						status: first.data.status as CompareDetail["status"],
+						totalCommits,
+						commits: commitsRaw.map((c) => ({
+							sha: c.sha,
+							message: c.commit.message,
+							createdAt:
+								c.commit.committer?.date ?? c.commit.author?.date ?? "",
+							author: mapActor(c.author),
+						})),
+						files: files.map((f) => ({
+							sha: f.sha ?? null,
+							filename: f.filename,
+							status: f.status as PullFile["status"],
+							additions: f.additions,
+							deletions: f.deletions,
+							changes: f.changes,
+							patch: f.patch ?? null,
+							previousFilename: f.previous_filename ?? null,
+						})),
+						filesTruncated,
 					};
 				},
 			});
@@ -1333,10 +1128,6 @@ export const getCompareDetail = createServerFn({ method: "GET" })
 			return null;
 		}
 	});
-
-// ---------------------------------------------------------------------------
-// Repository contributors
-// ---------------------------------------------------------------------------
 
 type RepoContributorsInput = {
 	owner: string;
@@ -1349,64 +1140,32 @@ export const getRepoContributors = createServerFn({ method: "GET" })
 		const context = await getGitHubContextForRepository(data);
 		if (!context) return { contributors: [], totalCount: 0 };
 
-		return getOrRevalidateGitHubResource<RepoContributorsResult>({
+		return dedupeGitHubRead<RepoContributorsResult>({
 			userId: context.session.user.id,
 			resource: "repo.contributors.v1",
 			params: data,
-			freshForMs: githubCachePolicy.repoMeta.staleTimeMs,
-			signalKeys: [githubRevalidationSignalKeys.repoCode(data)],
-			namespaceKeys: [githubRevalidationSignalKeys.repoCode(data)],
-			cacheMode: "split",
-			fetcher: async (conditionals) => {
-				try {
-					const response = await context.octokit.rest.repos.listContributors({
-						owner: data.owner,
-						repo: data.repo,
-						per_page: 30,
-						anon: "false",
-						headers: buildConditionalHeaders(conditionals),
-					});
-					const totalCount =
-						parseLinkHeaderLastPage(
-							response.headers.link as string | undefined,
-						) ?? response.data.length;
+			fetcher: async () => {
+				const response = await context.octokit.rest.repos.listContributors({
+					owner: data.owner,
+					repo: data.repo,
+					per_page: 30,
+					anon: "false",
+				});
+				const totalCount =
+					parseLinkHeaderLastPage(
+						response.headers.link as string | undefined,
+					) ?? response.data.length;
 
-					return {
-						kind: "success",
-						data: {
-							contributors: response.data
-								.filter((c): c is typeof c & { login: string } => !!c.login)
-								.map((c) => ({
-									login: c.login,
-									avatarUrl: c.avatar_url ?? "",
-									contributions: c.contributions ?? 0,
-								})),
-							totalCount,
-						},
-						metadata: createGitHubResponseMetadata(
-							response.status,
-							normalizeResponseHeaders(response.headers),
-						),
-					};
-				} catch (error) {
-					if (
-						error instanceof RequestError &&
-						error.status === 304 &&
-						error.response?.headers
-					) {
-						return {
-							kind: "not-modified",
-							metadata: createGitHubResponseMetadata(
-								304,
-								normalizeResponseHeaders(
-									error.response.headers as Record<string, unknown>,
-								),
-							),
-						};
-					}
-
-					throw error;
-				}
+				return {
+					contributors: response.data
+						.filter((c): c is typeof c & { login: string } => !!c.login)
+						.map((c) => ({
+							login: c.login,
+							avatarUrl: c.avatar_url ?? "",
+							contributions: c.contributions ?? 0,
+						})),
+					totalCount,
+				};
 			},
 		});
 	});
@@ -1422,17 +1181,11 @@ export const getRepoViewerPermission = createServerFn({ method: "GET" })
 		// User token (not the installation token) so the answer reflects the viewer.
 		const context = await getGitHubUserContextForRepository(data);
 		if (!context) return unknown;
-
-		const repoMetaKey = githubRevalidationSignalKeys.repoMeta(data);
 		try {
-			return await getOrRevalidateGitHubResource<RepoViewerPermission>({
+			return await dedupeGitHubRead<RepoViewerPermission>({
 				userId: context.session.user.id,
 				resource: "repo.viewerPermission.v1",
 				params: { owner: data.owner, repo: data.repo },
-				freshForMs: githubCachePolicy.repoMeta.staleTimeMs,
-				signalKeys: [repoMetaKey],
-				namespaceKeys: [repoMetaKey],
-				cacheMode: "split",
 				fetcher: async () => {
 					const response =
 						await executeGitHubGraphQL<GitHubGraphQLViewerPermissionResponse>(
@@ -1445,15 +1198,11 @@ export const getRepoViewerPermission = createServerFn({ method: "GET" })
 						);
 					const permission = response.repository?.viewerPermission ?? null;
 					return {
-						kind: "success",
-						data: {
-							permission,
-							canPush:
-								permission === "ADMIN" ||
-								permission === "MAINTAIN" ||
-								permission === "WRITE",
-						},
-						metadata: createGitHubResponseMetadata(200, {}),
+						permission,
+						canPush:
+							permission === "ADMIN" ||
+							permission === "MAINTAIN" ||
+							permission === "WRITE",
 					};
 				},
 			});

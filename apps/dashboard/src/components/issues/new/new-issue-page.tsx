@@ -28,6 +28,10 @@ import {
 	githubRepoTemplateQueryOptions,
 } from "#/lib/github.query";
 import type { GitHubLabel, RepoCollaborator } from "#/lib/github.types";
+import {
+	invalidateGitHubEntities,
+	issueEntityKey,
+} from "#/lib/github-query-updates";
 
 const routeApi = getRouteApi("/_protected/$owner/$repo/issues/new");
 
@@ -140,19 +144,12 @@ function NewIssueForm({
 			});
 
 			if (result.ok) {
-				await queryClient.invalidateQueries({
-					predicate: (query) => {
-						const key = query.queryKey;
-						return (
-							Array.isArray(key) &&
-							key.some(
-								(k) =>
-									typeof k === "string" &&
-									(k.includes("issues") || k.includes("repoMeta")),
-							)
-						);
-					},
-				});
+				await invalidateGitHubEntities(
+					queryClient,
+					scope,
+					[issueEntityKey({ owner, repo, issueNumber: result.issueNumber })],
+					"created",
+				);
 				router.navigate({
 					to: "/$owner/$repo/issues/$issueId",
 					params: { owner, repo, issueId: String(result.issueNumber) },

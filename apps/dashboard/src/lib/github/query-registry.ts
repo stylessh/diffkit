@@ -6,10 +6,6 @@ import {
 } from "../github-change-entities";
 import type { GitHubQueryScope } from "./query-keys";
 
-// ---------------------------------------------------------------------------
-// Entity → query registry (change feed and mutations)
-// ---------------------------------------------------------------------------
-
 /**
  * Which change-feed entity kinds affect each `githubQueryKeys` group. Every
  * group must be listed (enforced by github.query.test.ts); `"exempt"` groups
@@ -65,7 +61,7 @@ export const githubQueryEntityCoverage: Record<
 	"issues.page": ["issue"],
 	"issues.detail": ["issue"],
 	"issues.comments": ["issue"],
-	"notifications.list": ["notifications"],
+	"notifications.list": ["pull", "issue"],
 	"actions.runsList": ["run"],
 	"actions.workflowRun": ["run"],
 	"actions.workflowRunJobs": ["run"],
@@ -78,7 +74,7 @@ export const githubQueryEntityCoverage: Record<
 	"releases.list": ["release"],
 	"releases.detail": ["release"],
 	"releases.viewerPermission": "exempt",
-	"refs.names": ["repo"],
+	"refs.names": ["repo", "release"],
 	"refs.branches": ["repo"],
 	"refs.tags": ["repo", "release"],
 	"refs.comparison": ["repo"],
@@ -89,8 +85,9 @@ export const githubQueryEntityCoverage: Record<
 /**
  * User-wide aggregates whose payload lists items across many repos. A pull or
  * issue change only refetches them when the changed item is already in the
- * cached payload; new items arrive on focus / staleTime instead of turning
- * every PR event in an org into a GitHub search request.
+ * cached payload, so one PR event in a busy org doesn't become a GitHub search
+ * per member. The exception is an item the viewer just created
+ * (`change: "created"`), which no cached payload can contain yet.
  */
 const AGGREGATE_PATHS = new Set([
 	"pulls.mine",
@@ -100,6 +97,7 @@ const AGGREGATE_PATHS = new Set([
 	"reviewDrafts.mine",
 	"repos.list",
 	"repos.hub",
+	"notifications.list",
 ]);
 
 /** `githubQueryKeys` path of a query key, e.g. `pulls.page` or `viewer`. */
@@ -159,7 +157,6 @@ function* itemsOf(data: unknown): Generator<Record<string, unknown>> {
 			}
 		}
 	}
-	// Infinite queries
 	if (data && typeof data === "object" && "pages" in data) {
 		const pages = (data as { pages?: unknown }).pages;
 		if (Array.isArray(pages)) {
@@ -170,7 +167,7 @@ function* itemsOf(data: unknown): Generator<Record<string, unknown>> {
 
 function itemRepo(item: Record<string, unknown>): string | null {
 	const repository = item.repository as
-		| { owner?: unknown; name?: unknown }
+		| { owner?: unknown; name?: unknown; fullName?: unknown }
 		| undefined;
 	if (
 		repository &&
@@ -179,16 +176,29 @@ function itemRepo(item: Record<string, unknown>): string | null {
 	) {
 		return normalizeRepoFullName(repository.owner, repository.name);
 	}
+	if (typeof repository?.fullName === "string") {
+		return repository.fullName.toLowerCase();
+	}
 	if (typeof item.fullName === "string") return item.fullName.toLowerCase();
 	return null;
 }
 
+const SUBJECT_NUMBER = /\/(?:pulls|issues)\/(\d+)$/;
+
+/** Notifications only carry the item number inside their API subject URL. */
+function itemNumber(item: Record<string, unknown>): number | null {
+	if (typeof item.number === "number") return item.number;
+	const subject = item.subject as { url?: unknown } | undefined;
+	const match =
+		typeof subject?.url === "string" ? SUBJECT_NUMBER.exec(subject.url) : null;
+	return match ? Number(match[1]) : null;
+}
+
 function aggregateContains(data: unknown, entity: GitHubChangeEntity) {
-	if (entity.kind === "notifications") return false;
 	for (const item of itemsOf(data)) {
 		if (itemRepo(item) !== entity.repo) continue;
 		if (entity.kind === "pull" || entity.kind === "issue") {
-			if (item.number === entity.number) return true;
+			if (itemNumber(item) === entity.number) return true;
 		} else {
 			return true;
 		}
@@ -200,10 +210,13 @@ function aggregateContains(data: unknown, entity: GitHubChangeEntity) {
  * Whether a cached query is affected by a change-feed entity. `data` is the
  * query's cached payload, used for user-wide aggregates.
  */
+export type GitHubEntityChange = "updated" | "created";
+
 export function githubQueryMatchesEntity(
 	queryKey: readonly unknown[],
 	entity: GitHubChangeEntity,
 	data?: unknown,
+	change: GitHubEntityChange = "updated",
 ): boolean {
 	const path = githubQueryPath(queryKey);
 	if (!path) return false;
@@ -211,11 +224,10 @@ export function githubQueryMatchesEntity(
 	if (!kinds || kinds === "exempt" || !kinds.includes(entity.kind)) {
 		return false;
 	}
-	if (entity.kind === "notifications") return true;
 
 	const repo = githubQueryRepo(queryKey);
 	if (AGGREGATE_PATHS.has(path) && (repo === null || repo === entity.repo)) {
-		return aggregateContains(data, entity);
+		return change === "created" || aggregateContains(data, entity);
 	}
 	if (repo !== entity.repo) return false;
 
@@ -243,12 +255,6 @@ export function githubQueryMatchesEntity(
 	}
 }
 
-/**
- * Query filters for every query of `scope` that an entity key affects. Used
- * by the change feed and by mutations:
- * `queryClient.invalidateQueries(queryFiltersForEntity(key, scope))` marks
- * them all stale and refetches the active ones.
- */
 export function queryFiltersForEntity(
 	entity: GitHubChangeEntity | string,
 	scope: GitHubQueryScope,

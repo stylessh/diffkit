@@ -608,7 +608,9 @@ export function IssueDetailActivitySection({
 					issueNumber={issueNumber}
 					scope={scope}
 					involvedUsers={getInvolvedUsers(issueAuthor, comments)}
-					issueState={issueState}
+					stateToggle={
+						issueState ? { kind: "issue", state: issueState } : undefined
+					}
 				/>
 			</div>
 		</div>
