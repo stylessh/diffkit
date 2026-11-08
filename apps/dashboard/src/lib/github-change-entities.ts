@@ -68,9 +68,11 @@ export function parseEntityKey(key: string): GitHubChangeEntity | null {
 		const value = Number(raw);
 		if (!Number.isSafeInteger(value)) return null;
 		const normalized = repo.toLowerCase();
-		return kind === "run"
-			? { kind: "run", repo: normalized, runId: value }
-			: { kind: kind as "pull" | "issue", repo: normalized, number: value };
+		if (kind === "run") return { kind, repo: normalized, runId: value };
+		if (kind === "pull" || kind === "issue") {
+			return { kind, repo: normalized, number: value };
+		}
+		return null;
 	}
 	const checks = CHECKS.exec(key);
 	if (checks) {
@@ -82,15 +84,17 @@ export function parseEntityKey(key: string): GitHubChangeEntity | null {
 	}
 	const repoOnly = REPO_ONLY.exec(key);
 	if (repoOnly) {
-		return {
-			kind: repoOnly[1] as
-				| "repo"
-				| "release"
-				| "labels"
-				| "collaborators"
-				| "discussions",
-			repo: repoOnly[2].toLowerCase(),
-		};
+		const [, kind, repo] = repoOnly;
+		switch (kind) {
+			case "repo":
+			case "release":
+			case "labels":
+			case "collaborators":
+			case "discussions":
+				return { kind, repo: repo.toLowerCase() };
+			default:
+				return null;
+		}
 	}
 	return null;
 }
@@ -144,11 +148,10 @@ export function getWebhookRepository(
 
 function pullNumbersFrom(list: unknown): number[] {
 	if (!Array.isArray(list)) return [];
-	return list.flatMap((pull) =>
-		isRecord(pull) && getNumber(pull.number) !== null
-			? [pull.number as number]
-			: [],
-	);
+	return list.flatMap((pull: unknown) => {
+		const number = isRecord(pull) ? getNumber(pull.number) : null;
+		return number === null ? [] : [number];
+	});
 }
 
 /**
@@ -207,9 +210,8 @@ export function getWebhookChangeEntities(
 
 		case "check_run":
 		case "check_suite": {
-			const container = isRecord(payload[event])
-				? (payload[event] as JsonRecord)
-				: null;
+			const value = payload[event];
+			const container = isRecord(value) ? value : null;
 			const sha = container ? getSha(container.head_sha) : null;
 			const pulls = container ? pullNumbersFrom(container.pull_requests) : [];
 			return [
