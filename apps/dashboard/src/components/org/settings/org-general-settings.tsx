@@ -47,7 +47,7 @@ const TEXT_FIELDS: { field: TextField; label: string; placeholder: string }[] =
 		},
 		{ field: "email", label: "Public email", placeholder: "hello@example.com" },
 		{ field: "blog", label: "Website", placeholder: "https://" },
-		{ field: "location", label: "Location", placeholder: "Berlin" },
+		{ field: "location", label: "Location", placeholder: "City, country" },
 	];
 
 export function OrgGeneralSettings({
