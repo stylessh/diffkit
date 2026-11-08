@@ -40,8 +40,10 @@ test("a new issue is created in the repository and shows up in nova's authored q
 
 	await page.getByRole("link", { name: /^Issues \d+$/ }).click();
 	await expect(
-		page
-			.getByRole("link", { name: /Reconnect jitter ignores maxDelay/ })
-			.first(),
+		page.getByRole("link", {
+			name: new RegExp(
+				`Reconnect jitter ignores maxDelay lumen-labs/beacon #${number} · nova`,
+			),
+		}),
 	).toBeVisible();
 });

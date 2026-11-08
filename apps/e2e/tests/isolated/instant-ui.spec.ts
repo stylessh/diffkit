@@ -85,7 +85,9 @@ test("a pull request seen before paints from IndexedDB without a skeleton while 
 	await page.evaluate(() => {
 		(window as unknown as { skeletonShown: boolean }).skeletonShown = false;
 	});
-	await page.getByRole("link", { name: /Stack 3\/3: Experimental/ }).click();
+	await page
+		.getByRole("link", { name: /lumen-labs\/beacon #20 · nova/ })
+		.click();
 	await expect(description(page)).toBeVisible({ timeout: 300 });
 	expect(
 		await page.evaluate(
