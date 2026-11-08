@@ -789,6 +789,17 @@ export function registerRestShims(context: ShimContext) {
 			return requiresAuth(c);
 		}
 		const body = await readJson(c);
+		const comments = (
+			Array.isArray(body.comments) ? body.comments : []
+		) as Array<Record<string, unknown>>;
+		// Validate everything before writing so a 422 leaves no stray review.
+		if (
+			comments.some(
+				(raw) => typeof raw?.path !== "string" || typeof raw?.body !== "string",
+			)
+		) {
+			return c.json({ message: "Validation Failed" }, 422);
+		}
 		const event = body.event;
 		const state =
 			event === "APPROVE"
@@ -816,11 +827,7 @@ export function registerRestShims(context: ShimContext) {
 				.replace(/=+$/u, ""),
 		});
 
-		const comments = Array.isArray(body.comments) ? body.comments : [];
-		for (const raw of comments as Array<Record<string, unknown>>) {
-			if (typeof raw.path !== "string" || typeof raw.body !== "string") {
-				return c.json({ message: "Validation Failed" }, 422);
-			}
+		for (const raw of comments) {
 			const line = typeof raw.line === "number" ? raw.line : null;
 			const position = typeof raw.position === "number" ? raw.position : null;
 			const comment = gh.comments.insert({

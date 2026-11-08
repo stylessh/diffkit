@@ -313,38 +313,47 @@ export async function createDiffkitEmulator(
 
 	let saving: Promise<void> | null = null;
 	let dirty = false;
-	const save = async () => {
-		if (!persistence) {
-			return;
-		}
-		if (saving) {
-			dirty = true;
-			return saving;
-		}
+	const writeSnapshot = () => {
 		const state: PersistedState = {
 			version: PERSISTENCE_VERSION,
 			seedFingerprint: fingerprint,
 			store: store.snapshot(),
 			tokens: serializeTokenMap(tokenMap),
 		};
-		saving = persistence.save(JSON.stringify(state)).finally(() => {
-			saving = null;
-			if (dirty) {
-				dirty = false;
-				void save();
-			}
-		});
+		return persistence?.save(JSON.stringify(state));
+	};
+	/** Resolves once every change made before the call is on disk. */
+	const save = async (): Promise<void> => {
+		// A half-seeded store must never look like a complete workspace.
+		if (!persistence || store.getData("diffkit.seeding")) {
+			return;
+		}
+		dirty = true;
+		if (!saving) {
+			saving = (async () => {
+				try {
+					while (dirty) {
+						dirty = false;
+						await writeSnapshot();
+					}
+				} finally {
+					saving = null;
+				}
+			})();
+		}
 		return saving;
 	};
 
 	let saveTimer: ReturnType<typeof setTimeout> | null = null;
 	const scheduleSave = () => {
-		if (!persistence || saveTimer) {
+		if (!persistence || saveTimer || store.getData("diffkit.seeding")) {
 			return;
 		}
 		saveTimer = setTimeout(() => {
 			saveTimer = null;
-			void save();
+			save().catch((error) => {
+				console.warn("[emulator] could not persist state", error);
+			});
 		}, 500);
 	};
 

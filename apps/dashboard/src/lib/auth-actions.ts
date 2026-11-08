@@ -25,10 +25,15 @@ export const signInWithGitHub = createClientOnlyFn(
 					callbackURL: buildGitHubAppAuthorizePath(callbackURL),
 				}),
 			});
-			const { url } = (await response.json()) as { url?: string };
-			if (url) {
-				window.location.href = url;
+			const { url } = (await response.json().catch(() => ({}))) as {
+				url?: string;
+			};
+			if (!response.ok || !url) {
+				throw new Error(
+					"Demo sign-in failed: is the GitHub emulator running (pnpm dev:demo)?",
+				);
 			}
+			window.location.href = url;
 			return;
 		}
 		const { signIn } = await import("./auth.client");
