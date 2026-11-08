@@ -157,7 +157,7 @@ export function ReviewDraftsPage({ userId }: { userId: string }) {
 					if (!open) setDraftToDelete(null);
 				}}
 			>
-				<AlertDialogContent>
+				<AlertDialogContent className="p-6">
 					<AlertDialogHeader>
 						<AlertDialogTitle>Delete pending review?</AlertDialogTitle>
 						<AlertDialogDescription>
@@ -226,7 +226,7 @@ function ReviewDraftGroup({
 				>
 					<StateIcon size={16} strokeWidth={2} />
 				</div>
-				<div className="flex min-w-0 flex-1 flex-col gap-1">
+				<div className="flex min-w-0 flex-1 basis-48 flex-col gap-1">
 					<Link
 						to="/$owner/$repo/pull/$pullId"
 						params={{ owner: draft.owner, repo: draft.repo, pullId }}
@@ -254,7 +254,7 @@ function ReviewDraftGroup({
 						<span>Edited {formatRelativeTime(review.updatedAt)}</span>
 					</p>
 				</div>
-				<div className="flex shrink-0 items-center gap-2">
+				<div className="flex shrink-0 items-center gap-2 pl-7 sm:pl-0">
 					<Button variant="ghost" size="xs" asChild>
 						<Link
 							to="/$owner/$repo/review/$pullId"
@@ -350,8 +350,8 @@ function DraftCommentRow({
 			className="flex flex-col gap-1 px-4 py-2.5 transition-colors hover:bg-surface-1"
 		>
 			<span className="flex min-w-0 items-center gap-2 text-xs">
-				<span className="min-w-0 truncate font-mono text-foreground" dir="rtl">
-					<bdi>{comment.path}</bdi>
+				<span className="min-w-0 truncate font-mono text-foreground">
+					{comment.path}
 				</span>
 				<span className="shrink-0 rounded-md border bg-surface-1 px-1.5 py-px font-mono text-[11px] tabular-nums text-muted-foreground">
 					{location}

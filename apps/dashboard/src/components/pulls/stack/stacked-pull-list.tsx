@@ -86,7 +86,10 @@ export function StackedPullList({
 							>
 								<p className="flex items-center gap-1.5 px-3 pb-0.5 pt-1.5 text-xs font-medium text-muted-foreground">
 									<GitBranchIcon size={12} strokeWidth={2} />
-									Stack · <span className="tabular-nums">{item.size}</span> PRs
+									<span>
+										Stack · <span className="tabular-nums">{item.size}</span>{" "}
+										PRs
+									</span>
 								</p>
 								{item.entries.map(({ pull, depth }) => (
 									<div
