@@ -1,5 +1,3 @@
-import type { Tab } from "./tab-store";
-
 export const githubRevalidationSignalKeys = {
 	pullsMine: "pulls.mine",
 	issuesMine: "issues.mine",
@@ -434,45 +432,4 @@ export function getGitHubWebhookRevalidationSignalKeys(
 	}
 
 	return [];
-}
-
-export function getGitHubRevalidationSignalKeysForTab(tab: Tab) {
-	const [owner, repo] = tab.repo.split("/");
-
-	if (tab.type === "repo") {
-		return [
-			githubRevalidationSignalKeys.repoCode({
-				owner,
-				repo,
-			}),
-		];
-	}
-
-	if (tab.type === "actions") {
-		// `tab.number` is the human-readable run number (e.g. #42), not the API
-		// run_id, so we can't subscribe to a specific run/job entity here. The
-		// repo-wide actions signal covers the list view; per-entity refresh
-		// happens via useGitHubSignalStream calls in the page components.
-		return [githubRevalidationSignalKeys.actionsRepo({ owner, repo })];
-	}
-
-	if (tab.number == null) return [];
-
-	if (tab.type === "pull" || tab.type === "review") {
-		return [
-			githubRevalidationSignalKeys.pullEntity({
-				owner,
-				repo,
-				pullNumber: tab.number,
-			}),
-		];
-	}
-
-	return [
-		githubRevalidationSignalKeys.issueEntity({
-			owner,
-			repo,
-			issueNumber: tab.number,
-		}),
-	];
 }

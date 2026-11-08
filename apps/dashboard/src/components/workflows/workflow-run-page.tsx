@@ -12,15 +12,13 @@ import {
 	StaggerItem,
 } from "#/components/details/detail-page";
 import {
-	githubQueryKeys,
 	githubViewerQueryOptions,
 	githubWorkflowDefinitionQueryOptions,
 	githubWorkflowRunArtifactsQueryOptions,
 	githubWorkflowRunJobsQueryOptions,
 	githubWorkflowRunQueryOptions,
 } from "#/lib/github.query";
-import { githubRevalidationSignalKeys } from "#/lib/github-revalidation";
-import { useGitHubSignalStream } from "#/lib/use-github-signal-stream";
+import { adaptiveRefetchInterval } from "#/lib/github-refetch-policy";
 import { useHasMounted } from "#/lib/use-has-mounted";
 import { useRegisterTab } from "#/lib/use-register-tab";
 import { WorkflowRunArtifacts } from "./workflow-run-artifacts";
@@ -44,25 +42,6 @@ export function WorkflowRunPage() {
 	);
 	const hasMounted = useHasMounted();
 
-	const webhookRefreshTargets = useMemo(() => {
-		const runSignals = [githubRevalidationSignalKeys.workflowRunEntity(input)];
-		return [
-			{
-				queryKey: githubQueryKeys.actions.workflowRun(scope, input),
-				signalKeys: runSignals,
-			},
-			{
-				queryKey: githubQueryKeys.actions.workflowRunJobs(scope, input),
-				signalKeys: runSignals,
-			},
-			{
-				queryKey: githubQueryKeys.actions.workflowRunArtifacts(scope, input),
-				signalKeys: runSignals,
-			},
-		];
-	}, [scope, input]);
-	useGitHubSignalStream(webhookRefreshTargets);
-
 	const runQuery = useQuery({
 		...githubWorkflowRunQueryOptions(scope, input),
 		enabled: hasMounted,
@@ -71,9 +50,17 @@ export function WorkflowRunPage() {
 		...githubWorkflowRunJobsQueryOptions(scope, input),
 		enabled: hasMounted,
 	});
+	const isRunCompleted = runQuery.data?.status === "completed";
 	const artifactsQuery = useQuery({
 		...githubWorkflowRunArtifactsQueryOptions(scope, input),
 		enabled: hasMounted,
+		// Artifacts carry no status of their own; follow the run. They settle
+		// once the run completes, so stop polling after the terminal window.
+		refetchInterval: adaptiveRefetchInterval(() => ({
+			isActive: false,
+			isTerminal: isRunCompleted,
+		})),
+		refetchIntervalInBackground: false,
 	});
 	useQuery({
 		...githubViewerQueryOptions(scope),

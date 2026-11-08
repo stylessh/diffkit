@@ -14,11 +14,22 @@ The system is designed for three goals:
 ### Browser cache
 
 The browser keeps the fastest cache layer through React Query and persisted
-query state. This layer is responsible for fast route transitions, reloads, and
-recently visited views.
+query state (`apps/dashboard/src/lib/query-client.tsx`, localStorage). This
+layer is responsible for fast route transitions, reloads, and recently visited
+views. Persisted queries keep their original `dataUpdatedAt`, so anything older
+than its `staleTime` renders instantly from storage and refetches in the
+background on mount.
 
 Browser cache is not the source of truth for invalidation. Server-side
-revalidation signals decide whether cached GitHub data must be refreshed.
+revalidation signals decide whether cached GitHub data must be refreshed; the
+browser only decides how often to ask (see [Client Refresh](#client-refresh)).
+
+### Polling policy
+
+`apps/dashboard/src/lib/github-refetch-policy.ts` defines the client poll
+tiers and the adaptive interval used for PR status and workflow pages. The
+`github*QueryOptions` factories in `apps/dashboard/src/lib/github.query.ts`
+spread these into their options so every consumer polls consistently.
 
 ### D1 control plane
 
@@ -278,21 +289,52 @@ repositories change.
 
 ## Client Refresh
 
-The browser does not poll GitHub revalidation signals and does not sweep open
-tabs to preload or refetch their routes. Webhook handlers and mutation handlers
-update the durable server-side invalidation state; subsequent navigation,
-explicit hover/focus prefetch, or normal query reads observe that state through
-the server cache.
+Freshness is two independent pieces:
 
-PR detail, issue detail, and PR review routes also run a one-shot client signal
-check after their page query has data. This preserves the fast path where cached
-React Query data renders immediately, then asks the server for the relevant D1
-webhook signal timestamp once. If that signal is newer than the active query's
-cached data, only that active query is invalidated and refetched.
+1. **Webhook-busted server cache.** Webhooks and mutations call
+   `markGitHubRevalidationSignals()` (and the `bust*Caches` helpers). The next
+   `getOrRevalidateGitHubResource()` read whose `signalKeys` include an updated
+   signal sees `signal.updatedAt > entry.fetchedAt`, skips the still-fresh
+   entry and fetches from GitHub synchronously, returning the new payload in
+   the same response. Split-cache reads additionally miss KV because the
+   namespace version moved.
+2. **React Query polling.** Mounted queries refetch on a fixed or adaptive
+   interval while the tab is visible (`refetchIntervalInBackground: false`),
+   plus on window focus and reconnect when stale. A poll that lands on a fresh,
+   unsignalled entry is cheap: one D1 signal lookup and a KV/D1 read, no GitHub
+   call.
 
-```text
-apps/dashboard/src/lib/use-github-signal-refresh.ts
-```
+Because the server never returns a stale payload after a signal, any poll
+after a webhook observes the change. There is no push channel, no client-side
+signal bookkeeping, and nothing to reconnect.
+
+| Tier | Queries | Interval |
+| --- | --- | --- |
+| `list` | repo PR/issue lists, notifications, workflow run lists, repo overview, recent-push banner | 30s |
+| `mine` | My pulls / My issues (also backs Reviews and the overview page) | 30s |
+| `detail` | PR / issue page data and detail | 20s |
+| `activity` | PR review comments, review thread statuses | 20s |
+| adaptive | PR status (merge box), workflow run, workflow run jobs, run artifacts | 5s while any check/job is queued or in progress, 30s otherwise, stops when terminal (completed run, closed PR with no running checks) and unchanged for 10 minutes |
+
+Workflow job logs keep their own 4s interval while the job is live. Large
+paginated diff queries on the review page do not poll; the review page
+invalidates them when the polled PR page data reports a new head SHA.
+
+Each tier's `githubCachePolicy.*.staleTimeMs` is less than or equal to its poll
+interval (asserted in `github-refetch-policy.test.ts`), so focus refetches and
+polling agree on what "stale" means. Server freshness windows (`freshForMs`)
+use the same policy values and only bound how long an unsignalled entry is
+reused.
+
+Explicit escape hatches:
+
+- The command palette "Refresh data" action calls `clearViewerGitHubCache` and
+  refetches every GitHub query
+  (`apps/dashboard/src/lib/command-palette/use-refresh-github-data.ts`).
+- `useRefreshOnReturn` refreshes installation access after the user returns
+  from GitHub's app settings. It is only enabled on the setup route and while
+  the GitHub access dialog is open, so it does not duplicate the normal focus
+  refetch.
 
 Tab prefetching is intentionally user-driven. Detail tabs call route preload on
 hover, focus, or touch start only:
@@ -300,9 +342,6 @@ hover, focus, or touch start only:
 ```text
 apps/dashboard/src/components/layouts/dashboard-tabs.tsx
 ```
-
-This keeps cached tab switches fast without turning every open tab into a
-background GitHub refresh source.
 
 ## Operational Requirements
 
@@ -340,6 +379,10 @@ The focused tests cover:
 - stale serving when GitHub is rate limited.
 - Octokit throttling and safe-method retry policy.
 - GitHub App installation token reuse and webhook invalidation.
+- a marked revalidation signal making the next read bypass a still-fresh entry
+  (legacy and split modes), against a real SQLite-backed D1 shim.
+- the adaptive refetch policy and the staleTime <= poll interval invariant.
+- persisted browser cache restoring stale entries and refetching them.
 
 Relevant test files:
 
@@ -347,6 +390,8 @@ Relevant test files:
 apps/dashboard/src/lib/github-cache.test.ts
 apps/dashboard/src/lib/github-cache-invalidation.test.ts
 apps/dashboard/src/lib/github.server.test.ts
+apps/dashboard/src/lib/github-refetch-policy.test.ts
+apps/dashboard/src/lib/query-client.test.ts
 ```
 
 ## Known Limitations
@@ -358,9 +403,15 @@ apps/dashboard/src/lib/github.server.test.ts
   prevents most cross-isolate remints after the first token is stored.
 - Repository tree listings intentionally avoid per-entry commit lookups because
   that pattern can turn one directory view into dozens of GitHub API calls.
-- Realtime client updates are not pushed to the browser yet. Detail routes do a
-  one-shot signal check on entry, but users who keep a page open indefinitely do
-  not receive webhook updates until another read is triggered.
+- Updates are pull-based: a webhook becomes visible on the next poll, so the
+  worst-case delay is the tier interval (5s for running checks/jobs, 20-30s
+  elsewhere). Hidden tabs do not poll and catch up on focus.
+- Every poll is a server function call (session lookup plus a D1 signal read)
+  even when nothing changed. Adaptive tiers stop for terminal entities, but
+  list and detail tiers keep polling while visible.
+- While checks are running, PR status polls every 5s and its server freshness
+  window is also 5s, so most of those polls reach GitHub. Low-quota adaptive
+  freshness in `getOrRevalidateGitHubResource` is the backstop.
 - KV is not the source of truth for invalidation.
 
 ## Future Work
@@ -372,5 +423,8 @@ Likely next steps:
 - Add cross-request coalescing for hot GitHub reads.
 - Add metrics for KV hit rate, D1 fallback rate, stale-if-rate-limited events,
   and GitHub quota pressure.
-- Add push-based client notifications if live updates are needed without
-  reintroducing browser polling.
+- Return a cheap "unchanged" response (for example an ETag on the server
+  function) so idle polls skip payload transfer and deserialization.
+- If sub-second updates are ever needed, add push on top of this model as a
+  pure hint to refetch (never as the only delivery path), using hibernatable
+  per-user Durable Object WebSockets rather than one global relay.

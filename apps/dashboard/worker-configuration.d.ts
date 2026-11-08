@@ -4,7 +4,6 @@
 declare namespace Cloudflare {
 	interface GlobalProps {
 		mainModule: typeof import("./src/entry-worker");
-		durableNamespaces: "SignalRelay";
 	}
 	interface Env {
 		GITHUB_CACHE_KV: KVNamespace;
@@ -22,7 +21,6 @@ declare namespace Cloudflare {
 		BETTER_AUTH_URL: string;
 		R2_PUBLIC_BASE_URL: string;
 		DEV_TUNNEL_URL: string;
-		SIGNAL_RELAY: DurableObjectNamespace<import("./src/entry-worker").SignalRelay>;
 	}
 }
 interface Env extends Cloudflare.Env {}

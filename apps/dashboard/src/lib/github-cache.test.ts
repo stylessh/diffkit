@@ -1,4 +1,5 @@
-import { describe, expect, it, vi } from "vitest";
+import { DatabaseSync } from "node:sqlite";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
 	createGitHubResponseMetadata,
 	type GitHubCacheStore,
@@ -6,6 +7,7 @@ import {
 	type GitHubFetchResult,
 	type GitHubPayloadCacheStore,
 	getOrRevalidateGitHubResource,
+	markGitHubRevalidationSignals,
 } from "./github-cache";
 
 vi.mock("@tanstack/react-start/server", () => ({
@@ -13,6 +15,63 @@ vi.mock("@tanstack/react-start/server", () => ({
 		throw new Error("Not in request context");
 	},
 }));
+
+/**
+ * Minimal D1 binding backed by node:sqlite so the real drizzle queries behind
+ * `markGitHubRevalidationSignals` and the signal / namespace lookups run
+ * against an actual SQLite database.
+ */
+function createSqliteD1() {
+	const sqlite = new DatabaseSync(":memory:");
+	sqlite.exec(`
+		CREATE TABLE github_revalidation_signal (
+			signal_key TEXT PRIMARY KEY,
+			updated_at INTEGER NOT NULL
+		);
+		CREATE TABLE github_cache_namespace (
+			namespace_key TEXT PRIMARY KEY,
+			version INTEGER NOT NULL,
+			updated_at INTEGER NOT NULL
+		);
+	`);
+
+	type SqlValue = string | number | null;
+	const createStatement = (query: string, params: SqlValue[] = []) => ({
+		bind: (...values: SqlValue[]) => createStatement(query, values),
+		async all() {
+			const results = sqlite.prepare(query).all(...params);
+			return { results, success: true, meta: {} };
+		},
+		async raw() {
+			return sqlite
+				.prepare(query)
+				.all(...params)
+				.map((row) => Object.values(row));
+		},
+		async run() {
+			const result = sqlite.prepare(query).run(...params);
+			return {
+				results: [],
+				success: true,
+				meta: { changes: Number(result.changes) },
+			};
+		},
+		async first() {
+			return sqlite.prepare(query).get(...params) ?? null;
+		},
+	});
+
+	return {
+		prepare: (query: string) => createStatement(query),
+		async batch(statements: Array<{ all(): Promise<unknown> }>) {
+			return Promise.all(statements.map((statement) => statement.all()));
+		},
+	};
+}
+
+const workerEnv = vi.hoisted(() => ({ DB: null as unknown }));
+
+vi.mock("cloudflare:workers", () => ({ env: workerEnv }));
 
 function createMemoryStore(
 	initialEntries: GitHubCacheStoreEntry[] = [],
@@ -398,5 +457,119 @@ describe("getOrRevalidateGitHubResource", () => {
 		const updatedEntry = await store.get("user-1::viewer::null");
 		expect(updatedEntry?.freshUntil).toBe(60_500);
 		expect(updatedEntry?.statusCode).toBe(403);
+	});
+});
+
+describe("webhook revalidation signals", () => {
+	const pullSignalKey = "pull:stylessh/havana#42";
+	const params = { owner: "stylessh", repo: "havana", pullNumber: 42 };
+	// Cache keys use a key-sorted serialization of params.
+	const paramsJson = '{"owner":"stylessh","pullNumber":42,"repo":"havana"}';
+
+	beforeEach(() => {
+		workerEnv.DB = createSqliteD1();
+	});
+
+	function createTitleFetcher(title: string) {
+		return vi.fn<
+			(parameters: {
+				etag?: string | null;
+				lastModified?: string | null;
+			}) => Promise<GitHubFetchResult<{ title: string }>>
+		>(async () => ({
+			kind: "success",
+			data: { title },
+			metadata: createGitHubResponseMetadata(200, {}),
+		}));
+	}
+
+	it("bypasses a still-fresh legacy entry once its signal is marked", async () => {
+		const store = createMemoryStore([
+			buildEntry({
+				resource: "pulls.page",
+				cacheKey: `user-1::pulls.page::${paramsJson}`,
+				paramsJson,
+				payloadJson: JSON.stringify({ title: "Old title" }),
+				fetchedAt: 1_000,
+				freshUntil: 1_000_000,
+			}),
+		]);
+		const read = (fetcher: ReturnType<typeof createTitleFetcher>, at: number) =>
+			getOrRevalidateGitHubResource({
+				userId: "user-1",
+				resource: "pulls.page",
+				params,
+				freshForMs: 60_000,
+				signalKeys: [pullSignalKey],
+				store,
+				inFlightCache: new Map(),
+				now: () => at,
+				fetcher,
+			});
+
+		const beforeWebhook = createTitleFetcher("unused");
+		await expect(read(beforeWebhook, 2_000)).resolves.toEqual({
+			title: "Old title",
+		});
+		expect(beforeWebhook).not.toHaveBeenCalled();
+
+		await markGitHubRevalidationSignals([pullSignalKey], 3_000);
+
+		const afterWebhook = createTitleFetcher("New title");
+		await expect(read(afterWebhook, 4_000)).resolves.toEqual({
+			title: "New title",
+		});
+		expect(afterWebhook).toHaveBeenCalledTimes(1);
+
+		// The refreshed entry is newer than the signal, so it is fresh again.
+		const nextPoll = createTitleFetcher("unused");
+		await expect(read(nextPoll, 5_000)).resolves.toEqual({
+			title: "New title",
+		});
+		expect(nextPoll).not.toHaveBeenCalled();
+	});
+
+	it("bypasses a still-fresh split-cache entry once its signal is marked", async () => {
+		const store = createMemoryStore();
+		const payloadEntries = new Map<string, GitHubCacheStoreEntry>();
+		const payloadStore = {
+			async get(storageKey) {
+				return payloadEntries.get(storageKey) ?? null;
+			},
+			async put(storageKey, entry) {
+				payloadEntries.set(storageKey, structuredClone(entry));
+			},
+		} satisfies GitHubPayloadCacheStore;
+		const read = (fetcher: ReturnType<typeof createTitleFetcher>, at: number) =>
+			getOrRevalidateGitHubResource({
+				userId: "user-1",
+				resource: "pulls.page",
+				params,
+				freshForMs: 60_000,
+				signalKeys: [pullSignalKey],
+				namespaceKeys: [pullSignalKey],
+				cacheMode: "split",
+				store,
+				payloadStore,
+				inFlightCache: new Map(),
+				now: () => at,
+				fetcher,
+			});
+
+		const initial = createTitleFetcher("Old title");
+		await expect(read(initial, 1_000)).resolves.toEqual({ title: "Old title" });
+		expect(initial).toHaveBeenCalledTimes(1);
+
+		const cached = createTitleFetcher("unused");
+		await expect(read(cached, 2_000)).resolves.toEqual({ title: "Old title" });
+		expect(cached).not.toHaveBeenCalled();
+
+		await markGitHubRevalidationSignals([pullSignalKey], 3_000);
+
+		const afterWebhook = createTitleFetcher("New title");
+		await expect(read(afterWebhook, 4_000)).resolves.toEqual({
+			title: "New title",
+		});
+		expect(afterWebhook).toHaveBeenCalledTimes(1);
 	});
 });

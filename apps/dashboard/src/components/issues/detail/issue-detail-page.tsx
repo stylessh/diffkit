@@ -12,8 +12,6 @@ import {
 	githubQueryKeys,
 	githubViewerQueryOptions,
 } from "#/lib/github.query";
-import { githubRevalidationSignalKeys } from "#/lib/github-revalidation";
-import { useGitHubSignalStream } from "#/lib/use-github-signal-stream";
 import { useHasMounted } from "#/lib/use-has-mounted";
 import { usePageTitle } from "#/lib/use-page-title";
 import { useRegisterTab } from "#/lib/use-register-tab";
@@ -63,15 +61,6 @@ export function IssueDetailContent({
 		() => githubQueryKeys.issues.page(scope, input),
 		[scope, input],
 	);
-	const webhookRefreshTargets = useMemo(
-		() => [
-			{
-				queryKey: pageQueryKey,
-				signalKeys: [githubRevalidationSignalKeys.issueEntity(input)],
-			},
-		],
-		[pageQueryKey, input],
-	);
 
 	const pageQuery = useQuery({
 		...githubIssuePageQueryOptions(scope, input),
@@ -81,7 +70,6 @@ export function IssueDetailContent({
 		...githubViewerQueryOptions(scope),
 		enabled: hasMounted,
 	});
-	useGitHubSignalStream(webhookRefreshTargets);
 
 	const issue = pageQuery.data?.detail;
 	const viewerLogin = viewerQuery.data?.login;

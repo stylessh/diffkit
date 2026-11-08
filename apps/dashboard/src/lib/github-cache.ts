@@ -52,16 +52,6 @@ export type GitHubFetchResult<TData> =
 			metadata: GitHubResponseMetadata;
 	  };
 
-export type GitHubLocalFirstMeta = {
-	cacheStatus: "fresh" | "stale" | "miss";
-	fetchedAt: number | null;
-	isRevalidating: boolean;
-};
-
-export type BackgroundExecutionContext = {
-	waitUntil(promise: Promise<unknown>): void;
-};
-
 type GetOrRevalidateGitHubResourceOptions<TData> = {
 	userId: string;
 	resource: string;
@@ -629,29 +619,6 @@ export async function markGitHubWebhookEventFailed(
 		.where(eq(githubWebhookEvent.deliveryId, deliveryId));
 }
 
-export async function getGitHubRevalidationSignals(signalKeys: string[]) {
-	if (signalKeys.length === 0) {
-		return [];
-	}
-
-	const uniqueSignalKeys = Array.from(new Set(signalKeys));
-	const [{ inArray }, { getDb }, { githubRevalidationSignal }] =
-		await Promise.all([
-			import("drizzle-orm"),
-			import("../db"),
-			import("../db/schema"),
-		]);
-	const db = getDb();
-
-	return db
-		.select({
-			signalKey: githubRevalidationSignal.signalKey,
-			updatedAt: githubRevalidationSignal.updatedAt,
-		})
-		.from(githubRevalidationSignal)
-		.where(inArray(githubRevalidationSignal.signalKey, uniqueSignalKeys));
-}
-
 export async function bustGitHubCache(
 	userId: string,
 	resource: string,
@@ -852,111 +819,6 @@ async function resolveGitHubCacheEntry({
 		payloadStorageKey,
 		resolvedPayloadStore,
 		isSignalNewerThanCache,
-	};
-}
-
-export async function getGitHubResourceLocalFirst<TData>({
-	executionContext,
-	onBackgroundRefreshSettled,
-	...options
-}: GetOrRevalidateGitHubResourceOptions<TData> & {
-	executionContext?: BackgroundExecutionContext | null;
-	onBackgroundRefreshSettled?: () => Promise<void> | void;
-}): Promise<{ data: TData; meta: GitHubLocalFirstMeta }> {
-	const {
-		userId,
-		resource,
-		params,
-		signalKeys = [],
-		namespaceKeys = [],
-		cacheMode = "legacy",
-		payloadRetentionSeconds = DEFAULT_GITHUB_PAYLOAD_RETENTION_SECONDS,
-		now = Date.now,
-		store,
-		payloadStore,
-		getLatestSignalUpdatedAt = getLatestGitHubRevalidationSignalUpdatedAt,
-		getNamespaceVersions = getGitHubCacheNamespaceVersions,
-	} = options;
-	const resolved = await resolveGitHubCacheEntry({
-		userId,
-		resource,
-		params,
-		signalKeys,
-		namespaceKeys,
-		cacheMode,
-		payloadRetentionSeconds,
-		store,
-		payloadStore,
-		getLatestSignalUpdatedAt,
-		getNamespaceVersions,
-		now,
-	});
-
-	if (
-		resolved.existingEntry &&
-		resolved.existingEntry.freshUntil > resolved.currentTime &&
-		!resolved.isSignalNewerThanCache
-	) {
-		return {
-			data: parseCachedPayload<TData>(resolved.existingEntry.payloadJson),
-			meta: {
-				cacheStatus: "fresh",
-				fetchedAt: resolved.existingEntry.fetchedAt,
-				isRevalidating: false,
-			},
-		};
-	}
-
-	if (resolved.existingEntry) {
-		const previousFetchedAt = resolved.existingEntry.fetchedAt;
-		const refreshPromise = getOrRevalidateGitHubResource({
-			...options,
-			store: store ?? (await resolved.getResolvedStore()),
-			payloadStore: resolved.resolvedPayloadStore,
-			now,
-			getLatestSignalUpdatedAt,
-			getNamespaceVersions,
-		})
-			.then(async () => {
-				const nextEntry = await (await resolved.getResolvedStore()).get(
-					resolved.cacheKey,
-				);
-				if (
-					nextEntry &&
-					nextEntry.fetchedAt > previousFetchedAt &&
-					onBackgroundRefreshSettled
-				) {
-					await onBackgroundRefreshSettled();
-				}
-			})
-			.catch(() => {
-				// Best effort: stale cached payload already served to the caller.
-			});
-
-		if (executionContext?.waitUntil) {
-			executionContext.waitUntil(refreshPromise);
-		} else {
-			void refreshPromise;
-		}
-
-		return {
-			data: parseCachedPayload<TData>(resolved.existingEntry.payloadJson),
-			meta: {
-				cacheStatus: "stale",
-				fetchedAt: resolved.existingEntry.fetchedAt,
-				isRevalidating: true,
-			},
-		};
-	}
-
-	const data = await getOrRevalidateGitHubResource(options);
-	return {
-		data,
-		meta: {
-			cacheStatus: "miss",
-			fetchedAt: null,
-			isRevalidating: false,
-		},
 	};
 }
 

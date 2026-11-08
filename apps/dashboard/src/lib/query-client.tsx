@@ -219,6 +219,9 @@ function restorePersistedGitHubQueryCache(queryClient: QueryClient) {
 			return;
 		}
 
+		// `hydrate` keeps each query's persisted `dataUpdatedAt`, so restored
+		// entries older than their staleTime are stale and refetch in the
+		// background on mount while the cached payload renders instantly.
 		hydrate(queryClient, persistedState.clientState);
 		pruneNullGitHubQueries(queryClient);
 	} catch {
@@ -302,6 +305,12 @@ export function createAppQueryClient() {
 			queries: {
 				retry: 1,
 				networkMode: "online",
+				// Freshness comes from webhook-busted server caches plus polling
+				// (see github-refetch-policy.ts). Focus and reconnect refetch any
+				// query past its staleTime so returning to the tab catches up
+				// immediately instead of waiting for the next poll tick.
+				refetchOnWindowFocus: true,
+				refetchOnReconnect: true,
 			},
 		},
 	});

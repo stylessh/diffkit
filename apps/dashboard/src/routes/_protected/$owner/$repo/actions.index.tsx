@@ -21,16 +21,13 @@ import { Pagination } from "#/components/pagination";
 import { RepoActivityCards } from "#/components/repo/repo-activity-cards";
 import { WorkflowRunRow } from "#/components/workflows/workflow-run-row";
 import {
-	githubQueryKeys,
 	githubRepoBranchesQueryOptions,
 	githubRepoOverviewQueryOptions,
 	githubViewerQueryOptions,
 	githubWorkflowRunsFromRepoQueryOptions,
 } from "#/lib/github.query";
 import type { WorkflowRun } from "#/lib/github.types";
-import { githubRevalidationSignalKeys } from "#/lib/github-revalidation";
 import { buildSeo, formatPageTitle } from "#/lib/seo";
-import { useGitHubSignalStream } from "#/lib/use-github-signal-stream";
 import { useHasMounted } from "#/lib/use-has-mounted";
 
 const PER_PAGE = 30;
@@ -152,17 +149,6 @@ function RepoActionsPage() {
 		enabled: hasMounted,
 		placeholderData: keepPreviousData,
 	});
-
-	const webhookTargets = useMemo(
-		() => [
-			{
-				queryKey: githubQueryKeys.actions.runsList(scope, runsQueryInput),
-				signalKeys: [githubRevalidationSignalKeys.actionsRepo({ owner, repo })],
-			},
-		],
-		[scope, runsQueryInput, owner, repo],
-	);
-	useGitHubSignalStream(webhookTargets);
 
 	const runs = useMemo(() => query.data ?? [], [query.data]);
 	const filterableRuns = useMemo(
