@@ -1,6 +1,7 @@
 # Data Fetching, Caching and Revalidation
 
-Status: **phase 1 implemented** (L1, client cache); phases 2–4 proposed.
+Status: **phases 1–2 implemented** (L1 client cache, L2 change feed);
+phases 3–4 proposed.
 Replaces the server cache removed in #193; see
 [platform-plan.md, Incidents](./platform-plan.md#incidents).
 
@@ -197,6 +198,63 @@ incident:
 - **Hydration.** TanStack Router holds server-rendered pending matches for
   `pendingMinMs` after hydration (500 ms by default). The first load uses
   0 ms; later navigations use 200 ms.
+
+## Phase 2 decisions
+
+- **Entity keys** live in `src/lib/github-change-entities.ts` (shared by
+  the webhook handler and the client). The registry that maps them to queries
+  is `githubQueryEntityCoverage` / `githubQueryMatchesEntity` in
+  `github.query.ts`; a test fails when a `githubQueryKeys` group is neither
+  covered nor marked `"exempt"`.
+- **Aggregates.** "My pulls/issues", user lists and repo lists refetch only
+  when the changed item is already in their cached payload, so one PR event
+  in a busy org doesn't become a GitHub search request for every member. New
+  items arrive on focus or `staleTime`.
+- **Access.** `/api/changes` returns public-repo changes to anyone and
+  private-repo changes only for repos the *user* can read through the GitHub
+  App: `GET /user/installations/{id}/repositories`, not the installation's
+  "all repos" coverage. Cached per user for 60 s in memory and 10 min in KV
+  (`change-access:v1:`, `expirationTtl`). OAuth-only repos refresh on focus.
+- **Cursor** is `<last id>.<issued at>`; `github_change.id` is
+  AUTOINCREMENT, so ids never go backwards when the table empties. A cursor
+  older than 14 minutes, or more than 2,000 rows behind, answers
+  `expired: true`. A D1 read failure answers "nothing changed" with the
+  client's own cursor, so an outage can't trigger a refetch storm.
+- **Cadence.** 15 s while visible, plus focus and reconnect. SSE stays out:
+  it would mean one held connection per tab again.
+- **No delivery de-duplication.** A redelivered webhook only invalidates the
+  same queries twice within one poll; a KV key per delivery would cost
+  ~50k KV writes a day for nothing.
+- **Sweeper.** A cron trigger every 5 minutes deletes rows older than 15
+  minutes in batches of at most 20k with 4 s pauses (at most 10 batches per
+  run).
+
+## Monitoring and alerting
+
+The cron (`src/lib/scheduled-maintenance.server.ts`) logs one JSON line per
+run:
+
+```json
+{"task":"scheduled-maintenance","sweep":{"deleted":412,"batches":1,"complete":true},
+ "d1SizeBytes":81920,"d1SizeRatio":0.0000082,"changeRows":37}
+```
+
+Database size comes from D1's `meta.size_after`, the number
+`wrangler d1 info` reports. At 80% of the 10 GB limit, or when
+`github_change` exceeds 50k rows (a stuck sweeper), it also logs
+`{"level":"warn","alert":"d1_size_warning" | "d1_change_table_growth", …}`.
+
+To alert:
+
+1. In the Cloudflare dashboard, open the Worker → **Observability**, filter
+   on `alert = d1_size_warning OR alert = d1_change_table_growth`, and save
+   the query as an alert. Notify on any match in 15 minutes.
+2. Or, with Logpush, push Workers trace events and alert on the same field.
+3. Also add a **Notifications → D1** usage alert for the database as a second
+   signal that doesn't depend on the Worker running.
+
+`sweep.complete: false` on consecutive runs means the backlog is outgrowing
+10 × 20k rows per 5 minutes; raise `GITHUB_CHANGE_SWEEP_MAX_BATCHES`.
 
 ## Open questions
 

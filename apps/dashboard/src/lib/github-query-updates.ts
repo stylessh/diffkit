@@ -1,11 +1,21 @@
 import type { QueryClient } from "@tanstack/react-query";
-import { type GitHubQueryScope, githubQueryKeys } from "./github.query";
+import {
+	type GitHubQueryScope,
+	githubQueryKeys,
+	githubQueryMatchesEntity,
+} from "./github.query";
 import type {
 	IssueSummary,
 	MyPullsResult,
 	PullSummary,
 	RepoOverview,
 } from "./github.types";
+import {
+	formatEntityKey,
+	type GitHubChangeEntity,
+	normalizeRepoFullName,
+	parseEntityKey,
+} from "./github-change-entities";
 
 function matchesPull(
 	pull: Pick<PullSummary, "number" | "repository">,
@@ -206,5 +216,51 @@ export function findIssueSummaryInLists(
 		owner: input.owner,
 		repo: input.repo,
 		number: input.issueNumber,
+	});
+}
+
+// ---------------------------------------------------------------------------
+// Registry-driven invalidation for mutations
+// ---------------------------------------------------------------------------
+
+/**
+ * Invalidate exactly the queries a mutation affected, using the same entity →
+ * query registry as the change feed (e.g. `pull:owner/repo#12`). Active
+ * matches refetch; inactive ones refetch on next use.
+ */
+export function invalidateGitHubEntities(
+	queryClient: QueryClient,
+	scope: GitHubQueryScope | null,
+	entityKeys: string[],
+) {
+	const entities = entityKeys
+		.map(parseEntityKey)
+		.filter((entity): entity is GitHubChangeEntity => entity !== null);
+	return queryClient.invalidateQueries({
+		// Without a scope: every signed-in user's queries in this page (one).
+		queryKey: scope ? ["github", scope.userId] : ["github"],
+		predicate: (query) =>
+			entities.some((entity) =>
+				githubQueryMatchesEntity(query.queryKey, entity, query.state.data),
+			),
+	});
+}
+
+export function pullEntityKey(input: {
+	owner: string;
+	repo: string;
+	pullNumber: number;
+}) {
+	return formatEntityKey({
+		kind: "pull",
+		repo: normalizeRepoFullName(input.owner, input.repo),
+		number: input.pullNumber,
+	});
+}
+
+export function repoEntityKey(input: { owner: string; repo: string }) {
+	return formatEntityKey({
+		kind: "repo",
+		repo: normalizeRepoFullName(input.owner, input.repo),
 	});
 }

@@ -32,8 +32,11 @@ import {
 	resolveReviewThread,
 	unresolveReviewThread,
 } from "#/lib/github.functions";
-import { githubQueryKeys } from "#/lib/github.query";
 import type { PullFile, PullReviewComment } from "#/lib/github.types";
+import {
+	invalidateGitHubEntities,
+	pullEntityKey,
+} from "#/lib/github-query-updates";
 import type {
 	ActiveCommentForm,
 	PendingComment,
@@ -599,9 +602,9 @@ function ReviewCommentThread({
 			if (result) {
 				setReplyBody("");
 				setShowReplyForm(false);
-				void queryClient.invalidateQueries({
-					queryKey: githubQueryKeys.all,
-				});
+				void invalidateGitHubEntities(queryClient, null, [
+					pullEntityKey({ owner, repo, pullNumber }),
+				]);
 			} else {
 				toast.error("Failed to send reply");
 			}
@@ -623,7 +626,9 @@ function ReviewCommentThread({
 				data: { owner, repo, threadId: threadInfo.threadId },
 			});
 			if (result.ok) {
-				void queryClient.invalidateQueries({ queryKey: githubQueryKeys.all });
+				void invalidateGitHubEntities(queryClient, null, [
+					pullEntityKey({ owner, repo, pullNumber }),
+				]);
 			} else {
 				toast.error(result.error);
 			}
