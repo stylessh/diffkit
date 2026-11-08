@@ -13,6 +13,7 @@ test("browse a folder, open a file by finder, link lines, blame them and search 
 
 	await page.keyboard.press("t");
 	await page.getByPlaceholder("Go to file in beacon…").fill("sse");
+	await expect(page.getByRole("option").first()).toContainText("sse.ts");
 	await page.keyboard.press("Enter");
 	await expect(page).toHaveURL(/\/blob\/main\/src\/transport\/sse\.ts$/);
 	await expect(
