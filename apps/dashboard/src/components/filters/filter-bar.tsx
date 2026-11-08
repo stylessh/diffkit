@@ -109,7 +109,7 @@ function SearchInput({
 					type="button"
 					onClick={() => onChange("")}
 					aria-label="Clear search"
-					className="flex size-5 shrink-0 items-center justify-center rounded-sm text-muted-foreground transition-colors hover:bg-ghost-hover hover:text-foreground"
+					className="-mr-0.5 flex size-6 shrink-0 items-center justify-center rounded-sm text-muted-foreground transition-colors hover:bg-ghost-hover hover:text-foreground"
 				>
 					<CloseIcon size={13} />
 				</button>
@@ -138,7 +138,6 @@ function SortDropdown({
 			<button
 				type="button"
 				onClick={() => setOpen(!open)}
-				aria-haspopup="menu"
 				aria-expanded={open}
 				className="flex h-7 shrink-0 items-center gap-1.5 rounded-md bg-button px-2 text-[13px] font-medium text-text-header shadow-button transition-colors hover:bg-button-hover hover:text-foreground"
 			>
@@ -204,7 +203,6 @@ function FilterPill({
 			<button
 				type="button"
 				onClick={() => setOpen(!open)}
-				aria-haspopup="listbox"
 				aria-expanded={open}
 				className="flex h-6 items-center gap-1.5 rounded-l-md bg-chip px-2 text-xs shadow-chip transition-colors hover:bg-row-hover"
 			>
@@ -311,7 +309,6 @@ function AddFilterButton({
 					setOpen(!open);
 					setSelectedFieldId(null);
 				}}
-				aria-haspopup="menu"
 				aria-expanded={open}
 				className="flex h-6 items-center gap-1 rounded-md px-2 text-xs font-medium text-muted-foreground transition-colors hover:bg-ghost-hover hover:text-foreground"
 			>

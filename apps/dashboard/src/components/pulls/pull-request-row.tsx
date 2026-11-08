@@ -62,7 +62,10 @@ export const PullRequestRow = memo(function PullRequestRow({
 					<Icon size={14} strokeWidth={2} />
 				</div>
 				<div className="flex min-w-0 flex-1 flex-col gap-1">
-					<p className="text-[13px] font-medium text-foreground md:truncate">
+					<p
+						title={pr.title}
+						className="text-[13px] font-medium text-foreground md:truncate"
+					>
 						{pr.title}
 					</p>
 					<p className="flex min-w-0 items-center gap-1 truncate text-xs text-muted-foreground md:hidden">
@@ -101,7 +104,10 @@ export const PullRequestRow = memo(function PullRequestRow({
 							{pr.comments}
 						</span>
 					)}
-					<Chip className="max-w-56">
+					<Chip
+						className="max-w-56"
+						title={`${pr.repository.fullName} #${pr.number}`}
+					>
 						<RepoIcon size={12} strokeWidth={2} />
 						<span className="truncate">{pr.repository.fullName}</span>
 						<span className="tabular-nums">#{pr.number}</span>

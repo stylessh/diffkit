@@ -33,7 +33,10 @@ export const IssueRow = memo(function IssueRow({
 				<IssuesIcon size={14} strokeWidth={2} />
 			</div>
 			<div className="flex min-w-0 flex-1 flex-col gap-1">
-				<p className="text-[13px] font-medium text-foreground md:truncate">
+				<p
+					title={issue.title}
+					className="text-[13px] font-medium text-foreground md:truncate"
+				>
 					{issue.title}
 				</p>
 				<p className="flex min-w-0 items-center gap-1 truncate text-xs text-muted-foreground md:hidden">
@@ -55,7 +58,10 @@ export const IssueRow = memo(function IssueRow({
 						{issue.comments}
 					</span>
 				)}
-				<Chip className="max-w-56">
+				<Chip
+					className="max-w-56"
+					title={`${issue.repository.fullName} #${issue.number}`}
+				>
 					<RepoIcon size={12} strokeWidth={2} />
 					<span className="truncate">{issue.repository.fullName}</span>
 					<span className="tabular-nums">#{issue.number}</span>

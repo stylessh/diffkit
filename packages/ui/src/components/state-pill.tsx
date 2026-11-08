@@ -12,7 +12,7 @@ const statePillVariants = cva(
 				open: "bg-pill-ok text-pill-ok-text",
 				closed: "bg-pill-blocked text-pill-blocked-text",
 				merged: "bg-pill-merged text-pill-merged-text",
-				muted: "bg-pill-neutral text-muted-foreground",
+				muted: "bg-pill-neutral text-text-header",
 				secondary: "bg-secondary text-secondary-foreground",
 				warning: "bg-pill-warning text-pill-warning-text",
 			},
