@@ -226,6 +226,12 @@ function generatedSchemaDatabase() {
   return db;
 }
 
+// SQLite stores TRUE/FALSE defaults as 1/0; drizzle's boolean mode emits the keywords.
+function normalizeDefault(value) {
+  const boolean = { true: "1", false: "0" }[String(value).toLowerCase()];
+  return boolean ?? value;
+}
+
 function describeSchema(db) {
   const tables = db
     .prepare("SELECT name FROM sqlite_master WHERE type = 'table' ORDER BY name")
@@ -238,7 +244,7 @@ function describeSchema(db) {
     const columns = db
       .prepare(`PRAGMA table_xinfo(${quoted})`)
       .all()
-      .map((c) => `${c.name} ${String(c.type).toLowerCase()} notnull=${c.notnull} default=${c.dflt_value} pk=${c.pk}`);
+      .map((c) => `${c.name} ${String(c.type).toLowerCase()} notnull=${c.notnull} default=${normalizeDefault(c.dflt_value)} pk=${c.pk}`);
     const indexes = db
       .prepare(`PRAGMA index_list(${quoted})`)
       .all()
