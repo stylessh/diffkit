@@ -94,7 +94,9 @@ function mapLabel(
 	};
 }
 
-function mapLabels(labels: Array<string | GitHubApiLabel> | null | undefined) {
+export function mapLabels(
+	labels: Array<string | GitHubApiLabel> | null | undefined,
+) {
 	return (labels ?? [])
 		.map((label) => mapLabel(label))
 		.filter((label): label is GitHubLabel => Boolean(label));

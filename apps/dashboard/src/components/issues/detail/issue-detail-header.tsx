@@ -1,5 +1,4 @@
 import { IssuesIcon } from "@diffkit/icons";
-import { Markdown } from "@diffkit/ui/components/markdown";
 import {
 	StatePill,
 	type StatePillTone,
@@ -7,6 +6,7 @@ import {
 import { useState } from "react";
 import { IssueCommentReactionBar } from "#/components/details/comment-reaction-bar";
 import { DetailPageTitle } from "#/components/details/detail-page";
+import { AppMarkdown } from "#/components/markdown/app-markdown";
 import { formatRelativeTime } from "#/lib/format-relative-time";
 import type { GitHubQueryScope } from "#/lib/github.query";
 import type { IssueDetail } from "#/lib/github.types";
@@ -103,9 +103,13 @@ export function IssueDetailHeader({
 					}}
 				>
 					{issue.body ? (
-						<Markdown className="text-[15px] leading-6 text-text-header">
+						<AppMarkdown
+							owner={owner}
+							repo={repo}
+							className="text-[15px] leading-6 text-text-header"
+						>
 							{issue.body}
-						</Markdown>
+						</AppMarkdown>
 					) : (
 						<p className="text-sm italic text-muted-foreground">
 							No description provided.

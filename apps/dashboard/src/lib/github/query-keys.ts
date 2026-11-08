@@ -406,6 +406,16 @@ export const githubQueryKeys = {
 		splat: (scope: GitHubQueryScope, input: RepoRefSplatInput) =>
 			["github", scope.userId, "refs", "splat", input] as const,
 	},
+	references: {
+		item: (
+			scope: GitHubQueryScope,
+			input: { owner: string; repo: string; number: number },
+		) => ["github", scope.userId, "references", "item", input] as const,
+		commit: (
+			scope: GitHubQueryScope,
+			input: { owner: string; repo: string; sha: string },
+		) => ["github", scope.userId, "references", "commit", input] as const,
+	},
 	reviewDrafts: {
 		mine: (scope: GitHubQueryScope) =>
 			["github", scope.userId, "reviewDrafts", "mine"] as const,

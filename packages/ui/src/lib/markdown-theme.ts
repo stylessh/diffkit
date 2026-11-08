@@ -51,7 +51,7 @@ export const markdownHrClassName = "my-4 border-rule";
 export const markdownMediaClassName = "my-2 max-w-full rounded-lg";
 
 export const markdownImageClassName = cn(
-	"inline-block max-w-full rounded-lg my-2",
+	"my-2 inline-block max-w-full rounded-lg",
 );
 
 export const markdownTableShellClassName =
@@ -67,7 +67,14 @@ export const markdownThClassName =
 export const markdownTdClassName =
 	"border-b-[0.5px] border-r-[0.5px] border-rule px-3 py-1.5 text-xs last:border-r-0 [tr:last-child_&]:border-b-0";
 
-export const markdownTaskCheckboxClassName = "mr-1.5 rounded border-border";
+export const markdownTaskListClassName =
+	"mb-[0.6em] flex list-none flex-col gap-[0.2em] pl-0 [&_ul]:mb-0 [&_ul]:pl-[1.4em]";
+
+export const markdownTaskCheckboxClassName =
+	"mr-1.5 size-3.5 translate-y-[2px] accent-foreground";
+
+export const markdownFootnotesClassName =
+	"mt-[1em] border-t-[0.5px] border-rule pt-[0.6em] text-[0.875em] text-muted-foreground";
 
 export const markdownDetailsClassName =
 	"group/details mb-2 text-sm [&>:not(summary)]:mt-2";

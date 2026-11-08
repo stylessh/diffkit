@@ -1098,3 +1098,36 @@ export type RepoRefSplatResolution = {
 	/** Which namespace the ref was found in, or null when unresolved. */
 	kind: "branch" | "tag" | null;
 };
+
+export type PullReferenceStatus = "open" | "draft" | "merged" | "closed";
+export type IssueReferenceStatus = "open" | "completed" | "notPlanned";
+
+/** What a hover card shows for `#12`; GitHub numbers issues and PRs together. */
+export type ItemReference = (
+	| { kind: "pull"; status: PullReferenceStatus }
+	| { kind: "issue"; status: IssueReferenceStatus }
+) & {
+	owner: string;
+	repo: string;
+	number: number;
+	title: string;
+	author: GitHubActor | null;
+	createdAt: string;
+	comments: number;
+	labels: GitHubLabel[];
+	/** `null` when seeded from a list row, which carries no body. */
+	excerpt: string | null;
+};
+
+export type CommitReference = {
+	owner: string;
+	repo: string;
+	sha: string;
+	title: string;
+	author: GitHubActor | null;
+	authorName: string | null;
+	date: string;
+	verified: boolean;
+	/** `null` when seeded from a commit list, which carries no stats. */
+	stats: { additions: number; deletions: number } | null;
+};

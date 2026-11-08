@@ -79,6 +79,8 @@ export const githubQueryEntityCoverage: Record<
 	"refs.tags": ["repo", "release"],
 	"refs.comparison": ["repo"],
 	"refs.splat": ["repo"],
+	"references.item": ["pull", "issue"],
+	"references.commit": "exempt",
 	"reviewDrafts.mine": ["pull"],
 };
 

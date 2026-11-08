@@ -22,8 +22,11 @@ import {
 	MARKDOWN_MENTION_TAG,
 	MARKDOWN_REFERENCE_TAG,
 	type MarkdownReferenceResolver,
+	type MarkdownTextReferenceResolver,
 	type ResourceReference,
+	type ResourceReferenceOrigin,
 	referenceFromProperties,
+	referenceOriginFromProperties,
 } from "../lib/markdown-resource-reference";
 import { markdownSanitizeSchema } from "../lib/markdown-sanitize-schema";
 import {
@@ -36,6 +39,7 @@ import {
 	markdownDelClassName,
 	markdownDetailsClassName,
 	markdownEmClassName,
+	markdownFootnotesClassName,
 	markdownHeadingClassNames,
 	markdownHrClassName,
 	markdownImageClassName,
@@ -51,14 +55,16 @@ import {
 	markdownTableClassName,
 	markdownTableShellClassName,
 	markdownTaskCheckboxClassName,
+	markdownTaskListClassName,
 	markdownTdClassName,
 	markdownThClassName,
 	markdownTheadClassName,
 } from "../lib/markdown-theme";
 import { rehypeAlertIcons } from "../lib/rehype-alert-icons";
+import { rehypeFootnoteIds } from "../lib/rehype-footnote-ids";
 import { remarkProfileMentions } from "../lib/remark-profile-mentions";
-import { remarkRepoNumberReferences } from "../lib/remark-repo-number-references";
 import { remarkResourceReferences } from "../lib/remark-resource-references";
+import { remarkTextReferences } from "../lib/remark-text-references";
 import {
 	createMarkdownHighlighter,
 	type MarkdownHighlighter,
@@ -185,6 +191,7 @@ const MarkdownMentionComponentContext =
 
 export type MarkdownReferenceProps = {
 	reference: ResourceReference;
+	origin: ResourceReferenceOrigin;
 	children?: ReactNode;
 };
 
@@ -527,7 +534,6 @@ function nodeProperties(node: any): Record<string, unknown> | undefined {
 	return properties && typeof properties === "object" ? properties : undefined;
 }
 
-/** Renders a `<dk-mention>` element via the app-provided mention component. */
 // biome-ignore lint/suspicious/noExplicitAny: component overrides receive union props from @m2d/react-markdown
 function MarkdownMentionNode({ node, children }: any) {
 	const MentionComponent = useContext(MarkdownMentionComponentContext);
@@ -551,16 +557,21 @@ function MarkdownMentionNode({ node, children }: any) {
 	);
 }
 
-/** Renders a `<dk-reference>` element via the app-provided reference component. */
 // biome-ignore lint/suspicious/noExplicitAny: component overrides receive union props from @m2d/react-markdown
 function MarkdownReferenceNode({ node, children }: any) {
 	const ReferenceComponent = useContext(MarkdownReferenceComponentContext);
-	const reference = referenceFromProperties(nodeProperties(node));
+	const properties = nodeProperties(node);
+	const reference = referenceFromProperties(properties);
 
 	if (!reference) return children;
 	if (ReferenceComponent) {
 		return (
-			<ReferenceComponent reference={reference}>{children}</ReferenceComponent>
+			<ReferenceComponent
+				reference={reference}
+				origin={referenceOriginFromProperties(properties)}
+			>
+				{children}
+			</ReferenceComponent>
 		);
 	}
 	return (
@@ -658,8 +669,15 @@ const components: Record<string, React.FC<any>> = {
 			</a>
 		);
 	},
-	ul: ({ node: _, children, ...props }) => (
-		<ul className={markdownListClassNames.ul} {...props}>
+	ul: ({ node: _, children, className, ...props }) => (
+		<ul
+			className={
+				hasClassNameToken(className, "contains-task-list")
+					? markdownTaskListClassName
+					: markdownListClassNames.ul
+			}
+			{...props}
+		>
 			{children}
 		</ul>
 	),
@@ -805,6 +823,17 @@ const components: Record<string, React.FC<any>> = {
 			{children}
 		</del>
 	),
+	section: ({ node: _, children, className, ...props }) => (
+		<section
+			className={cn(
+				hasClassNameToken(className, "footnotes") && markdownFootnotesClassName,
+				className,
+			)}
+			{...props}
+		>
+			{children}
+		</section>
+	),
 	details: ({ node: _, children, ...props }) => (
 		<details className={markdownDetailsClassName} {...props}>
 			{children}
@@ -836,7 +865,7 @@ export function Markdown({
 	resolveLinkUrl,
 	resolveMentionHref,
 	resolveReference,
-	resolveRepoNumberReference,
+	resolveTextReference,
 	internalLinkComponent,
 	imageComponent,
 	mentionComponent,
@@ -849,8 +878,7 @@ export function Markdown({
 	resolveLinkUrl?: MarkdownLinkUrlResolver;
 	resolveMentionHref?: MarkdownMentionHrefResolver;
 	resolveReference?: MarkdownReferenceResolver;
-	/** Maps `#123` in the current repo to a resource reference. */
-	resolveRepoNumberReference?: (number: number) => ResourceReference | null;
+	resolveTextReference?: MarkdownTextReferenceResolver;
 	internalLinkComponent?: ComponentType<MarkdownInternalLinkProps>;
 	imageComponent?: MarkdownImageComponent;
 	mentionComponent?: MarkdownMentionComponent;
@@ -859,16 +887,14 @@ export function Markdown({
 	remarkPlugins?: PluggableList;
 }) {
 	const remarkPlugins = useMemo(() => {
-		// `remarkResourceReferences` must run after `remark-gfm` so literal URLs
-		// have already been turned into link nodes it can rewrite.
 		const plugins: PluggableList = [];
 		if (additionalRemarkPlugins) plugins.push(...additionalRemarkPlugins);
 		if (resolveMentionHref) {
 			plugins.push(remarkProfileMentions(resolveMentionHref));
 		}
 		plugins.push(remarkGfm, remarkAlert);
-		if (resolveRepoNumberReference) {
-			plugins.push(remarkRepoNumberReferences(resolveRepoNumberReference));
+		if (resolveTextReference) {
+			plugins.push(remarkTextReferences(resolveTextReference));
 		}
 		if (resolveReference) {
 			plugins.push(remarkResourceReferences(resolveReference));
@@ -878,7 +904,7 @@ export function Markdown({
 		additionalRemarkPlugins,
 		resolveMentionHref,
 		resolveReference,
-		resolveRepoNumberReference,
+		resolveTextReference,
 	]);
 
 	return (
@@ -903,6 +929,7 @@ export function Markdown({
 											rehypeRaw,
 											[rehypeSanitize, markdownSanitizeSchema],
 											rehypeAlertIcons,
+											rehypeFootnoteIds,
 										]}
 										components={components}
 									>
@@ -920,6 +947,9 @@ export function Markdown({
 
 export type {
 	MarkdownReferenceResolver,
+	MarkdownTextReference,
+	MarkdownTextReferenceResolver,
 	ResourceReference,
 	ResourceReferenceKind,
+	ResourceReferenceOrigin,
 } from "../lib/markdown-resource-reference";

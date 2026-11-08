@@ -14,7 +14,6 @@ import {
 	DropdownMenuItem,
 	DropdownMenuTrigger,
 } from "@diffkit/ui/components/dropdown-menu";
-import { Markdown } from "@diffkit/ui/components/markdown";
 import {
 	MarkdownEditor,
 	type MentionConfig,
@@ -42,6 +41,7 @@ import {
 	useState,
 } from "react";
 import { CommentMoreMenu } from "#/components/details/comment-more-menu";
+import { AppMarkdown } from "#/components/markdown/app-markdown";
 import { formatRelativeTime } from "#/lib/format-relative-time";
 import {
 	replyToReviewComment,
@@ -746,7 +746,13 @@ function ReviewCommentBubble({
 					/>
 				</div>
 			</div>
-			<Markdown className="pl-[27px] text-text-strong">{comment.body}</Markdown>
+			<AppMarkdown
+				owner={owner}
+				repo={repo}
+				className="pl-[27px] text-text-strong"
+			>
+				{comment.body}
+			</AppMarkdown>
 		</div>
 	);
 }
@@ -996,7 +1002,7 @@ function PendingCommentBubble({
 					<EditIcon size={12} strokeWidth={2} />
 				</button>
 			</div>
-			<Markdown className="text-text-strong">{comment.body}</Markdown>
+			<AppMarkdown className="text-text-strong">{comment.body}</AppMarkdown>
 		</div>
 	);
 }
