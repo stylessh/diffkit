@@ -38,7 +38,10 @@ test("a new issue is created in the repository and shows up in nova's authored q
 		user: { login: "nova" },
 	});
 
-	await page.getByRole("link", { name: /^Issues \d+$/ }).click();
+	await page
+		.getByRole("navigation", { name: "Workspace" })
+		.getByRole("link", { name: /^Issues \d+$/ })
+		.click();
 	await expect(
 		page.getByRole("link", {
 			name: new RegExp(

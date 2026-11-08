@@ -1,13 +1,7 @@
-import {
-	GitBranchIcon,
-	GitCommitIcon,
-	PackageIcon,
-	PlusSignIcon,
-} from "@diffkit/icons";
+import { GitBranchIcon, GitCommitIcon, PackageIcon } from "@diffkit/icons";
 import { TagIcon } from "#/components/repo/refs/tag-icon";
 import type { CommandItem } from "./types";
 
-/** "Go to …" commands for the repository the user is currently viewing. */
 export function getRepoSectionCommands(
 	owner: string,
 	repo: string,
@@ -47,14 +41,6 @@ export function getRepoSectionCommands(
 			icon: PackageIcon,
 			keywords: [...keywords, "changelog", "versions"],
 			action: { type: "navigate", to: `${base}/releases` },
-		},
-		{
-			id: `repo-nav:${fullName}:new-release`,
-			label: "Draft a New Release",
-			group: fullName,
-			icon: PlusSignIcon,
-			keywords: [...keywords, "publish", "tag", "release"],
-			action: { type: "navigate", to: `${base}/releases/new` },
 		},
 	];
 }

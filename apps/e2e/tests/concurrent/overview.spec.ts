@@ -18,7 +18,9 @@ test("home summarises nova's queues and links into them", async ({ page }) => {
 
 	const recent = page.getByRole("link", { name: /Stack 3\/3: Experimental/ });
 	await expect(recent).toHaveAttribute("href", "/lumen-labs/beacon/pull/20");
-	await recent.click();
+	await recent
+		.getByText("Stack 3/3: Experimental WebTransport transport")
+		.click();
 	await expect(page).toHaveURL(/\/lumen-labs\/beacon\/pull\/20$/);
 	await expect(
 		page.getByRole("heading", {
