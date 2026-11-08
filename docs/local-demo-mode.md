@@ -117,3 +117,5 @@ poke the API directly:
 ```sh
 curl -H "Authorization: token demo_seed_nova" http://localhost:4001/user
 ```
+
+The [end-to-end suite](./e2e.md) runs against this same workspace.

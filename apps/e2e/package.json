@@ -1,0 +1,20 @@
+{
+	"name": "@diffkit/e2e",
+	"private": true,
+	"type": "module",
+	"scripts": {
+		"test:e2e": "playwright test",
+		"test:e2e:ui": "playwright test --ui",
+		"report": "playwright show-report",
+		"lint": "biome lint",
+		"format": "biome format",
+		"check": "biome check",
+		"check-types": "tsc --noEmit"
+	},
+	"devDependencies": {
+		"@diffkit/typescript-config": "workspace:*",
+		"@playwright/test": "1.65.0",
+		"@types/node": "22.19.17",
+		"typescript": "5.9.3"
+	}
+}
