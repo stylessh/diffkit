@@ -131,8 +131,3 @@ export async function getReadableRepoSet(userId: string): Promise<Set<string>> {
 	}
 	return new Set(value.repos);
 }
-
-/** Drop a user's cached access (e.g. after an installation webhook). */
-export function forgetReadableRepos(userId: string) {
-	memory.delete(userId);
-}
