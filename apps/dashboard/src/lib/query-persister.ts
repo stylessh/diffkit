@@ -269,6 +269,9 @@ export function createIdbQueryPersister(
 				metaWritten = true;
 			} catch (error) {
 				report(error, "writeMeta");
+				// Nothing was written: reload the index from disk next time.
+				index = null;
+				indexPromise = null;
 				return;
 			}
 		}
