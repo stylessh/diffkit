@@ -103,6 +103,16 @@ export {
 	githubQueryRepo,
 	queryFiltersForEntity,
 } from "./github/query-registry";
+export {
+	githubRepoAccessQueryOptions,
+	githubRepoActionsSecretsQueryOptions,
+	githubRepoActionsVariablesQueryOptions,
+	githubRepoBranchProtectionsQueryOptions,
+	githubRepoGeneralSettingsQueryOptions,
+	githubRepoRulesetsQueryOptions,
+	githubRepoWebhookDeliveriesQueryOptions,
+	githubRepoWebhooksQueryOptions,
+} from "./github/settings-query-options";
 /** Re-exported so client code can compute the sanitized job-name lookup key
  *  the same way the server stores entries in the bundle. */
 export { workflowZipJobName } from "./github.functions";
