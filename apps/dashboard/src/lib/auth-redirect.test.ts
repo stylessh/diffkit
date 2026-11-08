@@ -23,3 +23,39 @@ describe("normalizeAuthRedirect", () => {
 		expect(normalizeAuthRedirect("/login?redirect=/pulls")).toBe("/");
 	});
 });
+
+describe("normalizeAuthRedirect: open-redirect attempts", () => {
+	// Browsers treat a backslash (and stripped tab/newline) like a slash, so
+	// these all navigate off-site when used as a Location header.
+	const attempts = [
+		"/\\evil.com",
+		"/\\\\evil.com",
+		"/\t/evil.com",
+		"/\n/evil.com",
+		"/\r/evil.com",
+		" //evil.com",
+		"///evil.com",
+		"javascript:alert(1)",
+		"\\\\evil.com",
+		"https:evil.com",
+		"",
+	];
+
+	it.each(attempts)("rejects %j", (attempt) => {
+		const result = normalizeAuthRedirect(attempt);
+		expect(result).toBe("/");
+		expect(normalizeAuthRedirect(attempt, "/setup")).toBe("/setup");
+	});
+
+	it("keeps encoded slashes as path text rather than a host", () => {
+		const result = normalizeAuthRedirect("/%2F%2Fevil.com");
+		expect(result.startsWith("//")).toBe(false);
+		expect(new URL(result, "https://app.test").origin).toBe("https://app.test");
+	});
+
+	it("uses the caller's fallback", () => {
+		expect(normalizeAuthRedirect("https://evil.com", "/setup")).toBe("/setup");
+		expect(normalizeAuthRedirect("/login", "/setup")).toBe("/setup");
+		expect(normalizeAuthRedirect("/a?b=1#c", "/setup")).toBe("/a?b=1#c");
+	});
+});

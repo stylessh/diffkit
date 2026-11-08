@@ -1,4 +1,3 @@
-import { getAuth } from "#/lib/auth.server";
 import {
 	buildCommentMediaObjectKey,
 	COMMENT_MEDIA_SIGNATURE_PROBE_BYTES,
@@ -7,14 +6,35 @@ import {
 	publicUrlForR2Key,
 	sanitizeCommentMediaFilename,
 } from "#/lib/comment-media.server";
+import { logRouteError, serviceUnavailable } from "#/lib/route-safety.server";
+
+/** Everything the handler needs from the Worker runtime. */
+export type CommentMediaUploadRuntime = {
+	bucket: Pick<R2Bucket, "put"> | undefined;
+	publicBaseUrl: string | undefined;
+	getSession: (headers: Headers) => Promise<{ user: { id: string } } | null>;
+};
+
+/** Multipart framing around the largest file we accept. */
+const MULTIPART_OVERHEAD_BYTES = 1024 * 1024;
+
+async function getRuntime(): Promise<CommentMediaUploadRuntime> {
+	const [{ env }, { getAuth }] = await Promise.all([
+		import("cloudflare:workers"),
+		import("#/lib/auth.server"),
+	]);
+	return {
+		bucket: env.COMMENT_MEDIA,
+		publicBaseUrl: env.R2_PUBLIC_BASE_URL,
+		getSession: (headers) => getAuth().api.getSession({ headers }),
+	};
+}
 
 export async function handleCommentMediaUpload(
 	request: Request,
+	runtime?: CommentMediaUploadRuntime,
 ): Promise<Response> {
-	const { env } = await import("cloudflare:workers");
-
-	const bucket = env.COMMENT_MEDIA;
-	const publicBaseUrl = env.R2_PUBLIC_BASE_URL;
+	const { bucket, publicBaseUrl, getSession } = runtime ?? (await getRuntime());
 
 	if (!bucket || !publicBaseUrl) {
 		return Response.json(
@@ -23,12 +43,26 @@ export async function handleCommentMediaUpload(
 		);
 	}
 
-	const session = await getAuth().api.getSession({
-		headers: request.headers,
-	});
+	let session: Awaited<ReturnType<typeof getSession>>;
+	try {
+		session = await getSession(request.headers);
+	} catch (error) {
+		logRouteError("comment-media", "session lookup failed", error);
+		return serviceUnavailable("session_unavailable");
+	}
 
 	if (!session) {
 		return Response.json({ error: "Unauthorized" }, { status: 401 });
+	}
+
+	// Refuse before buffering the body: formData() holds the whole upload.
+	const declaredLength = Number(request.headers.get("Content-Length"));
+	if (
+		Number.isFinite(declaredLength) &&
+		declaredLength >
+			maxBytesForCommentMediaKind("video") + MULTIPART_OVERHEAD_BYTES
+	) {
+		return Response.json({ error: "File is too large" }, { status: 413 });
 	}
 
 	const contentType = request.headers.get("Content-Type") ?? "";
@@ -39,7 +73,12 @@ export async function handleCommentMediaUpload(
 		);
 	}
 
-	const form = await request.formData();
+	let form: FormData;
+	try {
+		form = await request.formData();
+	} catch {
+		return Response.json({ error: "Invalid multipart body" }, { status: 400 });
+	}
 	const file = form.get("file");
 
 	if (!(file instanceof File)) {
@@ -63,12 +102,17 @@ export async function handleCommentMediaUpload(
 	const filename = sanitizeCommentMediaFilename(file.name);
 	const key = buildCommentMediaObjectKey(session.user.id, filename);
 
-	await bucket.put(key, file.stream(), {
-		httpMetadata: {
-			contentType: detected.contentType,
-			cacheControl: "public, max-age=31536000, immutable",
-		},
-	});
+	try {
+		await bucket.put(key, file.stream(), {
+			httpMetadata: {
+				contentType: detected.contentType,
+				cacheControl: "public, max-age=31536000, immutable",
+			},
+		});
+	} catch (error) {
+		logRouteError("comment-media", "R2 put failed", error);
+		return Response.json({ error: "Upload failed" }, { status: 502 });
+	}
 
 	const publicUrl = publicUrlForR2Key(publicBaseUrl, key);
 

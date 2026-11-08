@@ -8,7 +8,7 @@ const { DatabaseSync } = process.getBuiltinModule(
 ) as typeof import("node:sqlite");
 
 /**
- * Minimal D1Database over node:sqlite for tests: prepare/bind/all/first/run
+ * Minimal D1Database over node:sqlite for tests: prepare/bind/all/first/raw/run
  * and batch, with `meta.changes` and `meta.size_after` like D1.
  */
 export function createTestD1(migrations: string[] = []) {
@@ -54,6 +54,15 @@ export function createTestD1(migrations: string[] = []) {
 				statementCalls.push(sql);
 				return (sqlite.prepare(sql).get(...(params as never[])) ??
 					null) as Record<string, unknown> | null;
+			},
+			// drizzle's d1 driver reads rows through `raw()` (arrays, not objects).
+			raw: async () => {
+				statementCalls.push(sql);
+				const rows = sqlite.prepare(sql).all(...(params as never[])) as Record<
+					string,
+					unknown
+				>[];
+				return rows.map((row) => Object.values(row));
 			},
 			run: async () => {
 				statementCalls.push(sql);

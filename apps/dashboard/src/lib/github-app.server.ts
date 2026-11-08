@@ -7,6 +7,7 @@ import { debug } from "./debug";
 import { getGitHubOAuthOrigin } from "./github-emulator.server";
 import { normalizeGitHubAppPrivateKey } from "./github-private-key";
 import { GITHUB_REQUEST_TIMEOUT_MS } from "./github-request-policy";
+import { describeError } from "./route-safety.server";
 
 type WorkerEnvRecord = typeof env & Record<string, string | undefined>;
 
@@ -135,6 +136,10 @@ async function getGitHubAppUserAccountByUserId(userId: string) {
 		.get();
 }
 
+function isRecord(value: unknown): value is GitHubTokenResponse {
+	return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
 function getTokenExpiresAt(expiresInSeconds: number | undefined) {
 	if (!expiresInSeconds || expiresInSeconds <= 0) {
 		return null;
@@ -164,11 +169,18 @@ async function requestGitHubAppUserToken(params: Record<string, string>) {
 			body: new URLSearchParams(params),
 		},
 	);
-	const payload = (await response.json()) as GitHubTokenResponse;
+	// An upstream 5xx can answer with HTML; that is a failed request, not a
+	// JSON parse error.
+	const payload = await response
+		.json()
+		.then((body): GitHubTokenResponse => (isRecord(body) ? body : {}))
+		.catch((): GitHubTokenResponse => ({}));
 
 	if (!response.ok || !payload.access_token) {
 		const message =
-			payload.error_description ?? payload.error ?? response.statusText;
+			payload.error_description ??
+			payload.error ??
+			(response.statusText || `HTTP ${response.status}`);
 		throw new Error(`GitHub App user token request failed: ${message}`);
 	}
 
@@ -198,33 +210,69 @@ export async function exchangeGitHubAppUserCode({
 	});
 }
 
-async function refreshGitHubAppUserToken({
+/**
+ * GitHub rotates the refresh token on every use, so two concurrent refreshes
+ * with the same token would invalidate each other. Calls for the same user in
+ * one isolate share a single exchange.
+ */
+const refreshInflight = new Map<string, Promise<string | null>>();
+
+function refreshGitHubAppUserToken(params: {
+	refreshToken: string;
+	userId: string;
+}): Promise<string | null> {
+	const existing = refreshInflight.get(params.userId);
+	if (existing) {
+		return existing;
+	}
+
+	const task = performGitHubAppUserTokenRefresh(params).finally(() => {
+		refreshInflight.delete(params.userId);
+	});
+	refreshInflight.set(params.userId, task);
+	return task;
+}
+
+async function performGitHubAppUserTokenRefresh({
 	refreshToken,
 	userId,
 }: {
 	refreshToken: string;
 	userId: string;
-}) {
+}): Promise<string | null> {
 	const githubApp = getGitHubAppAuthConfig();
+	let payload: GitHubTokenResponse;
 	try {
-		const payload = await requestGitHubAppUserToken({
+		payload = await requestGitHubAppUserToken({
 			client_id: githubApp.clientId,
 			client_secret: githubApp.clientSecret,
 			grant_type: "refresh_token",
 			refresh_token: refreshToken,
 		});
-
-		await saveGitHubAppUserToken({
-			userId,
-			payload,
-		});
-
-		debug("github-auth", "app user token refreshed", { userId });
-		return payload.access_token;
 	} catch (error) {
-		console.error("[github-auth] app user token refresh failed", userId, error);
+		console.error(
+			"[github-auth] app user token refresh failed",
+			userId,
+			describeError(error),
+		);
 		throw error;
 	}
+
+	try {
+		await saveGitHubAppUserToken({ userId, payload });
+	} catch (error) {
+		// The refreshed access token is valid for this request even if D1 would
+		// not take it. The rotated refresh token is lost, so the next expiry will
+		// ask the user to re-authorize; that beats failing the page now.
+		console.error(
+			"[github-auth] failed to store refreshed app user token",
+			userId,
+			describeError(error),
+		);
+	}
+
+	debug("github-auth", "app user token refreshed", { userId });
+	return payload.access_token ?? null;
 }
 
 async function saveGitHubAppUserToken({
@@ -303,37 +351,26 @@ export async function getGitHubAppUserAccessTokenByUserId(userId: string) {
 	});
 }
 
+const SHA256_HEX_SIGNATURE = /^[0-9a-f]{64}$/i;
+
 function fromHex(hex: string) {
-	if (hex.length % 2 !== 0) {
+	if (!SHA256_HEX_SIGNATURE.test(hex)) {
 		return null;
 	}
 
 	const bytes = new Uint8Array(hex.length / 2);
-	for (let index = 0; index < hex.length; index += 2) {
-		const byte = Number.parseInt(hex.slice(index, index + 2), 16);
-		if (!Number.isFinite(byte)) {
-			return null;
-		}
-
-		bytes[index / 2] = byte;
+	for (let index = 0; index < bytes.length; index += 1) {
+		bytes[index] = Number.parseInt(hex.slice(index * 2, index * 2 + 2), 16);
 	}
 
 	return bytes;
 }
 
-function secureCompare(left: Uint8Array, right: Uint8Array) {
-	if (left.length !== right.length) {
-		return false;
-	}
-
-	let mismatch = 0;
-	for (let index = 0; index < left.length; index += 1) {
-		mismatch |= left[index] ^ right[index];
-	}
-
-	return mismatch === 0;
-}
-
+/**
+ * Verifies GitHub's `X-Hub-Signature-256` header. The comparison is done by
+ * `crypto.subtle.verify`, which is constant-time; malformed signatures
+ * (missing prefix, wrong length, non-hex) are rejected before any HMAC work.
+ */
 export async function verifyGitHubWebhookSignature({
 	body,
 	secret,
@@ -357,11 +394,13 @@ export async function verifyGitHubWebhookSignature({
 		new TextEncoder().encode(secret),
 		{ name: "HMAC", hash: "SHA-256" },
 		false,
-		["sign"],
-	);
-	const actualSignature = new Uint8Array(
-		await crypto.subtle.sign("HMAC", key, new TextEncoder().encode(body)),
+		["verify"],
 	);
 
-	return secureCompare(actualSignature, expectedSignature);
+	return crypto.subtle.verify(
+		"HMAC",
+		key,
+		expectedSignature,
+		new TextEncoder().encode(body),
+	);
 }

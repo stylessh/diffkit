@@ -1,5 +1,6 @@
 import "@tanstack/react-start/server-only";
 import { env, waitUntil } from "cloudflare:workers";
+import { describeError } from "./route-safety.server";
 
 /**
  * Repos the viewer can read through the GitHub App, for `/api/changes`.
@@ -12,12 +13,16 @@ import { env, waitUntil } from "cloudflare:workers";
  *
  * Cached per user in memory (60 s) and in KV under `change-access:v1:` with a
  * 10-minute `expirationTtl` (no sweeper needed). KV failures are cache misses.
- * GitHub failures fail closed: an empty set, not cached.
+ * GitHub failures fail closed (an empty set, so only public repos) and are
+ * remembered in memory for 30 s, so an outage or a user without the GitHub App
+ * costs one lookup per 30 s instead of one per 15 s poll per tab.
  */
 
 const KV_PREFIX = "change-access:v1:";
 const KV_TTL_SECONDS = 10 * 60;
 const MEMORY_TTL_MS = 60 * 1000;
+const FAILURE_MEMORY_TTL_MS = 30 * 1000;
+const MEMORY_MAX_ENTRIES = 1000;
 const PAGE_SIZE = 100;
 const MAX_INSTALLATION_PAGES = 3;
 /** Per installation; larger installations are truncated (focus refetch). */
@@ -25,7 +30,28 @@ const MAX_REPO_PAGES = 10;
 
 type ReadableRepos = { repos: string[]; truncated: boolean };
 
+const NO_READABLE_REPOS: ReadableRepos = { repos: [], truncated: false };
+
 const memory = new Map<string, { value: ReadableRepos; expiresAt: number }>();
+
+function remember(
+	userId: string,
+	value: ReadableRepos,
+	ttlMs: number,
+	now: number,
+) {
+	memory.delete(userId);
+	memory.set(userId, { value, expiresAt: now + ttlMs });
+	if (memory.size <= MEMORY_MAX_ENTRIES) return;
+	for (const [key, entry] of memory) {
+		if (entry.expiresAt <= now) memory.delete(key);
+	}
+	// Maps iterate in insertion order, so the oldest entries go first.
+	for (const key of memory.keys()) {
+		if (memory.size <= MEMORY_MAX_ENTRIES) break;
+		memory.delete(key);
+	}
+}
 
 type MinimalOctokit = {
 	request: (
@@ -94,7 +120,7 @@ function writeKv(userId: string, value: ReadableRepos) {
 			env.GITHUB_CACHE_KV.put(`${KV_PREFIX}${userId}`, JSON.stringify(value), {
 				expirationTtl: KV_TTL_SECONDS,
 			}).catch((error) => {
-				console.warn("[change-access] KV write failed", error);
+				console.warn("[change-access] KV write failed", describeError(error));
 			}),
 		);
 	} catch {
@@ -114,20 +140,22 @@ export async function getReadableRepoSet(userId: string): Promise<Set<string>> {
 		try {
 			const { getGitHubAppUserClientByUserId } = await import("./auth-runtime");
 			const octokit = await getGitHubAppUserClientByUserId(userId);
-			if (!octokit) return new Set();
+			if (!octokit) {
+				remember(userId, NO_READABLE_REPOS, FAILURE_MEMORY_TTL_MS, now);
+				return new Set();
+			}
 			value = await listReadableRepos(octokit as unknown as MinimalOctokit);
 			writeKv(userId, value);
 		} catch (error) {
-			console.warn("[change-access] failed to list readable repos", error);
+			console.warn(
+				"[change-access] failed to list readable repos",
+				describeError(error),
+			);
+			remember(userId, NO_READABLE_REPOS, FAILURE_MEMORY_TTL_MS, now);
 			return new Set();
 		}
 	}
 
-	memory.set(userId, { value, expiresAt: now + MEMORY_TTL_MS });
-	if (memory.size > 1000) {
-		for (const [key, entry] of memory) {
-			if (entry.expiresAt <= now) memory.delete(key);
-		}
-	}
+	remember(userId, value, MEMORY_TTL_MS, now);
 	return new Set(value.repos);
 }
