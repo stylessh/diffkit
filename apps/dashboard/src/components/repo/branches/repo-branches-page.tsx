@@ -13,7 +13,7 @@ import {
 	parseAsStringLiteral,
 	useQueryStates,
 } from "nuqs";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useMemo } from "react";
 import { SidePanelPortal } from "#/components/layouts/dashboard-side-panel";
 import { Pagination } from "#/components/pagination";
 import { RepoActivityCards } from "#/components/repo/repo-activity-cards";
@@ -31,8 +31,8 @@ import {
 	githubRepoOverviewQueryOptions,
 } from "#/lib/github.query";
 import type { RepoBranchListItem } from "#/lib/github.types";
-import { useDebouncedValue } from "#/lib/use-debounced-value";
 import { useHasMounted } from "#/lib/use-has-mounted";
+import { useUrlSearchInput } from "#/lib/use-url-search-input";
 import { BranchRow, BranchRowSkeleton } from "./branch-row";
 
 const VIEWS = ["overview", "active", "stale", "all"] as const;
@@ -72,14 +72,16 @@ export function RepoBranchesPage({
 }) {
 	const hasMounted = useHasMounted();
 	const [params, setParams] = useQueryStates(branchesSearchParsers);
-	const [searchInput, setSearchInput] = useState(params.q ?? "");
-	const debouncedSearch = useDebouncedValue(searchInput, 300);
-
-	useEffect(() => {
-		const next = debouncedSearch.trim() || null;
-		if (next === (params.q ?? null)) return;
-		void setParams({ q: next, page: null }, { history: "replace" });
-	}, [debouncedSearch, params.q, setParams]);
+	const applySearch = useCallback(
+		(q: string | null) => {
+			void setParams({ q, page: null }, { history: "replace" });
+		},
+		[setParams],
+	);
+	const [searchInput, setSearchInput] = useUrlSearchInput(
+		params.q,
+		applySearch,
+	);
 
 	const overviewQuery = useQuery({
 		...githubRepoOverviewQueryOptions(scope, { owner, repo }),

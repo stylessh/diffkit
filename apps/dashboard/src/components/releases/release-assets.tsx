@@ -1,5 +1,6 @@
 import { DownloadIcon, FileIcon, PackageIcon } from "@diffkit/icons";
 import { cn } from "@diffkit/ui/lib/utils";
+import { encodeRefPath } from "#/lib/commits-route";
 import type { RepoRelease } from "#/lib/github.types";
 import { formatBytes } from "./release-save-utils";
 
@@ -27,7 +28,7 @@ function releaseAssetRows(
 	}));
 	// Drafts may point at a tag that doesn't exist yet, so no source archives.
 	if (!release.isDraft) {
-		const base = `https://github.com/${owner}/${repo}/archive/refs/tags/${encodeURIComponent(release.tagName)}`;
+		const base = `https://github.com/${owner}/${repo}/archive/refs/tags/${encodeRefPath(release.tagName)}`;
 		rows.push(
 			{
 				id: "source-zip",

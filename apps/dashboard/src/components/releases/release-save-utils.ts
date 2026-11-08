@@ -61,7 +61,8 @@ export function initialReleaseFormState({
 		name: release.name === release.tagName ? "" : release.name,
 		body: release.body,
 		prerelease: release.isPrerelease,
-		makeLatest: release.isLatest,
+		// Drafts are never "latest" yet; GitHub's default on publish is latest.
+		makeLatest: release.isDraft ? true : release.isLatest,
 	};
 }
 
@@ -105,7 +106,9 @@ export type ReleaseSaveIntent = "publish" | "draft";
 /**
  * Builds the create/update payload. Notable rules:
  * - Saving a published release never demotes it to a draft.
- * - `make_latest` only applies to published, non-prerelease releases.
+ * - `make_latest` only applies to published releases; prereleases are never
+ *   latest. Edits to an already-published release only send it when the
+ *   switch changed, so a failed "latest" lookup can't demote the real latest.
  * - The target branch is only sent for new tags (GitHub ignores it otherwise,
  *   and sending a stale branch for an existing tag is misleading).
  */
@@ -127,6 +130,10 @@ export function buildReleaseSavePayload({
 	const tagName = form.tagName.trim();
 	const draft = existing && !existing.isDraft ? false : intent === "draft";
 	const published = !draft;
+	const wantsLatest = form.makeLatest && !form.prerelease;
+	const sendMakeLatest =
+		published &&
+		(!existing || existing.isDraft || wantsLatest !== existing.isLatest);
 	const payload: SaveRepoReleaseInput = {
 		owner,
 		repo,
@@ -136,13 +143,8 @@ export function buildReleaseSavePayload({
 		draft,
 		prerelease: form.prerelease,
 		...(tagExists ? {} : { targetCommitish: form.targetCommitish.trim() }),
-		...(published
-			? {
-					makeLatest:
-						form.makeLatest && !form.prerelease
-							? ("true" as const)
-							: ("false" as const),
-				}
+		...(sendMakeLatest
+			? { makeLatest: wantsLatest ? ("true" as const) : ("false" as const) }
 			: {}),
 	};
 	return existing ? { ...payload, releaseId: existing.id } : payload;

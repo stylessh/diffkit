@@ -1019,3 +1019,17 @@ export type RepoViewerPermission = {
 	permission: "ADMIN" | "MAINTAIN" | "WRITE" | "TRIAGE" | "READ" | null;
 	canPush: boolean;
 };
+
+export type RepoRefSplatInput = {
+	owner: string;
+	repo: string;
+	/** `/commits/$` splat: `ref[/path]` where ref may itself contain slashes. */
+	splat: string;
+};
+
+export type RepoRefSplatResolution = {
+	ref: string | null;
+	path: string;
+	/** Which namespace the ref was found in, or null when unresolved. */
+	kind: "branch" | "tag" | null;
+};

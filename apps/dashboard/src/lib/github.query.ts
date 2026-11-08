@@ -62,6 +62,7 @@ import {
 	listWorkflowRunArtifacts,
 	listWorkflowRunJobs,
 	type RepoTemplateKind,
+	resolveRepoRefSplat,
 	searchCommandPaletteGitHub,
 	type WorkflowRunListStatus,
 	workflowZipJobName,
@@ -70,6 +71,7 @@ import type {
 	RepoBranchesListInput,
 	RepoCommitsInput,
 	RepoRefNamesInput,
+	RepoRefSplatInput,
 	RepoReleaseInput,
 	RepoReleasesInput,
 	RepoTagsListInput,
@@ -433,6 +435,8 @@ export const githubQueryKeys = {
 			scope: GitHubQueryScope,
 			input: { owner: string; repo: string; base: string; head: string },
 		) => ["github", scope.userId, "refs", "comparison", input] as const,
+		splat: (scope: GitHubQueryScope, input: RepoRefSplatInput) =>
+			["github", scope.userId, "refs", "splat", input] as const,
 	},
 };
 
@@ -1296,5 +1300,19 @@ export function githubRepoRefComparisonQueryOptions(
 		queryFn: () => getBranchComparison({ data: input }),
 		staleTime: githubCachePolicy.reposList.staleTimeMs,
 		gcTime: githubCachePolicy.list.gcTimeMs,
+	});
+}
+
+/** Splits a slashed `/commits/$` splat into ref + path (one cached GraphQL call). */
+export function githubRepoRefSplatQueryOptions(
+	scope: GitHubQueryScope,
+	input: RepoRefSplatInput,
+) {
+	return queryOptions({
+		queryKey: githubQueryKeys.refs.splat(scope, input),
+		queryFn: () => resolveRepoRefSplat({ data: input }),
+		staleTime: githubCachePolicy.repoMeta.staleTimeMs,
+		gcTime: githubCachePolicy.repoMeta.gcTimeMs,
+		meta: persistedMeta,
 	});
 }

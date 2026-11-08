@@ -2,7 +2,7 @@ import { CloseIcon, FileIcon, GitCommitIcon } from "@diffkit/icons";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { Link, useNavigate } from "@tanstack/react-router";
 import { parseAsInteger, parseAsString, useQueryStates } from "nuqs";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useMemo } from "react";
 import { SidePanelPortal } from "#/components/layouts/dashboard-side-panel";
 import { Pagination } from "#/components/pagination";
 import { RepoRefPicker } from "#/components/repo/refs/repo-ref-picker";
@@ -12,17 +12,17 @@ import {
 	RepoPageHeader,
 } from "#/components/repo/repo-page-header";
 import { filterCommitsByMessage, groupCommitsByDay } from "#/lib/commit-groups";
-import { buildCommitsSplat, parseCommitsSplat } from "#/lib/commits-route";
+import { buildCommitsSplat, splitCommitsSplat } from "#/lib/commits-route";
 import {
 	type GitHubQueryScope,
 	githubRepoCommitsQueryOptions,
 	githubRepoOverviewQueryOptions,
-	githubRepoRefNamesQueryOptions,
+	githubRepoRefSplatQueryOptions,
 	REPO_COMMITS_PER_PAGE,
 } from "#/lib/github.query";
-import { useDebouncedValue } from "#/lib/use-debounced-value";
 import { useHasMounted } from "#/lib/use-has-mounted";
 import { useRegisterTab } from "#/lib/use-register-tab";
+import { useUrlSearchInput } from "#/lib/use-url-search-input";
 import { CommitAuthorFilter } from "./commit-author-filter";
 import { RepoCommitRow, RepoCommitRowSkeleton } from "./repo-commit-row";
 
@@ -56,14 +56,16 @@ export function RepoCommitsPage({
 	const [params, setParams] = useQueryStates(commitsSearchParsers, {
 		history: "push",
 	});
-	const [searchInput, setSearchInput] = useState(params.q ?? "");
-	const debouncedSearch = useDebouncedValue(searchInput, 300);
-
-	useEffect(() => {
-		const next = debouncedSearch.trim() || null;
-		if (next === (params.q ?? null)) return;
-		void setParams({ q: next, page: null }, { history: "replace" });
-	}, [debouncedSearch, params.q, setParams]);
+	const applySearch = useCallback(
+		(q: string | null) => {
+			void setParams({ q, page: null }, { history: "replace" });
+		},
+		[setParams],
+	);
+	const [searchInput, setSearchInput] = useUrlSearchInput(
+		params.q,
+		applySearch,
+	);
 
 	const overviewQuery = useQuery({
 		...githubRepoOverviewQueryOptions(scope, { owner, repo }),
@@ -72,20 +74,24 @@ export function RepoCommitsPage({
 	const repoData = overviewQuery.data;
 	const defaultBranch = repoData?.defaultBranch;
 
-	// Only ambiguous splats ("feature/x/src") need branch names to resolve.
-	const needsRefNames = Boolean(splat?.includes("/"));
-	const branchNamesQuery = useQuery({
-		...githubRepoRefNamesQueryOptions(scope, { owner, repo, kind: "branches" }),
-		enabled: hasMounted && needsRefNames,
+	// Slashed splats ("feature/x/src", "@scope/pkg@1.0.0") are ambiguous:
+	// ask the server which prefix is a real branch or tag.
+	const needsResolution = Boolean(splat?.includes("/"));
+	const splatQuery = useQuery({
+		...githubRepoRefSplatQueryOptions(scope, {
+			owner,
+			repo,
+			splat: splat ?? "",
+		}),
+		enabled: hasMounted && needsResolution,
 	});
-	const refsResolved = !needsRefNames || !branchNamesQuery.isPending;
+	const refsResolved = !needsResolution || !splatQuery.isPending;
 	const { ref: splatRef, path } = useMemo(
 		() =>
-			parseCommitsSplat(splat, {
-				refNames: branchNamesQuery.data?.names,
-				defaultBranch,
-			}),
-		[splat, branchNamesQuery.data?.names, defaultBranch],
+			needsResolution && splatQuery.data
+				? { ref: splatQuery.data.ref, path: splatQuery.data.path }
+				: splitCommitsSplat(splat, null),
+		[needsResolution, splatQuery.data, splat],
 	);
 
 	const currentRef = splatRef ?? defaultBranch ?? "";
@@ -302,7 +308,6 @@ export function RepoCommitsPage({
 								<button
 									type="button"
 									onClick={() => {
-										setSearchInput("");
 										void setParams({ author: null, q: null, page: null });
 									}}
 									className="text-xs text-muted-foreground underline underline-offset-2 hover:text-foreground"

@@ -153,17 +153,55 @@ describe("buildReleaseSavePayload", () => {
 			tagExists: true,
 		});
 		expect(payload).toMatchObject({ releaseId: 42, draft: false });
+		// Latest switch untouched → don't send make_latest at all.
+		expect(payload).not.toHaveProperty("makeLatest");
 	});
 
-	it("lets a draft be published", () => {
+	it("only sends make_latest on edits when the switch changed", () => {
+		const existing = release({ isLatest: false });
+		expect(
+			buildReleaseSavePayload({
+				...base,
+				form: initialReleaseFormState({
+					release: existing,
+					defaultBranch: "main",
+				}),
+				intent: "publish",
+				existing,
+				tagExists: true,
+			}),
+		).not.toHaveProperty("makeLatest");
+		expect(
+			buildReleaseSavePayload({
+				...base,
+				form: {
+					...initialReleaseFormState({
+						release: existing,
+						defaultBranch: "main",
+					}),
+					makeLatest: true,
+				},
+				intent: "publish",
+				existing,
+				tagExists: true,
+			}).makeLatest,
+		).toBe("true");
+	});
+
+	it("publishes a draft as latest by default", () => {
+		const draft = release({ isDraft: true, isLatest: false });
 		const payload = buildReleaseSavePayload({
 			...base,
-			form: form(),
+			form: initialReleaseFormState({ release: draft, defaultBranch: "main" }),
 			intent: "publish",
-			existing: release({ isDraft: true }),
+			existing: draft,
 			tagExists: false,
 		});
-		expect(payload).toMatchObject({ releaseId: 42, draft: false });
+		expect(payload).toMatchObject({
+			releaseId: 42,
+			draft: false,
+			makeLatest: "true",
+		});
 	});
 });
 

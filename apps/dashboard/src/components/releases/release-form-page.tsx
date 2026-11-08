@@ -360,6 +360,14 @@ function ReleaseForm({
 				queryClient.invalidateQueries({
 					queryKey: ["github", scope.userId, "refs", "tags"],
 				}),
+				// Tag count in the repo nav/sidebar.
+				...(saved.isDraft
+					? []
+					: [
+							queryClient.invalidateQueries({
+								queryKey: githubQueryKeys.repo.overview(scope, { owner, repo }),
+							}),
+						]),
 			]);
 			toast.success(
 				saved.isDraft
@@ -525,7 +533,7 @@ function ReleaseForm({
 						<span className="text-xs text-muted-foreground">
 							{latestDisabled
 								? "Pre-releases can't be marked latest."
-								: "Shown as Latest on the repository. Drafts apply this when published."}
+								: "Shown as Latest on the repository. Applied when the release is published."}
 						</span>
 					</div>
 				</div>

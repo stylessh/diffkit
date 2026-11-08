@@ -1,34 +1,71 @@
 import { describe, expect, it } from "vitest";
-import { buildCommitsSplat, parseCommitsSplat } from "./commits-route";
+import {
+	buildCommitsSplat,
+	encodeRefPath,
+	MAX_REF_SEGMENTS,
+	refPrefixCandidates,
+	splitCommitsSplat,
+} from "./commits-route";
 
-describe("parseCommitsSplat", () => {
-	it("returns no ref for an empty splat", () => {
-		expect(parseCommitsSplat(undefined)).toEqual({ ref: null, path: "" });
-		expect(parseCommitsSplat("/")).toEqual({ ref: null, path: "" });
+describe("refPrefixCandidates", () => {
+	it("lists every prefix shortest first", () => {
+		expect(refPrefixCandidates("/feature/login/src/")).toEqual([
+			"feature",
+			"feature/login",
+			"feature/login/src",
+		]);
+		expect(refPrefixCandidates("")).toEqual([]);
 	});
 
-	it("matches the longest known ref so slashed branch names survive", () => {
+	it("caps the number of candidates", () => {
+		const deep = Array.from({ length: 20 }, (_, i) => `s${i}`).join("/");
+		expect(refPrefixCandidates(deep)).toHaveLength(MAX_REF_SEGMENTS);
+	});
+});
+
+describe("splitCommitsSplat", () => {
+	it("returns no ref for an empty splat", () => {
+		expect(splitCommitsSplat(undefined)).toEqual({ ref: null, path: "" });
+	});
+
+	it("splits on the matched ref so slashed branches and tags survive", () => {
 		expect(
-			parseCommitsSplat("feature/login/src/app.ts", {
-				refNames: ["feature", "feature/login"],
-			}),
+			splitCommitsSplat("feature/login/src/app.ts", "feature/login"),
 		).toEqual({ ref: "feature/login", path: "src/app.ts" });
+		expect(splitCommitsSplat("@scope/pkg@1.0.0", "@scope/pkg@1.0.0")).toEqual({
+			ref: "@scope/pkg@1.0.0",
+			path: "",
+		});
+	});
+
+	it("ignores a match that isn't a segment prefix", () => {
+		expect(splitCommitsSplat("feature-x/docs", "feature")).toEqual({
+			ref: "feature-x",
+			path: "docs",
+		});
 	});
 
 	it("falls back to the first segment as the ref", () => {
-		expect(parseCommitsSplat("v1.2.0/docs")).toEqual({
+		expect(splitCommitsSplat("v1.2.0/docs", null)).toEqual({
 			ref: "v1.2.0",
 			path: "docs",
 		});
 	});
 
 	it("round-trips with buildCommitsSplat", () => {
-		const splat = buildCommitsSplat("main", "/src/lib/");
-		expect(splat).toBe("main/src/lib");
-		expect(parseCommitsSplat(splat, { defaultBranch: "main" })).toEqual({
-			ref: "main",
+		const splat = buildCommitsSplat("release/2026", "/src/lib/");
+		expect(splat).toBe("release/2026/src/lib");
+		expect(splitCommitsSplat(splat, "release/2026")).toEqual({
+			ref: "release/2026",
 			path: "src/lib",
 		});
 		expect(buildCommitsSplat("main")).toBe("main");
+	});
+});
+
+describe("encodeRefPath", () => {
+	it("encodes segments but keeps slashes", () => {
+		expect(encodeRefPath("@scope/pkg@1.0.0")).toBe("%40scope/pkg%401.0.0");
+		expect(encodeRefPath("v1.0 rc")).toBe("v1.0%20rc");
 	});
 });

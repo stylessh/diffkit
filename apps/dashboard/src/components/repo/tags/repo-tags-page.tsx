@@ -19,7 +19,7 @@ import {
 } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import { parseAsString, useQueryState } from "nuqs";
-import { memo, useEffect, useMemo, useState } from "react";
+import { memo, useCallback, useMemo } from "react";
 import { SidePanelPortal } from "#/components/layouts/dashboard-side-panel";
 import { TagIcon } from "#/components/repo/refs/tag-icon";
 import { RepoActivityCards } from "#/components/repo/repo-activity-cards";
@@ -27,6 +27,7 @@ import {
 	RepoListSearchInput,
 	RepoPageHeader,
 } from "#/components/repo/repo-page-header";
+import { encodeRefPath } from "#/lib/commits-route";
 import { formatRelativeTime } from "#/lib/format-relative-time";
 import {
 	type GitHubQueryScope,
@@ -37,8 +38,8 @@ import {
 	REPO_RELEASES_PER_PAGE,
 } from "#/lib/github.query";
 import type { RepoRelease, RepoTagListItem } from "#/lib/github.types";
-import { useDebouncedValue } from "#/lib/use-debounced-value";
 import { useHasMounted } from "#/lib/use-has-mounted";
+import { useUrlSearchInput } from "#/lib/use-url-search-input";
 
 /**
  * Tags, newest first (GraphQL orders by tag/commit date), 30 per request.
@@ -56,14 +57,13 @@ export function RepoTagsPage({
 }) {
 	const hasMounted = useHasMounted();
 	const [q, setQ] = useQueryState("q", parseAsString);
-	const [searchInput, setSearchInput] = useState(q ?? "");
-	const debouncedSearch = useDebouncedValue(searchInput, 300);
-
-	useEffect(() => {
-		const next = debouncedSearch.trim() || null;
-		if (next === (q ?? null)) return;
-		void setQ(next, { history: "replace" });
-	}, [debouncedSearch, q, setQ]);
+	const applySearch = useCallback(
+		(next: string | null) => {
+			void setQ(next, { history: "replace" });
+		},
+		[setQ],
+	);
+	const [searchInput, setSearchInput] = useUrlSearchInput(q, applySearch);
 
 	const overviewQuery = useQuery({
 		...githubRepoOverviewQueryOptions(scope, { owner, repo }),
@@ -241,7 +241,7 @@ const TagRow = memo(function TagRow({
 	release: RepoRelease | null;
 	canPush: boolean;
 }) {
-	const archiveBase = `https://github.com/${owner}/${repo}/archive/refs/tags/${encodeURIComponent(tag.name)}`;
+	const archiveBase = `https://github.com/${owner}/${repo}/archive/refs/tags/${encodeRefPath(tag.name)}`;
 	const messageLine = tag.message?.split("\n")[0];
 
 	return (

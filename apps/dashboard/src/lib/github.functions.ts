@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { type Octokit as OctokitType, RequestError } from "octokit";
 import { parse as parseYaml } from "yaml";
+import { refPrefixCandidates, splitCommitsSplat } from "./commits-route";
 import { debug } from "./debug";
 import type {
 	BranchComparison,
@@ -62,6 +63,8 @@ import type {
 	RepoParticipationStats,
 	RepoRefNames,
 	RepoRefNamesInput,
+	RepoRefSplatInput,
+	RepoRefSplatResolution,
 	RepoRelease,
 	RepoReleaseInput,
 	RepoReleasesInput,
@@ -11749,7 +11752,8 @@ async function listRepoReleasesRaw(
 export const getRepoReleases = createServerFn({ method: "GET" })
 	.inputValidator(identityValidator<RepoReleasesInput>)
 	.handler(async ({ data }): Promise<RepoReleasesPage> => {
-		const context = await getGitHubContextForRepository(data);
+		// User token: draft releases are only listed to callers with push access.
+		const context = await getGitHubUserContextForRepository(data);
 		if (!context) return { releases: [], hasNextPage: false };
 
 		const perPage = clampPerPage(data.perPage, 10);
@@ -11781,7 +11785,8 @@ export const getRepoReleases = createServerFn({ method: "GET" })
 export const getRepoRelease = createServerFn({ method: "GET" })
 	.inputValidator(identityValidator<RepoReleaseInput>)
 	.handler(async ({ data }): Promise<RepoRelease | null> => {
-		const context = await getGitHubContextForRepository(data);
+		// User token: draft releases are only listed to callers with push access.
+		const context = await getGitHubUserContextForRepository(data);
 		if (!context) return null;
 
 		const repoMetaKey = githubRevalidationSignalKeys.repoMeta(data);
@@ -12016,5 +12021,92 @@ export const generateRepoReleaseNotes = createServerFn({ method: "POST" })
 		} catch (error) {
 			const result = toReleaseMutationError("generate release notes", error);
 			return { ok: false, error: result.error };
+		}
+	});
+
+type GitHubGraphQLRefSplatResponse = {
+	repository: Record<string, { name: string } | null> | null;
+};
+
+/**
+ * Resolves a `/commits/$` splat whose ref may contain slashes (`feature/x`,
+ * `@scope/pkg@1.0.0`). One GraphQL request checks every prefix as both a
+ * branch and a tag; the longest existing prefix wins.
+ */
+export const resolveRepoRefSplat = createServerFn({ method: "GET" })
+	.inputValidator(identityValidator<RepoRefSplatInput>)
+	.handler(async ({ data }): Promise<RepoRefSplatResolution> => {
+		const candidates = refPrefixCandidates(data.splat);
+		const fallback = (): RepoRefSplatResolution => ({
+			...splitCommitsSplat(data.splat, null),
+			kind: null,
+		});
+		if (candidates.length <= 1) return fallback();
+
+		const context = await getGitHubContextForRepository(data);
+		if (!context) return fallback();
+
+		const repoCodeKey = githubRevalidationSignalKeys.repoCode(data);
+		const variables: Record<string, string> = {
+			owner: data.owner,
+			repo: data.repo,
+		};
+		const declarations: string[] = [];
+		const fields: string[] = [];
+		candidates.forEach((candidate, index) => {
+			variables[`h${index}`] = `refs/heads/${candidate}`;
+			variables[`t${index}`] = `refs/tags/${candidate}`;
+			declarations.push(`$h${index}: String!`, `$t${index}: String!`);
+			fields.push(
+				`h${index}: ref(qualifiedName: $h${index}) { name }`,
+				`t${index}: ref(qualifiedName: $t${index}) { name }`,
+			);
+		});
+
+		try {
+			return await getOrRevalidateGitHubResource<RepoRefSplatResolution>({
+				userId: context.session.user.id,
+				resource: "repo.refSplat.v1",
+				params: { owner: data.owner, repo: data.repo, splat: data.splat },
+				freshForMs: githubCachePolicy.repoMeta.staleTimeMs,
+				signalKeys: [repoCodeKey],
+				namespaceKeys: [repoCodeKey],
+				cacheMode: "split",
+				fetcher: async () => {
+					const response =
+						await executeGitHubGraphQL<GitHubGraphQLRefSplatResponse>(
+							context,
+							`github resolve ref ${data.owner}/${data.repo}`,
+							`query($owner: String!, $repo: String!, ${declarations.join(", ")}) {
+								repository(owner: $owner, name: $repo) { ${fields.join(" ")} }
+							}`,
+							variables,
+						);
+					const repository = response.repository ?? {};
+					let resolved: RepoRefSplatResolution = fallback();
+					for (let index = candidates.length - 1; index >= 0; index--) {
+						const kind = repository[`h${index}`]
+							? "branch"
+							: repository[`t${index}`]
+								? "tag"
+								: null;
+						if (kind) {
+							resolved = {
+								...splitCommitsSplat(data.splat, candidates[index]),
+								kind,
+							};
+							break;
+						}
+					}
+					return {
+						kind: "success",
+						data: resolved,
+						metadata: createGitHubResponseMetadata(200, {}),
+					};
+				},
+			});
+		} catch (error) {
+			console.error("[resolveRepoRefSplat]", error);
+			return fallback();
 		}
 	});
