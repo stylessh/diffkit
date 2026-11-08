@@ -235,15 +235,16 @@ export function DashboardTopbar({
 	]);
 
 	return (
-		<nav className="flex min-w-0 items-center gap-3 overflow-hidden px-3 py-2">
+		<nav className="flex h-12 min-w-0 shrink-0 items-center gap-3 overflow-hidden px-3 max-md:h-11 max-md:border-b-[0.5px] max-md:border-header-rule">
 			<div className="hidden md:block">
 				<DropdownMenu>
 					<DropdownMenuTrigger asChild>
 						<button
 							type="button"
-							className="flex size-8 items-center justify-center rounded-full"
+							aria-label="Account menu"
+							className="flex size-8 items-center justify-center rounded-full hover:bg-nav-hover"
 						>
-							<Avatar className="size-7 border border-border">
+							<Avatar className="size-6">
 								<AvatarImage src={user.image ?? undefined} alt={displayName} />
 								<AvatarFallback
 									delayMs={user.image ? 400 : 0}
@@ -256,7 +257,7 @@ export function DashboardTopbar({
 					</DropdownMenuTrigger>
 					<DropdownMenuContent align="start" className="w-56">
 						<DropdownMenuLabel className="flex items-center gap-3 py-2">
-							<Avatar className="size-8 border border-border">
+							<Avatar className="size-8">
 								<AvatarImage src={user.image ?? undefined} alt={displayName} />
 								<AvatarFallback
 									delayMs={user.image ? 400 : 0}
@@ -315,10 +316,8 @@ export function DashboardTopbar({
 
 			<div
 				aria-hidden={!tabsReady}
-				className={`hidden shrink-0 items-center gap-0.5 transition-[opacity,transform] duration-300 ease-out md:flex ${
-					tabsReady
-						? "translate-y-0 opacity-100"
-						: "pointer-events-none -translate-y-0.5 opacity-0"
+				className={`hidden shrink-0 items-center gap-0.5 transition-opacity duration-150 md:flex ${
+					tabsReady ? "opacity-100" : "pointer-events-none opacity-0"
 				}`}
 			>
 				{navItems.map((item) => (
@@ -327,8 +326,8 @@ export function DashboardTopbar({
 						variant="ghost"
 						size="sm"
 						asChild
-						iconLeft={<item.icon size={15} strokeWidth={2} />}
-						className="text-muted-foreground [&.active]:bg-surface-1 [&.active]:text-foreground"
+						iconLeft={<item.icon size={14} strokeWidth={2} />}
+						className="h-7 px-2 text-text-nav hover:bg-nav-hover hover:text-foreground [&.active]:bg-nav-selected [&.active]:text-foreground"
 					>
 						<Link
 							to={item.to as string}
@@ -339,11 +338,17 @@ export function DashboardTopbar({
 							<span className="flex items-center gap-2">
 								<span>{item.label}</span>
 								{item.dot ? (
-									<span className="size-1.5 rounded-full bg-blue-500 translate-y-px" />
+									<>
+										<span
+											aria-hidden
+											className="size-1.5 rounded-full bg-indigo"
+										/>
+										<span className="sr-only">Unread</span>
+									</>
 								) : typeof item.count === "number" ? (
 									<span
 										data-slot="tab-count"
-										className="tabular-nums text-muted-foreground"
+										className="text-xs tabular-nums text-muted-foreground"
 									>
 										{item.count}
 									</span>
@@ -365,9 +370,9 @@ export function DashboardTopbar({
 							variant="ghost"
 							size="icon"
 							iconLeft={
-								<MoreHorizontalIcon className="size-5" strokeWidth={2} />
+								<MoreHorizontalIcon className="size-4" strokeWidth={2} />
 							}
-							className="size-8 text-muted-foreground hover:bg-surface-1"
+							className="size-7 text-text-nav hover:bg-nav-hover hover:text-foreground"
 							aria-label="More actions"
 						/>
 					</DropdownMenuTrigger>

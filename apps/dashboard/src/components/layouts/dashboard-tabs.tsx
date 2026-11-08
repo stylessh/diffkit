@@ -194,25 +194,23 @@ export function DashboardTabs({ tabsReady, routerRef }: DashboardTabsProps) {
 		<div
 			aria-hidden={!tabsReady}
 			className={cn(
-				"flex min-w-0 items-center gap-3 overflow-hidden transition-[opacity,transform] duration-300 ease-out",
-				tabsReady
-					? "translate-y-0 opacity-100"
-					: "pointer-events-none -translate-y-0.5 opacity-0",
+				"flex min-w-0 items-center gap-3 overflow-hidden transition-opacity duration-150",
+				tabsReady ? "opacity-100" : "pointer-events-none opacity-0",
 			)}
 		>
-			<div className="hidden h-4 shrink-0 border-l border-border/50 md:block" />
+			<div className="hidden h-4 shrink-0 border-l-[0.5px] border-chip-border md:block" />
 			<ContextMenu>
 				<ContextMenuTrigger asChild>
 					<div className="relative min-w-0 flex-1 overflow-hidden">
 						<div
 							className={cn(
-								"pointer-events-none absolute inset-y-0 left-0 z-10 w-6 bg-gradient-to-r from-muted to-transparent transition-opacity",
+								"pointer-events-none absolute inset-y-0 left-0 z-10 w-6 bg-gradient-to-r from-shell to-transparent transition-opacity",
 								canScrollLeft ? "opacity-100" : "opacity-0",
 							)}
 						/>
 						<div
 							className={cn(
-								"pointer-events-none absolute inset-y-0 right-0 z-10 w-6 bg-gradient-to-l from-muted to-transparent transition-opacity",
+								"pointer-events-none absolute inset-y-0 right-0 z-10 w-6 bg-gradient-to-l from-shell to-transparent transition-opacity",
 								canScrollRight ? "opacity-100" : "opacity-0",
 							)}
 						/>
@@ -362,7 +360,7 @@ const DetailTab = memo(function DetailTab({
 			onContextMenu={onContextMenu}
 			activeOptions={{ exact: true }}
 			activeProps={{ className: "active" }}
-			className="group relative flex h-8 shrink-0 items-center gap-1.5 rounded-md px-3 text-[13px] font-medium text-muted-foreground transition-colors hover:bg-surface-1 hover:text-foreground [&.active]:bg-surface-1 [&.active]:text-foreground"
+			className="group relative flex h-7 shrink-0 items-center gap-1.5 rounded-md px-2 text-[13px] font-medium text-text-nav transition-colors hover:bg-nav-hover hover:text-foreground max-md:h-8 [&.active]:bg-nav-selected [&.active]:text-foreground"
 		>
 			{tab.avatarUrl ? (
 				<img
@@ -381,14 +379,14 @@ const DetailTab = memo(function DetailTab({
 			{tab.type === "review" || tab.type === "commit" ? (
 				<span className="flex items-center gap-1 font-mono text-[11px] font-medium tabular-nums">
 					{tab.additions != null && (
-						<span className="text-green-500">+{tab.additions}</span>
+						<span className="text-added">+{tab.additions}</span>
 					)}
 					{tab.deletions != null && (
-						<span className="text-red-500">-{tab.deletions}</span>
+						<span className="text-removed">-{tab.deletions}</span>
 					)}
 				</span>
 			) : tab.number != null ? (
-				<span className="tabular-nums text-muted-foreground text-[11px]">
+				<span className="text-[11px] tabular-nums text-muted-foreground">
 					#{tab.number}
 				</span>
 			) : null}
@@ -417,11 +415,11 @@ const DetailTab = memo(function DetailTab({
 					e.stopPropagation();
 					onClose(tab.id, tab.url);
 				}}
-				className="absolute inset-y-0 right-0 hidden items-center rounded-r-md bg-surface-1 pl-1.5 pr-1.5 opacity-0 transition-opacity group-hover:opacity-100 md:flex"
+				className="absolute inset-y-0 right-0 hidden items-center rounded-r-md bg-nav-hover pr-1.5 pl-1.5 opacity-0 transition-opacity group-hover:opacity-100 group-[.active]:bg-nav-selected md:flex"
 				aria-label={`Close ${tab.title}`}
 			>
-				<span className="absolute inset-y-0 -left-3 w-3 bg-gradient-to-r from-transparent to-surface-1" />
-				<span className="relative flex size-4 items-center justify-center rounded-sm hover:bg-border/50">
+				<span className="absolute inset-y-0 -left-3 w-3 bg-gradient-to-r from-transparent to-nav-hover group-[.active]:to-nav-selected" />
+				<span className="relative flex size-4 items-center justify-center rounded-sm text-muted-foreground hover:bg-ghost-hover hover:text-foreground">
 					<CloseIcon size={10} strokeWidth={2} />
 				</span>
 			</button>

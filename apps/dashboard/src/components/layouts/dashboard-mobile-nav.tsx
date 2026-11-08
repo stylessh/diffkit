@@ -110,7 +110,7 @@ export function DashboardMobileNav({
 	];
 
 	return (
-		<nav className="flex items-stretch border-t border-border bg-card md:hidden">
+		<nav className="flex items-stretch border-t-[0.5px] border-header-rule bg-main md:hidden">
 			{navItems.map((item) => (
 				<Link
 					key={item.to}
@@ -118,16 +118,21 @@ export function DashboardMobileNav({
 					preload={false}
 					activeOptions={{ exact: true }}
 					activeProps={{ className: "active" }}
+					aria-label={
+						typeof item.count === "number" && item.count > 0
+							? `${item.label} (${item.count})`
+							: item.label
+					}
 					className={cn(
-						"relative flex flex-1 items-center justify-center py-3 text-muted-foreground transition-colors",
-						"[&.active]:bg-surface-1 [&.active]:text-foreground",
+						"relative flex flex-1 items-center justify-center py-3 text-icon-faint transition-colors",
+						"[&.active]:text-foreground",
 						!tabsReady && "pointer-events-none opacity-0",
 					)}
 				>
 					<div className="relative">
-						<item.icon size={22} strokeWidth={1.8} />
+						<item.icon size={20} strokeWidth={1.8} />
 						{typeof item.count === "number" && item.count > 0 && (
-							<span className="absolute -right-4 -top-1.5 flex size-4 items-center justify-center rounded-full bg-border text-[9px] font-medium leading-none text-muted-foreground tabular-nums">
+							<span className="absolute -top-1.5 -right-3.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-nav-selected px-1 text-[10px] leading-none font-medium text-text-strong tabular-nums">
 								{item.count > 99 ? "+" : item.count}
 							</span>
 						)}
@@ -139,9 +144,10 @@ export function DashboardMobileNav({
 				<DropdownMenuTrigger asChild>
 					<button
 						type="button"
+						aria-label="Account menu"
 						className="flex flex-1 items-center justify-center py-3 text-muted-foreground"
 					>
-						<Avatar className="size-6 border border-border">
+						<Avatar className="size-6">
 							<AvatarImage src={user.image ?? undefined} alt={displayName} />
 							<AvatarFallback
 								delayMs={user.image ? 400 : 0}
@@ -158,7 +164,7 @@ export function DashboardMobileNav({
 							<p>{displayName}</p>
 							<p className="font-normal text-muted-foreground">{user.email}</p>
 						</div>
-						<div className="flex items-center gap-0.5 rounded-md border border-border/50 p-0.5">
+						<div className="flex items-center gap-0.5 rounded-md bg-group p-0.5">
 							{themeOptions.map((opt) => (
 								<button
 									key={opt.value}
@@ -167,10 +173,12 @@ export function DashboardMobileNav({
 									className={cn(
 										"flex size-6 items-center justify-center rounded-sm transition-colors",
 										theme === opt.value
-											? "bg-surface-1 text-foreground"
+											? "bg-tab-selected text-foreground shadow-tab-selected"
 											: "text-muted-foreground hover:text-foreground",
 									)}
 									title={opt.label}
+									aria-label={opt.label}
+									aria-pressed={theme === opt.value}
 								>
 									<opt.icon size={13} strokeWidth={2} />
 								</button>

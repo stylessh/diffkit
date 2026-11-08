@@ -62,11 +62,11 @@ export function AlphaNoticeDialog() {
 				</DialogHeader>
 
 				<div className="px-5 pb-5">
-					<Alert className="border-amber-500/40 bg-amber-500/[0.12] text-foreground dark:bg-amber-500/15">
-						<AlertTitle className="text-amber-950 dark:text-amber-50">
+					<Alert className="border-0 bg-pill-warning text-foreground">
+						<AlertTitle className="text-pill-warning-text">
 							Alpha software
 						</AlertTitle>
-						<AlertDescription className="text-amber-950/90 dark:text-amber-50/85">
+						<AlertDescription className="text-text-header">
 							DiffKit is in early release. Expect bugs, rough edges, and
 							unfinished flows. When something breaks, please report it on our
 							GitHub issues board — it helps us ship a stable product.
@@ -74,7 +74,7 @@ export function AlphaNoticeDialog() {
 					</Alert>
 				</div>
 
-				<DialogFooter className="border-t border-border/70 px-5 py-3.5">
+				<DialogFooter className="border-t-[0.5px] border-popover-border px-5 py-3">
 					<Button type="button" variant="ghost" size="sm" asChild>
 						<a href={issuesUrl} target="_blank" rel="noopener noreferrer">
 							Report an issue
