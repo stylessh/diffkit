@@ -11057,7 +11057,7 @@ async function fetchPendingReviewBatch(
 }
 
 export const getMyReviewDrafts = createServerFn({ method: "GET" }).handler(
-	async ({ context: requestContext }): Promise<ReviewDraftsResult> => {
+	async (): Promise<ReviewDraftsResult> => {
 		const empty: ReviewDraftsResult = {
 			drafts: [],
 			checkedCount: 0,
@@ -11083,7 +11083,6 @@ export const getMyReviewDrafts = createServerFn({ method: "GET" }).handler(
 					getMyPullsResult({
 						context,
 						username: viewer.login,
-						executionContext: getBackgroundExecutionContext(requestContext),
 					}),
 					getInstallationAccessIndex(context),
 				]);
