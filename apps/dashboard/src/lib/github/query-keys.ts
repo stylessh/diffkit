@@ -13,6 +13,7 @@ import type {
 	RepoTagsListInput,
 } from "../github.types";
 import type { ReposHubInput } from "../repos-hub-filter";
+import { codeBrowsingQueryKeys } from "./code-browsing-keys";
 
 type RepoState = "all" | "closed" | "open";
 type PullSort = "created" | "long-running" | "popularity" | "updated";
@@ -31,6 +32,8 @@ export type GitHubQueryScope = {
 };
 
 export type RepoSettingsInput = { owner: string; repo: string };
+
+export type OrgSettingsInput = { org: string };
 
 export type PullsFromUserQueryInput = {
 	username?: string;
@@ -139,7 +142,7 @@ export const QUERY_SCHEMA_VERSION = 1;
 export const githubQueryPersistOptOut = [
 	// Large blobs: PR patches, file contents, commit and compare diffs, logs.
 	["pulls", "files"],
-	["repo", "fileContent"],
+	["code", "blob"],
 	["repo", "commit"],
 	["repo", "compareDetail"],
 	["actions", "workflowJobLogs"],
@@ -148,6 +151,7 @@ export const githubQueryPersistOptOut = [
 	["reviewDrafts"],
 	// Transient, per-keystroke results.
 	["search", "commandPalette"],
+	["code", "search"],
 	// Payload URLs often embed tokens.
 	["repoSettings", "webhooks"],
 	["repoSettings", "webhookDeliveries"],
@@ -268,10 +272,6 @@ export const githubQueryKeys = {
 			scope: GitHubQueryScope,
 			input: { owner: string; repo: string; ref: string; path: string },
 		) => ["github", scope.userId, "repo", "tree", input] as const,
-		fileContent: (
-			scope: GitHubQueryScope,
-			input: { owner: string; repo: string; ref: string; path: string },
-		) => ["github", scope.userId, "repo", "fileContent", input] as const,
 		fileLastCommit: (
 			scope: GitHubQueryScope,
 			input: { owner: string; repo: string; ref: string; path: string },
@@ -301,6 +301,7 @@ export const githubQueryKeys = {
 			input: { owner: string; repo: string },
 		) => ["github", scope.userId, "repo", "discussions", input] as const,
 	},
+	code: codeBrowsingQueryKeys,
 	issues: {
 		mine: (scope: GitHubQueryScope) =>
 			["github", scope.userId, "issues", "mine"] as const,
@@ -453,5 +454,21 @@ export const githubQueryKeys = {
 				"actionsVariables",
 				input,
 			] as const,
+	},
+	orgSettings: {
+		general: (scope: GitHubQueryScope, input: OrgSettingsInput) =>
+			["github", scope.userId, "orgSettings", "general", input] as const,
+		role: (scope: GitHubQueryScope, input: OrgSettingsInput) =>
+			["github", scope.userId, "orgSettings", "role", input] as const,
+		members: (scope: GitHubQueryScope, input: OrgSettingsInput) =>
+			["github", scope.userId, "orgSettings", "members", input] as const,
+		teams: (scope: GitHubQueryScope, input: OrgSettingsInput) =>
+			["github", scope.userId, "orgSettings", "teams", input] as const,
+		teamMembers: (
+			scope: GitHubQueryScope,
+			input: OrgSettingsInput & { teamSlug: string },
+		) => ["github", scope.userId, "orgSettings", "teamMembers", input] as const,
+		viewerOrgs: (scope: GitHubQueryScope) =>
+			["github", scope.userId, "orgSettings", "viewerOrgs"] as const,
 	},
 };

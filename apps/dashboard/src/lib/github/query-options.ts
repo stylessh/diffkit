@@ -35,7 +35,6 @@ import {
 	getRepoCommits,
 	getRepoContributors,
 	getRepoDiscussions,
-	getRepoFileContent,
 	getRepoLabels,
 	getRepoOverview,
 	getRepoParticipationStats,
@@ -593,18 +592,6 @@ export function githubRepoTreeQueryOptions(
 		queryFn: () => getRepoTree({ data: input }),
 		staleTime: githubCachePolicy.detail.staleTimeMs,
 		gcTime: githubCachePolicy.detail.gcTimeMs,
-	});
-}
-
-export function githubRepoFileContentQueryOptions(
-	scope: GitHubQueryScope,
-	input: { owner: string; repo: string; ref: string; path: string },
-) {
-	return queryOptions({
-		queryKey: githubQueryKeys.repo.fileContent(scope, input),
-		queryFn: () => getRepoFileContent({ data: input }),
-		staleTime: githubCachePolicy.repoMeta.staleTimeMs,
-		gcTime: githubCachePolicy.repoMeta.gcTimeMs,
 	});
 }
 

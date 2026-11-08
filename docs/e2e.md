@@ -57,6 +57,7 @@ user.
 | `concurrent/overview` | home summary and navigation into a pull request |
 | `concurrent/pull-requests` | queues, author filter persisted in the `diffkit-filters` cookie, pull request detail, the diff page with review threads |
 | `concurrent/issues` | issue queue and issue detail |
+| `concurrent/code-browsing` | folder view, `t` file finder, `#L` line links, blame with its commit card, in-repository code search |
 | `concurrent/repository` | commits, branches and releases pages |
 | `isolated/auth` | protected redirect, sign-in through the emulator, sign-out |
 | `isolated/review-submission` | approving from the review page |
@@ -64,6 +65,8 @@ user.
 | `isolated/inbox` | marking a notification as read |
 | `isolated/instant-ui` | a revisited pull request paints from IndexedDB with no skeleton while every server function is held |
 | `isolated/repo-settings` | repository settings: saving the description, the last-merge-method guard, labels, an Actions secret and variable, collaborators and invitations, a webhook and its redelivery |
+| `isolated/org-settings` | organization settings: saving the profile, promoting a member, cancelling and sending invitations, creating a team, adding a member and deleting it |
+| `isolated/org-settings-member` | a signed-in member sees the roster but none of the owner controls |
 | `isolated/change-feed` | a signed webhook refreshes an open list without a reload |
 
 The emulator does not deliver app webhooks in this mode, so only the webhooks a

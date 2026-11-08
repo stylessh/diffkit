@@ -314,3 +314,7 @@ export function settingsEntityKey(input: RepoInput) {
 		repo: normalizeRepoFullName(input.owner, input.repo),
 	});
 }
+
+export function orgEntityKey(org: string) {
+	return formatEntityKey({ kind: "org", org: org.toLowerCase() });
+}

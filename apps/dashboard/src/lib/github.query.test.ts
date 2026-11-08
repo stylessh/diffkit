@@ -52,6 +52,7 @@ function allSampleKeys(): (readonly unknown[])[] {
 }
 
 const samples: Record<string, GitHubChangeEntity> = {
+	org: { kind: "org", org: "acme" },
 	pull: { kind: "pull", repo: "acme/api", number: 12 },
 	issue: { kind: "issue", repo: "acme/api", number: 12 },
 	repo: { kind: "repo", repo: "acme/api" },
@@ -103,6 +104,23 @@ describe("entity → query registry", () => {
 		}
 	});
 
+	it("refetches code at a branch on push, but never code pinned to a commit", () => {
+		const push = { kind: "repo", repo: "acme/api" } as const;
+		const input = { owner: "acme", repo: "api", path: "src/a.ts" };
+		expect(
+			githubQueryMatchesEntity(
+				githubQueryKeys.code.blob(scope, { ...input, ref: "main" }),
+				push,
+			),
+		).toBe(true);
+		expect(
+			githubQueryMatchesEntity(
+				githubQueryKeys.code.blame(scope, { ...input, ref: "a".repeat(40) }),
+				push,
+			),
+		).toBe(false);
+	});
+
 	it("targets one pull, not its neighbours or other repos", () => {
 		const page = githubQueryKeys.pulls.page(scope, {
 			owner: "acme",
@@ -126,6 +144,23 @@ describe("entity → query registry", () => {
 		expect(
 			githubQueryMatchesEntity(githubQueryKeys.viewer(scope), samples.pull),
 		).toBe(false);
+	});
+
+	it("targets one organization, not another or a repository", () => {
+		const members = githubQueryKeys.orgSettings.members(scope, { org: "Acme" });
+		const other = githubQueryKeys.orgSettings.members(scope, { org: "globex" });
+		expect(githubQueryMatchesEntity(members, samples.org)).toBe(true);
+		expect(githubQueryMatchesEntity(other, samples.org)).toBe(false);
+		expect(
+			githubQueryMatchesEntity(
+				githubQueryKeys.repoSettings.access(scope, {
+					owner: "acme",
+					repo: "api",
+				}),
+				samples.org,
+			),
+		).toBe(false);
+		expect(parseEntityKey("org:Acme")).toEqual(samples.org);
 	});
 
 	it("refetches user-wide aggregates only when they contain the item", () => {
