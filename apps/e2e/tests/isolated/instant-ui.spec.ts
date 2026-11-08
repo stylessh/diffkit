@@ -4,6 +4,13 @@ import { expect, isolatedTest as test } from "../../support/test.ts";
 const description = (page: Page) =>
 	page.getByText("Chrome-only prototype, not ready for review.");
 
+type RouterHandle = {
+	preloadRoute(options: {
+		to: string;
+		params: Record<string, string>;
+	}): Promise<unknown>;
+};
+
 function persistedQueriesMention(page: Page, text: string) {
 	return page.evaluate(async (needle) => {
 		const databases = await indexedDB.databases();
@@ -63,6 +70,17 @@ test("a pull request seen before paints from IndexedDB without a skeleton while 
 		await serverSilent.promise;
 		await route.continue().catch(() => undefined);
 	});
+
+	// `vite dev` serves a route as ~100 separate modules; load them first so the
+	// 300 ms below measures the cache paint, not the dev server.
+	await page.evaluate(() =>
+		(
+			window as unknown as { __TSR_ROUTER__: RouterHandle }
+		).__TSR_ROUTER__.preloadRoute({
+			to: "/$owner/$repo/pull/$pullId",
+			params: { owner: "lumen-labs", repo: "beacon", pullId: "20" },
+		}),
+	);
 
 	await page.evaluate(() => {
 		(window as unknown as { skeletonShown: boolean }).skeletonShown = false;
