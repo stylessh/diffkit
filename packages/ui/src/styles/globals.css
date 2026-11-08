@@ -154,6 +154,39 @@
 	--ln-removed: lch(50 80 29);
 	--ln-inline-code: lch(20 50 286.91 / 0.05);
 	--ln-inline-code-ring: lch(84.44 0 282);
+
+	/* GitHub states on Linear's hues: a pull request or issue's state, a
+	   check's conclusion and a review's verdict. */
+	--ln-state-open: lch(60 64.37 141.95);
+	--ln-state-draft: lch(64.64 1.25 282);
+	--ln-state-merged: lch(50 62 300);
+	--ln-state-closed: lch(58 73 29);
+	--ln-check-passed: lch(60 64.37 141.95);
+	--ln-check-running: lch(72 80 80);
+	--ln-check-failed: lch(58 73 29);
+	--ln-check-skipped: lch(64.64 1.25 282);
+	--ln-review-approved: lch(60 64.37 141.95);
+	--ln-review-changes: lch(58 73 29);
+	--ln-review-required: lch(72 80 80);
+	/* Tinted pill fills for the hues above (text sits in the hue itself) */
+	--ln-pill-merged: lch(50 62 300 / 0.1);
+	--ln-pill-warning: lch(72 80 80 / 0.16);
+	/* Pill text for the hues above: a step darker so it clears 4.5:1 on its fill */
+	--ln-pill-ok-text: lch(42 60 141.95);
+	--ln-pill-merged-text: lch(42 62 300);
+	--ln-pill-blocked-text: lch(45 73 29);
+	--ln-pill-warning-text: lch(45 60 70);
+
+	/* Diff lines: a faint tint per line, a stronger one on changed words */
+	--ln-line-added: lch(97.94 3.829 148.469);
+	--ln-line-removed: lch(97.112 3.635 17.957);
+	--ln-word-added: lch(94.733 9.903 148.136);
+	--ln-word-removed: lch(92.62 9.55 18.428);
+	--ln-line-number: lch(64.64 1.25 282);
+
+	/* Motion: quick, linear-ish easing for hover, selection and popovers */
+	--ln-duration: 140ms;
+	--ln-ease: cubic-bezier(0.25, 0.46, 0.45, 0.94);
 }
 
 .dark {
@@ -217,6 +250,30 @@
 	--ln-removed: lch(65.2 73 29);
 	--ln-inline-code: lch(100 0 0 / 0.06);
 	--ln-inline-code-ring: lch(20 1.5 272);
+
+	--ln-state-open: lch(67.2 64.37 141.95);
+	--ln-state-draft: lch(56 1.2 272);
+	--ln-state-merged: lch(62 58 300);
+	--ln-state-closed: lch(65.2 73 29);
+	--ln-check-passed: lch(67.2 64.37 141.95);
+	--ln-check-running: lch(80 90 85);
+	--ln-check-failed: lch(65.2 73 29);
+	--ln-check-skipped: lch(50 1.2 272);
+	--ln-review-approved: lch(67.2 64.37 141.95);
+	--ln-review-changes: lch(65.2 73 29);
+	--ln-review-required: lch(80 90 85);
+	--ln-pill-merged: lch(62 58 300 / 0.16);
+	--ln-pill-warning: lch(80 90 85 / 0.14);
+	--ln-pill-ok-text: lch(72 64.37 141.95);
+	--ln-pill-merged-text: lch(72 50 300);
+	--ln-pill-blocked-text: lch(72 60 29);
+	--ln-pill-warning-text: lch(84 70 85);
+
+	--ln-line-added: lch(14.102 7.717 153.557);
+	--ln-line-removed: lch(13.958 8.596 15.613);
+	--ln-word-added: lch(20.509 17.212 148.731);
+	--ln-word-removed: lch(22.083 22.163 22.026);
+	--ln-line-number: lch(36.975 1.2 272);
 }
 
 /* 2. shadcn variables, aliased onto the Linear tokens ----------------------
@@ -380,6 +437,33 @@
 	--color-danger: var(--ln-blocked);
 	--color-added: var(--ln-added);
 	--color-removed: var(--ln-removed);
+	--color-focus: var(--ln-focus);
+	--color-text-nav: var(--ln-text-nav);
+	--color-header-rule: var(--ln-header-rule);
+	--color-state-open: var(--ln-state-open);
+	--color-state-draft: var(--ln-state-draft);
+	--color-state-merged: var(--ln-state-merged);
+	--color-state-closed: var(--ln-state-closed);
+	--color-check-passed: var(--ln-check-passed);
+	--color-check-running: var(--ln-check-running);
+	--color-check-failed: var(--ln-check-failed);
+	--color-check-skipped: var(--ln-check-skipped);
+	--color-review-approved: var(--ln-review-approved);
+	--color-review-changes: var(--ln-review-changes);
+	--color-review-required: var(--ln-review-required);
+	--color-pill-merged: var(--ln-pill-merged);
+	--color-pill-warning: var(--ln-pill-warning);
+	--color-pill-ok-text: var(--ln-pill-ok-text);
+	--color-pill-merged-text: var(--ln-pill-merged-text);
+	--color-pill-blocked-text: var(--ln-pill-blocked-text);
+	--color-pill-warning-text: var(--ln-pill-warning-text);
+	--color-line-added: var(--ln-line-added);
+	--color-line-removed: var(--ln-line-removed);
+	--color-word-added: var(--ln-word-added);
+	--color-word-removed: var(--ln-word-removed);
+	--color-line-number: var(--ln-line-number);
+	--color-card-border: var(--ln-card-border);
+	--color-main-border: var(--ln-main-border);
 
 	/* Contained shadows: hairline 0.5px ring + low-alpha drops */
 	--shadow-ring: 0 0 0 0.5px var(--ln-ring-color);
@@ -393,6 +477,10 @@
 		0 0 0 0.5px var(--ln-comment-card-border), var(--ln-main-shadow);
 	--shadow-popover:
 		0 0 0 0.5px var(--ln-popover-border), var(--ln-popover-shadow);
+	--shadow-tooltip:
+		0 0 0 0.5px var(--ln-tooltip-border), var(--ln-popover-shadow);
+
+	--ease-ln: var(--ln-ease);
 }
 
 @layer base {
@@ -410,6 +498,31 @@
 	.font-mono {
 		letter-spacing: -0.02em;
 		font-weight: 450;
+	}
+
+	/* Linear's focus: a 1px indigo outline just inside the edge, never a glow.
+	   Components that draw their own ring override this with utilities. */
+	:focus-visible {
+		outline: 1px solid var(--ln-focus);
+		outline-offset: -1px;
+	}
+
+	/* Hover, selection and popover transitions run at one speed. */
+	:where(a, button, [role="button"], [role="menuitem"], [role="tab"]) {
+		transition-duration: var(--ln-duration);
+		transition-timing-function: var(--ln-ease);
+	}
+}
+
+/* Respect reduced motion everywhere: keep state changes, drop the movement. */
+@media (prefers-reduced-motion: reduce) {
+	*,
+	*::before,
+	*::after {
+		animation-duration: 0.01ms !important;
+		animation-iteration-count: 1 !important;
+		transition-duration: 0.01ms !important;
+		scroll-behavior: auto !important;
 	}
 }
 
@@ -504,8 +617,20 @@ input[type="search"] {
 }
 
 /* @pierre/diffs — use our monospace font */
-[data-diffs] {
+[data-diffs],
+diffs-container {
 	--diffs-font-family: var(--font-mono);
+	/* Linear's diff: a faint tint per changed line, a stronger one on the
+	   changed words, quiet gutter numbers. */
+	--diffs-bg-addition-override: var(--ln-line-added);
+	--diffs-bg-addition-number-override: var(--ln-line-added);
+	--diffs-bg-addition-emphasis-override: var(--ln-word-added);
+	--diffs-bg-deletion-override: var(--ln-line-removed);
+	--diffs-bg-deletion-number-override: var(--ln-line-removed);
+	--diffs-bg-deletion-emphasis-override: var(--ln-word-removed);
+	--diffs-addition-color-override: var(--ln-added);
+	--diffs-deletion-color-override: var(--ln-removed);
+	--diffs-fg-number-override: var(--ln-line-number);
 }
 
 /* Shiki syntax highlighting — dual theme support */
@@ -524,7 +649,7 @@ input[type="search"] {
 }
 
 .dark .shiki.shiki {
-	background-color: var(--surface-1);
+	background-color: var(--ln-card);
 }
 
 /* Label pills: darker in light mode, vibrant in dark mode */
