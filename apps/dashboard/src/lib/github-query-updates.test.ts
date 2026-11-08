@@ -5,6 +5,9 @@ import type { IssueSummary, PullSummary } from "./github.types";
 import {
 	findIssueSummaryInLists,
 	findPullSummaryInLists,
+	invalidateGitHubEntities,
+	pullOrIssueEntityKeys,
+	releaseEntityKey,
 } from "./github-query-updates";
 
 const scope = { userId: "u1" };
@@ -101,5 +104,74 @@ describe("findIssueSummaryInLists", () => {
 				issueNumber: 4,
 			})?.title,
 		).toBe("Crash");
+	});
+});
+
+describe("invalidateGitHubEntities", () => {
+	function seeded(keys: (readonly unknown[])[]) {
+		const queryClient = new QueryClient();
+		for (const key of keys) queryClient.setQueryData(key, []);
+		const isInvalidated = (key: readonly unknown[]) =>
+			queryClient.getQueryState(key)?.isInvalidated ?? false;
+		return { queryClient, isInvalidated };
+	}
+
+	it("targets one item when the caller can't tell a pull from an issue", async () => {
+		const repo = { owner: "acme", repo: "api" };
+		const comments = githubQueryKeys.commentPage(scope, {
+			...repo,
+			issueNumber: 12,
+			page: 1,
+		});
+		const pullPage = githubQueryKeys.pulls.page(scope, {
+			...repo,
+			pullNumber: 12,
+		});
+		const issuePage = githubQueryKeys.issues.page(scope, {
+			...repo,
+			issueNumber: 12,
+		});
+		const neighbour = githubQueryKeys.issues.page(scope, {
+			...repo,
+			issueNumber: 13,
+		});
+		const { queryClient, isInvalidated } = seeded([
+			comments,
+			pullPage,
+			issuePage,
+			neighbour,
+		]);
+
+		await invalidateGitHubEntities(
+			queryClient,
+			scope,
+			pullOrIssueEntityKeys({ ...repo, number: 12 }),
+		);
+
+		expect(isInvalidated(comments)).toBe(true);
+		expect(isInvalidated(pullPage)).toBe(true);
+		expect(isInvalidated(issuePage)).toBe(true);
+		expect(isInvalidated(neighbour)).toBe(false);
+	});
+
+	it("refreshes tag names when a release is saved", async () => {
+		const repo = { owner: "acme", repo: "api" };
+		const tagNames = githubQueryKeys.refs.names(scope, {
+			...repo,
+			kind: "tags",
+		});
+		const tree = githubQueryKeys.repo.tree(scope, {
+			...repo,
+			ref: "main",
+			path: "",
+		});
+		const { queryClient, isInvalidated } = seeded([tagNames, tree]);
+
+		await invalidateGitHubEntities(queryClient, scope, [
+			releaseEntityKey(repo),
+		]);
+
+		expect(isInvalidated(tagNames)).toBe(true);
+		expect(isInvalidated(tree)).toBe(false);
 	});
 });

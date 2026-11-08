@@ -16,13 +16,6 @@ import type {
 } from "../github.types";
 import { getGitHubAppSlug } from "../github-app.server";
 import {
-	bustGitHubCache,
-	createGitHubResponseMetadata,
-	getOrRevalidateGitHubResource,
-} from "../github-cache";
-import { githubCachePolicy } from "../github-cache-policy";
-import { githubRevalidationSignalKeys } from "../github-revalidation";
-import {
 	buildPendingReviewsQuery,
 	chunkReviewDraftCandidates,
 	type GraphQLPendingReviewsResponse,
@@ -32,7 +25,7 @@ import {
 } from "../review-drafts";
 import {
 	executeGitHubGraphQL,
-	getCachedPaginatedGitHubRequest,
+	fetchPaginatedGitHubResource,
 	getGitHubContext,
 	getViewer,
 	listPaginatedGitHubItems,
@@ -48,8 +41,8 @@ import {
 } from "./installations";
 import { mapActor } from "./mappers";
 import { getMyPullsResult } from "./my-search";
+import { dedupeGitHubRead } from "./request-dedup";
 import {
-	bustPullDetailCaches,
 	GITHUB_PAGINATED_OPERATION_TIMEOUT_MS,
 	type GitHubApiUser,
 	type GitHubClient,
@@ -58,7 +51,6 @@ import {
 	type GitHubInstallationRepositoriesPayload,
 	type MutationResult,
 	normalizeLogin,
-	type PullCacheParams,
 	type PullFromRepoInput,
 	toMutationError,
 } from "./shared";
@@ -67,10 +59,6 @@ import { identityValidator } from "./validators";
 type RepoPullReviewComment = Awaited<
 	ReturnType<GitHubClient["rest"]["pulls"]["listReviewComments"]>
 >["data"][number];
-
-async function bustPullReviewCaches(userId: string, params: PullCacheParams) {
-	await bustGitHubCache(userId, "pulls.reviewComments", params);
-}
 
 type GitHubReviewerBotInstallationPayload = {
 	id?: number;
@@ -323,18 +311,10 @@ async function getCachedRepoReviewerBots(
 	context: GitHubContext,
 	params: RepoCollaboratorsInput,
 ) {
-	return getOrRevalidateGitHubResource<RepoCollaborator[]>({
+	return dedupeGitHubRead<RepoCollaborator[]>({
 		userId: context.session.user.id,
 		resource: "repos.reviewerBots",
 		params,
-		freshForMs: githubCachePolicy.viewer.staleTimeMs,
-		namespaceKeys: [
-			githubRevalidationSignalKeys.repoCollaborators({
-				owner: params.owner,
-				repo: params.repo,
-			}),
-		],
-		cacheMode: "split",
 		fetcher: async () => {
 			const bots = await withGitHubOperationTimeout(
 				`github reviewer bots ${params.owner}/${params.repo}`,
@@ -374,11 +354,7 @@ async function getCachedRepoReviewerBots(
 				},
 			);
 
-			return {
-				kind: "success",
-				data: mergeReviewerCandidates([], bots),
-				metadata: createGitHubResponseMetadata(200, {}),
-			};
+			return mergeReviewerCandidates([], bots);
 		},
 	});
 }
@@ -406,23 +382,13 @@ async function getPullReviewCommentsResult(
 	context: GitHubContext,
 	data: PullFromRepoInput,
 ): Promise<PullReviewComment[]> {
-	const pullNamespaceKey = githubRevalidationSignalKeys.pullEntity({
-		owner: data.owner,
-		repo: data.repo,
-		pullNumber: data.pullNumber,
-	});
-
-	return getCachedPaginatedGitHubRequest<
+	return fetchPaginatedGitHubResource<
 		RepoPullReviewComment,
 		PullReviewComment[]
 	>({
 		context,
 		resource: "pulls.reviewComments",
 		params: data,
-		freshForMs: githubCachePolicy.activity.staleTimeMs,
-		signalKeys: [pullNamespaceKey],
-		namespaceKeys: [pullNamespaceKey],
-		cacheMode: "split",
 		request: (page) =>
 			context.octokit.rest.pulls.listReviewComments({
 				owner: data.owner,
@@ -467,8 +433,6 @@ export const getPullReviewComments = createServerFn({ method: "GET" })
 
 		return getPullReviewCommentsResult(context, data);
 	});
-
-// ── Get review thread resolution statuses ────────────────────────
 
 type GraphQLReviewThread = {
 	id: string;
@@ -549,8 +513,6 @@ export const getReviewThreadStatuses = createServerFn({ method: "GET" })
 		}
 	});
 
-// ── Resolve / unresolve review thread ────────────────────────────
-
 export type ResolveThreadInput = {
 	owner: string;
 	repo: string;
@@ -628,11 +590,6 @@ export const submitPullReview = createServerFn({ method: "POST" })
 						: {}),
 				})),
 			});
-			await bustPullDetailCaches(context.session.user.id, {
-				owner: data.owner,
-				repo: data.repo,
-				pullNumber: data.pullNumber,
-			});
 			return true;
 		} catch (error) {
 			console.error("[submitPullReview] Failed:", error);
@@ -662,11 +619,6 @@ export const createReviewComment = createServerFn({ method: "POST" })
 			});
 
 			const comment = response.data;
-			await bustPullReviewCaches(context.session.user.id, {
-				owner: data.owner,
-				repo: data.repo,
-				pullNumber: data.pullNumber,
-			});
 
 			return {
 				id: comment.id,
@@ -714,11 +666,6 @@ export const replyToReviewComment = createServerFn({ method: "POST" })
 				});
 
 			const comment = response.data;
-			await bustPullReviewCaches(context.session.user.id, {
-				owner: data.owner,
-				repo: data.repo,
-				pullNumber: data.pullNumber,
-			});
 
 			return {
 				id: comment.id,
@@ -760,7 +707,7 @@ export const getRepoCollaborators = createServerFn({ method: "GET" })
 			return [];
 		}
 
-		const collaboratorsPromise = getCachedPaginatedGitHubRequest<
+		const collaboratorsPromise = fetchPaginatedGitHubResource<
 			Awaited<
 				ReturnType<GitHubClient["rest"]["repos"]["listCollaborators"]>
 			>["data"][number],
@@ -769,14 +716,6 @@ export const getRepoCollaborators = createServerFn({ method: "GET" })
 			context,
 			resource: "repos.collaborators",
 			params: data,
-			freshForMs: githubCachePolicy.viewer.staleTimeMs,
-			namespaceKeys: [
-				githubRevalidationSignalKeys.repoCollaborators({
-					owner: data.owner,
-					repo: data.repo,
-				}),
-			],
-			cacheMode: "split",
 			request: (page) =>
 				context.octokit.rest.repos.listCollaborators({
 					owner: data.owner,
@@ -830,7 +769,7 @@ export const getOrgTeams = createServerFn({ method: "GET" })
 			return [];
 		}
 
-		const teams = await getCachedPaginatedGitHubRequest<
+		const teams = await fetchPaginatedGitHubResource<
 			Awaited<
 				ReturnType<GitHubClient["rest"]["teams"]["list"]>
 			>["data"][number],
@@ -839,9 +778,6 @@ export const getOrgTeams = createServerFn({ method: "GET" })
 			context,
 			resource: "org.teams",
 			params: data,
-			freshForMs: githubCachePolicy.viewer.staleTimeMs,
-			namespaceKeys: [githubRevalidationSignalKeys.orgTeams({ org: data.org })],
-			cacheMode: "split",
 			request: (page) =>
 				context.octokit.rest.teams.list({
 					org: data.org,
@@ -885,11 +821,6 @@ export const requestPullReviewers = createServerFn({ method: "POST" })
 				reviewers: data.reviewers ?? [],
 				team_reviewers: data.teamReviewers ?? [],
 			});
-			await bustPullDetailCaches(context.session.user.id, {
-				owner: data.owner,
-				repo: data.repo,
-				pullNumber: data.pullNumber,
-			});
 			return { ok: true };
 		} catch (error) {
 			return toMutationError("request reviewers", error);
@@ -911,11 +842,6 @@ export const removeReviewRequest = createServerFn({ method: "POST" })
 				pull_number: data.pullNumber,
 				reviewers: data.reviewers ?? [],
 				team_reviewers: data.teamReviewers ?? [],
-			});
-			await bustPullDetailCaches(context.session.user.id, {
-				owner: data.owner,
-				repo: data.repo,
-				pullNumber: data.pullNumber,
 			});
 			return { ok: true };
 		} catch (error) {
@@ -947,25 +873,16 @@ export const dismissPullReview = createServerFn({ method: "POST" })
 				review_id: data.reviewId,
 				message: data.message,
 			});
-			await bustPullDetailCaches(context.session.user.id, {
-				owner: data.owner,
-				repo: data.repo,
-				pullNumber: data.pullNumber,
-			});
 			return { ok: true };
 		} catch (error) {
 			return toMutationError("dismiss review", error);
 		}
 	});
 
-// ═══════════════════════════════════════════════════════════════════
-// Review drafts — the viewer's pending (unsubmitted) reviews
-// ═══════════════════════════════════════════════════════════════════
-//
 // GitHub has no "list my pending reviews" endpoint, and pending reviews are
-// only visible to their author. We probe the viewer's open PRs (the cached
+// only visible to their author. We probe the viewer's open PRs (the
 // `getMyPullsResult` aggregate) with one aliased GraphQL request per 25 PRs,
-// capped at 50 PRs, i.e. at most two GraphQL requests per uncached load.
+// capped at 50 PRs, i.e. at most two GraphQL requests per load.
 
 const REVIEW_DRAFTS_RESOURCE = "reviewDrafts.graphql.v1";
 const REVIEW_DRAFT_SUBMIT_EVENTS: readonly ReviewDraftSubmitEvent[] = [
@@ -1040,14 +957,10 @@ export const getMyReviewDrafts = createServerFn({ method: "GET" }).handler(
 		}
 
 		const viewer = await getViewer(context);
-		return getOrRevalidateGitHubResource<ReviewDraftsResult>({
+		return dedupeGitHubRead<ReviewDraftsResult>({
 			userId: context.session.user.id,
 			resource: REVIEW_DRAFTS_RESOURCE,
 			params: null,
-			freshForMs: githubCachePolicy.mine.staleTimeMs,
-			signalKeys: [githubRevalidationSignalKeys.pullsMine],
-			namespaceKeys: [githubRevalidationSignalKeys.pullsMine],
-			cacheMode: "split",
 			fetcher: async () => {
 				const [myPulls, accessIndex] = await Promise.all([
 					getMyPullsResult({
@@ -1066,29 +979,17 @@ export const getMyReviewDrafts = createServerFn({ method: "GET" }).handler(
 				);
 
 				return {
-					kind: "success",
-					data: {
-						drafts: sortReviewDrafts(batches.flatMap((b) => b.drafts)),
-						checkedCount: candidates.length,
-						truncated: total > candidates.length,
-						partial:
-							batches.some((b) => b.failed) ||
-							Boolean(myPulls.partial || myPulls.timedOut),
-					},
-					metadata: createGitHubResponseMetadata(200, {}),
+					drafts: sortReviewDrafts(batches.flatMap((b) => b.drafts)),
+					checkedCount: candidates.length,
+					truncated: total > candidates.length,
+					partial:
+						batches.some((b) => b.failed) ||
+						Boolean(myPulls.partial || myPulls.timedOut),
 				};
 			},
 		});
 	},
 );
-
-async function bustReviewDraftCaches(userId: string, params: PullCacheParams) {
-	await Promise.all([
-		bustGitHubCache(userId, REVIEW_DRAFTS_RESOURCE, null),
-		bustPullDetailCaches(userId, params),
-		bustPullReviewCaches(userId, params),
-	]);
-}
 
 function isValidReviewId(value: unknown): value is number {
 	return typeof value === "number" && Number.isSafeInteger(value) && value > 0;
@@ -1119,11 +1020,6 @@ export const submitPendingReview = createServerFn({ method: "POST" })
 				event: data.event,
 				...(body ? { body } : {}),
 			});
-			await bustReviewDraftCaches(context.session.user.id, {
-				owner: data.owner,
-				repo: data.repo,
-				pullNumber: data.pullNumber,
-			});
 			return { ok: true };
 		} catch (error) {
 			return toMutationError("submit review", error);
@@ -1148,11 +1044,6 @@ export const deletePendingReview = createServerFn({ method: "POST" })
 				repo: data.repo,
 				pull_number: data.pullNumber,
 				review_id: data.reviewId,
-			});
-			await bustReviewDraftCaches(context.session.user.id, {
-				owner: data.owner,
-				repo: data.repo,
-				pullNumber: data.pullNumber,
 			});
 			return { ok: true };
 		} catch (error) {

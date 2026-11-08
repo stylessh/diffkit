@@ -20,16 +20,9 @@ import type {
 	RequestedTeam,
 } from "../github.types";
 import {
-	bumpGitHubCacheNamespaces,
-	createGitHubResponseMetadata,
-	getOrRevalidateGitHubResource,
-} from "../github-cache";
-import { githubCachePolicy } from "../github-cache-policy";
-import { githubRevalidationSignalKeys } from "../github-revalidation";
-import {
 	executeGitHubGraphQL,
+	fetchGitHubResource,
 	GitHubOperationTimeoutError,
-	getCachedGitHubRequest,
 	getGitHubContext,
 	getRemainingSearchTimeoutMs,
 	getViewer,
@@ -43,7 +36,6 @@ import {
 import {
 	buildCommentReactionSummary,
 	buildRepositoryRef,
-	createGraphQLResponseMetadata,
 	mapActor,
 	mapGraphQLActor,
 	mapGraphQLComments,
@@ -55,8 +47,8 @@ import {
 	getRepositoryPermissions,
 	mergeRepositoryPermissions,
 } from "./permissions";
+import { dedupeGitHubRead } from "./request-dedup";
 import {
-	bustPullDetailCaches,
 	clampPage,
 	clampPerPage,
 	GITHUB_MIN_OPERATION_TIMEOUT_MS,
@@ -70,6 +62,7 @@ import {
 	type GitHubGraphQLRateLimit,
 	type GitHubGraphQLRepositoryRef,
 	is403ResourceError,
+	type MutationFailure,
 	type MutationResult,
 	type PullFromRepoInput,
 	type RepoState,
@@ -214,10 +207,6 @@ export type PullsFromRepoInput = {
 	direction?: "asc" | "desc";
 };
 
-// ---------------------------------------------------------------------------
-// Check run helpers — shared between computePullStatus and rerunChecks
-// ---------------------------------------------------------------------------
-
 type CheckRunPayload = {
 	id: number;
 	name: string;
@@ -225,7 +214,6 @@ type CheckRunPayload = {
 	conclusion: string | null;
 };
 
-/** Deduplicate check runs by name — keep the most recent run (highest id) per name. */
 export function deduplicateCheckRuns<T extends CheckRunPayload>(
 	checkRuns: T[],
 ): T[] {
@@ -239,7 +227,7 @@ export function deduplicateCheckRuns<T extends CheckRunPayload>(
 	return Array.from(latestByName.values());
 }
 
-/** Whether a completed check run counts as failed (mirrors the UI's `getCheckRunStatus`). */
+/** Must agree with the UI's `getCheckRunStatus`. */
 export function isFailedCheckRun(run: CheckRunPayload): boolean {
 	return (
 		run.status === "completed" &&
@@ -251,26 +239,15 @@ export function isFailedCheckRun(run: CheckRunPayload): boolean {
 	);
 }
 
-/**
- * Fetch the set of required status check contexts for a branch, via GitHub's
- * unified branch-rules endpoint (covers both rulesets and classic protection).
- * Cached per repo — invalidated by repository_ruleset / branch_protection_rule webhooks.
- */
+/** The branch-rules endpoint covers both rulesets and classic branch protection. */
 async function getRequiredStatusContexts(
 	context: GitHubContext,
 	params: { owner: string; repo: string; branch: string },
 ): Promise<string[]> {
-	return getOrRevalidateGitHubResource<string[]>({
+	return dedupeGitHubRead<string[]>({
 		userId: context.session.user.id,
 		resource: "repos.requiredStatusContexts",
 		params,
-		freshForMs: githubCachePolicy.repoProtection.staleTimeMs,
-		signalKeys: [
-			githubRevalidationSignalKeys.repoProtection({
-				owner: params.owner,
-				repo: params.repo,
-			}),
-		],
 		fetcher: async () => {
 			const contexts = new Set<string>();
 			try {
@@ -300,11 +277,7 @@ async function getRequiredStatusContexts(
 			} catch {
 				// Missing permission or unavailable — treat as no required contexts.
 			}
-			return {
-				kind: "success" as const,
-				data: Array.from(contexts),
-				metadata: createGitHubResponseMetadata(200, {}),
-			};
+			return Array.from(contexts);
 		},
 	});
 }
@@ -671,33 +644,20 @@ async function getCachedPullResponse({
 	context,
 	data,
 	resource,
-	freshForMs,
 }: {
 	context: GitHubContext;
 	data: PullFromRepoInput;
 	resource: string;
-	freshForMs: number;
 }) {
-	const pullNamespaceKey = githubRevalidationSignalKeys.pullEntity({
-		owner: data.owner,
-		repo: data.repo,
-		pullNumber: data.pullNumber,
-	});
-
-	return getCachedGitHubRequest<RepoPullDetail, RepoPullDetail>({
+	return fetchGitHubResource<RepoPullDetail, RepoPullDetail>({
 		context,
 		resource,
 		params: data,
-		freshForMs,
-		signalKeys: [pullNamespaceKey],
-		namespaceKeys: [pullNamespaceKey],
-		cacheMode: "split",
-		request: (headers) =>
+		request: () =>
 			context.octokit.rest.pulls.get({
 				owner: data.owner,
 				repo: data.repo,
 				pull_number: data.pullNumber,
-				headers,
 			}),
 		mapData: (pull) => pull,
 	});
@@ -711,7 +671,6 @@ async function getPullDetailResult(
 		context,
 		data,
 		resource: "pulls.detail.raw",
-		freshForMs: githubCachePolicy.detail.staleTimeMs,
 	});
 
 	return mapPullDetail(pull, buildRepositoryRef(data.owner, data.repo));
@@ -724,27 +683,17 @@ async function getPullCommentsResult(
 	type IssueComment = Awaited<
 		ReturnType<GitHubClient["rest"]["issues"]["listComments"]>
 	>["data"][number];
-	const pullNamespaceKey = githubRevalidationSignalKeys.pullEntity({
-		owner: data.owner,
-		repo: data.repo,
-		pullNumber: data.pullNumber,
-	});
 
-	return getCachedGitHubRequest<IssueComment[], PullComment[]>({
+	return fetchGitHubResource<IssueComment[], PullComment[]>({
 		context,
 		resource: "pulls.comments",
 		params: data,
-		freshForMs: githubCachePolicy.activity.staleTimeMs,
-		signalKeys: [pullNamespaceKey],
-		namespaceKeys: [pullNamespaceKey],
-		cacheMode: "split",
-		request: (headers) =>
+		request: () =>
 			context.octokit.rest.issues.listComments({
 				owner: data.owner,
 				repo: data.repo,
 				issue_number: data.pullNumber,
 				per_page: 10,
-				headers,
 			}),
 		mapData: (comments) =>
 			comments.map((comment) => {
@@ -778,27 +727,17 @@ async function getPullCommitsResult(
 	type PullCommitResponse = Awaited<
 		ReturnType<GitHubClient["rest"]["pulls"]["listCommits"]>
 	>["data"][number];
-	const pullNamespaceKey = githubRevalidationSignalKeys.pullEntity({
-		owner: data.owner,
-		repo: data.repo,
-		pullNumber: data.pullNumber,
-	});
 
-	return getCachedGitHubRequest<PullCommitResponse[], PullCommit[]>({
+	return fetchGitHubResource<PullCommitResponse[], PullCommit[]>({
 		context,
 		resource: "pulls.commits",
 		params: data,
-		freshForMs: githubCachePolicy.activity.staleTimeMs,
-		signalKeys: [pullNamespaceKey],
-		namespaceKeys: [pullNamespaceKey],
-		cacheMode: "split",
-		request: (headers) =>
+		request: () =>
 			context.octokit.rest.pulls.listCommits({
 				owner: data.owner,
 				repo: data.repo,
 				pull_number: data.pullNumber,
 				per_page: 100,
-				headers,
 			}),
 		mapData: (commits) =>
 			commits.map((c) => ({
@@ -923,7 +862,6 @@ async function computePullStatus(
 		});
 	}
 
-	// Deduplicate by name — keep the most recent run (highest id) per check name
 	const checkRuns = deduplicateCheckRuns(allCheckRuns);
 	const requiredContextSet = new Set(requiredContexts);
 
@@ -1138,28 +1076,10 @@ async function getPullStatusResult(
 	data: PullFromRepoInput,
 	pull?: RepoPullDetail,
 ): Promise<PullStatus> {
-	const pullNamespaceKey = githubRevalidationSignalKeys.pullEntity({
-		owner: data.owner,
-		repo: data.repo,
-		pullNumber: data.pullNumber,
-	});
-	const repoStatusesKey = githubRevalidationSignalKeys.repoStatuses({
-		owner: data.owner,
-		repo: data.repo,
-	});
-	const repoProtectionKey = githubRevalidationSignalKeys.repoProtection({
-		owner: data.owner,
-		repo: data.repo,
-	});
-
-	return getOrRevalidateGitHubResource<PullStatus>({
+	return dedupeGitHubRead<PullStatus>({
 		userId: context.session.user.id,
 		resource: "pulls.status.v3",
 		params: data,
-		freshForMs: githubCachePolicy.status.staleTimeMs,
-		signalKeys: [pullNamespaceKey, repoStatusesKey, repoProtectionKey],
-		namespaceKeys: [pullNamespaceKey],
-		cacheMode: "split",
 		fetcher: async () => {
 			const pullForStatus =
 				pull ??
@@ -1167,18 +1087,13 @@ async function getPullStatusResult(
 					context,
 					data,
 					resource: "pulls.status.raw",
-					freshForMs: githubCachePolicy.status.staleTimeMs,
 				}));
 
-			return {
-				kind: "success",
-				data: await withGitHubOperationTimeout(
-					`github pull status ${data.owner}/${data.repo}#${data.pullNumber}`,
-					GITHUB_PAGINATED_OPERATION_TIMEOUT_MS,
-					() => computePullStatus(context, data, pullForStatus),
-				),
-				metadata: createGitHubResponseMetadata(200, {}),
-			};
+			return await withGitHubOperationTimeout(
+				`github pull status ${data.owner}/${data.repo}#${data.pullNumber}`,
+				GITHUB_PAGINATED_OPERATION_TIMEOUT_MS,
+				() => computePullStatus(context, data, pullForStatus),
+			);
 		},
 	});
 }
@@ -1187,20 +1102,10 @@ async function getPullPageDataViaGraphQL(
 	context: GitHubContext,
 	data: PullFromRepoInput,
 ): Promise<PullPageData> {
-	const pullNamespaceKey = githubRevalidationSignalKeys.pullEntity({
-		owner: data.owner,
-		repo: data.repo,
-		pullNumber: data.pullNumber,
-	});
-
-	return getOrRevalidateGitHubResource<PullPageData>({
+	return dedupeGitHubRead<PullPageData>({
 		userId: context.session.user.id,
 		resource: "pulls.pageData.graphql.v2",
 		params: data,
-		freshForMs: githubCachePolicy.detail.staleTimeMs,
-		signalKeys: [pullNamespaceKey],
-		namespaceKeys: [pullNamespaceKey],
-		cacheMode: "split",
 		fetcher: async () => {
 			const viewerPromise = getGitHubUserContextForRepository({
 				owner: data.owner,
@@ -1349,28 +1254,24 @@ async function getPullPageDataViaGraphQL(
 			const events = timelineResult.events;
 
 			return {
-				kind: "success",
-				data: {
-					detail,
-					comments: mapGraphQLComments(
-						viewer?.login,
-						pull.firstComments,
-						pull.lastComments,
-					),
-					commits: mapGraphQLPullCommits(pull),
-					events,
-					commentPagination: {
-						totalCount: totalComments,
-						perPage: COMMENTS_PER_PAGE,
-						loadedPages,
-					},
-					eventPagination: {
-						loadedPages: [1],
-						hasMore: timelineResult.hasMore,
-					},
-					headRefDeleted: deriveHeadRefDeleted(events),
+				detail,
+				comments: mapGraphQLComments(
+					viewer?.login,
+					pull.firstComments,
+					pull.lastComments,
+				),
+				commits: mapGraphQLPullCommits(pull),
+				events,
+				commentPagination: {
+					totalCount: totalComments,
+					perPage: COMMENTS_PER_PAGE,
+					loadedPages,
 				},
-				metadata: createGraphQLResponseMetadata(response.rateLimit),
+				eventPagination: {
+					loadedPages: [1],
+					hasMore: timelineResult.hasMore,
+				},
+				headRefDeleted: deriveHeadRefDeleted(events),
 			};
 		},
 	});
@@ -1384,7 +1285,6 @@ async function getPullPageDataViaRest(
 		context,
 		data,
 		resource: "pulls.detail.raw",
-		freshForMs: githubCachePolicy.detail.staleTimeMs,
 	});
 
 	const totalComments = pull.comments ?? 0;
@@ -1447,7 +1347,7 @@ export const getPullsFromRepo = createServerFn({ method: "GET" })
 			return [];
 		}
 
-		return getCachedGitHubRequest<
+		return fetchGitHubResource<
 			Awaited<ReturnType<GitHubClient["rest"]["pulls"]["list"]>>["data"],
 			PullSummary[]
 		>({
@@ -1462,14 +1362,7 @@ export const getPullsFromRepo = createServerFn({ method: "GET" })
 				sort: data.sort ?? "updated",
 				direction: data.direction ?? "desc",
 			},
-			freshForMs: githubCachePolicy.list.staleTimeMs,
-			signalKeys: [
-				githubRevalidationSignalKeys.repoMeta({
-					owner: data.owner,
-					repo: data.repo,
-				}),
-			],
-			request: (headers) =>
+			request: () =>
 				context.octokit.rest.pulls.list({
 					owner: data.owner,
 					repo: data.repo,
@@ -1478,7 +1371,6 @@ export const getPullsFromRepo = createServerFn({ method: "GET" })
 					per_page: clampPerPage(data.perPage),
 					sort: data.sort ?? "updated",
 					direction: data.direction ?? "desc",
-					headers,
 				}),
 			mapData: (pulls) =>
 				pulls.map((pull) =>
@@ -1548,7 +1440,6 @@ export const updatePullBody = createServerFn({ method: "POST" })
 				pull_number: data.pullNumber,
 				body: data.body,
 			});
-			await bustPullDetailCaches(context.session.user.id, data);
 			return true;
 		} catch {
 			return false;
@@ -1574,7 +1465,6 @@ export const updatePullState = createServerFn({ method: "POST" })
 				pull_number: data.pullNumber,
 				state: data.state,
 			});
-			await bustPullDetailCaches(context.session.user.id, data);
 			return { ok: true };
 		} catch (error) {
 			return toMutationError(
@@ -1598,7 +1488,6 @@ export const updatePullBranch = createServerFn({ method: "POST" })
 				repo: data.repo,
 				pull_number: data.pullNumber,
 			});
-			await bustPullDetailCaches(context.session.user.id, data);
 			return { ok: true };
 		} catch (error) {
 			return toMutationError("update branch", error);
@@ -1629,7 +1518,6 @@ export const mergePullRequest = createServerFn({ method: "POST" })
 				...(data.commitTitle && { commit_title: data.commitTitle }),
 				...(data.commitMessage && { commit_message: data.commitMessage }),
 			});
-			await bustPullDetailCaches(context.session.user.id, data);
 			return { ok: true };
 		} catch (error) {
 			return toMutationError("merge pull request", error);
@@ -1658,7 +1546,6 @@ export const markPullReadyForReview = createServerFn({ method: "POST" })
 				}`,
 				{ pullRequestId: data.pullId },
 			);
-			await bustPullDetailCaches(context.session.user.id, data);
 			return { ok: true };
 		} catch (error) {
 			return toMutationError("mark pull request as ready for review", error);
@@ -1686,7 +1573,6 @@ export const deleteBranch = createServerFn({ method: "POST" })
 				repo: data.repo,
 				ref: `heads/${data.branch}`,
 			});
-			await bustPullDetailCaches(context.session.user.id, data);
 			return { ok: true };
 		} catch (error) {
 			return toMutationError("delete branch", error);
@@ -1694,20 +1580,18 @@ export const deleteBranch = createServerFn({ method: "POST" })
 	});
 
 export type RerunChecksInput = PullFromRepoInput & {
-	/** Rerun only failed checks. When false, rerun all checks. */
 	failedOnly: boolean;
 };
 
-export type RerunChecksResult = MutationResult & {
-	/** Number of checks that were successfully re-requested. */
-	rerun?: number;
-	/** Number of checks GitHub refused to rerun because they're not eligible. */
-	skipped?: number;
-	/** Number of checks that failed for non-permissions reasons (real errors). */
-	failed?: number;
-	/** True when at least one rerun succeeded but some checks hit hard errors. */
-	partial?: boolean;
-};
+export type RerunChecksResult =
+	| {
+			ok: true;
+			rerun: number;
+			/** Checks GitHub refused to rerun because they aren't eligible. */
+			skipped: number;
+			failed: number;
+	  }
+	| MutationFailure;
 
 export const rerunChecks = createServerFn({ method: "POST" })
 	.inputValidator(identityValidator<RerunChecksInput>)
@@ -1718,14 +1602,12 @@ export const rerunChecks = createServerFn({ method: "POST" })
 		}
 
 		try {
-			// Fetch the PR to get the head SHA
 			const pr = await context.octokit.rest.pulls.get({
 				owner: data.owner,
 				repo: data.repo,
 				pull_number: data.pullNumber,
 			});
 
-			// List all check runs for the head SHA (paginated)
 			type CheckRunItem = Awaited<
 				ReturnType<GitHubClient["rest"]["checks"]["listForRef"]>
 			>["data"]["check_runs"][number];
@@ -1744,16 +1626,14 @@ export const rerunChecks = createServerFn({ method: "POST" })
 						[]) as CheckRunItem[],
 			});
 
-			// Deduplicate: keep the latest run per check name
 			const dedupedRuns = deduplicateCheckRuns(checkRuns);
 
-			// Determine which checks to rerun
 			const runsToRerun = data.failedOnly
 				? dedupedRuns.filter(isFailedCheckRun)
 				: dedupedRuns;
 
 			if (runsToRerun.length === 0) {
-				return { ok: true, rerun: 0, skipped: 0 };
+				return { ok: true, rerun: 0, skipped: 0, failed: 0 };
 			}
 
 			// Route each check run to the correct rerun endpoint:
@@ -1784,7 +1664,6 @@ export const rerunChecks = createServerFn({ method: "POST" })
 			}
 
 			type Task = {
-				/** Which run ids this task covers — for reporting counts back to UI. */
 				coveredCheckRunIds: number[];
 				promise: Promise<unknown>;
 			};
@@ -1861,20 +1740,7 @@ export const rerunChecks = createServerFn({ method: "POST" })
 				return toMutationError("rerun checks", hardFailures[0].reason);
 			}
 
-			// Cache is still worth busting — the checks that did rerun updated state.
-			await bustPullDetailCaches(context.session.user.id, data);
-
-			if (hardFailures.length > 0) {
-				return {
-					ok: true,
-					rerun,
-					skipped,
-					failed,
-					partial: true,
-				};
-			}
-
-			return { ok: true, rerun, skipped };
+			return { ok: true, rerun, skipped, failed };
 		} catch (error) {
 			return toMutationError("rerun checks", error);
 		}
@@ -1884,14 +1750,9 @@ export type ApproveWorkflowRunsInput = PullFromRepoInput & {
 	workflowRunIds: number[];
 };
 
-export type ApproveWorkflowRunsResult = MutationResult & {
-	/** Number of workflow runs successfully approved. */
-	approved?: number;
-	/** Number of workflow runs that failed to approve. */
-	failed?: number;
-	/** True when at least one approval succeeded but some hit errors. */
-	partial?: boolean;
-};
+export type ApproveWorkflowRunsResult =
+	| { ok: true; approved: number; failed: number }
+	| MutationFailure;
 
 export const approveWorkflowRuns = createServerFn({ method: "POST" })
 	.inputValidator(identityValidator<ApproveWorkflowRunsInput>)
@@ -1925,18 +1786,7 @@ export const approveWorkflowRuns = createServerFn({ method: "POST" })
 				return toMutationError("approve workflow runs", rejected[0].reason);
 			}
 
-			await bustPullDetailCaches(context.session.user.id, data);
-
-			if (rejected.length > 0) {
-				return {
-					ok: true,
-					approved,
-					failed: rejected.length,
-					partial: true,
-				};
-			}
-
-			return { ok: true, approved, failed: 0 };
+			return { ok: true, approved, failed: rejected.length };
 		} catch (error) {
 			return toMutationError("approve workflow runs", error);
 		}
@@ -1948,13 +1798,8 @@ async function getPullFilesResult(
 ): Promise<PullFilesPage> {
 	const page = clampPage(data.page);
 	const perPage = clampPerPage(data.perPage, 20);
-	const pullNamespaceKey = githubRevalidationSignalKeys.pullEntity({
-		owner: data.owner,
-		repo: data.repo,
-		pullNumber: data.pullNumber,
-	});
 
-	return getCachedGitHubRequest<RepoPullFile[], PullFilesPage>({
+	return fetchGitHubResource<RepoPullFile[], PullFilesPage>({
 		context,
 		resource: "pulls.filesPage",
 		params: {
@@ -1964,18 +1809,13 @@ async function getPullFilesResult(
 			page,
 			perPage,
 		},
-		freshForMs: githubCachePolicy.detail.staleTimeMs,
-		signalKeys: [pullNamespaceKey],
-		namespaceKeys: [pullNamespaceKey],
-		cacheMode: "split",
-		request: (headers) =>
+		request: () =>
 			context.octokit.rest.pulls.listFiles({
 				owner: data.owner,
 				repo: data.repo,
 				pull_number: data.pullNumber,
 				page,
 				per_page: perPage,
-				headers,
 			}),
 		mapData: (files) => ({
 			files: files.map((file) => ({
@@ -2051,22 +1891,13 @@ const PULL_FILE_SUMMARIES_GRAPHQL_QUERY = `query($owner: String!, $repo: String!
 // from ~30 client round-trips down to ~6.
 const PULL_FILE_SUMMARIES_PAGES_PER_BATCH = 5;
 
-// File summaries power the sidebar tree and the "N files / +A / -D" chip.
-// Returns one batch (up to ~500 files) so the client can render incrementally
-// — otherwise a 3k-file PR blocks the sidebar for ~9s while all 30 pages
-// load server-side. Each batch is cached independently by its starting
-// cursor, so revisits hit the cache for every batch.
+// One batch (up to ~500 files) per call so the client renders incrementally;
+// loading all pages server-side blocks a 3k-file PR's sidebar for ~9s.
 async function getPullFileSummariesResult(
 	context: GitHubContext,
 	data: PullFileSummariesPageInput,
 ): Promise<PullFileSummariesPage> {
-	const pullNamespaceKey = githubRevalidationSignalKeys.pullEntity({
-		owner: data.owner,
-		repo: data.repo,
-		pullNumber: data.pullNumber,
-	});
-
-	return getOrRevalidateGitHubResource<PullFileSummariesPage>({
+	return dedupeGitHubRead<PullFileSummariesPage>({
 		userId: context.session.user.id,
 		resource: "pulls.fileSummaries.graphql.batch",
 		params: {
@@ -2075,10 +1906,6 @@ async function getPullFileSummariesResult(
 			pullNumber: data.pullNumber,
 			cursor: data.cursor ?? null,
 		},
-		freshForMs: githubCachePolicy.detail.staleTimeMs,
-		signalKeys: [pullNamespaceKey],
-		namespaceKeys: [pullNamespaceKey],
-		cacheMode: "split",
 		fetcher: async () => {
 			const items: PullFileSummary[] = [];
 			let cursor: string | null = data.cursor ?? null;
@@ -2135,12 +1962,8 @@ async function getPullFileSummariesResult(
 			}
 
 			return {
-				kind: "success",
-				data: {
-					items,
-					nextCursor: hasNextPage ? cursor : null,
-				},
-				metadata: createGitHubResponseMetadata(200, {}),
+				items,
+				nextCursor: hasNextPage ? cursor : null,
 			};
 		},
 	});
@@ -2262,14 +2085,6 @@ export const createPullRequest = createServerFn({ method: "POST" })
 					}
 				}
 			}
-
-			await bumpGitHubCacheNamespaces([
-				githubRevalidationSignalKeys.pullsMine,
-				githubRevalidationSignalKeys.repoMeta({
-					owner: data.owner,
-					repo: data.repo,
-				}),
-			]);
 
 			return {
 				ok: true,

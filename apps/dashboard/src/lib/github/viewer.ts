@@ -1,5 +1,4 @@
 import { createServerFn } from "@tanstack/react-start";
-import { debug } from "../debug";
 import {
 	buildGitHubAppAuthorizePath,
 	buildGitHubAppInstallUrl,
@@ -7,11 +6,6 @@ import {
 } from "../github-access";
 import { getGitHubAppSlug } from "../github-app.server";
 import { shouldReauthorizeGitHubApp } from "../github-auth-errors";
-import {
-	bustGitHubCache,
-	markGitHubRevalidationSignals,
-} from "../github-cache";
-import { githubRevalidationSignalKeys } from "../github-revalidation";
 import {
 	getGitHubContext,
 	getViewer,
@@ -180,28 +174,4 @@ export const getInstallationAccess = createServerFn({
 		allAccessOwners: [...index.allAccessOwners],
 		selectedRepos: [...index.selectedRepos],
 	};
-});
-
-/**
- * Invalidates the server-side installation access cache so the next request
- * fetches fresh data from GitHub. Called when the user returns from changing
- * permissions on GitHub (e.g. from /setup or the access dialog).
- */
-export const refreshInstallationAccess = createServerFn({
-	method: "POST",
-}).handler(async () => {
-	const context = await getGitHubContext();
-	if (!context) {
-		return { ok: false as const };
-	}
-
-	await markGitHubRevalidationSignals([
-		githubRevalidationSignalKeys.installationAccess,
-	]);
-	await bustGitHubCache(context.session.user.id, "installationAccess", null);
-	debug(
-		"refreshInstallationAccess",
-		"marked installationAccess for revalidation and busted cache row",
-	);
-	return { ok: true };
 });

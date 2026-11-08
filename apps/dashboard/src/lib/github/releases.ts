@@ -11,10 +11,7 @@ import type {
 	SaveRepoReleaseResult,
 	UpdateRepoReleaseInput,
 } from "../github.types";
-import { bumpGitHubCacheNamespaces } from "../github-cache";
-import { githubCachePolicy } from "../github-cache-policy";
-import { githubRevalidationSignalKeys } from "../github-revalidation";
-import { getCachedGitHubRequest } from "./client";
+import { fetchGitHubResource } from "./client";
 import { getGitHubUserContextForRepository } from "./installations";
 import { mapActor } from "./mappers";
 import {
@@ -65,26 +62,19 @@ function mapRepoRelease(
 	};
 }
 
-/** Tag of the repo's "Latest" release, or null when there is none. */
 async function getLatestReleaseTagName(
 	context: GitHubContext,
 	data: { owner: string; repo: string },
 ): Promise<string | null> {
-	const repoMetaKey = githubRevalidationSignalKeys.repoMeta(data);
 	try {
-		return await getCachedGitHubRequest({
+		return await fetchGitHubResource({
 			context,
 			resource: "repo.latestRelease.v1",
 			params: { owner: data.owner, repo: data.repo },
-			freshForMs: githubCachePolicy.list.staleTimeMs,
-			signalKeys: [repoMetaKey],
-			namespaceKeys: [repoMetaKey],
-			cacheMode: "split",
-			request: (headers, signal) =>
+			request: (signal) =>
 				context.octokit.rest.repos.getLatestRelease({
 					owner: data.owner,
 					repo: data.repo,
-					headers,
 					request: { signal },
 				}),
 			mapData: (release): string | null => release.tag_name,
@@ -99,22 +89,16 @@ async function listRepoReleasesRaw(
 	context: GitHubContext,
 	data: { owner: string; repo: string; page: number; perPage: number },
 ) {
-	const repoMetaKey = githubRevalidationSignalKeys.repoMeta(data);
-	return getCachedGitHubRequest({
+	return fetchGitHubResource({
 		context,
 		resource: "repo.releases.v1",
 		params: data,
-		freshForMs: githubCachePolicy.list.staleTimeMs,
-		signalKeys: [repoMetaKey],
-		namespaceKeys: [repoMetaKey],
-		cacheMode: "split",
-		request: (headers, signal) =>
+		request: (signal) =>
 			context.octokit.rest.repos.listReleases({
 				owner: data.owner,
 				repo: data.repo,
 				per_page: data.perPage,
 				page: data.page,
-				headers,
 				request: { signal },
 			}),
 		mapData: (releases): GitHubReleasePayload[] => releases,
@@ -160,24 +144,17 @@ export const getRepoRelease = createServerFn({ method: "GET" })
 		// User token: draft releases are only listed to callers with push access.
 		const context = await getGitHubUserContextForRepository(data);
 		if (!context) return null;
-
-		const repoMetaKey = githubRevalidationSignalKeys.repoMeta(data);
 		const latestTagPromise = getLatestReleaseTagName(context, data);
 		try {
-			const release = await getCachedGitHubRequest({
+			const release = await fetchGitHubResource({
 				context,
 				resource: "repo.release.v1",
 				params: { owner: data.owner, repo: data.repo, tag: data.tag },
-				freshForMs: githubCachePolicy.detail.staleTimeMs,
-				signalKeys: [repoMetaKey],
-				namespaceKeys: [repoMetaKey],
-				cacheMode: "split",
-				request: (headers, signal) =>
+				request: (signal) =>
 					context.octokit.rest.repos.getReleaseByTag({
 						owner: data.owner,
 						repo: data.repo,
 						tag: data.tag,
-						headers,
 						request: { signal },
 					}),
 				mapData: (payload): GitHubReleasePayload => payload,
@@ -206,20 +183,6 @@ export const getRepoRelease = createServerFn({ method: "GET" })
 			throw error;
 		}
 	});
-
-/**
- * Releases live under `repoMeta`. Publishing can also create a git tag, which
- * changes `repoCode` (tags list, ref pickers) — only bump that when it might.
- */
-async function bustRepoReleaseCaches(
-	params: { owner: string; repo: string },
-	{ mayCreateTag }: { mayCreateTag: boolean },
-) {
-	await bumpGitHubCacheNamespaces([
-		githubRevalidationSignalKeys.repoMeta(params),
-		...(mayCreateTag ? [githubRevalidationSignalKeys.repoCode(params)] : []),
-	]);
-}
 
 function toReleaseMutationError(
 	action: string,
@@ -268,7 +231,6 @@ export const createRepoRelease = createServerFn({ method: "POST" })
 				prerelease: data.prerelease,
 				...(data.makeLatest ? { make_latest: data.makeLatest } : {}),
 			});
-			await bustRepoReleaseCaches(data, { mayCreateTag: !data.draft });
 			return { ok: true, release: mapRepoRelease(response.data, null) };
 		} catch (error) {
 			return toReleaseMutationError("create release", error);
@@ -294,7 +256,6 @@ export const updateRepoRelease = createServerFn({ method: "POST" })
 				prerelease: data.prerelease,
 				...(data.makeLatest ? { make_latest: data.makeLatest } : {}),
 			});
-			await bustRepoReleaseCaches(data, { mayCreateTag: !data.draft });
 			return { ok: true, release: mapRepoRelease(response.data, null) };
 		} catch (error) {
 			return toReleaseMutationError("update release", error);
@@ -315,7 +276,6 @@ export const deleteRepoRelease = createServerFn({ method: "POST" })
 				repo: data.repo,
 				release_id: data.releaseId,
 			});
-			await bustRepoReleaseCaches(data, { mayCreateTag: false });
 			return { ok: true };
 		} catch (error) {
 			return toReleaseMutationError("delete release", error);

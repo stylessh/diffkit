@@ -1,15 +1,11 @@
 import { useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "@tanstack/react-router";
 import { useCallback, useEffect, useRef } from "react";
-import { refreshInstallationAccess } from "./github.functions";
 import { githubQueryKeys } from "./github.query";
 
 /**
- * Listens for the tab becoming visible again (user returning from an external
- * site like GitHub) and refreshes the installation access cache + all GitHub
- * queries so the UI reflects any permission changes.
- *
- * Only fires once per hidden→visible transition to avoid duplicate work.
+ * Refetches GitHub data once per hidden → visible transition: the user is
+ * coming back from changing app permissions on github.com.
  */
 export function useRefreshOnReturn({
 	enabled = true,
@@ -20,18 +16,12 @@ export function useRefreshOnReturn({
 	const router = useRouter();
 	const wasHiddenRef = useRef(false);
 
-	const refresh = useCallback(async () => {
-		try {
-			await refreshInstallationAccess();
-		} finally {
-			void queryClient.invalidateQueries({
-				queryKey: githubQueryKeys.all,
-			});
-			void queryClient.invalidateQueries({
-				queryKey: ["github-app-access-state"],
-			});
-			void router.invalidate();
-		}
+	const refresh = useCallback(() => {
+		void queryClient.invalidateQueries({ queryKey: githubQueryKeys.all });
+		void queryClient.invalidateQueries({
+			queryKey: ["github-app-access-state"],
+		});
+		void router.invalidate();
 	}, [queryClient, router]);
 
 	useEffect(() => {
@@ -45,7 +35,7 @@ export function useRefreshOnReturn({
 
 			if (wasHiddenRef.current) {
 				wasHiddenRef.current = false;
-				void refresh();
+				refresh();
 			}
 		}
 

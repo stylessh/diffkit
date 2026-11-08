@@ -8,14 +8,12 @@ import {
 	type GitHubOrganization,
 	isRepoVisibleWithInstallationAccess,
 } from "../github-access";
-import { getOrRevalidateGitHubResource } from "../github-cache";
-import { githubCachePolicy } from "../github-cache-policy";
-import { githubRevalidationSignalKeys } from "../github-revalidation";
 import {
 	getGitHubContext,
 	getOrCreateCachedContext,
 	listPaginatedGitHubItems,
 } from "./client";
+import { dedupeGitHubRead } from "./request-dedup";
 import type { RepoCollaboratorsInput } from "./reviews";
 import {
 	type GitHubClient,
@@ -86,7 +84,6 @@ export async function getGitHubAppUserInstallations(userId: string): Promise<{
 	installations: GitHubAppInstallation[];
 	/** `true` when the app-user token is configured and the API responded. */
 	installationsAvailable: boolean;
-	/** The app-user Octokit instance (for follow-up calls like listing repos). */
 	appUserOctokit: GitHubClient | null;
 }> {
 	const { getGitHubAppUserClientByUserId } = await import("../auth-runtime");
@@ -100,9 +97,8 @@ export async function getGitHubAppUserInstallations(userId: string): Promise<{
 		};
 	}
 
-	// The app-user token exists — any failures from here on are transient
-	// and should propagate so the cache layer can serve stale data or the
-	// outer catch handles them (rather than silently failing open).
+	// The app-user token exists, so failures from here on are transient:
+	// propagate them to the caller instead of failing open.
 	const PAGE_SIZE = 100;
 	const firstResponse = await appUserOctokit.request(
 		"GET /user/installations",
@@ -175,39 +171,21 @@ export async function getGitHubAuthenticatedOrganizations(
 	}
 }
 
-// ---------------------------------------------------------------------------
-// Installation access index — cached list of repos accessible via the app
-// ---------------------------------------------------------------------------
-
 type SerializableInstallationAccessIndex = {
 	available: boolean;
 	allAccessOwners: string[];
 	selectedRepos: string[];
 };
 
-function syntheticGitHubResponseMetadata() {
-	return {
-		etag: null,
-		lastModified: null,
-		rateLimitRemaining: null,
-		rateLimitReset: null,
-		statusCode: 200,
-	};
-}
-
 export async function getInstallationAccessIndex(
 	context: GitHubContext,
 ): Promise<GitHubInstallationAccessIndex> {
 	try {
 		const serializable =
-			await getOrRevalidateGitHubResource<SerializableInstallationAccessIndex>({
+			await dedupeGitHubRead<SerializableInstallationAccessIndex>({
 				userId: context.session.user.id,
 				resource: "installationAccess",
 				params: null,
-				freshForMs: githubCachePolicy.installationAccess.staleTimeMs,
-				signalKeys: [githubRevalidationSignalKeys.installationAccess],
-				namespaceKeys: [githubRevalidationSignalKeys.installationAccess],
-				cacheMode: "split",
 				fetcher: async () => {
 					debug("installation-access", "fetching access index (cache miss)");
 					const { installations, installationsAvailable, appUserOctokit } =
@@ -219,13 +197,9 @@ export async function getInstallationAccessIndex(
 							"app-user token unavailable, index not available (fail-open)",
 						);
 						return {
-							kind: "success",
-							data: {
-								available: false,
-								allAccessOwners: [],
-								selectedRepos: [],
-							},
-							metadata: syntheticGitHubResponseMetadata(),
+							available: false,
+							allAccessOwners: [],
+							selectedRepos: [],
 						};
 					}
 
@@ -321,13 +295,9 @@ export async function getInstallationAccessIndex(
 					});
 
 					return {
-						kind: "success",
-						data: {
-							available: true,
-							allAccessOwners,
-							selectedRepos,
-						},
-						metadata: syntheticGitHubResponseMetadata(),
+						available: true,
+						allAccessOwners,
+						selectedRepos,
 					};
 				},
 			});
@@ -345,9 +315,8 @@ export async function getInstallationAccessIndex(
 			selectedRepos: new Set(serializable.selectedRepos),
 		};
 	} catch (error) {
-		// Transient failure (network, 500, etc.) — not cached, so the next
-		// request will retry.  Fail-open so the current request doesn't block
-		// all private repos for the user.
+		// Transient failure (network, 500): fail open so one bad request doesn't
+		// hide every private repo from the user.
 		debug(
 			"installation-access",
 			"transient error building access index, failing open",

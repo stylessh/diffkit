@@ -8,10 +8,8 @@ import type {
 	RepositoryRef,
 } from "../github.types";
 import type { GitHubInstallationAccessIndex } from "../github-access";
-import { githubCachePolicy } from "../github-cache-policy";
-import { githubRevalidationSignalKeys } from "../github-revalidation";
 import {
-	getCachedGitHubRequest,
+	fetchGitHubResource,
 	getGitHubContext,
 	getViewer,
 	resolveUsername,
@@ -65,19 +63,6 @@ export type IssuesFromUserInput = {
 	owner?: string;
 	repo?: string;
 };
-
-/** When search is scoped to one repo, webhook `repoMeta` invalidates this cache; otherwise TTL only (global mine signals would misfire). */
-function revalidationSignalKeysForUserItemSearch(input: {
-	owner?: string;
-	repo?: string;
-}): string[] {
-	const owner = input.owner?.trim();
-	const repo = input.repo?.trim();
-	if (owner && repo) {
-		return [githubRevalidationSignalKeys.repoMeta({ owner, repo })];
-	}
-	return [];
-}
 
 export type CommandPaletteSearchInput = {
 	query: string;
@@ -283,7 +268,7 @@ export const getPullsFromUser = createServerFn({ method: "GET" })
 
 		const username = await resolveUsername(context, data.username);
 
-		return getCachedGitHubRequest<SearchResult, PullSummary[]>({
+		return fetchGitHubResource<SearchResult, PullSummary[]>({
 			context,
 			resource: "pulls.user",
 			params: {
@@ -295,12 +280,7 @@ export const getPullsFromUser = createServerFn({ method: "GET" })
 				owner: data.owner,
 				repo: data.repo,
 			},
-			freshForMs: githubCachePolicy.list.staleTimeMs,
-			signalKeys: revalidationSignalKeysForUserItemSearch({
-				owner: data.owner,
-				repo: data.repo,
-			}),
-			request: (headers) =>
+			request: () =>
 				context.octokit.rest.search.issuesAndPullRequests({
 					q: buildUserSearchQuery({
 						itemType: "pr",
@@ -314,7 +294,6 @@ export const getPullsFromUser = createServerFn({ method: "GET" })
 					per_page: clampPerPage(data.perPage),
 					sort: "updated",
 					order: "desc",
-					headers,
 				}),
 			mapData: (result) => mapPullSearchItems(result.items),
 		});
@@ -353,7 +332,7 @@ export const getIssuesFromUser = createServerFn({ method: "GET" })
 
 		const username = await resolveUsername(context, data.username);
 
-		return getCachedGitHubRequest<SearchResult, IssueSummary[]>({
+		return fetchGitHubResource<SearchResult, IssueSummary[]>({
 			context,
 			resource: "issues.user",
 			params: {
@@ -365,12 +344,7 @@ export const getIssuesFromUser = createServerFn({ method: "GET" })
 				owner: data.owner,
 				repo: data.repo,
 			},
-			freshForMs: githubCachePolicy.list.staleTimeMs,
-			signalKeys: revalidationSignalKeysForUserItemSearch({
-				owner: data.owner,
-				repo: data.repo,
-			}),
-			request: (headers) =>
+			request: () =>
 				context.octokit.rest.search.issuesAndPullRequests({
 					q: buildUserSearchQuery({
 						itemType: "issue",
@@ -384,7 +358,6 @@ export const getIssuesFromUser = createServerFn({ method: "GET" })
 					per_page: clampPerPage(data.perPage),
 					sort: "updated",
 					order: "desc",
-					headers,
 				}),
 			mapData: (result) => mapIssueSearchItems(result.items),
 		});

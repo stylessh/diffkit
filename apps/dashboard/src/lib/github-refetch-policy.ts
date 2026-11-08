@@ -14,44 +14,45 @@ import type { PullStatus, WorkflowRun, WorkflowRunJob } from "./github.types";
  * focus, reconnect and mount once past its `staleTime`.
  */
 export const githubPollIntervalMs = {
-	/** Adaptive tiers (PR status, workflow runs/jobs) while something runs. */
-	active: 5 * 1000,
-	/** Adaptive tiers when nothing is queued or running. */
+	/**
+	 * A PR status poll costs ~7 REST calls; at 5 s one open PR page with
+	 * running CI spent ~5,000 requests an hour, the user's whole budget.
+	 */
+	running: 10 * 1000,
 	idle: 30 * 1000,
 } as const;
 
-/** Adaptive tiers stop polling once terminal and unchanged for this long. */
-export const GITHUB_TERMINAL_POLL_STOP_AFTER_MS = 10 * 60 * 1000;
+export const GITHUB_SETTLED_POLL_STOP_AFTER_MS = 10 * 60 * 1000;
 
-export type GitHubAdaptivePollState = {
-	/** Something is queued or in progress — poll fast. */
-	isActive: boolean;
-	/** The entity can no longer change on its own (completed run, closed PR). */
-	isTerminal: boolean;
-};
+/**
+ * - `running`: something is queued or in progress.
+ * - `waiting`: nothing to classify yet (no run, no jobs, no status).
+ * - `settled`: nothing left to finish (completed run, PR with no pending
+ *   checks). Late results such as third-party statuses still land within the
+ *   stop window; after that the change feed and focus refetch take over.
+ */
+export type GitHubPollPhase = "running" | "waiting" | "settled";
 
 export function getAdaptiveRefetchInterval({
-	isActive,
-	isTerminal,
+	phase,
 	lastChangedAt,
 	now,
-}: GitHubAdaptivePollState & {
+}: {
+	phase: GitHubPollPhase;
 	lastChangedAt: number | null;
 	now: number;
 }): number | false {
-	if (isActive) {
-		return githubPollIntervalMs.active;
+	switch (phase) {
+		case "running":
+			return githubPollIntervalMs.running;
+		case "waiting":
+			return githubPollIntervalMs.idle;
+		case "settled":
+			return lastChangedAt !== null &&
+				now - lastChangedAt >= GITHUB_SETTLED_POLL_STOP_AFTER_MS
+				? false
+				: githubPollIntervalMs.idle;
 	}
-
-	if (
-		isTerminal &&
-		lastChangedAt !== null &&
-		now - lastChangedAt >= GITHUB_TERMINAL_POLL_STOP_AFTER_MS
-	) {
-		return false;
-	}
-
-	return githubPollIntervalMs.idle;
 }
 
 const lastDataChangeByQuery = new WeakMap<
@@ -92,13 +93,13 @@ export function getQueryDataLastChangedAt(query: {
  * on whether something is still running.
  */
 export function adaptiveRefetchInterval<TData>(
-	classify: (data: TData | undefined) => GitHubAdaptivePollState,
+	classify: (data: TData | undefined) => GitHubPollPhase,
 ) {
 	return (query: {
 		state: { data: TData | undefined; dataUpdatedAt: number };
 	}): number | false =>
 		getAdaptiveRefetchInterval({
-			...classify(query.state.data),
+			phase: classify(query.state.data),
 			lastChangedAt: getQueryDataLastChangedAt(query),
 			now: Date.now(),
 		});
@@ -106,33 +107,21 @@ export function adaptiveRefetchInterval<TData>(
 
 export function classifyWorkflowRun(
 	run: Pick<WorkflowRun, "status"> | null | undefined,
-): GitHubAdaptivePollState {
-	if (!run) {
-		return { isActive: false, isTerminal: false };
-	}
-
-	const isTerminal = run.status === "completed";
-	return { isActive: !isTerminal, isTerminal };
+): GitHubPollPhase {
+	if (!run) return "waiting";
+	return run.status === "completed" ? "settled" : "running";
 }
 
 export function classifyWorkflowJobs(
 	jobs: ReadonlyArray<Pick<WorkflowRunJob, "status">> | null | undefined,
-): GitHubAdaptivePollState {
-	if (!jobs || jobs.length === 0) {
-		return { isActive: false, isTerminal: false };
-	}
-
-	const isActive = jobs.some((job) => job.status !== "completed");
-	return { isActive, isTerminal: !isActive };
+): GitHubPollPhase {
+	if (!jobs || jobs.length === 0) return "waiting";
+	return jobs.some((job) => job.status !== "completed") ? "running" : "settled";
 }
 
 export function classifyPullStatus(
 	status: Pick<PullStatus, "checks"> | null | undefined,
-	{ isPullClosed = false }: { isPullClosed?: boolean } = {},
-): GitHubAdaptivePollState {
-	const hasRunningChecks = (status?.checks.pending ?? 0) > 0;
-	return {
-		isActive: hasRunningChecks,
-		isTerminal: isPullClosed && !hasRunningChecks,
-	};
+): GitHubPollPhase {
+	if (!status) return "waiting";
+	return status.checks.pending > 0 ? "running" : "settled";
 }

@@ -61,10 +61,11 @@ A follow-up migration drops the tables once the purge finishes; dropping an
   metric with an alert.
 - Remove the inert cache-era call-site options (`signalKeys`, `namespaceKeys`,
   `cacheMode`, `freshForMs`, bust and bump calls) in `github.functions.ts` as
-  part of that rewrite.
+  part of that rewrite. Done in phase 3 (data-fetching.md, "Phase 3 decisions").
 - Watch GitHub rate limits. Client polling (`github-refetch-policy.ts`) now hits
   GitHub on every interval, and ETag 304s, which GitHub does not count against
-  the limit, are gone.
+  the limit, are gone. Audited in phase 3; the open items are listed in
+  data-fetching.md, "Rate-limit exposure after phase 3".
 - Add a D1 size alert, at 80% of the limit, for any database the dashboard
   uses. Done for the dashboard database in the change-feed PR: the cron logs
   `d1_size_warning`; see data-fetching.md, "Monitoring and alerting".

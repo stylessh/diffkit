@@ -362,7 +362,6 @@ export const githubQueryKeys = {
 			["github", scope.userId, "commits", "list", input] as const,
 	},
 	releases: {
-		/** Prefix for every release query of a repo — invalidate after mutations. */
 		repo: (scope: GitHubQueryScope, input: { owner: string; repo: string }) =>
 			["github", scope.userId, "releases", "repo", input] as const,
 		list: (scope: GitHubQueryScope, input: RepoReleasesInput) =>

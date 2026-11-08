@@ -11,6 +11,10 @@ import type {
 	ReviewDraftSubmitEvent,
 	ReviewDraftsResult,
 } from "#/lib/github.types";
+import {
+	invalidateGitHubEntities,
+	pullEntityKey,
+} from "#/lib/github-query-updates";
 import { checkPermissionWarning } from "#/lib/warning-store";
 
 export type ReviewDraftBusyState = "submit" | "delete";
@@ -33,32 +37,6 @@ export function removeReviewDraftFromCache(
 					}
 				: current,
 	);
-}
-
-/** Refetch only queries scoped to one pull request, like the review page does. */
-function invalidatePullQueries(
-	queryClient: QueryClient,
-	draft: Pick<ReviewDraftPull, "owner" | "repo" | "number">,
-) {
-	void queryClient.invalidateQueries({
-		predicate: (query) => {
-			const key = query.queryKey;
-			if (key[0] !== "github") return false;
-			for (let i = 2; i < key.length; i++) {
-				const part = key[i];
-				if (!part || typeof part !== "object") continue;
-				const rec = part as Record<string, unknown>;
-				if (
-					rec.owner === draft.owner &&
-					rec.repo === draft.repo &&
-					(rec.pullNumber === draft.number || rec.issueNumber === draft.number)
-				) {
-					return true;
-				}
-			}
-			return false;
-		},
-	});
 }
 
 export function useReviewDraftActions(scope: GitHubQueryScope) {
@@ -88,7 +66,13 @@ export function useReviewDraftActions(scope: GitHubQueryScope) {
 					return false;
 				}
 				removeReviewDraftFromCache(queryClient, scope, reviewId);
-				invalidatePullQueries(queryClient, draft);
+				void invalidateGitHubEntities(queryClient, scope, [
+					pullEntityKey({
+						owner: draft.owner,
+						repo: draft.repo,
+						pullNumber: draft.number,
+					}),
+				]);
 				toast.success(messages.success);
 				return true;
 			} catch (error) {

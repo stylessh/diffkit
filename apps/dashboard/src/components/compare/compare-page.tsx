@@ -21,6 +21,11 @@ import type {
 	OrgTeam,
 	RepoCollaborator,
 } from "#/lib/github.types";
+import {
+	invalidateGitHubEntities,
+	pullEntityKey,
+	repoEntityKey,
+} from "#/lib/github-query-updates";
 import { useHasMounted } from "#/lib/use-has-mounted";
 import { CompareDiffView } from "./compare-diff-view";
 import { CompareForm } from "./compare-form";
@@ -180,22 +185,15 @@ export function ComparePage({
 				});
 
 				if (result.ok) {
-					const INVALIDATE_SEGMENTS = new Set([
-						"pulls",
-						"overview",
-						"recentPushableBranch",
-						"branchComparison",
-						"compareDetail",
-					]);
-					await queryClient.invalidateQueries({
-						predicate: (query) => {
-							const key = query.queryKey;
-							if (!Array.isArray(key)) return false;
-							return key.some(
-								(k) => typeof k === "string" && INVALIDATE_SEGMENTS.has(k),
-							);
-						},
-					});
+					await invalidateGitHubEntities(
+						queryClient,
+						scope,
+						[
+							pullEntityKey({ owner, repo, pullNumber: result.pullNumber }),
+							repoEntityKey({ owner, repo }),
+						],
+						"created",
+					);
 					if (result.warnings && result.warnings.length > 0) {
 						toast.warning("Pull request created with some issues", {
 							description: result.warnings.join("\n"),
@@ -227,6 +225,7 @@ export function ComparePage({
 			selectedReviewers,
 			selectedTeamReviewers,
 			title,
+			scope,
 		],
 	);
 

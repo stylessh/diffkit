@@ -1,7 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
 import type { CommentReactionContent } from "../github.types";
-import { bumpGitHubCacheNamespaces, bustGitHubCache } from "../github-cache";
-import { githubRevalidationSignalKeys } from "../github-revalidation";
 import { executeGitHubGraphQL } from "./client";
 import {
 	getGitHubContextForRepository,
@@ -44,8 +42,6 @@ export const getTimelineEventPage = createServerFn({ method: "GET" })
 		return getRestTimelineEventsPage(context, data, data.page);
 	});
 
-// ── Create issue/PR comment ────────────────────────────────────────
-
 export type CreateCommentInput = {
 	owner: string;
 	repo: string;
@@ -69,41 +65,11 @@ export const createComment = createServerFn({ method: "POST" })
 				body: data.body,
 			});
 
-			// Bust caches so the comment appears immediately
-			const userId = context.session.user.id;
-			await Promise.all([
-				bustGitHubCache(userId, "issues.comments", {
-					owner: data.owner,
-					repo: data.repo,
-					issueNumber: data.issueNumber,
-				}),
-				bustGitHubCache(userId, "pulls.comments", {
-					owner: data.owner,
-					repo: data.repo,
-					pullNumber: data.issueNumber,
-				}),
-				// Bump namespace versions to invalidate split-mode KV payloads
-				bumpGitHubCacheNamespaces([
-					githubRevalidationSignalKeys.pullEntity({
-						owner: data.owner,
-						repo: data.repo,
-						pullNumber: data.issueNumber,
-					}),
-					githubRevalidationSignalKeys.issueEntity({
-						owner: data.owner,
-						repo: data.repo,
-						issueNumber: data.issueNumber,
-					}),
-				]),
-			]);
-
 			return { ok: true };
 		} catch (error) {
 			return toMutationError("create comment", error);
 		}
 	});
-
-// ── Issue/PR comment reactions ───────────────────────────────────
 
 export type ToggleIssueCommentReactionInput = {
 	owner: string;
@@ -180,39 +146,11 @@ export const toggleIssueCommentReaction = createServerFn({ method: "POST" })
 				},
 			);
 
-			const userId = context.session.user.id;
-			await Promise.all([
-				bustGitHubCache(userId, "issues.comments", {
-					owner: data.owner,
-					repo: data.repo,
-					issueNumber: data.issueNumber,
-				}),
-				bustGitHubCache(userId, "pulls.comments", {
-					owner: data.owner,
-					repo: data.repo,
-					pullNumber: data.issueNumber,
-				}),
-				bumpGitHubCacheNamespaces([
-					githubRevalidationSignalKeys.pullEntity({
-						owner: data.owner,
-						repo: data.repo,
-						pullNumber: data.issueNumber,
-					}),
-					githubRevalidationSignalKeys.issueEntity({
-						owner: data.owner,
-						repo: data.repo,
-						issueNumber: data.issueNumber,
-					}),
-				]),
-			]);
-
 			return { ok: true };
 		} catch (error) {
 			return toMutationError("toggle comment reaction", error);
 		}
 	});
-
-// ── Edit issue/PR comment ─────────────────────────────────────────
 
 export type EditCommentInput = {
 	owner: string;
@@ -242,8 +180,6 @@ export const editComment = createServerFn({ method: "POST" })
 		}
 	});
 
-// ── Delete issue/PR comment ──────────────────────────────────────
-
 export type DeleteCommentInput = {
 	owner: string;
 	repo: string;
@@ -269,8 +205,6 @@ export const deleteComment = createServerFn({ method: "POST" })
 			return toMutationError("delete comment", error);
 		}
 	});
-
-// ── Edit review comment ──────────────────────────────────────────
 
 export type EditReviewCommentInput = {
 	owner: string;
@@ -300,8 +234,6 @@ export const editReviewComment = createServerFn({ method: "POST" })
 		}
 	});
 
-// ── Delete review comment ────────────────────────────────────────
-
 export type DeleteReviewCommentInput = {
 	owner: string;
 	repo: string;
@@ -327,8 +259,6 @@ export const deleteReviewComment = createServerFn({ method: "POST" })
 			return toMutationError("delete review comment", error);
 		}
 	});
-
-// ── Minimize (hide) comment ──────────────────────────────────────
 
 export type MinimizeCommentInput = {
 	owner: string;
