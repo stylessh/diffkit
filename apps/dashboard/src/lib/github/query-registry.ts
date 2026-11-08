@@ -80,6 +80,14 @@ export const githubQueryEntityCoverage: Record<
 	"refs.comparison": ["repo"],
 	"refs.splat": ["repo"],
 	"reviewDrafts.mine": ["pull"],
+	"repoSettings.general": ["repo"],
+	"repoSettings.rulesets": ["repo"],
+	"repoSettings.protections": ["repo"],
+	"repoSettings.access": ["collaborators"],
+	"repoSettings.webhooks": ["settings"],
+	"repoSettings.webhookDeliveries": ["settings"],
+	"repoSettings.actionsSecrets": ["settings"],
+	"repoSettings.actionsVariables": ["settings"],
 };
 
 /**
