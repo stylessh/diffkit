@@ -147,7 +147,6 @@ export function registerActionsShims(context: ShimContext) {
 		return c.body(null, 204);
 	});
 
-	// --- Variables (emulate has none) -----------------------------------------
 	const variableJson = (row: {
 		name: string;
 		value: string;

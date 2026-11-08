@@ -121,7 +121,6 @@ export function registerRepoSettingsShims(context: ShimContext) {
 		return undefined;
 	});
 
-	// --- Classic branch protection ------------------------------------------
 	const protectionJson = (
 		repo: GitHubRepo,
 		protection: GitHubBranchProtection,
@@ -266,7 +265,6 @@ export function registerRepoSettingsShims(context: ShimContext) {
 		},
 	);
 
-	// --- Rulesets -------------------------------------------------------------
 	const rulesetSummary = (repo: GitHubRepo, row: RulesetRow) => ({
 		id: row.id,
 		name: row.name,

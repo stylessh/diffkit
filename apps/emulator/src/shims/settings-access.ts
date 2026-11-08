@@ -196,7 +196,6 @@ export function registerAccessShims(context: ShimContext) {
 		return c.body(null, 204);
 	});
 
-	// --- Teams with access -----------------------------------------------------
 	const teamPermission = (teamId: number, repoId: number) => {
 		const { gh, settings } = settingsStores(context);
 		return (

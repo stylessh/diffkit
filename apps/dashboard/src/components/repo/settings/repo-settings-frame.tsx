@@ -138,14 +138,21 @@ export function RepoSettingsGate({
 	const access = useRepoSettingsAccess(scope, owner, repo);
 	if (access.status === "loading") return <SettingsSkeleton />;
 	if (access.capabilities[need]) return <>{children}</>;
+	const canManageLabels = access.capabilities.manageLabels;
 	return (
 		<SettingsNotice
 			title="You don't have access to this page"
 			action={
 				<Button asChild variant="outline" size="sm">
-					<Link to="/$owner/$repo" params={{ owner, repo }}>
-						Back to {owner}/{repo}
-					</Link>
+					{canManageLabels ? (
+						<Link to="/$owner/$repo/settings/labels" params={{ owner, repo }}>
+							Go to labels
+						</Link>
+					) : (
+						<Link to="/$owner/$repo" params={{ owner, repo }}>
+							Back to {owner}/{repo}
+						</Link>
+					)}
 				</Button>
 			}
 		>

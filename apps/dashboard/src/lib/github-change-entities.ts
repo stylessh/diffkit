@@ -99,10 +99,6 @@ export function parseEntityKey(key: string): GitHubChangeEntity | null {
 	return null;
 }
 
-// ---------------------------------------------------------------------------
-// Webhook → entities
-// ---------------------------------------------------------------------------
-
 type JsonRecord = Record<string, unknown>;
 
 function isRecord(value: unknown): value is JsonRecord {

@@ -142,7 +142,6 @@ export function registerOrgSettingsShims(context: ShimContext) {
 		return undefined;
 	});
 
-	// --- Members and roles ------------------------------------------------------
 	const membershipJson = (
 		org: GitHubOrg,
 		userId: number,
@@ -233,7 +232,6 @@ export function registerOrgSettingsShims(context: ShimContext) {
 		);
 	});
 
-	// --- Invitations ------------------------------------------------------------
 	const invitationJson = (org: GitHubOrg, row: OrgInvitationRow) => {
 		const { gh } = settingsStores(context);
 		const inviter = gh.users.get(row.inviter_id);
@@ -342,7 +340,6 @@ export function registerOrgSettingsShims(context: ShimContext) {
 		return c.body(null, 204);
 	});
 
-	// --- Teams ------------------------------------------------------------------
 	const withCounts = (team: { id: number }) => {
 		const row = settingsStores(context).gh.teams.get(team.id);
 		return row ? teamJson(context, row) : team;

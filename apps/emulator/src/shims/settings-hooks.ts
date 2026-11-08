@@ -116,7 +116,6 @@ export function registerHookShims(context: ShimContext) {
 		return c.json(configJson(updated ?? hook));
 	});
 
-	// --- Deliveries -------------------------------------------------------------
 	const syncLiveDeliveries = (hook: GitHubWebhook) => {
 		const { settings } = settingsStores(context);
 		const known = new Set(
