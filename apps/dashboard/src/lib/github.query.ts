@@ -194,13 +194,48 @@ export type WorkflowRunLogsBundleQueryInput = {
 	attempt?: number;
 };
 
-const persistedMeta = {
-	persist: true,
-} as const;
+/**
+ * Version of every persisted GitHub query payload. The IndexedDB cache is
+ * wiped on restore when this changes, so bump it whenever a server function's
+ * return shape changes in a way old cached data would break (e.g. #191 added
+ * head/base refs to pull summaries and had to version `pulls.repo` as `v2`).
+ * Format: an integer, incremented by one.
+ */
+export const QUERY_SCHEMA_VERSION = 1;
 
-const tabPersistedMeta = {
-	persist: "tab",
-} as const;
+/**
+ * Query groups that are never written to the persisted client cache. Every
+ * other `["github", userId, ...]` query persists. Entries are
+ * `[group]` or `[group, name]`, matching `queryKey[2]` and `queryKey[3]`.
+ */
+export const githubQueryPersistOptOut = [
+	// Large blobs: PR patches, file contents, commit and compare diffs, logs.
+	["pulls", "files"],
+	["repo", "fileContent"],
+	["repo", "commit"],
+	["repo", "compareDetail"],
+	["actions", "workflowJobLogs"],
+	["actions", "workflowRunLogsBundle"],
+	// Private, unsent content: pending review comment bodies.
+	["reviewDrafts"],
+	// Transient, per-keystroke results.
+	["search", "commandPalette"],
+] as const satisfies ReadonlyArray<
+	readonly [string] | readonly [string, string]
+>;
+
+export function isGitHubQueryKeyPersistable(queryKey: readonly unknown[]) {
+	if (queryKey[0] !== "github" || typeof queryKey[1] !== "string") {
+		return false;
+	}
+	const group = queryKey[2];
+	const name = queryKey[3];
+	return !githubQueryPersistOptOut.some((entry) =>
+		entry.length === 1
+			? entry[0] === group
+			: entry[0] === group && entry[1] === name,
+	);
+}
 
 export const githubQueryKeys = {
 	all: ["github"] as const,
@@ -458,7 +493,6 @@ export function githubViewerQueryOptions(scope: GitHubQueryScope) {
 		queryFn: () => getGitHubViewer(),
 		staleTime: githubCachePolicy.viewer.staleTimeMs,
 		gcTime: githubCachePolicy.viewer.gcTimeMs,
-		meta: persistedMeta,
 	});
 }
 
@@ -468,7 +502,6 @@ export function githubUserReposQueryOptions(scope: GitHubQueryScope) {
 		queryFn: () => getUserRepos(),
 		staleTime: githubCachePolicy.reposList.staleTimeMs,
 		gcTime: githubCachePolicy.reposList.gcTimeMs,
-		meta: persistedMeta,
 	});
 }
 
@@ -481,7 +514,6 @@ export function githubReposHubQueryOptions(
 		queryFn: () => getReposHub({ data: input }),
 		staleTime: githubCachePolicy.reposList.staleTimeMs,
 		gcTime: githubCachePolicy.reposList.gcTimeMs,
-		meta: persistedMeta,
 	});
 }
 
@@ -494,7 +526,6 @@ export function githubProfileReposQueryOptions(
 		queryFn: () => getProfileRepos({ data: { username } }),
 		staleTime: githubCachePolicy.reposList.staleTimeMs,
 		gcTime: githubCachePolicy.reposList.gcTimeMs,
-		meta: persistedMeta,
 	});
 }
 
@@ -517,7 +548,6 @@ export function githubMyPullsQueryOptions(scope: GitHubQueryScope) {
 		staleTime: githubCachePolicy.mine.staleTimeMs,
 		gcTime: githubCachePolicy.mine.gcTimeMs,
 		...githubPollOptions("mine"),
-		meta: persistedMeta,
 	});
 }
 
@@ -531,7 +561,6 @@ export function githubPullsFromUserQueryOptions(
 		staleTime: githubCachePolicy.list.staleTimeMs,
 		gcTime: githubCachePolicy.list.gcTimeMs,
 		...githubPollOptions("list"),
-		meta: persistedMeta,
 	});
 }
 
@@ -545,7 +574,6 @@ export function githubPullsFromRepoQueryOptions(
 		staleTime: githubCachePolicy.list.staleTimeMs,
 		gcTime: githubCachePolicy.list.gcTimeMs,
 		...githubPollOptions("list"),
-		meta: persistedMeta,
 	});
 }
 
@@ -559,7 +587,6 @@ export function githubPullDetailQueryOptions(
 		staleTime: githubCachePolicy.detail.staleTimeMs,
 		gcTime: githubCachePolicy.detail.gcTimeMs,
 		...githubPollOptions("detail"),
-		meta: tabPersistedMeta,
 	});
 }
 
@@ -584,7 +611,6 @@ export function githubPullPageQueryOptions(
 		staleTime: githubCachePolicy.detail.staleTimeMs,
 		gcTime: githubCachePolicy.detail.gcTimeMs,
 		...githubPollOptions("detail"),
-		meta: tabPersistedMeta,
 	});
 }
 
@@ -597,7 +623,6 @@ export function githubPullCommentsQueryOptions(
 		queryFn: () => getPullComments({ data: input }),
 		staleTime: githubCachePolicy.activity.staleTimeMs,
 		gcTime: githubCachePolicy.activity.gcTimeMs,
-		meta: tabPersistedMeta,
 	});
 }
 
@@ -612,7 +637,6 @@ export function githubPullStatusQueryOptions(
 		gcTime: githubCachePolicy.status.gcTimeMs,
 		refetchInterval: adaptiveRefetchInterval(classifyPullStatus),
 		refetchIntervalInBackground: false,
-		meta: tabPersistedMeta,
 	});
 }
 
@@ -632,7 +656,6 @@ export function githubPullFilesInfiniteQueryOptions(
 		getNextPageParam: (lastPage) => lastPage.nextPage ?? undefined,
 		staleTime: githubCachePolicy.detail.staleTimeMs,
 		gcTime: githubCachePolicy.detail.gcTimeMs,
-		meta: tabPersistedMeta,
 	});
 }
 
@@ -648,7 +671,6 @@ export function githubPullFileSummariesQueryOptions(
 		getNextPageParam: (lastPage) => lastPage.nextCursor ?? undefined,
 		staleTime: githubCachePolicy.detail.staleTimeMs,
 		gcTime: githubCachePolicy.detail.gcTimeMs,
-		meta: tabPersistedMeta,
 	});
 }
 
@@ -662,7 +684,6 @@ export function githubPullReviewCommentsQueryOptions(
 		staleTime: githubCachePolicy.activity.staleTimeMs,
 		gcTime: githubCachePolicy.activity.gcTimeMs,
 		...githubPollOptions("activity"),
-		meta: tabPersistedMeta,
 	});
 }
 
@@ -676,7 +697,6 @@ export function githubReviewThreadStatusesQueryOptions(
 		staleTime: githubCachePolicy.activity.staleTimeMs,
 		gcTime: githubCachePolicy.activity.gcTimeMs,
 		...githubPollOptions("activity"),
-		meta: tabPersistedMeta,
 	});
 }
 
@@ -723,7 +743,6 @@ export function githubMyIssuesQueryOptions(scope: GitHubQueryScope) {
 		staleTime: githubCachePolicy.mine.staleTimeMs,
 		gcTime: githubCachePolicy.mine.gcTimeMs,
 		...githubPollOptions("mine"),
-		meta: persistedMeta,
 	});
 }
 
@@ -737,7 +756,6 @@ export function githubIssuesFromUserQueryOptions(
 		staleTime: githubCachePolicy.list.staleTimeMs,
 		gcTime: githubCachePolicy.list.gcTimeMs,
 		...githubPollOptions("list"),
-		meta: persistedMeta,
 	});
 }
 
@@ -751,7 +769,6 @@ export function githubIssuesFromRepoQueryOptions(
 		staleTime: githubCachePolicy.list.staleTimeMs,
 		gcTime: githubCachePolicy.list.gcTimeMs,
 		...githubPollOptions("list"),
-		meta: persistedMeta,
 	});
 }
 
@@ -765,7 +782,6 @@ export function githubIssueDetailQueryOptions(
 		staleTime: githubCachePolicy.detail.staleTimeMs,
 		gcTime: githubCachePolicy.detail.gcTimeMs,
 		...githubPollOptions("detail"),
-		meta: tabPersistedMeta,
 	});
 }
 
@@ -779,7 +795,6 @@ export function githubIssuePageQueryOptions(
 		staleTime: githubCachePolicy.detail.staleTimeMs,
 		gcTime: githubCachePolicy.detail.gcTimeMs,
 		...githubPollOptions("detail"),
-		meta: tabPersistedMeta,
 	});
 }
 
@@ -792,7 +807,6 @@ export function githubIssueCommentsQueryOptions(
 		queryFn: () => getIssueComments({ data: input }),
 		staleTime: githubCachePolicy.activity.staleTimeMs,
 		gcTime: githubCachePolicy.activity.gcTimeMs,
-		meta: tabPersistedMeta,
 	});
 }
 
@@ -805,7 +819,6 @@ export function githubCommentPageQueryOptions(
 		queryFn: () => getCommentPage({ data: input }),
 		staleTime: githubCachePolicy.activity.staleTimeMs,
 		gcTime: githubCachePolicy.activity.gcTimeMs,
-		meta: tabPersistedMeta,
 	});
 }
 
@@ -818,7 +831,6 @@ export function githubTimelineEventPageQueryOptions(
 		queryFn: () => getTimelineEventPage({ data: input }),
 		staleTime: githubCachePolicy.activity.staleTimeMs,
 		gcTime: githubCachePolicy.activity.gcTimeMs,
-		meta: tabPersistedMeta,
 	});
 }
 
@@ -892,7 +904,6 @@ export function githubRepoOverviewQueryOptions(
 		staleTime: githubCachePolicy.list.staleTimeMs,
 		gcTime: githubCachePolicy.repoMeta.gcTimeMs,
 		...githubPollOptions("list"),
-		meta: persistedMeta,
 	});
 }
 
@@ -905,7 +916,6 @@ export function githubRepoBranchesQueryOptions(
 		queryFn: () => getRepoBranches({ data: input }),
 		staleTime: githubCachePolicy.repoMeta.staleTimeMs,
 		gcTime: githubCachePolicy.repoMeta.gcTimeMs,
-		meta: persistedMeta,
 	});
 }
 
@@ -918,7 +928,6 @@ export function githubBranchComparisonQueryOptions(
 		queryFn: () => getBranchComparison({ data: input }),
 		staleTime: githubCachePolicy.detail.staleTimeMs,
 		gcTime: githubCachePolicy.detail.gcTimeMs,
-		meta: tabPersistedMeta,
 	});
 }
 
@@ -931,7 +940,6 @@ export function githubCompareDetailQueryOptions(
 		queryFn: () => getCompareDetail({ data: input }),
 		staleTime: githubCachePolicy.detail.staleTimeMs,
 		gcTime: githubCachePolicy.detail.gcTimeMs,
-		meta: tabPersistedMeta,
 	});
 }
 
@@ -957,7 +965,6 @@ export function githubRepoTemplateQueryOptions(
 		queryFn: () => getRepoTemplate({ data: input }),
 		staleTime: githubCachePolicy.repoMeta.staleTimeMs,
 		gcTime: githubCachePolicy.repoMeta.gcTimeMs,
-		meta: persistedMeta,
 	});
 }
 
@@ -970,7 +977,6 @@ export function githubRepoParticipationQueryOptions(
 		queryFn: () => getRepoParticipationStats({ data: input }),
 		staleTime: githubCachePolicy.repoParticipation.staleTimeMs,
 		gcTime: githubCachePolicy.repoParticipation.gcTimeMs,
-		meta: persistedMeta,
 	});
 }
 
@@ -983,7 +989,6 @@ export function githubRepoContributorsQueryOptions(
 		queryFn: () => getRepoContributors({ data: input }),
 		staleTime: githubCachePolicy.repoMeta.staleTimeMs,
 		gcTime: githubCachePolicy.repoMeta.gcTimeMs,
-		meta: persistedMeta,
 	});
 }
 
@@ -997,7 +1002,6 @@ export function githubRepoTreeQueryOptions(
 		queryFn: () => getRepoTree({ data: input }),
 		staleTime: githubCachePolicy.detail.staleTimeMs,
 		gcTime: githubCachePolicy.detail.gcTimeMs,
-		meta: tabPersistedMeta,
 	});
 }
 
@@ -1010,7 +1014,6 @@ export function githubRepoFileContentQueryOptions(
 		queryFn: () => getRepoFileContent({ data: input }),
 		staleTime: githubCachePolicy.repoMeta.staleTimeMs,
 		gcTime: githubCachePolicy.repoMeta.gcTimeMs,
-		meta: persistedMeta,
 	});
 }
 
@@ -1023,7 +1026,6 @@ export function githubFileLastCommitQueryOptions(
 		queryFn: () => getFileLastCommit({ data: input }),
 		staleTime: githubCachePolicy.detail.staleTimeMs,
 		gcTime: githubCachePolicy.detail.gcTimeMs,
-		meta: tabPersistedMeta,
 	});
 }
 
@@ -1036,7 +1038,6 @@ export function githubRepoCommitQueryOptions(
 		queryFn: () => getRepoCommit({ data: input }),
 		staleTime: githubCachePolicy.detail.staleTimeMs,
 		gcTime: githubCachePolicy.detail.gcTimeMs,
-		meta: tabPersistedMeta,
 	});
 }
 
@@ -1049,7 +1050,6 @@ export function githubRefHeadCommitQueryOptions(
 		queryFn: () => getRefHeadCommit({ data: input }),
 		staleTime: githubCachePolicy.detail.staleTimeMs,
 		gcTime: githubCachePolicy.detail.gcTimeMs,
-		meta: tabPersistedMeta,
 	});
 }
 
@@ -1073,7 +1073,6 @@ export function githubTreeEntryCommitsQueryOptions(
 		queryFn: () => getTreeEntryCommits({ data: input }),
 		staleTime: githubCachePolicy.detail.staleTimeMs,
 		gcTime: githubCachePolicy.detail.gcTimeMs,
-		meta: tabPersistedMeta,
 		enabled: input.entries.length > 0,
 	});
 }
@@ -1087,7 +1086,6 @@ export function githubRepoDiscussionsQueryOptions(
 		queryFn: () => getRepoDiscussions({ data: input }),
 		staleTime: githubCachePolicy.list.staleTimeMs,
 		gcTime: githubCachePolicy.list.gcTimeMs,
-		meta: persistedMeta,
 	});
 }
 
@@ -1101,7 +1099,6 @@ export function githubNotificationsQueryOptions(
 		staleTime: githubCachePolicy.list.staleTimeMs,
 		gcTime: githubCachePolicy.list.gcTimeMs,
 		...githubPollOptions("list"),
-		meta: persistedMeta,
 	});
 }
 
@@ -1115,7 +1112,6 @@ export function githubWorkflowRunsFromRepoQueryOptions(
 		staleTime: githubCachePolicy.workflowRun.staleTimeMs,
 		gcTime: githubCachePolicy.workflowRun.gcTimeMs,
 		...githubPollOptions("list"),
-		meta: tabPersistedMeta,
 	});
 }
 
@@ -1130,7 +1126,6 @@ export function githubWorkflowRunQueryOptions(
 		gcTime: githubCachePolicy.workflowRun.gcTimeMs,
 		refetchInterval: adaptiveRefetchInterval(classifyWorkflowRun),
 		refetchIntervalInBackground: false,
-		meta: tabPersistedMeta,
 	});
 }
 
@@ -1145,7 +1140,6 @@ export function githubWorkflowRunJobsQueryOptions(
 		gcTime: githubCachePolicy.workflowRun.gcTimeMs,
 		refetchInterval: adaptiveRefetchInterval(classifyWorkflowJobs),
 		refetchIntervalInBackground: false,
-		meta: tabPersistedMeta,
 	});
 }
 
@@ -1158,7 +1152,6 @@ export function githubWorkflowRunArtifactsQueryOptions(
 		queryFn: () => listWorkflowRunArtifacts({ data: input }),
 		staleTime: githubCachePolicy.workflowRun.staleTimeMs,
 		gcTime: githubCachePolicy.workflowRun.gcTimeMs,
-		meta: tabPersistedMeta,
 	});
 }
 
@@ -1171,7 +1164,6 @@ export function githubWorkflowDefinitionQueryOptions(
 		queryFn: () => getWorkflowDefinition({ data: input }),
 		staleTime: githubCachePolicy.detail.staleTimeMs,
 		gcTime: githubCachePolicy.detail.gcTimeMs,
-		meta: tabPersistedMeta,
 	});
 }
 
@@ -1184,7 +1176,6 @@ export function githubWorkflowJobLogsQueryOptions(
 		queryFn: () => getWorkflowJobLogs({ data: input }),
 		staleTime: 2 * 1000,
 		gcTime: 60 * 1000,
-		meta: tabPersistedMeta,
 	});
 }
 
@@ -1204,7 +1195,6 @@ export function githubWorkflowRunLogsBundleQueryOptions(
 		queryFn: () => getWorkflowRunLogsBundle({ data: input }),
 		staleTime: 60 * 60 * 1000,
 		gcTime: 4 * 60 * 60 * 1000,
-		meta: tabPersistedMeta,
 	});
 }
 
@@ -1229,7 +1219,6 @@ export function githubRepoCommitsQueryOptions(
 		staleTime: githubCachePolicy.list.staleTimeMs,
 		gcTime: githubCachePolicy.list.gcTimeMs,
 		refetchOnWindowFocus: true,
-		meta: tabPersistedMeta,
 	});
 }
 
@@ -1243,7 +1232,6 @@ export function githubRepoReleasesQueryOptions(
 		staleTime: githubCachePolicy.list.staleTimeMs,
 		gcTime: githubCachePolicy.list.gcTimeMs,
 		refetchOnWindowFocus: true,
-		meta: tabPersistedMeta,
 	});
 }
 
@@ -1257,7 +1245,6 @@ export function githubRepoReleaseQueryOptions(
 		staleTime: githubCachePolicy.detail.staleTimeMs,
 		gcTime: githubCachePolicy.detail.gcTimeMs,
 		refetchOnWindowFocus: true,
-		meta: tabPersistedMeta,
 	});
 }
 
@@ -1270,7 +1257,6 @@ export function githubRepoViewerPermissionQueryOptions(
 		queryFn: () => getRepoViewerPermission({ data: input }),
 		staleTime: githubCachePolicy.repoMeta.staleTimeMs,
 		gcTime: githubCachePolicy.repoMeta.gcTimeMs,
-		meta: persistedMeta,
 	});
 }
 
@@ -1284,7 +1270,6 @@ export function githubRepoRefNamesQueryOptions(
 		queryFn: () => getRepoRefNames({ data: input }),
 		staleTime: githubCachePolicy.repoMeta.staleTimeMs,
 		gcTime: githubCachePolicy.repoMeta.gcTimeMs,
-		meta: persistedMeta,
 	});
 }
 
@@ -1349,7 +1334,6 @@ export function githubRepoRefSplatQueryOptions(
 		queryFn: () => resolveRepoRefSplat({ data: input }),
 		staleTime: githubCachePolicy.repoMeta.staleTimeMs,
 		gcTime: githubCachePolicy.repoMeta.gcTimeMs,
-		meta: persistedMeta,
 	});
 }
 
