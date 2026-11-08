@@ -1,18 +1,15 @@
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
-import { useQueryStates } from "nuqs";
 import { useMemo } from "react";
 import {
-	applyRepoFilters,
+	apiFilterValues,
+	applyListView,
 	deriveWorkflowRunApiStatus,
 	type FilterableItem,
-	FilterBar,
-	getFilterValues,
+	ListToolbar,
 	makeBranchFilterDef,
-	parseFilterString,
-	repoListUrlParsers,
 	repoWorkflowRunFilterDefs,
-	useRepoListFilters,
+	useListFilters,
 	workflowRunSortOptions,
 } from "#/components/filters";
 import { DashboardContentLoading } from "#/components/layouts/dashboard-content-loading";
@@ -107,20 +104,6 @@ function RepoActionsPage() {
 	const hasMounted = useHasMounted();
 	const ownerRepo = `${owner}/${repo}`;
 
-	const [urlParams] = useQueryStates(repoListUrlParsers);
-	const urlFilters = useMemo(
-		() => parseFilterString(urlParams.filters),
-		[urlParams.filters],
-	);
-	const statusValues = getFilterValues(urlFilters, "status");
-	const apiStatus = deriveWorkflowRunApiStatus(statusValues);
-	const eventValues = getFilterValues(urlFilters, "event");
-	const apiEvent = eventValues.size === 1 ? [...eventValues][0] : undefined;
-	const authorValues = getFilterValues(urlFilters, "author");
-	const apiActor = authorValues.size === 1 ? [...authorValues][0] : undefined;
-	const branchValues = getFilterValues(urlFilters, "branch");
-	const apiBranch = branchValues.size === 1 ? [...branchValues][0] : undefined;
-
 	const overviewQuery = useQuery({
 		...githubRepoOverviewQueryOptions(scope, { owner, repo }),
 		enabled: hasMounted,
@@ -131,18 +114,40 @@ function RepoActionsPage() {
 		enabled: hasMounted,
 	});
 
+	const filterDefs = useMemo(() => {
+		const branchNames = branchesQuery.data?.map((b) => b.name) ?? [];
+		return [...repoWorkflowRunFilterDefs, makeBranchFilterDef(branchNames)];
+	}, [branchesQuery.data]);
+
+	const filterState = useListFilters({
+		listId: "repo-actions",
+		filterDefs,
+		sortOptions: workflowRunSortOptions,
+		defaultSortId: "updated",
+	});
+	const singleApiValue = (fieldId: string) => {
+		const values = apiFilterValues(filterState.activeFilters, fieldId);
+		return values.size === 1 ? [...values][0] : undefined;
+	};
+	const apiStatus = deriveWorkflowRunApiStatus(
+		apiFilterValues(filterState.activeFilters, "status"),
+	);
+	const apiEvent = singleApiValue("event");
+	const apiActor = singleApiValue("author");
+	const apiBranch = singleApiValue("branch");
+
 	const runsQueryInput = useMemo(
 		() => ({
 			owner,
 			repo,
-			page: urlParams.page,
+			page: filterState.page,
 			perPage: PER_PAGE,
 			status: apiStatus,
 			event: apiEvent,
 			actor: apiActor,
 			branch: apiBranch,
 		}),
-		[owner, repo, urlParams.page, apiStatus, apiEvent, apiActor, apiBranch],
+		[owner, repo, filterState.page, apiStatus, apiEvent, apiActor, apiBranch],
 	);
 
 	const query = useQuery({
@@ -158,20 +163,8 @@ function RepoActionsPage() {
 	);
 	const hasNextPage = runs.length === PER_PAGE;
 
-	const filterDefs = useMemo(() => {
-		const branchNames = branchesQuery.data?.map((b) => b.name) ?? [];
-		return [...repoWorkflowRunFilterDefs, makeBranchFilterDef(branchNames)];
-	}, [branchesQuery.data]);
-
-	const filterState = useRepoListFilters({
-		filterDefs,
-		sortOptions: workflowRunSortOptions,
-		defaultSortId: "updated",
-		items: filterableRuns,
-	});
-
 	const filtered = useMemo(
-		() => applyRepoFilters(filterableRuns, filterState),
+		() => applyListView(filterableRuns, filterState),
 		[filterableRuns, filterState],
 	);
 
@@ -184,7 +177,14 @@ function RepoActionsPage() {
 				repo={repo}
 				scope={scope}
 				active="actions"
-				toolbar={<FilterBar state={filterState} />}
+				searchQuery={filterState.searchQuery}
+				toolbar={
+					<ListToolbar
+						state={filterState}
+						items={filterableRuns}
+						searchPlaceholder="Search workflow runs…"
+					/>
+				}
 			>
 				{query.isLoading ? (
 					<div className="flex flex-1 items-center justify-center">

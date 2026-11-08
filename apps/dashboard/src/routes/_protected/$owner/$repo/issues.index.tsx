@@ -1,16 +1,13 @@
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
-import { useQueryStates } from "nuqs";
 import { useMemo } from "react";
 import {
-	applyRepoFilters,
-	FilterBar,
-	getFilterValues,
+	apiFilterValues,
+	applyListView,
 	issueSortOptions,
-	parseFilterString,
+	ListToolbar,
 	repoIssueFilterDefs,
-	repoListUrlParsers,
-	useRepoListFilters,
+	useListFilters,
 } from "#/components/filters";
 import { IssueRow } from "#/components/issues/issue-row";
 import { DashboardContentLoading } from "#/components/layouts/dashboard-content-loading";
@@ -39,10 +36,6 @@ export const Route = createFileRoute("/_protected/$owner/$repo/issues/")({
 	component: RepoIssuesPage,
 });
 
-/**
- * Map the status filter pill values to the GitHub API `state` parameter.
- * No status selected → default to "open".
- */
 function deriveApiState(statusValues: Set<string>): "open" | "closed" | "all" {
 	if (statusValues.size === 0) return "open";
 	const hasOpen = statusValues.has("open");
@@ -59,16 +52,16 @@ function RepoIssuesPage() {
 	const scope = { userId: user.id };
 	const hasMounted = useHasMounted();
 
-	// 1. Read URL params directly — needed before the query
-	const [urlParams] = useQueryStates(repoListUrlParsers);
-	const urlFilters = useMemo(
-		() => parseFilterString(urlParams.filters),
-		[urlParams.filters],
+	const filterState = useListFilters({
+		listId: "repo-issues",
+		filterDefs: repoIssueFilterDefs,
+		sortOptions: issueSortOptions,
+		defaultSortId: "updated",
+	});
+	const apiState = deriveApiState(
+		apiFilterValues(filterState.activeFilters, "status"),
 	);
-	const statusValues = getFilterValues(urlFilters, "status");
-	const apiState = deriveApiState(statusValues);
 
-	// 2. Fetch data using URL-derived params
 	const overviewQuery = useQuery({
 		...githubRepoOverviewQueryOptions(scope, { owner, repo }),
 		enabled: hasMounted,
@@ -79,7 +72,7 @@ function RepoIssuesPage() {
 			owner,
 			repo,
 			state: apiState,
-			page: urlParams.page,
+			page: filterState.page,
 			perPage: PER_PAGE,
 		}),
 		enabled: hasMounted,
@@ -89,16 +82,8 @@ function RepoIssuesPage() {
 	const issues = useMemo(() => query.data ?? [], [query.data]);
 	const hasNextPage = issues.length === PER_PAGE;
 
-	// 3. Full filter hook with loaded items — populates author options
-	const filterState = useRepoListFilters({
-		filterDefs: repoIssueFilterDefs,
-		sortOptions: issueSortOptions,
-		defaultSortId: "updated",
-		items: issues,
-	});
-
 	const filtered = useMemo(
-		() => applyRepoFilters(issues, filterState),
+		() => applyListView(issues, filterState),
 		[issues, filterState],
 	);
 
@@ -111,7 +96,14 @@ function RepoIssuesPage() {
 				repo={repo}
 				scope={scope}
 				active="issues"
-				toolbar={<FilterBar state={filterState} />}
+				searchQuery={filterState.searchQuery}
+				toolbar={
+					<ListToolbar
+						state={filterState}
+						items={issues}
+						searchPlaceholder="Search issues…"
+					/>
+				}
 			>
 				{query.isLoading ? (
 					<div className="flex flex-1 items-center justify-center">

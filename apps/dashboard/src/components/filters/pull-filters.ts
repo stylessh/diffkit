@@ -6,13 +6,19 @@ import {
 	GitPullRequestIcon,
 } from "@diffkit/icons";
 import { createElement } from "react";
-import { authorFilterDef, repoFilterDef } from "./filter-helpers";
+import {
+	authorFilterDef,
+	itemSortOptions,
+	labelFilterDef,
+	repoFilterDef,
+	updatedFilterDef,
+} from "./filter-helpers";
 import type {
 	FilterableItem,
 	FilterDefinition,
 	FilterOption,
 	SortOption,
-} from "./use-list-filters";
+} from "./filter-model";
 
 type PullFilterableItem = FilterableItem & {
 	isDraft: boolean;
@@ -92,47 +98,22 @@ const pullStatusFilterDef: FilterDefinition = {
 const repoPullStatusFilterDef: FilterDefinition = {
 	...pullStatusFilterDef,
 	extractOptions: () => PULL_STATUS_META.map(toStatusOption),
+	negatable: false,
 };
 
 export const pullFilterDefs: FilterDefinition[] = [
-	repoFilterDef,
-	authorFilterDef,
 	pullStatusFilterDef,
+	authorFilterDef,
+	labelFilterDef,
+	repoFilterDef,
+	updatedFilterDef,
 ];
 
-/** Filter defs for repo-scoped pull lists — static options, no repository filter. */
 export const repoPullFilterDefs: FilterDefinition[] = [
 	repoPullStatusFilterDef,
 	authorFilterDef,
+	labelFilterDef,
+	updatedFilterDef,
 ];
 
-export const pullSortOptions: SortOption[] = [
-	{
-		id: "updated",
-		label: "Recently updated",
-		compare: (a, b) =>
-			new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime(),
-	},
-	{
-		id: "created",
-		label: "Newest first",
-		compare: (a, b) =>
-			new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
-	},
-	{
-		id: "created-asc",
-		label: "Oldest first",
-		compare: (a, b) =>
-			new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime(),
-	},
-	{
-		id: "comments",
-		label: "Most comments",
-		compare: (a, b) => b.comments - a.comments,
-	},
-	{
-		id: "title",
-		label: "Title A–Z",
-		compare: (a, b) => a.title.localeCompare(b.title),
-	},
-];
+export const pullSortOptions: SortOption[] = itemSortOptions;

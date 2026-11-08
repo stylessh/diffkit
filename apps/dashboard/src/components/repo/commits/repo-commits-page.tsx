@@ -5,14 +5,12 @@ import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { Link, useNavigate } from "@tanstack/react-router";
 import { parseAsInteger, parseAsString, useQueryStates } from "nuqs";
 import { useCallback, useMemo } from "react";
+import { ToolbarRow, ToolbarSearchField } from "#/components/filters";
 import { SidePanelPortal } from "#/components/layouts/dashboard-side-panel";
 import { Pagination } from "#/components/pagination";
 import { RepoRefPicker } from "#/components/repo/refs/repo-ref-picker";
 import { RepoActivityCards } from "#/components/repo/repo-activity-cards";
-import {
-	RepoListSearchInput,
-	RepoPageHeader,
-} from "#/components/repo/repo-page-header";
+import { RepoPageHeader } from "#/components/repo/repo-page-header";
 import { ListGroup } from "#/components/shared/list-page";
 import { filterCommitsByMessage, groupCommitsByDay } from "#/lib/commit-groups";
 import { buildCommitsSplat, splitCommitsSplat } from "#/lib/commits-route";
@@ -194,13 +192,15 @@ export function RepoCommitsPage({
 	const pathSegments = path ? path.split("/") : [];
 
 	const toolbar = (
-		<>
-			<RepoListSearchInput
-				value={searchInput}
-				onChange={setSearchInput}
-				placeholder="Search commit messages…"
-				className="w-full sm:w-60"
-			/>
+		<ToolbarRow
+			search={
+				<ToolbarSearchField
+					value={searchInput}
+					onChange={setSearchInput}
+					placeholder="Search commit messages…"
+				/>
+			}
+		>
 			{path ? (
 				<Chip className="h-7 max-w-full gap-1 pr-1 pl-2.5">
 					<FileIcon size={12} className="shrink-0" />
@@ -237,7 +237,7 @@ export function RepoCommitsPage({
 					</button>
 				</Chip>
 			) : null}
-			<div className="flex items-center gap-1.5 sm:ml-auto">
+			<div className="flex shrink-0 items-center gap-1.5">
 				<CommitAuthorFilter
 					owner={owner}
 					repo={repo}
@@ -258,7 +258,7 @@ export function RepoCommitsPage({
 					/>
 				) : null}
 			</div>
-		</>
+		</ToolbarRow>
 	);
 
 	return (

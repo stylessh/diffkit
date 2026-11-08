@@ -82,7 +82,7 @@ export function ReviewDraftsPage({ userId }: { userId: string }) {
 					</PageIconButton>
 				}
 				toolbar={
-					<div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1 px-2 text-xs text-pretty text-muted-foreground">
+					<div className="flex min-h-11 min-w-0 shrink-0 flex-wrap items-center gap-x-3 gap-y-1 border-b-[0.5px] border-header-rule py-2 pr-3 pl-5 text-xs text-pretty text-muted-foreground max-md:pl-3">
 						{result ? (
 							<>
 								<span>

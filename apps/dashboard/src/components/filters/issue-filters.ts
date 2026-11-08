@@ -1,12 +1,18 @@
 import { CircleIcon, IssuesIcon } from "@diffkit/icons";
 import { createElement } from "react";
-import { authorFilterDef, repoFilterDef } from "./filter-helpers";
+import {
+	authorFilterDef,
+	itemSortOptions,
+	labelFilterDef,
+	repoFilterDef,
+	updatedFilterDef,
+} from "./filter-helpers";
 import type {
 	FilterableItem,
 	FilterDefinition,
 	FilterOption,
 	SortOption,
-} from "./use-list-filters";
+} from "./filter-model";
 
 type IssueFilterableItem = FilterableItem & {
 	stateReason: string | null;
@@ -71,47 +77,22 @@ const issueStatusFilterDef: FilterDefinition = {
 const repoIssueStatusFilterDef: FilterDefinition = {
 	...issueStatusFilterDef,
 	extractOptions: () => ISSUE_STATUS_META.map(toStatusOption),
+	negatable: false,
 };
 
 export const issueFilterDefs: FilterDefinition[] = [
-	repoFilterDef,
-	authorFilterDef,
 	issueStatusFilterDef,
+	authorFilterDef,
+	labelFilterDef,
+	repoFilterDef,
+	updatedFilterDef,
 ];
 
-/** Filter defs for repo-scoped issue lists — static options, no repository filter. */
 export const repoIssueFilterDefs: FilterDefinition[] = [
 	repoIssueStatusFilterDef,
 	authorFilterDef,
+	labelFilterDef,
+	updatedFilterDef,
 ];
 
-export const issueSortOptions: SortOption[] = [
-	{
-		id: "updated",
-		label: "Recently updated",
-		compare: (a, b) =>
-			new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime(),
-	},
-	{
-		id: "created",
-		label: "Newest first",
-		compare: (a, b) =>
-			new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
-	},
-	{
-		id: "created-asc",
-		label: "Oldest first",
-		compare: (a, b) =>
-			new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime(),
-	},
-	{
-		id: "comments",
-		label: "Most comments",
-		compare: (a, b) => b.comments - a.comments,
-	},
-	{
-		id: "title",
-		label: "Title A–Z",
-		compare: (a, b) => a.title.localeCompare(b.title),
-	},
-];
+export const issueSortOptions: SortOption[] = itemSortOptions;

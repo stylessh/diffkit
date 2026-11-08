@@ -1,16 +1,13 @@
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
-import { useQueryStates } from "nuqs";
 import { useMemo } from "react";
 import {
-	applyRepoFilters,
-	FilterBar,
-	getFilterValues,
-	parseFilterString,
+	apiFilterValues,
+	applyListView,
+	ListToolbar,
 	pullSortOptions,
-	repoListUrlParsers,
 	repoPullFilterDefs,
-	useRepoListFilters,
+	useListFilters,
 } from "#/components/filters";
 import { DashboardContentLoading } from "#/components/layouts/dashboard-content-loading";
 import { SidePanelPortal } from "#/components/layouts/dashboard-side-panel";
@@ -39,10 +36,6 @@ export const Route = createFileRoute("/_protected/$owner/$repo/pulls")({
 	component: RepoPullsPage,
 });
 
-/**
- * Map the status filter pill values to the GitHub API `state` parameter.
- * No status selected → default to "open".
- */
 function deriveApiState(statusValues: Set<string>): "open" | "closed" | "all" {
 	if (statusValues.size === 0) return "open";
 	const hasOpen = statusValues.has("open") || statusValues.has("draft");
@@ -58,16 +51,16 @@ function RepoPullsPage() {
 	const scope = { userId: user.id };
 	const hasMounted = useHasMounted();
 
-	// 1. Read URL params directly — needed before the query
-	const [urlParams] = useQueryStates(repoListUrlParsers);
-	const urlFilters = useMemo(
-		() => parseFilterString(urlParams.filters),
-		[urlParams.filters],
+	const filterState = useListFilters({
+		listId: "repo-pulls",
+		filterDefs: repoPullFilterDefs,
+		sortOptions: pullSortOptions,
+		defaultSortId: "updated",
+	});
+	const apiState = deriveApiState(
+		apiFilterValues(filterState.activeFilters, "status"),
 	);
-	const statusValues = getFilterValues(urlFilters, "status");
-	const apiState = deriveApiState(statusValues);
 
-	// 2. Fetch data using URL-derived params
 	const overviewQuery = useQuery({
 		...githubRepoOverviewQueryOptions(scope, { owner, repo }),
 		enabled: hasMounted,
@@ -78,7 +71,7 @@ function RepoPullsPage() {
 			owner,
 			repo,
 			state: apiState,
-			page: urlParams.page,
+			page: filterState.page,
 			perPage: PER_PAGE,
 		}),
 		enabled: hasMounted,
@@ -88,16 +81,8 @@ function RepoPullsPage() {
 	const pulls = useMemo(() => query.data ?? [], [query.data]);
 	const hasNextPage = pulls.length === PER_PAGE;
 
-	// 3. Full filter hook with loaded items — populates author options
-	const filterState = useRepoListFilters({
-		filterDefs: repoPullFilterDefs,
-		sortOptions: pullSortOptions,
-		defaultSortId: "updated",
-		items: pulls,
-	});
-
 	const filtered = useMemo(
-		() => applyRepoFilters(pulls, filterState),
+		() => applyListView(pulls, filterState),
 		[pulls, filterState],
 	);
 
@@ -110,7 +95,14 @@ function RepoPullsPage() {
 				repo={repo}
 				scope={scope}
 				active="pulls"
-				toolbar={<FilterBar state={filterState} />}
+				searchQuery={filterState.searchQuery}
+				toolbar={
+					<ListToolbar
+						state={filterState}
+						items={pulls}
+						searchPlaceholder="Search pull requests…"
+					/>
+				}
 			>
 				{query.isLoading ? (
 					<div className="flex flex-1 items-center justify-center">

@@ -1,8 +1,6 @@
-import type { SerializedFilterStore } from "#/components/filters/filter-cookie";
 import { REPO_LIST_PAGE_SIZE } from "#/lib/repo-list-page";
 import type { UserRepoSummary } from "./github.types";
 
-const REPOS_FILTER_PAGE_ID = "repos";
 const DEFAULT_REPOS_SORT = "updated";
 const VALID_REPOS_SORT_IDS = new Set([
 	"updated",
@@ -11,48 +9,21 @@ const VALID_REPOS_SORT_IDS = new Set([
 	"title",
 ]);
 
-/** Matches client hub query key: cookie filters + URL page (for loader prefetch). */
+/** The hub query input the list will ask for, so the loader can prefetch it. */
 export function buildReposHubPrefetchInput(
-	filterStore: SerializedFilterStore,
+	view: Omit<ReposHubInput, "limit">,
 	urlPage: number,
 ): ReposHubInput {
-	const raw = filterStore[REPOS_FILTER_PAGE_ID];
-	const searchQuery =
-		raw && typeof raw === "object" && typeof raw.searchQuery === "string"
-			? raw.searchQuery
-			: "";
-	let sortId =
-		raw && typeof raw === "object" && typeof raw.sortId === "string"
-			? raw.sortId
-			: DEFAULT_REPOS_SORT;
-	if (!VALID_REPOS_SORT_IDS.has(sortId)) sortId = DEFAULT_REPOS_SORT;
-
-	const visibility: string[] = [];
-	if (raw && typeof raw === "object" && Array.isArray(raw.activeFilters)) {
-		for (const f of raw.activeFilters) {
-			if (
-				typeof f === "object" &&
-				f !== null &&
-				(f as { fieldId?: string }).fieldId === "visibility" &&
-				Array.isArray((f as { values: unknown }).values)
-			) {
-				for (const v of (f as { values: string[] }).values) {
-					if (typeof v === "string") visibility.push(v);
-				}
-			}
-		}
-	}
-	visibility.sort();
-
 	const page =
 		Number.isFinite(urlPage) && urlPage > 0
 			? Math.min(Math.floor(urlPage), 10_000)
 			: 1;
-
 	return {
-		searchQuery,
-		visibility,
-		sortId,
+		searchQuery: view.searchQuery,
+		visibility: [...view.visibility].sort(),
+		sortId: VALID_REPOS_SORT_IDS.has(view.sortId)
+			? view.sortId
+			: DEFAULT_REPOS_SORT,
 		limit: page * REPO_LIST_PAGE_SIZE,
 	};
 }

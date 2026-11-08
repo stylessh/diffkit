@@ -14,6 +14,7 @@ import {
 	RowTime,
 	rowAccessibleName,
 } from "#/components/shared/list-row";
+import { HighlightedText } from "#/components/shared/search-highlight";
 import { formatRelativeTime } from "#/lib/format-relative-time";
 import {
 	type GitHubQueryScope,
@@ -81,7 +82,7 @@ export const PullRequestRow = memo(function PullRequestRow({
 						title={pr.title}
 						className="text-[13px] font-medium text-foreground md:truncate"
 					>
-						{pr.title}
+						<HighlightedText text={pr.title} />
 					</p>
 					{pr.comments > 0 && (
 						<span

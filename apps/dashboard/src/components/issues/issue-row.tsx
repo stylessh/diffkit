@@ -13,6 +13,7 @@ import {
 	RowTime,
 	rowAccessibleName,
 } from "#/components/shared/list-row";
+import { HighlightedText } from "#/components/shared/search-highlight";
 import { formatRelativeTime } from "#/lib/format-relative-time";
 import type { IssueSummary } from "#/lib/github.types";
 
@@ -55,7 +56,7 @@ export const IssueRow = memo(function IssueRow({
 					title={issue.title}
 					className="text-[13px] font-medium text-foreground md:truncate"
 				>
-					{issue.title}
+					<HighlightedText text={issue.title} />
 				</p>
 				{issue.comments > 0 && (
 					<span

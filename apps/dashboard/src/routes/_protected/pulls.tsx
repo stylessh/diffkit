@@ -9,11 +9,10 @@ import { useQuery } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
 import { type ComponentType, useMemo, useRef } from "react";
 import {
-	applyFilters,
-	FilterBar,
+	applyListView,
+	ListToolbar,
 	pullFilterDefs,
 	pullSortOptions,
-	readFilterCookieClient,
 	useListFilters,
 } from "#/components/filters";
 import { DashboardContentLoading } from "#/components/layouts/dashboard-content-loading";
@@ -29,8 +28,6 @@ export const Route = createFileRoute("/_protected/pulls")({
 	loader: ({ context }) => {
 		const scope = { userId: context.user.id };
 		void context.queryClient.prefetchQuery(githubMyPullsQueryOptions(scope));
-		const filterStore = readFilterCookieClient();
-		return { filterStore };
 	},
 	pendingComponent: DashboardContentLoading,
 	head: ({ match }) =>
@@ -45,7 +42,6 @@ export const Route = createFileRoute("/_protected/pulls")({
 });
 
 function PullRequestsPage() {
-	const { filterStore } = Route.useLoaderData();
 	const { user } = Route.useRouteContext();
 	const scope = useMemo(() => ({ userId: user.id }), [user.id]);
 	const hasMounted = useHasMounted();
@@ -55,7 +51,6 @@ function PullRequestsPage() {
 		enabled: hasMounted,
 	});
 
-	// Flatten all pulls for filter option extraction
 	const allPulls = useMemo(() => {
 		if (!query.data) return [];
 		const d = query.data;
@@ -69,12 +64,10 @@ function PullRequestsPage() {
 	}, [query.data]);
 
 	const filterState = useListFilters({
-		pageId: "pulls",
-		items: allPulls,
+		listId: "pulls",
 		filterDefs: pullFilterDefs,
 		sortOptions: pullSortOptions,
 		defaultSortId: "updated",
-		initialStore: filterStore,
 	});
 
 	if (query.error) throw query.error;
@@ -85,31 +78,31 @@ function PullRequestsPage() {
 				id: "review-requested",
 				title: "Review requested",
 				icon: ReviewsIcon,
-				pulls: applyFilters(data.reviewRequested, filterState),
+				pulls: applyListView(data.reviewRequested, filterState),
 			},
 			{
 				id: "assigned",
 				title: "Assigned",
 				icon: InboxIcon,
-				pulls: applyFilters(data.assigned, filterState),
+				pulls: applyListView(data.assigned, filterState),
 			},
 			{
 				id: "authored",
 				title: "Authored",
 				icon: GitPullRequestIcon,
-				pulls: applyFilters(data.authored, filterState),
+				pulls: applyListView(data.authored, filterState),
 			},
 			{
 				id: "mentioned",
 				title: "Mentioned",
 				icon: CommentIcon,
-				pulls: applyFilters(data.mentioned, filterState),
+				pulls: applyListView(data.mentioned, filterState),
 			},
 			{
 				id: "involved",
 				title: "Involved",
 				icon: GitBranchIcon,
-				pulls: applyFilters(data.involved, filterState),
+				pulls: applyListView(data.involved, filterState),
 			},
 		];
 		const totalPulls = groups.reduce(
@@ -122,7 +115,14 @@ function PullRequestsPage() {
 				title="Pull Requests"
 				count={totalPulls}
 				scrollRef={scrollContainerRef}
-				toolbar={<FilterBar state={filterState} />}
+				searchQuery={filterState.searchQuery}
+				toolbar={
+					<ListToolbar
+						state={filterState}
+						items={allPulls}
+						searchPlaceholder="Search pull requests…"
+					/>
+				}
 			>
 				{groups.map((group) => (
 					<ListGroup

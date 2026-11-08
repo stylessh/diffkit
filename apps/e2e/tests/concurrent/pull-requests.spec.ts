@@ -4,50 +4,50 @@ import { expect, test } from "../../support/test.ts";
 const sseHeaders = /Support custom headers on the SSE transport/;
 const buttonLoading = /Add a loading state to Button/;
 
-test("queues filter by author and keep the filter across a reload", async ({
+test("a list filters from the keyboard, remembers the filter, and searches as you type", async ({
 	page,
-	context,
 }) => {
 	await page.goto("/pulls");
-	await expect(
-		page.getByRole("heading", { level: 2, name: "Review requested" }),
-	).toBeVisible();
-	await expect(
-		page.getByRole("link", { name: sseHeaders }).first(),
-	).toBeVisible();
 	await expect(
 		page.getByRole("link", { name: buttonLoading }).first(),
 	).toBeVisible();
 
-	await (
-		await whenInteractive(page.getByRole("button", { name: "Filter" }))
-	).click();
-	await page.getByRole("button", { name: "Author", exact: true }).click();
-	await page.getByRole("button", { name: /^theo-martin/ }).click();
+	await whenInteractive(page.getByRole("button", { name: "Filter" }));
+	await page.keyboard.press("f");
+	await page.getByRole("textbox", { name: "Filter by" }).fill("auth");
+	await page.keyboard.press("Enter");
+	await page.getByRole("menuitemcheckbox", { name: "theo-martin" }).click();
+	await page.keyboard.press("Escape");
 
+	const pill = page.getByRole("group", { name: "Author is theo-martin" });
+	await expect(pill).toBeVisible();
+	await expect(page).toHaveURL(/filters=author:theo-martin/);
 	await expect(page.getByRole("link", { name: buttonLoading })).toHaveCount(0);
 	await expect(
 		page.getByRole("link", { name: sseHeaders }).first(),
 	).toBeVisible();
 
-	await expect
-		.poll(async () => {
-			const cookie = (await context.cookies()).find(
-				({ name }) => name === "diffkit-filters",
-			);
-			return cookie && JSON.parse(decodeURIComponent(cookie.value));
-		})
-		.toMatchObject({
-			pulls: {
-				activeFilters: [{ fieldId: "author", values: ["theo-martin"] }],
-			},
-		});
+	await page.goto("/pulls");
+	await expect(pill).toBeVisible();
+	await expect(page).toHaveURL(/filters=author:theo-martin/);
 
-	await page.reload();
+	await pill.getByRole("button", { name: "Remove Author filter" }).click();
+	await expect(pill).toHaveCount(0);
+	await expect(
+		page.getByRole("link", { name: buttonLoading }).first(),
+	).toBeVisible();
+
+	await page.keyboard.press("/");
+	await page.keyboard.type("loading state");
+	await expect(page.getByRole("link", { name: sseHeaders })).toHaveCount(0);
+	await expect(
+		page.getByRole("link", { name: buttonLoading }).first().locator("mark"),
+	).toHaveText("loading state");
+
+	await page.keyboard.press("Escape");
 	await expect(
 		page.getByRole("link", { name: sseHeaders }).first(),
 	).toBeVisible();
-	await expect(page.getByRole("link", { name: buttonLoading })).toHaveCount(0);
 });
 
 test("a pull request shows its review state and checks, and its diff carries review threads", async ({

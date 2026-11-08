@@ -98,12 +98,16 @@ test("a variable is created and then updated in place", async ({ page }) => {
 	await page.getByRole("button", { name: "Save variable" }).click();
 
 	await expect(page.getByText("https://api.lumen.dev/v2")).toBeVisible();
-	const variable = await emulator.rest<{ value: string }>(
-		"nova",
-		"GET",
-		"/repos/lumen-labs/beacon/actions/variables/API_URL",
-	);
-	expect(variable.value).toBe("https://api.lumen.dev/v2");
+	await expect
+		.poll(async () => {
+			const variable = await emulator.rest<{ value: string }>(
+				"nova",
+				"GET",
+				"/repos/lumen-labs/beacon/actions/variables/API_URL",
+			);
+			return variable.value;
+		})
+		.toBe("https://api.lumen.dev/v2");
 });
 
 type Invitation = { invitee: { login: string }; permissions: string };

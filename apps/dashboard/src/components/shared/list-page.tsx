@@ -11,6 +11,7 @@ import {
 	type RefObject,
 	useState,
 } from "react";
+import { SearchQueryProvider } from "./search-highlight";
 
 type ListIcon = ComponentType<{
 	size?: number;
@@ -23,6 +24,7 @@ export function ListPage({
 	count,
 	actions,
 	toolbar,
+	searchQuery = "",
 	scrollRef,
 	className,
 	children,
@@ -31,6 +33,7 @@ export function ListPage({
 	count?: number;
 	actions?: ReactNode;
 	toolbar?: ReactNode;
+	searchQuery?: string;
 	scrollRef?: RefObject<HTMLDivElement | null>;
 	className?: string;
 	children: ReactNode;
@@ -43,20 +46,17 @@ export function ListPage({
 					<PageHeaderCount>{count}</PageHeaderCount>
 				) : null}
 			</PageHeader>
-			{toolbar ? (
-				<div className="flex min-h-11 shrink-0 items-center px-2 py-1.5">
-					{toolbar}
-				</div>
-			) : null}
+			{toolbar}
 			<div
 				ref={scrollRef}
 				className={cn(
-					"min-h-0 flex-1 overflow-y-auto px-2 pb-10",
-					!toolbar && "pt-2",
+					"min-h-0 flex-1 overflow-y-auto px-2 pt-2 pb-10",
 					className,
 				)}
 			>
-				{children}
+				<SearchQueryProvider query={searchQuery}>
+					{children}
+				</SearchQueryProvider>
 			</div>
 		</div>
 	);
