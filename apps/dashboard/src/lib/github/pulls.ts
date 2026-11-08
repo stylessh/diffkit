@@ -42,6 +42,7 @@ import {
 	mapGraphQLLabels,
 	mapGraphQLRepositoryRef,
 	mapPullSummary,
+	restEditedAt,
 } from "./mappers";
 import {
 	getRepositoryPermissions,
@@ -707,6 +708,7 @@ async function getPullCommentsResult(
 					...(nodeId ? { graphqlId: nodeId } : {}),
 					body: comment.body ?? "",
 					createdAt: comment.created_at,
+					editedAt: restEditedAt(comment),
 					author: comment.user
 						? {
 								login: comment.user.login,
@@ -1200,6 +1202,7 @@ async function getPullPageDataViaGraphQL(
 										databaseId
 										body
 										createdAt
+										lastEditedAt
 										author { __typename login avatarUrl url }
 										reactions(first: 100) {
 											nodes { content user { login } }
@@ -1213,6 +1216,7 @@ async function getPullPageDataViaGraphQL(
 										databaseId
 										body
 										createdAt
+										lastEditedAt
 										author { __typename login avatarUrl url }
 										reactions(first: 100) {
 											nodes { content user { login } }

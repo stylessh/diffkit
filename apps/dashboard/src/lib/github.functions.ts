@@ -93,6 +93,7 @@ export {
 	markAllNotificationsRead,
 	markNotificationDone,
 	markNotificationRead,
+	unsubscribeNotification,
 } from "./github/notifications";
 export type {
 	OpenPullForRefs,
@@ -130,6 +131,7 @@ export {
 	updatePullBranch,
 	updatePullState,
 } from "./github/pulls";
+export { getCommitReference, getItemReference } from "./github/references";
 export {
 	createRepoRelease,
 	deleteRepoRelease,

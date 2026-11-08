@@ -1,5 +1,6 @@
 import type { IssueComment, TimelineEvent } from "../github.types";
 import { executeGitHubGraphQL } from "./client";
+import { restEditedAt } from "./mappers";
 import type { GitHubContext } from "./shared";
 
 export function getLoadedCommentPages(totalComments: number) {
@@ -50,6 +51,7 @@ export async function getCommentsPageResult(
 				...(nodeId ? { graphqlId: nodeId } : {}),
 				body: c.body ?? "",
 				createdAt: c.created_at,
+				editedAt: restEditedAt(c),
 				author: c.user
 					? {
 							login: c.user.login,

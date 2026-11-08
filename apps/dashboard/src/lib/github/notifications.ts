@@ -250,3 +250,27 @@ export const markAllNotificationsRead = createServerFn({
 
 	return { ok: true };
 });
+
+/**
+ * GitHub's inbox "Unsubscribe": ignore the thread so it stops notifying, then
+ * mark it done so it leaves the inbox.
+ */
+export const unsubscribeNotification = createServerFn({ method: "POST" })
+	.inputValidator(identityValidator<MarkNotificationReadInput>)
+	.handler(async ({ data }): Promise<{ ok: boolean }> => {
+		const context = await getGitHubContext();
+		if (!context) {
+			return { ok: false };
+		}
+
+		const threadId = Number.parseInt(data.threadId, 10);
+		await context.octokit.rest.activity.setThreadSubscription({
+			thread_id: threadId,
+			ignored: true,
+		});
+		await context.octokit.rest.activity.markThreadAsDone({
+			thread_id: threadId,
+		});
+
+		return { ok: true };
+	});

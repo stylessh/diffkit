@@ -10,10 +10,14 @@ import {
 	ReviewsIcon,
 	UserAddIcon,
 } from "@diffkit/icons";
-import { Markdown } from "@diffkit/ui/components/markdown";
 import { cn } from "@diffkit/ui/lib/utils";
 import { useQueryClient } from "@tanstack/react-query";
 import { useCallback, useMemo, useRef, useState } from "react";
+import {
+	CommentBody,
+	EditedMark,
+	useCommentEditor,
+} from "#/components/details/comment-body";
 import { CommentMoreMenu } from "#/components/details/comment-more-menu";
 import { IssueCommentReactionBar } from "#/components/details/comment-reaction-bar";
 import { CommentReplyForm } from "#/components/details/comment-reply-form";
@@ -637,6 +641,13 @@ function IssueCommentBubble({
 	isReply?: boolean;
 }) {
 	const [commentActive, setCommentActive] = useState(false);
+	const editor = useCommentEditor({
+		kind: "issue",
+		owner: owner,
+		repo: repo,
+		number: issueNumber,
+		commentId: comment.id,
+	});
 	const prefersNoHover = usePrefersNoHover();
 
 	return (
@@ -667,6 +678,7 @@ function IssueCommentBubble({
 				<span className="ml-0.5 text-[13px] font-[450] text-icon-faint">
 					{formatRelativeTime(comment.createdAt)}
 				</span>
+				<EditedMark editedAt={comment.editedAt} />
 				<div className="ml-auto flex items-center gap-1">
 					{onReply && (
 						<button
@@ -685,6 +697,7 @@ function IssueCommentBubble({
 						repo={repo}
 						number={issueNumber}
 						commentType="issue"
+						editor={editor}
 						isAuthor={
 							viewerLogin != null && comment.author?.login === viewerLogin
 						}
@@ -698,9 +711,13 @@ function IssueCommentBubble({
 					comment.graphqlId != null && "mb-7",
 				)}
 			>
-				<Markdown className="text-[15px] leading-6 text-text-strong">
-					{comment.body}
-				</Markdown>
+				<CommentBody
+					editor={editor}
+					body={comment.body}
+					owner={owner}
+					repo={repo}
+					className="text-[15px] leading-6 text-text-strong"
+				/>
 				{comment.graphqlId ? (
 					<IssueCommentReactionBar
 						className="absolute left-0 right-0 top-full z-10 mt-1"

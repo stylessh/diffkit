@@ -34,7 +34,6 @@ import {
 	DropdownMenuItem,
 	DropdownMenuTrigger,
 } from "@diffkit/ui/components/dropdown-menu";
-import { Markdown } from "@diffkit/ui/components/markdown";
 import { MarkdownEditor } from "@diffkit/ui/components/markdown-editor";
 import { MenuCheck } from "@diffkit/ui/components/menu";
 import { Skeleton } from "@diffkit/ui/components/skeleton";
@@ -61,6 +60,11 @@ import {
 	CheckStateIcon,
 	getCheckState,
 } from "#/components/checks/check-state-icon";
+import {
+	CommentBody,
+	EditedMark,
+	useCommentEditor,
+} from "#/components/details/comment-body";
 import { CommentMoreMenu } from "#/components/details/comment-more-menu";
 import { IssueCommentReactionBar } from "#/components/details/comment-reaction-bar";
 import { CommentReplyForm } from "#/components/details/comment-reply-form";
@@ -76,6 +80,7 @@ import {
 	groupTimelineEvents,
 } from "#/components/details/grouped-label-event";
 import { LabelPill } from "#/components/details/label-pill";
+import { AppMarkdown } from "#/components/markdown/app-markdown";
 import { useMergeBypass } from "#/components/pulls/detail/use-merge-bypass";
 import { formatRelativeTime } from "#/lib/format-relative-time";
 import {
@@ -2424,9 +2429,13 @@ function TimelineEventRow({
 					)}
 				</div>
 				{hasReviewBody && (
-					<Markdown className="text-muted-foreground">
+					<AppMarkdown
+						owner={owner}
+						repo={repo}
+						className="text-muted-foreground"
+					>
 						{event.body as string}
-					</Markdown>
+					</AppMarkdown>
 				)}
 				{hasReviewComments && (
 					<div className="flex flex-col gap-2">
@@ -2577,6 +2586,13 @@ function PullCommentBubble({
 	isReply?: boolean;
 }) {
 	const [commentActive, setCommentActive] = useState(false);
+	const editor = useCommentEditor({
+		kind: "issue",
+		owner: owner,
+		repo: repo,
+		number: pullNumber,
+		commentId: comment.id,
+	});
 	const prefersNoHover = usePrefersNoHover();
 
 	return (
@@ -2607,6 +2623,7 @@ function PullCommentBubble({
 				<span className="ml-0.5 text-[13px] font-[450] text-icon-faint">
 					{formatRelativeTime(comment.createdAt)}
 				</span>
+				<EditedMark editedAt={comment.editedAt} />
 				<div className="ml-auto flex items-center gap-1">
 					{onReply && (
 						<button
@@ -2625,6 +2642,7 @@ function PullCommentBubble({
 						repo={repo}
 						number={pullNumber}
 						commentType="issue"
+						editor={editor}
 						isAuthor={
 							viewerLogin != null && comment.author?.login === viewerLogin
 						}
@@ -2638,9 +2656,13 @@ function PullCommentBubble({
 					comment.graphqlId != null && "mb-7",
 				)}
 			>
-				<Markdown className="text-[15px] leading-6 text-text-strong">
-					{comment.body}
-				</Markdown>
+				<CommentBody
+					editor={editor}
+					body={comment.body}
+					owner={owner}
+					repo={repo}
+					className="text-[15px] leading-6 text-text-strong"
+				/>
 				{comment.graphqlId ? (
 					<IssueCommentReactionBar
 						className="absolute left-0 right-0 top-full z-10 mt-1"
@@ -2747,6 +2769,13 @@ function ReviewCommentBubble({
 	pullNumber?: number;
 	viewerLogin?: string;
 }) {
+	const editor = useCommentEditor({
+		kind: "review",
+		owner: owner ?? "",
+		repo: repo ?? "",
+		number: pullNumber ?? 0,
+		commentId: comment.id,
+	});
 	return (
 		<div className="group/comment relative px-3 py-2.5">
 			<div className="mb-1.5 flex items-center gap-1.5">
@@ -2765,6 +2794,7 @@ function ReviewCommentBubble({
 				<span className="text-[13px] text-muted-foreground">
 					{formatRelativeTime(comment.createdAt)}
 				</span>
+				<EditedMark editedAt={comment.editedAt} />
 				{owner && repo && pullNumber != null && (
 					<div className="ml-auto">
 						<CommentMoreMenu
@@ -2774,6 +2804,7 @@ function ReviewCommentBubble({
 							repo={repo}
 							number={pullNumber}
 							commentType="review"
+							editor={editor}
 							isAuthor={
 								viewerLogin != null && comment.author?.login === viewerLogin
 							}
@@ -2781,9 +2812,13 @@ function ReviewCommentBubble({
 					</div>
 				)}
 			</div>
-			<Markdown className="text-[15px] leading-6 text-text-strong">
-				{comment.body}
-			</Markdown>
+			<CommentBody
+				editor={editor}
+				body={comment.body}
+				owner={owner}
+				repo={repo}
+				className="text-[15px] leading-6 text-text-strong"
+			/>
 		</div>
 	);
 }

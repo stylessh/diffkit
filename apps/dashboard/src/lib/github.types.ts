@@ -181,6 +181,8 @@ export type PullComment = {
 	graphqlId?: string;
 	body: string;
 	createdAt: string;
+	/** When the body last changed; `null` for comments never edited. */
+	editedAt?: string | null;
 	author: GitHubActor | null;
 	reactions?: CommentReactionSummary;
 };
@@ -191,6 +193,8 @@ export type IssueComment = {
 	graphqlId?: string;
 	body: string;
 	createdAt: string;
+	/** When the body last changed; `null` for comments never edited. */
+	editedAt?: string | null;
 	author: GitHubActor | null;
 	reactions?: CommentReactionSummary;
 };
@@ -491,6 +495,7 @@ export type PullReviewComment = {
 	side: "LEFT" | "RIGHT";
 	createdAt: string;
 	updatedAt: string;
+	editedAt?: string | null;
 	author: GitHubActor | null;
 	inReplyToId: number | null;
 	diffHunk: string;
@@ -1105,4 +1110,37 @@ export type RepoRefSplatResolution = {
 	path: string;
 	/** Which namespace the ref was found in, or null when unresolved. */
 	kind: "branch" | "tag" | null;
+};
+
+export type PullReferenceStatus = "open" | "draft" | "merged" | "closed";
+export type IssueReferenceStatus = "open" | "completed" | "notPlanned";
+
+/** What a hover card shows for `#12`; GitHub numbers issues and PRs together. */
+export type ItemReference = (
+	| { kind: "pull"; status: PullReferenceStatus }
+	| { kind: "issue"; status: IssueReferenceStatus }
+) & {
+	owner: string;
+	repo: string;
+	number: number;
+	title: string;
+	author: GitHubActor | null;
+	createdAt: string;
+	comments: number;
+	labels: GitHubLabel[];
+	/** `null` when seeded from a list row, which carries no body. */
+	excerpt: string | null;
+};
+
+export type CommitReference = {
+	owner: string;
+	repo: string;
+	sha: string;
+	title: string;
+	author: GitHubActor | null;
+	authorName: string | null;
+	date: string;
+	verified: boolean;
+	/** `null` when seeded from a commit list, which carries no stats. */
+	stats: { additions: number; deletions: number } | null;
 };

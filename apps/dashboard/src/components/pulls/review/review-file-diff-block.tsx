@@ -14,7 +14,6 @@ import {
 	DropdownMenuItem,
 	DropdownMenuTrigger,
 } from "@diffkit/ui/components/dropdown-menu";
-import { Markdown } from "@diffkit/ui/components/markdown";
 import {
 	MarkdownEditor,
 	type MentionConfig,
@@ -41,7 +40,13 @@ import {
 	useRef,
 	useState,
 } from "react";
+import {
+	CommentBody,
+	EditedMark,
+	useCommentEditor,
+} from "#/components/details/comment-body";
 import { CommentMoreMenu } from "#/components/details/comment-more-menu";
+import { AppMarkdown } from "#/components/markdown/app-markdown";
 import { formatRelativeTime } from "#/lib/format-relative-time";
 import {
 	replyToReviewComment,
@@ -714,6 +719,13 @@ function ReviewCommentBubble({
 	pullNumber: number;
 	viewerLogin?: string;
 }) {
+	const editor = useCommentEditor({
+		kind: "review",
+		owner: owner,
+		repo: repo,
+		number: pullNumber,
+		commentId: comment.id,
+	});
 	return (
 		<div className="group/comment relative flex flex-col gap-1.5 px-4 py-3">
 			<div className="flex h-6 items-center">
@@ -732,6 +744,7 @@ function ReviewCommentBubble({
 				<span className="ml-2 text-[13px] font-[450] text-icon-faint">
 					{formatRelativeTime(comment.createdAt)}
 				</span>
+				<EditedMark editedAt={comment.editedAt} />
 				<div className="ml-auto">
 					<CommentMoreMenu
 						commentId={comment.id}
@@ -740,13 +753,22 @@ function ReviewCommentBubble({
 						repo={repo}
 						number={pullNumber}
 						commentType="review"
+						editor={editor}
 						isAuthor={
 							viewerLogin != null && comment.author?.login === viewerLogin
 						}
 					/>
 				</div>
 			</div>
-			<Markdown className="pl-[27px] text-text-strong">{comment.body}</Markdown>
+			<div className="pl-[27px]">
+				<CommentBody
+					editor={editor}
+					body={comment.body}
+					owner={owner}
+					repo={repo}
+					className="text-text-strong"
+				/>
+			</div>
 		</div>
 	);
 }
@@ -996,7 +1018,7 @@ function PendingCommentBubble({
 					<EditIcon size={12} strokeWidth={2} />
 				</button>
 			</div>
-			<Markdown className="text-text-strong">{comment.body}</Markdown>
+			<AppMarkdown className="text-text-strong">{comment.body}</AppMarkdown>
 		</div>
 	);
 }

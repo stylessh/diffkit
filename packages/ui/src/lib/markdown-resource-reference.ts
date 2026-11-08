@@ -1,112 +1,147 @@
 /**
- * Shared types for "rich" resource references in markdown (users, repos, pull
- * requests, issues, releases). The UI library stays provider-agnostic: the app
- * supplies a {@link MarkdownReferenceResolver} that maps a pasted URL to a
- * {@link ResourceReference}, and a component to render it.
+ * Shared types for rich resource references in markdown. The UI library stays
+ * provider-agnostic: the app maps pasted URLs and text tokens (`#12`,
+ * `owner/repo#12`, commit SHAs) to a {@link ResourceReference} and supplies a
+ * component to render it.
  */
 
-export type ResourceReferenceKind =
-	| "user"
-	| "repo"
-	| "pull"
-	| "issue"
-	| "release";
+export type ResourceReferenceKind = ResourceReference["kind"];
+
+type RepoScoped = { href: string; owner: string; repo: string };
 
 export type ResourceReference =
 	| { kind: "user"; href: string; login: string }
-	| { kind: "repo"; href: string; owner: string; repo: string }
-	| { kind: "pull"; href: string; owner: string; repo: string; number: number }
-	| { kind: "issue"; href: string; owner: string; repo: string; number: number }
-	| {
-			kind: "release";
-			href: string;
-			owner: string;
-			repo: string;
-			tag: string;
-	  };
+	| ({ kind: "repo" } & RepoScoped)
+	| ({ kind: "pull"; number: number } & RepoScoped)
+	| ({ kind: "issue"; number: number } & RepoScoped)
+	/** `#12` style references, where GitHub shares one number space between issues and PRs. */
+	| ({ kind: "issueOrPull"; number: number } & RepoScoped)
+	| ({ kind: "commit"; sha: string } & RepoScoped)
+	| ({ kind: "release"; tag: string } & RepoScoped);
 
-/** Returns a reference when `url` points at a known resource, else `null`. */
+/** Where a reference came from: a pasted URL or a text token like `#12`. */
+export type ResourceReferenceOrigin = "url" | "text";
+
 export type MarkdownReferenceResolver = (
 	url: string,
 ) => ResourceReference | null;
 
-/** Custom hast element tag names emitted by the markdown remark plugins. */
+export type RepoSlug = { owner: string; repo: string };
+
+export type MarkdownTextReference =
+	| { kind: "number"; repo: RepoSlug | null; number: number }
+	| { kind: "commit"; repo: RepoSlug | null; sha: string };
+
+export type MarkdownTextReferenceResolver = (
+	reference: MarkdownTextReference,
+) => ResourceReference | null;
+
 export const MARKDOWN_MENTION_TAG = "dk-mention";
 export const MARKDOWN_REFERENCE_TAG = "dk-reference";
 
-/** Serialize a reference into hast element properties (all string values). */
+export const MARKDOWN_REFERENCE_ATTRIBUTES = [
+	"kind",
+	"origin",
+	"href",
+	"owner",
+	"repo",
+	"num",
+	"sha",
+	"tag",
+	"login",
+] as const;
+
 export function referenceToHProperties(
 	ref: ResourceReference,
+	origin: ResourceReferenceOrigin,
 ): Record<string, string> {
-	const base: Record<string, string> = { kind: ref.kind, href: ref.href };
+	const base: Record<string, string> = {
+		kind: ref.kind,
+		origin,
+		href: ref.href,
+	};
 	switch (ref.kind) {
 		case "user":
 			base.login = ref.login;
-			break;
+			return base;
 		case "repo":
-			base.owner = ref.owner;
-			base.repo = ref.repo;
-			break;
+			return { ...base, owner: ref.owner, repo: ref.repo };
 		case "pull":
 		case "issue":
-			base.owner = ref.owner;
-			base.repo = ref.repo;
-			base.num = String(ref.number);
-			break;
+		case "issueOrPull":
+			return {
+				...base,
+				owner: ref.owner,
+				repo: ref.repo,
+				num: String(ref.number),
+			};
+		case "commit":
+			return { ...base, owner: ref.owner, repo: ref.repo, sha: ref.sha };
 		case "release":
-			base.owner = ref.owner;
-			base.repo = ref.repo;
-			base.tag = ref.tag;
-			break;
-		default:
-			break;
+			return { ...base, owner: ref.owner, repo: ref.repo, tag: ref.tag };
 	}
-	return base;
 }
 
 function asString(value: unknown): string {
 	return typeof value === "string" ? value : "";
 }
 
-/**
- * Rebuild a {@link ResourceReference} from hast element properties (the inverse
- * of {@link referenceToHProperties}). Returns `null` for malformed nodes so the
- * renderer can fall back to plain text.
- */
+function parseNumber(value: string): number | null {
+	if (!/^[1-9]\d*$/u.test(value)) {
+		return null;
+	}
+	const number = Number(value);
+	return Number.isSafeInteger(number) ? number : null;
+}
+
+/** The inverse of {@link referenceToHProperties}; `null` for malformed nodes. */
 export function referenceFromProperties(
 	properties: Record<string, unknown> | undefined | null,
 ): ResourceReference | null {
-	if (!properties) return null;
+	if (!properties) {
+		return null;
+	}
 	const kind = asString(properties.kind);
 	const href = asString(properties.href);
 	const owner = asString(properties.owner);
 	const repo = asString(properties.repo);
-	if (!href) return null;
+	if (!href) {
+		return null;
+	}
+	if (kind === "user") {
+		const login = asString(properties.login);
+		return login ? { kind, href, login } : null;
+	}
+	if (!(owner && repo)) {
+		return null;
+	}
 
 	switch (kind) {
-		case "user": {
-			const login = asString(properties.login);
-			if (!login) return null;
-			return { kind, href, login };
-		}
-		case "repo": {
-			if (!owner || !repo) return null;
+		case "repo":
 			return { kind, href, owner, repo };
-		}
 		case "pull":
-		case "issue": {
-			const rawNumber = asString(properties.num);
-			if (!/^[1-9]\d*$/u.test(rawNumber)) return null;
-			const number = Number(rawNumber);
-			if (!owner || !repo || !Number.isSafeInteger(number)) return null;
-			return { kind, href, owner, repo, number };
+		case "issue":
+		case "issueOrPull": {
+			const number = parseNumber(asString(properties.num));
+			return number === null ? null : { kind, href, owner, repo, number };
+		}
+		case "commit": {
+			const sha = asString(properties.sha);
+			return /^[0-9a-f]{7,40}$/u.test(sha)
+				? { kind, href, owner, repo, sha }
+				: null;
 		}
 		case "release": {
 			const tag = asString(properties.tag);
-			if (!owner || !repo || !tag) return null;
-			return { kind, href, owner, repo, tag };
+			return tag ? { kind, href, owner, repo, tag } : null;
 		}
 		default:
 			return null;
 	}
+}
+
+export function referenceOriginFromProperties(
+	properties: Record<string, unknown> | undefined | null,
+): ResourceReferenceOrigin {
+	return properties?.origin === "text" ? "text" : "url";
 }

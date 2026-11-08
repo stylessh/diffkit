@@ -340,6 +340,25 @@ export function registerNotificationRoutes(context: ShimContext) {
 		return c.body(null, 204);
 	});
 
+	app.put("/notifications/threads/:thread_id/subscription", async (c) => {
+		const { row, error } = viewerThread(context, c);
+		if (!row) {
+			return error as Response;
+		}
+		const body = (await c.req.json().catch(() => ({}))) as {
+			ignored?: boolean;
+		};
+		const ignored = body.ignored === true;
+		return json(c, {
+			subscribed: !ignored,
+			ignored,
+			reason: row.reason,
+			created_at: row.created_at,
+			url: `${context.baseUrl}/notifications/threads/${row.thread_id}/subscription`,
+			thread_url: `${context.baseUrl}/notifications/threads/${row.thread_id}`,
+		});
+	});
+
 	app.get("/notifications/threads/:thread_id/subscription", (c) => {
 		const { row, error } = viewerThread(context, c);
 		if (!row) {
