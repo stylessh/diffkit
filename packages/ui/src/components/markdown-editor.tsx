@@ -407,7 +407,7 @@ export const MarkdownEditor = forwardRef<
 
 	const rootProps = mediaUpload?.rootProps;
 	const rootClassName = cn(
-		"flex flex-col rounded-lg border bg-surface-0 overflow-hidden transition-[box-shadow,border-color]",
+		"flex flex-col rounded-lg border-[0.5px] bg-surface-0 overflow-hidden transition-[box-shadow,border-color]",
 		"has-[textarea:focus-visible]:border-ring has-[textarea:focus-visible]:ring-[3px] has-[textarea:focus-visible]:ring-ring/50",
 		mediaUpload?.isDragActive && "ring-2 ring-primary/45 ring-inset",
 		rootProps?.className,
@@ -426,7 +426,7 @@ export const MarkdownEditor = forwardRef<
 				/>
 			) : null}
 			{/* Tabs + Toolbar */}
-			<div className="flex items-center justify-between border-b px-2 py-1.5 bg-surface-1">
+			<div className="flex items-center justify-between border-b-[0.5px] px-2 py-1.5 bg-surface-1">
 				<div className="flex items-center gap-0.5">
 					<button
 						type="button"
@@ -636,7 +636,7 @@ function MentionDropdown({
 	return createPortal(
 		<div
 			ref={listRef}
-			className="fixed z-50 max-h-48 min-w-[200px] overflow-y-auto rounded-lg border bg-surface-0 py-1 shadow-lg"
+			className="fixed z-50 max-h-48 min-w-[200px] overflow-y-auto rounded-lg border-[0.5px] bg-surface-0 py-1 shadow-lg"
 			style={{ top: position.top, left: position.left }}
 		>
 			{isLoading && candidates.length === 0 && (

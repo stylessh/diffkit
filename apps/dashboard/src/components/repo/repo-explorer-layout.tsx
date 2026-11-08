@@ -214,7 +214,7 @@ export function RepoExplorerLayout({
 			/>
 
 			{activeRef !== repoData.defaultBranch && (
-				<div className="shrink-0 border-b bg-surface-0 px-3 py-2 md:px-4">
+				<div className="shrink-0 border-b-[0.5px] bg-surface-0 px-3 py-2 md:px-4">
 					<BranchComparisonBanner
 						owner={owner}
 						repo={repoName}
@@ -270,7 +270,7 @@ const ExplorerToolbar = memo(function ExplorerToolbar({
 	isDesktop: boolean;
 }) {
 	return (
-		<div className="flex shrink-0 items-center gap-2 border-b bg-surface-0 px-3 py-2 md:gap-3 md:px-4">
+		<div className="flex shrink-0 items-center gap-2 border-b-[0.5px] bg-surface-0 px-3 py-2 md:gap-3 md:px-4">
 			{!isDesktop && (
 				<button
 					type="button"
@@ -308,7 +308,7 @@ const ExplorerToolbar = memo(function ExplorerToolbar({
 function ExplorerSkeleton() {
 	return (
 		<div className="flex h-full flex-col">
-			<div className="flex shrink-0 items-center gap-3 border-b bg-surface-0 px-4 py-2">
+			<div className="flex shrink-0 items-center gap-3 border-b-[0.5px] bg-surface-0 px-4 py-2">
 				<Skeleton className="h-5 w-32 rounded" />
 				<div className="ml-auto">
 					<Skeleton className="h-8 w-24 rounded-md" />

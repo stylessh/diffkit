@@ -206,7 +206,7 @@ function PullDetailPageSkeleton() {
 			</StaggerItem>
 
 			<StaggerItem index={2}>
-				<div className="rounded-lg border bg-surface-0 p-5">
+				<div className="rounded-lg border-[0.5px] bg-surface-0 p-5">
 					<div className="flex flex-col gap-3">
 						<Skeleton className="h-4 w-full" />
 						<Skeleton className="h-4 w-5/6" />
@@ -254,7 +254,7 @@ function PullDetailPageSkeleton() {
 			</StaggerItem>
 
 			<StaggerItem index={4}>
-				<div className="rounded-lg border p-4">
+				<div className="rounded-lg border-[0.5px] p-4">
 					<div className="flex flex-col gap-3">
 						<div className="flex items-center gap-2">
 							<Skeleton className="size-5 rounded-full" />

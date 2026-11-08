@@ -86,9 +86,7 @@ function SidebarSectionHeader({
 }) {
 	return (
 		<div className="flex items-center justify-between">
-			<h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-				{title}
-			</h3>
+			<h3 className="text-xs font-medium text-muted-foreground">{title}</h3>
 			{children}
 		</div>
 	);
@@ -140,7 +138,7 @@ function PickerSearchInput({
 	placeholder: string;
 }) {
 	return (
-		<div className="flex items-center gap-2 border-b px-3 py-2">
+		<div className="flex items-center gap-2 border-b-[0.5px] px-3 py-2">
 			<SearchIcon className="size-3.5 shrink-0 text-muted-foreground" />
 			<input
 				value={value}
@@ -451,7 +449,7 @@ function AssigneesPicker({
 											<img
 												src={c.avatarUrl}
 												alt={c.login}
-												className="size-5 rounded-full border border-border"
+												className="size-5 rounded-full border-[0.5px] border-border"
 											/>
 											<span className="min-w-0 flex-1 truncate">{c.login}</span>
 											{isSelected && (
@@ -479,7 +477,7 @@ function AssigneesPicker({
 							<img
 								src={a.avatarUrl}
 								alt={a.login}
-								className="size-5 rounded-full border border-border"
+								className="size-5 rounded-full border-[0.5px] border-border"
 							/>
 							<span className="min-w-0 flex-1 truncate text-sm">{a.login}</span>
 							<button
@@ -680,7 +678,7 @@ function ReviewersPicker({
 												<img
 													src={item.data.avatarUrl}
 													alt={item.data.login}
-													className="size-5 rounded-full border border-border"
+													className="size-5 rounded-full border-[0.5px] border-border"
 												/>
 											) : (
 												<div className="flex size-5 items-center justify-center rounded-full bg-surface-2 text-[10px] font-medium">
@@ -737,7 +735,7 @@ function ReviewersPicker({
 							<img
 								src={r.avatarUrl}
 								alt={r.login}
-								className="size-5 rounded-full border border-border"
+								className="size-5 rounded-full border-[0.5px] border-border"
 							/>
 							<span className="min-w-0 flex-1 truncate text-sm">{r.login}</span>
 							<button

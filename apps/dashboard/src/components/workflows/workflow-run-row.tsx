@@ -80,7 +80,7 @@ export const WorkflowRunRow = memo(function WorkflowRunRow({
 							<img
 								src={run.actor.avatarUrl}
 								alt={run.actor.login}
-								className="size-3.5 rounded-full border border-border"
+								className="size-3.5 rounded-full border-[0.5px] border-border"
 							/>
 							<span className="truncate">{run.actor.login}</span>
 						</>

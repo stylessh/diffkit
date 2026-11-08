@@ -376,9 +376,7 @@ function ReviewersSection({
 	return (
 		<div className="flex flex-col gap-2.5">
 			<div className="flex items-center justify-between">
-				<h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-					Reviewers
-				</h3>
+				<h3 className="text-xs font-medium text-muted-foreground">Reviewers</h3>
 				{isOpen && (
 					<Popover
 						open={pickerOpen}
@@ -401,7 +399,7 @@ function ReviewersSection({
 							</button>
 						</PopoverTrigger>
 						<PopoverContent align="end" className="w-64 p-0">
-							<div className="flex items-center gap-2 border-b px-3 py-2">
+							<div className="flex items-center gap-2 border-b-[0.5px] px-3 py-2">
 								<SearchIcon className="size-3.5 shrink-0 text-muted-foreground" />
 								<input
 									value={search}
@@ -443,7 +441,7 @@ function ReviewersSection({
 															onMouseEnter={() => setFocusedIndex(index)}
 															className={`flex w-full items-center gap-2 px-3 py-1.5 text-left text-sm transition-colors hover:bg-surface-1 disabled:opacity-50 ${focusedIndex === index ? "bg-surface-1" : ""}`}
 														>
-															<div className="flex size-5 shrink-0 items-center justify-center rounded-md border border-border bg-surface-1 text-[10px] font-semibold text-muted-foreground">
+															<div className="flex size-5 shrink-0 items-center justify-center rounded-md border-[0.5px] border-border bg-surface-1 text-[10px] font-semibold text-muted-foreground">
 																T
 															</div>
 															<span className="min-w-0 flex-1 truncate">
@@ -481,7 +479,7 @@ function ReviewersSection({
 															<img
 																src={bot.avatarUrl}
 																alt={bot.login}
-																className="size-5 rounded-full border border-border"
+																className="size-5 rounded-full border-[0.5px] border-border"
 															/>
 															<span className="min-w-0 flex-1 truncate">
 																{bot.login}
@@ -521,7 +519,7 @@ function ReviewersSection({
 															<img
 																src={collaborator.avatarUrl}
 																alt={collaborator.login}
-																className="size-5 rounded-full border border-border"
+																className="size-5 rounded-full border-[0.5px] border-border"
 															/>
 															<span className="min-w-0 flex-1 truncate">
 																{collaborator.login}
@@ -552,7 +550,7 @@ function ReviewersSection({
 							key={`team-${team.slug}`}
 							className="group/reviewer flex items-center gap-2"
 						>
-							<div className="flex size-5 shrink-0 items-center justify-center rounded-md border border-border bg-surface-1 text-[10px] font-semibold text-muted-foreground">
+							<div className="flex size-5 shrink-0 items-center justify-center rounded-md border-[0.5px] border-border bg-surface-1 text-[10px] font-semibold text-muted-foreground">
 								T
 							</div>
 							<span className="min-w-0 flex-1 truncate text-sm">
@@ -577,7 +575,7 @@ function ReviewersSection({
 							<img
 								src={reviewer.avatarUrl}
 								alt={reviewer.login}
-								className="size-5 rounded-full border border-border"
+								className="size-5 rounded-full border-[0.5px] border-border"
 							/>
 							<span className="min-w-0 flex-1 truncate text-sm">
 								{reviewer.login}

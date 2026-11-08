@@ -66,7 +66,7 @@ export function RepoListSearchInput({
 	return (
 		<div
 			className={cn(
-				"flex min-w-0 items-center gap-2 rounded-lg border border-border/50 bg-surface-1 px-3 py-1.5 transition-colors focus-within:border-border",
+				"flex min-w-0 items-center gap-2 rounded-lg border-[0.5px] border-border/50 bg-surface-1 px-3 py-1.5 transition-colors focus-within:border-border",
 				className,
 			)}
 		>

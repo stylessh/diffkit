@@ -76,7 +76,7 @@ export function IssueDetailHeader({
 								<img
 									src={issue.author.avatarUrl}
 									alt={issue.author.login}
-									className="size-4 rounded-full border border-border"
+									className="size-4 rounded-full border-[0.5px] border-border"
 								/>
 								<span className="font-medium text-foreground">
 									{issue.author.login}
@@ -88,7 +88,7 @@ export function IssueDetailHeader({
 				}
 			/>
 
-			<div className="rounded-lg border bg-surface-0 p-5">
+			<div className="rounded-lg border-[0.5px] bg-surface-0 p-5">
 				<div
 					className="group/description flex flex-col"
 					onPointerEnter={() => setDescActive(true)}

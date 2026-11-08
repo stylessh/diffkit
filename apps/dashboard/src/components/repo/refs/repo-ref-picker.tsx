@@ -99,7 +99,7 @@ export function RepoRefPicker({
 					onMouseEnter={prefetch}
 					onFocus={prefetch}
 					aria-label={`Switch branch or tag, current ${currentRef}`}
-					className="max-w-[240px] border border-border dark:border-transparent"
+					className="max-w-[240px] border-[0.5px] border-border dark:border-transparent"
 				>
 					<TriggerIcon size={14} />
 					<span className={cn("truncate", isSha && "font-mono text-xs")}>
@@ -109,7 +109,7 @@ export function RepoRefPicker({
 				</Button>
 			</PopoverTrigger>
 			<PopoverContent className="w-80 p-0" align={align}>
-				<div className="flex gap-1 border-b p-1.5">
+				<div className="flex gap-1 border-b-[0.5px] p-1.5">
 					{(["branches", "tags"] as const).map((value) => (
 						<button
 							key={value}
@@ -170,7 +170,7 @@ export function RepoRefPicker({
 						))}
 					</CommandList>
 				</Command>
-				<div className="flex items-center justify-between border-t px-3 py-2 text-xs">
+				<div className="flex items-center justify-between border-t-[0.5px] px-3 py-2 text-xs">
 					<span className="text-muted-foreground">
 						{activeQuery.data?.truncated ? "Showing first 100" : null}
 					</span>

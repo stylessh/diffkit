@@ -120,7 +120,7 @@ export function PullBodySection({
 	const hasDropdownOptions = !!pr.body || isAuthor;
 
 	return (
-		<div className="relative rounded-lg border bg-surface-0 p-5">
+		<div className="relative rounded-lg border-[0.5px] bg-surface-0 p-5">
 			{hasDropdownOptions && (
 				<DropdownMenu>
 					<DropdownMenuTrigger asChild>

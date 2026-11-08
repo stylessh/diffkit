@@ -38,7 +38,7 @@ export function IssueDetailSidebar({
 								<img
 									src={assignee.avatarUrl}
 									alt={assignee.login}
-									className="size-5 rounded-full border border-border"
+									className="size-5 rounded-full border-[0.5px] border-border"
 								/>
 								<span className="text-sm">{assignee.login}</span>
 							</div>

@@ -214,9 +214,9 @@ function ReviewDraftGroup({
 	return (
 		<section
 			aria-label={`Pending review on ${draft.repositoryFullName} #${draft.number}`}
-			className="overflow-hidden rounded-xl border bg-surface-0"
+			className="overflow-hidden rounded-xl border-[0.5px] bg-surface-0"
 		>
-			<header className="flex flex-wrap items-start gap-x-3 gap-y-2 border-b px-4 py-3">
+			<header className="flex flex-wrap items-start gap-x-3 gap-y-2 border-b-[0.5px] px-4 py-3">
 				<div
 					className={
 						draft.isDraft
@@ -288,14 +288,14 @@ function ReviewDraftGroup({
 			</header>
 
 			{review.body.trim() ? (
-				<p className="line-clamp-2 border-b bg-surface-1 px-4 py-2 text-xs text-muted-foreground">
+				<p className="line-clamp-2 border-b-[0.5px] bg-surface-1 px-4 py-2 text-xs text-muted-foreground">
 					<span className="font-medium text-foreground">Review summary: </span>
 					{reviewDraftBodyPreview(review.body, 240)}
 				</p>
 			) : null}
 
 			{review.comments.length > 0 ? (
-				<ul className="divide-y">
+				<ul className="divide-y-[0.5px]">
 					{review.comments.map((comment) => (
 						<li key={comment.id}>
 							<DraftCommentRow draft={draft} comment={comment} />
@@ -309,7 +309,7 @@ function ReviewDraftGroup({
 			)}
 
 			{hiddenComments > 0 ? (
-				<div className="flex items-center justify-between gap-2 border-t px-4 py-2 text-xs text-muted-foreground">
+				<div className="flex items-center justify-between gap-2 border-t-[0.5px] px-4 py-2 text-xs text-muted-foreground">
 					<span>
 						+<span className="tabular-nums">{hiddenComments}</span> more{" "}
 						{hiddenComments === 1 ? "comment" : "comments"}
@@ -353,7 +353,7 @@ function DraftCommentRow({
 				<span className="min-w-0 truncate font-mono text-foreground">
 					{comment.path}
 				</span>
-				<span className="shrink-0 rounded-md border bg-surface-1 px-1.5 py-px font-mono text-[11px] tabular-nums text-muted-foreground">
+				<span className="shrink-0 rounded-md border-[0.5px] bg-surface-1 px-1.5 py-px font-mono text-[11px] tabular-nums text-muted-foreground">
 					{location}
 				</span>
 				{comment.outdated && location !== "Outdated" ? (
@@ -371,8 +371,8 @@ function ReviewDraftsSkeleton() {
 	return (
 		<>
 			{[0, 1].map((key) => (
-				<div key={key} className="overflow-hidden rounded-xl border">
-					<div className="flex items-start gap-3 border-b px-4 py-3">
+				<div key={key} className="overflow-hidden rounded-xl border-[0.5px]">
+					<div className="flex items-start gap-3 border-b-[0.5px] px-4 py-3">
 						<Skeleton className="mt-1 size-4 rounded-full" />
 						<div className="flex flex-1 flex-col gap-2">
 							<Skeleton className="h-4 w-2/3" />

@@ -90,7 +90,7 @@ function TermsPage() {
 				.
 			</p>
 
-			<footer className="not-prose mt-16 border-t border-border/70 pt-8">
+			<footer className="not-prose mt-16 border-t-[0.5px] border-border/70 pt-8">
 				<p className="text-[13px] leading-relaxed text-muted-foreground">
 					Last updated · April 12, 2026
 				</p>

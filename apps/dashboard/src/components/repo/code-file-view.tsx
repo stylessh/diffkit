@@ -225,7 +225,7 @@ export function CodeFileView({
 					currentRef={currentRef}
 					path={path}
 				/>
-				<div className="overflow-hidden rounded-lg border">
+				<div className="overflow-hidden rounded-lg border-[0.5px]">
 					<FileViewHeader
 						fileName={fileName}
 						size={fileEntry?.size ?? null}
@@ -252,7 +252,7 @@ export function CodeFileView({
 
 	if (contentQuery.error || contentQuery.data == null) {
 		return (
-			<div className="rounded-lg border">
+			<div className="rounded-lg border-[0.5px]">
 				<FileViewHeader fileName={fileName} />
 				<div className="p-6 text-sm text-muted-foreground">
 					Unable to load file content.
@@ -292,7 +292,7 @@ export function CodeFileView({
 				currentRef={currentRef}
 				path={path}
 			/>
-			<div className="overflow-hidden rounded-lg border">
+			<div className="overflow-hidden rounded-lg border-[0.5px]">
 				<FileViewHeader
 					fileName={fileName}
 					lineCount={lineCount}
@@ -348,7 +348,7 @@ function SvgFileView({
 				currentRef={currentRef}
 				path={path}
 			/>
-			<div className="overflow-hidden rounded-lg border">
+			<div className="overflow-hidden rounded-lg border-[0.5px]">
 				<FileViewHeader
 					fileName={fileName}
 					lineCount={mode === "code" ? lineCount : undefined}
@@ -359,7 +359,7 @@ function SvgFileView({
 					currentRef={currentRef}
 					path={path}
 				>
-					<div className="flex items-center rounded-md border border-border/60">
+					<div className="flex items-center rounded-md border-[0.5px] border-border/60">
 						<button
 							type="button"
 							onClick={() => setMode("preview")}
@@ -377,7 +377,7 @@ function SvgFileView({
 							type="button"
 							onClick={() => setMode("code")}
 							className={cn(
-								"flex items-center gap-1.5 rounded-r-md border-l border-border/60 px-2 py-1 text-xs transition-colors",
+								"flex items-center gap-1.5 rounded-r-md border-l-[0.5px] border-border/60 px-2 py-1 text-xs transition-colors",
 								mode === "code"
 									? "bg-surface-1 text-foreground"
 									: "text-muted-foreground hover:text-foreground",
@@ -441,7 +441,7 @@ function FileViewHeader({
 	}, [code]);
 
 	return (
-		<div className="flex items-center gap-2 border-b bg-surface-0 px-4 py-2.5 text-sm">
+		<div className="flex items-center gap-2 border-b-[0.5px] bg-surface-0 px-4 py-2.5 text-sm">
 			<FileIcon size={14} className="shrink-0 text-muted-foreground" />
 			<span className="font-medium text-foreground">{fileName}</span>
 			<div className="flex items-center gap-2 text-xs text-muted-foreground">
@@ -552,7 +552,7 @@ function FileCommitBar({
 
 function LineNumbers({ count }: { count: number }) {
 	return (
-		<div className="sticky left-0 z-10 flex flex-col items-end border-r bg-surface-0 px-3 py-3 text-muted-foreground select-none">
+		<div className="sticky left-0 z-10 flex flex-col items-end border-r-[0.5px] bg-surface-0 px-3 py-3 text-muted-foreground select-none">
 			{Array.from({ length: count }, (_, i) => (
 				// biome-ignore lint/suspicious/noArrayIndexKey: line numbers are stable indices
 				<span key={i} className="leading-5">
@@ -613,7 +613,7 @@ const skeletonWidths = [
 
 function CodeFileViewSkeleton({ fileName }: { fileName: string }) {
 	return (
-		<div className="overflow-hidden rounded-lg border">
+		<div className="overflow-hidden rounded-lg border-[0.5px]">
 			<FileViewHeader fileName={fileName} />
 			<div className="flex flex-col gap-2 p-4">
 				{skeletonWidths.map((width) => (

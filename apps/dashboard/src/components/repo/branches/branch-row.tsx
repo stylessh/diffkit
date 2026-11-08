@@ -47,7 +47,7 @@ function PullRequestBadge({
 				<Link
 					to="/$owner/$repo/pull/$pullId"
 					params={{ owner, repo, pullId: String(pullRequest.number) }}
-					className="flex items-center gap-1 rounded-md border border-border/60 px-1.5 py-0.5 text-xs tabular-nums text-muted-foreground transition-colors hover:bg-surface-1 hover:text-foreground"
+					className="flex items-center gap-1 rounded-md border-[0.5px] border-border/60 px-1.5 py-0.5 text-xs tabular-nums text-muted-foreground transition-colors hover:bg-surface-1 hover:text-foreground"
 				>
 					<Icon size={12} strokeWidth={2} className={className} />#
 					{pullRequest.number}
@@ -90,7 +90,7 @@ export const BranchRow = memo(function BranchRow({
 						{branch.name}
 					</Link>
 					{isDefault ? (
-						<span className="shrink-0 rounded-full border border-border/60 px-1.5 text-[10px] text-muted-foreground">
+						<span className="shrink-0 rounded-full border-[0.5px] border-border/60 px-1.5 text-[10px] text-muted-foreground">
 							default
 						</span>
 					) : null}

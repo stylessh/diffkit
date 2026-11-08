@@ -101,7 +101,7 @@ export function ReviewSubmitPopover({
 
 	const form = (
 		<div className="flex flex-col">
-			<div className="flex items-center justify-between border-b px-4 py-3">
+			<div className="flex items-center justify-between border-b-[0.5px] px-4 py-3">
 				<h3 className="text-sm font-semibold">Finish your review</h3>
 				{isDesktop && (
 					<button
@@ -119,11 +119,11 @@ export function ReviewSubmitPopover({
 					value={body}
 					onChange={(event) => setBody(event.target.value)}
 					placeholder="Leave a comment"
-					className="min-h-[80px] w-full resize-y rounded-md border bg-background px-3 py-2 text-xs outline-none placeholder:text-muted-foreground focus-visible:outline-1 focus-visible:-outline-offset-1 focus-visible:outline-ring focus:ring-focus"
+					className="min-h-[80px] w-full resize-y rounded-md border-[0.5px] bg-background px-3 py-2 text-xs outline-none placeholder:text-muted-foreground focus-visible:outline-1 focus-visible:-outline-offset-1 focus-visible:outline-ring focus:ring-focus"
 				/>
 			</div>
 
-			<div className="flex flex-col gap-1 border-t px-4 py-3">
+			<div className="flex flex-col gap-1 border-t-[0.5px] px-4 py-3">
 				{reviewOptions.map((option) => {
 					const Icon = option.icon;
 					return (
@@ -158,7 +158,7 @@ export function ReviewSubmitPopover({
 				})}
 			</div>
 
-			<div className="flex items-center justify-between border-t px-4 py-3">
+			<div className="flex items-center justify-between border-t-[0.5px] px-4 py-3">
 				<button
 					type="button"
 					onClick={() => setIsOpen(false)}

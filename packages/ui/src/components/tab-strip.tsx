@@ -42,7 +42,7 @@ export function TabStrip({
 	return (
 		<div
 			className={cn(
-				"flex h-8 min-w-0 shrink-0 items-stretch border-b border-border/70 bg-surface-1",
+				"flex h-8 min-w-0 shrink-0 items-stretch border-b-[0.5px] border-border/70 bg-surface-1",
 				className,
 			)}
 		>

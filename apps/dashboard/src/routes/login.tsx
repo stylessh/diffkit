@@ -109,7 +109,7 @@ function LoginPage() {
 						<img
 							src="/login-preview.png"
 							alt="DiffKit dashboard preview"
-							className="aspect-[16/10] w-full max-w-[56rem] rounded-xl border border-border object-cover object-left-top shadow-[0_18px_40px_-34px_rgba(15,23,42,0.25)] dark:shadow-none xl:max-w-[64rem]"
+							className="aspect-[16/10] w-full max-w-[56rem] rounded-xl border-[0.5px] border-border object-cover object-left-top shadow-[0_18px_40px_-34px_rgba(15,23,42,0.25)] dark:shadow-none xl:max-w-[64rem]"
 						/>
 					</div>
 				</section>

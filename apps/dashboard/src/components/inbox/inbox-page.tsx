@@ -249,8 +249,8 @@ const InboxSidebar = memo(function InboxSidebar({
 	const hasUnread = notifications.some((n) => n.unread);
 
 	return (
-		<aside className="flex h-full w-full flex-col border-r border-border md:w-80 md:min-w-80 lg:w-96 lg:min-w-96">
-			<div className="flex h-12 items-center justify-between gap-2 border-b border-border px-4">
+		<aside className="flex h-full w-full flex-col border-r-[0.5px] border-border md:w-80 md:min-w-80 lg:w-96 lg:min-w-96">
+			<div className="flex h-12 items-center justify-between gap-2 border-b-[0.5px] border-border px-4">
 				<div className="flex items-center gap-2">
 					<h1 className="text-base font-semibold">Inbox</h1>
 					<DropdownMenu>
@@ -496,7 +496,7 @@ const InboxRow = memo(function InboxRow({
 				}
 			}}
 			className={cn(
-				"group flex w-full cursor-pointer items-start gap-3 border-b border-border/50 px-4 py-3 text-left transition-colors last:border-b-0",
+				"group flex w-full cursor-pointer items-start gap-3 border-b-[0.5px] border-border/50 px-4 py-3 text-left transition-colors last:border-b-0",
 				"hover:[&:not(:has([data-action]:hover))]:bg-surface-1",
 				isSelected && "bg-surface-1",
 			)}
@@ -616,7 +616,7 @@ const InboxPreview = memo(function InboxPreview({
 
 	return (
 		<div className="hidden flex-1 flex-col md:flex">
-			<div className="flex h-12 items-center justify-between border-b border-border px-4">
+			<div className="flex h-12 items-center justify-between border-b-[0.5px] border-border px-4">
 				<div className="flex items-center gap-2 text-xs text-muted-foreground">
 					<Link
 						to="/$owner/$repo"
@@ -770,7 +770,7 @@ function InboxPreviewFallback({
 				</div>
 			</div>
 
-			<div className="rounded-xl border border-border bg-surface-1 p-5">
+			<div className="rounded-xl border-[0.5px] border-border bg-surface-1 p-5">
 				<div className="flex items-center gap-3">
 					<img
 						src={notification.repository.owner.avatarUrl}

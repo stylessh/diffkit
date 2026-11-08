@@ -20,7 +20,7 @@ export function RepoOverviewSkeleton() {
 
 					{/* Commit bar + file rows */}
 					<div>
-						<div className="rounded-t-lg border border-b-0 px-4 py-2.5">
+						<div className="rounded-t-lg border-[0.5px] border-b-0 px-4 py-2.5">
 							<div className="flex items-center gap-3">
 								<Skeleton className="size-5 rounded-full" />
 								<Skeleton className="h-4 w-24 rounded-md" />
@@ -28,12 +28,12 @@ export function RepoOverviewSkeleton() {
 								<Skeleton className="h-4 w-16 rounded-md" />
 							</div>
 						</div>
-						<div className="overflow-hidden rounded-b-lg border">
+						<div className="overflow-hidden rounded-b-lg border-[0.5px]">
 							{Array.from({ length: 8 }, (_, i) => `skeleton-row-${i}`).map(
 								(key) => (
 									<div
 										key={key}
-										className="flex items-center gap-4 border-b px-4 py-2.5 last:border-b-0"
+										className="flex items-center gap-4 border-b-[0.5px] px-4 py-2.5 last:border-b-0"
 									>
 										<Skeleton className="size-4 shrink-0 rounded" />
 										<Skeleton className="h-4 w-32 rounded-md" />

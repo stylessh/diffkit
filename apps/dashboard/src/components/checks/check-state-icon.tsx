@@ -60,7 +60,7 @@ export function CheckStateIcon({ state }: { state: CheckState }) {
 	if (state === "skipped") {
 		return (
 			<div className="flex size-3.5 shrink-0 items-center justify-center text-muted-foreground">
-				<div className="size-1.5 rounded-full border border-current" />
+				<div className="size-1.5 rounded-full border-[0.5px] border-current" />
 			</div>
 		);
 	}

@@ -97,7 +97,7 @@ export function StepLogNode({
 				className={NODE_HANDLE_CLASS}
 			/>
 			<div
-				className="relative flex cursor-grab flex-col overflow-hidden rounded-xl border bg-background shadow-md active:cursor-grabbing"
+				className="relative flex cursor-grab flex-col overflow-hidden rounded-xl border-[0.5px] bg-background shadow-md active:cursor-grabbing"
 				style={{ width: size.width, height: size.height }}
 			>
 				<NodeResizeControl
@@ -132,7 +132,7 @@ export function StepLogNode({
 						/>
 					</svg>
 				</NodeResizeControl>
-				<div className="flex shrink-0 items-center gap-2 border-b px-3 py-2">
+				<div className="flex shrink-0 items-center gap-2 border-b-[0.5px] px-3 py-2">
 					<CheckStateIcon state={state} />
 					<span className="min-w-0 flex-1 truncate font-medium text-sm">
 						{data.stepName}

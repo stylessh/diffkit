@@ -124,7 +124,7 @@ export function ReleaseFormPage({
 		);
 	} else if (!permission.canPush) {
 		content = (
-			<div className="rounded-lg border px-5 py-8 text-center">
+			<div className="rounded-lg border-[0.5px] px-5 py-8 text-center">
 				<p className="text-sm font-medium">You can't publish releases here</p>
 				<p className="mt-1 text-sm text-muted-foreground">
 					Creating and editing releases needs write access to {owner}/{repo}.
@@ -133,7 +133,7 @@ export function ReleaseFormPage({
 		);
 	} else if (editTag && !releaseQuery.data) {
 		content = (
-			<div className="rounded-lg border px-5 py-8 text-center text-sm text-muted-foreground">
+			<div className="rounded-lg border-[0.5px] px-5 py-8 text-center text-sm text-muted-foreground">
 				Release {editTag} wasn't found.
 			</div>
 		);
@@ -504,7 +504,7 @@ function ReleaseForm({
 				</FieldHint>
 			</section>
 
-			<section className="flex flex-col gap-4 rounded-lg border p-4">
+			<section className="flex flex-col gap-4 rounded-lg border-[0.5px] p-4">
 				<div className="flex items-start gap-3">
 					<Switch
 						id="release-prerelease"
@@ -542,13 +542,13 @@ function ReleaseForm({
 			{submitError ? (
 				<div
 					role="alert"
-					className="rounded-lg border border-destructive/50 bg-destructive/10 px-4 py-3 text-sm text-destructive"
+					className="rounded-lg border-[0.5px] border-destructive/50 bg-destructive/10 px-4 py-3 text-sm text-destructive"
 				>
 					{submitError}
 				</div>
 			) : null}
 
-			<div className="flex flex-wrap items-center gap-2 border-t pt-6">
+			<div className="flex flex-wrap items-center gap-2 border-t-[0.5px] pt-6">
 				{release ? (
 					<ReleaseDeleteButton
 						owner={owner}

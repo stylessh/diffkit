@@ -14,7 +14,7 @@ export function PinnedRepoCard({ repo }: { repo: PinnedRepo }) {
 					{repo.name}
 				</span>
 				{repo.isPrivate && (
-					<span className="shrink-0 rounded-full border px-2 py-0.5 text-[10px] font-medium text-muted-foreground">
+					<span className="shrink-0 rounded-full border-[0.5px] px-2 py-0.5 text-[10px] font-medium text-muted-foreground">
 						Private
 					</span>
 				)}

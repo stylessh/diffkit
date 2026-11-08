@@ -199,7 +199,7 @@ export function RepoCommitsPage({
 					/>
 
 					{path ? (
-						<div className="flex min-w-0 items-center gap-2 rounded-lg border border-border/60 bg-surface-1/50 px-3 py-2 text-sm">
+						<div className="flex min-w-0 items-center gap-2 rounded-lg border-[0.5px] border-border/60 bg-surface-1/50 px-3 py-2 text-sm">
 							<FileIcon size={14} className="shrink-0 text-muted-foreground" />
 							<span className="shrink-0 text-muted-foreground">
 								History for
@@ -327,7 +327,7 @@ export function RepoCommitsPage({
 										<GitCommitIcon size={14} />
 										{group.label}
 									</h2>
-									<ol className="divide-y overflow-hidden rounded-lg border">
+									<ol className="divide-y-[0.5px] overflow-hidden rounded-lg border-[0.5px]">
 										{group.commits.map((commit) => (
 											<li
 												key={commit.sha}
@@ -386,7 +386,7 @@ function CommitsSkeleton() {
 	return (
 		<section className="flex flex-col gap-2">
 			<div className="h-4 w-48 animate-pulse rounded bg-surface-1" />
-			<div className="divide-y overflow-hidden rounded-lg border">
+			<div className="divide-y-[0.5px] overflow-hidden rounded-lg border-[0.5px]">
 				{SKELETON_WIDTHS.map((width) => (
 					<RepoCommitRowSkeleton key={width} width={width} />
 				))}

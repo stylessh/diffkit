@@ -273,7 +273,7 @@ export function DetailCommentBox({
 								<button
 									type="button"
 									disabled={isTogglingIssueState}
-									className="flex items-center gap-1.5 rounded-lg border bg-secondary px-3 py-1.5 text-xs font-medium text-secondary-foreground transition-opacity hover:bg-secondary/80 disabled:opacity-40"
+									className="flex items-center gap-1.5 rounded-lg border-[0.5px] bg-secondary px-3 py-1.5 text-xs font-medium text-secondary-foreground transition-opacity hover:bg-secondary/80 disabled:opacity-40"
 								>
 									{isTogglingIssueState ? (
 										<Spinner size={12} />
@@ -326,7 +326,7 @@ export function DetailCommentBox({
 							type="button"
 							disabled={isTogglingIssueState}
 							onClick={() => void runIssueStateChange("open")}
-							className="flex items-center gap-1.5 rounded-lg border bg-secondary px-3 py-1.5 text-xs font-medium text-secondary-foreground transition-opacity hover:bg-secondary/80 disabled:opacity-40"
+							className="flex items-center gap-1.5 rounded-lg border-[0.5px] bg-secondary px-3 py-1.5 text-xs font-medium text-secondary-foreground transition-opacity hover:bg-secondary/80 disabled:opacity-40"
 						>
 							{isTogglingIssueState ? (
 								<Spinner size={12} />
@@ -341,7 +341,7 @@ export function DetailCommentBox({
 						type="button"
 						disabled={isTogglingState || hasPendingUploads}
 						onClick={handleTogglePullState}
-						className="flex items-center gap-1.5 rounded-lg border bg-secondary px-3 py-1.5 text-xs font-medium text-secondary-foreground transition-opacity hover:bg-secondary/80 disabled:opacity-40"
+						className="flex items-center gap-1.5 rounded-lg border-[0.5px] bg-secondary px-3 py-1.5 text-xs font-medium text-secondary-foreground transition-opacity hover:bg-secondary/80 disabled:opacity-40"
 					>
 						{isTogglingState ? (
 							<Spinner size={12} />

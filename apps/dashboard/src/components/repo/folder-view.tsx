@@ -58,7 +58,7 @@ export function FolderView({
 					defaultBranchTip={repo.latestCommit}
 					path={currentPath}
 				/>
-				<div className="overflow-hidden rounded-b-lg border">
+				<div className="overflow-hidden rounded-b-lg border-[0.5px]">
 					{entries.map((entry, index) => (
 						<FolderViewRow
 							key={entry.sha}
@@ -113,7 +113,7 @@ function FolderViewRow({
 		<div
 			className={cn(
 				"grid grid-cols-[minmax(0,1fr)_minmax(0,2fr)_80px] items-center gap-4 px-4 py-2 text-sm hover:bg-surface-1",
-				!isLast && "border-b",
+				!isLast && "border-b-[0.5px]",
 			)}
 		>
 			<Link
@@ -169,11 +169,11 @@ function FolderViewRow({
 export function FolderViewSkeleton() {
 	const rows = Array.from({ length: 8 }, (_, i) => i);
 	return (
-		<div className="overflow-hidden rounded-lg border">
+		<div className="overflow-hidden rounded-lg border-[0.5px]">
 			{rows.map((key) => (
 				<div
 					key={key}
-					className="flex items-center gap-4 border-b px-4 py-2.5 last:border-b-0"
+					className="flex items-center gap-4 border-b-[0.5px] px-4 py-2.5 last:border-b-0"
 				>
 					<div className="size-4 shrink-0 animate-pulse rounded bg-surface-1" />
 					<div className="h-4 w-32 animate-pulse rounded-md bg-surface-1" />

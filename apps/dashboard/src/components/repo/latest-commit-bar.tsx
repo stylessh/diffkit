@@ -49,7 +49,7 @@ export function LatestCommitBar({
 
 	if (tipQuery.isPending && commit == null) {
 		return (
-			<div className="flex items-center gap-3 rounded-t-lg border border-b-0 bg-surface-1 px-4 py-2.5 text-sm">
+			<div className="flex items-center gap-3 rounded-t-lg border-[0.5px] border-b-0 bg-surface-1 px-4 py-2.5 text-sm">
 				<Skeleton className="size-5 shrink-0 rounded-full" />
 				<Skeleton className="h-4 w-20 shrink-0 rounded" />
 				<Skeleton className="h-4 min-w-0 flex-1 rounded" />
@@ -64,7 +64,7 @@ export function LatestCommitBar({
 	const firstLine = commit.message.split("\n")[0];
 
 	return (
-		<div className="flex items-center gap-3 rounded-t-lg border border-b-0 bg-surface-1 px-4 py-2.5 text-sm">
+		<div className="flex items-center gap-3 rounded-t-lg border-[0.5px] border-b-0 bg-surface-1 px-4 py-2.5 text-sm">
 			{commit.author && (
 				<img
 					src={commit.author.avatarUrl}

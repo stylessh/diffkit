@@ -171,7 +171,7 @@ function WorkflowRunPageSkeleton() {
 				</div>
 			</StaggerItem>
 			<StaggerItem index={2}>
-				<div className="flex h-48 items-center rounded-xl border px-6">
+				<div className="flex h-48 items-center rounded-xl border-[0.5px] px-6">
 					<Skeleton className="h-12 w-52" />
 				</div>
 			</StaggerItem>

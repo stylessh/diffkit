@@ -142,7 +142,7 @@ export function RepoTagsPage({
 					/>
 
 					{isLoading ? (
-						<div className="divide-y overflow-hidden rounded-lg border">
+						<div className="divide-y-[0.5px] overflow-hidden rounded-lg border-[0.5px]">
 							{["a", "b", "c", "d"].map((key) => (
 								<div key={key} className="flex items-center gap-3 px-4 py-3">
 									<Skeleton className="size-4 rounded" />
@@ -173,7 +173,7 @@ export function RepoTagsPage({
 						</div>
 					) : (
 						<ol
-							className="divide-y overflow-hidden rounded-lg border transition-opacity"
+							className="divide-y-[0.5px] overflow-hidden rounded-lg border-[0.5px] transition-opacity"
 							style={{ opacity: tagsQuery.isPlaceholderData ? 0.6 : 1 }}
 						>
 							{tags.map((tag) => (
@@ -260,7 +260,7 @@ const TagRow = memo(function TagRow({
 						<Link
 							to="/$owner/$repo/releases/$tag"
 							params={{ owner, repo, tag: tag.name }}
-							className="shrink-0 rounded-full border border-border/60 px-1.5 text-[10px] text-muted-foreground transition-colors hover:text-foreground"
+							className="shrink-0 rounded-full border-[0.5px] border-border/60 px-1.5 text-[10px] text-muted-foreground transition-colors hover:text-foreground"
 						>
 							{release.isDraft ? "Draft release" : "Release"}
 						</Link>

@@ -47,7 +47,7 @@ export function LegalDocumentLayout({
 						"prose-p:leading-[1.75] prose-p:text-[15px] prose-p:text-muted-foreground",
 						"[&>p:first-of-type]:text-[15px] [&>p:first-of-type]:leading-[1.75] [&>p:first-of-type]:text-foreground/90",
 						"prose-headings:font-semibold prose-headings:tracking-tight prose-headings:text-foreground",
-						"prose-h2:mt-12 prose-h2:mb-4 prose-h2:border-b prose-h2:border-border/60 prose-h2:pb-3 prose-h2:text-xl prose-h2:leading-snug",
+						"prose-h2:mt-12 prose-h2:mb-4 prose-h2:border-b-[0.5px] prose-h2:border-border/60 prose-h2:pb-3 prose-h2:text-xl prose-h2:leading-snug",
 						"prose-ul:my-6 prose-ul:space-y-3 prose-li:my-0 prose-li:text-[15px] prose-li:leading-[1.75] prose-li:text-muted-foreground",
 						"prose-a:font-medium prose-a:text-primary prose-a:no-underline prose-a:underline-offset-4 hover:prose-a:underline",
 					)}

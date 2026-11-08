@@ -174,7 +174,7 @@ export function RepoBranchesPage({
 						<div
 							role="tablist"
 							aria-label="Branch views"
-							className="flex items-center gap-0.5 rounded-lg border border-border/50 p-0.5"
+							className="flex items-center gap-0.5 rounded-lg border-[0.5px] border-border/50 p-0.5"
 						>
 							{VIEWS.map((value) => (
 								<button
@@ -360,7 +360,7 @@ function BranchSection({
 	return (
 		<section className="flex flex-col gap-2">
 			<div className="flex items-baseline justify-between gap-2">
-				<h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+				<h2 className="text-xs font-medium text-muted-foreground">
 					{title}
 					{count != null ? (
 						<span className="ml-1.5 font-normal tabular-nums tracking-normal">
@@ -378,7 +378,7 @@ function BranchSection({
 					</button>
 				) : null}
 			</div>
-			<div className="divide-y overflow-hidden rounded-lg border">
+			<div className="divide-y-[0.5px] overflow-hidden rounded-lg border-[0.5px]">
 				{children}
 			</div>
 		</section>

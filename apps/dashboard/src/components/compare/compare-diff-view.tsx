@@ -103,11 +103,11 @@ export function CompareDiffView({
 					</span>
 				</h2>
 				{commits.length === 0 ? (
-					<p className="rounded-lg border bg-surface-0 px-4 py-3 text-sm text-muted-foreground">
+					<p className="rounded-lg border-[0.5px] bg-surface-0 px-4 py-3 text-sm text-muted-foreground">
 						No new commits.
 					</p>
 				) : (
-					<ol className="flex flex-col divide-y rounded-lg border bg-surface-0">
+					<ol className="flex flex-col divide-y-[0.5px] rounded-lg border-[0.5px] bg-surface-0">
 						{commits.map((commit) => {
 							const firstLine = commit.message.split("\n")[0];
 							return (
@@ -115,7 +115,7 @@ export function CompareDiffView({
 									key={commit.sha}
 									className="flex items-center gap-3 px-4 py-2.5 text-sm"
 								>
-									<div className="flex size-5 shrink-0 items-center justify-center rounded-full border border-border bg-surface-1">
+									<div className="flex size-5 shrink-0 items-center justify-center rounded-full border-[0.5px] border-border bg-surface-1">
 										<GitCommitIcon
 											size={12}
 											strokeWidth={2}
@@ -126,7 +126,7 @@ export function CompareDiffView({
 										<img
 											src={commit.author.avatarUrl}
 											alt={commit.author.login}
-											className="size-5 shrink-0 rounded-full border border-border"
+											className="size-5 shrink-0 rounded-full border-[0.5px] border-border"
 										/>
 									) : (
 										<div className="size-5 shrink-0 rounded-full bg-surface-2" />
@@ -173,7 +173,7 @@ export function CompareDiffView({
 						) : null}
 					</h2>
 					{files.length > 0 ? (
-						<div className="flex items-center rounded-md border bg-surface-1">
+						<div className="flex items-center rounded-md border-[0.5px] bg-surface-1">
 							<button
 								type="button"
 								className={cn(
@@ -209,7 +209,7 @@ export function CompareDiffView({
 					</p>
 				) : null}
 				{files.length === 0 ? (
-					<p className="rounded-lg border bg-surface-0 px-4 py-3 text-sm text-muted-foreground">
+					<p className="rounded-lg border-[0.5px] bg-surface-0 px-4 py-3 text-sm text-muted-foreground">
 						No files changed.
 					</p>
 				) : (
@@ -241,7 +241,7 @@ export function CompareDiffView({
 						{visibleCount < files.length ? (
 							<>
 								<div ref={loadMoreRef} className="h-8" />
-								<div className="rounded-lg border bg-surface-0 px-3 py-2 text-xs text-muted-foreground">
+								<div className="rounded-lg border-[0.5px] bg-surface-0 px-3 py-2 text-xs text-muted-foreground">
 									Showing {visibleCount} of {files.length} files
 								</div>
 							</>

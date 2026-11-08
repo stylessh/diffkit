@@ -146,7 +146,7 @@ export function ActivityLog({
 				className,
 			)}
 		>
-			<header className="flex min-h-9 shrink-0 items-center justify-between gap-3 border-b border-border/60 px-3 py-1.5">
+			<header className="flex min-h-9 shrink-0 items-center justify-between gap-3 border-b-[0.5px] border-border/60 px-3 py-1.5">
 				<div className="flex min-w-0 items-center gap-2">
 					<h2 className="truncate text-xs font-medium text-foreground">
 						{title}
@@ -257,7 +257,10 @@ function ActivityListItem({
 		<li
 			aria-posinset={index + 1}
 			aria-setsize={count}
-			className={cn("border-b border-border/50 last:border-b-0", className)}
+			className={cn(
+				"border-b-[0.5px] border-border/50 last:border-b-0",
+				className,
+			)}
 			data-index={index}
 			{...props}
 		>
@@ -310,7 +313,7 @@ function ActivityRow({ item }: { item: ActivityLogItem }) {
 			<CollapsibleTrigger className="group block w-full transition-colors hover:bg-muted/40 focus-visible:outline-1 focus-visible:-outline-offset-1 focus-visible:outline-ring focus-visible:ring-inset">
 				{row}
 			</CollapsibleTrigger>
-			<CollapsibleContent className="border-t border-border/40 bg-background/35 px-3 py-2.5 text-xs text-foreground">
+			<CollapsibleContent className="border-t-[0.5px] border-border/40 bg-background/35 px-3 py-2.5 text-xs text-foreground">
 				{item.detail}
 			</CollapsibleContent>
 		</Collapsible>

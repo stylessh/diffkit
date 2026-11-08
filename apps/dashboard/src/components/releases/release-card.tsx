@@ -61,7 +61,7 @@ export function ReleaseStatusBadges({ release }: { release: RepoRelease }) {
 				<span
 					key={badge}
 					className={cn(
-						"rounded-full border px-2 py-px text-[11px] font-medium",
+						"rounded-full border-[0.5px] px-2 py-px text-[11px] font-medium",
 						STATUS_BADGE[badge].className,
 					)}
 				>
@@ -208,7 +208,7 @@ export function ReleaseCard({
 		<article
 			aria-labelledby={`release-${release.id}-title`}
 			className={cn(
-				"group/release relative rounded-xl border bg-surface-0",
+				"group/release relative rounded-xl border-[0.5px] bg-surface-0",
 				isDetail
 					? "flex flex-col gap-6 p-5 sm:p-6"
 					: "grid grid-cols-1 gap-5 p-5 lg:grid-cols-[minmax(11rem,14rem)_minmax(0,1fr)] lg:gap-8",

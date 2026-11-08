@@ -204,7 +204,7 @@ export const FileSearchCard = memo(function FileSearchCard({
 			<div
 				ref={cardRef}
 				className={cn(
-					"absolute overflow-hidden rounded-lg border bg-surface-0 transition-[inset-inline,top,box-shadow] duration-150 ease-out",
+					"absolute overflow-hidden rounded-lg border-[0.5px] bg-surface-0 transition-[inset-inline,top,box-shadow] duration-150 ease-out",
 					isExpanded
 						? "inset-x-2 top-3 shadow-lg ring-1 ring-accent/20"
 						: "inset-x-3 top-4",
@@ -259,7 +259,7 @@ export const FileSearchCard = memo(function FileSearchCard({
 									animate={{ opacity: 1, scale: 1 }}
 									exit={{ opacity: 0, scale: 0.8 }}
 									transition={spring}
-									className="absolute right-2 flex size-5 items-center justify-center rounded border border-border/60 bg-surface-1 text-[10px] font-medium text-muted-foreground"
+									className="absolute right-2 flex size-5 items-center justify-center rounded border-[0.5px] border-border/60 bg-surface-1 text-[10px] font-medium text-muted-foreground"
 								>
 									{shortcutKey.toUpperCase()}
 								</motion.kbd>
@@ -276,7 +276,7 @@ export const FileSearchCard = memo(function FileSearchCard({
 							animate={{ height: "auto", opacity: 1 }}
 							exit={{ height: 0, opacity: 0 }}
 							transition={spring}
-							className="overflow-hidden border-t"
+							className="overflow-hidden border-t-[0.5px]"
 						>
 							<div className="max-h-[min(400px,60vh)] overflow-y-auto">
 								{visibleResults.length > 0 ? (

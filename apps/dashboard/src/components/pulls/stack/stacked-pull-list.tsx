@@ -82,7 +82,7 @@ export function StackedPullList({
 							<section
 								key={`stack-${item.rootNumber}`}
 								aria-label={`Stack of ${item.size} pull requests`}
-								className="my-1 rounded-xl border bg-surface-1/40 py-1"
+								className="my-1 rounded-xl border-[0.5px] bg-surface-1/40 py-1"
 							>
 								<p className="flex items-center gap-1.5 px-3 pb-0.5 pt-1.5 text-xs font-medium text-muted-foreground">
 									<GitBranchIcon size={12} strokeWidth={2} />
@@ -98,7 +98,9 @@ export function StackedPullList({
 											...rowVisibilityStyle,
 											marginLeft: depth * 16,
 										}}
-										className={cn(depth > 0 && "border-l border-border")}
+										className={cn(
+											depth > 0 && "border-l-[0.5px] border-border",
+										)}
 									>
 										<PullRequestRow pr={pull} scope={scope} />
 									</div>

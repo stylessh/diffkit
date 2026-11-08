@@ -93,13 +93,13 @@ export function GitHubAccessDialog({ userId }: { userId: string }) {
 
 				<div className="px-5 pb-5">
 					{accessQuery.isPending ? (
-						<div className="rounded-xl border border-border/70 px-4 py-8">
+						<div className="rounded-xl border-[0.5px] border-border/70 px-4 py-8">
 							<p className="text-center text-sm text-muted-foreground">
 								Loading installations…
 							</p>
 						</div>
 					) : accessQuery.isError || !state ? (
-						<div className="rounded-xl border border-border/70 px-4 py-8">
+						<div className="rounded-xl border-[0.5px] border-border/70 px-4 py-8">
 							<p className="text-center text-sm text-muted-foreground">
 								Could not load installations. You can still continue into
 								GitHub.
@@ -110,7 +110,7 @@ export function GitHubAccessDialog({ userId }: { userId: string }) {
 					)}
 				</div>
 
-				<DialogFooter className="border-t border-border/70 px-5 py-3.5">
+				<DialogFooter className="border-t-[0.5px] border-border/70 px-5 py-3.5">
 					<Button
 						type="button"
 						variant="ghost"
@@ -200,13 +200,13 @@ function AccessList({
 	const targets = buildTargets(state, highlightedOwner);
 
 	return (
-		<ul className="overflow-hidden rounded-xl border border-border/70">
+		<ul className="overflow-hidden rounded-xl border-[0.5px] border-border/70">
 			{targets.map((target) => (
 				<li
 					key={target.login}
 					className={cn(
 						"flex items-center gap-3 px-3.5 py-2.5",
-						"not-first:border-t not-first:border-border/70",
+						"not-first:border-t-[0.5px] not-first:border-border/70",
 						target.isHighlighted && "bg-accent/55",
 					)}
 				>
@@ -256,7 +256,7 @@ function AccessList({
 			))}
 
 			{targets.length === 1 && (
-				<li className="border-t border-border/70 px-3.5 py-6">
+				<li className="border-t-[0.5px] border-border/70 px-3.5 py-6">
 					<p className="text-center text-xs text-muted-foreground">
 						No organizations detected on this account.
 					</p>

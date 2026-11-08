@@ -160,10 +160,10 @@ function ActivityCard<T>({
 	renderItem: (item: T) => React.ReactNode;
 }) {
 	return (
-		<div className="rounded-xl border bg-card">
+		<div className="rounded-xl border-[0.5px] bg-card">
 			<div className="flex items-center gap-2 px-4 py-3">
 				<Icon size={14} strokeWidth={2} className="text-muted-foreground" />
-				<h3 className="flex-1 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+				<h3 className="flex-1 text-xs font-medium text-muted-foreground">
 					{title}
 				</h3>
 				{count != null && (
@@ -194,7 +194,7 @@ function ActivityCard<T>({
 						)}
 						<Link
 							to={viewAllHref}
-							className="border-t px-4 py-2.5 text-center text-xs font-medium text-muted-foreground transition-colors hover:text-foreground"
+							className="border-t-[0.5px] px-4 py-2.5 text-center text-xs font-medium text-muted-foreground transition-colors hover:text-foreground"
 						>
 							View all
 						</Link>

@@ -88,7 +88,7 @@ export function CommitAuthorFilter({
 					variant="secondary"
 					size="sm"
 					aria-label={value ? `Author: ${value}` : "Filter by author"}
-					className="max-w-[200px] border border-border dark:border-transparent"
+					className="max-w-[200px] border-[0.5px] border-border dark:border-transparent"
 				>
 					{selected ? (
 						<img

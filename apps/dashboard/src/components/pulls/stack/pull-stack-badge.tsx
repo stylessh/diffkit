@@ -35,7 +35,7 @@ export function PullStackBadge({
 			<PopoverTrigger asChild>
 				<button
 					type="button"
-					className="flex shrink-0 items-center gap-1.5 rounded-md border bg-surface-1 px-2 py-1 text-xs font-medium text-muted-foreground transition-colors hover:bg-surface-2 hover:text-foreground"
+					className="flex shrink-0 items-center gap-1.5 rounded-md border-[0.5px] bg-surface-1 px-2 py-1 text-xs font-medium text-muted-foreground transition-colors hover:bg-surface-2 hover:text-foreground"
 					aria-label={`Stacked pull request ${context.position} of ${context.size}`}
 				>
 					<GitBranchIcon size={13} strokeWidth={2} />
@@ -46,7 +46,7 @@ export function PullStackBadge({
 				</button>
 			</PopoverTrigger>
 			<PopoverContent align="start" className="w-80 p-2" sideOffset={8}>
-				<p className="px-2 pb-1.5 pt-1 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+				<p className="px-2 pb-1.5 pt-1 text-xs font-medium text-muted-foreground">
 					Stack · {context.position} of {context.size}
 				</p>
 				<PullStackList

@@ -93,7 +93,7 @@ export function RepoReleaseDetailPage({
 							</button>
 						</p>
 					) : !release ? (
-						<div className="rounded-xl border border-dashed px-5 py-12 text-center">
+						<div className="rounded-xl border-[0.5px] border-dashed px-5 py-12 text-center">
 							<p className="text-sm font-medium">No release for {tag}</p>
 							<p className="mt-1 text-sm text-muted-foreground">
 								It may have been deleted, or the tag has no release yet.{" "}

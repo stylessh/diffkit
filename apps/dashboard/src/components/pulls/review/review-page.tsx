@@ -653,7 +653,7 @@ const ReviewToolbar = memo(function ReviewToolbar({
 	const StateIcon = stateConfig.icon;
 
 	return (
-		<div className="flex shrink-0 items-center gap-2 border-b bg-surface-0 px-3 py-2 md:gap-3 md:px-4">
+		<div className="flex shrink-0 items-center gap-2 border-b-[0.5px] bg-surface-0 px-3 py-2 md:gap-3 md:px-4">
 			{!isDesktop && (
 				<button
 					type="button"
@@ -707,7 +707,7 @@ const ReviewToolbar = memo(function ReviewToolbar({
 
 				<div className="h-4 w-px bg-border" />
 
-				<div className="hidden items-center rounded-md border bg-surface-1 md:flex">
+				<div className="hidden items-center rounded-md border-[0.5px] bg-surface-1 md:flex">
 					<button
 						type="button"
 						className={cn(
@@ -807,7 +807,7 @@ export const ReviewSidebar = memo(function ReviewSidebar({
 				onFileClick={onFileClick}
 			/>
 
-			<div className="flex items-center gap-2 border-t px-3 py-2 text-xs text-muted-foreground">
+			<div className="flex items-center gap-2 border-t-[0.5px] px-3 py-2 text-xs text-muted-foreground">
 				<span>
 					{sidebarFileCount} {sidebarFileCount === 1 ? "file" : "files"}
 					{isStreamingSummaries ? " loaded…" : " changed"}
@@ -815,7 +815,7 @@ export const ReviewSidebar = memo(function ReviewSidebar({
 				{isStreamingSummaries && (
 					<output
 						aria-label="Loading more files"
-						className="ml-auto inline-block size-2.5 shrink-0 animate-spin rounded-full border border-muted-foreground/60 border-t-transparent"
+						className="ml-auto inline-block size-2.5 shrink-0 animate-spin rounded-full border-[0.5px] border-muted-foreground/60 border-t-transparent"
 					/>
 				)}
 			</div>

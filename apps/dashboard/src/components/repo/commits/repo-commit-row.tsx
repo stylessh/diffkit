@@ -166,7 +166,7 @@ function ShaButton({
 	}, [sha]);
 
 	return (
-		<span className="flex items-center overflow-hidden rounded-md border border-border/60">
+		<span className="flex items-center overflow-hidden rounded-md border-[0.5px] border-border/60">
 			<Link
 				to="/$owner/$repo/commit/$sha"
 				params={{ owner, repo, sha }}
@@ -180,7 +180,7 @@ function ShaButton({
 						type="button"
 						onClick={copy}
 						aria-label="Copy full SHA"
-						className="flex items-center border-l border-border/60 px-1 py-[3px] text-muted-foreground transition-colors hover:bg-surface-1 hover:text-foreground"
+						className="flex items-center border-l-[0.5px] border-border/60 px-1 py-[3px] text-muted-foreground transition-colors hover:bg-surface-1 hover:text-foreground"
 					>
 						{copied ? <CheckIcon size={12} /> : <CopyIcon size={12} />}
 					</button>

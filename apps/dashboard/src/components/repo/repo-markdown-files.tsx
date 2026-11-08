@@ -112,7 +112,7 @@ export function RepoMarkdownFiles({
 
 			{/* Content */}
 			{selectedFile && (
-				<div className="overflow-hidden rounded-lg border">
+				<div className="overflow-hidden rounded-lg border-[0.5px]">
 					<MarkdownFileContent
 						owner={owner}
 						repo={repo}

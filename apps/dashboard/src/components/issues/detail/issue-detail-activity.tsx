@@ -451,10 +451,10 @@ export function IssueDetailActivitySection({
 											<img
 												src={group.actor?.avatarUrl}
 												alt={group.actor?.login}
-												className="size-5 shrink-0 rounded-full border border-border self-start"
+												className="size-5 shrink-0 rounded-full border-[0.5px] border-border self-start"
 											/>
 										) : (
-											<div className="flex size-5 shrink-0 items-center justify-center rounded-full border border-border bg-surface-1 self-start">
+											<div className="flex size-5 shrink-0 items-center justify-center rounded-full border-[0.5px] border-border bg-surface-1 self-start">
 												{icon}
 											</div>
 										)}
@@ -508,10 +508,10 @@ export function IssueDetailActivitySection({
 											<img
 												src={group.actor?.avatarUrl}
 												alt={group.actor?.login}
-												className="size-5 shrink-0 rounded-full border border-border self-start"
+												className="size-5 shrink-0 rounded-full border-[0.5px] border-border self-start"
 											/>
 										) : (
-											<div className="flex size-5 shrink-0 items-center justify-center rounded-full border border-border bg-surface-1 self-start">
+											<div className="flex size-5 shrink-0 items-center justify-center rounded-full border-[0.5px] border-border bg-surface-1 self-start">
 												{icon}
 											</div>
 										)}
@@ -564,10 +564,10 @@ export function IssueDetailActivitySection({
 										<img
 											src={event.actor?.avatarUrl}
 											alt={event.actor?.login}
-											className="size-5 shrink-0 rounded-full border border-border self-start"
+											className="size-5 shrink-0 rounded-full border-[0.5px] border-border self-start"
 										/>
 									) : (
-										<div className="flex size-5 shrink-0 items-center justify-center rounded-full border border-border bg-surface-1 self-start">
+										<div className="flex size-5 shrink-0 items-center justify-center rounded-full border-[0.5px] border-border bg-surface-1 self-start">
 											{icon}
 										</div>
 									)}
@@ -658,7 +658,7 @@ function IssueCommentBubble({
 						src={comment.author.avatarUrl}
 						alt={comment.author.login}
 						className={cn(
-							"rounded-full border border-border",
+							"rounded-full border-[0.5px] border-border",
 							isReply ? "size-3.5" : "size-4",
 						)}
 					/>
@@ -848,7 +848,7 @@ function LoadMoreDivider({
 				onClick={onLoadMore}
 				disabled={isPending}
 				className={cn(
-					"flex shrink-0 items-center gap-1.5 rounded-full border border-border bg-surface-1 px-3 py-1 text-xs text-muted-foreground transition-colors",
+					"flex shrink-0 items-center gap-1.5 rounded-full border-[0.5px] border-border bg-surface-1 px-3 py-1 text-xs text-muted-foreground transition-colors",
 					isPending
 						? "cursor-not-allowed opacity-60"
 						: "hover:bg-surface-2 hover:text-foreground",
@@ -994,7 +994,7 @@ function ActorMention({
 				<img
 					src={actor.avatarUrl}
 					alt={login}
-					className="inline-block size-3.5 rounded-full border border-border align-text-bottom"
+					className="inline-block size-3.5 rounded-full border-[0.5px] border-border align-text-bottom"
 				/>
 			)}
 			{login}

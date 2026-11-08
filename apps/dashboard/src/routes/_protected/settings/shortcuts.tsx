@@ -258,16 +258,16 @@ function ShortcutsPage() {
 			<div className="flex flex-col gap-6">
 				{shortcutGroups.map((group) => (
 					<section key={group.title} className="flex flex-col gap-2">
-						<h3 className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+						<h3 className="text-xs font-medium text-muted-foreground">
 							{group.title}
 						</h3>
-						<div className="overflow-hidden rounded-xl border border-border/70">
+						<div className="overflow-hidden rounded-xl border-[0.5px] border-border/70">
 							{group.shortcuts.map((shortcut, i) => (
 								<div
 									key={shortcut.description}
 									className={cn(
 										"flex items-center justify-between px-4 py-2.5",
-										i > 0 && "border-t border-border/70",
+										i > 0 && "border-t-[0.5px] border-border/70",
 									)}
 								>
 									<span className="text-sm">{shortcut.description}</span>
@@ -278,7 +278,7 @@ function ShortcutsPage() {
 											return (
 												<span
 													key={key}
-													className="inline-flex h-6 min-w-6 items-center justify-center gap-1 rounded-md border border-border bg-surface-1 px-1.5 text-xs font-medium text-muted-foreground"
+													className="inline-flex h-6 min-w-6 items-center justify-center gap-1 rounded-md border-[0.5px] border-border bg-surface-1 px-1.5 text-xs font-medium text-muted-foreground"
 												>
 													{isSpecial ? token.icon : token}
 												</span>

@@ -218,7 +218,7 @@ export function UserActivityFeed({ events }: { events: UserActivityEvent[] }) {
 							groupIdx === 0 ? "pt-4 pb-2" : "pt-5 pb-2",
 						)}
 					>
-						<span className="inline-block rounded-full border border-border bg-surface-1 px-2.5 py-0.5 text-[11px] font-medium text-muted-foreground">
+						<span className="inline-block rounded-full border-[0.5px] border-border bg-surface-1 px-2.5 py-0.5 text-[11px] font-medium text-muted-foreground">
 							{group.label}
 						</span>
 					</div>
@@ -251,7 +251,7 @@ export function UserActivityFeed({ events }: { events: UserActivityEvent[] }) {
 function CommitsSummaryRow({ summary }: { summary: CommitsSummary }) {
 	return (
 		<div className="flex items-start gap-3 py-2">
-			<div className="relative z-10 flex size-5 shrink-0 items-center justify-center rounded-full border border-border bg-card">
+			<div className="relative z-10 flex size-5 shrink-0 items-center justify-center rounded-full border-[0.5px] border-border bg-card">
 				<GitCommitIcon
 					size={12}
 					strokeWidth={2}
@@ -307,7 +307,7 @@ function PrGroupRow({
 			))}
 			{summary && (
 				<div className="flex items-start gap-3 py-2">
-					<div className="relative z-10 flex size-5 shrink-0 items-center justify-center rounded-full border border-border bg-card">
+					<div className="relative z-10 flex size-5 shrink-0 items-center justify-center rounded-full border-[0.5px] border-border bg-card">
 						<GitPullRequestIcon
 							size={12}
 							strokeWidth={2}
@@ -369,7 +369,7 @@ function ActivityEventRow({ event }: { event: UserActivityEvent }) {
 
 	return (
 		<div className="flex items-start gap-3 py-2">
-			<div className="relative z-10 flex size-5 shrink-0 items-center justify-center rounded-full border border-border bg-card">
+			<div className="relative z-10 flex size-5 shrink-0 items-center justify-center rounded-full border-[0.5px] border-border bg-card">
 				{icon}
 			</div>
 			<div className="flex min-w-0 flex-1 flex-col gap-1 pt-px">
@@ -433,7 +433,7 @@ function PrCard({
 					{title ?? `#${pr.number}`}
 				</span>
 				{pr.isDraft && (
-					<span className="shrink-0 rounded-full border border-border px-1.5 py-px text-[10px] text-muted-foreground">
+					<span className="shrink-0 rounded-full border-[0.5px] border-border px-1.5 py-px text-[10px] text-muted-foreground">
 						Draft
 					</span>
 				)}

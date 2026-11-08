@@ -406,7 +406,7 @@ export const ReviewDiffPane = memo(
 					{(visibleCount < files.length || hasNextPage) && (
 						<>
 							<div ref={loadMoreRef} className="h-8" />
-							<div className="rounded-lg border bg-surface-0 px-3 py-2 text-xs text-muted-foreground">
+							<div className="rounded-lg border-[0.5px] bg-surface-0 px-3 py-2 text-xs text-muted-foreground">
 								Loaded patch payload for {files.length} of {totalFileCount}{" "}
 								files
 								{isFetchingNextPage ? "..." : ""}

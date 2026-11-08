@@ -94,7 +94,7 @@ function BranchSelector({
 					size="sm"
 					onMouseEnter={prefetchBranches}
 					onFocus={prefetchBranches}
-					className="max-w-[220px] border border-border dark:border-transparent"
+					className="max-w-[220px] border-[0.5px] border-border dark:border-transparent"
 				>
 					<GitPullRequestIcon size={14} />
 					<span className="truncate">{currentRef}</span>
@@ -161,7 +161,7 @@ function BranchSelector({
 							))}
 					</CommandList>
 				</Command>
-				<div className="border-t px-3 py-2">
+				<div className="border-t-[0.5px] px-3 py-2">
 					<span className="text-xs text-muted-foreground">
 						{repo.branchCount} branch{repo.branchCount !== 1 ? "es" : ""}
 						{repo.tagCount > 0 && (
@@ -208,7 +208,7 @@ function CodePopover({ repo }: { repo: RepoOverview }) {
 				</Button>
 			</PopoverTrigger>
 			<PopoverContent align="end" className="w-96 p-0 overflow-hidden">
-				<div className="flex items-center gap-2 border-b px-4 py-3 bg-surface-1">
+				<div className="flex items-center gap-2 border-b-[0.5px] px-4 py-3 bg-surface-1">
 					<span className="text-sm font-semibold">Clone {repo.fullName}</span>
 				</div>
 
@@ -263,7 +263,7 @@ function CodePopover({ repo }: { repo: RepoOverview }) {
 					</TabsContent>
 				</Tabs>
 
-				<div className="border-t">
+				<div className="border-t-[0.5px]">
 					<a
 						href={zipUrl}
 						download
@@ -289,7 +289,7 @@ function CloneInput({
 }) {
 	return (
 		<div className="flex items-center gap-1.5">
-			<code className="flex-1 truncate rounded-md border bg-surface-0 px-2.5 py-1.5 text-xs">
+			<code className="flex-1 truncate rounded-md border-[0.5px] bg-surface-0 px-2.5 py-1.5 text-xs">
 				{value}
 			</code>
 			<Button

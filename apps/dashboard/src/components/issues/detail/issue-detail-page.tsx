@@ -167,7 +167,7 @@ function IssueDetailPageSkeleton() {
 			</StaggerItem>
 
 			<StaggerItem index={2}>
-				<div className="rounded-lg border bg-surface-0 p-5">
+				<div className="rounded-lg border-[0.5px] bg-surface-0 p-5">
 					<div className="flex flex-col gap-3">
 						<Skeleton className="h-4 w-full rounded-md" />
 						<Skeleton className="h-4 w-5/6 rounded-md" />

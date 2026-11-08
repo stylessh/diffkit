@@ -36,7 +36,7 @@ export default function RepositoryMediaPlayer({
 		return (
 			<MediaController
 				audio
-				className="w-full max-w-3xl overflow-hidden rounded-lg border bg-surface-0"
+				className="w-full max-w-3xl overflow-hidden rounded-lg border-[0.5px] bg-surface-0"
 				style={controllerStyle}
 			>
 				{/* biome-ignore lint/a11y/useMediaCaption: arbitrary repository audio has no associated captions asset. */}

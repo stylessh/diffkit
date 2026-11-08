@@ -69,7 +69,7 @@ export function CompareForm({
 					placeholder="Pull request title"
 					// biome-ignore lint/a11y/noAutofocus: intentional — this is a dedicated PR-creation page
 					autoFocus
-					className="flex h-9 w-full rounded-md border bg-surface-1 px-3 py-1 text-sm outline-none transition-[box-shadow,border-color] placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px]"
+					className="flex h-9 w-full rounded-md border-[0.5px] bg-surface-1 px-3 py-1 text-sm outline-none transition-[box-shadow,border-color] placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px]"
 				/>
 			</div>
 
@@ -84,7 +84,7 @@ export function CompareForm({
 			</div>
 
 			{error ? (
-				<div className="rounded-lg border border-destructive/50 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+				<div className="rounded-lg border-[0.5px] border-destructive/50 bg-destructive/10 px-4 py-3 text-sm text-destructive">
 					{error}
 				</div>
 			) : null}
@@ -127,7 +127,7 @@ export function CompareForm({
 						disabled={submitting}
 						onClick={() => setDraftMode((v) => !v)}
 						className={cn(
-							"flex h-8 w-7 items-center justify-center border-l transition-[background-color,opacity] disabled:pointer-events-none disabled:opacity-50",
+							"flex h-8 w-7 items-center justify-center border-l-[0.5px] transition-[background-color,opacity] disabled:pointer-events-none disabled:opacity-50",
 							draftMode
 								? "border-border bg-surface-2 text-foreground hover:bg-surface-2/80"
 								: "border-black/40 bg-primary text-primary-foreground hover:bg-primary/90 dark:border-white/20",

@@ -512,7 +512,7 @@ function MergeStatusCard({
 	});
 
 	return (
-		<div className="flex flex-col overflow-hidden rounded-lg border">
+		<div className="flex flex-col overflow-hidden rounded-lg border-[0.5px]">
 			{/* Reviews section */}
 			<ReviewsSection
 				approvedReviews={approvedReviews}
@@ -642,7 +642,7 @@ function ReviewsSection({
 			<CollapsibleTrigger asChild>
 				<button
 					type="button"
-					className="flex w-full items-start gap-3 border-b border-border/50 px-4 py-3 text-left transition-colors hover:bg-surface-1/50"
+					className="flex w-full items-start gap-3 border-b-[0.5px] border-border/50 px-4 py-3 text-left transition-colors hover:bg-surface-1/50"
 				>
 					<div className="mt-0.5 shrink-0">
 						<StatusIcon status={reviewStatus} />
@@ -662,12 +662,12 @@ function ReviewsSection({
 			</CollapsibleTrigger>
 			<CollapsibleContent>
 				{allReviews.length === 0 && (
-					<div className="border-b border-border/50 bg-surface-1/50 px-4 py-3 pl-11">
+					<div className="border-b-[0.5px] border-border/50 bg-surface-1/50 px-4 py-3 pl-11">
 						<p className="text-xs text-muted-foreground">No reviewers added</p>
 					</div>
 				)}
 				{allReviews.length > 0 && (
-					<div className="flex flex-col border-b border-border/50 bg-surface-1/50 py-1">
+					<div className="flex flex-col border-b-[0.5px] border-border/50 bg-surface-1/50 py-1">
 						{allReviews.map((review) => (
 							<div
 								key={review.id}
@@ -680,7 +680,7 @@ function ReviewsSection({
 									<img
 										src={review.author.avatarUrl}
 										alt={review.author.login}
-										className="size-4 rounded-full border border-border"
+										className="size-4 rounded-full border-[0.5px] border-border"
 									/>
 								)}
 								<span className="text-xs">
@@ -957,7 +957,7 @@ function ChecksSection({
 			<CollapsibleTrigger asChild>
 				<button
 					type="button"
-					className="flex w-full items-start gap-3 border-b border-border/50 px-4 py-3 text-left transition-colors hover:bg-surface-1/50"
+					className="flex w-full items-start gap-3 border-b-[0.5px] border-border/50 px-4 py-3 text-left transition-colors hover:bg-surface-1/50"
 				>
 					<div className="mt-0.5 shrink-0">
 						<StatusIcon status={checkStatus} />
@@ -976,7 +976,7 @@ function ChecksSection({
 				</button>
 			</CollapsibleTrigger>
 			{pendingWorkflowApprovals.length > 0 && (
-				<div className="flex items-start gap-3 border-b border-border/50 bg-surface-1/50 px-4 py-3">
+				<div className="flex items-start gap-3 border-b-[0.5px] border-border/50 bg-surface-1/50 px-4 py-3">
 					<div className="mt-0.5 shrink-0 text-pill-warning-text">
 						<AlertCircleIcon size={16} strokeWidth={2} />
 					</div>
@@ -1003,7 +1003,7 @@ function ChecksSection({
 				</div>
 			)}
 			<CollapsibleContent>
-				<div className="flex max-h-64 flex-col overflow-y-auto border-b border-border/50 bg-surface-1/50">
+				<div className="flex max-h-64 flex-col overflow-y-auto border-b-[0.5px] border-border/50 bg-surface-1/50">
 					{checkRunGroups.map(({ key, label }) => {
 						const runs = groupedRuns[key];
 						if (runs.length === 0) return null;
@@ -1041,7 +1041,7 @@ function ChecksSection({
 												<img
 													src={run.appAvatarUrl}
 													alt=""
-													className="size-4 shrink-0 rounded border border-border"
+													className="size-4 shrink-0 rounded border-[0.5px] border-border"
 												/>
 											)}
 											{run.workflowRunId != null ? (
@@ -1074,7 +1074,7 @@ function ChecksSection({
 											{run.required && (
 												<StatePill
 													tone="muted"
-													className="-my-0.5 border border-border bg-transparent"
+													className="-my-0.5 border-[0.5px] border-border bg-transparent"
 												>
 													Required
 												</StatePill>
@@ -1107,7 +1107,7 @@ function ChecksSection({
 					})}
 				</div>
 				{(hasCheckFailures || checks.total > 0) && (
-					<div className="flex items-center gap-2 border-b border-border/50 bg-surface-1/50 px-4 py-1.5 pl-11">
+					<div className="flex items-center gap-2 border-b-[0.5px] border-border/50 bg-surface-1/50 px-4 py-1.5 pl-11">
 						{hasCheckFailures && (
 							<Button
 								variant="ghost"
@@ -1176,7 +1176,7 @@ function ConflictsSection({
 			<CollapsibleTrigger asChild>
 				<button
 					type="button"
-					className="flex w-full items-start gap-3 border-b border-border/50 px-4 py-3 text-left transition-colors hover:bg-surface-1/50"
+					className="flex w-full items-start gap-3 border-b-[0.5px] border-border/50 px-4 py-3 text-left transition-colors hover:bg-surface-1/50"
 				>
 					<div className="mt-0.5 shrink-0">
 						<StatusIcon status="error" />
@@ -1200,7 +1200,7 @@ function ConflictsSection({
 				</button>
 			</CollapsibleTrigger>
 			<CollapsibleContent>
-				<div className="flex max-h-64 flex-col overflow-y-auto border-b border-border/50 bg-surface-1/50 py-1">
+				<div className="flex max-h-64 flex-col overflow-y-auto border-b-[0.5px] border-border/50 bg-surface-1/50 py-1">
 					{conflictingFiles.map((file) => (
 						<div
 							key={file}
@@ -1274,7 +1274,7 @@ function UpdateBranchButton({
 						variant="secondary"
 						size="xs"
 						disabled={isUpdating}
-						className="rounded-l-none border-l border-l-secondary-foreground/10 px-1"
+						className="rounded-l-none border-l-[0.5px] border-l-secondary-foreground/10 px-1"
 					>
 						<ChevronDownIcon size={12} strokeWidth={2} />
 					</Button>
@@ -1484,7 +1484,7 @@ function MergeFooter({
 						id="merge-commit-title"
 						value={commitTitle}
 						onChange={(e) => setCommitTitle(e.target.value)}
-						className="flex h-9 w-full rounded-md border bg-transparent px-3 py-1 text-sm shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-1 focus-visible:-outline-offset-1 focus-visible:outline-ring"
+						className="flex h-9 w-full rounded-md border-[0.5px] bg-transparent px-3 py-1 text-sm shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-1 focus-visible:-outline-offset-1 focus-visible:outline-ring"
 					/>
 				</div>
 				<div className="flex flex-col gap-1.5">
@@ -1497,7 +1497,7 @@ function MergeFooter({
 						onChange={(e) => setCommitDescription(e.target.value)}
 						placeholder="Add an optional extended description..."
 						rows={3}
-						className="flex w-full rounded-md border bg-transparent px-3 py-2 text-sm shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-1 focus-visible:-outline-offset-1 focus-visible:outline-ring resize-none"
+						className="flex w-full rounded-md border-[0.5px] bg-transparent px-3 py-2 text-sm shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-1 focus-visible:-outline-offset-1 focus-visible:outline-ring resize-none"
 					/>
 				</div>
 				<div className="flex items-center gap-2">
@@ -1555,7 +1555,7 @@ function MergeFooter({
 								<Button
 									size="sm"
 									disabled={isDisabled}
-									className="rounded-l-none border-l border-primary-foreground/20 px-1.5"
+									className="rounded-l-none border-l-[0.5px] border-primary-foreground/20 px-1.5"
 								>
 									<ChevronDownIcon size={14} strokeWidth={2} />
 								</Button>
@@ -1619,7 +1619,7 @@ function StatusRow({
 	action?: React.ReactNode;
 }) {
 	return (
-		<div className="flex items-start gap-3 border-b border-border/50 px-4 py-3">
+		<div className="flex items-start gap-3 border-b-[0.5px] border-border/50 px-4 py-3">
 			<div className="mt-0.5 shrink-0">{icon}</div>
 			<div className="flex min-w-0 flex-1 flex-col gap-0.5">
 				<p className="text-sm font-medium">{title}</p>
@@ -1656,13 +1656,13 @@ function StatusIcon({ status }: { status: StatusType }) {
 
 function MergeStatusSkeleton() {
 	return (
-		<div className="flex flex-col rounded-lg border">
+		<div className="flex flex-col rounded-lg border-[0.5px]">
 			{[0, 1, 2].map((item) => (
 				<div
 					key={item}
 					className={cn(
 						"flex items-start gap-3 px-4 py-3",
-						item < 2 && "border-b border-border/50",
+						item < 2 && "border-b-[0.5px] border-border/50",
 					)}
 				>
 					<Skeleton className="mt-0.5 size-4 rounded-full" />
@@ -2047,7 +2047,7 @@ function ActivityTimeline({
 									isLastInCommitRun ? "pb-5" : "pb-2",
 								)}
 							>
-								<div className="flex size-5 shrink-0 items-center justify-center rounded-full border border-border bg-surface-1">
+								<div className="flex size-5 shrink-0 items-center justify-center rounded-full border-[0.5px] border-border bg-surface-1">
 									<GitCommitIcon
 										size={12}
 										strokeWidth={2}
@@ -2058,7 +2058,7 @@ function ActivityTimeline({
 									<img
 										src={commit.author.avatarUrl}
 										alt={commit.author.login}
-										className="size-5 shrink-0 rounded-full border border-border self-start"
+										className="size-5 shrink-0 rounded-full border-[0.5px] border-border self-start"
 									/>
 								) : (
 									<div className="size-5 shrink-0 rounded-full bg-surface-2" />
@@ -2093,7 +2093,7 @@ function ActivityTimeline({
 									<img
 										src={mergedPr.mergedBy.avatarUrl}
 										alt={mergedPr.mergedBy.login}
-										className="size-5 shrink-0 rounded-full border border-border self-start"
+										className="size-5 shrink-0 rounded-full border-[0.5px] border-border self-start"
 									/>
 								) : (
 									<div className="size-5 shrink-0 rounded-full bg-surface-2" />
@@ -2156,10 +2156,10 @@ function ActivityTimeline({
 									<img
 										src={group.actor?.avatarUrl}
 										alt={group.actor?.login}
-										className="size-5 shrink-0 rounded-full border border-border self-start"
+										className="size-5 shrink-0 rounded-full border-[0.5px] border-border self-start"
 									/>
 								) : (
-									<div className="flex size-5 shrink-0 items-center justify-center rounded-full border border-border bg-surface-1 self-start">
+									<div className="flex size-5 shrink-0 items-center justify-center rounded-full border-[0.5px] border-border bg-surface-1 self-start">
 										{icon}
 									</div>
 								)}
@@ -2211,10 +2211,10 @@ function ActivityTimeline({
 									<img
 										src={group.actor?.avatarUrl}
 										alt={group.actor?.login}
-										className="size-5 shrink-0 rounded-full border border-border self-start"
+										className="size-5 shrink-0 rounded-full border-[0.5px] border-border self-start"
 									/>
 								) : (
-									<div className="flex size-5 shrink-0 items-center justify-center rounded-full border border-border bg-surface-1 self-start">
+									<div className="flex size-5 shrink-0 items-center justify-center rounded-full border-[0.5px] border-border bg-surface-1 self-start">
 										{icon}
 									</div>
 								)}
@@ -2307,7 +2307,7 @@ function LoadMoreDivider({
 				onClick={onLoadMore}
 				disabled={isPending}
 				className={cn(
-					"flex shrink-0 items-center gap-1.5 rounded-full border border-border bg-surface-1 px-3 py-1 text-xs text-muted-foreground transition-colors",
+					"flex shrink-0 items-center gap-1.5 rounded-full border-[0.5px] border-border bg-surface-1 px-3 py-1 text-xs text-muted-foreground transition-colors",
 					isPending
 						? "cursor-not-allowed opacity-60"
 						: "hover:bg-surface-2 hover:text-foreground",
@@ -2440,10 +2440,10 @@ function TimelineEventRow({
 				<img
 					src={event.actor?.avatarUrl}
 					alt={event.actor?.login}
-					className="size-5 shrink-0 rounded-full border border-border self-start"
+					className="size-5 shrink-0 rounded-full border-[0.5px] border-border self-start"
 				/>
 			) : (
-				<div className="flex size-5 shrink-0 items-center justify-center rounded-full border border-border bg-surface-1 self-start">
+				<div className="flex size-5 shrink-0 items-center justify-center rounded-full border-[0.5px] border-border bg-surface-1 self-start">
 					{icon}
 				</div>
 			)}
@@ -2580,7 +2580,7 @@ function PullCommentBubble({
 						src={comment.author.avatarUrl}
 						alt={comment.author.login}
 						className={cn(
-							"rounded-full border border-border",
+							"rounded-full border-[0.5px] border-border",
 							isReply ? "size-3.5" : "size-4",
 						)}
 					/>
@@ -2738,7 +2738,7 @@ function ReviewCommentBubble({
 					<img
 						src={comment.author.avatarUrl}
 						alt={comment.author.login}
-						className="size-4 rounded-full border border-border"
+						className="size-4 rounded-full border-[0.5px] border-border"
 					/>
 				) : (
 					<div className="size-4 rounded-full bg-surface-2" />
@@ -2910,7 +2910,7 @@ function ReviewCommentBlock({
 			const data = annotation.metadata;
 			if (!data) return null;
 			return (
-				<div className="m-2 divide-y overflow-hidden rounded-lg border bg-surface-0">
+				<div className="m-2 divide-y-[0.5px] overflow-hidden rounded-lg border-[0.5px] bg-surface-0">
 					<ReviewCommentBubble
 						comment={data}
 						owner={owner}
@@ -3020,7 +3020,7 @@ function ReviewCommentBlock({
 	);
 
 	return (
-		<div className="overflow-hidden rounded-lg border">
+		<div className="overflow-hidden rounded-lg border-[0.5px]">
 			<div className="flex items-center gap-1.5 bg-surface-1 px-3 py-2 text-[13px] text-muted-foreground">
 				{threadInfo?.isResolved && (
 					<span className="flex items-center gap-1 text-xs font-medium text-success">
@@ -3217,7 +3217,7 @@ function ActorMention({
 				<img
 					src={actor.avatarUrl}
 					alt={login}
-					className="inline-block size-3.5 rounded-full border border-border align-text-bottom"
+					className="inline-block size-3.5 rounded-full border-[0.5px] border-border align-text-bottom"
 				/>
 			)}
 			{login}

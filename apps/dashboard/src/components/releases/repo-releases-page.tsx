@@ -117,7 +117,7 @@ export function RepoReleasesPage({
 							</button>
 						</p>
 					) : releases.length === 0 ? (
-						<div className="flex flex-col items-center gap-3 rounded-xl border border-dashed py-16 text-center">
+						<div className="flex flex-col items-center gap-3 rounded-xl border-[0.5px] border-dashed py-16 text-center">
 							<p className="text-sm font-medium">
 								{page > 1
 									? "No more releases"
@@ -183,7 +183,7 @@ function ReleasesSkeleton() {
 			{["a", "b"].map((key) => (
 				<div
 					key={key}
-					className="grid gap-5 rounded-xl border p-5 lg:grid-cols-[14rem_minmax(0,1fr)] lg:gap-8"
+					className="grid gap-5 rounded-xl border-[0.5px] p-5 lg:grid-cols-[14rem_minmax(0,1fr)] lg:gap-8"
 				>
 					<div className="flex flex-col gap-3">
 						<Skeleton className="h-4 w-16 rounded-full" />

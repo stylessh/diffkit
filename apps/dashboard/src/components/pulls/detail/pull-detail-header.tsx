@@ -52,7 +52,7 @@ export function PullDetailHeader({
 								<img
 									src={pr.author.avatarUrl}
 									alt={pr.author.login}
-									className="size-4 shrink-0 rounded-full border border-border"
+									className="size-4 shrink-0 rounded-full border-[0.5px] border-border"
 								/>
 								<span className="shrink-0 font-medium text-foreground">
 									{pr.author.login}

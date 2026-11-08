@@ -123,7 +123,7 @@ export function JobCard({
 			{expanded ? (
 				<div
 					id={`job-steps-${job.id}`}
-					className="flex flex-col border-t text-xs"
+					className="flex flex-col border-t-[0.5px] text-xs"
 				>
 					{job.steps.length === 0 ? (
 						<div className="px-3 py-2 text-muted-foreground">No steps</div>

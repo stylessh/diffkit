@@ -192,9 +192,7 @@ export function LabelsSection({
 	return (
 		<div className="flex flex-col gap-2.5">
 			<div className="flex items-center justify-between">
-				<h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-					Labels
-				</h3>
+				<h3 className="text-xs font-medium text-muted-foreground">Labels</h3>
 				<Popover
 					open={pickerOpen}
 					onOpenChange={(open) => {
@@ -216,7 +214,7 @@ export function LabelsSection({
 						</button>
 					</PopoverTrigger>
 					<PopoverContent align="end" className="w-64 p-0">
-						<div className="flex items-center gap-2 border-b px-3 py-2">
+						<div className="flex items-center gap-2 border-b-[0.5px] px-3 py-2">
 							<SearchIcon className="size-3.5 shrink-0 text-muted-foreground" />
 							<input
 								value={search}

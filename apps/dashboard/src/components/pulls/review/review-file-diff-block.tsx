@@ -332,7 +332,7 @@ export const ReviewFileDiffBlock = memo(function ReviewFileDiffBlock({
 				/>
 				{!isCollapsed && (
 					<div className="px-2 pb-2">
-						<div className="flex items-center justify-center rounded-b-lg border border-t-0 bg-surface-0 py-8 text-sm text-muted-foreground">
+						<div className="flex items-center justify-center rounded-b-lg border-[0.5px] border-t-0 bg-surface-0 py-8 text-sm text-muted-foreground">
 							Binary file or diff too large to display
 						</div>
 					</div>
@@ -380,7 +380,7 @@ const FileHeader = memo(function FileHeader({
 	const [copied, setCopied] = useState(false);
 
 	return (
-		<div className="sticky top-2 z-10 flex items-center gap-2 rounded-lg border bg-surface-1 px-3 py-2 select-none">
+		<div className="sticky top-2 z-10 flex items-center gap-2 rounded-lg border-[0.5px] bg-surface-1 px-3 py-2 select-none">
 			<button
 				type="button"
 				onClick={onToggleCollapse}
@@ -530,7 +530,7 @@ function ReviewCommentBubble({
 					<img
 						src={comment.author.avatarUrl}
 						alt={comment.author.login}
-						className="size-4 rounded-full border border-border"
+						className="size-4 rounded-full border-[0.5px] border-border"
 					/>
 				) : (
 					<div className="size-4 rounded-full bg-surface-2" />
@@ -635,7 +635,7 @@ function ReviewCommentThread({
 	};
 
 	return (
-		<div className="m-2 divide-y overflow-hidden rounded-lg border bg-surface-0">
+		<div className="m-2 divide-y-[0.5px] overflow-hidden rounded-lg border-[0.5px] bg-surface-0">
 			{threadInfo?.isResolved && (
 				<div className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-success">
 					<CheckIcon size={12} strokeWidth={2} />
@@ -780,7 +780,7 @@ function PendingCommentBubble({
 	}
 
 	return (
-		<div className="mx-2 my-1 rounded-lg border border-dashed bg-surface-0 px-3 py-2.5">
+		<div className="mx-2 my-1 rounded-lg border-[0.5px] border-dashed bg-surface-0 px-3 py-2.5">
 			<div className="mb-1.5 flex items-center gap-1.5">
 				<CommentIcon
 					size={12}

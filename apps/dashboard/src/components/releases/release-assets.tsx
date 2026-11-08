@@ -74,7 +74,7 @@ export function ReleaseAssets({
 	if (rows.length === 0) return null;
 
 	const list = (
-		<ul className="divide-y divide-border/60">
+		<ul className="divide-y-[0.5px] divide-border/60">
 			{rows.map((row) => (
 				<li key={row.id}>
 					<a
@@ -122,7 +122,7 @@ export function ReleaseAssets({
 	);
 
 	const header = (
-		<span className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+		<span className="flex items-center gap-2 text-xs font-medium text-muted-foreground">
 			Assets
 			<span className="rounded-full bg-surface-2 px-1.5 font-normal tabular-nums tracking-normal">
 				{rows.length}
@@ -133,7 +133,10 @@ export function ReleaseAssets({
 	if (collapsible) {
 		return (
 			<details
-				className={cn("group overflow-hidden rounded-lg border", className)}
+				className={cn(
+					"group overflow-hidden rounded-lg border-[0.5px]",
+					className,
+				)}
 			>
 				<summary className="flex cursor-pointer list-none items-center justify-between px-3 py-2 transition-colors hover:bg-surface-1 [&::-webkit-details-marker]:hidden">
 					{header}
@@ -144,14 +147,16 @@ export function ReleaseAssets({
 						Hide
 					</span>
 				</summary>
-				<div className="border-t">{list}</div>
+				<div className="border-t-[0.5px]">{list}</div>
 			</details>
 		);
 	}
 
 	return (
-		<section className={cn("overflow-hidden rounded-lg border", className)}>
-			<div className="border-b px-3 py-2">{header}</div>
+		<section
+			className={cn("overflow-hidden rounded-lg border-[0.5px]", className)}
+		>
+			<div className="border-b-[0.5px] px-3 py-2">{header}</div>
 			{list}
 		</section>
 	);
