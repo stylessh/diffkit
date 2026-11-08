@@ -102,6 +102,23 @@ describe("entity → query registry", () => {
 		}
 	});
 
+	it("refetches code at a branch on push, but never code pinned to a commit", () => {
+		const push = { kind: "repo", repo: "acme/api" } as const;
+		const input = { owner: "acme", repo: "api", path: "src/a.ts" };
+		expect(
+			githubQueryMatchesEntity(
+				githubQueryKeys.code.blob(scope, { ...input, ref: "main" }),
+				push,
+			),
+		).toBe(true);
+		expect(
+			githubQueryMatchesEntity(
+				githubQueryKeys.code.blame(scope, { ...input, ref: "a".repeat(40) }),
+				push,
+			),
+		).toBe(false);
+	});
+
 	it("targets one pull, not its neighbours or other repos", () => {
 		const page = githubQueryKeys.pulls.page(scope, {
 			owner: "acme",

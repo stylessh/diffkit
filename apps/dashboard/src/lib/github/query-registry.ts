@@ -1,3 +1,4 @@
+import { isFullCommitSha } from "../code-browsing/code-location";
 import {
 	type GitHubChangeEntity,
 	type GitHubChangeEntityKind,
@@ -47,7 +48,6 @@ export const githubQueryEntityCoverage: Record<
 	"repo.recentPushableBranch": ["repo"],
 	"repo.template": ["repo"],
 	"repo.tree": ["repo"],
-	"repo.fileContent": ["repo"],
 	"repo.fileLastCommit": ["repo"],
 	"repo.commit": ["checks"],
 	"repo.refHeadCommit": ["repo"],
@@ -55,6 +55,10 @@ export const githubQueryEntityCoverage: Record<
 	"repo.contributors": ["repo"],
 	"repo.participation": ["repo"],
 	"repo.discussions": ["discussions"],
+	"code.gitTree": ["repo"],
+	"code.blob": ["repo"],
+	"code.blame": ["repo"],
+	"code.search": "exempt",
 	"issues.mine": ["issue"],
 	"issues.user": ["issue"],
 	"issues.repo": ["issue"],
@@ -250,6 +254,9 @@ export function githubQueryMatchesEntity(
 				? input.sha.toLowerCase().startsWith(entity.sha) ||
 						entity.sha.startsWith(input.sha.toLowerCase())
 				: true;
+		case "repo":
+			// Content read at a full commit SHA can never change.
+			return !isFullCommitSha(input.ref);
 		default:
 			return true;
 	}
