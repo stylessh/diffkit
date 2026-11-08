@@ -65,6 +65,7 @@ user.
 | `isolated/create-pull-request` | "Create PR" on a branch row, the prefilled compare form, and a draft pull request created with a label and milestone |
 | `isolated/inbox` | marking a notification as read |
 | `isolated/instant-ui` | a revisited pull request paints from IndexedDB with no skeleton while every server function is held |
+| `isolated/repo-settings` | repository settings: saving the description, the last-merge-method guard, labels, an Actions secret and variable, collaborators and invitations, a webhook and its redelivery |
 | `isolated/change-feed` | a signed webhook refreshes an open list without a reload |
 
 The emulator does not deliver app webhooks in this mode, so only the webhooks a

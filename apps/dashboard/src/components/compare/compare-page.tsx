@@ -1,6 +1,10 @@
 import { GitCompareIcon, GitPullRequestIcon } from "@diffkit/icons";
 import { Button } from "@diffkit/ui/components/button";
-import { Callout, CalloutContent } from "@diffkit/ui/components/callout";
+import {
+	Callout,
+	CalloutAction,
+	CalloutContent,
+} from "@diffkit/ui/components/callout";
 import { BranchBadge } from "@diffkit/ui/components/detail-layout";
 import type { MentionCandidate } from "@diffkit/ui/components/markdown-editor";
 import {
@@ -20,6 +24,7 @@ import { type ReactNode, useMemo, useReducer, useState } from "react";
 import {
 	type CompareRefs,
 	formatCompareSplat,
+	pullHeadFilter,
 	resolveCompareRefs,
 } from "#/lib/compare-ref";
 import type { CompareDetail } from "#/lib/github.functions";
@@ -27,6 +32,7 @@ import { createPullRequest } from "#/lib/github.functions";
 import {
 	type GitHubQueryScope,
 	githubCompareDetailQueryOptions,
+	githubOpenPullForRefsQueryOptions,
 	githubRepoBranchesListInfiniteQueryOptions,
 	githubRepoCollaboratorsQueryOptions,
 	githubRepoOverviewQueryOptions,
@@ -44,6 +50,7 @@ import {
 	buildCreatePullRequestInput,
 	emptyPullRequestDraft,
 	type PullRequestAccess,
+	permissionLookup,
 	pullRequestAccess,
 	pullRequestBody,
 	pullRequestDraftReducer,
@@ -117,6 +124,15 @@ export function ComparePage({
 		}),
 		enabled: hasMounted && Boolean(resolved?.base && resolved.head),
 	});
+	const openPullQuery = useQuery({
+		...githubOpenPullForRefsQueryOptions(scope, {
+			owner,
+			repo,
+			base: resolved?.base ?? "",
+			head: pullHeadFilter(resolved?.head ?? "", owner),
+		}),
+		enabled: hasMounted && (compareQuery.data?.aheadBy ?? 0) > 0,
+	});
 
 	if (overviewQuery.error) throw overviewQuery.error;
 	if (!resolved?.base || !defaultBranch) return <ComparePageSkeleton />;
@@ -130,14 +146,12 @@ export function ComparePage({
 	const { base, head } = resolved;
 	const view = resolveCompareView(head, compareQuery);
 	const access = pullRequestAccess({
-		permission: permissionQuery.data,
+		lookup: permissionLookup(permissionQuery),
 		head: head ?? "",
 		repoOwner: owner,
 	});
 	const compare = view.kind === "ready" ? view.compare : null;
-	const existingPull =
-		branches.items.find((branch) => branch.name === head)?.pullRequest ?? null;
-	const openPull = existingPull?.state === "OPEN" ? existingPull : null;
+	const openPull = openPullQuery.data ?? null;
 
 	const navigateTo = (next: { base: string; head: string | null }) => {
 		void router.navigate({
@@ -212,7 +226,6 @@ export function ComparePage({
 						scope={scope}
 						base={base}
 						head={head}
-						defaultBranch={defaultBranch}
 						branches={branches}
 						showForm={showForm}
 						access={access}
@@ -230,7 +243,6 @@ function CompareBody({
 	scope,
 	base,
 	head,
-	defaultBranch,
 	branches,
 	showForm,
 	access,
@@ -241,7 +253,6 @@ function CompareBody({
 	scope: GitHubQueryScope;
 	base: string;
 	head: string | null;
-	defaultBranch: string;
 	branches: CompareBranches;
 	showForm: boolean;
 	access: PullRequestAccess;
@@ -253,7 +264,6 @@ function CompareBody({
 					owner={owner}
 					repo={repo}
 					base={base}
-					defaultBranch={defaultBranch}
 					branches={branches}
 				/>
 			);
@@ -296,25 +306,29 @@ function CompareReady({
 	showForm: boolean;
 	access: PullRequestAccess;
 }) {
+	const noCommits = showForm && compare.aheadBy === 0;
+
 	return (
 		<>
-			{showForm ? (
-				compare.aheadBy === 0 ? (
-					<Notice>
-						{head} has no commits that {base} doesn't, so there is nothing to
-						open a pull request for.
-					</Notice>
-				) : (
-					<PullRequestComposer
-						compare={compare}
-						access={access}
-						owner={owner}
-						repo={repo}
-						scope={scope}
-						base={base}
-						head={head}
-					/>
-				)
+			{noCommits ? (
+				<Notice>
+					{head} has no commits that {base} doesn't, so there is nothing to open
+					a pull request for.
+				</Notice>
+			) : null}
+			{!noCommits && access === "unavailable" ? (
+				<AccessUnavailable owner={owner} repo={repo} scope={scope} />
+			) : null}
+			{showForm && !noCommits && access !== "unavailable" ? (
+				<PullRequestComposer
+					compare={compare}
+					access={access}
+					owner={owner}
+					repo={repo}
+					scope={scope}
+					base={base}
+					head={head}
+				/>
 			) : null}
 			<CompareDiffView
 				commits={compare.commits}
@@ -504,13 +518,51 @@ function ShortPullRequest() {
 	);
 }
 
-function Notice({ children }: { children: ReactNode }) {
+function Notice({
+	children,
+	action,
+}: {
+	children: ReactNode;
+	action?: ReactNode;
+}) {
 	return (
 		<Callout>
 			<CalloutContent className="text-muted-foreground">
 				<span>{children}</span>
 			</CalloutContent>
+			{action ? <CalloutAction>{action}</CalloutAction> : null}
 		</Callout>
+	);
+}
+
+function AccessUnavailable({
+	owner,
+	repo,
+	scope,
+}: {
+	owner: string;
+	repo: string;
+	scope: GitHubQueryScope;
+}) {
+	const permissionQuery = useQuery(
+		githubRepoViewerPermissionQueryOptions(scope, { owner, repo }),
+	);
+	return (
+		<Notice
+			action={
+				<Button
+					variant="outline"
+					size="sm"
+					disabled={permissionQuery.isFetching}
+					onClick={() => void permissionQuery.refetch()}
+				>
+					Retry
+				</Button>
+			}
+		>
+			Couldn't check your access to {owner}/{repo}, so pull request actions are
+			hidden.
+		</Notice>
 	);
 }
 

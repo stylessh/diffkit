@@ -12,6 +12,9 @@
  *   milestones:owner/repo     the milestone set
  *   collaborators:owner/repo  collaborators
  *   discussions:owner/repo    discussions
+ *   settings:owner/repo       webhooks, Actions secrets and variables; no
+ *                             webhook reports these, so only this app's own
+ *                             mutations raise it
  *
  * Repo names are stored lowercased; GitHub logins and repo names are
  * case-insensitive.
@@ -29,7 +32,8 @@ export type GitHubChangeEntity =
 	| { kind: "labels"; repo: string }
 	| { kind: "milestones"; repo: string }
 	| { kind: "collaborators"; repo: string }
-	| { kind: "discussions"; repo: string };
+	| { kind: "discussions"; repo: string }
+	| { kind: "settings"; repo: string };
 
 export type GitHubChangeEntityKind = GitHubChangeEntity["kind"];
 
@@ -55,7 +59,7 @@ const REPO_PATTERN = "([^/\\s#@]+/[^/\\s#@]+)";
 const NUMBERED = new RegExp(`^(pull|issue|run):${REPO_PATTERN}#(\\d+)$`);
 const CHECKS = new RegExp(`^checks:${REPO_PATTERN}@([0-9a-f]{7,40})$`);
 const REPO_ONLY = new RegExp(
-	`^(repo|release|labels|milestones|collaborators|discussions):${REPO_PATTERN}$`,
+	`^(repo|release|labels|milestones|collaborators|discussions|settings):${REPO_PATTERN}$`,
 );
 
 export function parseEntityKey(key: string): GitHubChangeEntity | null {
@@ -89,6 +93,7 @@ export function parseEntityKey(key: string): GitHubChangeEntity | null {
 			case "milestones":
 			case "collaborators":
 			case "discussions":
+			case "settings":
 				return { kind, repo: repo.toLowerCase() };
 			default:
 				return null;
@@ -96,10 +101,6 @@ export function parseEntityKey(key: string): GitHubChangeEntity | null {
 	}
 	return null;
 }
-
-// ---------------------------------------------------------------------------
-// Webhook → entities
-// ---------------------------------------------------------------------------
 
 type JsonRecord = Record<string, unknown>;
 

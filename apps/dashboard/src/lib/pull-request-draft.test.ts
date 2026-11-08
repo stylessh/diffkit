@@ -1,9 +1,9 @@
 import { describe, expect, it } from "vitest";
-import type { RepoViewerPermission } from "./github.types";
 import {
 	buildCreatePullRequestInput,
 	emptyPullRequestDraft,
 	type PullRequestDraft,
+	permissionLookup,
 	pullRequestAccess,
 	pullRequestDraftReducer,
 	suggestPullRequestTitle,
@@ -125,35 +125,70 @@ describe("buildCreatePullRequestInput", () => {
 });
 
 describe("pullRequestAccess", () => {
-	const write: RepoViewerPermission = { permission: "WRITE", canPush: true };
-	const read: RepoViewerPermission = { permission: "READ", canPush: false };
+	const known = (canPush: boolean) => ({ status: "known", canPush }) as const;
 	const args = { head: "feature", repoOwner: "acme" };
 
 	it("waits for the permission before deciding", () => {
-		expect(pullRequestAccess({ ...args, permission: undefined })).toBe(
+		expect(pullRequestAccess({ ...args, lookup: { status: "pending" } })).toBe(
 			"checking",
 		);
 	});
 
 	it("allows anyone with push access", () => {
-		expect(pullRequestAccess({ ...args, permission: write })).toBe("allowed");
+		expect(pullRequestAccess({ ...args, lookup: known(true) })).toBe("allowed");
 	});
 
 	it("blocks a reader proposing a branch of the repository itself", () => {
-		expect(pullRequestAccess({ ...args, permission: read })).toBe("read-only");
+		expect(pullRequestAccess({ ...args, lookup: known(false) })).toBe(
+			"read-only",
+		);
 	});
 
-	it("allows a reader proposing from a fork, without waiting for the permission", () => {
+	it("reports a failed lookup instead of calling the viewer a reader", () => {
+		expect(pullRequestAccess({ ...args, lookup: { status: "failed" } })).toBe(
+			"unavailable",
+		);
+	});
+
+	it("allows a reader proposing from a fork whatever the lookup says", () => {
+		for (const lookup of [
+			known(false),
+			{ status: "pending" },
+			{ status: "failed" },
+		] as const) {
+			expect(
+				pullRequestAccess({ ...args, head: "octocat:feature", lookup }),
+			).toBe("allowed");
+		}
+	});
+});
+
+describe("permissionLookup", () => {
+	it("is pending until the query answers", () => {
+		expect(permissionLookup({ isError: false, data: undefined })).toEqual({
+			status: "pending",
+		});
+	});
+
+	it("reads push access from a known permission", () => {
 		expect(
-			pullRequestAccess({ ...args, head: "octocat:feature", permission: read }),
-		).toBe("allowed");
-		expect(
-			pullRequestAccess({
-				...args,
-				head: "octocat:feature",
-				permission: undefined,
+			permissionLookup({
+				isError: false,
+				data: { permission: "WRITE", canPush: true },
 			}),
-		).toBe("allowed");
+		).toEqual({ status: "known", canPush: true });
+	});
+
+	it("treats the null-permission fallback and a rejected query as failed", () => {
+		expect(
+			permissionLookup({
+				isError: false,
+				data: { permission: null, canPush: false },
+			}),
+		).toEqual({ status: "failed" });
+		expect(permissionLookup({ isError: true, data: undefined })).toEqual({
+			status: "failed",
+		});
 	});
 });
 

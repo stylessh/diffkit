@@ -38,3 +38,20 @@ test("the compare page opens on a recent branch and accepts an owner-qualified h
 	).toBeVisible();
 	await expect(page.getByText(/commits? ahead/)).toBeVisible();
 });
+
+test("the header links the pull request open for this base and head, and offers one otherwise", async ({
+	page,
+}) => {
+	await page.goto("/lumen-labs/beacon/compare/main...feat/jitter-backoff");
+	await expect(
+		page.getByRole("link", { name: "View pull request #14" }),
+	).toBeVisible();
+
+	await page.goto("/lumen-labs/beacon/compare/main...feat/webtransport");
+	await expect(
+		page.getByRole("link", { name: "Create pull request" }),
+	).toBeVisible();
+	await expect(
+		page.getByRole("link", { name: /View pull request/ }),
+	).toHaveCount(0);
+});

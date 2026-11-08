@@ -4,11 +4,18 @@ import type {
 	GitHubLabel,
 	SetLabelsInput,
 } from "../github.types";
+import {
+	type LabelDraft,
+	labelRequestBody,
+	validateLabelDraft,
+} from "../settings/labels";
+import type { SettingsOutcome } from "../settings/read-result";
 import { fetchPaginatedGitHubResource } from "./client";
 import {
 	getGitHubContextForRepository,
 	getGitHubUserContextForRepository,
 } from "./installations";
+import { runSettingsMutation } from "./settings-server";
 import type { GitHubClient } from "./shared";
 import { identityValidator } from "./validators";
 
@@ -95,3 +102,38 @@ export const createRepoLabel = createServerFn({ method: "POST" })
 			return null;
 		}
 	});
+
+export type SaveRepoLabelInput = RepoLabelsInput & {
+	currentName: string | null;
+	draft: LabelDraft;
+};
+
+export const saveRepoLabel = createServerFn({ method: "POST" })
+	.inputValidator(identityValidator<SaveRepoLabelInput>)
+	.handler(({ data }): Promise<SettingsOutcome> => {
+		const problem = validateLabelDraft(data.draft, []);
+		if (problem) return Promise.resolve({ ok: false, error: problem });
+		const { owner, repo, currentName } = data;
+		const body = labelRequestBody(data.draft);
+		return runSettingsMutation("save the label", (octokit) =>
+			currentName === null
+				? octokit.rest.issues.createLabel({ owner, repo, ...body })
+				: octokit.rest.issues.updateLabel({
+						owner,
+						repo,
+						name: currentName,
+						new_name: body.name,
+						color: body.color,
+						description: body.description,
+					}),
+		);
+	});
+
+export const deleteRepoLabel = createServerFn({ method: "POST" })
+	.inputValidator(identityValidator<RepoLabelsInput & { name: string }>)
+	.handler(
+		({ data }): Promise<SettingsOutcome> =>
+			runSettingsMutation("delete the label", (octokit) =>
+				octokit.rest.issues.deleteLabel(data),
+			),
+	);

@@ -22,6 +22,7 @@ export const githubQueryEntityCoverage: Record<
 	"pulls.mine": ["pull"],
 	"pulls.user": ["pull"],
 	"pulls.repo": ["pull"],
+	"pulls.forRefs": ["pull"],
 	"pulls.page": ["pull"],
 	"pulls.detail": ["pull"],
 	"pulls.fileSummaries": ["pull"],
@@ -81,6 +82,14 @@ export const githubQueryEntityCoverage: Record<
 	"refs.comparison": ["repo"],
 	"refs.splat": ["repo"],
 	"reviewDrafts.mine": ["pull"],
+	"repoSettings.general": ["repo"],
+	"repoSettings.rulesets": ["repo"],
+	"repoSettings.protections": ["repo"],
+	"repoSettings.access": ["collaborators"],
+	"repoSettings.webhooks": ["settings"],
+	"repoSettings.webhookDeliveries": ["settings"],
+	"repoSettings.actionsSecrets": ["settings"],
+	"repoSettings.actionsVariables": ["settings"],
 };
 
 /**

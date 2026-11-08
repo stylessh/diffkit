@@ -125,21 +125,49 @@ export function pullRequestBody(draft: PullRequestDraft, template: string) {
 	return draft.editedBody ?? template;
 }
 
-export type PullRequestAccess = "checking" | "allowed" | "read-only";
+export type PermissionLookup =
+	| { status: "pending" }
+	| { status: "failed" }
+	| { status: "known"; canPush: boolean };
+
+/** The permission read answers `permission: null` instead of throwing when GitHub fails it. */
+export function permissionLookup(query: {
+	isError: boolean;
+	data: RepoViewerPermission | undefined;
+}): PermissionLookup {
+	if (query.data?.permission) {
+		return { status: "known", canPush: query.data.canPush };
+	}
+	return query.isError || query.data
+		? { status: "failed" }
+		: { status: "pending" };
+}
+
+export type PullRequestAccess =
+	| "checking"
+	| "unavailable"
+	| "allowed"
+	| "read-only";
 
 /** Readers can open a pull request only from their own fork's branch. */
 export function pullRequestAccess({
-	permission,
+	lookup,
 	head,
 	repoOwner,
 }: {
-	permission: RepoViewerPermission | undefined;
+	lookup: PermissionLookup;
 	head: string;
 	repoOwner: string;
 }): PullRequestAccess {
 	if (isForkRef(head, repoOwner)) return "allowed";
-	if (!permission) return "checking";
-	return permission.canPush ? "allowed" : "read-only";
+	switch (lookup.status) {
+		case "pending":
+			return "checking";
+		case "failed":
+			return "unavailable";
+		case "known":
+			return lookup.canPush ? "allowed" : "read-only";
+	}
 }
 
 function nonEmpty<T>(list: T[]) {

@@ -15,6 +15,7 @@ import {
 	getMyPulls,
 	getMyReviewDrafts,
 	getNotifications,
+	getOpenPullForRefs,
 	getOrgTeams,
 	getProfileRepos,
 	getPullComments,
@@ -328,6 +329,18 @@ export function githubRepoLabelsQueryOptions(
 		queryFn: () => getRepoLabels({ data: input }),
 		staleTime: githubCachePolicy.viewer.staleTimeMs,
 		gcTime: githubCachePolicy.viewer.gcTimeMs,
+	});
+}
+
+export function githubOpenPullForRefsQueryOptions(
+	scope: GitHubQueryScope,
+	input: { owner: string; repo: string; base: string; head: string },
+) {
+	return queryOptions({
+		queryKey: githubQueryKeys.pulls.forRefs(scope, input),
+		queryFn: () => getOpenPullForRefs({ data: input }),
+		staleTime: githubCachePolicy.list.staleTimeMs,
+		gcTime: githubCachePolicy.list.gcTimeMs,
 	});
 }
 

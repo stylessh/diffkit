@@ -566,15 +566,6 @@ export function registerRestShims(context: ShimContext) {
 		);
 	});
 
-	// --- Rulesets (none configured in the demo) ------------------------------
-	app.get("/repos/:owner/:repo/rules/branches/:branch{.+}", (c) =>
-		assertRepo(context, c) ? json(c, []) : notFound(c),
-	);
-	app.get("/repos/:owner/:repo/rulesets", (c) =>
-		assertRepo(context, c) ? json(c, []) : notFound(c),
-	);
-	app.get("/repos/:owner/:repo/rulesets/:id", (c) => notFound(c));
-
 	// emulate lists collaborators; GitHub counts commit authors.
 	app.get("/repos/:owner/:repo/contributors", (c) => {
 		const { gh } = stores(context);

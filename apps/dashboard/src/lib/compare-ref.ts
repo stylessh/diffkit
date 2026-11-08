@@ -53,3 +53,9 @@ export function isQualifiedRef(value: string) {
 	const { owner, branch } = splitCompareRef(value.trim());
 	return owner !== null && branch !== "";
 }
+
+/** The `head` filter of GitHub's pull request list: always `owner:branch`. */
+export function pullHeadFilter(head: string, repoOwner: string) {
+	const { owner, branch } = splitCompareRef(head);
+	return `${owner ?? repoOwner}:${branch}`;
+}

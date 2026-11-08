@@ -19,6 +19,7 @@ import {
 } from "../store-extras.ts";
 import { type Clock, createClock } from "./anchor.ts";
 import { DEMO_GITHUB_APP, seedTokenFor } from "./identity.ts";
+import { seedSettings } from "./seed-settings.ts";
 import type {
 	CommentSpec,
 	CommitSpec,
@@ -164,6 +165,7 @@ export async function seedWorkspace(
 		await seedForks(api, gh, workspace, clock);
 		seedStarsAndPins(gh, extras, workspace, clock, userId);
 		seedNotifications(emulator, workspace, states, clock, userId);
+		seedSettings(emulator, clock);
 	} finally {
 		emulator.store.setData("diffkit.seeding", false);
 		if (app) gh.apps.update(app.id, { webhook_url: webhookUrl });

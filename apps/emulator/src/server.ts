@@ -52,6 +52,7 @@ import { autoApproveAppAuthorize } from "./shims/oauth-auto-approve.ts";
 import { bridgeOrgAsUser } from "./shims/org-user-bridge.ts";
 import { bridgePullIssueRequest } from "./shims/pull-issue-bridge.ts";
 import { registerRestShims } from "./shims/rest.ts";
+import { registerSettingsShims } from "./shims/settings.ts";
 import { getExtrasStore } from "./store-extras.ts";
 
 export type ShimContext = {
@@ -254,6 +255,7 @@ export async function createDiffkitEmulator(
 			registerGraphQLRoute(shimContext);
 			registerNotificationRoutes(shimContext);
 			registerRestShims(shimContext);
+			registerSettingsShims(shimContext);
 			githubPlugin.register(app, store, webhooks, pluginBaseUrl, tokenMap);
 		},
 		seed: githubPlugin.seed,

@@ -4,6 +4,7 @@ import {
 	isForkRef,
 	isQualifiedRef,
 	parseCompareSplat,
+	pullHeadFilter,
 	resolveCompareRefs,
 	splitCompareRef,
 } from "./compare-ref";
@@ -85,5 +86,13 @@ describe("fork refs", () => {
 		expect(isQualifiedRef("octocat:")).toBe(false);
 		expect(isQualifiedRef(":feature")).toBe(false);
 		expect(isQualifiedRef("feature")).toBe(false);
+	});
+});
+
+describe("pullHeadFilter", () => {
+	it("qualifies a plain or own-owner head and keeps a fork owner", () => {
+		expect(pullHeadFilter("feat/x", "acme")).toBe("acme:feat/x");
+		expect(pullHeadFilter("acme:feat/x", "acme")).toBe("acme:feat/x");
+		expect(pullHeadFilter("octocat:feat/x", "acme")).toBe("octocat:feat/x");
 	});
 });

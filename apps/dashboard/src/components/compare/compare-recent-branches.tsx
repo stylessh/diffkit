@@ -12,13 +12,11 @@ export function CompareRecentBranches({
 	owner,
 	repo,
 	base,
-	defaultBranch,
 	branches,
 }: {
 	owner: string;
 	repo: string;
 	base: string;
-	defaultBranch: string;
 	branches: CompareBranches;
 }) {
 	const recent = sortBranchesByRecency(
@@ -30,7 +28,7 @@ export function CompareRecentBranches({
 			<p className="px-4 py-10 text-center text-[13px] font-[450] text-muted-foreground">
 				{branches.loading
 					? "Loading branches…"
-					: `There are no other branches to compare with ${defaultBranch}.`}
+					: `There are no other branches to compare with ${base}.`}
 			</p>
 		);
 	}
