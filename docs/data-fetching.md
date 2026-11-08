@@ -1,7 +1,7 @@
 # Data Fetching, Caching and Revalidation
 
-Status: **phases 1–2 implemented** (L1 client cache, L2 change feed);
-phases 3–4 proposed.
+Status: **phases 1–3 implemented** (L1 client cache, L2 change feed,
+call-site cleanup); phase 4 proposed.
 Replaces the server cache removed in #193; see
 [platform-plan.md, Incidents](./platform-plan.md#incidents).
 
@@ -204,12 +204,14 @@ incident:
 - **Entity keys** live in `src/lib/github-change-entities.ts` (shared by
   the webhook handler and the client). The registry that maps them to queries
   is `githubQueryEntityCoverage` / `githubQueryMatchesEntity` in
-  `github.query.ts`; a test fails when a `githubQueryKeys` group is neither
-  covered nor marked `"exempt"`.
-- **Aggregates.** "My pulls/issues", user lists and repo lists refetch only
-  when the changed item is already in their cached payload, so one PR event
-  in a busy org doesn't become a GitHub search request for every member. New
-  items arrive on focus or `staleTime`.
+  `src/lib/github/query-registry.ts`, re-exported from `github.query.ts`; a test
+  fails when a `githubQueryKeys` group is neither covered nor marked
+  `"exempt"`.
+- **Aggregates.** "My pulls/issues", user lists, repo lists and the inbox
+  refetch only when the changed item is already in their cached payload, so
+  one PR event in a busy org doesn't become a GitHub search request for every
+  member. New items arrive on focus or `staleTime`, except items the viewer
+  just created: mutations pass `change: "created"`.
 - **Access.** `/api/changes` returns public-repo changes to anyone and
   private-repo changes only for repos the *user* can read through the GitHub
   App: `GET /user/installations/{id}/repositories`, not the installation's
@@ -228,6 +230,59 @@ incident:
 - **Sweeper.** A cron trigger every 5 minutes deletes rows older than 15
   minutes in batches of at most 20k with 4 s pauses (at most 10 batches per
   run).
+
+## Phase 3 decisions
+
+- **Module layout.** `github.functions.ts` and `github.query.ts` are barrels
+  over `src/lib/github/`. Modules that define server functions export only
+  server functions, types and client-safe helpers: TanStack Start strips
+  handler bodies from client and SSR-caller builds, but an exported helper
+  survives and pulls its server-only imports (`cloudflare:workers`, D1) into
+  those builds. Shared server code lives in helper modules (`client`,
+  `installations`, `mappers`, `shared`, `my-search`, `timeline`,
+  `permissions`) that are imported only from handler bodies. `validators.ts`
+  stays dependency-free because `.inputValidator(...)` runs in the caller.
+- **Reads.** `getOrRevalidateGitHubResource` became `dedupeGitHubRead`
+  (`github/request-dedup.ts`): identical reads within one server request
+  share a call, and nothing outlives the request. Fetchers return data. The
+  `GitHubFetchResult` / `"not-modified"` union and the response metadata are
+  gone: no conditional headers were sent, and nothing read the metadata.
+- **Mutations** invalidate through `invalidateGitHubEntities`
+  (`github-query-updates.ts`) with the same entity keys the webhook would
+  produce. None invalidates every GitHub query any more.
+- **No `notifications` entity.** It fired on every PR, issue, review and
+  release event, and each inbox refetch costs up to ~150 REST calls (see
+  below). The inbox is an aggregate instead: it refetches only for items it
+  already lists.
+
+### Rate-limit exposure after phase 3
+
+With polling gone, these are the remaining bursts. Fixed in phase 3:
+
+| Pattern | Before | After |
+| --- | --- | --- |
+| Inbox refetch on every PR/issue event in a readable repo | ≤150 REST calls per 15 s poll | only when a listed item changes |
+| PR status, CI running | ~7 REST calls every 5 s (~5,000/h per tab) | every 10 s |
+| PR status, checks finished | ~7 REST calls every 30 s, forever (closed PRs too) | stops after 10 min unchanged |
+| Comment, review, close/reopen mutations | refetched every active GitHub query | refetch the item's queries |
+
+Still open:
+
+- **Inbox enrichment** (`getNotifications`): subject, comments and reviews per
+  notification, up to 50 notifications, so ≤150 calls per load. One aliased
+  GraphQL query (`issueOrPullRequest { state participants }`) would make it
+  one call, but the emulator's GraphQL shim needs those fields first.
+- **Org-team reviewer picker** (`getOrgTeams`): one access check per org team.
+  `GET /repos/{owner}/{repo}/teams` is one call but needs Administration: read
+  and omits implicit-access teams on public repos.
+- **"My pulls/issues"**: one 5-alias GraphQL search per installation source,
+  bounded by an 18 s deadline; cost grows with installations.
+- **Participation stats**: up to 6 calls 1.5 s apart while GitHub computes
+  them (202).
+- **Hover preload** of PR rows: one page-data GraphQL call per hovered row,
+  once per row.
+- **Branches page**: one compare call per visible row (5 min `staleTime`).
+- **Live job logs**: every 4 s while the job runs and its page is open.
 
 ## Monitoring and alerting
 
