@@ -10,6 +10,7 @@ import {
 	MarkdownEditor,
 	type MentionCandidate,
 } from "@diffkit/ui/components/markdown-editor";
+import { PageHeaderTitle } from "@diffkit/ui/components/page-header";
 import {
 	Popover,
 	PopoverContent,
@@ -20,6 +21,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { getRouteApi, Link, useRouter } from "@tanstack/react-router";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { DetailSidebar } from "#/components/details/detail-sidebar";
+import { RepoCrumb, RepoPageHeader } from "#/components/repo/repo-page-header";
 import { createIssue } from "#/lib/github.functions";
 import {
 	type GitHubQueryScope,
@@ -34,6 +36,11 @@ import {
 } from "#/lib/github-query-updates";
 
 const routeApi = getRouteApi("/_protected/$owner/$repo/issues/new");
+
+type Submission =
+	| { kind: "idle" }
+	| { kind: "submitting" }
+	| { kind: "failed"; message: string };
 
 export function NewIssuePage() {
 	const { user } = routeApi.useRouteContext();
@@ -60,16 +67,13 @@ function NewIssueForm({
 	const [selectedAssignees, setSelectedAssignees] = useState<
 		RepoCollaborator[]
 	>([]);
-	const [submitting, setSubmitting] = useState(false);
-	const [error, setError] = useState<string | null>(null);
+	const [submission, setSubmission] = useState<Submission>({ kind: "idle" });
 
-	// Prefetch labels
 	const labelsQuery = useQuery(
 		githubRepoLabelsQueryOptions(scope, { owner, repo }),
 	);
 	const repoLabels = labelsQuery.data ?? [];
 
-	// Collaborators for mentions
 	const collaboratorsQuery = useQuery(
 		githubRepoCollaboratorsQueryOptions(scope, { owner, repo }),
 	);
@@ -122,8 +126,7 @@ function NewIssueForm({
 
 	const handleSubmit = async () => {
 		if (!title.trim()) return;
-		setSubmitting(true);
-		setError(null);
+		setSubmission({ kind: "submitting" });
 
 		try {
 			const result = await createIssue({
@@ -155,46 +158,45 @@ function NewIssueForm({
 					params: { owner, repo, issueId: String(result.issueNumber) },
 				});
 			} else {
-				setError(result.error);
+				setSubmission({ kind: "failed", message: result.error });
 			}
 		} catch {
-			setError("Failed to create issue. Please try again.");
-		} finally {
-			setSubmitting(false);
+			setSubmission({
+				kind: "failed",
+				message: "Failed to create issue. Please try again.",
+			});
 		}
 	};
 
+	const submitting = submission.kind === "submitting";
 	const canSubmit = title.trim().length > 0 && !submitting;
 
 	return (
-		<div className="h-full overflow-auto">
-			<div className="mx-auto grid max-w-7xl gap-16 px-3 py-10 md:px-6 xl:grid-cols-[minmax(0,1fr)_minmax(16rem,20rem)]">
-				{/* Main */}
-				<div className="flex min-w-0 flex-col gap-6">
-					{/* Breadcrumb */}
-					<div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-						<Link
-							to="/$owner/$repo"
-							params={{ owner, repo }}
-							className="transition-colors hover:text-foreground"
-						>
-							{owner}/{repo}
+		<RepoPageHeader
+			owner={owner}
+			repo={repo}
+			scope={scope}
+			active="issues"
+			trail={
+				<>
+					<RepoCrumb asChild>
+						<Link to="/$owner/$repo/issues" params={{ owner, repo }}>
+							Issues
 						</Link>
-						<span>/</span>
+					</RepoCrumb>
+					<PageHeaderTitle asChild>
 						<span>New issue</span>
-					</div>
+					</PageHeaderTitle>
+				</>
+			}
+			bodyClassName="px-0"
+		>
+			<div className="mx-auto grid max-w-7xl gap-16 px-4 pt-6 md:px-[46px] xl:grid-cols-[minmax(0,1fr)_minmax(16rem,20rem)]">
+				<div className="flex min-w-0 flex-col gap-6">
+					<h1 className="text-[22px] leading-8 font-semibold text-foreground">
+						Create new issue
+					</h1>
 
-					{/* Header */}
-					<div className="flex items-center gap-3">
-						<div className="shrink-0 text-success">
-							<IssuesIcon size={20} strokeWidth={2} />
-						</div>
-						<h1 className="text-xl font-semibold tracking-tight">
-							Create new issue
-						</h1>
-					</div>
-
-					{/* Title */}
 					<div className="flex flex-col gap-2">
 						<label
 							htmlFor="issue-title"
@@ -211,7 +213,6 @@ function NewIssueForm({
 						/>
 					</div>
 
-					{/* Body */}
 					<div className="flex flex-col gap-2">
 						<span className="text-sm font-medium text-foreground">
 							Description
@@ -224,14 +225,15 @@ function NewIssueForm({
 						/>
 					</div>
 
-					{/* Error */}
-					{error && (
-						<div className="rounded-lg border-[0.5px] border-destructive/50 bg-destructive/10 px-4 py-3 text-sm text-destructive">
-							{error}
+					{submission.kind === "failed" ? (
+						<div
+							role="alert"
+							className="rounded-lg border-[0.5px] border-destructive/50 bg-destructive/10 px-4 py-3 text-sm text-destructive"
+						>
+							{submission.message}
 						</div>
-					)}
+					) : null}
 
-					{/* Actions */}
 					<div className="flex items-center justify-end gap-3">
 						<Button variant="ghost" asChild>
 							<Link to="/$owner/$repo" params={{ owner, repo }}>
@@ -254,7 +256,6 @@ function NewIssueForm({
 					</div>
 				</div>
 
-				{/* Sidebar */}
 				<NewIssueSidebar
 					repoLabels={repoLabels}
 					selectedLabels={selectedLabels}
@@ -267,7 +268,7 @@ function NewIssueForm({
 					repo={repo}
 				/>
 			</div>
-		</div>
+		</RepoPageHeader>
 	);
 }
 

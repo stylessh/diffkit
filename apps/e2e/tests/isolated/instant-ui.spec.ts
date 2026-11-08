@@ -87,6 +87,7 @@ test("a pull request seen before paints from IndexedDB without a skeleton while 
 	});
 	await page
 		.getByRole("link", { name: /lumen-labs\/beacon #20 · nova/ })
+		.getByText("Stack 3/3: Experimental WebTransport transport")
 		.click();
 	await expect(description(page)).toBeVisible({ timeout: 300 });
 	expect(

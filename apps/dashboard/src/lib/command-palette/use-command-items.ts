@@ -23,6 +23,7 @@ import type {
 } from "#/lib/github.types";
 import { getRegisteredCommands, subscribeCommands } from "./registry";
 import { getRepoSectionCommands } from "./repo-commands";
+import { useShellCommandItems } from "./shell-commands";
 import type { CommandItem } from "./types";
 import { useRefreshGitHubData } from "./use-refresh-github-data";
 
@@ -59,6 +60,7 @@ export function useCommandItems(): CommandItem[] {
 	const scope = { userId: user.id };
 	const queryClient = useQueryClient();
 	const refreshGitHubData = useRefreshGitHubData();
+	const shellItems = useShellCommandItems(user.id);
 
 	const staticCommands = useSyncExternalStore(
 		subscribeCommands,
@@ -219,7 +221,7 @@ export function useCommandItems(): CommandItem[] {
 		return bTime.localeCompare(aTime);
 	});
 
-	return [...staticCommands, ...repoItems, ...dynamicItems];
+	return [...staticCommands, ...shellItems, ...repoItems, ...dynamicItems];
 }
 
 export function getCommandSearchItems(
