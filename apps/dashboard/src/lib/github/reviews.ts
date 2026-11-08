@@ -39,7 +39,7 @@ import {
 	getInstallationAccessIndex,
 	repositoryMatchesInstallationRepository,
 } from "./installations";
-import { mapActor } from "./mappers";
+import { mapActor, restEditedAt } from "./mappers";
 import { getMyPullsResult } from "./my-search";
 import { dedupeGitHubRead } from "./request-dedup";
 import {
@@ -409,6 +409,7 @@ async function getPullReviewCommentsResult(
 				side: (comment.side?.toUpperCase() as "LEFT" | "RIGHT") ?? "RIGHT",
 				createdAt: comment.created_at,
 				updatedAt: comment.updated_at,
+				editedAt: restEditedAt(comment),
 				author: comment.user
 					? {
 							login: comment.user.login,
@@ -631,6 +632,7 @@ export const createReviewComment = createServerFn({ method: "POST" })
 				side: (comment.side?.toUpperCase() as "LEFT" | "RIGHT") ?? "RIGHT",
 				createdAt: comment.created_at,
 				updatedAt: comment.updated_at,
+				editedAt: restEditedAt(comment),
 				author: comment.user
 					? {
 							login: comment.user.login,
@@ -678,6 +680,7 @@ export const replyToReviewComment = createServerFn({ method: "POST" })
 				side: (comment.side?.toUpperCase() as "LEFT" | "RIGHT") ?? "RIGHT",
 				createdAt: comment.created_at,
 				updatedAt: comment.updated_at,
+				editedAt: restEditedAt(comment),
 				author: comment.user
 					? {
 							login: comment.user.login,

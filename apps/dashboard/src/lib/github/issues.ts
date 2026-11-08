@@ -21,6 +21,7 @@ import {
 	mapGraphQLLabels,
 	mapGraphQLRepositoryRef,
 	mapIssueSummary,
+	restEditedAt,
 } from "./mappers";
 import { dedupeGitHubRead } from "./request-dedup";
 import {
@@ -215,6 +216,7 @@ async function getIssueCommentsResult(
 				id: comment.id,
 				body: comment.body ?? "",
 				createdAt: comment.created_at,
+				editedAt: restEditedAt(comment),
 				author: comment.user
 					? {
 							login: comment.user.login,
@@ -294,6 +296,7 @@ async function getIssuePageDataViaGraphQL(
 										databaseId
 										body
 										createdAt
+										lastEditedAt
 										author { __typename login avatarUrl url }
 										reactions(first: 100) {
 											nodes { content user { login } }
@@ -307,6 +310,7 @@ async function getIssuePageDataViaGraphQL(
 										databaseId
 										body
 										createdAt
+										lastEditedAt
 										author { __typename login avatarUrl url }
 										reactions(first: 100) {
 											nodes { content user { login } }

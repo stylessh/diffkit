@@ -292,6 +292,7 @@ export function mapGraphQLComments(
 				graphqlId: node.id,
 				body: node.body,
 				createdAt: node.createdAt,
+				editedAt: node.lastEditedAt ?? null,
 				author: mapGraphQLActor(node.author),
 				reactions: buildCommentReactionSummary(
 					node.reactions?.nodes ?? undefined,
@@ -304,4 +305,17 @@ export function mapGraphQLComments(
 	return [...byId.values()].sort(
 		(a, b) => Date.parse(a.createdAt) - Date.parse(b.createdAt),
 	);
+}
+
+/**
+ * REST has no `lastEditedAt`; `updated_at` moves on body edits (reactions
+ * don't touch it), so a later `updated_at` is the edit time.
+ */
+export function restEditedAt(comment: {
+	created_at: string;
+	updated_at?: string | null;
+}): string | null {
+	return comment.updated_at && comment.updated_at > comment.created_at
+		? comment.updated_at
+		: null;
 }

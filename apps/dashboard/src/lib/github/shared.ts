@@ -42,6 +42,7 @@ type GitHubGraphQLCommentNode = {
 	databaseId: number | null;
 	body: string;
 	createdAt: string;
+	lastEditedAt?: string | null;
 	author: GitHubGraphQLActor;
 	reactions?: {
 		nodes: Array<{

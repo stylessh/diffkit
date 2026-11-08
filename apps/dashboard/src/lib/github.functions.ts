@@ -90,6 +90,7 @@ export {
 	markAllNotificationsRead,
 	markNotificationDone,
 	markNotificationRead,
+	unsubscribeNotification,
 } from "./github/notifications";
 export type {
 	ApproveWorkflowRunsInput,
