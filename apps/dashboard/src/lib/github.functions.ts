@@ -213,6 +213,24 @@ export {
 	saveRepoActionsSecret,
 	saveRepoActionsVariable,
 } from "./github/settings-actions";
+export type { ViewerOrg } from "./github/settings-org";
+export {
+	cancelOrgInvitation,
+	deleteOrgTeam,
+	getOrgMembers,
+	getOrgSettings,
+	getOrgTeamList,
+	getOrgTeamMembers,
+	getOrgViewerRole,
+	getViewerOrganizations,
+	inviteOrgMember,
+	removeOrgMember,
+	removeOrgTeamMember,
+	saveOrgTeam,
+	setOrgMemberRole,
+	setOrgTeamMember,
+	updateOrgSettings,
+} from "./github/settings-org";
 export {
 	changeRepoVisibility,
 	deleteRepository,

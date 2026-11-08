@@ -1,4 +1,4 @@
-import type { GitHubChangeEntity } from "./github-change-entities";
+import type { GitHubRepoEntity } from "./github-change-entities";
 import { formatEntityKey, parseEntityKey } from "./github-change-entities";
 
 // Storage rules from the 2026-11-08 incident (docs/platform-plan.md): rows
@@ -29,7 +29,7 @@ export type GitHubChangeRow = {
 const INSERT_ROWS_PER_STATEMENT = 20;
 
 export function toGitHubChangeRows(
-	entities: GitHubChangeEntity[],
+	entities: GitHubRepoEntity[],
 	repository: { fullName: string; isPrivate: boolean },
 	changedAt: number,
 ): GitHubChangeRow[] {
