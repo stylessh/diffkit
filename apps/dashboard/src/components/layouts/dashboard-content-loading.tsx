@@ -2,7 +2,7 @@ import { Spinner } from "@diffkit/ui/components/spinner";
 
 export function DashboardContentLoading() {
 	return (
-		<div className="flex h-full items-center justify-center">
+		<div className="pending-reveal flex h-full items-center justify-center">
 			<Spinner size={20} className="text-muted-foreground" />
 		</div>
 	);
@@ -11,7 +11,9 @@ export function DashboardContentLoading() {
 export function DashboardViewportLoading() {
 	return (
 		<div className="flex min-h-dvh items-center justify-center bg-background">
-			<Spinner size={20} className="text-muted-foreground" />
+			<div className="pending-reveal">
+				<Spinner size={20} className="text-muted-foreground" />
+			</div>
 		</div>
 	);
 }

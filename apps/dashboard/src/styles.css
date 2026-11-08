@@ -1,1 +1,19 @@
 @import "@diffkit/ui/globals.css";
+
+/*
+ * Pending UI only appears once a load is genuinely slow (defaultPendingMs).
+ * The delay also applies to pending components in server-rendered HTML, which
+ * would otherwise flash before hydration and the IndexedDB restore.
+ */
+@keyframes pending-reveal {
+	from {
+		opacity: 0;
+	}
+	to {
+		opacity: 1;
+	}
+}
+
+.pending-reveal {
+	animation: pending-reveal 150ms ease-out 300ms both;
+}

@@ -1,6 +1,7 @@
 # Data Fetching, Caching and Revalidation
 
-Status: **proposal**. Replaces the server cache removed in #193; see
+Status: **phase 1 implemented** (L1, client cache); phases 2–4 proposed.
+Replaces the server cache removed in #193; see
 [platform-plan.md, Incidents](./platform-plan.md#incidents).
 
 ## Goal
@@ -173,6 +174,29 @@ incident:
    `github.functions.ts`, and rename `getOrRevalidateGitHubResource`.
 4. **Server ETag cache (only if needed).** Covers L3, prompted by rate-limit
    metrics after phase 2.
+
+## Phase 1 decisions
+
+- **Storage shape.** One IndexedDB record per query (`src/lib/query-persister.ts`)
+  instead of `@tanstack/query-async-storage-persister`, whose storage contract
+  is one string holding the whole cache. A save only writes queries whose
+  `dataUpdatedAt` changed, and disk retention is independent of in-memory
+  `gcTime`.
+- **Budget.** 50 MB per user, least-recently-updated eviction, 7-day max age,
+  and no single entry above 10 MB. Open tabs get no special priority; a
+  viewed query refetches on view, which makes it the newest entry anyway.
+- **Restore timing.** `src/client.tsx` restores into the browser query
+  client before `hydrateRoot`, capped at 400 ms, while the server-rendered
+  shell stays on screen. `PersistQueryClientProvider` restores after first
+  render, which would let client-only loaders fetch against an empty cache.
+- **Optimistic auth window.** Indefinite while `getSession()` is in flight, as
+  proposed. The viewer hint is a cookie, so the server render uses it too,
+  and it expires with the session (capped at 30 days). Network errors keep
+  the optimistic render; a missing session wipes the cache and
+  hard-redirects to `/login`.
+- **Hydration.** TanStack Router holds server-rendered pending matches for
+  `pendingMinMs` after hydration (500 ms by default). The first load uses
+  0 ms; later navigations use 200 ms.
 
 ## Open questions
 

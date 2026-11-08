@@ -1,19 +1,20 @@
 import { toast } from "@diffkit/ui/components/sonner";
+import { useQueryClient } from "@tanstack/react-query";
 import { useCallback } from "react";
-import { GITHUB_QUERY_CACHE_STORAGE_KEY } from "#/lib/query-client";
+import { refreshGitHubQueryCache } from "#/lib/github-query-persistence";
 
 /**
- * Drops the browser's persisted query cache and reloads, so every query
- * refetches from GitHub. There is no server-side cache to clear.
+ * Drops the browser's persisted query cache (IndexedDB) and refetches every
+ * GitHub query in place. There is no server-side cache to clear.
  */
 export function useRefreshGitHubData() {
+	const queryClient = useQueryClient();
 	return useCallback(() => {
-		toast.loading("Refreshing data…");
-		try {
-			window.localStorage.removeItem(GITHUB_QUERY_CACHE_STORAGE_KEY);
-		} catch {
-			// Storage can be unavailable (private mode); the reload still refetches.
-		}
-		window.location.reload();
-	}, []);
+		const toastId = toast.loading("Refreshing data…");
+		refreshGitHubQueryCache(queryClient)
+			.then(() => toast.success("Data refreshed", { id: toastId }))
+			.catch(() =>
+				toast.error("Some data could not be refreshed", { id: toastId }),
+			);
+	}, [queryClient]);
 }

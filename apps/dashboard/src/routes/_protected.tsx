@@ -1,25 +1,60 @@
 import { createFileRoute, redirect } from "@tanstack/react-router";
+import { createIsomorphicFn } from "@tanstack/react-start";
+import { useEffect } from "react";
 import { DashboardViewportLoading } from "#/components/layouts/dashboard-content-loading";
 import { DashboardLayout } from "#/components/layouts/dashboard-layout";
 import { ErrorScreen } from "#/components/layouts/error-screen";
 import { getSession } from "#/lib/auth.functions";
+import { readDocumentCookie } from "#/lib/cookies";
 import { checkSetupComplete } from "#/lib/github.functions";
+import { validateProtectedSessionInBackground } from "#/lib/protected-auth";
 import {
+	authFromSession,
+	authFromViewerHint,
 	getProtectedRouteCachedAuth,
 	type ProtectedRouteCachedAuth,
+	rememberConfirmedAuth,
 	setProtectedRouteCachedAuth,
 } from "#/lib/protected-auth-cache";
 import { buildSeo, formatPageTitle, PRIVATE_ROUTE_HEADERS } from "#/lib/seo";
+import { parseViewerHint } from "#/lib/viewer-hint";
+
+/** Last known viewer, from the request cookie on the server or document.cookie. */
+const readViewerHint = createIsomorphicFn()
+	.server(async () => {
+		const { getRequestHeader } = await import("@tanstack/react-start/server");
+		return parseViewerHint(getRequestHeader("cookie"));
+	})
+	.client(async () => parseViewerHint(readDocumentCookie()));
 
 /**
- * Cache the auth check so navigations within the dashboard are instant.
- * The cache is cleared on full page reloads. If the session expires mid-use,
- * API calls in child routes will 401 and the error boundary handles it.
+ * Optimistic auth.
+ *
+ * 1. Client navigations reuse the in-memory auth.
+ * 2. Returning viewers (hint cookie present) render immediately, on the
+ *    server and the client, while `getSession()` + `checkSetupComplete()`
+ *    confirm in the background (`ProtectedLayout`). No session → wipe the
+ *    cache and hard-redirect to /login.
+ * 3. Without a hint (first visit, after sign-out or setup) the check blocks,
+ *    as before.
+ *
+ * Server functions authenticate every request with the HttpOnly session
+ * cookie, so rendering the shell from the hint never grants data access.
  */
 export const Route = createFileRoute("/_protected")({
-	beforeLoad: async ({ location }) => {
+	beforeLoad: async ({ location }): Promise<ProtectedRouteCachedAuth> => {
 		const cachedAuth = getProtectedRouteCachedAuth();
 		if (cachedAuth) return cachedAuth;
+
+		const hint = await readViewerHint();
+		if (hint) {
+			const optimistic = authFromViewerHint(hint);
+			if (typeof window !== "undefined") {
+				setProtectedRouteCachedAuth(optimistic);
+				void validateProtectedSessionInBackground(optimistic);
+			}
+			return optimistic;
+		}
 
 		const [session, setupComplete] = await Promise.all([
 			getSession(),
@@ -37,24 +72,15 @@ export const Route = createFileRoute("/_protected")({
 			throw redirect({ to: "/setup" });
 		}
 
-		const email = session.user.email;
-		if (typeof email !== "string" || email.length === 0) {
+		const next = authFromSession(session);
+		if (!next) {
 			throw redirect({
 				to: "/login",
 				search: { redirect: location.href },
 			});
 		}
 
-		const next: ProtectedRouteCachedAuth = {
-			user: {
-				id: session.user.id,
-				name: session.user.name,
-				email,
-				image: session.user.image,
-			},
-			session: session.session,
-		};
-		setProtectedRouteCachedAuth(next);
+		rememberConfirmedAuth(next);
 		return next;
 	},
 	headers: () => PRIVATE_ROUTE_HEADERS,
@@ -67,7 +93,30 @@ export const Route = createFileRoute("/_protected")({
 			robots: "noindex",
 		});
 	},
-	component: DashboardLayout,
+	component: ProtectedLayout,
 	pendingComponent: DashboardViewportLoading,
 	errorComponent: ErrorScreen,
 });
+
+/**
+ * On a server-rendered cold load `beforeLoad` does not re-run in the browser,
+ * so the client side of optimistic auth happens here: remember the auth for
+ * client navigations, confirm a hint-based render, or store the hint after a
+ * blocking check that ran on the server.
+ */
+function ProtectedLayout() {
+	const { user, session, optimistic } = Route.useRouteContext();
+
+	useEffect(() => {
+		if (getProtectedRouteCachedAuth()) return;
+		const auth = { user, session, optimistic };
+		if (optimistic) {
+			setProtectedRouteCachedAuth(auth);
+			void validateProtectedSessionInBackground(auth);
+		} else {
+			rememberConfirmedAuth(auth);
+		}
+	}, [user, session, optimistic]);
+
+	return <DashboardLayout />;
+}

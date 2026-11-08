@@ -14,7 +14,7 @@ import {
 	type FilterableItem,
 	FilterBar,
 	type FilterDefinition,
-	getFilterCookie,
+	readFilterCookieClient,
 	type SortOption,
 	useListFilters,
 } from "#/components/filters";
@@ -52,17 +52,17 @@ export const Route = createFileRoute("/_protected/repos")({
 		}
 		return {};
 	},
-	loader: async ({ context, location }) => {
+	loader: ({ context, location }) => {
 		const scope = { userId: context.user.id };
-		const filterStore = await getFilterCookie();
+		const filterStore = readFilterCookieClient();
 		const search = location.search as { page?: number };
 		const urlPage =
 			typeof search.page === "number" && search.page > 0 ? search.page : 1;
 		const hubPrefetchInput = buildReposHubPrefetchInput(filterStore, urlPage);
-		await context.queryClient.prefetchQuery(
+		void context.queryClient.prefetchQuery(
 			githubReposHubQueryOptions(scope, hubPrefetchInput),
 		);
-		await context.queryClient.prefetchQuery(githubUserReposQueryOptions(scope));
+		void context.queryClient.prefetchQuery(githubUserReposQueryOptions(scope));
 		return { filterStore };
 	},
 	pendingComponent: DashboardContentLoading,
