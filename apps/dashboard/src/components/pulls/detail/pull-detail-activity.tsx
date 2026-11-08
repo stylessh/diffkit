@@ -115,7 +115,12 @@ import type {
 	PullWorkflowApproval,
 	TimelineEvent,
 } from "#/lib/github.types";
-import { removePullFromOpenViews } from "#/lib/github-query-updates";
+import {
+	invalidateGitHubEntities,
+	pullEntityKey,
+	removePullFromOpenViews,
+	repoEntityKey,
+} from "#/lib/github-query-updates";
 import {
 	mergeIssueStateIntoCloseEvent,
 	parseCloseReason,
@@ -685,7 +690,7 @@ function ReviewsSection({
 									<img
 										src={review.author.avatarUrl}
 										alt={review.author.login}
-										className="size-4 rounded-full border-[0.5px] border-border"
+										className="size-4 rounded-full ring-[0.5px] ring-chip-border"
 									/>
 								)}
 								<span className="text-xs">
@@ -906,7 +911,9 @@ function ChecksSection({
 				} else if (skipped > 0) {
 					toast.info("No checks are eligible for rerun");
 				}
-				await queryClient.invalidateQueries({ queryKey: ["github"] });
+				await invalidateGitHubEntities(queryClient, scope, [
+					pullEntityKey({ owner, repo, pullNumber }),
+				]);
 			} else {
 				toast.error(result.error);
 				checkPermissionWarning(result, `${owner}/${repo}`);
@@ -1247,7 +1254,10 @@ function UpdateBranchButton({
 				data: { owner, repo, pullNumber },
 			});
 			if (result.ok) {
-				await queryClient.invalidateQueries({ queryKey: ["github"] });
+				await invalidateGitHubEntities(queryClient, null, [
+					pullEntityKey({ owner, repo, pullNumber }),
+					repoEntityKey({ owner, repo }),
+				]);
 			} else {
 				toast.error(result.error);
 				checkPermissionWarning(result, `${owner}/${repo}`);
@@ -1352,7 +1362,9 @@ function ReadyForReviewFooter({
 				data: { owner, repo, pullNumber, pullId },
 			});
 			if (result.ok) {
-				await queryClient.invalidateQueries({ queryKey: ["github"] });
+				await invalidateGitHubEntities(queryClient, null, [
+					pullEntityKey({ owner, repo, pullNumber }),
+				]);
 			} else {
 				toast.error(result.error);
 				checkPermissionWarning(result, `${owner}/${repo}`);
@@ -1467,7 +1479,10 @@ function MergeFooter({
 					repo,
 					pullNumber,
 				});
-				await queryClient.invalidateQueries({ queryKey: ["github"] });
+				await invalidateGitHubEntities(queryClient, scope, [
+					pullEntityKey({ owner, repo, pullNumber }),
+					repoEntityKey({ owner, repo }),
+				]);
 			} else {
 				toast.error(result.error);
 				checkPermissionWarning(result, `${owner}/${repo}`);
@@ -2734,7 +2749,7 @@ function ReviewCommentBubble({
 					<img
 						src={comment.author.avatarUrl}
 						alt={comment.author.login}
-						className="size-4 rounded-full border-[0.5px] border-border"
+						className="size-4 rounded-full ring-[0.5px] ring-chip-border"
 					/>
 				) : (
 					<div className="size-4 rounded-full bg-surface-2" />
@@ -2890,7 +2905,13 @@ function ReviewCommentBlock({
 			});
 			if (result.ok) {
 				if (!threadInfo.isResolved) setIsCollapsed(true);
-				void queryClient.invalidateQueries({ queryKey: githubQueryKeys.all });
+				void invalidateGitHubEntities(
+					queryClient,
+					null,
+					owner && repo && pullNumber != null
+						? [pullEntityKey({ owner, repo, pullNumber })]
+						: [],
+				);
 			} else {
 				toast.error(result.error);
 			}
@@ -2899,7 +2920,7 @@ function ReviewCommentBlock({
 		} finally {
 			setIsResolving(false);
 		}
-	}, [threadInfo, owner, repo, queryClient]);
+	}, [threadInfo, owner, repo, pullNumber, queryClient]);
 
 	const canReply = owner && repo && pullNumber != null;
 

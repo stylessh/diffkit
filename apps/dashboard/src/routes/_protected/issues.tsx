@@ -5,9 +5,9 @@ import { type ComponentType, useMemo, useRef } from "react";
 import {
 	applyFilters,
 	FilterBar,
-	getFilterCookie,
 	issueFilterDefs,
 	issueSortOptions,
+	readFilterCookieClient,
 	useListFilters,
 } from "#/components/filters";
 import { IssueRow } from "#/components/issues/issue-row";
@@ -20,10 +20,10 @@ import { useHasMounted } from "#/lib/use-has-mounted";
 
 export const Route = createFileRoute("/_protected/issues")({
 	ssr: false,
-	loader: async ({ context }) => {
+	loader: ({ context }) => {
 		const scope = { userId: context.user.id };
 		void context.queryClient.prefetchQuery(githubMyIssuesQueryOptions(scope));
-		const filterStore = await getFilterCookie();
+		const filterStore = readFilterCookieClient();
 		return { filterStore };
 	},
 	pendingComponent: DashboardContentLoading,

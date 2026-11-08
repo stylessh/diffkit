@@ -18,7 +18,9 @@ type IssueStateConfig = {
 	tone: StatePillTone;
 };
 
-export function getIssueStateConfig(issue: IssueDetail): IssueStateConfig {
+export function getIssueStateConfig(
+	issue: Pick<IssueDetail, "state" | "stateReason">,
+): IssueStateConfig {
 	if (issue.state === "closed") {
 		if (issue.stateReason === "not_planned") {
 			return {

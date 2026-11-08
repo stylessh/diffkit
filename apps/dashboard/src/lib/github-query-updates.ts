@@ -1,6 +1,21 @@
 import type { QueryClient } from "@tanstack/react-query";
-import { type GitHubQueryScope, githubQueryKeys } from "./github.query";
-import type { MyPullsResult, PullSummary, RepoOverview } from "./github.types";
+import {
+	type GitHubQueryScope,
+	githubQueryKeys,
+	githubQueryMatchesEntity,
+} from "./github.query";
+import type {
+	IssueSummary,
+	MyPullsResult,
+	PullSummary,
+	RepoOverview,
+} from "./github.types";
+import {
+	formatEntityKey,
+	type GitHubChangeEntity,
+	normalizeRepoFullName,
+	parseEntityKey,
+} from "./github-change-entities";
 
 function matchesPull(
 	pull: Pick<PullSummary, "number" | "repository">,
@@ -109,4 +124,143 @@ export function removePullFromOpenViews(
 			};
 		},
 	);
+}
+
+// ---------------------------------------------------------------------------
+// List → detail seeding
+// ---------------------------------------------------------------------------
+
+type ListItem = {
+	number: number;
+	updatedAt: string;
+	repository: { owner: string; name: string };
+};
+
+const SEED_LIST_NAMES = new Set(["mine", "repo", "user"]);
+
+function* listItemsIn(data: unknown): Generator<unknown> {
+	if (Array.isArray(data)) {
+		yield* data;
+		return;
+	}
+	if (data && typeof data === "object") {
+		for (const value of Object.values(data)) {
+			if (Array.isArray(value)) yield* value;
+		}
+	}
+}
+
+function isListItem(value: unknown): value is ListItem {
+	if (!value || typeof value !== "object") return false;
+	const item = value as Partial<ListItem>;
+	return (
+		typeof item.number === "number" &&
+		typeof item.updatedAt === "string" &&
+		typeof item.repository?.owner === "string" &&
+		typeof item.repository?.name === "string"
+	);
+}
+
+function findSummaryInLists<T extends ListItem>(
+	queryClient: QueryClient,
+	scope: GitHubQueryScope,
+	group: "pulls" | "issues",
+	input: { owner: string; repo: string; number: number },
+): T | undefined {
+	const owner = input.owner.toLowerCase();
+	const repo = input.repo.toLowerCase();
+	let newest: T | undefined;
+	for (const [queryKey, data] of queryClient.getQueriesData({
+		queryKey: ["github", scope.userId, group],
+	})) {
+		if (!SEED_LIST_NAMES.has(String(queryKey[3]))) continue;
+		for (const item of listItemsIn(data)) {
+			if (
+				isListItem(item) &&
+				item.number === input.number &&
+				item.repository.owner.toLowerCase() === owner &&
+				item.repository.name.toLowerCase() === repo &&
+				(!newest || item.updatedAt > newest.updatedAt)
+			) {
+				newest = item as T;
+			}
+		}
+	}
+	return newest;
+}
+
+/**
+ * The freshest list row for a pull request already in the cache (my pulls,
+ * repo pulls, user pulls). Detail pages render its title, state, author and
+ * labels on the first frame while the full page query loads.
+ */
+export function findPullSummaryInLists(
+	queryClient: QueryClient,
+	scope: GitHubQueryScope,
+	input: { owner: string; repo: string; pullNumber: number },
+): PullSummary | undefined {
+	return findSummaryInLists<PullSummary>(queryClient, scope, "pulls", {
+		owner: input.owner,
+		repo: input.repo,
+		number: input.pullNumber,
+	});
+}
+
+/** Issue counterpart of `findPullSummaryInLists`. */
+export function findIssueSummaryInLists(
+	queryClient: QueryClient,
+	scope: GitHubQueryScope,
+	input: { owner: string; repo: string; issueNumber: number },
+): IssueSummary | undefined {
+	return findSummaryInLists<IssueSummary>(queryClient, scope, "issues", {
+		owner: input.owner,
+		repo: input.repo,
+		number: input.issueNumber,
+	});
+}
+
+// ---------------------------------------------------------------------------
+// Registry-driven invalidation for mutations
+// ---------------------------------------------------------------------------
+
+/**
+ * Invalidate exactly the queries a mutation affected, using the same entity →
+ * query registry as the change feed (e.g. `pull:owner/repo#12`). Active
+ * matches refetch; inactive ones refetch on next use.
+ */
+export function invalidateGitHubEntities(
+	queryClient: QueryClient,
+	scope: GitHubQueryScope | null,
+	entityKeys: string[],
+) {
+	const entities = entityKeys
+		.map(parseEntityKey)
+		.filter((entity): entity is GitHubChangeEntity => entity !== null);
+	return queryClient.invalidateQueries({
+		// Without a scope: every signed-in user's queries in this page (one).
+		queryKey: scope ? ["github", scope.userId] : ["github"],
+		predicate: (query) =>
+			entities.some((entity) =>
+				githubQueryMatchesEntity(query.queryKey, entity, query.state.data),
+			),
+	});
+}
+
+export function pullEntityKey(input: {
+	owner: string;
+	repo: string;
+	pullNumber: number;
+}) {
+	return formatEntityKey({
+		kind: "pull",
+		repo: normalizeRepoFullName(input.owner, input.repo),
+		number: input.pullNumber,
+	});
+}
+
+export function repoEntityKey(input: { owner: string; repo: string }) {
+	return formatEntityKey({
+		kind: "repo",
+		repo: normalizeRepoFullName(input.owner, input.repo),
+	});
 }

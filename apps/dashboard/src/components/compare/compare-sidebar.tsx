@@ -453,7 +453,7 @@ function AssigneesPicker({
 											<img
 												src={c.avatarUrl}
 												alt={c.login}
-												className="size-5 rounded-full border-[0.5px] border-border"
+												className="size-5 rounded-full ring-[0.5px] ring-chip-border"
 											/>
 											<span className="min-w-0 flex-1 truncate">{c.login}</span>
 											{isSelected && (
@@ -481,7 +481,7 @@ function AssigneesPicker({
 							<img
 								src={a.avatarUrl}
 								alt={a.login}
-								className="size-5 rounded-full border-[0.5px] border-border"
+								className="size-5 rounded-full ring-[0.5px] ring-chip-border"
 							/>
 							<span className="min-w-0 flex-1 truncate text-[13px] font-medium text-text-header">
 								{a.login}
@@ -686,7 +686,7 @@ function ReviewersPicker({
 												<img
 													src={item.data.avatarUrl}
 													alt={item.data.login}
-													className="size-5 rounded-full border-[0.5px] border-border"
+													className="size-5 rounded-full ring-[0.5px] ring-chip-border"
 												/>
 											) : (
 												<div className="flex size-5 items-center justify-center rounded-full bg-surface-2 text-[10px] font-medium">
@@ -743,7 +743,7 @@ function ReviewersPicker({
 							<img
 								src={r.avatarUrl}
 								alt={r.login}
-								className="size-5 rounded-full border-[0.5px] border-border"
+								className="size-5 rounded-full ring-[0.5px] ring-chip-border"
 							/>
 							<span className="min-w-0 flex-1 truncate text-[13px] font-medium text-text-header">
 								{r.login}

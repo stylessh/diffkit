@@ -16,6 +16,7 @@ import { Route as LoginRouteImport } from './routes/login'
 import { Route as ProtectedRouteImport } from './routes/_protected'
 import { Route as SplatRouteImport } from './routes/$'
 import { Route as ProtectedIndexRouteImport } from './routes/_protected/index'
+import { Route as ApiChangesRouteImport } from './routes/api/changes'
 import { Route as ProtectedSettingsRouteImport } from './routes/_protected/settings'
 import { Route as ProtectedReviewsRouteImport } from './routes/_protected/reviews'
 import { Route as ProtectedReposRouteImport } from './routes/_protected/repos'
@@ -86,6 +87,11 @@ const ProtectedIndexRoute = ProtectedIndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => ProtectedRoute,
+} as any)
+const ApiChangesRoute = ApiChangesRouteImport.update({
+  id: '/api/changes',
+  path: '/api/changes',
+  getParentRoute: () => rootRouteImport,
 } as any)
 const ProtectedSettingsRoute = ProtectedSettingsRouteImport.update({
   id: '/settings',
@@ -302,6 +308,7 @@ export interface FileRoutesByFullPath {
   '/repos': typeof ProtectedReposRoute
   '/reviews': typeof ProtectedReviewsRoute
   '/settings': typeof ProtectedSettingsRouteWithChildren
+  '/api/changes': typeof ApiChangesRoute
   '/settings/shortcuts': typeof ProtectedSettingsShortcutsRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/webhooks/github': typeof ApiWebhooksGithubRoute
@@ -344,6 +351,7 @@ export interface FileRoutesByTo {
   '/pulls': typeof ProtectedPullsRoute
   '/repos': typeof ProtectedReposRoute
   '/reviews': typeof ProtectedReviewsRoute
+  '/api/changes': typeof ApiChangesRoute
   '/': typeof ProtectedIndexRoute
   '/settings/shortcuts': typeof ProtectedSettingsShortcutsRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
@@ -390,6 +398,7 @@ export interface FileRoutesById {
   '/_protected/repos': typeof ProtectedReposRoute
   '/_protected/reviews': typeof ProtectedReviewsRoute
   '/_protected/settings': typeof ProtectedSettingsRouteWithChildren
+  '/api/changes': typeof ApiChangesRoute
   '/_protected/': typeof ProtectedIndexRoute
   '/_protected/settings/shortcuts': typeof ProtectedSettingsShortcutsRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
@@ -437,6 +446,7 @@ export interface FileRouteTypes {
     | '/repos'
     | '/reviews'
     | '/settings'
+    | '/api/changes'
     | '/settings/shortcuts'
     | '/api/auth/$'
     | '/api/webhooks/github'
@@ -479,6 +489,7 @@ export interface FileRouteTypes {
     | '/pulls'
     | '/repos'
     | '/reviews'
+    | '/api/changes'
     | '/'
     | '/settings/shortcuts'
     | '/api/auth/$'
@@ -524,6 +535,7 @@ export interface FileRouteTypes {
     | '/_protected/repos'
     | '/_protected/reviews'
     | '/_protected/settings'
+    | '/api/changes'
     | '/_protected/'
     | '/_protected/settings/shortcuts'
     | '/api/auth/$'
@@ -563,6 +575,7 @@ export interface RootRouteChildren {
   PrivacyRoute: typeof PrivacyRoute
   SetupRoute: typeof SetupRoute
   TermsRoute: typeof TermsRoute
+  ApiChangesRoute: typeof ApiChangesRoute
   ApiAuthSplatRoute: typeof ApiAuthSplatRoute
   ApiWebhooksGithubRoute: typeof ApiWebhooksGithubRoute
   ApiGithubAppAuthorizeRoute: typeof ApiGithubAppAuthorizeRoute
@@ -619,6 +632,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/'
       preLoaderRoute: typeof ProtectedIndexRouteImport
       parentRoute: typeof ProtectedRoute
+    }
+    '/api/changes': {
+      id: '/api/changes'
+      path: '/api/changes'
+      fullPath: '/api/changes'
+      preLoaderRoute: typeof ApiChangesRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/_protected/settings': {
       id: '/_protected/settings'
@@ -970,6 +990,7 @@ const rootRouteChildren: RootRouteChildren = {
   PrivacyRoute: PrivacyRoute,
   SetupRoute: SetupRoute,
   TermsRoute: TermsRoute,
+  ApiChangesRoute: ApiChangesRoute,
   ApiAuthSplatRoute: ApiAuthSplatRoute,
   ApiWebhooksGithubRoute: ApiWebhooksGithubRoute,
   ApiGithubAppAuthorizeRoute: ApiGithubAppAuthorizeRoute,

@@ -1,5 +1,5 @@
-export const COMMENT_MEDIA_MAX_IMAGE_BYTES = 25 * 1024 * 1024;
-export const COMMENT_MEDIA_MAX_VIDEO_BYTES = 120 * 1024 * 1024;
+const COMMENT_MEDIA_MAX_IMAGE_BYTES = 25 * 1024 * 1024;
+const COMMENT_MEDIA_MAX_VIDEO_BYTES = 120 * 1024 * 1024;
 const DISPLAY_MAX_SIDE = 1200;
 
 const IMAGE_TYPES = new Set([
@@ -134,7 +134,7 @@ export function verifyCommentMediaKeyForUser(
 	return key.startsWith(prefix) && !key.slice(prefix.length).includes("/");
 }
 
-export function escapeHtmlAttribute(value: string): string {
+function escapeHtmlAttribute(value: string): string {
 	return value
 		.replace(/&/gu, "&amp;")
 		.replace(/"/gu, "&quot;")

@@ -1,19 +1,24 @@
 import { IssuesIcon } from "@diffkit/icons";
 import { Skeleton } from "@diffkit/ui/components/skeleton";
-import { useQuery } from "@tanstack/react-query";
+import { StatePill } from "@diffkit/ui/components/state-pill";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { getRouteApi } from "@tanstack/react-router";
 import { useMemo } from "react";
 import {
 	DetailPageHeader,
 	DetailPageLayout,
 	DetailPageSkeletonLayout,
+	DetailPageTitle,
 	StaggerItem,
 } from "#/components/details/detail-page";
+import { formatRelativeTime } from "#/lib/format-relative-time";
 import {
 	githubIssuePageQueryOptions,
 	githubQueryKeys,
 	githubViewerQueryOptions,
 } from "#/lib/github.query";
+import type { IssueSummary } from "#/lib/github.types";
+import { findIssueSummaryInLists } from "#/lib/github-query-updates";
 import { useHasMounted } from "#/lib/use-has-mounted";
 import { usePageTitle } from "#/lib/use-page-title";
 import { useRegisterTab } from "#/lib/use-register-tab";
@@ -95,8 +100,17 @@ export function IssueDetailContent({
 			: null,
 	);
 
+	// Seed the header from a cached list row so it paints on the first frame.
+	const queryClient = useQueryClient();
+	const seed = useMemo(
+		() =>
+			issue ? undefined : findIssueSummaryInLists(queryClient, scope, input),
+		[issue, queryClient, scope, input],
+	);
+
 	if (pageQuery.error) throw pageQuery.error;
-	if (!issue) return <IssueDetailPageSkeleton />;
+	if (!issue)
+		return <IssueDetailPageSkeleton owner={owner} repo={repo} seed={seed} />;
 
 	return (
 		<DetailPageLayout
@@ -154,24 +168,78 @@ export function IssueDetailContent({
 	);
 }
 
-function IssueDetailPageSkeleton() {
+function IssueSeedTitle({
+	owner,
+	repo,
+	seed,
+}: {
+	owner: string;
+	repo: string;
+	seed: IssueSummary;
+}) {
+	const stateConfig = getIssueStateConfig(seed);
+	return (
+		<DetailPageTitle
+			collectionHref="/issues"
+			collectionLabel="Issues"
+			owner={owner}
+			repo={repo}
+			number={seed.number}
+			icon={IssuesIcon}
+			iconClassName={stateConfig.color}
+			title={seed.title}
+			subtitle={
+				<div className="flex flex-wrap items-center gap-2">
+					<StatePill tone={stateConfig.tone}>{stateConfig.label}</StatePill>
+					{seed.author && (
+						<span className="flex items-center gap-1.5 text-xs font-[450] text-muted-foreground">
+							<img
+								src={seed.author.avatarUrl}
+								alt={seed.author.login}
+								className="size-4 rounded-full ring-[0.5px] ring-chip-border"
+							/>
+							<span className="font-medium text-foreground">
+								{seed.author.login}
+							</span>
+							<span>opened {formatRelativeTime(seed.createdAt)}</span>
+						</span>
+					)}
+				</div>
+			}
+		/>
+	);
+}
+
+function IssueDetailPageSkeleton({
+	owner,
+	repo,
+	seed,
+}: {
+	owner: string;
+	repo: string;
+	seed?: IssueSummary;
+}) {
 	return (
 		<DetailPageSkeletonLayout mainItemCount={4}>
-			<StaggerItem index={0}>
-				<div className="flex flex-col gap-3">
-					<Skeleton className="h-4 w-48 rounded-md" />
-					<div className="flex items-start gap-3">
-						<Skeleton className="mt-1 size-5 rounded-full" />
-						<div className="flex min-w-0 flex-1 flex-col gap-2">
-							<Skeleton className="h-8 w-3/4 rounded-md" />
-							<div className="flex gap-2">
-								<Skeleton className="h-5 w-16 rounded-full" />
-								<Skeleton className="h-4 w-48" />
+			{seed ? (
+				<IssueSeedTitle owner={owner} repo={repo} seed={seed} />
+			) : (
+				<StaggerItem index={0}>
+					<div className="flex flex-col gap-3">
+						<Skeleton className="h-4 w-48 rounded-md" />
+						<div className="flex items-start gap-3">
+							<Skeleton className="mt-1 size-5 rounded-full" />
+							<div className="flex min-w-0 flex-1 flex-col gap-2">
+								<Skeleton className="h-8 w-3/4 rounded-md" />
+								<div className="flex gap-2">
+									<Skeleton className="h-5 w-16 rounded-full" />
+									<Skeleton className="h-4 w-48" />
+								</div>
 							</div>
 						</div>
 					</div>
-				</div>
-			</StaggerItem>
+				</StaggerItem>
+			)}
 
 			<StaggerItem index={1}>
 				<div className="flex flex-wrap gap-1.5">

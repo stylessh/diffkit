@@ -4,6 +4,7 @@ import {
 	githubPullPageQueryOptions,
 	githubViewerQueryOptions,
 } from "#/lib/github.query";
+import { findPullSummaryInLists } from "#/lib/github-query-updates";
 import { buildSeo, formatPageTitle } from "#/lib/seo";
 
 export const Route = createFileRoute("/_protected/$owner/$repo/pull/$pullId")({
@@ -33,7 +34,14 @@ export const Route = createFileRoute("/_protected/$owner/$repo/pull/$pullId")({
 		void context.queryClient.prefetchQuery(githubViewerQueryOptions(scope));
 
 		return {
-			prTitle: isBrokenEntry ? null : (cachedData?.detail?.title ?? null),
+			prTitle:
+				(isBrokenEntry ? null : cachedData?.detail?.title) ??
+				findPullSummaryInLists(context.queryClient, scope, {
+					owner: params.owner,
+					repo: params.repo,
+					pullNumber,
+				})?.title ??
+				null,
 		};
 	},
 	head: ({ match, params }) =>

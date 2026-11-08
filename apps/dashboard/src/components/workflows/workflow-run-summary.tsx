@@ -46,7 +46,7 @@ export function WorkflowRunSummary({
 							<img
 								src={run.triggeringActor.avatarUrl}
 								alt={run.triggeringActor.login}
-								className="size-4 shrink-0 rounded-full border-[0.5px] border-border"
+								className="size-4 shrink-0 rounded-full ring-[0.5px] ring-chip-border"
 							/>
 							<span className="shrink-0 font-medium">
 								{run.triggeringActor.login}

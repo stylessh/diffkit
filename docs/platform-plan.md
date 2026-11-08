@@ -65,4 +65,6 @@ A follow-up migration drops the tables once the purge finishes; dropping an
 - Watch GitHub rate limits. Client polling (`github-refetch-policy.ts`) now hits
   GitHub on every interval, and ETag 304s, which GitHub does not count against
   the limit, are gone.
-- Add a D1 size alert, at 80% of the limit, for any database the dashboard uses.
+- Add a D1 size alert, at 80% of the limit, for any database the dashboard
+  uses. Done for the dashboard database in the change-feed PR: the cron logs
+  `d1_size_warning`; see data-fetching.md, "Monitoring and alerting".

@@ -1,4 +1,4 @@
-import { createServerFn } from "@tanstack/react-start";
+import { readDocumentCookie, readJsonObjectCookie } from "#/lib/cookies";
 
 const COOKIE_NAME = "diffkit-filters";
 const MAX_AGE = 60 * 60 * 24 * 365; // 1 year
@@ -11,37 +11,11 @@ type SerializedPageState = {
 
 export type SerializedFilterStore = Record<string, SerializedPageState>;
 
-// ── Server: read cookie ────────────────────────────────────────────────
-
-export const getFilterCookie = createServerFn({ method: "GET" }).handler(
-	async (): Promise<SerializedFilterStore> => {
-		const { getRequest } = await import("@tanstack/react-start/server");
-		const request = getRequest();
-		const cookieHeader = request.headers.get("cookie") ?? "";
-		return parseCookieValue(cookieHeader);
-	},
-);
-
-function parseCookieValue(cookieHeader: string): SerializedFilterStore {
-	try {
-		for (const cookie of cookieHeader.split(";")) {
-			const [rawName, ...rawValue] = cookie.trim().split("=");
-			if (rawName === COOKIE_NAME) {
-				const decoded = decodeURIComponent(rawValue.join("="));
-				const parsed = JSON.parse(decoded);
-				if (
-					typeof parsed === "object" &&
-					parsed !== null &&
-					!Array.isArray(parsed)
-				) {
-					return parsed as SerializedFilterStore;
-				}
-			}
-		}
-	} catch {
-		// corrupted cookie — return empty
-	}
-	return {};
+export function parseFilterCookie(
+	cookieHeader: string | null | undefined,
+): SerializedFilterStore {
+	return (readJsonObjectCookie(cookieHeader, COOKIE_NAME) ??
+		{}) as SerializedFilterStore;
 }
 
 // ── Client: write cookie ───────────────────────────────────────────────
@@ -56,7 +30,12 @@ export function writeFilterCookie(store: SerializedFilterStore) {
 	}
 }
 
+/**
+ * Reads saved list filters synchronously from `document.cookie`. Loaders call
+ * this instead of a server function so navigating to a list never waits on a
+ * network round trip. Returns `{}` (defaults) during SSR or when the cookie is
+ * missing or corrupted.
+ */
 export function readFilterCookieClient(): SerializedFilterStore {
-	if (typeof document === "undefined") return {};
-	return parseCookieValue(document.cookie);
+	return parseFilterCookie(readDocumentCookie());
 }

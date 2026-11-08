@@ -621,7 +621,7 @@ function AssigneesSection({
 											<img
 												src={collaborator.avatarUrl}
 												alt={collaborator.login}
-												className="size-5 rounded-full border-[0.5px] border-border"
+												className="size-5 rounded-full ring-[0.5px] ring-chip-border"
 											/>
 											<span className="min-w-0 flex-1 truncate">
 												{collaborator.login}
@@ -651,7 +651,7 @@ function AssigneesSection({
 							<img
 								src={assignee.avatarUrl}
 								alt={assignee.login}
-								className="size-5 rounded-full border-[0.5px] border-border"
+								className="size-5 rounded-full ring-[0.5px] ring-chip-border"
 							/>
 							<span className="min-w-0 flex-1 truncate text-sm">
 								{assignee.login}

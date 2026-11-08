@@ -50,4 +50,20 @@ export default {
 
 		return applySecurityHeaders(response);
 	},
+
+	/**
+	 * Cron trigger (`triggers.crons`, every 5 minutes): sweeps change-feed
+	 * rows older than 15 minutes and checks D1 size. Each task fails on its
+	 * own; neither can affect requests.
+	 */
+	async scheduled(
+		controller: ScheduledController,
+		env: { DB: D1Database },
+		ctx: ExecutionContext,
+	): Promise<void> {
+		const { runScheduledMaintenance } = await import(
+			"#/lib/scheduled-maintenance.server"
+		);
+		ctx.waitUntil(runScheduledMaintenance(env.DB, controller.scheduledTime));
+	},
 };

@@ -12,6 +12,12 @@ export const signInWithGitHub = createClientOnlyFn(
 		redirect?: string;
 		mode?: GitHubSignInMode;
 	} = {}) => {
+		const { clearProtectedRouteCachedAuth } = await import(
+			"./protected-auth-cache"
+		);
+		// Whoever signs in next must not be painted as the previous viewer.
+		clearProtectedRouteCachedAuth();
+
 		const callbackURL = normalizeAuthRedirect(redirect);
 		if (mode === "emulator") {
 			// Demo mode: chain straight into the GitHub App authorization so the
@@ -45,7 +51,14 @@ export const signInWithGitHub = createClientOnlyFn(
 );
 
 export const signOutToLogin = createClientOnlyFn(async () => {
-	const { signOut } = await import("./auth.client");
+	const [{ signOut }, { getProtectedRouteCachedAuth }, { clearLocalSession }] =
+		await Promise.all([
+			import("./auth.client"),
+			import("./protected-auth-cache"),
+			import("./local-session"),
+		]);
+	const userId = getProtectedRouteCachedAuth()?.user.id ?? null;
 	await signOut();
+	await clearLocalSession(userId);
 	window.location.href = "/login";
 });

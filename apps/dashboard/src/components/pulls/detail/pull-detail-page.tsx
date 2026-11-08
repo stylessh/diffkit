@@ -1,17 +1,19 @@
 import { LineCounts } from "@diffkit/ui/components/detail-layout";
 import { Skeleton } from "@diffkit/ui/components/skeleton";
+import { StatePill } from "@diffkit/ui/components/state-pill";
 import {
 	ViewTab,
 	ViewTabCount,
 	ViewTabs,
 } from "@diffkit/ui/components/view-tabs";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { getRouteApi, Link } from "@tanstack/react-router";
 import { useMemo } from "react";
 import {
 	DetailPageHeader,
 	DetailPageLayout,
 	DetailPageSkeletonLayout,
+	DetailPageTitle,
 	StaggerItem,
 } from "#/components/details/detail-page";
 import {
@@ -21,6 +23,8 @@ import {
 	githubReviewThreadStatusesQueryOptions,
 	githubViewerQueryOptions,
 } from "#/lib/github.query";
+import type { PullSummary } from "#/lib/github.types";
+import { findPullSummaryInLists } from "#/lib/github-query-updates";
 import { useHasMounted } from "#/lib/use-has-mounted";
 import { usePageTitle } from "#/lib/use-page-title";
 import { useRegisterTab } from "#/lib/use-register-tab";
@@ -125,8 +129,16 @@ export function PullDetailContent({
 			: null,
 	);
 
+	// Seed the header from a cached list row so it paints on the first frame.
+	const queryClient = useQueryClient();
+	const seed = useMemo(
+		() => (pr ? undefined : findPullSummaryInLists(queryClient, scope, input)),
+		[pr, queryClient, scope, input],
+	);
+
 	if (pageQuery.error) throw pageQuery.error;
-	if (!pr) return <PullDetailPageSkeleton />;
+	if (!pr)
+		return <PullDetailPageSkeleton owner={owner} repo={repo} seed={seed} />;
 
 	const stateConfig = getPrStateConfig(pr);
 
@@ -228,24 +240,77 @@ export function PullDetailContent({
 	);
 }
 
-function PullDetailPageSkeleton() {
+function PullSeedTitle({
+	owner,
+	repo,
+	seed,
+}: {
+	owner: string;
+	repo: string;
+	seed: PullSummary;
+}) {
+	const stateConfig = getPrStateConfig(seed);
+	return (
+		<DetailPageTitle
+			collectionHref="/pulls"
+			collectionLabel="Pull Requests"
+			owner={owner}
+			repo={repo}
+			number={seed.number}
+			icon={stateConfig.icon}
+			iconClassName={stateConfig.color}
+			title={seed.title}
+			subtitle={
+				<div className="flex min-w-0 items-center gap-1.5 text-xs font-[450] text-muted-foreground">
+					<StatePill tone={stateConfig.tone}>{stateConfig.label}</StatePill>
+					{seed.author && (
+						<>
+							<img
+								src={seed.author.avatarUrl}
+								alt={seed.author.login}
+								className="size-4 shrink-0 rounded-full ring-[0.5px] ring-chip-border"
+							/>
+							<span className="shrink-0 font-medium text-foreground">
+								{seed.author.login}
+							</span>
+						</>
+					)}
+				</div>
+			}
+		/>
+	);
+}
+
+function PullDetailPageSkeleton({
+	owner,
+	repo,
+	seed,
+}: {
+	owner: string;
+	repo: string;
+	seed?: PullSummary;
+}) {
 	return (
 		<DetailPageSkeletonLayout mainItemCount={5}>
-			<StaggerItem index={0}>
-				<div className="flex flex-col gap-3">
-					<Skeleton className="h-3 w-32" />
-					<div className="flex items-start gap-3">
-						<Skeleton className="mt-1 size-5 rounded-full" />
-						<div className="flex min-w-0 flex-1 flex-col gap-2">
-							<Skeleton className="h-7 w-3/5" />
-							<div className="flex items-center gap-2">
-								<Skeleton className="h-5 w-14 rounded-full" />
-								<Skeleton className="h-4 w-64" />
+			{seed ? (
+				<PullSeedTitle owner={owner} repo={repo} seed={seed} />
+			) : (
+				<StaggerItem index={0}>
+					<div className="flex flex-col gap-3">
+						<Skeleton className="h-3 w-32" />
+						<div className="flex items-start gap-3">
+							<Skeleton className="mt-1 size-5 rounded-full" />
+							<div className="flex min-w-0 flex-1 flex-col gap-2">
+								<Skeleton className="h-7 w-3/5" />
+								<div className="flex items-center gap-2">
+									<Skeleton className="h-5 w-14 rounded-full" />
+									<Skeleton className="h-4 w-64" />
+								</div>
 							</div>
 						</div>
 					</div>
-				</div>
-			</StaggerItem>
+				</StaggerItem>
+			)}
 
 			<StaggerItem index={1}>
 				<div className="flex items-center gap-3 rounded-lg bg-surface-1 px-4 py-2.5">

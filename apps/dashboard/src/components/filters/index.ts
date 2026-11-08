@@ -1,6 +1,6 @@
 export { FilterBar } from "./filter-bar";
 export type { SerializedFilterStore } from "./filter-cookie";
-export { getFilterCookie } from "./filter-cookie";
+export { readFilterCookieClient } from "./filter-cookie";
 export {
 	issueFilterDefs,
 	issueSortOptions,

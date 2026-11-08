@@ -11,9 +11,9 @@ import { type ComponentType, useMemo, useRef } from "react";
 import {
 	applyFilters,
 	FilterBar,
-	getFilterCookie,
 	pullFilterDefs,
 	pullSortOptions,
+	readFilterCookieClient,
 	useListFilters,
 } from "#/components/filters";
 import { DashboardContentLoading } from "#/components/layouts/dashboard-content-loading";
@@ -26,10 +26,10 @@ import { useHasMounted } from "#/lib/use-has-mounted";
 
 export const Route = createFileRoute("/_protected/pulls")({
 	ssr: false,
-	loader: async ({ context }) => {
+	loader: ({ context }) => {
 		const scope = { userId: context.user.id };
 		void context.queryClient.prefetchQuery(githubMyPullsQueryOptions(scope));
-		const filterStore = await getFilterCookie();
+		const filterStore = readFilterCookieClient();
 		return { filterStore };
 	},
 	pendingComponent: DashboardContentLoading,
