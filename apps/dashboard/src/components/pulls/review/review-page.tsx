@@ -32,6 +32,7 @@ import {
 	useSyncExternalStore,
 } from "react";
 import { getPrStateConfig } from "#/components/pulls/detail/pull-detail-header";
+import { PullStackBadge } from "#/components/pulls/stack/pull-stack-badge";
 import { FileSearchCard } from "#/components/shared/file-search-card";
 import { submitPullReview } from "#/lib/github.functions";
 import {
@@ -681,6 +682,8 @@ const ReviewToolbar = memo(function ReviewToolbar({
 				</div>
 				<span className="truncate text-sm font-medium">{pr.title}</span>
 			</div>
+
+			<PullStackBadge owner={owner} repo={repo} pr={pr} />
 
 			<div className="ml-auto flex items-center gap-2 md:gap-3">
 				<div className="flex items-center gap-2 text-xs text-muted-foreground">

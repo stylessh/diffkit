@@ -22,6 +22,7 @@ import { Route as ProtectedReposRouteImport } from './routes/_protected/repos'
 import { Route as ProtectedPullsRouteImport } from './routes/_protected/pulls'
 import { Route as ProtectedIssuesRouteImport } from './routes/_protected/issues'
 import { Route as ProtectedInboxRouteImport } from './routes/_protected/inbox'
+import { Route as ProtectedDraftsRouteImport } from './routes/_protected/drafts'
 import { Route as ProtectedSettingsIndexRouteImport } from './routes/_protected/settings/index'
 import { Route as ProtectedOwnerIndexRouteImport } from './routes/_protected/$owner/index'
 import { Route as ApiWebhooksGithubRouteImport } from './routes/api/webhooks/github'
@@ -106,6 +107,11 @@ const ProtectedIssuesRoute = ProtectedIssuesRouteImport.update({
 const ProtectedInboxRoute = ProtectedInboxRouteImport.update({
   id: '/inbox',
   path: '/inbox',
+  getParentRoute: () => ProtectedRoute,
+} as any)
+const ProtectedDraftsRoute = ProtectedDraftsRouteImport.update({
+  id: '/drafts',
+  path: '/drafts',
   getParentRoute: () => ProtectedRoute,
 } as any)
 const ProtectedSettingsIndexRoute = ProtectedSettingsIndexRouteImport.update({
@@ -234,6 +240,7 @@ export interface FileRoutesByFullPath {
   '/privacy': typeof PrivacyRoute
   '/setup': typeof SetupRoute
   '/terms': typeof TermsRoute
+  '/drafts': typeof ProtectedDraftsRoute
   '/inbox': typeof ProtectedInboxRoute
   '/issues': typeof ProtectedIssuesRoute
   '/pulls': typeof ProtectedPullsRoute
@@ -268,6 +275,7 @@ export interface FileRoutesByTo {
   '/privacy': typeof PrivacyRoute
   '/setup': typeof SetupRoute
   '/terms': typeof TermsRoute
+  '/drafts': typeof ProtectedDraftsRoute
   '/inbox': typeof ProtectedInboxRoute
   '/issues': typeof ProtectedIssuesRoute
   '/pulls': typeof ProtectedPullsRoute
@@ -304,6 +312,7 @@ export interface FileRoutesById {
   '/privacy': typeof PrivacyRoute
   '/setup': typeof SetupRoute
   '/terms': typeof TermsRoute
+  '/_protected/drafts': typeof ProtectedDraftsRoute
   '/_protected/inbox': typeof ProtectedInboxRoute
   '/_protected/issues': typeof ProtectedIssuesRoute
   '/_protected/pulls': typeof ProtectedPullsRoute
@@ -342,6 +351,7 @@ export interface FileRouteTypes {
     | '/privacy'
     | '/setup'
     | '/terms'
+    | '/drafts'
     | '/inbox'
     | '/issues'
     | '/pulls'
@@ -376,6 +386,7 @@ export interface FileRouteTypes {
     | '/privacy'
     | '/setup'
     | '/terms'
+    | '/drafts'
     | '/inbox'
     | '/issues'
     | '/pulls'
@@ -411,6 +422,7 @@ export interface FileRouteTypes {
     | '/privacy'
     | '/setup'
     | '/terms'
+    | '/_protected/drafts'
     | '/_protected/inbox'
     | '/_protected/issues'
     | '/_protected/pulls'
@@ -545,6 +557,13 @@ declare module '@tanstack/react-router' {
       path: '/inbox'
       fullPath: '/inbox'
       preLoaderRoute: typeof ProtectedInboxRouteImport
+      parentRoute: typeof ProtectedRoute
+    }
+    '/_protected/drafts': {
+      id: '/_protected/drafts'
+      path: '/drafts'
+      fullPath: '/drafts'
+      preLoaderRoute: typeof ProtectedDraftsRouteImport
       parentRoute: typeof ProtectedRoute
     }
     '/_protected/settings/': {
@@ -711,6 +730,7 @@ const ProtectedSettingsRouteWithChildren =
   ProtectedSettingsRoute._addFileChildren(ProtectedSettingsRouteChildren)
 
 interface ProtectedRouteChildren {
+  ProtectedDraftsRoute: typeof ProtectedDraftsRoute
   ProtectedInboxRoute: typeof ProtectedInboxRoute
   ProtectedIssuesRoute: typeof ProtectedIssuesRoute
   ProtectedPullsRoute: typeof ProtectedPullsRoute
@@ -736,6 +756,7 @@ interface ProtectedRouteChildren {
 }
 
 const ProtectedRouteChildren: ProtectedRouteChildren = {
+  ProtectedDraftsRoute: ProtectedDraftsRoute,
   ProtectedInboxRoute: ProtectedInboxRoute,
   ProtectedIssuesRoute: ProtectedIssuesRoute,
   ProtectedPullsRoute: ProtectedPullsRoute,

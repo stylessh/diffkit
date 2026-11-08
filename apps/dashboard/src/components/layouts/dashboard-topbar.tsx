@@ -2,6 +2,7 @@ import {
 	ArchiveIcon,
 	BugIcon,
 	ExternalLinkIcon,
+	GitPullRequestDraftIcon,
 	GitPullRequestIcon,
 	HomeIcon,
 	InboxIcon,
@@ -54,6 +55,7 @@ interface DashboardTopbarProps {
 		pulls?: number;
 		issues?: number;
 		reviews?: number;
+		drafts?: number;
 	};
 }
 
@@ -127,8 +129,14 @@ export function DashboardTopbar({
 				icon: ReviewsIcon,
 				count: counts.reviews,
 			},
+			{
+				to: "/drafts",
+				label: "Drafts",
+				icon: GitPullRequestDraftIcon,
+				count: counts.drafts,
+			},
 		],
-		[counts.pulls, counts.issues, counts.reviews, hasUnread],
+		[counts.pulls, counts.issues, counts.reviews, counts.drafts, hasUnread],
 	);
 
 	useEffect(() => {

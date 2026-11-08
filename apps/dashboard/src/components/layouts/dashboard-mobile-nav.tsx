@@ -1,5 +1,6 @@
 import {
 	ArchiveIcon,
+	GitPullRequestDraftIcon,
 	GitPullRequestIcon,
 	HomeIcon,
 	InboxIcon,
@@ -58,6 +59,7 @@ interface DashboardMobileNavProps {
 		pulls?: number;
 		issues?: number;
 		reviews?: number;
+		drafts?: number;
 	};
 }
 
@@ -98,6 +100,12 @@ export function DashboardMobileNav({
 			label: "Reviews",
 			icon: ReviewsIcon,
 			count: counts.reviews,
+		},
+		{
+			to: "/drafts",
+			label: "Drafts",
+			icon: GitPullRequestDraftIcon,
+			count: counts.drafts,
 		},
 	];
 

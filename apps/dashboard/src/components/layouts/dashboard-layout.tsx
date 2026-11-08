@@ -8,6 +8,7 @@ import {
 } from "#/lib/github.query";
 import { useHasMounted } from "#/lib/use-has-mounted";
 import { useMediaQuery } from "#/lib/use-media-query";
+import { useReviewDraftCount } from "#/lib/use-review-draft-count";
 import {
 	surfaceForbiddenOrgWarnings,
 	surfaceTimeoutWarning,
@@ -81,6 +82,7 @@ export function DashboardLayout() {
 				issuesQuery.data.mentioned.length
 			: undefined;
 	const tabsReady = hasMounted && Boolean(pullsQuery.data && issuesQuery.data);
+	const draftCount = useReviewDraftCount(user.id);
 
 	const sidePanel = useSidePanelSlot();
 	const isXl = useMediaQuery("(min-width: 1280px)");
@@ -97,6 +99,7 @@ export function DashboardLayout() {
 					reviews: hasMounted
 						? pullsQuery.data?.reviewRequested.length
 						: undefined,
+					drafts: draftCount,
 				}}
 			/>
 			<SidePanelProvider
@@ -141,6 +144,7 @@ export function DashboardLayout() {
 					reviews: hasMounted
 						? pullsQuery.data?.reviewRequested.length
 						: undefined,
+					drafts: draftCount,
 				}}
 			/>
 			<Suspense>
