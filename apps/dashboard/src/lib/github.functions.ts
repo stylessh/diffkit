@@ -11,6 +11,7 @@ import type {
 	ContributionWeek,
 	CreateLabelInput,
 	CreateReviewCommentInput,
+	DeletePendingReviewInput,
 	DiscussionsResult,
 	FileLastCommit,
 	GitHubActor,
@@ -56,8 +57,12 @@ import type {
 	RepoTreeEntry,
 	RequestedTeam,
 	RequestReviewersInput,
+	ReviewDraftPull,
+	ReviewDraftSubmitEvent,
+	ReviewDraftsResult,
 	ReviewThreadInfo,
 	SetLabelsInput,
+	SubmitPendingReviewInput,
 	SubmitReviewInput,
 	TimelineEvent,
 	UserActivityEvent,
@@ -102,6 +107,14 @@ import {
 	type ReposHubInput,
 	type ReposHubResult,
 } from "./repos-hub-filter";
+import {
+	buildPendingReviewsQuery,
+	chunkReviewDraftCandidates,
+	type GraphQLPendingReviewsResponse,
+	normalizeReviewDrafts,
+	selectReviewDraftCandidates,
+	sortReviewDrafts,
+} from "./review-drafts";
 
 type GitHubClient = OctokitType;
 type AuthSession = {
@@ -11127,3 +11140,206 @@ export const getWorkflowRunLogsBundle = createServerFn({ method: "GET" })
 export function workflowZipJobName(jobName: string): string {
 	return sanitizeJobNameForZip(jobName);
 }
+
+// ═══════════════════════════════════════════════════════════════════
+// Review drafts — the viewer's pending (unsubmitted) reviews
+// ═══════════════════════════════════════════════════════════════════
+//
+// GitHub has no "list my pending reviews" endpoint, and pending reviews are
+// only visible to their author. We probe the viewer's open PRs (the cached
+// `getMyPullsResult` aggregate) with one aliased GraphQL request per 25 PRs,
+// capped at 50 PRs, i.e. at most two GraphQL requests per uncached load.
+
+const REVIEW_DRAFTS_RESOURCE = "reviewDrafts.graphql.v1";
+const REVIEW_DRAFT_SUBMIT_EVENTS: readonly ReviewDraftSubmitEvent[] = [
+	"APPROVE",
+	"COMMENT",
+	"REQUEST_CHANGES",
+];
+
+type ReviewDraftBatchResult = {
+	drafts: ReviewDraftPull[];
+	failed: boolean;
+};
+
+/** GraphQL answers inaccessible/deleted repos with NOT_FOUND next to partial data. */
+function readPartialGraphQLData(
+	error: unknown,
+): GraphQLPendingReviewsResponse | null {
+	if (!error || typeof error !== "object" || !("data" in error)) {
+		return null;
+	}
+	const data = (error as { data?: unknown }).data;
+	return data && typeof data === "object"
+		? (data as GraphQLPendingReviewsResponse)
+		: null;
+}
+
+function isOnlyNotFoundGraphQLError(error: unknown) {
+	const errors = (error as { errors?: Array<{ type?: string }> } | null)
+		?.errors;
+	return (
+		Array.isArray(errors) &&
+		errors.length > 0 &&
+		errors.every((entry) => entry?.type === "NOT_FOUND")
+	);
+}
+
+async function fetchPendingReviewBatch(
+	context: GitHubContext,
+	login: string,
+	batch: ReturnType<typeof selectReviewDraftCandidates>["candidates"],
+): Promise<ReviewDraftBatchResult> {
+	const { query, variables } = buildPendingReviewsQuery(batch, login);
+	try {
+		const response = await executeGitHubGraphQL<GraphQLPendingReviewsResponse>(
+			context,
+			"github reviewDrafts.pending",
+			query,
+			variables,
+		);
+		return { drafts: normalizeReviewDrafts(response, batch), failed: false };
+	} catch (error) {
+		const partial = readPartialGraphQLData(error);
+		console.error("[review-drafts] pending review batch failed", error);
+		return {
+			drafts: partial ? normalizeReviewDrafts(partial, batch) : [],
+			failed: !(partial && isOnlyNotFoundGraphQLError(error)),
+		};
+	}
+}
+
+export const getMyReviewDrafts = createServerFn({ method: "GET" }).handler(
+	async ({ context: requestContext }): Promise<ReviewDraftsResult> => {
+		const empty: ReviewDraftsResult = {
+			drafts: [],
+			checkedCount: 0,
+			truncated: false,
+			partial: false,
+		};
+		const context = await getGitHubContext();
+		if (!context) {
+			return empty;
+		}
+
+		const viewer = await getViewer(context);
+		return getOrRevalidateGitHubResource<ReviewDraftsResult>({
+			userId: context.session.user.id,
+			resource: REVIEW_DRAFTS_RESOURCE,
+			params: null,
+			freshForMs: githubCachePolicy.mine.staleTimeMs,
+			signalKeys: [githubRevalidationSignalKeys.pullsMine],
+			namespaceKeys: [githubRevalidationSignalKeys.pullsMine],
+			cacheMode: "split",
+			fetcher: async () => {
+				const [myPulls, accessIndex] = await Promise.all([
+					getMyPullsResult({
+						context,
+						username: viewer.login,
+						executionContext: getBackgroundExecutionContext(requestContext),
+					}),
+					getInstallationAccessIndex(context),
+				]);
+				const { candidates, total } = selectReviewDraftCandidates(
+					filterMyPullsResult(myPulls, accessIndex),
+				);
+				const batches = await Promise.all(
+					chunkReviewDraftCandidates(candidates).map((batch) =>
+						fetchPendingReviewBatch(context, viewer.login, batch),
+					),
+				);
+
+				return {
+					kind: "success",
+					data: {
+						drafts: sortReviewDrafts(batches.flatMap((b) => b.drafts)),
+						checkedCount: candidates.length,
+						truncated: total > candidates.length,
+						partial:
+							batches.some((b) => b.failed) ||
+							Boolean(myPulls.partial || myPulls.timedOut),
+					},
+					metadata: createGitHubResponseMetadata(200, {}),
+				};
+			},
+		});
+	},
+);
+
+async function bustReviewDraftCaches(userId: string, params: PullCacheParams) {
+	await Promise.all([
+		bustGitHubCache(userId, REVIEW_DRAFTS_RESOURCE, null),
+		bustPullDetailCaches(userId, params),
+		bustPullReviewCaches(userId, params),
+	]);
+}
+
+function isValidReviewId(value: unknown): value is number {
+	return typeof value === "number" && Number.isSafeInteger(value) && value > 0;
+}
+
+/** Submit the viewer's existing pending review (instead of creating a new one). */
+export const submitPendingReview = createServerFn({ method: "POST" })
+	.inputValidator(identityValidator<SubmitPendingReviewInput>)
+	.handler(async ({ data }): Promise<MutationResult> => {
+		if (
+			!isValidReviewId(data.reviewId) ||
+			!REVIEW_DRAFT_SUBMIT_EVENTS.includes(data.event)
+		) {
+			return { ok: false, error: "Invalid review submission" };
+		}
+		const context = await getGitHubUserContextForRepository(data);
+		if (!context) {
+			return { ok: false, error: "Not authenticated" };
+		}
+
+		try {
+			const body = data.body?.trim();
+			await context.octokit.rest.pulls.submitReview({
+				owner: data.owner,
+				repo: data.repo,
+				pull_number: data.pullNumber,
+				review_id: data.reviewId,
+				event: data.event,
+				...(body ? { body } : {}),
+			});
+			await bustReviewDraftCaches(context.session.user.id, {
+				owner: data.owner,
+				repo: data.repo,
+				pullNumber: data.pullNumber,
+			});
+			return { ok: true };
+		} catch (error) {
+			return toMutationError("submit review", error);
+		}
+	});
+
+/** Delete the viewer's pending review and all of its draft comments. */
+export const deletePendingReview = createServerFn({ method: "POST" })
+	.inputValidator(identityValidator<DeletePendingReviewInput>)
+	.handler(async ({ data }): Promise<MutationResult> => {
+		if (!isValidReviewId(data.reviewId)) {
+			return { ok: false, error: "Invalid review" };
+		}
+		const context = await getGitHubUserContextForRepository(data);
+		if (!context) {
+			return { ok: false, error: "Not authenticated" };
+		}
+
+		try {
+			await context.octokit.rest.pulls.deletePendingReview({
+				owner: data.owner,
+				repo: data.repo,
+				pull_number: data.pullNumber,
+				review_id: data.reviewId,
+			});
+			await bustReviewDraftCaches(context.session.user.id, {
+				owner: data.owner,
+				repo: data.repo,
+				pullNumber: data.pullNumber,
+			});
+			return { ok: true };
+		} catch (error) {
+			return toMutationError("delete pending review", error);
+		}
+	});

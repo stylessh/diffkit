@@ -826,3 +826,75 @@ export type NotificationsResult = {
 	notifications: NotificationItem[];
 	__meta?: GitHubLocalFirstMeta;
 };
+
+// ── Review drafts (pending, unsubmitted GitHub reviews) ──────────────
+
+export type ReviewDraftComment = {
+	/** GraphQL node id. */
+	id: string;
+	path: string;
+	line: number | null;
+	startLine: number | null;
+	/** Attached to the whole file rather than a diff line. */
+	isFileComment: boolean;
+	/** The commented line no longer exists in the latest diff. */
+	outdated: boolean;
+	body: string;
+	createdAt: string;
+	updatedAt: string;
+};
+
+export type ReviewDraft = {
+	/** REST review id; required to submit or delete the pending review. */
+	reviewId: number;
+	nodeId: string;
+	/** The overall review body typed so far. */
+	body: string;
+	url: string;
+	createdAt: string;
+	updatedAt: string;
+	/** Total comments on GitHub; may exceed `comments.length` when truncated. */
+	commentCount: number;
+	comments: ReviewDraftComment[];
+};
+
+export type ReviewDraftPull = {
+	owner: string;
+	repo: string;
+	repositoryFullName: string;
+	number: number;
+	title: string;
+	url: string;
+	isDraft: boolean;
+	author: GitHubActor | null;
+	updatedAt: string;
+	review: ReviewDraft;
+};
+
+export type ReviewDraftsResult = {
+	drafts: ReviewDraftPull[];
+	/** Open PRs that were checked for a pending review. */
+	checkedCount: number;
+	/** More candidate PRs existed than the per-load budget allows. */
+	truncated: boolean;
+	/** At least one batch failed (access restrictions, timeout, …). */
+	partial: boolean;
+};
+
+export type ReviewDraftSubmitEvent = "APPROVE" | "COMMENT" | "REQUEST_CHANGES";
+
+export type SubmitPendingReviewInput = {
+	owner: string;
+	repo: string;
+	pullNumber: number;
+	reviewId: number;
+	event: ReviewDraftSubmitEvent;
+	body?: string;
+};
+
+export type DeletePendingReviewInput = {
+	owner: string;
+	repo: string;
+	pullNumber: number;
+	reviewId: number;
+};

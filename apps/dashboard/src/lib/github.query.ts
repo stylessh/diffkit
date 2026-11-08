@@ -13,6 +13,7 @@ import {
 	getIssuesFromUser,
 	getMyIssues,
 	getMyPulls,
+	getMyReviewDrafts,
 	getNotifications,
 	getOrgTeams,
 	getProfileRepos,
@@ -370,6 +371,10 @@ export const githubQueryKeys = {
 				"workflowRunLogsBundle",
 				input,
 			] as const,
+	},
+	reviewDrafts: {
+		mine: (scope: GitHubQueryScope) =>
+			["github", scope.userId, "reviewDrafts", "mine"] as const,
 	},
 };
 
@@ -1108,3 +1113,16 @@ export function githubWorkflowRunLogsBundleQueryOptions(
 /** Re-exported so client code can compute the sanitized job-name lookup key
  *  the same way the server stores entries in the bundle. */
 export { workflowZipJobName };
+
+/**
+ * Viewer's pending (unsubmitted) reviews. Deliberately not persisted: draft
+ * comment bodies are private, unsent content and the list is cheap to rebuild.
+ */
+export function githubReviewDraftsQueryOptions(scope: GitHubQueryScope) {
+	return queryOptions({
+		queryKey: githubQueryKeys.reviewDrafts.mine(scope),
+		queryFn: () => getMyReviewDrafts(),
+		staleTime: githubCachePolicy.mine.staleTimeMs,
+		gcTime: githubCachePolicy.mine.gcTimeMs,
+	});
+}
