@@ -138,7 +138,7 @@ export function StepLogNode({
 						{data.stepName}
 					</span>
 					{isStepLive ? (
-						<span className="shrink-0 rounded-full bg-amber-500/15 px-2 py-0.5 font-medium text-[10px] text-amber-600 uppercase tracking-wide dark:text-amber-400">
+						<span className="shrink-0 rounded-full bg-pill-warning px-2 py-0.5 font-medium text-[10px] text-pill-warning-text">
 							Live
 						</span>
 					) : null}

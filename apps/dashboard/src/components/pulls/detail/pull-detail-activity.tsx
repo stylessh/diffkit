@@ -406,15 +406,15 @@ function MergedBranchBanner({
 	};
 
 	return (
-		<div className="flex items-center gap-3 rounded-lg bg-purple-500/15 px-4 py-3">
-			<div className="flex size-5 shrink-0 items-center justify-center rounded-full bg-purple-500 text-white">
+		<div className="flex items-center gap-3 rounded-lg bg-pill-merged px-4 py-3">
+			<div className="flex size-5 shrink-0 items-center justify-center rounded-full bg-merged text-white">
 				<GitMergeIcon size={12} strokeWidth={2} />
 			</div>
-			<p className="flex-1 text-sm text-purple-900 dark:text-purple-200">
+			<p className="flex-1 text-[13px] text-pill-merged-text">
 				{deleted ? (
 					<>
 						Branch{" "}
-						<code className="rounded bg-purple-500/20 px-1 py-0.5 font-mono text-xs">
+						<code className="rounded bg-pill-merged px-1 py-0.5 font-mono text-xs">
 							{branchName}
 						</code>{" "}
 						has been deleted.
@@ -422,7 +422,7 @@ function MergedBranchBanner({
 				) : (
 					<>
 						Branch{" "}
-						<code className="rounded bg-purple-500/20 px-1 py-0.5 font-mono text-xs">
+						<code className="rounded bg-pill-merged px-1 py-0.5 font-mono text-xs">
 							{branchName}
 						</code>{" "}
 						has been merged.
@@ -434,7 +434,7 @@ function MergedBranchBanner({
 					variant="ghost"
 					size="xs"
 					disabled={isDeleting}
-					className="shrink-0 text-purple-700 hover:bg-purple-500/10 hover:text-purple-800 dark:text-purple-300 dark:hover:bg-purple-500/10 dark:hover:text-purple-200"
+					className="shrink-0 text-pill-merged-text hover:bg-pill-merged"
 					iconLeft={
 						isDeleting ? (
 							<Spinner size={12} />
@@ -690,8 +690,8 @@ function ReviewsSection({
 									className={cn(
 										"ml-auto text-xs",
 										review.state === "APPROVED"
-											? "text-green-600 dark:text-green-400"
-											: "text-red-600 dark:text-red-400",
+											? "text-success"
+											: "text-danger",
 									)}
 								>
 									{review.state === "APPROVED"
@@ -977,7 +977,7 @@ function ChecksSection({
 			</CollapsibleTrigger>
 			{pendingWorkflowApprovals.length > 0 && (
 				<div className="flex items-start gap-3 border-b border-border/50 bg-surface-1/50 px-4 py-3">
-					<div className="mt-0.5 shrink-0 text-yellow-600 dark:text-yellow-400">
+					<div className="mt-0.5 shrink-0 text-pill-warning-text">
 						<AlertCircleIcon size={16} strokeWidth={2} />
 					</div>
 					<div className="flex min-w-0 flex-1 flex-col gap-0.5">
@@ -1082,14 +1082,10 @@ function ChecksSection({
 											<span
 												className={cn(
 													"shrink-0 text-xs capitalize",
-													runStatus === "success" &&
-														"text-green-600 dark:text-green-400",
-													runStatus === "failure" &&
-														"text-red-600 dark:text-red-400",
-													runStatus === "pending" &&
-														"text-yellow-600 dark:text-yellow-400",
-													runStatus === "expected" &&
-														"text-yellow-600 dark:text-yellow-400",
+													runStatus === "success" && "text-success",
+													runStatus === "failure" && "text-danger",
+													runStatus === "pending" && "text-pill-warning-text",
+													runStatus === "expected" && "text-pill-warning-text",
 													runStatus === "skipped" && "text-muted-foreground",
 												)}
 											>
@@ -1488,7 +1484,7 @@ function MergeFooter({
 						id="merge-commit-title"
 						value={commitTitle}
 						onChange={(e) => setCommitTitle(e.target.value)}
-						className="flex h-9 w-full rounded-md border bg-transparent px-3 py-1 text-sm shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+						className="flex h-9 w-full rounded-md border bg-transparent px-3 py-1 text-sm shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-1 focus-visible:-outline-offset-1 focus-visible:outline-ring"
 					/>
 				</div>
 				<div className="flex flex-col gap-1.5">
@@ -1501,7 +1497,7 @@ function MergeFooter({
 						onChange={(e) => setCommitDescription(e.target.value)}
 						placeholder="Add an optional extended description..."
 						rows={3}
-						className="flex w-full rounded-md border bg-transparent px-3 py-2 text-sm shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring resize-none"
+						className="flex w-full rounded-md border bg-transparent px-3 py-2 text-sm shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-1 focus-visible:-outline-offset-1 focus-visible:outline-ring resize-none"
 					/>
 				</div>
 				<div className="flex items-center gap-2">
@@ -1593,7 +1589,7 @@ function MergeFooter({
 				) : null}
 			</div>
 			{bypass.showOption && (
-				<div className="flex items-center gap-2 text-xs text-yellow-600 dark:text-yellow-500">
+				<div className="flex items-center gap-2 text-xs text-pill-warning-text">
 					<Checkbox
 						id="bypass-checks"
 						checked={bypass.checked}
@@ -1639,20 +1635,20 @@ type StatusType = "success" | "error" | "pending";
 function StatusIcon({ status }: { status: StatusType }) {
 	if (status === "success") {
 		return (
-			<div className="flex size-4 items-center justify-center rounded-full bg-green-600 text-white dark:bg-green-500">
+			<div className="flex size-4 items-center justify-center rounded-full bg-review-approved text-white">
 				<CheckIcon size={10} strokeWidth={3} />
 			</div>
 		);
 	}
 	if (status === "error") {
 		return (
-			<div className="flex size-4 items-center justify-center rounded-full bg-red-600 text-white dark:bg-red-500">
+			<div className="flex size-4 items-center justify-center rounded-full bg-review-changes text-white">
 				<XIcon size={10} strokeWidth={3} />
 			</div>
 		);
 	}
 	return (
-		<div className="flex size-4 items-center justify-center rounded-full border-2 border-yellow-500 text-yellow-500">
+		<div className="flex size-4 items-center justify-center rounded-full border-2 border-review-required text-review-required">
 			<div className="size-1.5 rounded-full bg-current" />
 		</div>
 	);
@@ -2090,7 +2086,7 @@ function ActivityTimeline({
 									index === 0 ? "pt-5" : "pt-5",
 								)}
 							>
-								<div className="flex size-5 shrink-0 items-center justify-center rounded-full bg-purple-500 text-white">
+								<div className="flex size-5 shrink-0 items-center justify-center rounded-full bg-merged text-white">
 									<GitMergeIcon size={12} strokeWidth={2} />
 								</div>
 								{mergedPr.mergedBy ? (
@@ -3027,7 +3023,7 @@ function ReviewCommentBlock({
 		<div className="overflow-hidden rounded-lg border">
 			<div className="flex items-center gap-1.5 bg-surface-1 px-3 py-2 text-[13px] text-muted-foreground">
 				{threadInfo?.isResolved && (
-					<span className="flex items-center gap-1 text-xs font-medium text-green-600 dark:text-green-400">
+					<span className="flex items-center gap-1 text-xs font-medium text-success">
 						<CheckIcon size={12} strokeWidth={2} />
 						Resolved
 					</span>
@@ -3098,11 +3094,11 @@ function getEventIcon(event: TimelineEvent) {
 			const s = event.reviewState?.toLowerCase();
 			let reviewIconClass = "text-muted-foreground";
 			if (s === "approved") {
-				reviewIconClass = "text-green-600 dark:text-green-400";
+				reviewIconClass = "text-success";
 			} else if (s === "changes_requested") {
-				reviewIconClass = "text-red-600 dark:text-red-400";
+				reviewIconClass = "text-danger";
 			} else if (s === "commented") {
-				reviewIconClass = "text-sky-600 dark:text-sky-400";
+				reviewIconClass = "text-indigo";
 			} else if (s === "dismissed") {
 				reviewIconClass = "text-muted-foreground";
 			}
@@ -3121,7 +3117,7 @@ function getEventIcon(event: TimelineEvent) {
 					<IssueClosedCompletedIcon
 						size={12}
 						strokeWidth={2}
-						className="text-violet-500"
+						className="text-merged"
 					/>
 				);
 			}
@@ -3138,7 +3134,7 @@ function getEventIcon(event: TimelineEvent) {
 				<GitPullRequestClosedIcon
 					size={12}
 					strokeWidth={2}
-					className="text-rose-600 dark:text-rose-400"
+					className="text-danger"
 				/>
 			);
 		}
@@ -3147,7 +3143,7 @@ function getEventIcon(event: TimelineEvent) {
 				<GitPullRequestIcon
 					size={12}
 					strokeWidth={2}
-					className="text-green-600 dark:text-green-400"
+					className="text-success"
 				/>
 			);
 		case "cross-referenced":
@@ -3184,7 +3180,7 @@ function getEventIcon(event: TimelineEvent) {
 				<GitPullRequestIcon
 					size={12}
 					strokeWidth={2}
-					className="text-green-600 dark:text-green-400"
+					className="text-success"
 				/>
 			);
 		case "head_ref_deleted":
@@ -3304,24 +3300,16 @@ function getEventDescription(
 			if (state === "approved") {
 				action = (
 					<>
-						<span className="font-medium text-green-600 dark:text-green-400">
-							approved
-						</span>
+						<span className="font-medium text-success">approved</span>
 						{" this pull request"}
 					</>
 				);
 			} else if (state === "changes_requested") {
 				action = (
-					<span className="font-medium text-red-600 dark:text-red-400">
-						requested changes
-					</span>
+					<span className="font-medium text-danger">requested changes</span>
 				);
 			} else if (state === "commented") {
-				action = (
-					<span className="font-medium text-sky-600 dark:text-sky-400">
-						left a review
-					</span>
-				);
+				action = <span className="font-medium text-indigo">left a review</span>;
 			} else if (state === "dismissed") {
 				action = (
 					<span className="font-medium text-muted-foreground">
@@ -3359,7 +3347,7 @@ function getEventDescription(
 					{kind === "completed" && (
 						<>
 							{" as "}
-							<span className="font-medium text-violet-500">completed</span>
+							<span className="font-medium text-merged">completed</span>
 						</>
 					)}
 					{kind === "not_planned" && (
@@ -3377,9 +3365,7 @@ function getEventDescription(
 			return (
 				<span className="inline-flex items-center gap-1 flex-wrap">
 					<ActorMention actor={event.actor} hideAvatar />
-					<span className="font-medium text-green-600 dark:text-green-400">
-						reopened
-					</span>
+					<span className="font-medium text-success">reopened</span>
 					{" this pull request"}
 				</span>
 			);

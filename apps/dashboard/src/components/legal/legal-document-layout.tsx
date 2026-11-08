@@ -18,7 +18,7 @@ export function LegalDocumentLayout({
 				<header className="mb-12 sm:mb-16">
 					<Link
 						to="/"
-						className="inline-flex items-center gap-3 rounded-lg text-foreground outline-none ring-offset-background transition-opacity hover:opacity-80 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+						className="inline-flex items-center gap-3 rounded-lg text-foreground outline-none transition-opacity hover:opacity-80 focus-visible:outline-1 focus-visible:-outline-offset-1 focus-visible:outline-ring"
 					>
 						<Logo
 							className="size-9"

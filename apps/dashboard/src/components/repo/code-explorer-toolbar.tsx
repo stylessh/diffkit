@@ -299,7 +299,7 @@ function CloneInput({
 				onClick={onCopy}
 			>
 				{copied ? (
-					<CheckIcon size={14} className="text-green-500" />
+					<CheckIcon size={14} className="text-success" />
 				) : (
 					<CopyIcon size={14} />
 				)}

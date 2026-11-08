@@ -163,10 +163,10 @@ export function CompareDiffView({
 						</span>
 						{files.length > 0 ? (
 							<span className="ml-2 flex items-center gap-1.5 text-xs">
-								<span className="tabular-nums font-medium text-green-500">
+								<span className="tabular-nums font-medium text-success">
 									+{totals.additions}
 								</span>
-								<span className="tabular-nums font-medium text-red-500">
+								<span className="tabular-nums font-medium text-danger">
 									-{totals.deletions}
 								</span>
 							</span>
@@ -202,7 +202,7 @@ export function CompareDiffView({
 					) : null}
 				</div>
 				{filesTruncated ? (
-					<p className="rounded-lg border border-yellow-500/40 bg-yellow-500/10 px-4 py-2.5 text-xs text-yellow-700 dark:text-yellow-400">
+					<p className="rounded-lg bg-pill-warning px-3 py-2.5 text-xs text-pill-warning-text">
 						This comparison includes more than {files.length} files; GitHub only
 						returns the first {files.length}. Push fewer changes or open the PR
 						to view the full set.

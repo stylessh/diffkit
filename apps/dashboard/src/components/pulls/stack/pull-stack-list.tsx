@@ -47,7 +47,7 @@ export function PullStackList({
 								strokeWidth={2}
 								className={cn(
 									"shrink-0",
-									pull.isDraft ? "text-muted-foreground" : "text-green-500",
+									pull.isDraft ? "text-muted-foreground" : "text-success",
 								)}
 							/>
 							<span className="shrink-0 tabular-nums">#{pull.number}</span>

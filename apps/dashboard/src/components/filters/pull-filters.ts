@@ -42,7 +42,7 @@ const PULL_STATUS_META: {
 		value: "open",
 		label: "Open",
 		icon: GitPullRequestIcon,
-		colorClass: "text-green-500",
+		colorClass: "text-success",
 	},
 	{
 		value: "draft",
@@ -54,13 +54,13 @@ const PULL_STATUS_META: {
 		value: "merged",
 		label: "Merged",
 		icon: GitMergeIcon,
-		colorClass: "text-purple-500",
+		colorClass: "text-merged",
 	},
 	{
 		value: "closed",
 		label: "Closed",
 		icon: GitPullRequestClosedIcon,
-		colorClass: "text-red-500",
+		colorClass: "text-danger",
 	},
 ];
 

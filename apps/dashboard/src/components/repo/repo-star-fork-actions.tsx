@@ -102,28 +102,20 @@ export function RepoStarForkActions({
 				type="button"
 				onClick={() => void handleStar()}
 				className={cn(
-					"inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-medium transition-colors",
-					repo.viewerHasStarred
-						? "bg-yellow-400 text-neutral-900 hover:bg-yellow-400/90 dark:bg-yellow-500 dark:text-neutral-950 dark:hover:bg-yellow-500/90"
-						: "border border-border bg-secondary text-secondary-foreground hover:bg-secondary/80",
+					"inline-flex h-7 items-center gap-1.5 rounded-md bg-button px-2.5 text-xs font-medium text-foreground shadow-button transition-colors hover:bg-button-hover",
 				)}
 			>
 				<StarIcon
 					size={14}
 					strokeWidth={2}
 					className={cn(
-						repo.viewerHasStarred && "fill-neutral-900 dark:fill-neutral-950",
+						repo.viewerHasStarred
+							? "fill-warning text-warning"
+							: "text-muted-foreground",
 					)}
 				/>
 				<span>{repo.viewerHasStarred ? "Starred" : "Star"}</span>
-				<span
-					className={cn(
-						"tabular-nums",
-						repo.viewerHasStarred
-							? "text-neutral-800/85 dark:text-neutral-950/85"
-							: "text-muted-foreground",
-					)}
-				>
+				<span className={cn("tabular-nums", "text-muted-foreground")}>
 					{formatCount(repo.stars)}
 				</span>
 			</button>
@@ -131,7 +123,7 @@ export function RepoStarForkActions({
 				type="button"
 				disabled={forkPending}
 				onClick={() => void handleFork()}
-				className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-secondary px-2.5 py-1 text-xs font-medium text-secondary-foreground transition-colors hover:bg-secondary/80 disabled:opacity-60"
+				className="inline-flex h-7 items-center gap-1.5 rounded-md bg-button px-2.5 text-xs font-medium text-foreground shadow-button transition-colors hover:bg-button-hover disabled:opacity-60"
 			>
 				{forkPending ? (
 					<Spinner size={12} />

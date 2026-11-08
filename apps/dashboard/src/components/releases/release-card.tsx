@@ -30,15 +30,15 @@ const STATUS_BADGE: Record<
 > = {
 	draft: {
 		label: "Draft",
-		className: "border-border text-muted-foreground",
+		className: "border-transparent bg-pill-neutral text-muted-foreground",
 	},
 	prerelease: {
 		label: "Pre-release",
-		className: "border-amber-500/40 text-amber-600 dark:text-amber-400",
+		className: "border-transparent bg-pill-warning text-pill-warning-text",
 	},
 	latest: {
 		label: "Latest",
-		className: "border-green-500/40 text-green-600 dark:text-green-400",
+		className: "border-transparent bg-pill-ok text-pill-ok-text",
 	},
 };
 

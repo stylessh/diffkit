@@ -118,7 +118,7 @@ export const RepoCommitRow = memo(function RepoCommitRow({
 
 			<div className="flex shrink-0 items-center gap-1.5 pt-0.5">
 				{commit.verified ? (
-					<span className="hidden rounded-full border border-green-500/40 px-1.5 py-px text-[10px] font-medium text-green-600 sm:inline dark:text-green-400">
+					<span className="hidden rounded-full bg-pill-ok px-1.5 py-px text-[10px] font-medium text-pill-ok-text sm:inline">
 						Verified
 					</span>
 				) : null}

@@ -384,14 +384,14 @@ function getSubjectIcon(type: string, state: string | null) {
 function getSubjectColor(type: string, state: string | null) {
 	switch (type) {
 		case "PullRequest":
-			if (state === "merged") return "text-purple-500";
-			if (state === "closed") return "text-red-500";
-			return "text-green-500";
+			if (state === "merged") return "text-merged";
+			if (state === "closed") return "text-danger";
+			return "text-success";
 		case "Issue":
-			if (state === "closed") return "text-red-500";
-			return "text-green-500";
+			if (state === "closed") return "text-danger";
+			return "text-success";
 		case "Commit":
-			return "text-blue-500";
+			return "text-indigo";
 		default:
 			return "text-muted-foreground";
 	}
@@ -512,7 +512,7 @@ const InboxRow = memo(function InboxRow({
 							{number ? ` #${number}` : ""}
 						</span>
 						{notification.unread && (
-							<span className="size-1.5 shrink-0 rounded-full bg-blue-500" />
+							<span className="size-1.5 shrink-0 rounded-full bg-indigo" />
 						)}
 					</div>
 					<p

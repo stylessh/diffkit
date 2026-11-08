@@ -293,13 +293,13 @@ export function DetailCommentBox({
 							<DropdownMenuContent align="end" className="min-w-[12rem]">
 								<DropdownMenuItem
 									disabled={isTogglingIssueState}
-									className="text-violet-500 focus:bg-violet-500/15 focus:text-violet-500 data-[highlighted]:bg-violet-500/15 data-[highlighted]:text-violet-500"
+									className="text-merged focus:bg-pill-merged focus:text-merged data-[highlighted]:bg-pill-merged data-[highlighted]:text-merged"
 									onClick={() =>
 										void runIssueStateChange("closed", "completed")
 									}
 								>
 									<IssueClosedCompletedIcon
-										className="size-4 shrink-0 text-violet-500"
+										className="size-4 shrink-0 text-merged"
 										size={16}
 										strokeWidth={2}
 									/>

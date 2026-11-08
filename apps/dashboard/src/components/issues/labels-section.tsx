@@ -261,7 +261,7 @@ export function LabelsSection({
 													<CheckIcon
 														size={14}
 														strokeWidth={2}
-														className="shrink-0 text-green-500"
+														className="shrink-0 text-success"
 													/>
 												)}
 											</button>

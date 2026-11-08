@@ -289,7 +289,7 @@ function LabelsPicker({
 												<CheckIcon
 													size={14}
 													strokeWidth={2}
-													className="shrink-0 text-green-500"
+													className="shrink-0 text-success"
 												/>
 											)}
 										</button>
@@ -458,7 +458,7 @@ function AssigneesPicker({
 												<CheckIcon
 													size={14}
 													strokeWidth={2}
-													className="shrink-0 text-green-500"
+													className="shrink-0 text-success"
 												/>
 											)}
 										</button>
@@ -485,7 +485,7 @@ function AssigneesPicker({
 							<button
 								type="button"
 								onClick={() => onToggleAssignee(a)}
-								className="flex size-4 shrink-0 items-center justify-center rounded opacity-0 transition-opacity hover:text-red-400 group-hover/assignee:opacity-100"
+								className="flex size-4 shrink-0 items-center justify-center rounded opacity-0 transition-opacity hover:text-danger group-hover/assignee:opacity-100"
 							>
 								<CloseIcon size={12} strokeWidth={2} />
 							</button>
@@ -696,7 +696,7 @@ function ReviewersPicker({
 												<CheckIcon
 													size={14}
 													strokeWidth={2}
-													className="shrink-0 text-green-500"
+													className="shrink-0 text-success"
 												/>
 											)}
 										</button>
@@ -723,7 +723,7 @@ function ReviewersPicker({
 							<button
 								type="button"
 								onClick={() => onToggleTeamReviewer(t)}
-								className="flex size-4 shrink-0 items-center justify-center rounded opacity-0 transition-opacity hover:text-red-400 group-hover/reviewer:opacity-100"
+								className="flex size-4 shrink-0 items-center justify-center rounded opacity-0 transition-opacity hover:text-danger group-hover/reviewer:opacity-100"
 							>
 								<CloseIcon size={12} strokeWidth={2} />
 							</button>
@@ -743,7 +743,7 @@ function ReviewersPicker({
 							<button
 								type="button"
 								onClick={() => onToggleReviewer(r)}
-								className="flex size-4 shrink-0 items-center justify-center rounded opacity-0 transition-opacity hover:text-red-400 group-hover/reviewer:opacity-100"
+								className="flex size-4 shrink-0 items-center justify-center rounded opacity-0 transition-opacity hover:text-danger group-hover/reviewer:opacity-100"
 							>
 								<CloseIcon size={12} strokeWidth={2} />
 							</button>

@@ -253,10 +253,10 @@ const FileTreeLeaf = memo(function FileTreeLeaf({
 			{(node.additions != null || node.deletions != null) && (
 				<span className="ml-auto flex shrink-0 items-center gap-1 font-mono tabular-nums">
 					{node.additions != null && node.additions > 0 && (
-						<span className="text-green-500">+{node.additions}</span>
+						<span className="text-success">+{node.additions}</span>
 					)}
 					{node.deletions != null && node.deletions > 0 && (
-						<span className="text-red-500">-{node.deletions}</span>
+						<span className="text-danger">-{node.deletions}</span>
 					)}
 				</span>
 			)}

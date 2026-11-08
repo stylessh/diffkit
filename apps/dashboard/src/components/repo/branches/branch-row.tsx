@@ -31,15 +31,15 @@ function PullRequestBadge({
 }) {
 	const { Icon, className } =
 		pullRequest.state === "MERGED"
-			? { Icon: GitMergeIcon, className: "text-purple-500" }
+			? { Icon: GitMergeIcon, className: "text-merged" }
 			: pullRequest.state === "CLOSED"
-				? { Icon: GitPullRequestClosedIcon, className: "text-red-500" }
+				? { Icon: GitPullRequestClosedIcon, className: "text-danger" }
 				: pullRequest.isDraft
 					? {
 							Icon: GitPullRequestDraftIcon,
 							className: "text-muted-foreground",
 						}
-					: { Icon: GitPullRequestIcon, className: "text-green-500" };
+					: { Icon: GitPullRequestIcon, className: "text-success" };
 
 	return (
 		<Tooltip>

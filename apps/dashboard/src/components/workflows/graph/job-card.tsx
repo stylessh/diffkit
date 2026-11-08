@@ -16,9 +16,9 @@ import { useStepLogActions } from "./step-log-context";
 export function getJobCardRingClass(state: CheckState): string {
 	if (state === "success") return "ring-4 ring-muted/80 dark:ring-muted/50";
 	if (state === "failure")
-		return "border-transparent hover:border-transparent ring-4 ring-red-500/25";
+		return "border-transparent hover:border-transparent ring-1 ring-check-failed";
 	if (state === "pending" || state === "expected")
-		return "border-transparent hover:border-transparent ring-4 ring-amber-500/20";
+		return "border-transparent hover:border-transparent ring-1 ring-check-running";
 	return "";
 }
 

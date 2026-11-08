@@ -51,7 +51,7 @@ export function RepoReleaseDetailPage({
 					url: `/${owner}/${repo}/releases/${encodeURIComponent(tag)}`,
 					repo: `${owner}/${repo}`,
 					iconColor: release.isPrerelease
-						? "text-amber-500"
+						? "text-warning"
 						: "text-muted-foreground",
 					tabId: `releases:${owner}/${repo}@${release.tagName}`,
 				}

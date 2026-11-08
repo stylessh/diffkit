@@ -343,15 +343,13 @@ function PrGroupRow({
 									</a>
 									<div className="flex items-center gap-1.5 text-[11px]">
 										{repo.closed > 0 && (
-											<span className="text-red-500">{repo.closed} closed</span>
+											<span className="text-danger">{repo.closed} closed</span>
 										)}
 										{repo.merged > 0 && (
-											<span className="text-purple-500">
-												{repo.merged} merged
-											</span>
+											<span className="text-merged">{repo.merged} merged</span>
 										)}
 										{repo.open > 0 && (
-											<span className="text-green-500">{repo.open} open</span>
+											<span className="text-success">{repo.open} open</span>
 										)}
 									</div>
 								</div>
@@ -464,10 +462,10 @@ function PrCard({
 			<div className="flex items-center gap-3 text-[11px] text-muted-foreground">
 				{hasDiff && (
 					<>
-						<span className="text-green-600 dark:text-green-400">
+						<span className="text-success">
 							+{pr.additions.toLocaleString()}
 						</span>
-						<span className="text-red-600 dark:text-red-400">
+						<span className="text-danger">
 							-{pr.deletions.toLocaleString()}
 						</span>
 					</>
@@ -525,9 +523,7 @@ function IssueCard({
 					strokeWidth={2}
 					className={cn(
 						"shrink-0",
-						issue.state === "open"
-							? "text-green-600 dark:text-green-400"
-							: "text-violet-600 dark:text-violet-400",
+						issue.state === "open" ? "text-success" : "text-merged",
 					)}
 				/>
 				<span className="truncate text-xs font-medium text-foreground">

@@ -183,9 +183,9 @@ function SetupAccessList({ state }: { state: GitHubAppAccessState }) {
 						className={
 							"flex size-2 shrink-0 rounded-full " +
 							(target.status === "installed"
-								? "bg-green-500"
+								? "bg-success"
 								: target.status === "not-installed"
-									? "bg-yellow-500"
+									? "bg-warning"
 									: "bg-muted-foreground/40")
 						}
 					/>

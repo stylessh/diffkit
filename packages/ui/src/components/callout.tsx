@@ -4,15 +4,16 @@ import type * as React from "react";
 import { cn } from "../lib/utils";
 
 const calloutVariants = cva(
-	"flex items-center justify-between gap-3 rounded-lg px-4 py-2.5 text-sm",
+	"flex min-h-11 items-center justify-between gap-3 rounded-lg px-3 py-2 text-[13px] text-text-strong [&_svg]:shrink-0",
 	{
 		variants: {
+			// Calm fills; the hue lives on the leading icon, as in Linear's banners.
 			variant: {
-				default: "bg-surface-1 text-foreground",
-				info: "bg-blue-500/15 text-blue-600 dark:text-blue-400",
-				warning: "bg-yellow-500/15 text-yellow-600 dark:text-yellow-400",
-				success: "bg-green-500/15 text-green-600 dark:text-green-400",
-				destructive: "bg-red-500/15 text-red-600 dark:text-red-400",
+				default: "bg-group",
+				info: "bg-indigo/8 [&_svg]:text-indigo",
+				warning: "bg-pill-warning [&_svg]:text-pill-warning-text",
+				success: "bg-pill-ok [&_svg]:text-pill-ok-text",
+				destructive: "bg-pill-blocked [&_svg]:text-pill-blocked-text",
 			},
 		},
 		defaultVariants: {

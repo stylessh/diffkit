@@ -68,7 +68,7 @@ export function BranchAheadBehind({
 						</div>
 						<div className="flex flex-1 overflow-hidden rounded-r-full bg-surface-1">
 							<div
-								className="rounded-r-full bg-blue-500/70"
+								className="rounded-r-full bg-indigo/70"
 								style={{ width: `${barPercent(comparison.aheadBy)}%` }}
 							/>
 						</div>

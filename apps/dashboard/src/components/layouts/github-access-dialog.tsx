@@ -276,9 +276,9 @@ function StatusDot({
 			className={cn(
 				"flex size-2 shrink-0 rounded-full",
 				status === "installed"
-					? "bg-green-500"
+					? "bg-success"
 					: status === "not-installed"
-						? "bg-yellow-500"
+						? "bg-warning"
 						: "bg-muted-foreground/40",
 			)}
 		/>

@@ -91,7 +91,7 @@ export function PullDetailHeader({
 							<Link
 								to="/$owner/$repo/review/$pullId"
 								params={{ owner, repo, pullId }}
-								className="rounded-md bg-yellow-400 px-3 py-1 text-xs font-medium text-neutral-900 transition-colors hover:bg-yellow-400/90 dark:bg-yellow-500 dark:text-neutral-950 dark:hover:bg-yellow-500/90"
+								className="inline-flex h-7 items-center gap-1.5 rounded-md bg-button px-2.5 text-xs font-medium text-foreground shadow-button transition-colors hover:bg-button-hover"
 							>
 								Review changes
 							</Link>
@@ -116,10 +116,10 @@ export function PullDetailHeader({
 						{pr.changedFiles === 1 ? "file" : "files"} changed
 					</span>
 					<span className="flex items-center gap-1.5 text-xs">
-						<span className="tabular-nums font-medium text-green-500">
+						<span className="tabular-nums font-medium text-success">
 							+{pr.additions}
 						</span>
-						<span className="tabular-nums font-medium text-red-500">
+						<span className="tabular-nums font-medium text-danger">
 							-{pr.deletions}
 						</span>
 						<DiffBoxes additions={pr.additions} deletions={pr.deletions} />
@@ -154,8 +154,8 @@ function DiffBoxes({
 	const redCount = total === 0 ? 0 : DIFF_BOX_COUNT - greenCount;
 
 	const boxes: string[] = [];
-	for (let i = 0; i < greenCount; i++) boxes.push("bg-green-500");
-	for (let i = 0; i < redCount; i++) boxes.push("bg-red-500");
+	for (let i = 0; i < greenCount; i++) boxes.push("bg-added");
+	for (let i = 0; i < redCount; i++) boxes.push("bg-removed");
 	while (boxes.length < DIFF_BOX_COUNT) boxes.push("bg-muted-foreground/30");
 
 	return (

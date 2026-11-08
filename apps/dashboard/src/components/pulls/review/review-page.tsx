@@ -697,10 +697,10 @@ const ReviewToolbar = memo(function ReviewToolbar({
 							{sidebarFileCount === 1 ? "file" : "files"}
 						</span>
 					</span>
-					<span className="font-mono tabular-nums font-medium text-green-500">
+					<span className="font-mono tabular-nums font-medium text-success">
 						+{diffStats.totalAdditions}
 					</span>
-					<span className="font-mono tabular-nums font-medium text-red-500">
+					<span className="font-mono tabular-nums font-medium text-danger">
 						-{diffStats.totalDeletions}
 					</span>
 				</div>

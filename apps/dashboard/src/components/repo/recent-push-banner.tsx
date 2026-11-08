@@ -36,14 +36,14 @@ export function RecentPushBanner({
 			<CalloutContent>
 				<GitBranchIcon size={15} strokeWidth={2} />
 				<span className="font-medium">{recent.branch}</span>
-				<span className="text-yellow-600/80 dark:text-yellow-400/80">
+				<span className="text-pill-warning-text">
 					had recent pushes {formatRelativeTime(recent.pushedAt)}
 				</span>
 			</CalloutContent>
 			<CalloutAction>
 				<a
 					href={createPrUrl}
-					className="inline-flex items-center gap-1.5 rounded-md bg-yellow-400 px-3 py-1 text-xs font-medium text-neutral-900 transition-colors hover:bg-yellow-400/90 dark:bg-yellow-500 dark:text-neutral-950 dark:hover:bg-yellow-500/90"
+					className="inline-flex h-7 items-center gap-1.5 rounded-md bg-button px-2.5 text-xs font-medium text-foreground shadow-button transition-colors hover:bg-button-hover"
 				>
 					<GitPullRequestIcon size={13} strokeWidth={2} />
 					Compare & pull request

@@ -11,10 +11,10 @@ export type CheckState =
 /** Tailwind text-color class for a CheckState — used by tab icons / inline
  *  badges that want a single color without the wrapped CheckStateIcon. */
 export function getCheckStateColor(state: CheckState): string {
-	if (state === "success") return "text-green-500";
-	if (state === "failure") return "text-red-500";
-	if (state === "pending") return "text-yellow-500";
-	if (state === "expected") return "text-yellow-500";
+	if (state === "success") return "text-success";
+	if (state === "failure") return "text-danger";
+	if (state === "pending") return "text-warning";
+	if (state === "expected") return "text-warning";
 	return "text-muted-foreground";
 }
 
@@ -45,14 +45,14 @@ export function getCheckState(input: {
 export function CheckStateIcon({ state }: { state: CheckState }) {
 	if (state === "success") {
 		return (
-			<div className="flex size-3.5 shrink-0 items-center justify-center text-green-600 dark:text-green-400">
+			<div className="flex size-3.5 shrink-0 items-center justify-center text-success">
 				<CheckIcon size={12} strokeWidth={3} />
 			</div>
 		);
 	}
 	if (state === "failure") {
 		return (
-			<div className="flex size-3.5 shrink-0 items-center justify-center text-red-600 dark:text-red-400">
+			<div className="flex size-3.5 shrink-0 items-center justify-center text-danger">
 				<XIcon size={12} strokeWidth={3} />
 			</div>
 		);
@@ -87,13 +87,13 @@ export function CheckStateIcon({ state }: { state: CheckState }) {
 	}
 	if (state === "expected") {
 		return (
-			<div className="flex size-3.5 shrink-0 items-center justify-center text-yellow-500">
+			<div className="flex size-3.5 shrink-0 items-center justify-center text-warning">
 				<div className="size-1.5 rounded-full bg-current" />
 			</div>
 		);
 	}
 	return (
-		<div className="flex size-3.5 shrink-0 items-center justify-center text-yellow-500">
+		<div className="flex size-3.5 shrink-0 items-center justify-center text-warning">
 			<div className="size-3.5 animate-spin">
 				<svg
 					className="size-3.5"

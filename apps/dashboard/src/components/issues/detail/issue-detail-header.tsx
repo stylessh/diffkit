@@ -28,13 +28,13 @@ export function getIssueStateConfig(issue: IssueDetail): IssueStateConfig {
 			};
 		}
 		return {
-			color: "text-purple-500",
+			color: "text-merged",
 			label: "Closed",
 			tone: "merged",
 		};
 	}
 	return {
-		color: "text-green-500",
+		color: "text-success",
 		label: "Open",
 		tone: "open",
 	};

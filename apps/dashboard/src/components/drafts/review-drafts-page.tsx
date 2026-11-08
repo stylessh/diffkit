@@ -221,7 +221,7 @@ function ReviewDraftGroup({
 					className={
 						draft.isDraft
 							? "mt-[3px] shrink-0 text-muted-foreground"
-							: "mt-[3px] shrink-0 text-green-500"
+							: "mt-[3px] shrink-0 text-success"
 					}
 				>
 					<StateIcon size={16} strokeWidth={2} />
@@ -357,7 +357,7 @@ function DraftCommentRow({
 					{location}
 				</span>
 				{comment.outdated && location !== "Outdated" ? (
-					<span className="shrink-0 text-[11px] text-amber-500">Outdated</span>
+					<span className="shrink-0 text-[11px] text-warning">Outdated</span>
 				) : null}
 			</span>
 			<span className="line-clamp-2 text-xs text-muted-foreground">

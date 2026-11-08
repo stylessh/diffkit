@@ -440,10 +440,10 @@ const FileHeader = memo(function FileHeader({
 
 			<span className="ml-auto flex items-center gap-2 font-mono text-xs tabular-nums">
 				{file.additions > 0 && (
-					<span className="font-medium text-green-500">+{file.additions}</span>
+					<span className="font-medium text-success">+{file.additions}</span>
 				)}
 				{file.deletions > 0 && (
-					<span className="font-medium text-red-500">-{file.deletions}</span>
+					<span className="font-medium text-danger">-{file.deletions}</span>
 				)}
 			</span>
 		</div>
@@ -637,7 +637,7 @@ function ReviewCommentThread({
 	return (
 		<div className="m-2 divide-y overflow-hidden rounded-lg border bg-surface-0">
 			{threadInfo?.isResolved && (
-				<div className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-green-600 dark:text-green-400">
+				<div className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-success">
 					<CheckIcon size={12} strokeWidth={2} />
 					Resolved
 				</div>

@@ -232,8 +232,8 @@ function IssueItem({ issue }: { issue: IssueSummary }) {
 		issue.state === "closed"
 			? issue.stateReason === "not_planned"
 				? "text-muted-foreground"
-				: "text-purple-500"
-			: "text-green-500";
+				: "text-merged"
+			: "text-success";
 	const href = `/${issue.repository.owner}/${issue.repository.name}/issues/${issue.number}`;
 
 	return (
@@ -310,7 +310,7 @@ function DiscussionItem({
 					)}
 					{discussion.isAnswered && (
 						<>
-							<span className="text-green-500">Answered</span>
+							<span className="text-success">Answered</span>
 							<span>·</span>
 						</>
 					)}

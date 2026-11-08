@@ -189,7 +189,7 @@ function NewIssueForm({
 
 					{/* Header */}
 					<div className="flex items-center gap-3">
-						<div className="shrink-0 text-green-500">
+						<div className="shrink-0 text-success">
 							<IssuesIcon size={20} strokeWidth={2} />
 						</div>
 						<h1 className="text-xl font-semibold tracking-tight">
@@ -442,7 +442,7 @@ function NewIssueLabelsPicker({
 												<CheckIcon
 													size={14}
 													strokeWidth={2}
-													className="shrink-0 text-green-500"
+													className="shrink-0 text-success"
 												/>
 											)}
 										</button>
@@ -632,7 +632,7 @@ function AssigneesSection({
 												<CheckIcon
 													size={14}
 													strokeWidth={2}
-													className="shrink-0 text-green-500"
+													className="shrink-0 text-success"
 												/>
 											)}
 										</button>
@@ -661,7 +661,7 @@ function AssigneesSection({
 							<button
 								type="button"
 								onClick={() => onToggleAssignee(assignee)}
-								className="flex size-4 shrink-0 items-center justify-center rounded opacity-0 transition-opacity hover:text-red-400 group-hover/assignee:opacity-100"
+								className="flex size-4 shrink-0 items-center justify-center rounded opacity-0 transition-opacity hover:text-danger group-hover/assignee:opacity-100"
 							>
 								<CloseIcon size={12} strokeWidth={2} />
 							</button>

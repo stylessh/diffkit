@@ -273,7 +273,7 @@ export function DashboardTabs({ tabsReady, routerRef }: DashboardTabsProps) {
 						<GitPullRequestIcon
 							size={14}
 							strokeWidth={2}
-							className="text-purple-500"
+							className="text-merged"
 						/>
 						Close merged
 					</ContextMenuItem>

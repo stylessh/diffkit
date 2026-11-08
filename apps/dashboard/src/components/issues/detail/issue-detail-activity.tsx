@@ -922,7 +922,7 @@ function getIssueEventIcon(event: TimelineEvent) {
 					<IssueClosedCompletedIcon
 						size={12}
 						strokeWidth={2}
-						className="text-violet-500"
+						className="text-merged"
 					/>
 				);
 			}
@@ -935,18 +935,10 @@ function getIssueEventIcon(event: TimelineEvent) {
 					/>
 				);
 			}
-			return (
-				<IssuesIcon size={12} strokeWidth={2} className="text-violet-500" />
-			);
+			return <IssuesIcon size={12} strokeWidth={2} className="text-merged" />;
 		}
 		case "reopened":
-			return (
-				<IssuesIcon
-					size={12}
-					strokeWidth={2}
-					className="text-green-600 dark:text-green-400"
-				/>
-			);
+			return <IssuesIcon size={12} strokeWidth={2} className="text-success" />;
 		case "cross-referenced":
 		case "referenced":
 			return (
@@ -1081,7 +1073,7 @@ function getIssueEventDescription(event: TimelineEvent): React.ReactNode {
 					{kind === "completed" && (
 						<>
 							{" as "}
-							<span className="font-medium text-violet-500">completed</span>
+							<span className="font-medium text-merged">completed</span>
 						</>
 					)}
 					{kind === "not_planned" && (
@@ -1099,9 +1091,7 @@ function getIssueEventDescription(event: TimelineEvent): React.ReactNode {
 			return (
 				<span className="inline-flex items-center gap-1 flex-wrap">
 					<ActorMention actor={event.actor} hideAvatar />
-					<span className="font-medium text-green-600 dark:text-green-400">
-						reopened
-					</span>
+					<span className="font-medium text-success">reopened</span>
 					{" this issue"}
 				</span>
 			);

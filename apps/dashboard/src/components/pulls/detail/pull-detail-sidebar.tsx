@@ -453,7 +453,7 @@ function ReviewersSection({
 																<CheckIcon
 																	size={14}
 																	strokeWidth={2}
-																	className="shrink-0 text-green-500"
+																	className="shrink-0 text-success"
 																/>
 															)}
 														</button>
@@ -490,7 +490,7 @@ function ReviewersSection({
 																<CheckIcon
 																	size={14}
 																	strokeWidth={2}
-																	className="shrink-0 text-green-500"
+																	className="shrink-0 text-success"
 																/>
 															)}
 														</button>
@@ -530,7 +530,7 @@ function ReviewersSection({
 																<CheckIcon
 																	size={14}
 																	strokeWidth={2}
-																	className="shrink-0 text-green-500"
+																	className="shrink-0 text-success"
 																/>
 															)}
 														</button>
@@ -562,7 +562,7 @@ function ReviewersSection({
 								<button
 									type="button"
 									onClick={() => toggleTeam(team.slug)}
-									className="flex size-4 shrink-0 items-center justify-center rounded opacity-0 transition-opacity hover:text-red-400 group-hover/reviewer:opacity-100 disabled:opacity-50"
+									className="flex size-4 shrink-0 items-center justify-center rounded opacity-0 transition-opacity hover:text-danger group-hover/reviewer:opacity-100 disabled:opacity-50"
 								>
 									<CloseIcon size={12} strokeWidth={2} />
 								</button>
@@ -586,7 +586,7 @@ function ReviewersSection({
 								<button
 									type="button"
 									onClick={() => toggleReviewer(reviewer.login)}
-									className="flex size-4 shrink-0 items-center justify-center rounded opacity-0 transition-opacity hover:text-red-400 group-hover/reviewer:opacity-100 disabled:opacity-50"
+									className="flex size-4 shrink-0 items-center justify-center rounded opacity-0 transition-opacity hover:text-danger group-hover/reviewer:opacity-100 disabled:opacity-50"
 								>
 									<CloseIcon size={12} strokeWidth={2} />
 								</button>

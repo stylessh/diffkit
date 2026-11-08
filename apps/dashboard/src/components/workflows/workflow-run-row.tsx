@@ -126,7 +126,7 @@ const RunDuration = memo(function RunDuration({
 	return (
 		<div className="mt-[3px] hidden shrink-0 items-center gap-1.5 md:flex">
 			{isLive ? (
-				<span className="inline-flex size-1.5 animate-pulse rounded-full bg-yellow-500" />
+				<span className="inline-flex size-1.5 animate-pulse rounded-full bg-check-running" />
 			) : null}
 			<span
 				className={cn(

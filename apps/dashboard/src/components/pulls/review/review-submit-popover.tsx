@@ -52,14 +52,14 @@ const reviewOptions: Array<{
 		label: "Approve",
 		description: "Submit feedback and approve merging these changes.",
 		icon: TickIcon,
-		color: "text-green-500",
+		color: "text-success",
 	},
 	{
 		value: "REQUEST_CHANGES",
 		label: "Request changes",
 		description: "Submit feedback suggesting changes.",
 		icon: GitBranchIcon,
-		color: "text-red-500",
+		color: "text-danger",
 	},
 ];
 
@@ -88,7 +88,7 @@ export function ReviewSubmitPopover({
 	const trigger = (
 		<button
 			type="button"
-			className="flex items-center gap-1.5 rounded-lg bg-green-600 px-3 py-1.5 text-xs font-medium text-white transition-colors hover:bg-green-700"
+			className="flex items-center gap-1.5 h-7 rounded-md bg-success px-2.5 text-xs font-medium text-white shadow-[0_1px_1px_0_lch(0_0_0/0.12),0_3px_6px_-2px_lch(0_0_0/0.12)] transition-colors hover:bg-success/90"
 		>
 			Submit review
 			{pendingCount > 0 && (
@@ -119,7 +119,7 @@ export function ReviewSubmitPopover({
 					value={body}
 					onChange={(event) => setBody(event.target.value)}
 					placeholder="Leave a comment"
-					className="min-h-[80px] w-full resize-y rounded-md border bg-background px-3 py-2 text-xs outline-none placeholder:text-muted-foreground focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+					className="min-h-[80px] w-full resize-y rounded-md border bg-background px-3 py-2 text-xs outline-none placeholder:text-muted-foreground focus-visible:outline-1 focus-visible:-outline-offset-1 focus-visible:outline-ring focus:ring-focus"
 				/>
 			</div>
 
@@ -170,7 +170,7 @@ export function ReviewSubmitPopover({
 					type="button"
 					onClick={handleSubmit}
 					disabled={isSubmitting}
-					className="flex items-center gap-1.5 rounded-md bg-green-600 px-4 py-1.5 text-xs font-medium text-white transition-colors hover:bg-green-700 disabled:opacity-50"
+					className="flex items-center gap-1.5 h-7 rounded-md bg-success px-3 text-xs font-medium text-white shadow-[0_1px_1px_0_lch(0_0_0/0.12),0_3px_6px_-2px_lch(0_0_0/0.12)] transition-colors hover:bg-success/90 disabled:opacity-50"
 				>
 					{isSubmitting ? (
 						<Spinner size={12} />

@@ -21,7 +21,7 @@ const badgeVariants = cva(
 				success: "bg-pill-ok text-pill-ok-text",
 				warning: "bg-pill-warning text-pill-warning-text",
 				purple: "bg-pill-merged text-pill-merged-text",
-				gold: "bg-yellow-500/12 text-yellow-700 dark:text-yellow-400",
+				gold: "bg-pill-warning text-pill-warning-text",
 			},
 			size: {
 				sm: "gap-1 px-2 py-0.5 text-[10px] leading-none [&>svg]:size-2.5",
