@@ -24,7 +24,7 @@ export function redactErrorMessage(message: string): string {
 
 export function describeError(error: unknown, depth = 0): ErrorSummary {
 	if (error instanceof Error) {
-		const code = (error as { code?: unknown }).code;
+		const code = "code" in error ? error.code : undefined;
 		const cause =
 			depth < 2 && error.cause !== undefined
 				? describeError(error.cause, depth + 1)

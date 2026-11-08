@@ -1,5 +1,6 @@
 import "@tanstack/react-start/server-only";
 import { env, waitUntil } from "cloudflare:workers";
+import type { Octokit } from "octokit";
 import { describeError } from "./route-safety.server";
 
 // Lists what the *user* can read in each installation, not the installation's
@@ -42,15 +43,8 @@ function remember(
 	}
 }
 
-type MinimalOctokit = {
-	request: (
-		route: string,
-		params?: Record<string, unknown>,
-	) => Promise<{ data: unknown }>;
-};
-
 export async function listReadableRepos(
-	octokit: MinimalOctokit,
+	octokit: Pick<Octokit, "request">,
 ): Promise<ReadableRepos> {
 	const installations: { id: number }[] = [];
 	for (let page = 1; page <= MAX_INSTALLATION_PAGES; page++) {
@@ -58,13 +52,9 @@ export async function listReadableRepos(
 			per_page: PAGE_SIZE,
 			page,
 		});
-		const items =
-			(data as { installations?: { id?: number; suspended_at?: unknown }[] })
-				.installations ?? [];
+		const items = data.installations ?? [];
 		for (const item of items) {
-			if (typeof item.id === "number" && !item.suspended_at) {
-				installations.push({ id: item.id });
-			}
+			if (!item.suspended_at) installations.push({ id: item.id });
 		}
 		if (items.length < PAGE_SIZE) break;
 	}
@@ -76,13 +66,9 @@ export async function listReadableRepos(
 				"GET /user/installations/{installation_id}/repositories",
 				{ installation_id: installation.id, per_page: PAGE_SIZE, page },
 			);
-			const items =
-				(data as { repositories?: { full_name?: string }[] }).repositories ??
-				[];
+			const items = data.repositories ?? [];
 			for (const item of items) {
-				if (typeof item.full_name === "string") {
-					repos.add(item.full_name.toLowerCase());
-				}
+				repos.add(item.full_name.toLowerCase());
 			}
 			if (items.length < PAGE_SIZE) break;
 		}
@@ -131,7 +117,7 @@ export async function getReadableRepoSet(userId: string): Promise<Set<string>> {
 				remember(userId, NO_READABLE_REPOS, FAILURE_MEMORY_TTL_MS, now);
 				return new Set();
 			}
-			value = await listReadableRepos(octokit as unknown as MinimalOctokit);
+			value = await listReadableRepos(octokit);
 			writeKv(userId, value);
 		} catch (error) {
 			console.warn(
