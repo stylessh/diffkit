@@ -150,10 +150,6 @@ function ReturnIcon() {
 	);
 }
 
-// ---------------------------------------------------------------------------
-// Key rendering: maps special key names to SVG icons, falls back to text
-// ---------------------------------------------------------------------------
-
 type KeyToken = string | { icon: ReactNode; label: string };
 
 const specialKeys: Record<string, { icon: ReactNode; label: string }> = {
@@ -175,10 +171,6 @@ const specialKeys: Record<string, { icon: ReactNode; label: string }> = {
 function resolveKey(key: string): KeyToken {
 	return specialKeys[key.toLowerCase()] ?? key;
 }
-
-// ---------------------------------------------------------------------------
-// Shortcut data
-// ---------------------------------------------------------------------------
 
 type Shortcut = {
 	keys: string[];
@@ -206,16 +198,18 @@ const shortcutGroups: ShortcutGroup[] = [
 			{ keys: ["G", "P"], description: "Go to Pull Requests" },
 			{ keys: ["G", "I"], description: "Go to Issues" },
 			{ keys: ["G", "R"], description: "Go to Reviews" },
+			{ keys: ["G", "D"], description: "Go to Review Drafts" },
 			{ keys: ["G", "S"], description: "Go to Settings" },
 		],
 	},
 	{
-		title: "Tabs",
+		title: "Workspace",
 		shortcuts: [
-			{ keys: ["Shift", "1\u20139"], description: "Switch to tab by position" },
-			{ keys: ["Shift", "W"], description: "Close current tab" },
-			{ keys: ["Shift", "\u2190"], description: "Previous tab" },
-			{ keys: ["Shift", "\u2192"], description: "Next tab" },
+			{ keys: ["O", "R"], description: "Switch repository" },
+			{ keys: ["N", "I"], description: "New issue" },
+			{ keys: ["N", "P"], description: "New pull request" },
+			{ keys: ["N", "R"], description: "New release" },
+			{ keys: ["["], description: "Collapse or expand the sidebar" },
 		],
 	},
 	{
@@ -236,10 +230,6 @@ const shortcutGroups: ShortcutGroup[] = [
 		],
 	},
 ];
-
-// ---------------------------------------------------------------------------
-// Route & component
-// ---------------------------------------------------------------------------
 
 export const Route = createFileRoute("/_protected/settings/shortcuts")({
 	component: ShortcutsPage,
