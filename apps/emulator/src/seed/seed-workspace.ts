@@ -1122,12 +1122,13 @@ function seedActions(
 					(line, lineIndex) =>
 						`${new Date(stepStart + Math.round(((stepEnd - stepStart) * lineIndex) / Math.max(1, lines.length))).toISOString().replace("Z", "0000Z")} ${line}`,
 				);
+				// Only the step that failed carries the failure; the rest succeeded.
 				const stepConclusion =
 					step.conclusion ??
 					(job.conclusion === "skipped"
 						? "skipped"
 						: jobDone
-							? (job.conclusion ?? "success")
+							? "success"
 							: null);
 				const stepFinished = jobDone || stepConclusion !== null;
 				return {
@@ -1137,11 +1138,7 @@ function seedActions(
 						: index === 0
 							? "in_progress"
 							: "queued",
-					conclusion: stepFinished
-						? stepConclusion === "failure" || step.conclusion
-							? stepConclusion
-							: "success"
-						: null,
+					conclusion: stepFinished ? stepConclusion : null,
 					number: index + 1,
 					started_at: new Date(stepStart).toISOString(),
 					completed_at: stepFinished ? new Date(stepEnd).toISOString() : null,

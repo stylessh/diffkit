@@ -5,7 +5,8 @@
  * emulator. `apps/dashboard/.dev.vars.demo` mirrors them, and a test keeps the
  * two files in sync.
  */
-import { readFileSync } from "node:fs";
+import { generateKeyPairSync } from "node:crypto";
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 
 export const DEFAULT_EMULATOR_PORT = 4001;
 export const DEFAULT_DASHBOARD_URL = "http://localhost:3000";
@@ -28,10 +29,33 @@ export const DEMO_OAUTH_APP = {
 	name: "DiffKit (local demo)",
 };
 
+const DEMO_APP_KEY_PATH = new URL(
+	"../../.emulate/demo-github-app.private-key.pem",
+	import.meta.url,
+);
+
+/**
+ * Throwaway RSA key the demo GitHub App signs JWTs with. Generated on first
+ * run and kept in the gitignored `.emulate/` directory, so no private key is
+ * committed. The dashboard fetches it from the emulator in demo mode.
+ */
+function loadDemoAppPrivateKey() {
+	if (existsSync(DEMO_APP_KEY_PATH)) {
+		return readFileSync(DEMO_APP_KEY_PATH, "utf8");
+	}
+	const { privateKey } = generateKeyPairSync("rsa", {
+		modulusLength: 2048,
+		privateKeyEncoding: { type: "pkcs1", format: "pem" },
+		publicKeyEncoding: { type: "pkcs1", format: "pem" },
+	});
+	mkdirSync(new URL("./", DEMO_APP_KEY_PATH), { recursive: true });
+	writeFileSync(DEMO_APP_KEY_PATH, privateKey, { mode: 0o600 });
+	return privateKey;
+}
+
 /**
  * GitHub App used for installation tokens, app-user tokens and webhooks
- * (`GITHUB_APP_*`). The private key below was generated once for the demo and
- * committed on purpose: it only signs JWTs the local emulator accepts.
+ * (`GITHUB_APP_*`). Every value only works against the local emulator.
  */
 export const DEMO_GITHUB_APP = {
 	appId: 424_242,
@@ -40,10 +64,7 @@ export const DEMO_GITHUB_APP = {
 	clientId: "Iv1.demodiffkitapp",
 	clientSecret: "demo-app-client-secret-not-a-real-secret",
 	webhookSecret: "demo-webhook-secret-not-a-real-secret",
-	privateKey: readFileSync(
-		new URL("./demo-github-app.private-key.pem", import.meta.url),
-		"utf8",
-	),
+	privateKey: loadDemoAppPrivateKey(),
 };
 
 export const DEMO_INSTALLATION_IDS = {

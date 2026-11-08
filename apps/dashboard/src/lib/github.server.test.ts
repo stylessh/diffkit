@@ -51,6 +51,7 @@ vi.mock("./github-app.server", () => ({
 
 // Demo mode off: clients must keep Octokit's github.com defaults.
 vi.mock("./github-emulator.server", () => ({
+	getGitHubEmulatorAppPrivateKey: () => Promise.resolve(null),
 	getGitHubOctokitBaseOptions: () => ({}),
 }));
 

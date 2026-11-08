@@ -213,8 +213,6 @@ describe(".dev.vars.demo", () => {
 		expect(vars.GITHUB_APP_CLIENT_ID).toBe(DEMO_GITHUB_APP.clientId);
 		expect(vars.GITHUB_APP_CLIENT_SECRET).toBe(DEMO_GITHUB_APP.clientSecret);
 		expect(vars.GITHUB_WEBHOOK_SECRET).toBe(DEMO_GITHUB_APP.webhookSecret);
-		expect(vars.GITHUB_APP_PRIVATE_KEY.replaceAll("\\n", "\n").trim()).toBe(
-			DEMO_GITHUB_APP.privateKey.trim(),
-		);
+		expect(vars.GITHUB_APP_PRIVATE_KEY).toBeUndefined();
 	});
 });

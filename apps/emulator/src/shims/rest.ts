@@ -5,6 +5,7 @@
 import type { GitHubAppInstallation, GitHubComment } from "@emulators/github";
 import { zipSync } from "fflate";
 import { commitsBetween } from "../graphql/git.ts";
+import { DEMO_GITHUB_APP } from "../seed/identity.ts";
 import type { ShimContext } from "../server.ts";
 import type { CommitStatusRow } from "../store-extras.ts";
 import {
@@ -278,6 +279,18 @@ export function registerRestShims(context: ShimContext) {
 			ready: Boolean(context.store.getData("diffkit.ready")),
 		}),
 	);
+
+	// Demo mode only: the dashboard fetches the demo App's key from here so no
+	// private key has to be committed to .dev.vars.demo.
+	app.get("/_diffkit/demo-app-private-key", (c) => {
+		const { gh } = stores(context);
+		const app = gh.apps
+			.all()
+			.find((row) => row.app_id === DEMO_GITHUB_APP.appId);
+		return app
+			? c.text(app.private_key, 200, { "Cache-Control": "no-store" })
+			: notFound(c);
+	});
 
 	app.get("/avatars/u/:login", (c) =>
 		c.body(avatarSvg(c.req.param("login")), 200, {

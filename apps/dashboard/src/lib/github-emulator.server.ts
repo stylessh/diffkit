@@ -31,3 +31,28 @@ export function getGitHubOctokitBaseOptions(): { baseUrl?: string } {
 export function getGitHubOAuthOrigin() {
 	return getGitHubEmulatorUrl() ?? GITHUB_WEB_ORIGIN;
 }
+
+let emulatorAppPrivateKey: Promise<string | null> | null = null;
+
+/**
+ * Demo mode only: the emulator generates the demo GitHub App's key on first
+ * run, so `.dev.vars.demo` does not have to carry a private key.
+ */
+export function getGitHubEmulatorAppPrivateKey(): Promise<string | null> {
+	const emulatorUrl = getGitHubEmulatorUrl();
+	if (!emulatorUrl) {
+		return Promise.resolve(null);
+	}
+	emulatorAppPrivateKey ??= fetch(
+		`${emulatorUrl}/_diffkit/demo-app-private-key`,
+	)
+		.then((response) => (response.ok ? response.text() : null))
+		.catch(() => null)
+		.then((key) => {
+			if (!key) {
+				emulatorAppPrivateKey = null;
+			}
+			return key;
+		});
+	return emulatorAppPrivateKey;
+}
