@@ -1,4 +1,5 @@
 import {
+	index,
 	integer,
 	primaryKey,
 	sqliteTable,
@@ -77,5 +78,30 @@ export const userForbiddenOrg = sqliteTable(
 	},
 	(table) => ({
 		pk: primaryKey({ columns: [table.userId, table.org] }),
+	}),
+);
+
+/**
+ * Change feed: one row per entity a GitHub webhook changed (see
+ * docs/data-fetching.md, L2). Rows are only useful for 15 minutes; the cron
+ * sweeper in entry-worker.ts deletes older ones, so the table stays at a few
+ * hundred rows. `id` is AUTOINCREMENT so cursors stay monotonic even when the
+ * table is empty.
+ */
+export const githubChange = sqliteTable(
+	"github_change",
+	{
+		id: integer("id").primaryKey({ autoIncrement: true }),
+		/** Lowercased `owner/repo`. */
+		repo: text("repo").notNull(),
+		entityKey: text("entity_key").notNull(),
+		/** 0 only when the webhook payload said the repo is public. */
+		isPrivate: integer("is_private").notNull().default(1),
+		/** Epoch milliseconds. */
+		changedAt: integer("changed_at").notNull(),
+	},
+	(table) => ({
+		repoIdIdx: index("github_change_repo_id_idx").on(table.repo, table.id),
+		changedAtIdx: index("github_change_changed_at_idx").on(table.changedAt),
 	}),
 );
