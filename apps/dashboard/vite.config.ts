@@ -1,4 +1,6 @@
 import { existsSync, readFileSync } from "node:fs";
+import { createRequire } from "node:module";
+import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { cloudflare } from "@cloudflare/vite-plugin";
 import tailwindcss from "@tailwindcss/vite";
@@ -207,6 +209,93 @@ export default {};`;
 	};
 }
 
+// `@hugeicons/react`'s barrel re-exports ~3,900 icon modules (45 MB). In dev,
+// Vite pre-bundles all of them into one 38 MB chunk (+46 MB source map) that
+// the Worker must parse, which can exhaust workerd's heap on the first request.
+// Rewrite named imports to per-icon modules instead. Dev only: production
+// builds tree-shake the barrel already.
+function hugeiconsDeepImports(): import("vite").Plugin {
+	const iconsPackage = path.dirname(
+		createRequire(
+			new URL("../../packages/icons/package.json", import.meta.url),
+		).resolve("@hugeicons/react/package.json"),
+	);
+	let iconFiles: Map<string, string> | null = null;
+	const loadIconFiles = () => {
+		if (iconFiles) return iconFiles;
+		const index = readFileSync(
+			path.join(iconsPackage, "dist/esm/icons/index.js"),
+			"utf8",
+		);
+		const localToFile = new Map<string, string>();
+		for (const match of index.matchAll(
+			/import\{default as ([\w$]+)\}from"\.\/([^"]+)"/gu,
+		)) {
+			localToFile.set(match[1], match[2]);
+		}
+		iconFiles = new Map();
+		const exportList = index.slice(index.lastIndexOf("export{"));
+		for (const match of exportList.matchAll(/([\w$]+) as (\w+)/gu)) {
+			const file = localToFile.get(match[1]);
+			if (file) iconFiles.set(match[2], file);
+		}
+		return iconFiles;
+	};
+	const IMPORT_RE =
+		/(import|export)\s*\{([^}]*)\}\s*from\s*["']@hugeicons\/react["'];?/gu;
+
+	return {
+		name: "hugeicons-deep-imports",
+		apply: "serve",
+		enforce: "pre",
+		config: () => ({
+			optimizeDeps: { exclude: ["@hugeicons/react"] },
+			ssr: { optimizeDeps: { exclude: ["@hugeicons/react"] } },
+		}),
+		transform(code, id) {
+			if (!code.includes("@hugeicons/react") || id.includes("node_modules")) {
+				return;
+			}
+			const files = loadIconFiles();
+			let changed = false;
+			const next = code.replace(
+				IMPORT_RE,
+				(statement, keyword: string, specifiers: string) => {
+					const deep: string[] = [];
+					const rest: string[] = [];
+					for (const raw of specifiers.split(",")) {
+						const specifier = raw.trim();
+						if (!specifier) continue;
+						const [imported, local = imported] = specifier
+							.split(/\s+as\s+/u)
+							.map((part) => part.trim());
+						const file = files.get(imported);
+						if (file) {
+							const source = `"@hugeicons/react/dist/esm/icons/${file}"`;
+							deep.push(
+								keyword === "export"
+									? `export { default as ${local} } from ${source};`
+									: `import ${local} from ${source};`,
+							);
+						} else {
+							rest.push(specifier);
+						}
+					}
+					if (deep.length === 0) return statement;
+					changed = true;
+					return [
+						...deep,
+						...(rest.length > 0
+							? [`${keyword} { ${rest.join(", ")} } from "@hugeicons/react";`]
+							: []),
+					].join("\n");
+				},
+			);
+			return changed ? { code: next, map: null } : undefined;
+		},
+	};
+}
+
 // Remote R2/KV/D1 bindings require `wrangler login`; Vitest and PR CI use local Miniflare only.
 const useCloudflareRemoteBindings =
 	process.env.CI !== "true" && process.env.VITEST !== "true" && !isDemoMode;
@@ -223,6 +312,7 @@ const config = defineConfig(({ command, mode }) => {
 		server: command === "serve" ? getTunnelServerConfig() : undefined,
 		plugins: [
 			devtools(),
+			hugeiconsDeepImports(),
 			shikiSSRStub(),
 			betterAuthDialectStub(),
 			cloudflare({
