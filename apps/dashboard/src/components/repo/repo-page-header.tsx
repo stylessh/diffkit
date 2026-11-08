@@ -5,12 +5,6 @@ import { RepoHeader } from "#/components/repo/repo-header";
 import type { RepoNavKey } from "#/components/repo/repo-nav";
 import type { GitHubQueryScope } from "#/lib/github.query";
 
-/**
- * A repository sub-page (commits, branches, tags, releases), after Linear's
- * list views: the repo's breadcrumb header and section tabs, an optional 44px
- * toolbar row (search, filters, the page's own actions), then the page body,
- * full width, scrolling under all three.
- */
 export function RepoPageHeader({
 	owner,
 	repo,
