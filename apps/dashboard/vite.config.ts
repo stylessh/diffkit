@@ -15,9 +15,21 @@ import {
 
 const dashboardRoot = new URL(".", import.meta.url);
 const dashboardRootDir = fileURLToPath(dashboardRoot);
-const worktreePersistState = isWorktreeCheckout(dashboardRoot)
-	? { persistState: { path: getSharedWranglerStatePath(dashboardRoot) } }
-	: {};
+
+// Local demo mode (`pnpm dev:demo`): CLOUDFLARE_ENV=demo selects the `demo`
+// environment in wrangler.demo.jsonc and makes Wrangler read `.dev.vars.demo`.
+// Its D1/KV/R2 state lives apart from your normal dev state.
+const isDemoMode = process.env.CLOUDFLARE_ENV === "demo";
+const DEMO_WRANGLER_CONFIG = "wrangler.demo.jsonc";
+const DEMO_STATE_PATH = fileURLToPath(
+	new URL("./.wrangler/demo-state", dashboardRoot),
+);
+
+const worktreePersistState = isDemoMode
+	? { persistState: { path: DEMO_STATE_PATH } }
+	: isWorktreeCheckout(dashboardRoot)
+		? { persistState: { path: getSharedWranglerStatePath(dashboardRoot) } }
+		: {};
 
 function getDevVarFromFile(key: string) {
 	const devVarsPath = new URL("./.dev.vars", dashboardRoot);
@@ -50,6 +62,9 @@ function getDevVarFromFile(key: string) {
 }
 
 function getDevTunnelUrl() {
+	if (isDemoMode) {
+		return null;
+	}
 	return process.env.DEV_TUNNEL_URL ?? getDevVarFromFile("DEV_TUNNEL_URL");
 }
 
@@ -194,14 +209,16 @@ export default {};`;
 
 // Remote R2/KV/D1 bindings require `wrangler login`; Vitest and PR CI use local Miniflare only.
 const useCloudflareRemoteBindings =
-	process.env.CI !== "true" && process.env.VITEST !== "true";
+	process.env.CI !== "true" && process.env.VITEST !== "true" && !isDemoMode;
 
 const config = defineConfig(({ command, mode }) => {
-	const wranglerConfigPath = resolveWranglerConfigPath({
-		command,
-		mode,
-		rootDir: dashboardRootDir,
-	});
+	const wranglerConfigPath = isDemoMode
+		? DEMO_WRANGLER_CONFIG
+		: resolveWranglerConfigPath({
+				command,
+				mode,
+				rootDir: dashboardRootDir,
+			});
 	return {
 		server: command === "serve" ? getTunnelServerConfig() : undefined,
 		plugins: [

@@ -2,7 +2,7 @@ import { GitHubLogo } from "@diffkit/icons";
 import { Button } from "@diffkit/ui/components/button";
 import { Logo } from "@diffkit/ui/components/logo";
 import { createFileRoute, redirect } from "@tanstack/react-router";
-import { getSession } from "#/lib/auth.functions";
+import { getGitHubSignInMode, getSession } from "#/lib/auth.functions";
 import { signInWithGitHub } from "#/lib/auth-actions";
 import { normalizeAuthRedirect } from "#/lib/auth-redirect";
 import {
@@ -20,6 +20,7 @@ export const Route = createFileRoute("/login")({
 		const session = await getSession();
 		if (session) throw redirect({ href: search.redirect });
 	},
+	loader: async () => ({ signInMode: await getGitHubSignInMode() }),
 	head: () => {
 		const seo = buildSeo({
 			path: "/login",
@@ -48,6 +49,7 @@ export const Route = createFileRoute("/login")({
 
 function LoginPage() {
 	const { redirect } = Route.useSearch();
+	const { signInMode } = Route.useLoaderData();
 
 	return (
 		<main className="isolate min-h-dvh bg-background">
@@ -80,7 +82,7 @@ function LoginPage() {
 								className="space-y-3"
 								onSubmit={(event) => {
 									event.preventDefault();
-									void signInWithGitHub({ redirect });
+									void signInWithGitHub({ redirect, mode: signInMode });
 								}}
 							>
 								<Button
@@ -99,7 +101,11 @@ function LoginPage() {
 								aria-hidden="true"
 								className="size-1.5 rounded-full bg-border"
 							/>
-							<p>Your GitHub activity, one dashboard away.</p>
+							<p>
+								{signInMode === "emulator"
+									? "Local demo: pick “nova” in the emulator. No GitHub account needed."
+									: "Your GitHub activity, one dashboard away."}
+							</p>
 						</div>
 					</div>
 				</section>

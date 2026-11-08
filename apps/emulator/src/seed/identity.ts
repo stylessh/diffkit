@@ -53,7 +53,11 @@ export const DEMO_INSTALLATION_IDS = {
 
 export function oauthRedirectUris(dashboardUrl: string) {
 	return {
-		signIn: [`${dashboardUrl}/api/auth/callback/github`],
+		signIn: [
+			`${dashboardUrl}/api/auth/callback/github`,
+			// Better Auth's generic OAuth plugin (used in demo mode) calls back here.
+			`${dashboardUrl}/api/auth/oauth2/callback/github`,
+		],
 		app: [`${dashboardUrl}/api/github/app/callback`],
 	};
 }

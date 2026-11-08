@@ -1,0 +1,30 @@
+# =============================================================================
+# DiffKit — local demo mode (pnpm dev:demo)
+# =============================================================================
+# Committed on purpose. Every value is a throwaway credential that only works
+# against the local GitHub emulator in apps/emulator; none of them exist on
+# github.com. Wrangler loads this file instead of .dev.vars because
+# `pnpm dev:demo` sets CLOUDFLARE_ENV=demo, so your real .dev.vars is untouched.
+#
+# Keep in sync with apps/emulator/src/seed/identity.ts (a test checks it).
+# =============================================================================
+
+# Point every GitHub call (REST, GraphQL, OAuth, App tokens) at the emulator.
+GITHUB_EMULATOR_URL=http://localhost:4001
+
+# OAuth App seeded in the emulator (sign-in).
+GITHUB_OAUTH_CLIENT_ID=Ov23liDemoDiffKitOAuth
+GITHUB_OAUTH_CLIENT_SECRET=demo-oauth-client-secret-not-a-real-secret
+
+# GitHub App seeded in the emulator (installation tokens, app-user token, webhooks).
+GITHUB_APP_ID=424242
+GITHUB_APP_SLUG=diffkit-demo
+GITHUB_APP_CLIENT_ID=Iv1.demodiffkitapp
+GITHUB_APP_CLIENT_SECRET=demo-app-client-secret-not-a-real-secret
+# GITHUB_APP_PRIVATE_KEY is intentionally unset: in demo mode the dashboard
+# fetches the emulator's generated demo key (see github-emulator.server.ts).
+GITHUB_WEBHOOK_SECRET=demo-webhook-secret-not-a-real-secret
+
+# Better Auth (demo-only secret).
+BETTER_AUTH_SECRET=demo-better-auth-secret-0123456789abcdef
+BETTER_AUTH_URL=http://localhost:3000

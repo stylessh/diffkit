@@ -47,6 +47,7 @@ import {
 } from "./seed/identity";
 import { enrichResponse } from "./shims/enrich";
 import { registerNotificationRoutes } from "./shims/notifications";
+import { autoApproveAppAuthorize } from "./shims/oauth-auto-approve";
 import { bridgePullIssueRequest } from "./shims/pull-issue-bridge";
 import { registerRestShims } from "./shims/rest";
 import { getExtrasStore } from "./store-extras";
@@ -337,6 +338,10 @@ export async function createDiffkitEmulator(
 
 	pipeline = (request: Request) =>
 		enrichResponse(context, request, async (inner) => {
+			const approved = autoApproveAppAuthorize(context, inner);
+			if (approved) {
+				return approved;
+			}
 			const bridged = await bridgePullIssueRequest(context, inner);
 			return bridged ?? app.fetch(inner);
 		});

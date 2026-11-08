@@ -6,6 +6,7 @@ import {
 	getGitHubAppPrivateKey,
 } from "./github-app.server";
 import { shouldReauthorizeGitHubApp } from "./github-auth-errors";
+import { getGitHubOctokitBaseOptions } from "./github-emulator.server";
 import { configureGitHubRequestPolicies } from "./github-request-policy";
 
 const GITHUB_CLIENT_USER_AGENT = "diffkit-dashboard";
@@ -53,6 +54,7 @@ const githubInstallationTokenInvalidationVersions = new Map<number, number>();
 
 export async function getGitHubClient(userId: string): Promise<OctokitType> {
 	const octokit = new Octokit({
+		...getGitHubOctokitBaseOptions(),
 		auth: await getGitHubAccessTokenByUserId(userId),
 		userAgent: GITHUB_CLIENT_USER_AGENT,
 		retry: { enabled: false },
@@ -71,6 +73,7 @@ export async function getGitHubInstallationClient(
 ): Promise<OctokitType> {
 	const tokenEntry = await getCachedGitHubInstallationToken(installationId);
 	const octokit = new Octokit({
+		...getGitHubOctokitBaseOptions(),
 		auth: tokenEntry.token,
 		userAgent: GITHUB_CLIENT_USER_AGENT,
 		retry: { enabled: false },
@@ -180,6 +183,7 @@ async function mintGitHubInstallationToken(
 	}
 
 	const AppOctokit = Octokit.defaults({
+		...getGitHubOctokitBaseOptions(),
 		retry: { enabled: false },
 		throttle: { enabled: false },
 	});
