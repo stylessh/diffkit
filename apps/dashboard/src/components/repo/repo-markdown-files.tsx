@@ -6,17 +6,10 @@ import {
 	useQuery,
 	useQueryClient,
 } from "@tanstack/react-query";
-import {
-	lazy,
-	Suspense,
-	useCallback,
-	useEffect,
-	useMemo,
-	useState,
-} from "react";
+import { lazy, Suspense, useCallback, useMemo, useState } from "react";
 import {
 	type GitHubQueryScope,
-	githubRepoFileContentQueryOptions,
+	githubRepoBlobQueryOptions,
 } from "#/lib/github.query";
 import type { RepoTreeEntry } from "#/lib/github.types";
 
@@ -65,28 +58,27 @@ export function RepoMarkdownFiles({
 	currentRef: string;
 	scope: GitHubQueryScope;
 }) {
-	const mdFiles = useMemo(() => {
-		const fileNames = new Set(entries.map((e) => e.name));
-		return KNOWN_MD_FILES.filter((name) => fileNames.has(name));
-	}, [entries]);
+	const mdFiles = useMemo(
+		() =>
+			KNOWN_MD_FILES.flatMap(
+				(name) =>
+					entries.find(
+						(entry) => entry.name === name && entry.type === "file",
+					) ?? [],
+			),
+		[entries],
+	);
 
-	// Prefetch all MD files in background so tab switches are instant
 	const queryClient = useQueryClient();
-	useEffect(() => {
-		for (const file of mdFiles) {
-			void queryClient.prefetchQuery(
-				githubRepoFileContentQueryOptions(scope, {
-					owner,
-					repo,
-					ref: currentRef,
-					path: file,
-				}),
-			);
-		}
-	}, [queryClient, mdFiles, scope, owner, repo, currentRef]);
+	const prefetch = (path: string) => {
+		void queryClient.prefetchQuery(
+			githubRepoBlobQueryOptions(scope, { owner, repo, ref: currentRef, path }),
+		);
+	};
 
 	const [activeTab, setActiveTab] = useState<string | null>(null);
-	const selectedFile = activeTab ?? mdFiles[0] ?? null;
+	const selectedFile =
+		mdFiles.find((file) => file.path === activeTab) ?? mdFiles[0] ?? null;
 
 	if (mdFiles.length === 0) return null;
 
@@ -95,18 +87,19 @@ export function RepoMarkdownFiles({
 			<div role="tablist" className="flex flex-wrap items-center gap-[7px]">
 				{mdFiles.map((file) => (
 					<button
-						key={file}
+						key={file.path}
 						type="button"
 						role="tab"
 						aria-selected={file === selectedFile}
-						onClick={() => setActiveTab(file)}
+						onClick={() => setActiveTab(file.path)}
+						onMouseEnter={() => prefetch(file.path)}
 						className={cn(
 							"inline-flex h-7 items-center gap-1.5 rounded-full bg-button pr-[10.5px] pl-2 text-xs font-medium whitespace-nowrap text-muted-foreground shadow-button transition-colors hover:bg-button-hover hover:text-foreground",
 							"aria-selected:bg-tab-selected aria-selected:text-foreground aria-selected:shadow-tab-selected",
 						)}
 					>
 						<FileIcon size={14} strokeWidth={2} className="shrink-0" />
-						{TAB_LABELS[file] ?? file}
+						{TAB_LABELS[file.name] ?? file.name}
 					</button>
 				))}
 			</div>
@@ -116,7 +109,7 @@ export function RepoMarkdownFiles({
 					<MarkdownFileContent
 						owner={owner}
 						repo={repo}
-						path={selectedFile}
+						path={selectedFile.path}
 						currentRef={currentRef}
 						scope={scope}
 					/>
@@ -140,7 +133,7 @@ function MarkdownFileContent({
 	scope: GitHubQueryScope;
 }) {
 	const contentQuery = useQuery({
-		...githubRepoFileContentQueryOptions(scope, {
+		...githubRepoBlobQueryOptions(scope, {
 			owner,
 			repo,
 			ref: currentRef,
@@ -171,7 +164,8 @@ function MarkdownFileContent({
 		);
 	}
 
-	if (!contentQuery.data) {
+	const blob = contentQuery.data;
+	if (blob?.kind !== "text") {
 		return (
 			<p className="text-[13px] text-muted-foreground">
 				Unable to load file content.
@@ -194,7 +188,7 @@ function MarkdownFileContent({
 					className="text-[15px] leading-6 text-text-header"
 					resolveAssetUrl={resolveAssetUrl}
 				>
-					{contentQuery.data}
+					{blob.text}
 				</Markdown>
 			</Suspense>
 		</div>
