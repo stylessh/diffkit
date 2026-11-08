@@ -6,6 +6,7 @@ import {
 	ViewIcon,
 } from "@diffkit/icons";
 import { Button } from "@diffkit/ui/components/button";
+import { cn } from "@diffkit/ui/lib/utils";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
 import { useQueryState } from "nuqs";
@@ -20,6 +21,13 @@ import {
 } from "#/components/filters";
 import { DashboardContentLoading } from "#/components/layouts/dashboard-content-loading";
 import { RepositoryRow } from "#/components/repo/repository-row";
+import {
+	ListGroupNav,
+	ListGroupNavItem,
+	ListPageHeading,
+	listPageGridClassName,
+	listPageScrollClassName,
+} from "#/components/shared/list-page";
 import {
 	githubReposHubQueryOptions,
 	githubUserReposQueryOptions,
@@ -211,51 +219,46 @@ function RepositoriesPage() {
 	const displayedRepos = hub?.repos ?? [];
 
 	return (
-		<div className="overflow-stable h-full overflow-auto py-10">
-			<div className="mx-auto grid max-w-7xl gap-14 px-3 md:px-6 xl:grid-cols-[minmax(15rem,18rem)_minmax(0,1fr)]">
-				<aside className="flex h-fit flex-col gap-5 xl:sticky xl:top-0">
-					<div className="flex flex-col gap-2">
-						<h1 className="text-2xl font-semibold tracking-tight">
-							Repositories
-						</h1>
-						<p className="text-sm text-muted-foreground">
-							Browse and filter the repositories you can access.
-						</p>
-					</div>
+		<div className={cn("overflow-stable", listPageScrollClassName)}>
+			<div className={listPageGridClassName}>
+				<aside className="flex h-fit flex-col gap-4 xl:sticky xl:top-0">
+					<ListPageHeading title="Repositories">
+						Browse and filter the repositories you can access.
+					</ListPageHeading>
 
-					<div className="flex flex-col gap-2">
-						<RepositoryMetricCard
+					<ListGroupNav label="Repository totals">
+						<ListGroupNavItem
 							icon={ArchiveIcon}
 							label="All repositories"
 							value={totals.all}
 						/>
-						<RepositoryMetricCard
+						<ListGroupNavItem
 							icon={ViewIcon}
 							label="Public"
 							value={totals.public}
 						/>
-						<RepositoryMetricCard
+						<ListGroupNavItem
 							icon={LockIcon}
 							label="Private"
 							value={totals.private}
 						/>
-					</div>
+					</ListGroupNav>
 				</aside>
 
 				<div className="flex flex-col gap-2">
 					<FilterBar state={filterState} searchPlaceholder="Search by title…" />
 
 					{totals.all === 0 ? (
-						<p className="py-12 text-center text-sm text-muted-foreground">
+						<p className="py-12 text-center text-[13px] text-muted-foreground">
 							No repositories found.
 						</p>
 					) : matchingCount === 0 ? (
-						<p className="py-12 text-center text-sm text-muted-foreground">
+						<p className="py-12 text-center text-[13px] text-muted-foreground">
 							No repositories match these filters.
 						</p>
 					) : (
 						<>
-							<div className="divide-y divide-border overflow-hidden rounded-xl border border-border bg-surface-1">
+							<div className="flex flex-col">
 								{displayedRepos.map((repo) => (
 									<div
 										key={repo.id}
@@ -286,28 +289,6 @@ function RepositoriesPage() {
 					)}
 				</div>
 			</div>
-		</div>
-	);
-}
-
-function RepositoryMetricCard({
-	icon: Icon,
-	label,
-	value,
-}: {
-	icon: React.ComponentType<{ size?: number; strokeWidth?: number }>;
-	label: string;
-	value: number;
-}) {
-	return (
-		<div className="flex items-center justify-between gap-4 rounded-xl bg-surface-1 px-3.5 py-3">
-			<div className="flex min-w-0 items-center gap-2">
-				<div className="shrink-0 text-muted-foreground">
-					<Icon size={15} strokeWidth={1.9} />
-				</div>
-				<p className="truncate text-sm font-medium">{label}</p>
-			</div>
-			<p className="font-semibold tabular-nums leading-tight">{value}</p>
 		</div>
 	);
 }

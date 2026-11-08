@@ -12,6 +12,13 @@ import {
 } from "#/components/filters";
 import { DashboardContentLoading } from "#/components/layouts/dashboard-content-loading";
 import { PullRequestRow } from "#/components/pulls/pull-request-row";
+import {
+	ListGroupNav,
+	ListGroupNavItem,
+	ListPageHeading,
+	listPageGridClassName,
+	listPageScrollClassName,
+} from "#/components/shared/list-page";
 import { githubMyPullsQueryOptions } from "#/lib/github.query";
 import { buildSeo, formatPageTitle } from "#/lib/seo";
 import { useHasMounted } from "#/lib/use-has-mounted";
@@ -66,40 +73,33 @@ function ReviewsPage() {
 		const reviews = applyFilters(rawReviews, filterState);
 
 		return (
-			<div ref={scrollContainerRef} className="h-full overflow-auto py-10">
-				<div className="mx-auto grid max-w-7xl gap-14 px-3 md:px-6 xl:grid-cols-[minmax(15rem,18rem)_minmax(0,1fr)]">
-					<aside className="flex h-fit flex-col gap-5 xl:sticky xl:top-0">
-						<div className="flex flex-col gap-2">
-							<h1 className="text-2xl font-semibold tracking-tight">Reviews</h1>
-							<p className="text-sm text-muted-foreground">
-								<span className="tabular-nums">{reviews.length}</span> open
-								pulls requesting your review
-							</p>
-						</div>
+			<div ref={scrollContainerRef} className={listPageScrollClassName}>
+				<div className={listPageGridClassName}>
+					<aside className="flex h-fit flex-col gap-4 xl:sticky xl:top-0">
+						<ListPageHeading title="Reviews">
+							<span className="tabular-nums">{reviews.length}</span> open pulls
+							requesting your review
+						</ListPageHeading>
 
-						<div className="flex items-center justify-between gap-4 rounded-xl bg-surface-1 px-3.5 py-3">
-							<div className="flex min-w-0 items-center gap-2">
-								<div className="shrink-0 text-muted-foreground">
-									<ReviewsIcon size={15} strokeWidth={1.9} />
-								</div>
-								<p className="truncate text-sm font-medium">Review requested</p>
-							</div>
-							<p className="font-semibold tabular-nums leading-tight">
-								{reviews.length}
-							</p>
-						</div>
+						<ListGroupNav label="Review groups">
+							<ListGroupNavItem
+								icon={ReviewsIcon}
+								label="Review requested"
+								value={reviews.length}
+							/>
+						</ListGroupNav>
 					</aside>
 
 					<div className="flex flex-col gap-2">
 						<FilterBar state={filterState} />
 						{reviews.length === 0 ? (
-							<p className="px-3 py-6 text-center text-sm text-muted-foreground">
+							<p className="px-3 py-10 text-center text-[13px] text-muted-foreground">
 								{filterState.hasActiveFilters
 									? "No reviews match your filters."
 									: "No review requests right now — you're all caught up."}
 							</p>
 						) : (
-							<div className="flex flex-col gap-1">
+							<div className="flex flex-col">
 								{reviews.map((pr) => (
 									<PullRequestRow key={pr.id} pr={pr} scope={scope} />
 								))}

@@ -28,20 +28,13 @@ export const FilterBar = memo(function FilterBar<T extends FilterableItem>({
 	searchPlaceholder?: string;
 }) {
 	return (
-		<div className="mb-6 flex flex-col gap-3">
-			<div className="flex items-center gap-2">
-				<SearchInput
-					value={state.searchQuery}
-					onChange={state.setSearchQuery}
-					placeholder={searchPlaceholder}
-				/>
-				<SortDropdown
-					options={state.sortOptions}
-					value={state.sortId}
-					onChange={state.setSortId}
-				/>
-			</div>
-			<div className="flex flex-wrap items-center gap-1.5">
+		<div className="mb-3 flex flex-wrap items-center gap-1.5">
+			<SearchInput
+				value={state.searchQuery}
+				onChange={state.setSearchQuery}
+				placeholder={searchPlaceholder}
+			/>
+			<div className="flex min-w-0 flex-wrap items-center gap-1.5">
 				{state.activeFilters.map((filter) => {
 					const def = state.filterDefs.find((d) => d.id === filter.fieldId);
 					if (!def) return null;
@@ -71,12 +64,17 @@ export const FilterBar = memo(function FilterBar<T extends FilterableItem>({
 						onClick={state.clearAllFilters}
 						title="Clear all filters"
 						aria-label="Clear all filters"
-						className="ml-1 rounded-md p-1 text-muted-foreground transition-colors hover:bg-surface-2 hover:text-foreground"
+						className="flex size-6 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-ghost-hover hover:text-foreground"
 					>
 						<Remove01Icon size={14} />
 					</button>
 				)}
 			</div>
+			<SortDropdown
+				options={state.sortOptions}
+				value={state.sortId}
+				onChange={state.setSortId}
+			/>
 		</div>
 	);
 }) as <T extends FilterableItem>(props: {
@@ -96,20 +94,22 @@ function SearchInput({
 	placeholder: string;
 }) {
 	return (
-		<div className="flex w-[280px] items-center gap-2 rounded-lg border border-border/50 bg-surface-1 px-3 py-1.5 transition-colors focus-within:border-border">
+		<div className="flex h-7 w-full items-center gap-1.5 rounded-md bg-input-surface pr-1 pl-2 shadow-field transition-shadow focus-within:shadow-[0_0_0_1px_var(--ln-focus)] sm:w-60">
 			<SearchIcon size={14} className="shrink-0 text-muted-foreground" />
 			<input
 				type="text"
 				value={value}
 				onChange={(e) => onChange(e.target.value)}
 				placeholder={placeholder}
-				className="min-w-0 flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground/60"
+				aria-label={placeholder}
+				className="min-w-0 flex-1 bg-transparent text-base outline-none placeholder:text-muted-foreground focus-visible:outline-none sm:text-[13px]"
 			/>
 			{value && (
 				<button
 					type="button"
 					onClick={() => onChange("")}
-					className="shrink-0 text-muted-foreground transition-colors hover:text-foreground"
+					aria-label="Clear search"
+					className="flex size-5 shrink-0 items-center justify-center rounded-sm text-muted-foreground transition-colors hover:bg-ghost-hover hover:text-foreground"
 				>
 					<CloseIcon size={13} />
 				</button>
@@ -138,7 +138,9 @@ function SortDropdown({
 			<button
 				type="button"
 				onClick={() => setOpen(!open)}
-				className="flex shrink-0 items-center gap-1.5 rounded-lg border border-border/50 bg-surface-1 px-3 py-1.5 text-sm text-muted-foreground transition-colors hover:text-foreground"
+				aria-haspopup="menu"
+				aria-expanded={open}
+				className="flex h-7 shrink-0 items-center gap-1.5 rounded-md bg-button px-2 text-[13px] font-medium text-text-header shadow-button transition-colors hover:bg-button-hover hover:text-foreground"
 			>
 				<SortIcon size={14} strokeWidth={1.9} />
 				<span className="whitespace-nowrap">{current?.label ?? "Sort"}</span>
@@ -148,7 +150,11 @@ function SortDropdown({
 				/>
 			</button>
 			{open && (
-				<DropdownPanel onClose={() => setOpen(false)} anchorRef={ref}>
+				<DropdownPanel
+					onClose={() => setOpen(false)}
+					anchorRef={ref}
+					align="end"
+				>
 					{options.map((opt) => (
 						<button
 							key={opt.id}
@@ -158,9 +164,8 @@ function SortDropdown({
 								setOpen(false);
 							}}
 							className={cn(
-								"flex w-full items-center gap-2 rounded-md px-2.5 py-1.5 text-left text-sm transition-colors hover:bg-surface-2",
-								opt.id === value && "text-foreground",
-								opt.id !== value && "text-muted-foreground",
+								"flex h-7 w-full items-center gap-2 rounded-md px-2 text-left text-[13px] font-[450] transition-colors hover:bg-menu-hover",
+								opt.id === value ? "text-foreground" : "text-text-header",
 							)}
 						>
 							<span className="flex-1">{opt.label}</span>
@@ -199,20 +204,22 @@ function FilterPill({
 			<button
 				type="button"
 				onClick={() => setOpen(!open)}
-				className="flex items-center gap-1.5 rounded-l-md border border-border/60 bg-surface-1 px-2 py-1 text-xs transition-colors hover:bg-surface-2"
+				aria-haspopup="listbox"
+				aria-expanded={open}
+				className="flex h-6 items-center gap-1.5 rounded-l-md bg-chip px-2 text-xs shadow-chip transition-colors hover:bg-row-hover"
 			>
 				<definition.icon size={13} strokeWidth={2} />
 				<span className="font-medium text-muted-foreground">
 					{definition.label}
 				</span>
-				<span className="text-muted-foreground/60">is</span>
+				<span className="text-muted-foreground">is</span>
 				{selectedOptions.length > 3 ? (
 					<span className="flex items-center gap-1.5 font-medium">
-						<span className="flex items-center -space-x-1.5">
+						<span className="flex items-center [&>*+*]:-ml-1.5">
 							{selectedOptions.slice(0, 3).map((opt) => (
 								<span
 									key={opt.value}
-									className="inline-flex shrink-0 rounded-full ring-1 ring-surface-1"
+									className="inline-flex shrink-0 rounded-full ring-1 ring-chip"
 								>
 									{opt.icon}
 								</span>
@@ -239,7 +246,8 @@ function FilterPill({
 			<button
 				type="button"
 				onClick={() => onRemove(filter.fieldId)}
-				className="flex items-center self-stretch rounded-r-md border border-l-0 border-border/60 bg-surface-1 px-1.5 text-muted-foreground transition-colors hover:bg-surface-2 hover:text-foreground"
+				aria-label={`Remove ${definition.label} filter`}
+				className="-ml-px flex h-6 items-center rounded-r-md bg-chip px-1.5 text-muted-foreground shadow-chip transition-colors hover:bg-row-hover hover:text-foreground"
 			>
 				<CloseIcon size={12} />
 			</button>
@@ -303,7 +311,9 @@ function AddFilterButton({
 					setOpen(!open);
 					setSelectedFieldId(null);
 				}}
-				className="flex items-center gap-1 rounded-md border border-dashed border-border/60 px-2 py-1 text-xs text-muted-foreground transition-colors hover:border-border hover:text-foreground"
+				aria-haspopup="menu"
+				aria-expanded={open}
+				className="flex h-6 items-center gap-1 rounded-md px-2 text-xs font-medium text-muted-foreground transition-colors hover:bg-ghost-hover hover:text-foreground"
 			>
 				<PlusSignIcon size={13} />
 				<span>Filter</span>
@@ -313,7 +323,7 @@ function AddFilterButton({
 					{/* biome-ignore lint/a11y/useKeyWithClickEvents: backdrop dismiss */}
 					{/* biome-ignore lint/a11y/noStaticElementInteractions: backdrop dismiss */}
 					<div className="fixed inset-0 z-40" onClick={close} />
-					<div className="absolute left-0 top-full z-50 mt-1.5 flex gap-1">
+					<div className="absolute top-full left-0 z-50 mt-1 flex gap-1">
 						{directFilterDef ? (
 							<ValuePickerInline
 								options={selectedOptions}
@@ -378,8 +388,8 @@ function FieldPickerInline({
 	);
 
 	return (
-		<div className="min-w-[180px] rounded-lg border border-border/60 bg-popover p-2 shadow-lg">
-			<div className="-mx-2 flex items-center gap-2 border-b border-border/40 px-2 pb-2">
+		<div className="min-w-[180px] rounded-[10px] bg-popover p-1 shadow-popover">
+			<div className="-mx-1 -mt-1 flex h-9 items-center gap-2 border-b-[0.5px] border-popover-border px-2.5">
 				<SearchIcon size={13} className="shrink-0 text-muted-foreground" />
 				<input
 					ref={inputRef}
@@ -387,18 +397,18 @@ function FieldPickerInline({
 					value={query}
 					onChange={(e) => setQuery(e.target.value)}
 					placeholder="Filter…"
-					className="min-w-0 flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground/60"
+					className="min-w-0 flex-1 bg-transparent text-base outline-none placeholder:text-muted-foreground focus-visible:outline-none sm:text-[13px]"
 				/>
 			</div>
-			<div className="flex flex-col gap-0.5 pt-1">
+			<div className="flex flex-col gap-px pt-1">
 				{filtered.map((def) => (
 					<button
 						key={def.id}
 						type="button"
 						onClick={() => onSelect(def.id)}
 						className={cn(
-							"flex items-center gap-2 rounded-md px-2.5 py-1.5 text-left text-sm transition-colors hover:bg-surface-2",
-							def.id === selectedFieldId && "bg-surface-2",
+							"flex h-7 items-center gap-2 rounded-md px-2 text-left text-[13px] font-[450] text-text-header transition-colors hover:bg-menu-hover hover:text-foreground",
+							def.id === selectedFieldId && "bg-menu-hover text-foreground",
 							activeFieldIds.has(def.id) && "text-muted-foreground",
 						)}
 					>
@@ -413,7 +423,7 @@ function FieldPickerInline({
 					</button>
 				))}
 				{filtered.length === 0 && (
-					<p className="px-2.5 py-3 text-center text-xs text-muted-foreground">
+					<p className="px-2 py-3 text-center text-xs text-muted-foreground">
 						No matching filters
 					</p>
 				)}
@@ -443,8 +453,8 @@ function ValuePickerInline({
 	);
 
 	return (
-		<div className="min-w-[200px] rounded-lg border border-border/60 bg-popover p-2 shadow-lg">
-			<div className="-mx-2 flex items-center gap-2 border-b border-border/40 px-2 pb-2">
+		<div className="min-w-[200px] rounded-[10px] bg-popover p-1 shadow-popover">
+			<div className="-mx-1 -mt-1 flex h-9 items-center gap-2 border-b-[0.5px] border-popover-border px-2.5">
 				<SearchIcon size={13} className="shrink-0 text-muted-foreground" />
 				<input
 					ref={inputRef}
@@ -452,10 +462,10 @@ function ValuePickerInline({
 					value={query}
 					onChange={(e) => setQuery(e.target.value)}
 					placeholder="Search…"
-					className="min-w-0 flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground/60"
+					className="min-w-0 flex-1 bg-transparent text-base outline-none placeholder:text-muted-foreground focus-visible:outline-none sm:text-[13px]"
 				/>
 			</div>
-			<div className="flex max-h-[240px] flex-col gap-0.5 overflow-y-auto pt-1">
+			<div className="flex max-h-[240px] flex-col gap-px overflow-y-auto pt-1">
 				{filtered.map((opt) => {
 					const isSelected = selectedValues.has(opt.value);
 					return (
@@ -463,14 +473,14 @@ function ValuePickerInline({
 							key={opt.value}
 							type="button"
 							onClick={() => onToggle(opt.value)}
-							className="flex items-center gap-2 rounded-md px-2.5 py-1.5 text-left text-sm transition-colors hover:bg-surface-2"
+							className="flex h-7 items-center gap-2 rounded-md px-2 text-left text-[13px] font-[450] text-text-header transition-colors hover:bg-menu-hover hover:text-foreground"
 						>
 							<span
 								className={cn(
-									"flex size-4 shrink-0 items-center justify-center rounded border transition-colors",
+									"flex size-3.5 shrink-0 items-center justify-center rounded-[4px] transition-colors",
 									isSelected
-										? "border-primary bg-primary text-primary-foreground"
-										: "border-border/60",
+										? "bg-indigo text-indigo-foreground"
+										: "shadow-[inset_0_0_0_1px_var(--ln-checkbox)]",
 								)}
 							>
 								{isSelected && <CheckIcon size={11} />}
@@ -481,7 +491,7 @@ function ValuePickerInline({
 					);
 				})}
 				{filtered.length === 0 && (
-					<p className="px-2.5 py-3 text-center text-xs text-muted-foreground">
+					<p className="px-2 py-3 text-center text-xs text-muted-foreground">
 						No matching options
 					</p>
 				)}
@@ -516,7 +526,7 @@ function ValuePicker({
 
 	return (
 		<DropdownPanel onClose={onClose} anchorRef={anchorRef}>
-			<div className="-mx-2 flex items-center gap-2 border-b border-border/40 px-2 pb-2">
+			<div className="-mx-1 -mt-1 flex h-9 items-center gap-2 border-b-[0.5px] border-popover-border px-2.5">
 				<SearchIcon size={13} className="shrink-0 text-muted-foreground" />
 				<input
 					ref={inputRef}
@@ -524,10 +534,10 @@ function ValuePicker({
 					value={query}
 					onChange={(e) => setQuery(e.target.value)}
 					placeholder="Search…"
-					className="min-w-0 flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground/60"
+					className="min-w-0 flex-1 bg-transparent text-base outline-none placeholder:text-muted-foreground focus-visible:outline-none sm:text-[13px]"
 				/>
 			</div>
-			<div className="flex max-h-[240px] flex-col gap-0.5 overflow-y-auto pt-1">
+			<div className="flex max-h-[240px] flex-col gap-px overflow-y-auto pt-1">
 				{filtered.map((opt) => {
 					const isSelected = selectedValues.has(opt.value);
 					return (
@@ -535,14 +545,14 @@ function ValuePicker({
 							key={opt.value}
 							type="button"
 							onClick={() => onToggle(opt.value)}
-							className="flex items-center gap-2 rounded-md px-2.5 py-1.5 text-left text-sm transition-colors hover:bg-surface-2"
+							className="flex h-7 items-center gap-2 rounded-md px-2 text-left text-[13px] font-[450] text-text-header transition-colors hover:bg-menu-hover hover:text-foreground"
 						>
 							<span
 								className={cn(
-									"flex size-4 shrink-0 items-center justify-center rounded border transition-colors",
+									"flex size-3.5 shrink-0 items-center justify-center rounded-[4px] transition-colors",
 									isSelected
-										? "border-primary bg-primary text-primary-foreground"
-										: "border-border/60",
+										? "bg-indigo text-indigo-foreground"
+										: "shadow-[inset_0_0_0_1px_var(--ln-checkbox)]",
 								)}
 							>
 								{isSelected && <CheckIcon size={11} />}
@@ -553,7 +563,7 @@ function ValuePicker({
 					);
 				})}
 				{filtered.length === 0 && (
-					<p className="px-2.5 py-3 text-center text-xs text-muted-foreground">
+					<p className="px-2 py-3 text-center text-xs text-muted-foreground">
 						No matching options
 					</p>
 				)}
@@ -568,17 +578,24 @@ function DropdownPanel({
 	children,
 	onClose,
 	anchorRef: _anchorRef,
+	align = "start",
 }: {
 	children: React.ReactNode;
 	onClose: () => void;
 	anchorRef: React.RefObject<HTMLDivElement | null>;
+	align?: "start" | "end";
 }) {
 	return (
 		<>
 			{/* biome-ignore lint/a11y/useKeyWithClickEvents: backdrop dismiss */}
 			{/* biome-ignore lint/a11y/noStaticElementInteractions: backdrop dismiss */}
 			<div className="fixed inset-0 z-40" onClick={onClose} />
-			<div className="absolute left-0 top-full z-50 mt-1.5 min-w-[200px] rounded-lg border border-border/60 bg-popover p-2 shadow-lg">
+			<div
+				className={cn(
+					"absolute top-full z-50 mt-1 min-w-[200px] rounded-[10px] bg-popover p-1 shadow-popover",
+					align === "end" ? "right-0" : "left-0",
+				)}
+			>
 				{children}
 			</div>
 		</>

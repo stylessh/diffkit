@@ -26,7 +26,7 @@ export function getPrStateConfig(pr: {
 	if (pr.isDraft) {
 		return {
 			icon: GitPullRequestDraftIcon,
-			color: "text-muted-foreground",
+			color: "text-state-draft",
 			label: "Draft",
 			tone: "muted",
 		};
@@ -34,7 +34,7 @@ export function getPrStateConfig(pr: {
 	if (pr.isMerged || pr.mergedAt || pr.state === "merged") {
 		return {
 			icon: GitMergeIcon,
-			color: "text-purple-500",
+			color: "text-state-merged",
 			label: "Merged",
 			tone: "merged",
 		};
@@ -42,14 +42,14 @@ export function getPrStateConfig(pr: {
 	if (pr.state === "closed") {
 		return {
 			icon: GitPullRequestClosedIcon,
-			color: "text-red-500",
+			color: "text-state-closed",
 			label: "Closed",
 			tone: "closed",
 		};
 	}
 	return {
 		icon: GitPullRequestIcon,
-		color: "text-green-500",
+		color: "text-state-open",
 		label: "Open",
 		tone: "open",
 	};
