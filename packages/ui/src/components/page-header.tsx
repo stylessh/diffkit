@@ -44,20 +44,19 @@ function PageHeaderCrumb({
 	...props
 }: React.ComponentProps<"a"> & { asChild?: boolean }) {
 	const Comp = asChild ? Slot : "a";
+	// The crumb and its › live in one wrapper, so `className` (e.g. a
+	// responsive `hidden`) applies to both.
 	return (
-		<>
+		<span className={cn("flex min-w-0 shrink items-center", className)}>
 			<Comp
 				data-slot="page-header-crumb"
-				className={cn(
-					"flex min-w-0 shrink items-center gap-1.5 truncate rounded-md transition-colors hover:text-foreground [&_svg]:shrink-0",
-					className,
-				)}
+				className="flex min-w-0 shrink items-center gap-1.5 truncate rounded-md transition-colors hover:text-foreground [&_svg]:shrink-0"
 				{...props}
 			/>
 			<span aria-hidden className="mx-2 shrink-0 text-muted-foreground">
 				›
 			</span>
-		</>
+		</span>
 	);
 }
 

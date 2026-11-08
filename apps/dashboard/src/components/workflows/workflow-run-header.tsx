@@ -110,21 +110,7 @@ export function WorkflowRunHeader({
 					<ChevronLeftIcon size={13} strokeWidth={2} />
 					Back to pull request #{pullRequestNumber}
 				</Link>
-			) : (
-				<div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-					<Link
-						to="/$owner/$repo"
-						params={{ owner, repo }}
-						className="transition-colors hover:text-foreground"
-					>
-						{owner}/{repo}
-					</Link>
-					<span>/</span>
-					<span>Actions</span>
-					<span>/</span>
-					<span>#{run.runNumber}</span>
-				</div>
-			)}
+			) : null}
 
 			<div className="flex items-start gap-3">
 				<div className="mt-1 shrink-0">

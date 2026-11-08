@@ -1,5 +1,5 @@
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute } from "@tanstack/react-router";
 import { useQueryStates } from "nuqs";
 import { useMemo } from "react";
 import {
@@ -19,6 +19,7 @@ import { DashboardContentLoading } from "#/components/layouts/dashboard-content-
 import { SidePanelPortal } from "#/components/layouts/dashboard-side-panel";
 import { Pagination } from "#/components/pagination";
 import { RepoActivityCards } from "#/components/repo/repo-activity-cards";
+import { RepoPageHeader } from "#/components/repo/repo-page-header";
 import { WorkflowRunRow } from "#/components/workflows/workflow-run-row";
 import {
 	githubRepoBranchesQueryOptions,
@@ -178,56 +179,44 @@ function RepoActionsPage() {
 
 	return (
 		<>
-			<div className="h-full overflow-auto py-10">
-				<div className="mx-auto flex min-h-full max-w-4xl flex-col gap-6 px-3 md:px-6">
-					<div className="flex flex-col gap-2">
-						<h1 className="text-base font-semibold tracking-tight">Actions</h1>
-						<p className="text-[13px] text-muted-foreground">
-							<Link
-								to="/$owner/$repo"
-								params={{ owner, repo }}
-								className="text-muted-foreground underline-offset-2 hover:underline"
-							>
-								{owner}/{repo}
-							</Link>
-							<span> · Workflow runs</span>
-						</p>
+			<RepoPageHeader
+				owner={owner}
+				repo={repo}
+				scope={scope}
+				active="actions"
+				toolbar={<FilterBar state={filterState} />}
+			>
+				{query.isLoading ? (
+					<div className="flex flex-1 items-center justify-center">
+						<DashboardContentLoading />
 					</div>
+				) : (
+					<div className="flex flex-col">
+						{filtered.length === 0 && (
+							<p className="py-16 text-center text-[13px] text-muted-foreground">
+								No workflow runs found.
+							</p>
+						)}
+						{filtered.map((item) => (
+							<div
+								key={item.run.id}
+								style={{
+									contentVisibility: "auto",
+									containIntrinsicSize: "auto 56px",
+								}}
+							>
+								<WorkflowRunRow run={item.run} owner={owner} repo={repo} />
+							</div>
+						))}
+					</div>
+				)}
 
-					<FilterBar state={filterState} />
-
-					{query.isLoading ? (
-						<div className="flex flex-1 items-center justify-center">
-							<DashboardContentLoading />
-						</div>
-					) : (
-						<div className="flex flex-col gap-1">
-							{filtered.length === 0 && (
-								<p className="py-12 text-center text-sm text-muted-foreground">
-									No workflow runs found.
-								</p>
-							)}
-							{filtered.map((item) => (
-								<div
-									key={item.run.id}
-									style={{
-										contentVisibility: "auto",
-										containIntrinsicSize: "auto 56px",
-									}}
-								>
-									<WorkflowRunRow run={item.run} owner={owner} repo={repo} />
-								</div>
-							))}
-						</div>
-					)}
-
-					<Pagination
-						page={filterState.page}
-						hasNextPage={hasNextPage}
-						onPageChange={filterState.setPage}
-					/>
-				</div>
-			</div>
+				<Pagination
+					page={filterState.page}
+					hasNextPage={hasNextPage}
+					onPageChange={filterState.setPage}
+				/>
+			</RepoPageHeader>
 			{repoData && (
 				<SidePanelPortal>
 					<RepoActivityCards

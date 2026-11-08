@@ -27,7 +27,7 @@ function DetailLayout({
 			className={cn("min-h-0 flex-1 overflow-y-auto", className)}
 			{...props}
 		>
-			<div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_minmax(17rem,34%)]">
+			<div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_minmax(17rem,34.7%)]">
 				<div className="mx-auto flex w-full max-w-[780px] min-w-0 flex-col gap-8 px-4 pt-6 pb-16 md:px-[46px]">
 					{children}
 				</div>

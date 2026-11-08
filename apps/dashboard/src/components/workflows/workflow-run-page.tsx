@@ -1,6 +1,11 @@
+import {
+	PageHeader,
+	PageHeaderCrumb,
+	PageHeaderTitle,
+} from "@diffkit/ui/components/page-header";
 import { Skeleton } from "@diffkit/ui/components/skeleton";
 import { useQuery } from "@tanstack/react-query";
-import { getRouteApi } from "@tanstack/react-router";
+import { getRouteApi, Link } from "@tanstack/react-router";
 import { useMemo } from "react";
 import {
 	getCheckState,
@@ -110,6 +115,28 @@ export function WorkflowRunPage() {
 
 	return (
 		<DetailPageLayout
+			header={
+				<PageHeader>
+					<PageHeaderCrumb asChild className="max-md:hidden">
+						<Link to="/$owner/$repo" params={{ owner, repo }}>
+							{owner}/{repo}
+						</Link>
+					</PageHeaderCrumb>
+					<PageHeaderCrumb asChild>
+						<Link to="/$owner/$repo/actions" params={{ owner, repo }}>
+							Actions
+						</Link>
+					</PageHeaderCrumb>
+					<PageHeaderTitle asChild>
+						<span title={run.displayTitle}>
+							<span className="truncate">{run.displayTitle}</span>
+							<span className="tabular-nums text-muted-foreground">
+								#{run.runNumber}
+							</span>
+						</span>
+					</PageHeaderTitle>
+				</PageHeader>
+			}
 			main={
 				<>
 					<WorkflowRunHeader

@@ -22,7 +22,7 @@ function ViewTabs({
 		<div
 			data-slot="view-tabs"
 			className={cn(
-				"flex min-h-11 shrink-0 items-center gap-2 py-1.5 pr-[15px] pl-2",
+				"flex min-h-11 shrink-0 items-center gap-2 py-1.5 pr-[15px] pl-[7px]",
 				className,
 			)}
 			{...props}

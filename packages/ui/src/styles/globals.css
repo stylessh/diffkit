@@ -35,7 +35,7 @@
 		"Geist Mono Variable", "SF Mono", ui-monospace, "Cascadia Code", monospace;
 	/* Tight type scale: 13px is the working size (rows, menus, buttons). */
 	--text-xs: 0.75rem;
-	--text-xs--line-height: 1.35;
+	--text-xs--line-height: calc(16 / 12);
 	--text-sm: 0.8125rem;
 	--text-sm--line-height: 1.45;
 	--text-base: 1rem;
@@ -495,8 +495,7 @@
 	--shadow-chip: inset 0 0 0 0.5px var(--ln-chip-border);
 	--shadow-key: inset 0 0 0 0.5px var(--ln-key-border);
 	--shadow-main: 0 0 0 0.5px var(--ln-main-border), var(--ln-main-shadow);
-	--shadow-card:
-		0 0 0 0.5px var(--ln-comment-card-border), var(--ln-main-shadow);
+	--shadow-card: 0 0 0 0.5px var(--ln-card-border), var(--ln-main-shadow);
 	--shadow-popover:
 		0 0 0 0.5px var(--ln-popover-border), var(--ln-popover-shadow);
 	--shadow-send: var(--ln-send-ring);
