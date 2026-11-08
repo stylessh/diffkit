@@ -1,0 +1,43 @@
+name: D1 migration check
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, edited]
+    paths:
+      - "apps/dashboard/drizzle/**"
+      - "apps/dashboard/src/db/**"
+      - "apps/dashboard/drizzle.config.ts"
+      - "scripts/check-d1-migrations.mjs"
+      - ".github/workflows/migration-check.yml"
+
+concurrency:
+  group: migration-check-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  migrations:
+    name: D1 migrations
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile --filter @diffkit/dashboard
+
+      - name: Check migrations
+        env:
+          PR_BODY: ${{ github.event.pull_request.body }}
+        run: node scripts/check-d1-migrations.mjs --base HEAD^1
