@@ -18,6 +18,8 @@ const routesToCompile = [
 	"/lumen-labs/beacon/blob/main/src/client.ts",
 	"/lumen-labs/beacon/blame/main/src/client.ts",
 	"/lumen-labs/beacon/search?q=reconnect",
+	"/lumen-labs/beacon/compare",
+	"/lumen-labs/beacon/compare/main...refactor/on-event?expand=1",
 ];
 
 /**
