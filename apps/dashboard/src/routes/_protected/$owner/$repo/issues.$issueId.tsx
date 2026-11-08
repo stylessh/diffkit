@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { IssueDetailPage } from "#/components/issues/detail/issue-detail-page";
 import { githubIssuePageQueryOptions } from "#/lib/github.query";
+import { findIssueSummaryInLists } from "#/lib/github-query-updates";
 import { buildSeo, formatPageTitle } from "#/lib/seo";
 
 export const Route = createFileRoute(
@@ -29,7 +30,16 @@ export const Route = createFileRoute(
 		// show cached data instantly or a skeleton while loading.
 		void context.queryClient.prefetchQuery(pageOptions);
 
-		return { issueTitle: cachedData?.detail?.title ?? null };
+		return {
+			issueTitle:
+				cachedData?.detail?.title ??
+				findIssueSummaryInLists(context.queryClient, scope, {
+					owner: params.owner,
+					repo: params.repo,
+					issueNumber,
+				})?.title ??
+				null,
+		};
 	},
 	head: ({ match, params }) =>
 		buildSeo({
