@@ -23,6 +23,7 @@ import {
 	DetailSidebarSection,
 } from "#/components/details/detail-sidebar";
 import { LabelsSection } from "#/components/issues/labels-section";
+import { PullStackSection } from "#/components/pulls/stack/pull-stack-section";
 import { formatRelativeTime } from "#/lib/format-relative-time";
 import {
 	removeReviewRequest,
@@ -62,6 +63,8 @@ export function PullDetailSidebar({
 }) {
 	return (
 		<DetailSidebar>
+			<PullStackSection pr={pr} owner={owner} repo={repo} scope={scope} />
+
 			<LabelsSection
 				currentLabels={pr.labels}
 				owner={owner}
