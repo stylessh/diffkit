@@ -18,6 +18,7 @@ import {
 	githubWorkflowRunJobsQueryOptions,
 	githubWorkflowRunQueryOptions,
 } from "#/lib/github.query";
+import { adaptiveRefetchInterval } from "#/lib/github-refetch-policy";
 import { useHasMounted } from "#/lib/use-has-mounted";
 import { useRegisterTab } from "#/lib/use-register-tab";
 import { WorkflowRunArtifacts } from "./workflow-run-artifacts";
@@ -49,9 +50,17 @@ export function WorkflowRunPage() {
 		...githubWorkflowRunJobsQueryOptions(scope, input),
 		enabled: hasMounted,
 	});
+	const isRunCompleted = runQuery.data?.status === "completed";
 	const artifactsQuery = useQuery({
 		...githubWorkflowRunArtifactsQueryOptions(scope, input),
 		enabled: hasMounted,
+		// Artifacts carry no status of their own; follow the run. They settle
+		// once the run completes, so stop polling after the terminal window.
+		refetchInterval: adaptiveRefetchInterval(() => ({
+			isActive: false,
+			isTerminal: isRunCompleted,
+		})),
+		refetchIntervalInBackground: false,
 	});
 	useQuery({
 		...githubViewerQueryOptions(scope),
