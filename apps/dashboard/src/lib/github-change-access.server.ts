@@ -1,31 +1,46 @@
 import "@tanstack/react-start/server-only";
 import { env, waitUntil } from "cloudflare:workers";
+import { describeError } from "./route-safety.server";
 
-/**
- * Repos the viewer can read through the GitHub App, for `/api/changes`.
- *
- * Unlike the installation access index (which records that an installation
- * covers "all" repos of an owner), this lists the repositories the *user* can
- * access in each installation (`GET /user/installations/{id}/repositories`),
- * so an org member never receives entity keys for private repos they can't
- * see. OAuth-only repos are not included; they refresh on focus instead.
- *
- * Cached per user in memory (60 s) and in KV under `change-access:v1:` with a
- * 10-minute `expirationTtl` (no sweeper needed). KV failures are cache misses.
- * GitHub failures fail closed: an empty set, not cached.
- */
+// Lists what the *user* can read in each installation, not the installation's
+// "all repos" coverage, so an org member never receives keys for private repos
+// they cannot see. Failures fail closed to public repos only. Every cache here
+// expires on its own (the incident rule: no store without a TTL).
 
 const KV_PREFIX = "change-access:v1:";
 const KV_TTL_SECONDS = 10 * 60;
 const MEMORY_TTL_MS = 60 * 1000;
+const FAILURE_MEMORY_TTL_MS = 30 * 1000;
+const MEMORY_MAX_ENTRIES = 1000;
 const PAGE_SIZE = 100;
 const MAX_INSTALLATION_PAGES = 3;
-/** Per installation; larger installations are truncated (focus refetch). */
+// Larger installations are truncated; those users refetch on focus.
 const MAX_REPO_PAGES = 10;
 
-type ReadableRepos = { repos: string[]; truncated: boolean };
+type ReadableRepos = { repos: string[] };
+
+const NO_READABLE_REPOS: ReadableRepos = { repos: [] };
 
 const memory = new Map<string, { value: ReadableRepos; expiresAt: number }>();
+
+function remember(
+	userId: string,
+	value: ReadableRepos,
+	ttlMs: number,
+	now: number,
+) {
+	memory.delete(userId);
+	memory.set(userId, { value, expiresAt: now + ttlMs });
+	if (memory.size <= MEMORY_MAX_ENTRIES) return;
+	for (const [key, entry] of memory) {
+		if (entry.expiresAt <= now) memory.delete(key);
+	}
+	// Maps iterate in insertion order, so the oldest entries go first.
+	for (const key of memory.keys()) {
+		if (memory.size <= MEMORY_MAX_ENTRIES) break;
+		memory.delete(key);
+	}
+}
 
 type MinimalOctokit = {
 	request: (
@@ -55,7 +70,6 @@ export async function listReadableRepos(
 	}
 
 	const repos = new Set<string>();
-	let truncated = false;
 	for (const installation of installations) {
 		for (let page = 1; page <= MAX_REPO_PAGES; page++) {
 			const { data } = await octokit.request(
@@ -71,10 +85,9 @@ export async function listReadableRepos(
 				}
 			}
 			if (items.length < PAGE_SIZE) break;
-			if (page === MAX_REPO_PAGES) truncated = true;
 		}
 	}
-	return { repos: [...repos], truncated };
+	return { repos: [...repos] };
 }
 
 async function readKv(userId: string): Promise<ReadableRepos | null> {
@@ -94,7 +107,7 @@ function writeKv(userId: string, value: ReadableRepos) {
 			env.GITHUB_CACHE_KV.put(`${KV_PREFIX}${userId}`, JSON.stringify(value), {
 				expirationTtl: KV_TTL_SECONDS,
 			}).catch((error) => {
-				console.warn("[change-access] KV write failed", error);
+				console.warn("[change-access] KV write failed", describeError(error));
 			}),
 		);
 	} catch {
@@ -114,20 +127,22 @@ export async function getReadableRepoSet(userId: string): Promise<Set<string>> {
 		try {
 			const { getGitHubAppUserClientByUserId } = await import("./auth-runtime");
 			const octokit = await getGitHubAppUserClientByUserId(userId);
-			if (!octokit) return new Set();
+			if (!octokit) {
+				remember(userId, NO_READABLE_REPOS, FAILURE_MEMORY_TTL_MS, now);
+				return new Set();
+			}
 			value = await listReadableRepos(octokit as unknown as MinimalOctokit);
 			writeKv(userId, value);
 		} catch (error) {
-			console.warn("[change-access] failed to list readable repos", error);
+			console.warn(
+				"[change-access] failed to list readable repos",
+				describeError(error),
+			);
+			remember(userId, NO_READABLE_REPOS, FAILURE_MEMORY_TTL_MS, now);
 			return new Set();
 		}
 	}
 
-	memory.set(userId, { value, expiresAt: now + MEMORY_TTL_MS });
-	if (memory.size > 1000) {
-		for (const [key, entry] of memory) {
-			if (entry.expiresAt <= now) memory.delete(key);
-		}
-	}
+	remember(userId, value, MEMORY_TTL_MS, now);
 	return new Set(value.repos);
 }
