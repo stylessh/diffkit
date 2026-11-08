@@ -142,7 +142,7 @@ describe("getReadableRepoSet", () => {
 		expect([...(await getReadableRepoSet("u1"))]).toEqual(["acme/api"]);
 	});
 
-	it("fails closed (no private repos) when GitHub errors, and does not retry for 30 s", async () => {
+	it("fails closed (no private repos) and does not retry for 30 s, for GitHub errors and for users without the app", async () => {
 		vi.useFakeTimers({ toFake: ["Date"] });
 		const { getReadableRepoSet } = await load();
 		getClient.mockResolvedValue({
@@ -161,13 +161,10 @@ describe("getReadableRepoSet", () => {
 			fakeOctokit({ installations: [{ id: 1 }], repos: { 1: ["acme/api"] } }),
 		);
 		expect([...(await getReadableRepoSet("u1"))]).toEqual(["acme/api"]);
-	});
 
-	it("does not look up users who never authorized the GitHub App on every poll", async () => {
-		const { getReadableRepoSet } = await load();
-		getClient.mockResolvedValue(null);
-		expect((await getReadableRepoSet("u1")).size).toBe(0);
-		expect((await getReadableRepoSet("u1")).size).toBe(0);
+		getClient.mockClear().mockResolvedValue(null);
+		await getReadableRepoSet("no-app");
+		await getReadableRepoSet("no-app");
 		expect(getClient).toHaveBeenCalledTimes(1);
 	});
 
