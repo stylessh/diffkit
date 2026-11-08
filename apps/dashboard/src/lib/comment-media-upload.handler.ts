@@ -1,4 +1,3 @@
-import { getAuth } from "#/lib/auth.server";
 import {
 	buildCommentMediaObjectKey,
 	COMMENT_MEDIA_SIGNATURE_PROBE_BYTES,
@@ -7,28 +6,61 @@ import {
 	publicUrlForR2Key,
 	sanitizeCommentMediaFilename,
 } from "#/lib/comment-media.server";
+import { logRouteError, serviceUnavailable } from "#/lib/route-safety.server";
+
+export type CommentMediaUploadRuntime = {
+	storage: { bucket: Pick<R2Bucket, "put">; publicBaseUrl: string } | null;
+	getSession: (headers: Headers) => Promise<{ user: { id: string } } | null>;
+};
+
+const MULTIPART_OVERHEAD_BYTES = 1024 * 1024;
+
+async function getRuntime(): Promise<CommentMediaUploadRuntime> {
+	const [{ env }, { getAuth }] = await Promise.all([
+		import("cloudflare:workers"),
+		import("#/lib/auth.server"),
+	]);
+	const bucket = env.COMMENT_MEDIA;
+	const publicBaseUrl = env.R2_PUBLIC_BASE_URL;
+	return {
+		storage: bucket && publicBaseUrl ? { bucket, publicBaseUrl } : null,
+		getSession: (headers) => getAuth().api.getSession({ headers }),
+	};
+}
 
 export async function handleCommentMediaUpload(
 	request: Request,
+	runtime?: CommentMediaUploadRuntime,
 ): Promise<Response> {
-	const { env } = await import("cloudflare:workers");
+	const { storage, getSession } = runtime ?? (await getRuntime());
 
-	const bucket = env.COMMENT_MEDIA;
-	const publicBaseUrl = env.R2_PUBLIC_BASE_URL;
-
-	if (!bucket || !publicBaseUrl) {
+	if (!storage) {
 		return Response.json(
 			{ error: "Comment media uploads are not configured" },
 			{ status: 503 },
 		);
 	}
 
-	const session = await getAuth().api.getSession({
-		headers: request.headers,
-	});
+	let session: Awaited<ReturnType<typeof getSession>>;
+	try {
+		session = await getSession(request.headers);
+	} catch (error) {
+		logRouteError("comment-media", "session lookup failed", error);
+		return serviceUnavailable("session_unavailable");
+	}
 
 	if (!session) {
 		return Response.json({ error: "Unauthorized" }, { status: 401 });
+	}
+
+	// formData() buffers the whole upload, so refuse oversized ones first.
+	const declaredLength = Number(request.headers.get("Content-Length"));
+	if (
+		Number.isFinite(declaredLength) &&
+		declaredLength >
+			maxBytesForCommentMediaKind("video") + MULTIPART_OVERHEAD_BYTES
+	) {
+		return Response.json({ error: "File is too large" }, { status: 413 });
 	}
 
 	const contentType = request.headers.get("Content-Type") ?? "";
@@ -39,7 +71,12 @@ export async function handleCommentMediaUpload(
 		);
 	}
 
-	const form = await request.formData();
+	let form: FormData;
+	try {
+		form = await request.formData();
+	} catch {
+		return Response.json({ error: "Invalid multipart body" }, { status: 400 });
+	}
 	const file = form.get("file");
 
 	if (!(file instanceof File)) {
@@ -63,14 +100,19 @@ export async function handleCommentMediaUpload(
 	const filename = sanitizeCommentMediaFilename(file.name);
 	const key = buildCommentMediaObjectKey(session.user.id, filename);
 
-	await bucket.put(key, file.stream(), {
-		httpMetadata: {
-			contentType: detected.contentType,
-			cacheControl: "public, max-age=31536000, immutable",
-		},
-	});
+	try {
+		await storage.bucket.put(key, file.stream(), {
+			httpMetadata: {
+				contentType: detected.contentType,
+				cacheControl: "public, max-age=31536000, immutable",
+			},
+		});
+	} catch (error) {
+		logRouteError("comment-media", "R2 put failed", error);
+		return Response.json({ error: "Upload failed" }, { status: 502 });
+	}
 
-	const publicUrl = publicUrlForR2Key(publicBaseUrl, key);
+	const publicUrl = publicUrlForR2Key(storage.publicBaseUrl, key);
 
 	return Response.json({
 		key,
