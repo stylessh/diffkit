@@ -22,7 +22,7 @@ test("queues filter by author and keep the filter across a reload", async ({
 	await (
 		await whenInteractive(page.getByRole("button", { name: "Filter" }))
 	).click();
-	await page.getByRole("button", { name: "Author" }).click();
+	await page.getByRole("button", { name: "Author", exact: true }).click();
 	await page.getByRole("button", { name: /^theo-martin/ }).click();
 
 	await expect(page.getByRole("link", { name: buttonLoading })).toHaveCount(0);

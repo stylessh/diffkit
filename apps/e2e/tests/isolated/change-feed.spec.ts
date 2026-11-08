@@ -4,7 +4,7 @@ import { expect, isolatedTest as test } from "../../support/test.ts";
 const issue13Row = (page: import("@playwright/test").Page, comments: number) =>
 	page.getByRole("link", {
 		name: new RegExp(
-			`Listeners are never released after close\\(\\).* ${comments}$`,
+			`Listeners are never released after close\\(\\).*, ${comments} comments$`,
 		),
 	});
 

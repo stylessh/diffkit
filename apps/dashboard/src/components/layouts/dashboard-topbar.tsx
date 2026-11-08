@@ -249,7 +249,7 @@ export function DashboardTopbar({
 					<DropdownMenuTrigger asChild>
 						<button
 							type="button"
-							aria-label="Account menu"
+							aria-label={displayName}
 							className="flex size-8 items-center justify-center rounded-full hover:bg-nav-hover"
 						>
 							<Avatar className="size-6">

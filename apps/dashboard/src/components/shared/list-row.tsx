@@ -9,6 +9,21 @@ export const listRowClassName = cn(
 	"md:-mx-2 md:h-11 md:w-[calc(100%+16px)] md:items-center md:gap-2 md:py-0 md:pr-[26px] md:pl-[42px] md:before:inset-x-2",
 );
 
+export function rowAccessibleName(item: {
+	title: string;
+	number: number;
+	comments: number;
+	repository: { fullName: string };
+	author: GitHubActor | null;
+}) {
+	const author = item.author ? ` · ${item.author.login}` : "";
+	const comments =
+		item.comments > 0
+			? `, ${item.comments} ${item.comments === 1 ? "comment" : "comments"}`
+			: "";
+	return `${item.title} ${item.repository.fullName} #${item.number}${author}${comments}`;
+}
+
 export const listRowHoverClassName = "hover:before:bg-row-hover";
 
 export function RowStateIcon({

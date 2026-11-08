@@ -326,6 +326,7 @@ export function RepoCommitsPage({
 							<ListGroup
 								key={group.key}
 								title={group.label.replace(/^Commits on /, "")}
+								label={group.label}
 								count={group.commits.length}
 							>
 								<ol>

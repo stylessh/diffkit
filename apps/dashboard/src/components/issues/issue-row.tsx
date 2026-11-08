@@ -11,6 +11,7 @@ import {
 	RowNumber,
 	RowStateIcon,
 	RowTime,
+	rowAccessibleName,
 } from "#/components/shared/list-row";
 import { formatRelativeTime } from "#/lib/format-relative-time";
 import type { IssueSummary } from "#/lib/github.types";
@@ -40,7 +41,11 @@ export const IssueRow = memo(function IssueRow({
 	});
 
 	return (
-		<Link to={href} className={cn(listRowClassName, listRowHoverClassName)}>
+		<Link
+			to={href}
+			aria-label={rowAccessibleName(issue)}
+			className={cn(listRowClassName, listRowHoverClassName)}
+		>
 			<RowStateIcon className={color}>
 				<IssuesIcon size={14} strokeWidth={2} />
 			</RowStateIcon>

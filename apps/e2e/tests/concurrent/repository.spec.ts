@@ -28,7 +28,9 @@ test("the repository tabs show history, branches with their pull requests, and r
 	await expect(
 		page.getByRole("heading", { level: 1, name: "Branches" }),
 	).toBeVisible();
-	await expect(page.getByText("10 branches")).toBeVisible();
+	await expect(
+		repositoryTabs.getByRole("link", { name: "Branches 10" }),
+	).toBeVisible();
 	await expect(
 		page.getByRole("link", { name: "feat/webtransport", exact: true }),
 	).toBeVisible();

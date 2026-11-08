@@ -6,6 +6,7 @@ function GroupHeader({
 	className,
 	icon,
 	title,
+	label,
 	count,
 	open = true,
 	onToggle,
@@ -14,6 +15,7 @@ function GroupHeader({
 }: Omit<React.ComponentProps<"div">, "title"> & {
 	icon?: React.ReactNode;
 	title: React.ReactNode;
+	label?: string;
 	count?: React.ReactNode;
 	open?: boolean;
 	onToggle?: () => void;
@@ -33,7 +35,7 @@ function GroupHeader({
 					type="button"
 					onClick={onToggle}
 					aria-expanded={open}
-					aria-label={`${open ? "Collapse" : "Expand"} ${typeof title === "string" ? title : "group"}`}
+					aria-label={`${open ? "Collapse" : "Expand"} ${label ?? (typeof title === "string" ? title : "group")}`}
 					className="ml-1.5 flex size-6 shrink-0 items-center justify-center rounded-md text-icon-faint transition-colors hover:bg-ghost-hover hover:text-muted-foreground"
 				>
 					<svg
@@ -56,7 +58,10 @@ function GroupHeader({
 			<span className="ml-1 flex w-4 shrink-0 justify-center text-muted-foreground [&_svg]:size-3.5">
 				{icon}
 			</span>
-			<h2 className="ml-2.5 min-w-0 truncate text-[13px] font-medium text-text-strong">
+			<h2
+				aria-label={label}
+				className="ml-2.5 min-w-0 truncate text-[13px] font-medium text-text-strong"
+			>
 				{title}
 			</h2>
 			{count !== undefined ? (

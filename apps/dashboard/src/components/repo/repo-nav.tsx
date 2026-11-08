@@ -55,6 +55,10 @@ const ITEMS: RepoNavItem[] = [
 	{ key: "actions", label: "Actions", to: "/$owner/$repo/actions" },
 ];
 
+export function repoSectionLabel(key: RepoNavKey) {
+	return ITEMS.find((item) => item.key === key)?.label ?? key;
+}
+
 function formatCount(n: number) {
 	if (n >= 1000) return `${(n / 1000).toFixed(1).replace(/\.0$/, "")}k`;
 	return String(n);

@@ -144,7 +144,7 @@ export function DashboardMobileNav({
 				<DropdownMenuTrigger asChild>
 					<button
 						type="button"
-						aria-label="Account menu"
+						aria-label={displayName}
 						className="flex flex-1 items-center justify-center py-3 text-muted-foreground"
 					>
 						<Avatar className="size-6">

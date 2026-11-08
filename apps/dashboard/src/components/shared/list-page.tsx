@@ -66,6 +66,7 @@ export function ListGroup({
 	id,
 	icon: Icon,
 	title,
+	label,
 	count,
 	defaultOpen = true,
 	children,
@@ -73,6 +74,7 @@ export function ListGroup({
 	id?: string;
 	icon?: ListIcon;
 	title: string;
+	label?: string;
 	count: number;
 	defaultOpen?: boolean;
 	children: ReactNode;
@@ -83,13 +85,14 @@ export function ListGroup({
 	return (
 		<section
 			id={id}
-			aria-label={title}
+			aria-label={label ?? title}
 			style={{ contentVisibility: "auto", containIntrinsicSize: "auto 44px" }}
 		>
 			<GroupHeader
 				className={cn("sticky top-0 z-10", isEmpty && "opacity-60")}
 				icon={Icon ? <Icon size={14} strokeWidth={2} /> : undefined}
 				title={title}
+				label={label}
 				count={count}
 				open={open && !isEmpty}
 				onToggle={isEmpty ? undefined : () => setOpen((value) => !value)}

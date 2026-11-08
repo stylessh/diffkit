@@ -12,6 +12,7 @@ import {
 	RowNumber,
 	RowStateIcon,
 	RowTime,
+	rowAccessibleName,
 } from "#/components/shared/list-row";
 import { formatRelativeTime } from "#/lib/format-relative-time";
 import {
@@ -64,6 +65,7 @@ export const PullRequestRow = memo(function PullRequestRow({
 				onMouseEnter={preloadDetail}
 				onFocus={preloadDetail}
 				onTouchStart={preloadDetail}
+				aria-label={rowAccessibleName(pr)}
 				className={cn(
 					listRowClassName,
 					"hover:[&:not(:has([data-action]:hover))]:before:bg-row-hover",

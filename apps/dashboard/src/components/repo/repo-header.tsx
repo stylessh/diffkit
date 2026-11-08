@@ -7,7 +7,11 @@ import {
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import type { ReactNode } from "react";
-import { RepoNav, type RepoNavKey } from "#/components/repo/repo-nav";
+import {
+	RepoNav,
+	type RepoNavKey,
+	repoSectionLabel,
+} from "#/components/repo/repo-nav";
 import { RepoStarForkActions } from "#/components/repo/repo-star-fork-actions";
 import {
 	type GitHubQueryScope,
@@ -38,9 +42,27 @@ export function RepoHeader({
 	});
 	const repoData = overviewQuery.data;
 	const name = repoData?.name ?? repo;
+	const section = active && active !== "code" ? active : null;
 
 	const repoIcon = (
 		<RepoIcon size={14} strokeWidth={2} className="text-muted-foreground" />
+	);
+
+	const title = (
+		<>
+			{repoIcon}
+			<span className="truncate">
+				<Link
+					to="/$owner"
+					params={{ owner }}
+					className="rounded-sm text-text-header transition-colors hover:text-foreground"
+				>
+					{owner}
+				</Link>
+				<span className="text-muted-foreground">/</span>
+				{name}
+			</span>
+		</>
 	);
 
 	return (
@@ -71,20 +93,13 @@ export function RepoHeader({
 					</>
 				) : (
 					<>
-						<PageHeaderTitle className="gap-2">
-							{repoIcon}
-							<span className="truncate">
-								<Link
-									to="/$owner"
-									params={{ owner }}
-									className="rounded-sm text-text-header transition-colors hover:text-foreground"
-								>
-									{owner}
-								</Link>
-								<span className="text-muted-foreground">/</span>
-								{name}
-							</span>
-						</PageHeaderTitle>
+						{section ? (
+							<PageHeaderTitle className="gap-2" asChild>
+								<span>{title}</span>
+							</PageHeaderTitle>
+						) : (
+							<PageHeaderTitle className="gap-2">{title}</PageHeaderTitle>
+						)}
 						{repoData ? (
 							<HairlineBadge className="ml-2 gap-1">
 								{repoData.isPrivate ? <LockIcon size={10} /> : null}
@@ -94,6 +109,9 @@ export function RepoHeader({
 					</>
 				)}
 			</PageHeader>
+			{section ? (
+				<h1 className="sr-only">{repoSectionLabel(section)}</h1>
+			) : null}
 			<RepoNav
 				owner={owner}
 				repo={repo}
