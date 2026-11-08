@@ -4,6 +4,7 @@ import { and, eq } from "drizzle-orm";
 import { getDb } from "../db";
 import { account } from "../db/schema";
 import { debug } from "./debug";
+import { getGitHubOAuthOrigin } from "./github-emulator.server";
 import { normalizeGitHubAppPrivateKey } from "./github-private-key";
 import { GITHUB_REQUEST_TIMEOUT_MS } from "./github-request-policy";
 
@@ -151,15 +152,18 @@ function isUsableAccessTokenExpiresAt(expiresAt: Date | null) {
 }
 
 async function requestGitHubAppUserToken(params: Record<string, string>) {
-	const response = await fetch("https://github.com/login/oauth/access_token", {
-		method: "POST",
-		headers: {
-			Accept: "application/json",
-			"Content-Type": "application/x-www-form-urlencoded",
+	const response = await fetch(
+		`${getGitHubOAuthOrigin()}/login/oauth/access_token`,
+		{
+			method: "POST",
+			headers: {
+				Accept: "application/json",
+				"Content-Type": "application/x-www-form-urlencoded",
+			},
+			signal: AbortSignal.timeout(GITHUB_REQUEST_TIMEOUT_MS),
+			body: new URLSearchParams(params),
 		},
-		signal: AbortSignal.timeout(GITHUB_REQUEST_TIMEOUT_MS),
-		body: new URLSearchParams(params),
-	});
+	);
 	const payload = (await response.json()) as GitHubTokenResponse;
 
 	if (!response.ok || !payload.access_token) {

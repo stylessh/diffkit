@@ -17,5 +17,7 @@ declare namespace Cloudflare {
 		GITHUB_CLIENT_SECRET?: string;
 		BETTER_AUTH_SECRET: string;
 		BETTER_AUTH_URL: string;
+		/** Local demo mode only: base URL of `apps/emulator` (e.g. http://localhost:4001). */
+		GITHUB_EMULATOR_URL?: string;
 	}
 }

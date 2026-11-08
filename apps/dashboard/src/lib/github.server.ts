@@ -6,6 +6,11 @@ import {
 	getGitHubAppPrivateKey,
 } from "./github-app.server";
 import { shouldReauthorizeGitHubApp } from "./github-auth-errors";
+import {
+	getGitHubEmulatorAppPrivateKey,
+	getGitHubOctokitBaseOptions,
+} from "./github-emulator.server";
+import { normalizeGitHubAppPrivateKey } from "./github-private-key";
 import { configureGitHubRequestPolicies } from "./github-request-policy";
 
 const GITHUB_CLIENT_USER_AGENT = "diffkit-dashboard";
@@ -53,6 +58,7 @@ const githubInstallationTokenInvalidationVersions = new Map<number, number>();
 
 export async function getGitHubClient(userId: string): Promise<OctokitType> {
 	const octokit = new Octokit({
+		...getGitHubOctokitBaseOptions(),
 		auth: await getGitHubAccessTokenByUserId(userId),
 		userAgent: GITHUB_CLIENT_USER_AGENT,
 		retry: { enabled: false },
@@ -71,6 +77,7 @@ export async function getGitHubInstallationClient(
 ): Promise<OctokitType> {
 	const tokenEntry = await getCachedGitHubInstallationToken(installationId);
 	const octokit = new Octokit({
+		...getGitHubOctokitBaseOptions(),
 		auth: tokenEntry.token,
 		userAgent: GITHUB_CLIENT_USER_AGENT,
 		retry: { enabled: false },
@@ -172,7 +179,11 @@ async function mintGitHubInstallationToken(
 	installationId: number,
 ): Promise<GitHubInstallationTokenCacheEntry> {
 	const appId = getGitHubAppId();
-	const privateKey = getGitHubAppPrivateKey();
+	const configuredKey = getGitHubAppPrivateKey();
+	// Demo mode: the local emulator generates the App key (null otherwise).
+	const demoKey = configuredKey ? null : await getGitHubEmulatorAppPrivateKey();
+	const privateKey =
+		configuredKey ?? (demoKey ? normalizeGitHubAppPrivateKey(demoKey) : null);
 	if (!appId || !privateKey) {
 		throw new Error(
 			"Missing GitHub App installation credentials. Set GITHUB_APP_ID and GITHUB_APP_PRIVATE_KEY.",
@@ -180,6 +191,7 @@ async function mintGitHubInstallationToken(
 	}
 
 	const AppOctokit = Octokit.defaults({
+		...getGitHubOctokitBaseOptions(),
 		retry: { enabled: false },
 		throttle: { enabled: false },
 	});

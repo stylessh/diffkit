@@ -1,0 +1,39 @@
+// Local demo mode (`pnpm dev:demo`). Selected with CLOUDFLARE_ENV=demo, which
+// also makes Wrangler read `.dev.vars.demo` instead of `.dev.vars`. Every
+// binding is local Miniflare state under `.wrangler/demo-state`; nothing here
+// talks to Cloudflare or GitHub. Never deploy with this file.
+{
+	"$schema": "node_modules/wrangler/config-schema.json",
+	"name": "diffkit-demo",
+	"compatibility_date": "2025-09-02",
+	"compatibility_flags": [
+		"nodejs_compat",
+		"no_handle_cross_request_promise_resolution"
+	],
+	"main": "src/entry-worker.ts",
+	"env": {
+		"demo": {
+			"name": "diffkit-demo",
+			"d1_databases": [
+				{
+					"binding": "DB",
+					"database_name": "diffkit-demo-db",
+					"database_id": "00000000-0000-4000-8000-000000000001",
+					"migrations_dir": "drizzle"
+				}
+			],
+			"kv_namespaces": [
+				{
+					"binding": "GITHUB_CACHE_KV",
+					"id": "00000000000040008000000000000002"
+				}
+			],
+			"r2_buckets": [
+				{
+					"binding": "COMMENT_MEDIA",
+					"bucket_name": "diffkit-demo-comment-media"
+				}
+			]
+		}
+	}
+}

@@ -6,6 +6,8 @@ Thanks for your interest in contributing to DiffKit! This guide will help you ge
 
 Follow the [Getting Started](README.md#getting-started) section in the README to set up your local environment. You'll need both a GitHub OAuth App and a GitHub App configured.
 
+For UI work you can skip all of that: `pnpm dev:demo` runs DiffKit against a local GitHub emulator with seeded data (see [docs/local-demo-mode.md](docs/local-demo-mode.md)). If you change a GraphQL query, run `pnpm --filter @diffkit/emulator test`; it executes every query in `github.functions.ts` against the emulator and tells you which fields the shim still needs.
+
 For webhook testing during local development, use an ngrok tunnel (or similar) and set `DEV_TUNNEL_URL` in your `.dev.vars`.
 
 ## Project Architecture

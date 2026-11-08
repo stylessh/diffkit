@@ -1,0 +1,27 @@
+{
+	"name": "@diffkit/emulator",
+	"private": true,
+	"type": "module",
+	"scripts": {
+		"dev": "node --experimental-strip-types --disable-warning=ExperimentalWarning src/main.ts",
+		"start": "node --experimental-strip-types --disable-warning=ExperimentalWarning src/main.ts",
+		"test": "vitest run",
+		"lint": "biome lint",
+		"format": "biome format",
+		"check": "biome check",
+		"check-types": "tsc --noEmit"
+	},
+	"dependencies": {
+		"@emulators/core": "0.13.0",
+		"@emulators/github": "0.13.0",
+		"fflate": "0.8.2",
+		"graphql": "16.11.0",
+		"octokit": "5.0.5"
+	},
+	"devDependencies": {
+		"@diffkit/typescript-config": "workspace:*",
+		"@types/node": "22.19.17",
+		"typescript": "5.9.3",
+		"vitest": "3.2.4"
+	}
+}

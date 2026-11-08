@@ -1,0 +1,16 @@
+{
+	"$schema": "https://biomejs.dev/schemas/2.4.5/schema.json",
+	"root": false,
+	"extends": ["ultracite/biome/react", "ultracite/biome/vitest"],
+	"overrides": [
+		{
+			// Matches `${...}` placeholders inside the dashboard's GraphQL templates.
+			"includes": ["src/__tests__/dashboard-documents.ts"],
+			"linter": {
+				"rules": {
+					"suspicious": { "noTemplateCurlyInString": "off" }
+				}
+			}
+		}
+	]
+}

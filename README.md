@@ -31,6 +31,22 @@ A fast, design-first GitHub dashboard for developers who want to stay on top of 
 
 ## Getting Started
 
+### Run without GitHub (demo mode)
+
+Want to try DiffKit or work on the UI without setting up GitHub apps? Run it
+against a local GitHub emulator with a seeded workspace:
+
+```bash
+pnpm install
+pnpm dev:demo
+```
+
+Open http://localhost:3000, click **Continue with GitHub** and pick `nova`.
+No credentials, tunnel or network needed. See
+[docs/local-demo-mode.md](docs/local-demo-mode.md) for what is emulated.
+
+To run against real GitHub, follow the steps below.
+
 ### Prerequisites
 
 - [Node.js](https://nodejs.org/) v20+
@@ -197,6 +213,7 @@ The dev server uses `DEV_TUNNEL_URL` to allow the tunnel host and configure HMR 
 | Command | Description |
 |---------|------------|
 | `pnpm dev` | Start all dev servers |
+| `pnpm dev:demo` | Run the dashboard against the local GitHub emulator ([docs](docs/local-demo-mode.md)) |
 | `pnpm build` | Build all packages and apps |
 | `pnpm lint` | Lint the codebase |
 | `pnpm check` | Run Biome checks |
