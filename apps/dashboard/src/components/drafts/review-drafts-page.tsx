@@ -25,6 +25,13 @@ import { Link } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { ReviewSubmitPopover } from "#/components/pulls/review/review-submit-popover";
 import { encodeFileId } from "#/components/pulls/review/review-utils";
+import {
+	ListGroupNav,
+	ListGroupNavItem,
+	ListPageHeading,
+	listPageGridClassName,
+	listPageScrollClassName,
+} from "#/components/shared/list-page";
 import { formatRelativeTime } from "#/lib/format-relative-time";
 import { githubReviewDraftsQueryOptions } from "#/lib/github.query";
 import type { ReviewDraftComment, ReviewDraftPull } from "#/lib/github.types";
@@ -60,42 +67,35 @@ export function ReviewDraftsPage({ userId }: { userId: string }) {
 	);
 
 	return (
-		<div className="h-full overflow-auto py-10">
-			<div className="mx-auto grid max-w-7xl gap-14 px-3 md:px-6 xl:grid-cols-[minmax(15rem,18rem)_minmax(0,1fr)]">
-				<aside className="flex h-fit flex-col gap-5 xl:sticky xl:top-0">
-					<div className="flex flex-col gap-2">
-						<h1 className="text-2xl font-semibold tracking-tight">Drafts</h1>
-						<p className="text-sm text-muted-foreground">
-							{result ? (
-								<>
-									<span className="tabular-nums">{drafts.length}</span> pending{" "}
-									{drafts.length === 1 ? "review" : "reviews"} ·{" "}
-									<span className="tabular-nums">{commentTotal}</span>{" "}
-									{commentTotal === 1 ? "comment" : "comments"}
-								</>
-							) : (
-								"Looking for unsubmitted reviews…"
-							)}
-						</p>
-					</div>
+		<div className={listPageScrollClassName}>
+			<div className={listPageGridClassName}>
+				<aside className="flex h-fit flex-col gap-4 xl:sticky xl:top-0">
+					<ListPageHeading title="Drafts">
+						{result ? (
+							<>
+								<span className="tabular-nums">{drafts.length}</span> pending{" "}
+								{drafts.length === 1 ? "review" : "reviews"} ·{" "}
+								<span className="tabular-nums">{commentTotal}</span>{" "}
+								{commentTotal === 1 ? "comment" : "comments"}
+							</>
+						) : (
+							"Looking for unsubmitted reviews…"
+						)}
+					</ListPageHeading>
 
-					<div className="flex items-center justify-between gap-4 rounded-xl bg-surface-1 px-3.5 py-3">
-						<div className="flex min-w-0 items-center gap-2">
-							<div className="shrink-0 text-muted-foreground">
-								<GitPullRequestDraftIcon size={15} strokeWidth={1.9} />
-							</div>
-							<p className="truncate text-sm font-medium">Pending reviews</p>
-						</div>
-						<p className="font-semibold tabular-nums leading-tight">
-							{result ? drafts.length : "–"}
-						</p>
-					</div>
+					<ListGroupNav label="Draft groups">
+						<ListGroupNavItem
+							icon={GitPullRequestDraftIcon}
+							label="Pending reviews"
+							value={result ? drafts.length : 0}
+						/>
+					</ListGroupNav>
 
 					<Button
 						type="button"
 						variant="ghost"
 						size="sm"
-						className="w-fit text-muted-foreground"
+						className="w-fit px-2 text-muted-foreground"
 						disabled={query.isFetching}
 						onClick={() => void query.refetch()}
 						iconLeft={
@@ -110,7 +110,7 @@ export function ReviewDraftsPage({ userId }: { userId: string }) {
 					</Button>
 
 					{result ? (
-						<div className="flex flex-col gap-1.5 text-xs text-muted-foreground">
+						<div className="flex flex-col gap-1.5 px-2 text-xs text-pretty text-muted-foreground">
 							<p>
 								Checked{" "}
 								<span className="tabular-nums">{result.checkedCount}</span> open

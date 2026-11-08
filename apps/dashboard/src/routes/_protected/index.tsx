@@ -79,7 +79,7 @@ function OverviewPage() {
 			<div className="overflow-stable h-full px-6 py-16">
 				<div className="mx-auto flex w-full max-w-3xl flex-col gap-8">
 					<section className="flex flex-col gap-3">
-						<h1 className="text-2xl font-semibold tracking-tight">
+						<h1 className="text-lg font-semibold tracking-tight">
 							Welcome back,{" "}
 							{user.name?.split(" ")[0] ?? user.email.split("@")[0]}
 						</h1>

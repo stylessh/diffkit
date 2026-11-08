@@ -31,8 +31,8 @@ export function RepoPageHeader({
 			<RepoNav owner={owner} repo={repo} active={active} repoData={repoData} />
 			<div className="flex flex-wrap items-end justify-between gap-3">
 				<div className="flex min-w-0 flex-col gap-2">
-					<h1 className="text-2xl font-semibold tracking-tight">{title}</h1>
-					<p className="text-sm text-muted-foreground">
+					<h1 className="text-base font-semibold tracking-tight">{title}</h1>
+					<p className="text-[13px] text-muted-foreground">
 						<Link
 							to="/$owner/$repo"
 							params={{ owner, repo }}

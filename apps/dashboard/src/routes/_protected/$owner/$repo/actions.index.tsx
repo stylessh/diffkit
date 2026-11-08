@@ -181,8 +181,8 @@ function RepoActionsPage() {
 			<div className="h-full overflow-auto py-10">
 				<div className="mx-auto flex min-h-full max-w-4xl flex-col gap-6 px-3 md:px-6">
 					<div className="flex flex-col gap-2">
-						<h1 className="text-2xl font-semibold tracking-tight">Actions</h1>
-						<p className="text-sm text-muted-foreground">
+						<h1 className="text-base font-semibold tracking-tight">Actions</h1>
+						<p className="text-[13px] text-muted-foreground">
 							<Link
 								to="/$owner/$repo"
 								params={{ owner, repo }}
