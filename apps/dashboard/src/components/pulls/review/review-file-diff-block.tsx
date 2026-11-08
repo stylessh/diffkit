@@ -486,6 +486,9 @@ function InlineCommentForm({
 				compact
 				mentions={mentionConfig}
 				textareaRef={textareaRef}
+				onModEnter={() => {
+					if (body.trim()) onSubmit(body.trim());
+				}}
 			/>
 			<div className="flex items-center justify-end gap-2">
 				<button
@@ -667,6 +670,10 @@ function ReviewCommentThread({
 							onChange={setReplyBody}
 							placeholder="Write a reply..."
 							compact
+							onModEnter={() => {
+								if (!replyBody.trim() || isSending) return;
+								void handleReply();
+							}}
 						/>
 						<div className="flex items-center justify-end gap-2">
 							<button
@@ -749,6 +756,11 @@ function PendingCommentBubble({
 					placeholder="Leave a comment..."
 					compact
 					mentions={mentionConfig}
+					onModEnter={() => {
+						if (!draft.trim()) return;
+						onEdit(comment, draft.trim());
+						setIsEditing(false);
+					}}
 				/>
 				<div className="flex items-center justify-end gap-2">
 					<button

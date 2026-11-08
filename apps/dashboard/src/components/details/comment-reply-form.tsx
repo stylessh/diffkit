@@ -99,6 +99,10 @@ export function CommentReplyForm({
 				compact
 				media={mediaUpload}
 				onPaste={onMediaPaste}
+				onModEnter={() => {
+					if (!value.trim() || isSending || hasPendingUploads) return;
+					void handleSend();
+				}}
 			/>
 			<div
 				ref={commentActionsRef}

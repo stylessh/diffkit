@@ -118,6 +118,13 @@ export function ReviewSubmitPopover({
 				<textarea
 					value={body}
 					onChange={(event) => setBody(event.target.value)}
+					onKeyDown={(event) => {
+						if ((event.metaKey || event.ctrlKey) && event.key === "Enter") {
+							event.preventDefault();
+							if (isSubmitting) return;
+							void handleSubmit();
+						}
+					}}
 					placeholder="Leave a comment"
 					className="min-h-[80px] w-full resize-y rounded-md border bg-background px-3 py-2 text-xs outline-none placeholder:text-muted-foreground focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
 				/>

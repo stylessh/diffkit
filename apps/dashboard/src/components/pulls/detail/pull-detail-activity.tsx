@@ -1488,6 +1488,13 @@ function MergeFooter({
 						id="merge-commit-title"
 						value={commitTitle}
 						onChange={(e) => setCommitTitle(e.target.value)}
+						onKeyDown={(event) => {
+							if ((event.metaKey || event.ctrlKey) && event.key === "Enter") {
+								event.preventDefault();
+								if (isDisabled || !commitTitle.trim()) return;
+								void handleMerge();
+							}
+						}}
 						className="flex h-9 w-full rounded-md border bg-transparent px-3 py-1 text-sm shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
 					/>
 				</div>
@@ -1499,6 +1506,13 @@ function MergeFooter({
 						id="merge-commit-desc"
 						value={commitDescription}
 						onChange={(e) => setCommitDescription(e.target.value)}
+						onKeyDown={(event) => {
+							if ((event.metaKey || event.ctrlKey) && event.key === "Enter") {
+								event.preventDefault();
+								if (isDisabled || !commitTitle.trim()) return;
+								void handleMerge();
+							}
+						}}
 						placeholder="Add an optional extended description..."
 						rows={3}
 						className="flex w-full rounded-md border bg-transparent px-3 py-2 text-sm shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring resize-none"
@@ -2940,6 +2954,10 @@ function ReviewCommentBlock({
 									onChange={setReplyBody}
 									placeholder="Write a reply..."
 									compact
+									onModEnter={() => {
+										if (!replyBody.trim() || isSending) return;
+										void handleReply();
+									}}
 								/>
 								<div className="flex items-center justify-end gap-2">
 									<button

@@ -256,6 +256,10 @@ export function DetailCommentBox({
 				compact
 				media={mediaUpload}
 				onPaste={onMediaPaste}
+				onModEnter={() => {
+					if (!value.trim() || isSending || hasPendingUploads) return;
+					void handleSend();
+				}}
 				mentions={{
 					candidates: mentionCandidates,
 					onActivate: () => setMentionActivated(true),

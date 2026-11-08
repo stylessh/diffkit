@@ -66,6 +66,12 @@ export function CompareForm({
 					ref={titleRef}
 					value={title}
 					onChange={(e) => onTitleChange(e.target.value)}
+					onKeyDown={(event) => {
+						if ((event.metaKey || event.ctrlKey) && event.key === "Enter") {
+							event.preventDefault();
+							handleExecute();
+						}
+					}}
 					placeholder="Pull request title"
 					// biome-ignore lint/a11y/noAutofocus: intentional — this is a dedicated PR-creation page
 					autoFocus
@@ -80,6 +86,7 @@ export function CompareForm({
 					onChange={onBodyChange}
 					placeholder="Describe the changes…"
 					mentions={mentionConfig}
+					onModEnter={handleExecute}
 				/>
 			</div>
 

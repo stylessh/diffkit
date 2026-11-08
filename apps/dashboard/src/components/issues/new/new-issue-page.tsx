@@ -209,6 +209,13 @@ function NewIssueForm({
 							id="issue-title"
 							value={title}
 							onChange={(e) => setTitle(e.target.value)}
+							onKeyDown={(e) => {
+								if ((e.metaKey || e.ctrlKey) && e.key === "Enter") {
+									e.preventDefault();
+									if (!canSubmit) return;
+									void handleSubmit();
+								}
+							}}
 							placeholder="Issue title"
 							className="flex h-9 w-full rounded-md border bg-surface-1 px-3 py-1 text-sm outline-none transition-[box-shadow,border-color] placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px]"
 						/>
@@ -224,6 +231,10 @@ function NewIssueForm({
 							onChange={setBody}
 							placeholder="Describe the issue..."
 							mentions={mentionConfig}
+							onModEnter={() => {
+								if (!canSubmit) return;
+								void handleSubmit();
+							}}
 						/>
 					</div>
 

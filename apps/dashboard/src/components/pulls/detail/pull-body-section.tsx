@@ -89,6 +89,10 @@ export function PullBodySection({
 					value={draft}
 					onChange={setDraft}
 					placeholder="Write a description..."
+					onModEnter={() => {
+						if (isSaving) return;
+						void saveBody();
+					}}
 				/>
 				<div className="flex items-center justify-end gap-2 pt-2">
 					<button

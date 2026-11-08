@@ -64,6 +64,7 @@ type MarkdownEditorProps = {
 	/** Compact mode for comment boxes — shorter height, no syntax highlight overlay */
 	compact?: boolean;
 	onKeyDown?: React.KeyboardEventHandler<HTMLTextAreaElement>;
+	onModEnter?: () => void;
 	onPaste?: React.ClipboardEventHandler<HTMLTextAreaElement>;
 	textareaRef?: React.RefObject<HTMLTextAreaElement | null>;
 	mentions?: MentionConfig;
@@ -281,6 +282,7 @@ export const MarkdownEditor = forwardRef<
 		placeholder = "Leave a comment...",
 		compact,
 		onKeyDown: externalOnKeyDown,
+		onModEnter,
 		onPaste,
 		textareaRef: externalRef,
 		mentions: mentionConfig,
@@ -363,6 +365,14 @@ export const MarkdownEditor = forwardRef<
 			if (handleMentionKeyDown(event)) return;
 
 			const mod = event.metaKey || event.ctrlKey;
+			if (mod && event.key === "Enter") {
+				if (onModEnter) {
+					event.preventDefault();
+					event.stopPropagation();
+					onModEnter();
+					return;
+				}
+			}
 			if (mod) {
 				const shortcuts: Record<string, () => void> = {
 					b: () => insertMarkdown("**", "**", "bold"),
@@ -388,7 +398,7 @@ export const MarkdownEditor = forwardRef<
 			}
 			externalOnKeyDown?.(event);
 		},
-		[handleMentionKeyDown, insertMarkdown, externalOnKeyDown],
+		[handleMentionKeyDown, insertMarkdown, externalOnKeyDown, onModEnter],
 	);
 
 	const handleChange = useCallback(
