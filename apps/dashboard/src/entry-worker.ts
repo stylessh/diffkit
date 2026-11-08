@@ -54,16 +54,23 @@ export default {
 	/**
 	 * Cron trigger (`triggers.crons`, every 5 minutes): sweeps change-feed
 	 * rows older than 15 minutes and checks D1 size. Each task fails on its
-	 * own; neither can affect requests.
+	 * own; neither can affect requests. The run is recorded in KV so
+	 * `/api/health` can report when maintenance last ran.
 	 */
 	async scheduled(
 		controller: ScheduledController,
-		env: { DB: D1Database },
+		env: { DB: D1Database; GITHUB_CACHE_KV: KVNamespace },
 		ctx: ExecutionContext,
 	): Promise<void> {
-		const { runScheduledMaintenance } = await import(
-			"#/lib/scheduled-maintenance.server"
+		const [{ runScheduledMaintenance }, { recordMaintenanceRun }] =
+			await Promise.all([
+				import("#/lib/scheduled-maintenance.server"),
+				import("#/lib/health.server"),
+			]);
+		ctx.waitUntil(
+			runScheduledMaintenance(env.DB, controller.scheduledTime).then(
+				(summary) => recordMaintenanceRun(env.GITHUB_CACHE_KV, summary),
+			),
 		);
-		ctx.waitUntil(runScheduledMaintenance(env.DB, controller.scheduledTime));
 	},
 };
