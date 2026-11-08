@@ -1,7 +1,6 @@
 import { type Octokit as OctokitType, RequestError } from "octokit";
 import { buildGitHubAppInstallUrl } from "../github-access";
 import { getGitHubAppSlug } from "../github-app.server";
-import { bustGitHubCache } from "../github-cache";
 
 export type GitHubClient = OctokitType;
 type AuthSession = {
@@ -67,41 +66,6 @@ export type RepoState = "all" | "closed" | "open";
 export const GITHUB_OPERATION_TIMEOUT_MS = 15_000;
 export const GITHUB_PAGINATED_OPERATION_TIMEOUT_MS = 25_000;
 export const GITHUB_MIN_OPERATION_TIMEOUT_MS = 1_000;
-
-// ---------------------------------------------------------------------------
-// Entity-scoped cache busting helpers
-// ---------------------------------------------------------------------------
-// Each helper busts all server-side D1 cache entries related to an entity so
-// the next React Query refetch hits GitHub's API and returns fresh data.
-// Add new resource keys here as new cached endpoints are introduced.
-// ---------------------------------------------------------------------------
-
-export type PullCacheParams = {
-	owner: string;
-	repo: string;
-	pullNumber: number;
-};
-type IssueCacheParams = { owner: string; repo: string; issueNumber: number };
-
-export async function bustPullDetailCaches(
-	userId: string,
-	params: PullCacheParams,
-) {
-	await Promise.all([
-		bustGitHubCache(userId, "pulls.detail.raw", params),
-		bustGitHubCache(userId, "pulls.status.raw", params),
-		bustGitHubCache(userId, "pulls.status.v1", params),
-		bustGitHubCache(userId, "pulls.status.v2", params),
-		bustGitHubCache(userId, "pulls.status.v3", params),
-	]);
-}
-
-export async function bustIssueCaches(
-	userId: string,
-	params: IssueCacheParams,
-) {
-	await bustGitHubCache(userId, "issues.detail", params);
-}
 
 export type GitHubApiUser = {
 	login?: string;

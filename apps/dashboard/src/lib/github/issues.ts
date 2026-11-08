@@ -7,17 +7,7 @@ import type {
 	IssueSummary,
 	RepositoryRef,
 } from "../github.types";
-import {
-	bumpGitHubCacheNamespaces,
-	getOrRevalidateGitHubResource,
-} from "../github-cache";
-import { githubCachePolicy } from "../github-cache-policy";
-import { githubRevalidationSignalKeys } from "../github-revalidation";
-import {
-	executeGitHubGraphQL,
-	getCachedGitHubRequest,
-	getViewer,
-} from "./client";
+import { executeGitHubGraphQL, fetchGitHubResource, getViewer } from "./client";
 import {
 	getGitHubContextForRepository,
 	getGitHubUserContextForRepository,
@@ -25,7 +15,6 @@ import {
 import {
 	buildCommentReactionSummary,
 	buildRepositoryRef,
-	createGraphQLResponseMetadata,
 	mapActor,
 	mapGraphQLActor,
 	mapGraphQLComments,
@@ -33,8 +22,8 @@ import {
 	mapGraphQLRepositoryRef,
 	mapIssueSummary,
 } from "./mappers";
+import { dedupeGitHubRead } from "./request-dedup";
 import {
-	bustIssueCaches,
 	clampPage,
 	clampPerPage,
 	type GitHubClient,
@@ -182,26 +171,15 @@ async function getIssueDetailResult(
 	context: GitHubContext,
 	data: IssueFromRepoInput,
 ): Promise<IssueDetail | null> {
-	const issueNamespaceKey = githubRevalidationSignalKeys.issueEntity({
-		owner: data.owner,
-		repo: data.repo,
-		issueNumber: data.issueNumber,
-	});
-
-	return getCachedGitHubRequest<RepoIssueDetail, IssueDetail | null>({
+	return fetchGitHubResource<RepoIssueDetail, IssueDetail | null>({
 		context,
 		resource: "issues.detail",
 		params: data,
-		freshForMs: githubCachePolicy.detail.staleTimeMs,
-		signalKeys: [issueNamespaceKey],
-		namespaceKeys: [issueNamespaceKey],
-		cacheMode: "split",
-		request: (headers) =>
+		request: () =>
 			context.octokit.rest.issues.get({
 				owner: data.owner,
 				repo: data.repo,
 				issue_number: data.issueNumber,
-				headers,
 			}),
 		mapData: (issue) => {
 			if (issue.pull_request) {
@@ -220,27 +198,17 @@ async function getIssueCommentsResult(
 	type RawIssueComment = Awaited<
 		ReturnType<GitHubClient["rest"]["issues"]["listComments"]>
 	>["data"][number];
-	const issueNamespaceKey = githubRevalidationSignalKeys.issueEntity({
-		owner: data.owner,
-		repo: data.repo,
-		issueNumber: data.issueNumber,
-	});
 
-	return getCachedGitHubRequest<RawIssueComment[], IssueComment[]>({
+	return fetchGitHubResource<RawIssueComment[], IssueComment[]>({
 		context,
 		resource: "issues.comments",
 		params: data,
-		freshForMs: githubCachePolicy.activity.staleTimeMs,
-		signalKeys: [issueNamespaceKey],
-		namespaceKeys: [issueNamespaceKey],
-		cacheMode: "split",
-		request: (headers) =>
+		request: () =>
 			context.octokit.rest.issues.listComments({
 				owner: data.owner,
 				repo: data.repo,
 				issue_number: data.issueNumber,
 				per_page: 30,
-				headers,
 			}),
 		mapData: (comments) =>
 			comments.map((comment) => ({
@@ -263,20 +231,10 @@ async function getIssuePageDataViaGraphQL(
 	context: GitHubContext,
 	data: IssueFromRepoInput,
 ): Promise<IssuePageData> {
-	const issueNamespaceKey = githubRevalidationSignalKeys.issueEntity({
-		owner: data.owner,
-		repo: data.repo,
-		issueNumber: data.issueNumber,
-	});
-
-	return getOrRevalidateGitHubResource<IssuePageData>({
+	return dedupeGitHubRead<IssuePageData>({
 		userId: context.session.user.id,
 		resource: "issues.pageData.graphql.v2",
 		params: data,
-		freshForMs: githubCachePolicy.detail.staleTimeMs,
-		signalKeys: [issueNamespaceKey],
-		namespaceKeys: [issueNamespaceKey],
-		cacheMode: "split",
 		fetcher: async () => {
 			const viewerPromise = getGitHubUserContextForRepository({
 				owner: data.owner,
@@ -387,26 +345,22 @@ async function getIssuePageDataViaGraphQL(
 			const totalComments = issue.comments.totalCount;
 
 			return {
-				kind: "success",
-				data: {
-					detail: mapGraphQLIssueDetail(issue, viewer?.login),
-					comments: mapGraphQLComments(
-						viewer?.login,
-						issue.firstComments,
-						issue.lastComments,
-					),
-					events: timelineResult.events,
-					commentPagination: {
-						totalCount: totalComments,
-						perPage: COMMENTS_PER_PAGE,
-						loadedPages: getLoadedCommentPages(totalComments),
-					},
-					eventPagination: {
-						loadedPages: [1],
-						hasMore: timelineResult.hasMore,
-					},
+				detail: mapGraphQLIssueDetail(issue, viewer?.login),
+				comments: mapGraphQLComments(
+					viewer?.login,
+					issue.firstComments,
+					issue.lastComments,
+				),
+				events: timelineResult.events,
+				commentPagination: {
+					totalCount: totalComments,
+					perPage: COMMENTS_PER_PAGE,
+					loadedPages: getLoadedCommentPages(totalComments),
 				},
-				metadata: createGraphQLResponseMetadata(response.rateLimit),
+				eventPagination: {
+					loadedPages: [1],
+					hasMore: timelineResult.hasMore,
+				},
 			};
 		},
 	});
@@ -475,7 +429,7 @@ export const getIssuesFromRepo = createServerFn({ method: "GET" })
 			return [];
 		}
 
-		return getCachedGitHubRequest<
+		return fetchGitHubResource<
 			Awaited<
 				ReturnType<GitHubClient["rest"]["issues"]["listForRepo"]>
 			>["data"],
@@ -492,14 +446,7 @@ export const getIssuesFromRepo = createServerFn({ method: "GET" })
 				sort: data.sort ?? "updated",
 				direction: data.direction ?? "desc",
 			},
-			freshForMs: githubCachePolicy.list.staleTimeMs,
-			signalKeys: [
-				githubRevalidationSignalKeys.repoMeta({
-					owner: data.owner,
-					repo: data.repo,
-				}),
-			],
-			request: (headers) =>
+			request: () =>
 				context.octokit.rest.issues.listForRepo({
 					owner: data.owner,
 					repo: data.repo,
@@ -508,7 +455,6 @@ export const getIssuesFromRepo = createServerFn({ method: "GET" })
 					per_page: clampPerPage(data.perPage),
 					sort: data.sort ?? "updated",
 					direction: data.direction ?? "desc",
-					headers,
 				}),
 			mapData: (issues) =>
 				issues
@@ -583,26 +529,6 @@ export const updateIssueState = createServerFn({ method: "POST" })
 					data.state === "closed" ? data.closeReason : ("reopened" as const),
 			});
 
-			const userId = context.session.user.id;
-			await Promise.all([
-				bustIssueCaches(userId, {
-					owner: data.owner,
-					repo: data.repo,
-					issueNumber: data.issueNumber,
-				}),
-				bumpGitHubCacheNamespaces([
-					githubRevalidationSignalKeys.issueEntity({
-						owner: data.owner,
-						repo: data.repo,
-						issueNumber: data.issueNumber,
-					}),
-					githubRevalidationSignalKeys.repoMeta({
-						owner: data.owner,
-						repo: data.repo,
-					}),
-				]),
-			]);
-
 			return { ok: true };
 		} catch (error) {
 			return toMutationError("update issue", error);
@@ -639,14 +565,6 @@ export const createIssue = createServerFn({ method: "POST" })
 				labels: data.labels,
 				assignees: data.assignees,
 			});
-
-			await bumpGitHubCacheNamespaces([
-				githubRevalidationSignalKeys.issuesMine,
-				githubRevalidationSignalKeys.repoMeta({
-					owner: data.owner,
-					repo: data.repo,
-				}),
-			]);
 
 			return { ok: true, issueNumber: response.data.number };
 		} catch (error) {

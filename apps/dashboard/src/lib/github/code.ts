@@ -1,11 +1,8 @@
 import { createServerFn } from "@tanstack/react-start";
 import type { FileLastCommit, RepoTreeEntry } from "../github.types";
-import { getOrRevalidateGitHubResource } from "../github-cache";
-import { githubCachePolicy } from "../github-cache-policy";
-import { githubRevalidationSignalKeys } from "../github-revalidation";
-import { executeGitHubGraphQL, getCachedGitHubRequest } from "./client";
+import { executeGitHubGraphQL, fetchGitHubResource } from "./client";
 import { getGitHubContextForRepository } from "./installations";
-import { createGraphQLResponseMetadata } from "./mappers";
+import { dedupeGitHubRead } from "./request-dedup";
 import type { GitHubClient, GitHubGraphQLRateLimit } from "./shared";
 import { identityValidator } from "./validators";
 
@@ -26,24 +23,19 @@ export const getRepoTree = createServerFn({ method: "GET" })
 		const context = await getGitHubContextForRepository(data);
 		if (!context) return [];
 
-		return getCachedGitHubRequest<
+		return fetchGitHubResource<
 			Awaited<ReturnType<GitHubClient["rest"]["repos"]["getContent"]>>["data"],
 			RepoTreeEntry[]
 		>({
 			context,
 			resource: "repo.tree.v1",
 			params: data,
-			freshForMs: githubCachePolicy.detail.staleTimeMs,
-			signalKeys: [githubRevalidationSignalKeys.repoCode(data)],
-			namespaceKeys: [githubRevalidationSignalKeys.repoCode(data)],
-			cacheMode: "split",
-			request: (headers) =>
+			request: () =>
 				context.octokit.rest.repos.getContent({
 					owner: data.owner,
 					repo: data.repo,
 					path: data.path,
 					ref: data.ref,
-					headers,
 				}),
 			mapData: (content) => {
 				if (!Array.isArray(content)) return [];
@@ -90,24 +82,19 @@ export const getRepoFileContent = createServerFn({ method: "GET" })
 		const context = await getGitHubContextForRepository(data);
 		if (!context) return null;
 
-		return getCachedGitHubRequest<
+		return fetchGitHubResource<
 			Awaited<ReturnType<GitHubClient["rest"]["repos"]["getContent"]>>["data"],
 			string | null
 		>({
 			context,
 			resource: "repo.fileContent.v1",
 			params: data,
-			freshForMs: githubCachePolicy.repoMeta.staleTimeMs,
-			signalKeys: [githubRevalidationSignalKeys.repoCode(data)],
-			namespaceKeys: [githubRevalidationSignalKeys.repoCode(data)],
-			cacheMode: "split",
-			request: (headers) =>
+			request: () =>
 				context.octokit.rest.repos.getContent({
 					owner: data.owner,
 					repo: data.repo,
 					path: data.path,
 					ref: data.ref,
-					headers,
 				}),
 			mapData: (content) => {
 				if (Array.isArray(content) || !("content" in content)) return null;
@@ -133,25 +120,20 @@ export const getFileLastCommit = createServerFn({ method: "GET" })
 		const context = await getGitHubContextForRepository(data);
 		if (!context) return null;
 
-		return getCachedGitHubRequest<
+		return fetchGitHubResource<
 			Awaited<ReturnType<GitHubClient["rest"]["repos"]["listCommits"]>>["data"],
 			FileLastCommit | null
 		>({
 			context,
 			resource: "repo.fileLastCommit.v1",
 			params: data,
-			freshForMs: githubCachePolicy.detail.staleTimeMs,
-			signalKeys: [githubRevalidationSignalKeys.repoCode(data)],
-			namespaceKeys: [githubRevalidationSignalKeys.repoCode(data)],
-			cacheMode: "split",
-			request: (headers) =>
+			request: () =>
 				context.octokit.rest.repos.listCommits({
 					owner: data.owner,
 					repo: data.repo,
 					sha: data.ref,
 					path: data.path,
 					per_page: 1,
-					headers,
 				}),
 			mapData: (commits) => {
 				const commit = commits[0];
@@ -187,24 +169,19 @@ export const getRefHeadCommit = createServerFn({ method: "GET" })
 		const context = await getGitHubContextForRepository(data);
 		if (!context) return null;
 
-		return getCachedGitHubRequest<
+		return fetchGitHubResource<
 			Awaited<ReturnType<GitHubClient["rest"]["repos"]["listCommits"]>>["data"],
 			FileLastCommit | null
 		>({
 			context,
 			resource: "repo.refHeadCommit.v1",
 			params: data,
-			freshForMs: githubCachePolicy.detail.staleTimeMs,
-			signalKeys: [githubRevalidationSignalKeys.repoCode(data)],
-			namespaceKeys: [githubRevalidationSignalKeys.repoCode(data)],
-			cacheMode: "split",
-			request: (headers) =>
+			request: () =>
 				context.octokit.rest.repos.listCommits({
 					owner: data.owner,
 					repo: data.repo,
 					sha: data.ref,
 					per_page: 1,
-					headers,
 				}),
 			mapData: (commits) => {
 				const commit = commits[0];
@@ -249,9 +226,7 @@ export const getTreeEntryCommits = createServerFn({ method: "GET" })
 		const context = await getGitHubContextForRepository(data);
 		if (!context) return {};
 
-		const repoCodeKey = githubRevalidationSignalKeys.repoCode(data);
-
-		return getOrRevalidateGitHubResource<TreeEntryCommitsResult>({
+		return dedupeGitHubRead<TreeEntryCommitsResult>({
 			userId: context.session.user.id,
 			resource: "repo.treeEntryCommits.v1",
 			params: {
@@ -260,10 +235,6 @@ export const getTreeEntryCommits = createServerFn({ method: "GET" })
 				ref: data.ref,
 				dirPath: data.dirPath,
 			},
-			freshForMs: githubCachePolicy.detail.staleTimeMs,
-			signalKeys: [repoCodeKey],
-			namespaceKeys: [repoCodeKey],
-			cacheMode: "split",
 			fetcher: async () => {
 				// Build aliased history fields — one per entry
 				const aliases = data.entries.map((name, i) => {
@@ -355,11 +326,7 @@ export const getTreeEntryCommits = createServerFn({ method: "GET" })
 					};
 				}
 
-				return {
-					kind: "success",
-					data: result,
-					metadata: createGraphQLResponseMetadata(response.rateLimit),
-				};
+				return result;
 			},
 		});
 	});

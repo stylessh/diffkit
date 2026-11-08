@@ -1,7 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
 import type { CommentReactionContent } from "../github.types";
-import { bumpGitHubCacheNamespaces, bustGitHubCache } from "../github-cache";
-import { githubRevalidationSignalKeys } from "../github-revalidation";
 import { executeGitHubGraphQL } from "./client";
 import {
 	getGitHubContextForRepository,
@@ -68,34 +66,6 @@ export const createComment = createServerFn({ method: "POST" })
 				issue_number: data.issueNumber,
 				body: data.body,
 			});
-
-			// Bust caches so the comment appears immediately
-			const userId = context.session.user.id;
-			await Promise.all([
-				bustGitHubCache(userId, "issues.comments", {
-					owner: data.owner,
-					repo: data.repo,
-					issueNumber: data.issueNumber,
-				}),
-				bustGitHubCache(userId, "pulls.comments", {
-					owner: data.owner,
-					repo: data.repo,
-					pullNumber: data.issueNumber,
-				}),
-				// Bump namespace versions to invalidate split-mode KV payloads
-				bumpGitHubCacheNamespaces([
-					githubRevalidationSignalKeys.pullEntity({
-						owner: data.owner,
-						repo: data.repo,
-						pullNumber: data.issueNumber,
-					}),
-					githubRevalidationSignalKeys.issueEntity({
-						owner: data.owner,
-						repo: data.repo,
-						issueNumber: data.issueNumber,
-					}),
-				]),
-			]);
 
 			return { ok: true };
 		} catch (error) {
@@ -179,32 +149,6 @@ export const toggleIssueCommentReaction = createServerFn({ method: "POST" })
 					content: gqlContent,
 				},
 			);
-
-			const userId = context.session.user.id;
-			await Promise.all([
-				bustGitHubCache(userId, "issues.comments", {
-					owner: data.owner,
-					repo: data.repo,
-					issueNumber: data.issueNumber,
-				}),
-				bustGitHubCache(userId, "pulls.comments", {
-					owner: data.owner,
-					repo: data.repo,
-					pullNumber: data.issueNumber,
-				}),
-				bumpGitHubCacheNamespaces([
-					githubRevalidationSignalKeys.pullEntity({
-						owner: data.owner,
-						repo: data.repo,
-						pullNumber: data.issueNumber,
-					}),
-					githubRevalidationSignalKeys.issueEntity({
-						owner: data.owner,
-						repo: data.repo,
-						issueNumber: data.issueNumber,
-					}),
-				]),
-			]);
 
 			return { ok: true };
 		} catch (error) {

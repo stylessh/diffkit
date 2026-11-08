@@ -6,14 +6,9 @@ import type {
 	NotificationsResult,
 } from "../github.types";
 import { isRepoVisibleWithInstallationAccess } from "../github-access";
-import {
-	createGitHubResponseMetadata,
-	getOrRevalidateGitHubResource,
-} from "../github-cache";
-import { githubCachePolicy } from "../github-cache-policy";
-import { githubRevalidationSignalKeys } from "../github-revalidation";
-import { getGitHubContext, normalizeResponseHeaders } from "./client";
+import { getGitHubContext } from "./client";
 import { getInstallationAccessIndex } from "./installations";
+import { dedupeGitHubRead } from "./request-dedup";
 import { identityValidator } from "./validators";
 
 // ── Notifications ──────────────────────────────────────────────────────
@@ -30,16 +25,10 @@ export const getNotifications = createServerFn({ method: "GET" })
 		if (!context) {
 			return { notifications: [] };
 		}
-
-		const notificationsKey = githubRevalidationSignalKeys.notifications;
-		return getOrRevalidateGitHubResource<NotificationsResult>({
+		return dedupeGitHubRead<NotificationsResult>({
 			userId: context.session.user.id,
 			resource: "notifications.list.v1",
 			params: data,
-			freshForMs: githubCachePolicy.list.staleTimeMs,
-			signalKeys: [notificationsKey],
-			namespaceKeys: [notificationsKey],
-			cacheMode: "split",
 			fetcher: async () => {
 				const [response, accessIndex] = await Promise.all([
 					context.octokit.rest.activity.listNotificationsForAuthenticatedUser({
@@ -212,14 +201,7 @@ export const getNotifications = createServerFn({ method: "GET" })
 					});
 				}
 
-				return {
-					kind: "success",
-					data: { notifications: filteredNotifications },
-					metadata: createGitHubResponseMetadata(
-						response.status,
-						normalizeResponseHeaders(response.headers),
-					),
-				};
+				return { notifications: filteredNotifications };
 			},
 		});
 	});

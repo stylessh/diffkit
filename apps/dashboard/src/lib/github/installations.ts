@@ -8,14 +8,12 @@ import {
 	type GitHubOrganization,
 	isRepoVisibleWithInstallationAccess,
 } from "../github-access";
-import { getOrRevalidateGitHubResource } from "../github-cache";
-import { githubCachePolicy } from "../github-cache-policy";
-import { githubRevalidationSignalKeys } from "../github-revalidation";
 import {
 	getGitHubContext,
 	getOrCreateCachedContext,
 	listPaginatedGitHubItems,
 } from "./client";
+import { dedupeGitHubRead } from "./request-dedup";
 import type { RepoCollaboratorsInput } from "./reviews";
 import {
 	type GitHubClient,
@@ -185,29 +183,15 @@ type SerializableInstallationAccessIndex = {
 	selectedRepos: string[];
 };
 
-function syntheticGitHubResponseMetadata() {
-	return {
-		etag: null,
-		lastModified: null,
-		rateLimitRemaining: null,
-		rateLimitReset: null,
-		statusCode: 200,
-	};
-}
-
 export async function getInstallationAccessIndex(
 	context: GitHubContext,
 ): Promise<GitHubInstallationAccessIndex> {
 	try {
 		const serializable =
-			await getOrRevalidateGitHubResource<SerializableInstallationAccessIndex>({
+			await dedupeGitHubRead<SerializableInstallationAccessIndex>({
 				userId: context.session.user.id,
 				resource: "installationAccess",
 				params: null,
-				freshForMs: githubCachePolicy.installationAccess.staleTimeMs,
-				signalKeys: [githubRevalidationSignalKeys.installationAccess],
-				namespaceKeys: [githubRevalidationSignalKeys.installationAccess],
-				cacheMode: "split",
 				fetcher: async () => {
 					debug("installation-access", "fetching access index (cache miss)");
 					const { installations, installationsAvailable, appUserOctokit } =
@@ -219,13 +203,9 @@ export async function getInstallationAccessIndex(
 							"app-user token unavailable, index not available (fail-open)",
 						);
 						return {
-							kind: "success",
-							data: {
-								available: false,
-								allAccessOwners: [],
-								selectedRepos: [],
-							},
-							metadata: syntheticGitHubResponseMetadata(),
+							available: false,
+							allAccessOwners: [],
+							selectedRepos: [],
 						};
 					}
 
@@ -321,13 +301,9 @@ export async function getInstallationAccessIndex(
 					});
 
 					return {
-						kind: "success",
-						data: {
-							available: true,
-							allAccessOwners,
-							selectedRepos,
-						},
-						metadata: syntheticGitHubResponseMetadata(),
+						available: true,
+						allAccessOwners,
+						selectedRepos,
 					};
 				},
 			});

@@ -12,14 +12,8 @@ import type {
 	WorkflowRunStep,
 } from "../github.types";
 import {
-	createGitHubResponseMetadata,
-	getOrRevalidateGitHubResource,
-} from "../github-cache";
-import { githubCachePolicy } from "../github-cache-policy";
-import { githubRevalidationSignalKeys } from "../github-revalidation";
-import {
-	getCachedGitHubRequest,
-	getCachedPaginatedGitHubRequest,
+	fetchGitHubResource,
+	fetchPaginatedGitHubResource,
 	withGitHubOperationTimeout,
 } from "./client";
 import {
@@ -31,6 +25,7 @@ import {
 	getRepositoryPermissions,
 	mergeRepositoryPermissions,
 } from "./permissions";
+import { dedupeGitHubRead } from "./request-dedup";
 import {
 	clampPage,
 	clampPerPage,
@@ -180,7 +175,7 @@ export const getWorkflowRunsForRepo = createServerFn({ method: "GET" })
 			workflowId: data.workflowId,
 		};
 
-		return getCachedGitHubRequest<
+		return fetchGitHubResource<
 			Awaited<
 				ReturnType<GitHubClient["rest"]["actions"]["listWorkflowRunsForRepo"]>
 			>["data"],
@@ -189,14 +184,7 @@ export const getWorkflowRunsForRepo = createServerFn({ method: "GET" })
 			context,
 			resource: "actions.runs.repo",
 			params,
-			freshForMs: githubCachePolicy.list.staleTimeMs,
-			signalKeys: [
-				githubRevalidationSignalKeys.actionsRepo({
-					owner: data.owner,
-					repo: data.repo,
-				}),
-			],
-			request: (headers) =>
+			request: () =>
 				context.octokit.rest.actions.listWorkflowRunsForRepo({
 					owner: data.owner,
 					repo: data.repo,
@@ -207,7 +195,6 @@ export const getWorkflowRunsForRepo = createServerFn({ method: "GET" })
 					branch: data.branch,
 					actor: data.actor,
 					workflow_id: data.workflowId,
-					headers,
 				}),
 			mapData: (payload) =>
 				payload.workflow_runs.map((raw) =>
@@ -228,7 +215,7 @@ export const getWorkflowRun = createServerFn({ method: "GET" })
 
 		const userContext = await getGitHubUserContextForRepository(data);
 		const [run, userPerms, appPerms] = await Promise.all([
-			getCachedGitHubRequest<WorkflowRunRaw, WorkflowRun | null>({
+			fetchGitHubResource<WorkflowRunRaw, WorkflowRun | null>({
 				context,
 				resource: "actions.run",
 				params: {
@@ -236,20 +223,11 @@ export const getWorkflowRun = createServerFn({ method: "GET" })
 					repo: data.repo,
 					runId: data.runId,
 				},
-				freshForMs: githubCachePolicy.workflowRun.staleTimeMs,
-				signalKeys: [
-					githubRevalidationSignalKeys.workflowRunEntity({
-						owner: data.owner,
-						repo: data.repo,
-						runId: data.runId,
-					}),
-				],
-				request: (headers) =>
+				request: () =>
 					context.octokit.rest.actions.getWorkflowRun({
 						owner: data.owner,
 						repo: data.repo,
 						run_id: data.runId,
-						headers,
 					}),
 				mapData: (payload) =>
 					mapWorkflowRun(payload, { viewerCanRerun: false }),
@@ -280,7 +258,7 @@ export const listWorkflowRunJobs = createServerFn({ method: "GET" })
 		}
 
 		try {
-			return await getCachedPaginatedGitHubRequest<
+			return await fetchPaginatedGitHubResource<
 				WorkflowRunJobRaw,
 				WorkflowRunJob[]
 			>({
@@ -291,14 +269,6 @@ export const listWorkflowRunJobs = createServerFn({ method: "GET" })
 					repo: data.repo,
 					runId: data.runId,
 				},
-				freshForMs: githubCachePolicy.workflowRun.staleTimeMs,
-				signalKeys: [
-					githubRevalidationSignalKeys.workflowRunEntity({
-						owner: data.owner,
-						repo: data.repo,
-						runId: data.runId,
-					}),
-				],
 				request: async (page) => {
 					const response =
 						await context.octokit.rest.actions.listJobsForWorkflowRun({
@@ -330,7 +300,7 @@ export const listWorkflowRunArtifacts = createServerFn({ method: "GET" })
 		}
 
 		try {
-			return await getCachedPaginatedGitHubRequest<
+			return await fetchPaginatedGitHubResource<
 				WorkflowRunArtifactRaw,
 				WorkflowRunArtifact[]
 			>({
@@ -341,14 +311,6 @@ export const listWorkflowRunArtifacts = createServerFn({ method: "GET" })
 					repo: data.repo,
 					runId: data.runId,
 				},
-				freshForMs: githubCachePolicy.workflowRun.staleTimeMs,
-				signalKeys: [
-					githubRevalidationSignalKeys.workflowRunEntity({
-						owner: data.owner,
-						repo: data.repo,
-						runId: data.runId,
-					}),
-				],
 				request: async (page) => {
 					const response =
 						await context.octokit.rest.actions.listWorkflowRunArtifacts({
@@ -809,7 +771,7 @@ export const getWorkflowRunLogsBundle = createServerFn({ method: "GET" })
 		// immutable, so we use a long fresh window and rely on the
 		// workflowRunEntity signal (bumped by `workflow_run` and `workflow_job`
 		// webhooks) to invalidate while the run is still in-flight.
-		return getOrRevalidateGitHubResource<WorkflowRunLogsBundle | null>({
+		return dedupeGitHubRead<WorkflowRunLogsBundle | null>({
 			userId: context.session.user.id,
 			resource: "actions.run.logsBundle",
 			params: {
@@ -818,21 +780,9 @@ export const getWorkflowRunLogsBundle = createServerFn({ method: "GET" })
 				runId: data.runId,
 				attempt: data.attempt ?? null,
 			},
-			freshForMs: 60 * 60 * 1000,
-			signalKeys: [
-				githubRevalidationSignalKeys.workflowRunEntity({
-					owner: data.owner,
-					repo: data.repo,
-					runId: data.runId,
-				}),
-			],
 			fetcher: async () => {
 				const bundle = await fetchWorkflowRunLogsBundleUncached(data);
-				return {
-					kind: "success",
-					data: bundle,
-					metadata: createGitHubResponseMetadata(200, {}),
-				};
+				return bundle;
 			},
 		});
 	});
