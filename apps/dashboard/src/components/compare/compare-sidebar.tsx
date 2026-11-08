@@ -86,7 +86,7 @@ function SidebarSectionHeader({
 }) {
 	return (
 		<div className="flex items-center justify-between">
-			<h3 className="text-xs font-medium text-muted-foreground">{title}</h3>
+			<h3 className="text-[13px] font-[450] text-muted-foreground">{title}</h3>
 			{children}
 		</div>
 	);

@@ -1,12 +1,10 @@
 import {
-	ArchiveIcon,
 	ChevronDownIcon,
 	FilterIcon,
 	LockIcon,
 	ViewIcon,
 } from "@diffkit/icons";
 import { Button } from "@diffkit/ui/components/button";
-import { cn } from "@diffkit/ui/lib/utils";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
 import { useQueryState } from "nuqs";
@@ -21,13 +19,7 @@ import {
 } from "#/components/filters";
 import { DashboardContentLoading } from "#/components/layouts/dashboard-content-loading";
 import { RepositoryRow } from "#/components/repo/repository-row";
-import {
-	ListGroupNav,
-	ListGroupNavItem,
-	ListPageHeading,
-	listPageGridClassName,
-	listPageScrollClassName,
-} from "#/components/shared/list-page";
+import { ListEmpty, ListPage } from "#/components/shared/list-page";
 import {
 	githubReposHubQueryOptions,
 	githubUserReposQueryOptions,
@@ -219,77 +211,63 @@ function RepositoriesPage() {
 	const displayedRepos = hub?.repos ?? [];
 
 	return (
-		<div className={cn("overflow-stable", listPageScrollClassName)}>
-			<div className={listPageGridClassName}>
-				<aside className="flex h-fit flex-col gap-4 xl:sticky xl:top-0">
-					<ListPageHeading title="Repositories">
-						Browse and filter the repositories you can access.
-					</ListPageHeading>
-
-					<ListGroupNav label="Repository totals">
-						<ListGroupNavItem
-							icon={ArchiveIcon}
-							label="All repositories"
-							value={totals.all}
-						/>
-						<ListGroupNavItem
-							icon={ViewIcon}
-							label="Public"
-							value={totals.public}
-						/>
-						<ListGroupNavItem
-							icon={LockIcon}
-							label="Private"
-							value={totals.private}
-						/>
-					</ListGroupNav>
-				</aside>
-
-				<div className="flex flex-col gap-2">
-					<FilterBar state={filterState} searchPlaceholder="Search by title…" />
-
-					{totals.all === 0 ? (
-						<p className="py-12 text-center text-[13px] text-muted-foreground">
-							No repositories found.
-						</p>
-					) : matchingCount === 0 ? (
-						<p className="py-12 text-center text-[13px] text-muted-foreground">
-							No repositories match these filters.
-						</p>
-					) : (
-						<>
-							<div className="flex flex-col">
-								{displayedRepos.map((repo) => (
-									<div
-										key={repo.id}
-										style={{
-											contentVisibility: "auto",
-											containIntrinsicSize: "auto 72px",
-										}}
-									>
-										<RepositoryRow repo={repo} scope={scope} />
-									</div>
-								))}
+		<ListPage
+			title="Repositories"
+			count={totals.all}
+			className="overflow-stable"
+			actions={
+				<span className="hidden items-center gap-3 pr-2 text-xs tabular-nums sm:flex">
+					<span className="flex items-center gap-1.5">
+						<ViewIcon size={13} strokeWidth={2} />
+						{totals.public} public
+					</span>
+					<span className="flex items-center gap-1.5">
+						<LockIcon size={13} strokeWidth={2} />
+						{totals.private} private
+					</span>
+				</span>
+			}
+			toolbar={
+				<FilterBar state={filterState} searchPlaceholder="Search by title…" />
+			}
+		>
+			{totals.all === 0 ? (
+				<ListEmpty>No repositories found.</ListEmpty>
+			) : matchingCount === 0 ? (
+				<ListEmpty>No repositories match these filters.</ListEmpty>
+			) : (
+				<>
+					<div className="flex flex-col">
+						{displayedRepos.map((repo) => (
+							<div
+								key={repo.id}
+								style={{
+									contentVisibility: "auto",
+									containIntrinsicSize: "auto 72px",
+								}}
+							>
+								<RepositoryRow repo={repo} scope={scope} />
 							</div>
-							{repoListHasNextPage(safePage, matchingCount) ? (
-								<Button
-									type="button"
-									variant="secondary"
-									size="sm"
-									className="mx-auto mt-6 rounded-full"
-									onClick={() => {
-										void setPage(safePage + 1);
-									}}
-								>
-									<ChevronDownIcon size={14} strokeWidth={2} />
-									Load more
-								</Button>
-							) : null}
-						</>
-					)}
-				</div>
-			</div>
-		</div>
+						))}
+					</div>
+					{repoListHasNextPage(safePage, matchingCount) ? (
+						<div className="flex justify-center pt-4">
+							<Button
+								type="button"
+								variant="pill"
+								size="sm"
+								onClick={() => {
+									void setPage(safePage + 1);
+								}}
+								iconLeft={<ChevronDownIcon size={14} strokeWidth={2} />}
+							>
+								Load more
+							</Button>
+						</div>
+					) : null}
+				</>
+			)}
+		</ListPage>
 	);
 }
 

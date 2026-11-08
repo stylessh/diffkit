@@ -1,12 +1,24 @@
 import {
 	CheckIcon,
-	ChevronDownIcon,
 	CloseIcon,
-	PlusSignIcon,
+	DisplayOptionsIcon,
+	FilterLinesIcon,
 	Remove01Icon,
 	SearchIcon,
-	SortIcon,
 } from "@diffkit/icons";
+import { PageIconButton } from "@diffkit/ui/components/page-header";
+import {
+	Popover,
+	PopoverContent,
+	PopoverTrigger,
+} from "@diffkit/ui/components/popover";
+import {
+	Select,
+	SelectContent,
+	SelectItem,
+	SelectTrigger,
+	SelectValue,
+} from "@diffkit/ui/components/select";
 import { cn } from "@diffkit/ui/lib/utils";
 import { memo, useEffect, useRef, useState } from "react";
 import type {
@@ -23,12 +35,16 @@ import type {
 export const FilterBar = memo(function FilterBar<T extends FilterableItem>({
 	state,
 	searchPlaceholder = "Search by title, author, repo, or #…",
+	className,
 }: {
 	state: ListFilterState<T>;
 	searchPlaceholder?: string;
+	className?: string;
 }) {
 	return (
-		<div className="mb-3 flex flex-wrap items-center gap-1.5">
+		<div
+			className={cn("flex w-full flex-wrap items-center gap-1.5", className)}
+		>
 			<SearchInput
 				value={state.searchQuery}
 				onChange={state.setSearchQuery}
@@ -51,13 +67,6 @@ export const FilterBar = memo(function FilterBar<T extends FilterableItem>({
 						/>
 					);
 				})}
-				<AddFilterButton
-					filterDefs={state.filterDefs}
-					activeFilters={state.activeFilters}
-					availableOptions={state.availableOptions}
-					onAdd={state.addFilter}
-					onRemoveValue={state.removeFilterValue}
-				/>
 				{state.hasActiveFilters && (
 					<button
 						type="button"
@@ -70,16 +79,26 @@ export const FilterBar = memo(function FilterBar<T extends FilterableItem>({
 					</button>
 				)}
 			</div>
-			<SortDropdown
-				options={state.sortOptions}
-				value={state.sortId}
-				onChange={state.setSortId}
-			/>
+			<div className="ml-auto flex items-center gap-1.5">
+				<AddFilterButton
+					filterDefs={state.filterDefs}
+					activeFilters={state.activeFilters}
+					availableOptions={state.availableOptions}
+					onAdd={state.addFilter}
+					onRemoveValue={state.removeFilterValue}
+				/>
+				<DisplayOptions
+					options={state.sortOptions}
+					value={state.sortId}
+					onChange={state.setSortId}
+				/>
+			</div>
 		</div>
 	);
 }) as <T extends FilterableItem>(props: {
 	state: ListFilterState<T>;
 	searchPlaceholder?: string;
+	className?: string;
 }) => React.ReactNode;
 
 // ── Search Input ───────────────────────────────────────────────────────
@@ -120,7 +139,12 @@ function SearchInput({
 
 // ── Sort Dropdown ──────────────────────────────────────────────────────
 
-function SortDropdown({
+/**
+ * Linear's Display options: a round raised icon button opening a 300px
+ * popover whose rows are a muted label and a compact select. Ordering is the
+ * one option a list has here.
+ */
+function DisplayOptions({
 	options,
 	value,
 	onChange,
@@ -129,51 +153,45 @@ function SortDropdown({
 	value: string;
 	onChange: (id: string) => void;
 }) {
-	const [open, setOpen] = useState(false);
-	const ref = useRef<HTMLDivElement>(null);
-	const current = options.find((o) => o.id === value);
-
 	return (
-		<div ref={ref} className="relative ml-auto">
-			<button
-				type="button"
-				onClick={() => setOpen(!open)}
-				aria-expanded={open}
-				className="flex h-7 shrink-0 items-center gap-1.5 rounded-md bg-button px-2 text-[13px] font-medium text-text-header shadow-button transition-colors hover:bg-button-hover hover:text-foreground"
-			>
-				<SortIcon size={14} strokeWidth={1.9} />
-				<span className="whitespace-nowrap">{current?.label ?? "Sort"}</span>
-				<ChevronDownIcon
-					size={13}
-					className={cn("transition-transform", open && "rotate-180")}
-				/>
-			</button>
-			{open && (
-				<DropdownPanel
-					onClose={() => setOpen(false)}
-					anchorRef={ref}
-					align="end"
+		<Popover>
+			<PopoverTrigger asChild>
+				<PageIconButton
+					raised
+					type="button"
+					aria-label="Display options"
+					title="Display options"
 				>
-					{options.map((opt) => (
-						<button
-							key={opt.id}
-							type="button"
-							onClick={() => {
-								onChange(opt.id);
-								setOpen(false);
-							}}
-							className={cn(
-								"flex h-7 w-full items-center gap-2 rounded-md px-2 text-left text-[13px] font-[450] transition-colors hover:bg-menu-hover",
-								opt.id === value ? "text-foreground" : "text-text-header",
-							)}
+					<DisplayOptionsIcon size={14} />
+				</PageIconButton>
+			</PopoverTrigger>
+			<PopoverContent align="end" className="w-[300px] p-4 pt-3 pb-3">
+				<div className="flex h-8 items-center gap-2">
+					<span
+						id="display-ordering-label"
+						className="flex-1 text-xs font-[450] text-muted-foreground"
+					>
+						Ordering
+					</span>
+					<Select value={value} onValueChange={onChange}>
+						<SelectTrigger
+							size="sm"
+							className="w-[115px]"
+							aria-labelledby="display-ordering-label"
 						>
-							<span className="flex-1">{opt.label}</span>
-							{opt.id === value && <CheckIcon size={13} className="shrink-0" />}
-						</button>
-					))}
-				</DropdownPanel>
-			)}
-		</div>
+							<SelectValue />
+						</SelectTrigger>
+						<SelectContent align="end">
+							{options.map((opt) => (
+								<SelectItem key={opt.id} value={opt.id}>
+									{opt.label}
+								</SelectItem>
+							))}
+						</SelectContent>
+					</Select>
+				</div>
+			</PopoverContent>
+		</Popover>
 	);
 }
 
@@ -310,17 +328,18 @@ function AddFilterButton({
 					setSelectedFieldId(null);
 				}}
 				aria-expanded={open}
-				className="flex h-6 items-center gap-1 rounded-md px-2 text-xs font-medium text-muted-foreground transition-colors hover:bg-ghost-hover hover:text-foreground"
+				aria-label="Filter"
+				title="Filter"
+				className="flex size-7 items-center justify-center rounded-full bg-button text-muted-foreground shadow-button transition-colors hover:bg-button-hover hover:text-foreground"
 			>
-				<PlusSignIcon size={13} />
-				<span>Filter</span>
+				<FilterLinesIcon size={14} />
 			</button>
 			{open && (
 				<>
 					{/* biome-ignore lint/a11y/useKeyWithClickEvents: backdrop dismiss */}
 					{/* biome-ignore lint/a11y/noStaticElementInteractions: backdrop dismiss */}
 					<div className="fixed inset-0 z-40" onClick={close} />
-					<div className="absolute top-full left-0 z-50 mt-1 flex gap-1">
+					<div className="absolute top-full right-0 z-50 mt-1 flex flex-row-reverse gap-1">
 						{directFilterDef ? (
 							<ValuePickerInline
 								options={selectedOptions}

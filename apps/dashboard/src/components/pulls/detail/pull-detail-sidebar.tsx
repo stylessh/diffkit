@@ -374,9 +374,11 @@ function ReviewersSection({
 	};
 
 	return (
-		<div className="flex flex-col gap-2.5">
-			<div className="flex items-center justify-between">
-				<h3 className="text-xs font-medium text-muted-foreground">Reviewers</h3>
+		<section className="mb-7 flex flex-col gap-1.5">
+			<div className="flex h-6 items-center justify-between">
+				<h3 className="text-[13px] font-[450] text-muted-foreground">
+					Reviewers
+				</h3>
 				{isOpen && (
 					<Popover
 						open={pickerOpen}
@@ -595,7 +597,7 @@ function ReviewersSection({
 			) : (
 				<p className="text-xs text-muted-foreground">No reviewers requested</p>
 			)}
-		</div>
+		</section>
 	);
 }
 

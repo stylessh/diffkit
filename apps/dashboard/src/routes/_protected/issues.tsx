@@ -1,13 +1,7 @@
 import { CommentIcon, InboxIcon, IssuesIcon } from "@diffkit/icons";
 import { useQuery } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
-import {
-	type ComponentType,
-	memo,
-	type RefObject,
-	useMemo,
-	useRef,
-} from "react";
+import { type ComponentType, useMemo, useRef } from "react";
 import {
 	applyFilters,
 	FilterBar,
@@ -18,14 +12,7 @@ import {
 } from "#/components/filters";
 import { IssueRow } from "#/components/issues/issue-row";
 import { DashboardContentLoading } from "#/components/layouts/dashboard-content-loading";
-import {
-	ListGroupNav,
-	ListGroupNavItem,
-	ListPageHeading,
-	listPageGridClassName,
-	listPageScrollClassName,
-	StickyGroupHeader,
-} from "#/components/shared/list-page";
+import { ListGroup, ListPage } from "#/components/shared/list-page";
 import { githubMyIssuesQueryOptions } from "#/lib/github.query";
 import type { IssueSummary } from "#/lib/github.types";
 import { buildSeo, formatPageTitle } from "#/lib/seo";
@@ -106,42 +93,26 @@ function IssuesPage() {
 		);
 
 		return (
-			<div ref={scrollContainerRef} className={listPageScrollClassName}>
-				<div className={listPageGridClassName}>
-					<aside className="flex h-fit flex-col gap-4 xl:sticky xl:top-0">
-						<ListPageHeading title="Issues">
-							<span className="tabular-nums">{totalIssues}</span> open issues
-							across your queues
-						</ListPageHeading>
-
-						<ListGroupNav label="Issue groups">
-							{groups.map((group) => (
-								<ListGroupNavItem
-									key={group.id}
-									href={`#${group.id}`}
-									icon={group.icon}
-									label={group.title}
-									value={group.issues.length}
-								/>
-							))}
-						</ListGroupNav>
-					</aside>
-
-					<div className="flex flex-col gap-2">
-						<FilterBar state={filterState} />
-						{groups.map((group) => (
-							<IssueGroup
-								key={group.id}
-								id={group.id}
-								title={group.title}
-								icon={group.icon}
-								issues={group.issues}
-								scrollContainerRef={scrollContainerRef}
-							/>
+			<ListPage
+				title="Issues"
+				count={totalIssues}
+				scrollRef={scrollContainerRef}
+				toolbar={<FilterBar state={filterState} />}
+			>
+				{groups.map((group) => (
+					<ListGroup
+						key={group.id}
+						id={group.id}
+						icon={group.icon}
+						title={group.title}
+						count={group.issues.length}
+					>
+						{group.issues.map((issue) => (
+							<IssueRow key={issue.id} issue={issue} />
 						))}
-					</div>
-				</div>
-			</div>
+					</ListGroup>
+				))}
+			</ListPage>
 		);
 	}
 	return <DashboardContentLoading />;
@@ -153,46 +124,3 @@ type IssueGroupData = {
 	icon: ComponentType<{ size?: number; strokeWidth?: number }>;
 	issues: IssueSummary[];
 };
-
-const ISSUE_GROUP_STICKY_TOP = -32;
-
-const IssueGroup = memo(function IssueGroup({
-	id,
-	title,
-	icon,
-	issues,
-	scrollContainerRef,
-}: {
-	id: string;
-	title: string;
-	icon: ComponentType<{ size?: number; strokeWidth?: number }>;
-	issues: IssueSummary[];
-	scrollContainerRef: RefObject<HTMLDivElement | null>;
-}) {
-	const sectionRef = useRef<HTMLElement>(null);
-
-	return (
-		<section
-			ref={sectionRef}
-			id={id}
-			style={{ contentVisibility: "auto", containIntrinsicSize: "auto 200px" }}
-		>
-			<StickyGroupHeader
-				sectionRef={sectionRef}
-				scrollContainerRef={scrollContainerRef}
-				stickyTop={ISSUE_GROUP_STICKY_TOP}
-				icon={icon}
-				title={title}
-				count={issues.length}
-				isEmpty={issues.length === 0}
-			/>
-			{issues.length > 0 && (
-				<div className="mt-1 flex flex-col">
-					{issues.map((issue) => (
-						<IssueRow key={issue.id} issue={issue} />
-					))}
-				</div>
-			)}
-		</section>
-	);
-});

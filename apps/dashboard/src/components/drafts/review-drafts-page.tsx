@@ -18,6 +18,7 @@ import {
 	AlertDialogTitle,
 } from "@diffkit/ui/components/alert-dialog";
 import { Button } from "@diffkit/ui/components/button";
+import { PageIconButton } from "@diffkit/ui/components/page-header";
 import { Skeleton } from "@diffkit/ui/components/skeleton";
 import { Spinner } from "@diffkit/ui/components/spinner";
 import { useQuery } from "@tanstack/react-query";
@@ -25,13 +26,7 @@ import { Link } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { ReviewSubmitPopover } from "#/components/pulls/review/review-submit-popover";
 import { encodeFileId } from "#/components/pulls/review/review-utils";
-import {
-	ListGroupNav,
-	ListGroupNavItem,
-	ListPageHeading,
-	listPageGridClassName,
-	listPageScrollClassName,
-} from "#/components/shared/list-page";
+import { ListPage } from "#/components/shared/list-page";
 import { formatRelativeTime } from "#/lib/format-relative-time";
 import { githubReviewDraftsQueryOptions } from "#/lib/github.query";
 import type { ReviewDraftComment, ReviewDraftPull } from "#/lib/github.types";
@@ -67,72 +62,60 @@ export function ReviewDraftsPage({ userId }: { userId: string }) {
 	);
 
 	return (
-		<div className={listPageScrollClassName}>
-			<div className={listPageGridClassName}>
-				<aside className="flex h-fit flex-col gap-4 xl:sticky xl:top-0">
-					<ListPageHeading title="Drafts">
-						{result ? (
-							<>
-								<span className="tabular-nums">{drafts.length}</span> pending{" "}
-								{drafts.length === 1 ? "review" : "reviews"} ·{" "}
-								<span className="tabular-nums">{commentTotal}</span>{" "}
-								{commentTotal === 1 ? "comment" : "comments"}
-							</>
-						) : (
-							"Looking for unsubmitted reviews…"
-						)}
-					</ListPageHeading>
-
-					<ListGroupNav label="Draft groups">
-						<ListGroupNavItem
-							icon={GitPullRequestDraftIcon}
-							label="Pending reviews"
-							value={result ? drafts.length : 0}
-						/>
-					</ListGroupNav>
-
-					<Button
+		<>
+			<ListPage
+				title="Drafts"
+				count={result ? drafts.length : undefined}
+				actions={
+					<PageIconButton
 						type="button"
-						variant="ghost"
-						size="sm"
-						className="w-fit px-2 text-muted-foreground"
+						aria-label="Refresh drafts"
+						title="Refresh drafts"
 						disabled={query.isFetching}
 						onClick={() => void query.refetch()}
-						iconLeft={
-							query.isFetching ? (
-								<Spinner size={13} />
-							) : (
-								<RefreshCwIcon size={14} strokeWidth={2} />
-							)
-						}
 					>
-						Refresh
-					</Button>
-
-					{result ? (
-						<div className="flex flex-col gap-1.5 px-2 text-xs text-pretty text-muted-foreground">
-							<p>
-								Checked{" "}
-								<span className="tabular-nums">{result.checkedCount}</span> open
-								pull requests you're involved in.
-							</p>
-							{result.truncated ? (
-								<p>
-									Only your most relevant pull requests are checked; older
-									drafts may not appear here.
-								</p>
-							) : null}
-							{result.partial ? (
-								<p>
-									Some repositories couldn't be checked, so this list may be
-									incomplete.
-								</p>
-							) : null}
-						</div>
-					) : null}
-				</aside>
-
-				<div className="flex min-w-0 flex-col gap-4">
+						{query.isFetching ? (
+							<Spinner size={13} />
+						) : (
+							<RefreshCwIcon size={14} strokeWidth={2} />
+						)}
+					</PageIconButton>
+				}
+				toolbar={
+					<div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1 px-2 text-xs text-pretty text-muted-foreground">
+						{result ? (
+							<>
+								<span>
+									<span className="tabular-nums">{drafts.length}</span> pending{" "}
+									{drafts.length === 1 ? "review" : "reviews"} ·{" "}
+									<span className="tabular-nums">{commentTotal}</span>{" "}
+									{commentTotal === 1 ? "comment" : "comments"}
+								</span>
+								<span>
+									Checked{" "}
+									<span className="tabular-nums">{result.checkedCount}</span>{" "}
+									open pull requests you're involved in.
+								</span>
+								{result.truncated ? (
+									<span>
+										Only your most relevant pull requests are checked; older
+										drafts may not appear here.
+									</span>
+								) : null}
+								{result.partial ? (
+									<span>
+										Some repositories couldn't be checked, so this list may be
+										incomplete.
+									</span>
+								) : null}
+							</>
+						) : (
+							<span>Looking for unsubmitted reviews…</span>
+						)}
+					</div>
+				}
+			>
+				<div className="flex min-w-0 flex-col gap-4 pt-1">
 					{!result ? (
 						<ReviewDraftsSkeleton />
 					) : drafts.length === 0 ? (
@@ -149,7 +132,7 @@ export function ReviewDraftsPage({ userId }: { userId: string }) {
 						))
 					)}
 				</div>
-			</div>
+			</ListPage>
 
 			<AlertDialog
 				open={draftToDelete !== null}
@@ -184,7 +167,7 @@ export function ReviewDraftsPage({ userId }: { userId: string }) {
 					</AlertDialogFooter>
 				</AlertDialogContent>
 			</AlertDialog>
-		</div>
+		</>
 	);
 }
 

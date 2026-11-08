@@ -1,13 +1,19 @@
+import { DetailLayout } from "@diffkit/ui/components/detail-layout";
+import {
+	PageHeader,
+	PageHeaderCrumb,
+	PageHeaderTitle,
+} from "@diffkit/ui/components/page-header";
 import { Skeleton } from "@diffkit/ui/components/skeleton";
-import { cn } from "@diffkit/ui/lib/utils";
 import { Link } from "@tanstack/react-router";
 import { animate, motion, useMotionValue, useTransform } from "motion/react";
 import { createContext, useContext, useEffect, useState } from "react";
 
-const STAGGER_DELAY = 1;
-const ITEM_DURATION = 1.25;
-const FADE_OUT_DURATION = 0.5;
-const PAUSE_BEFORE_RESTART = 1;
+// Skeleton stagger: quick and calm (no bounce), then a long rest before it replays.
+const STAGGER_DELAY = 0.08;
+const ITEM_DURATION = 0.3;
+const FADE_OUT_DURATION = 0.3;
+const PAUSE_BEFORE_RESTART = 1.6;
 
 type StaggerContextValue = {
 	cycle: number;
@@ -90,7 +96,7 @@ function StaggerItem({
 	return (
 		<motion.div
 			key={cycle}
-			initial={{ y: 8 }}
+			initial={{ y: 4 }}
 			animate={{ y: 0 }}
 			transition={{
 				type: "spring",
@@ -112,24 +118,33 @@ type DetailHeaderIcon = React.ComponentType<{
 	className?: string;
 }>;
 
+/**
+ * A pull request or issue page, after Linear's issue and diff pages: the
+ * breadcrumb header, an optional row of view tabs, then the content column
+ * with the properties panel pinned on its right.
+ */
 export function DetailPageLayout({
 	main,
 	sidebar,
+	header,
+	tabs,
 }: {
 	main: React.ReactNode;
 	sidebar: React.ReactNode;
+	header?: React.ReactNode;
+	tabs?: React.ReactNode;
 }) {
 	return (
-		<div className="h-full overflow-auto">
-			<div className="mx-auto grid max-w-7xl gap-16 px-3 py-10 md:px-6 xl:grid-cols-[minmax(0,1fr)_minmax(16rem,20rem)]">
-				<div className="flex min-w-0 flex-col gap-8">{main}</div>
-				{sidebar}
-			</div>
+		<div className="flex h-full min-h-0 flex-col">
+			{header}
+			{tabs}
+			<DetailLayout panel={sidebar}>{main}</DetailLayout>
 		</div>
 	);
 }
 
-export function DetailPageTitle({
+/** The breadcrumb row of a detail page: collection › repository › #number title. */
+export function DetailPageHeader({
 	collectionHref,
 	collectionLabel,
 	owner,
@@ -137,6 +152,46 @@ export function DetailPageTitle({
 	number,
 	icon: Icon,
 	iconClassName,
+	title,
+	actions,
+}: {
+	collectionHref: string;
+	collectionLabel: string;
+	owner: string;
+	repo: string;
+	number: number;
+	icon: DetailHeaderIcon;
+	iconClassName?: string;
+	title: string;
+	actions?: React.ReactNode;
+}) {
+	return (
+		<PageHeader actions={actions}>
+			<PageHeaderCrumb asChild className="max-md:hidden">
+				<Link to={collectionHref}>{collectionLabel}</Link>
+			</PageHeaderCrumb>
+			<PageHeaderCrumb asChild>
+				<Link to="/$owner/$repo" params={{ owner, repo }}>
+					{owner}/{repo}
+				</Link>
+			</PageHeaderCrumb>
+			<PageHeaderTitle asChild>
+				<span title={title}>
+					<Icon size={14} strokeWidth={2} className={iconClassName} />
+					<span className="tabular-nums text-muted-foreground">#{number}</span>
+					<span className="truncate">{title}</span>
+				</span>
+			</PageHeaderTitle>
+		</PageHeader>
+	);
+}
+
+/**
+ * The page's own title block: a 22px title and the line under it (state,
+ * author, branches). The breadcrumb lives in `DetailPageHeader`; the props
+ * that fed it are still accepted so callers stay unchanged.
+ */
+export function DetailPageTitle({
 	title,
 	subtitle,
 }: {
@@ -151,35 +206,11 @@ export function DetailPageTitle({
 	subtitle: React.ReactNode;
 }) {
 	return (
-		<div className="flex flex-col gap-3">
-			<div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-				<Link
-					to={collectionHref}
-					className="transition-colors hover:text-foreground"
-				>
-					{collectionLabel}
-				</Link>
-				<span>/</span>
-				<Link
-					to="/$owner/$repo"
-					params={{ owner, repo }}
-					className="transition-colors hover:text-foreground"
-				>
-					{owner}/{repo}
-				</Link>
-				<span>/</span>
-				<span>#{number}</span>
-			</div>
-
-			<div className="flex items-start gap-3">
-				<div className={cn("mt-1 shrink-0", iconClassName)}>
-					<Icon size={20} strokeWidth={2} />
-				</div>
-				<div className="flex min-w-0 flex-col gap-2">
-					<h1 className="text-xl font-semibold tracking-tight">{title}</h1>
-					{subtitle}
-				</div>
-			</div>
+		<div className="flex min-w-0 flex-col gap-2.5">
+			<h1 className="text-2xl font-semibold tracking-tight text-pretty text-foreground">
+				{title}
+			</h1>
+			{subtitle}
 		</div>
 	);
 }
@@ -198,21 +229,23 @@ export function DetailPageSkeletonLayout({
 	const totalItems = Math.max(mainItemCount, sidebarSectionCount);
 	return (
 		<StaggerLoop itemCount={totalItems}>
-			<div className="h-full overflow-auto">
-				<div className="mx-auto grid max-w-7xl gap-16 px-3 py-10 md:px-6 xl:grid-cols-[minmax(0,1fr)_minmax(16rem,20rem)]">
-					<div className="flex min-w-0 flex-col gap-8">{children}</div>
-					<aside className="hidden h-fit flex-col gap-6 xl:sticky xl:top-10 xl:flex">
-						{Array.from({ length: sidebarSectionCount }, (_, i) => (
-							// biome-ignore lint/suspicious/noArrayIndexKey: static skeleton items, order never changes
-							<StaggerItem key={i} index={i}>
-								<div className="flex flex-col gap-2.5">
-									<Skeleton className="h-4 w-24 rounded-md" />
-									<Skeleton className="h-4 w-full rounded-md" />
-								</div>
-							</StaggerItem>
-						))}
-					</aside>
-				</div>
+			<div className="flex h-full min-h-0 flex-col">
+				<PageHeader>
+					<Skeleton className="h-3.5 w-56 rounded-md" />
+				</PageHeader>
+				<DetailLayout
+					panel={Array.from({ length: sidebarSectionCount }, (_, i) => (
+						// biome-ignore lint/suspicious/noArrayIndexKey: static skeleton items, order never changes
+						<StaggerItem key={i} index={i} className="mb-7">
+							<div className="flex flex-col gap-2.5">
+								<Skeleton className="h-4 w-24 rounded-md" />
+								<Skeleton className="h-4 w-full rounded-md" />
+							</div>
+						</StaggerItem>
+					))}
+				>
+					{children}
+				</DetailLayout>
 			</div>
 		</StaggerLoop>
 	);

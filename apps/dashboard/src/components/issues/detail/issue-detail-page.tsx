@@ -1,8 +1,10 @@
+import { IssuesIcon } from "@diffkit/icons";
 import { Skeleton } from "@diffkit/ui/components/skeleton";
 import { useQuery } from "@tanstack/react-query";
 import { getRouteApi } from "@tanstack/react-router";
 import { useMemo } from "react";
 import {
+	DetailPageHeader,
 	DetailPageLayout,
 	DetailPageSkeletonLayout,
 	StaggerItem,
@@ -98,6 +100,18 @@ export function IssueDetailContent({
 
 	return (
 		<DetailPageLayout
+			header={
+				<DetailPageHeader
+					collectionHref="/issues"
+					collectionLabel="Issues"
+					owner={owner}
+					repo={repo}
+					number={issue.number}
+					icon={IssuesIcon}
+					iconClassName={getIssueStateConfig(issue).color}
+					title={issue.title}
+				/>
+			}
 			main={
 				<>
 					<IssueDetailHeader

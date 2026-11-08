@@ -1,10 +1,14 @@
+import { GroupHeader } from "@diffkit/ui/components/group-header";
+import {
+	PageHeader,
+	PageHeaderCount,
+	PageHeaderTitle,
+} from "@diffkit/ui/components/page-header";
 import { cn } from "@diffkit/ui/lib/utils";
 import {
 	type ComponentType,
 	type ReactNode,
 	type RefObject,
-	useEffect,
-	useRef,
 	useState,
 } from "react";
 
@@ -15,188 +19,103 @@ type ListIcon = ComponentType<{
 }>;
 
 /**
- * The scroll container and two-column frame shared by the list pages
- * (pulls, issues, reviews, repositories): a narrow index on the left, the
- * list on the right. The scroll container is the one sticky group headers
- * measure against.
+ * The frame every list page shares, after Linear's list views: a 44px header
+ * with the page's name and count, a 44px toolbar row (search, filters,
+ * sort), then the list itself, full width, scrolling under both.
  */
-export const listPageScrollClassName = "h-full overflow-auto py-10";
-export const listPageGridClassName =
-	"mx-auto grid max-w-7xl gap-8 px-3 md:px-6 xl:grid-cols-[minmax(13rem,15rem)_minmax(0,1fr)] xl:gap-12";
-
-/** A list page's title and one line under it: 16px semibold over 13px muted. */
-export function ListPageHeading({
+export function ListPage({
 	title,
+	count,
+	actions,
+	toolbar,
+	scrollRef,
+	className,
 	children,
 }: {
 	title: ReactNode;
-	children?: ReactNode;
-}) {
-	return (
-		<div className="flex flex-col gap-1 px-2">
-			<h1 className="text-base font-semibold tracking-tight text-foreground">
-				{title}
-			</h1>
-			{children ? (
-				<p className="text-[13px] text-pretty text-muted-foreground">
-					{children}
-				</p>
-			) : null}
-		</div>
-	);
-}
-
-/**
- * One entry in a list page's index: a 32px row like Linear's sidebar items,
- * its count right-aligned in tabular figures. With `href` it jumps to its
- * group; an empty group reads as disabled.
- */
-export function ListGroupNavItem({
-	href,
-	icon: Icon,
-	label,
-	value,
-}: {
-	href?: string;
-	icon: ListIcon;
-	label: string;
-	value: number;
-}) {
-	const content = (
-		<>
-			<span className="flex min-w-0 items-center gap-2">
-				<Icon
-					size={14}
-					strokeWidth={2}
-					className="shrink-0 text-muted-foreground"
-				/>
-				<span className="truncate text-[13px] font-medium">{label}</span>
-			</span>
-			<span className="text-xs tabular-nums text-muted-foreground">
-				{value}
-			</span>
-		</>
-	);
-	const base =
-		"flex h-8 items-center justify-between gap-3 rounded-md px-2 text-text-strong";
-
-	if (!href || value === 0) {
-		return (
-			<div
-				aria-disabled={value === 0 ? "true" : undefined}
-				className={cn(base, value === 0 && "opacity-60")}
-			>
-				{content}
-			</div>
-		);
-	}
-
-	return (
-		<a
-			href={href}
-			className={cn(
-				base,
-				"transition-colors hover:bg-row-hover hover:text-foreground",
-			)}
-		>
-			{content}
-		</a>
-	);
-}
-
-/** The column of `ListGroupNavItem`s under a list page's heading. */
-export function ListGroupNav({
-	label,
-	children,
-}: {
-	label: string;
+	count?: number;
+	actions?: ReactNode;
+	toolbar?: ReactNode;
+	scrollRef?: RefObject<HTMLDivElement | null>;
+	className?: string;
 	children: ReactNode;
 }) {
 	return (
-		<nav aria-label={label} className="flex flex-col gap-px">
-			{children}
-		</nav>
+		<div className="flex h-full min-h-0 flex-col">
+			<PageHeader actions={actions}>
+				<PageHeaderTitle>{title}</PageHeaderTitle>
+				{count !== undefined ? (
+					<PageHeaderCount>{count}</PageHeaderCount>
+				) : null}
+			</PageHeader>
+			{toolbar ? (
+				<div className="flex min-h-11 shrink-0 items-center px-2 py-1.5">
+					{toolbar}
+				</div>
+			) : null}
+			<div
+				ref={scrollRef}
+				className={cn(
+					"min-h-0 flex-1 overflow-y-auto px-2 pb-10",
+					!toolbar && "pt-2",
+					className,
+				)}
+			>
+				{children}
+			</div>
+		</div>
 	);
 }
 
 /**
- * A group's banner, after Linear's: 36px, rounded, the group's fill, its count
- * next to its name. It sticks to the top of the list while its rows scroll
- * under it and takes a hairline shadow once stuck.
+ * A folding group in a list: Linear's 36px banner, sticky at the top of the
+ * list while its rows scroll under it, then the rows. An empty group shows
+ * its banner (count 0) with nothing under it.
  */
-export function StickyGroupHeader({
-	sectionRef,
-	scrollContainerRef,
-	stickyTop: stickyTopOffset,
+export function ListGroup({
+	id,
 	icon: Icon,
 	title,
 	count,
-	isEmpty,
+	defaultOpen = true,
+	children,
 }: {
-	sectionRef: RefObject<HTMLElement | null>;
-	scrollContainerRef: RefObject<HTMLDivElement | null>;
-	stickyTop: number;
-	icon: ListIcon;
+	id?: string;
+	icon?: ListIcon;
 	title: string;
 	count: number;
-	isEmpty: boolean;
+	defaultOpen?: boolean;
+	children: ReactNode;
 }) {
-	const headerRef = useRef<HTMLDivElement>(null);
-	const [isStickyActive, setIsStickyActive] = useState(false);
-
-	useEffect(() => {
-		const scrollContainer = scrollContainerRef.current;
-		const section = sectionRef.current;
-		const header = headerRef.current;
-
-		if (!scrollContainer || !section || !header) {
-			return;
-		}
-
-		const updateStickyState = () => {
-			const scrollContainerRect = scrollContainer.getBoundingClientRect();
-			const sectionRect = section.getBoundingClientRect();
-			const stickyTop = scrollContainerRect.top + stickyTopOffset;
-			const headerHeight = header.offsetHeight;
-			const isStuck =
-				sectionRect.top <= stickyTop &&
-				sectionRect.bottom > stickyTop + headerHeight;
-
-			setIsStickyActive((current) => (current === isStuck ? current : isStuck));
-		};
-
-		updateStickyState();
-		scrollContainer.addEventListener("scroll", updateStickyState, {
-			passive: true,
-		});
-		window.addEventListener("resize", updateStickyState);
-
-		return () => {
-			scrollContainer.removeEventListener("scroll", updateStickyState);
-			window.removeEventListener("resize", updateStickyState);
-		};
-	}, [scrollContainerRef, sectionRef, stickyTopOffset]);
+	const [open, setOpen] = useState(defaultOpen);
+	const isEmpty = count === 0;
 
 	return (
-		<div
-			ref={headerRef}
-			className={cn(
-				"sticky -top-8 z-10 flex h-9 items-center gap-2 rounded-lg bg-group px-3 transition-shadow",
-				isStickyActive && "shadow-card",
-				isEmpty && "opacity-60",
-			)}
+		<section
+			id={id}
+			aria-label={title}
+			style={{ contentVisibility: "auto", containIntrinsicSize: "auto 44px" }}
 		>
-			<Icon
-				size={14}
-				strokeWidth={2}
-				className="shrink-0 text-muted-foreground"
+			<GroupHeader
+				className={cn("sticky top-0 z-10", isEmpty && "opacity-60")}
+				icon={Icon ? <Icon size={14} strokeWidth={2} /> : undefined}
+				title={title}
+				count={count}
+				open={open && !isEmpty}
+				onToggle={isEmpty ? undefined : () => setOpen((value) => !value)}
 			/>
-			<h2 className="truncate text-[13px] font-medium text-text-strong">
-				{title}
-			</h2>
-			<span className="text-[13px] tabular-nums text-muted-foreground">
-				{count}
-			</span>
-		</div>
+			{open && !isEmpty ? (
+				<div className="flex flex-col py-0.5">{children}</div>
+			) : null}
+		</section>
+	);
+}
+
+/** The message a list shows when it has nothing to list. */
+export function ListEmpty({ children }: { children: ReactNode }) {
+	return (
+		<p className="px-3 py-16 text-center text-[13px] text-pretty text-muted-foreground">
+			{children}
+		</p>
 	);
 }

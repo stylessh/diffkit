@@ -120,13 +120,13 @@ export function PullBodySection({
 	const hasDropdownOptions = !!pr.body || isAuthor;
 
 	return (
-		<div className="relative rounded-lg border-[0.5px] bg-surface-0 p-5">
+		<div className="relative">
 			{hasDropdownOptions && (
 				<DropdownMenu>
 					<DropdownMenuTrigger asChild>
 						<button
 							type="button"
-							className="absolute right-3 top-3 z-20 flex size-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-surface-1 hover:text-foreground"
+							className="absolute -top-1 right-0 z-20 flex size-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-surface-1 hover:text-foreground"
 						>
 							<MoreHorizontalIcon size={15} strokeWidth={2} />
 						</button>

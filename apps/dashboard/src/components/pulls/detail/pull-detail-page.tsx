@@ -1,8 +1,14 @@
 import { Skeleton } from "@diffkit/ui/components/skeleton";
+import {
+	ViewTab,
+	ViewTabCount,
+	ViewTabs,
+} from "@diffkit/ui/components/view-tabs";
 import { useQuery } from "@tanstack/react-query";
-import { getRouteApi } from "@tanstack/react-router";
+import { getRouteApi, Link } from "@tanstack/react-router";
 import { useMemo } from "react";
 import {
+	DetailPageHeader,
 	DetailPageLayout,
 	DetailPageSkeletonLayout,
 	StaggerItem,
@@ -121,8 +127,44 @@ export function PullDetailContent({
 	if (pageQuery.error) throw pageQuery.error;
 	if (!pr) return <PullDetailPageSkeleton />;
 
+	const stateConfig = getPrStateConfig(pr);
+
 	return (
 		<DetailPageLayout
+			header={
+				<DetailPageHeader
+					collectionHref="/pulls"
+					collectionLabel="Pull Requests"
+					owner={owner}
+					repo={repo}
+					number={pr.number}
+					icon={stateConfig.icon}
+					iconClassName={stateConfig.color}
+					title={pr.title}
+				/>
+			}
+			tabs={
+				<ViewTabs label="Pull request views">
+					<ViewTab asChild>
+						<Link
+							to="/$owner/$repo/pull/$pullId"
+							params={{ owner, repo, pullId: String(pullNumber) }}
+							activeOptions={{ exact: true }}
+						>
+							Overview
+						</Link>
+					</ViewTab>
+					<ViewTab asChild>
+						<Link
+							to="/$owner/$repo/review/$pullId"
+							params={{ owner, repo, pullId: String(pullNumber) }}
+						>
+							Files changed
+							<ViewTabCount>{pr.changedFiles}</ViewTabCount>
+						</Link>
+					</ViewTab>
+				</ViewTabs>
+			}
 			main={
 				<>
 					<PullDetailHeader

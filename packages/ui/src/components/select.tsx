@@ -27,13 +27,18 @@ function SelectValue({
 function SelectTrigger({
 	className,
 	children,
+	size = "default",
 	...props
-}: React.ComponentProps<typeof SelectPrimitive.Trigger>) {
+}: React.ComponentProps<typeof SelectPrimitive.Trigger> & {
+	/** `sm` is Linear's compact option select: 24px, 12px text (Display options). */
+	size?: "default" | "sm";
+}) {
 	return (
 		<SelectPrimitive.Trigger
 			data-slot="select-trigger"
+			data-size={size}
 			className={cn(
-				"bg-button shadow-button hover:bg-button-hover data-[placeholder]:text-muted-foreground [&_svg:not([class*='text-'])]:text-muted-foreground focus-visible:outline-1 focus-visible:-outline-offset-1 focus-visible:outline-ring aria-invalid:outline-1 aria-invalid:-outline-offset-1 aria-invalid:outline-destructive flex h-8 w-full items-center justify-between rounded-md px-2.5 py-1 text-[13px] font-[450] whitespace-nowrap transition-[color,background-color,box-shadow] outline-none disabled:cursor-not-allowed disabled:opacity-50 *:data-[slot=select-value]:line-clamp-1 *:data-[slot=select-value]:flex *:data-[slot=select-value]:items-center *:data-[slot=select-value]:gap-2 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
+				"bg-button shadow-button hover:bg-button-hover data-[placeholder]:text-muted-foreground [&_svg:not([class*='text-'])]:text-muted-foreground focus-visible:outline-1 focus-visible:-outline-offset-1 focus-visible:outline-ring aria-invalid:outline-1 aria-invalid:-outline-offset-1 aria-invalid:outline-destructive flex h-8 w-full items-center justify-between rounded-md px-2.5 py-1 text-[13px] font-[450] text-foreground data-[size=sm]:h-6 data-[size=sm]:px-2 data-[size=sm]:text-xs data-[size=sm]:[&_svg:not([class*=size-])]:size-3 whitespace-nowrap transition-[color,background-color,box-shadow] outline-none disabled:cursor-not-allowed disabled:opacity-50 *:data-[slot=select-value]:line-clamp-1 *:data-[slot=select-value]:flex *:data-[slot=select-value]:items-center *:data-[slot=select-value]:gap-2 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
 				className,
 			)}
 			{...props}
@@ -89,7 +94,7 @@ function SelectLabel({
 		<SelectPrimitive.Label
 			data-slot="select-label"
 			className={cn(
-				"px-2 py-1.5 text-xs font-medium text-muted-foreground",
+				"flex h-[30px] items-center px-2 text-xs font-medium text-muted-foreground",
 				className,
 			)}
 			{...props}
@@ -106,7 +111,7 @@ function SelectItem({
 		<SelectPrimitive.Item
 			data-slot="select-item"
 			className={cn(
-				"focus:bg-accent focus:text-accent-foreground [&_svg:not([class*='text-'])]:text-muted-foreground relative flex w-full cursor-default items-center gap-2 h-7 rounded-md pr-8 pl-2 text-[13px] outline-hidden select-none data-[disabled]:pointer-events-none data-[disabled]:opacity-50 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4 *:[span]:last:flex *:[span]:last:items-center *:[span]:last:gap-2",
+				"focus:bg-menu-hover focus:text-foreground text-text-header [&_svg:not([class*='text-'])]:text-muted-foreground relative flex w-full cursor-default items-center gap-2 h-8 rounded-lg pr-8 pl-2 text-[13px] font-[450] outline-hidden select-none data-[disabled]:pointer-events-none data-[disabled]:opacity-50 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4 *:[span]:last:flex *:[span]:last:items-center *:[span]:last:gap-2",
 				className,
 			)}
 			{...props}
@@ -129,7 +134,7 @@ function SelectSeparator({
 		<SelectPrimitive.Separator
 			data-slot="select-separator"
 			className={cn(
-				"bg-popover-border pointer-events-none -mx-1 my-1 h-[0.5px]",
+				"bg-popover-border pointer-events-none -mx-1 my-1 h-px",
 				className,
 			)}
 			{...props}

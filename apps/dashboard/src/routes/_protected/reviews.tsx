@@ -12,13 +12,7 @@ import {
 } from "#/components/filters";
 import { DashboardContentLoading } from "#/components/layouts/dashboard-content-loading";
 import { PullRequestRow } from "#/components/pulls/pull-request-row";
-import {
-	ListGroupNav,
-	ListGroupNavItem,
-	ListPageHeading,
-	listPageGridClassName,
-	listPageScrollClassName,
-} from "#/components/shared/list-page";
+import { ListEmpty, ListGroup, ListPage } from "#/components/shared/list-page";
 import { githubMyPullsQueryOptions } from "#/lib/github.query";
 import { buildSeo, formatPageTitle } from "#/lib/seo";
 import { useHasMounted } from "#/lib/use-has-mounted";
@@ -73,41 +67,30 @@ function ReviewsPage() {
 		const reviews = applyFilters(rawReviews, filterState);
 
 		return (
-			<div ref={scrollContainerRef} className={listPageScrollClassName}>
-				<div className={listPageGridClassName}>
-					<aside className="flex h-fit flex-col gap-4 xl:sticky xl:top-0">
-						<ListPageHeading title="Reviews">
-							<span className="tabular-nums">{reviews.length}</span> open pulls
-							requesting your review
-						</ListPageHeading>
-
-						<ListGroupNav label="Review groups">
-							<ListGroupNavItem
-								icon={ReviewsIcon}
-								label="Review requested"
-								value={reviews.length}
-							/>
-						</ListGroupNav>
-					</aside>
-
-					<div className="flex flex-col gap-2">
-						<FilterBar state={filterState} />
-						{reviews.length === 0 ? (
-							<p className="px-3 py-10 text-center text-[13px] text-muted-foreground">
-								{filterState.hasActiveFilters
-									? "No reviews match your filters."
-									: "No review requests right now — you're all caught up."}
-							</p>
-						) : (
-							<div className="flex flex-col">
-								{reviews.map((pr) => (
-									<PullRequestRow key={pr.id} pr={pr} scope={scope} />
-								))}
-							</div>
-						)}
-					</div>
-				</div>
-			</div>
+			<ListPage
+				title="Reviews"
+				count={reviews.length}
+				scrollRef={scrollContainerRef}
+				toolbar={<FilterBar state={filterState} />}
+			>
+				{reviews.length === 0 ? (
+					<ListEmpty>
+						{filterState.hasActiveFilters
+							? "No reviews match your filters."
+							: "No review requests right now — you're all caught up."}
+					</ListEmpty>
+				) : (
+					<ListGroup
+						icon={ReviewsIcon}
+						title="Review requested"
+						count={reviews.length}
+					>
+						{reviews.map((pr) => (
+							<PullRequestRow key={pr.id} pr={pr} scope={scope} />
+						))}
+					</ListGroup>
+				)}
+			</ListPage>
 		);
 	}
 	return <DashboardContentLoading />;

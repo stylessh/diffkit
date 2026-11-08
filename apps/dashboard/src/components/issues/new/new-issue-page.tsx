@@ -373,7 +373,7 @@ function NewIssueLabelsPicker({
 	return (
 		<div className="flex flex-col gap-2.5">
 			<div className="flex items-center justify-between">
-				<h3 className="text-xs font-medium text-muted-foreground">Labels</h3>
+				<h3 className="text-[13px] font-[450] text-muted-foreground">Labels</h3>
 				<Popover
 					open={pickerOpen}
 					onOpenChange={(open) => {
@@ -560,7 +560,9 @@ function AssigneesSection({
 	return (
 		<div className="flex flex-col gap-2.5">
 			<div className="flex items-center justify-between">
-				<h3 className="text-xs font-medium text-muted-foreground">Assignees</h3>
+				<h3 className="text-[13px] font-[450] text-muted-foreground">
+					Assignees
+				</h3>
 				<Popover
 					open={pickerOpen}
 					onOpenChange={(open) => {

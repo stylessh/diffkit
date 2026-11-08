@@ -7,13 +7,7 @@ import {
 } from "@diffkit/icons";
 import { useQuery } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
-import {
-	type ComponentType,
-	memo,
-	type RefObject,
-	useMemo,
-	useRef,
-} from "react";
+import { type ComponentType, useMemo, useRef } from "react";
 import {
 	applyFilters,
 	FilterBar,
@@ -24,14 +18,7 @@ import {
 } from "#/components/filters";
 import { DashboardContentLoading } from "#/components/layouts/dashboard-content-loading";
 import { PullRequestRow } from "#/components/pulls/pull-request-row";
-import {
-	ListGroupNav,
-	ListGroupNavItem,
-	ListPageHeading,
-	listPageGridClassName,
-	listPageScrollClassName,
-	StickyGroupHeader,
-} from "#/components/shared/list-page";
+import { ListGroup, ListPage } from "#/components/shared/list-page";
 import { githubMyPullsQueryOptions } from "#/lib/github.query";
 import type { PullSummary } from "#/lib/github.types";
 import { buildSeo, formatPageTitle } from "#/lib/seo";
@@ -131,43 +118,26 @@ function PullRequestsPage() {
 		);
 
 		return (
-			<div ref={scrollContainerRef} className={listPageScrollClassName}>
-				<div className={listPageGridClassName}>
-					<aside className="flex h-fit flex-col gap-4 xl:sticky xl:top-0">
-						<ListPageHeading title="Pull Requests">
-							<span className="tabular-nums">{totalPulls}</span> open pulls
-							across your queues
-						</ListPageHeading>
-
-						<ListGroupNav label="Pull request groups">
-							{groups.map((group) => (
-								<ListGroupNavItem
-									key={group.id}
-									href={`#${group.id}`}
-									icon={group.icon}
-									label={group.title}
-									value={group.pulls.length}
-								/>
-							))}
-						</ListGroupNav>
-					</aside>
-
-					<div className="flex flex-col gap-2">
-						<FilterBar state={filterState} />
-						{groups.map((group) => (
-							<PullGroup
-								key={group.id}
-								id={group.id}
-								title={group.title}
-								icon={group.icon}
-								pulls={group.pulls}
-								scope={scope}
-								scrollContainerRef={scrollContainerRef}
-							/>
+			<ListPage
+				title="Pull Requests"
+				count={totalPulls}
+				scrollRef={scrollContainerRef}
+				toolbar={<FilterBar state={filterState} />}
+			>
+				{groups.map((group) => (
+					<ListGroup
+						key={group.id}
+						id={group.id}
+						icon={group.icon}
+						title={group.title}
+						count={group.pulls.length}
+					>
+						{group.pulls.map((pull) => (
+							<PullRequestRow key={pull.id} pr={pull} scope={scope} />
 						))}
-					</div>
-				</div>
-			</div>
+					</ListGroup>
+				))}
+			</ListPage>
 		);
 	}
 	return <DashboardContentLoading />;
@@ -179,48 +149,3 @@ type PullGroupData = {
 	icon: ComponentType<{ size?: number; strokeWidth?: number }>;
 	pulls: PullSummary[];
 };
-
-const PULL_GROUP_STICKY_TOP = -32;
-
-const PullGroup = memo(function PullGroup({
-	id,
-	title,
-	icon,
-	pulls,
-	scope,
-	scrollContainerRef,
-}: {
-	id: string;
-	title: string;
-	icon: ComponentType<{ size?: number; strokeWidth?: number }>;
-	pulls: PullSummary[];
-	scope: { userId: string };
-	scrollContainerRef: RefObject<HTMLDivElement | null>;
-}) {
-	const sectionRef = useRef<HTMLElement>(null);
-
-	return (
-		<section
-			ref={sectionRef}
-			id={id}
-			style={{ contentVisibility: "auto", containIntrinsicSize: "auto 200px" }}
-		>
-			<StickyGroupHeader
-				sectionRef={sectionRef}
-				scrollContainerRef={scrollContainerRef}
-				stickyTop={PULL_GROUP_STICKY_TOP}
-				icon={icon}
-				title={title}
-				count={pulls.length}
-				isEmpty={pulls.length === 0}
-			/>
-			{pulls.length > 0 && (
-				<div className="mt-1 flex flex-col">
-					{pulls.map((pull) => (
-						<PullRequestRow key={pull.id} pr={pull} scope={scope} />
-					))}
-				</div>
-			)}
-		</section>
-	);
-});

@@ -88,7 +88,7 @@ export function IssueDetailHeader({
 				}
 			/>
 
-			<div className="rounded-lg border-[0.5px] bg-surface-0 p-5">
+			<div className="relative">
 				<div
 					className="group/description flex flex-col"
 					onPointerEnter={() => setDescActive(true)}

@@ -45,14 +45,14 @@ export function PullDetailHeader({
 				iconClassName={stateConfig.color}
 				title={pr.title}
 				subtitle={
-					<div className="flex min-w-0 items-center gap-1.5 text-sm text-muted-foreground">
+					<div className="flex min-w-0 flex-wrap items-center gap-1.5 text-[13px] text-muted-foreground">
 						<StatePill tone={stateConfig.tone}>{stateConfig.label}</StatePill>
 						{pr.author && (
 							<>
 								<img
 									src={pr.author.avatarUrl}
 									alt={pr.author.login}
-									className="size-4 shrink-0 rounded-full border-[0.5px] border-border"
+									className="size-4 shrink-0 rounded-full ring-[0.5px] ring-chip-border"
 								/>
 								<span className="shrink-0 font-medium text-foreground">
 									{pr.author.login}
@@ -99,17 +99,19 @@ export function PullDetailHeader({
 					</Callout>
 				)}
 
-				<div className="flex flex-wrap items-center gap-x-3 gap-y-2 rounded-lg bg-surface-1 px-4 py-2.5 text-sm text-muted-foreground">
+				<div className="flex flex-wrap items-center gap-x-3 gap-y-2 text-[13px] text-muted-foreground">
 					<span className="flex items-center gap-1.5">
-						<GitCommitIcon size={15} strokeWidth={2} />
+						<GitCommitIcon size={14} strokeWidth={2} />
 						<span className="tabular-nums font-medium text-foreground">
 							{pr.commits}
 						</span>{" "}
 						{pr.commits === 1 ? "commit" : "commits"}
 					</span>
-					<span className="text-muted-foreground/50">·</span>
+					<span aria-hidden className="text-icon-faint">
+						·
+					</span>
 					<span className="flex items-center gap-1.5">
-						<FileIcon size={15} strokeWidth={2} />
+						<FileIcon size={14} strokeWidth={2} />
 						<span className="tabular-nums font-medium text-foreground">
 							{pr.changedFiles}
 						</span>{" "}
@@ -124,15 +126,6 @@ export function PullDetailHeader({
 						</span>
 						<DiffBoxes additions={pr.additions} deletions={pr.deletions} />
 					</span>
-					{!isReviewRequested && (
-						<Link
-							to="/$owner/$repo/review/$pullId"
-							params={{ owner, repo, pullId }}
-							className="md:ml-auto rounded-lg bg-foreground px-3 py-1 text-xs font-medium text-background transition-opacity hover:opacity-90"
-						>
-							Review changes
-						</Link>
-					)}
 				</div>
 			</div>
 		</>

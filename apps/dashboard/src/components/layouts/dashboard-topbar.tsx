@@ -30,6 +30,7 @@ import {
 	DropdownMenuShortcut,
 	DropdownMenuTrigger,
 } from "@diffkit/ui/components/dropdown-menu";
+import { cn } from "@diffkit/ui/lib/utils";
 import { useQuery } from "@tanstack/react-query";
 import { Link, useRouter } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef } from "react";
@@ -75,6 +76,12 @@ const primaryNavRoutes = [
 	"/reviews",
 ] as const;
 const MAX_TAB_SHORTCUTS = 9;
+/**
+ * The strip of open detail tabs (and its Shift+1…9 / Shift+W / Shift+←→
+ * shortcuts). Hidden for now: on the web the browser's own tabs do this job.
+ * Pages still record tabs, so flipping this back on restores them.
+ */
+const SHOW_OPEN_TABS = false;
 
 export function DashboardTopbar({
 	user,
@@ -178,7 +185,7 @@ export function DashboardTopbar({
 			{ length: Math.min(openTabs.length, MAX_TAB_SHORTCUTS) },
 			(_, index) => ({
 				shortcut: { code: `Digit${index + 1}`, shift: true },
-				enabled: tabsReady,
+				enabled: SHOW_OPEN_TABS && tabsReady,
 				onTrigger: () => {
 					navigateToTab(openTabs[index]);
 				},
@@ -196,7 +203,7 @@ export function DashboardTopbar({
 		},
 		{
 			shortcut: { key: "w", shift: true },
-			enabled: tabsReady && openTabs.length > 0,
+			enabled: SHOW_OPEN_TABS && tabsReady && openTabs.length > 0,
 			onTrigger: () => {
 				const currentPath = routerRef.current.state.location.pathname;
 				const currentTab = openTabs.find((tab) => tab.url === currentPath);
@@ -208,7 +215,7 @@ export function DashboardTopbar({
 		},
 		{
 			shortcut: { key: "ArrowLeft", shift: true },
-			enabled: tabsReady && openTabs.length > 1,
+			enabled: SHOW_OPEN_TABS && tabsReady && openTabs.length > 1,
 			onTrigger: () => {
 				const currentIndex = openTabs.findIndex(
 					(tab) => tab.url === routerRef.current.state.location.pathname,
@@ -222,7 +229,7 @@ export function DashboardTopbar({
 		},
 		{
 			shortcut: { key: "ArrowRight", shift: true },
-			enabled: tabsReady && openTabs.length > 1,
+			enabled: SHOW_OPEN_TABS && tabsReady && openTabs.length > 1,
 			onTrigger: () => {
 				const currentIndex = openTabs.findIndex(
 					(tab) => tab.url === routerRef.current.state.location.pathname,
@@ -235,7 +242,13 @@ export function DashboardTopbar({
 	]);
 
 	return (
-		<nav className="flex h-12 min-w-0 shrink-0 items-center gap-3 overflow-hidden px-3 max-md:h-11 max-md:border-b-[0.5px] max-md:border-header-rule">
+		<nav
+			className={cn(
+				"flex h-12 min-w-0 shrink-0 items-center gap-3 overflow-hidden px-3 max-md:h-11 max-md:border-b-[0.5px] max-md:border-header-rule",
+				// On mobile the bottom bar carries navigation; without open tabs the top row would be empty.
+				!SHOW_OPEN_TABS && "max-md:hidden",
+			)}
+		>
 			<div className="hidden md:block">
 				<DropdownMenu>
 					<DropdownMenuTrigger asChild>
@@ -360,7 +373,9 @@ export function DashboardTopbar({
 			</div>
 
 			<div className="min-w-0 flex-1 overflow-hidden">
-				<DashboardTabs tabsReady={tabsReady} routerRef={routerRef} />
+				{SHOW_OPEN_TABS ? (
+					<DashboardTabs tabsReady={tabsReady} routerRef={routerRef} />
+				) : null}
 			</div>
 
 			<div className="hidden shrink-0 md:block">

@@ -190,9 +190,9 @@ export function LabelsSection({
 	};
 
 	return (
-		<div className="flex flex-col gap-2.5">
-			<div className="flex items-center justify-between">
-				<h3 className="text-xs font-medium text-muted-foreground">Labels</h3>
+		<section className="mb-7 flex flex-col gap-1.5">
+			<div className="flex h-6 items-center justify-between">
+				<h3 className="text-[13px] font-[450] text-muted-foreground">Labels</h3>
 				<Popover
 					open={pickerOpen}
 					onOpenChange={(open) => {
@@ -325,6 +325,6 @@ export function LabelsSection({
 			) : (
 				<p className="text-xs text-muted-foreground">No labels</p>
 			)}
-		</div>
+		</section>
 	);
 }
