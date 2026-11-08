@@ -6,17 +6,8 @@ import {
 	type ResourceReference,
 	referenceToHProperties,
 } from "./markdown-resource-reference";
+import type { MdLink } from "./mdast-text-tokens";
 
-type MdText = { type: "text"; value: string };
-
-type MdLink = {
-	type: "link";
-	url: string;
-	children: { type: string; value?: string }[];
-	data?: Record<string, unknown>;
-};
-
-/** Compact identifier shown when no richer label is available yet. */
 function defaultLabel(ref: ResourceReference): string {
 	switch (ref.kind) {
 		case "user":
@@ -25,36 +16,41 @@ function defaultLabel(ref: ResourceReference): string {
 			return `${ref.owner}/${ref.repo}`;
 		case "pull":
 		case "issue":
+		case "issueOrPull":
 			return `${ref.owner}/${ref.repo}#${ref.number}`;
+		case "commit":
+			return `${ref.owner}/${ref.repo}@${ref.sha.slice(0, 7)}`;
 		case "release":
 			return `${ref.owner}/${ref.repo}@${ref.tag}`;
-		default:
-			return "";
 	}
 }
 
 /**
- * Turn bare resource URLs into rich reference nodes. Only *autolinks* (where the
- * link text equals the URL, i.e. a pasted/literal link) are transformed, so an
- * explicit `[label](url)` keeps the author's chosen text — mirroring GitHub.
- *
- * Must run after `remark-gfm` so literal URLs have already become link nodes.
+ * Turns bare resource URLs into reference nodes. Only autolinks (link text
+ * equal to the URL) change, so an explicit `[label](url)` keeps the author's
+ * text, as on GitHub. Must run after `remark-gfm` has made literal URLs links.
  */
 export function remarkResourceReferences(resolve: MarkdownReferenceResolver) {
 	return () => (tree: Parent) => {
 		visit(tree, "link", (node): void => {
 			const link = node as unknown as MdLink;
-			if (link.children.length !== 1) return;
-			const child = link.children[0] as MdText | undefined;
-			if (child?.type !== "text" || child.value !== link.url) return;
+			if (link.children.length !== 1) {
+				return;
+			}
+			const child = link.children[0];
+			if (child?.type !== "text" || child.value !== link.url) {
+				return;
+			}
 
 			const ref = resolve(link.url);
-			if (!ref) return;
+			if (!ref) {
+				return;
+			}
 
 			link.data = {
 				...(link.data ?? {}),
 				hName: MARKDOWN_REFERENCE_TAG,
-				hProperties: referenceToHProperties(ref),
+				hProperties: referenceToHProperties(ref, "url"),
 			};
 			link.children = [{ type: "text", value: defaultLabel(ref) }];
 		});

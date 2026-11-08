@@ -1,6 +1,5 @@
 import { GitBranchIcon, GitCommitIcon } from "@diffkit/icons";
 import { Chip } from "@diffkit/ui/components/chip";
-import { Markdown } from "@diffkit/ui/components/markdown";
 import {
 	Tooltip,
 	TooltipContent,
@@ -9,6 +8,7 @@ import {
 import { cn } from "@diffkit/ui/lib/utils";
 import { Link } from "@tanstack/react-router";
 import { useCallback } from "react";
+import { AppMarkdown } from "#/components/markdown/app-markdown";
 import { TagIcon } from "#/components/repo/refs/tag-icon";
 import { resolveGitHubMarkdownAssetUrl } from "#/components/repo/repo-markdown-files";
 import { formatRelativeTime } from "#/lib/format-relative-time";
@@ -264,7 +264,9 @@ export function ReleaseCard({
 							isLong && "max-h-[26rem] overflow-hidden",
 						)}
 					>
-						<Markdown
+						<AppMarkdown
+							owner={owner}
+							repo={repo}
 							className={cn(
 								"text-text-header",
 								isDetail
@@ -274,7 +276,7 @@ export function ReleaseCard({
 							resolveAssetUrl={resolveAssetUrl}
 						>
 							{release.body}
-						</Markdown>
+						</AppMarkdown>
 						{isLong ? (
 							<div className="pointer-events-none absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-surface-0 to-transparent" />
 						) : null}

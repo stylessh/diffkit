@@ -121,15 +121,15 @@ allow-list plus `iframe[src]`, `video`, GFM alerts), so raw HTML in READMEs and 
 | --- | --- |
 | GitHub alerts (`> [!NOTE]`) with icons | on by default (`lib/rehype-alert-icons` re-attaches the icon after sanitizing) |
 | `@mentions` → links or a custom component | `resolveMentionHref`, `mentionComponent` |
-| `#123` references in the current repo | `resolveRepoNumberReference(number) => ResourceReference \| null`, `referenceComponent` |
-| Pasted GitHub URLs → rich references (user, repo, PR, issue, release) | `resolveReference(url) => ResourceReference \| null` |
+| `#123`, `owner/repo#123`, commit SHAs, `owner/repo@sha` | `resolveTextReference(token) => ResourceReference \| null`, `referenceComponent` (receives `origin: "text" \| "url"`) |
+| Pasted GitHub URLs → rich references (user, repo, PR, issue, commit, release) | `resolveReference(url) => ResourceReference \| null` |
 | Relative image/video/`srcset` rewriting | `resolveAssetUrl`; links: `resolveLinkUrl`; `imageComponent` for lightboxes |
 | Router-aware internal links | `internalLinkComponent` |
 | Extra remark plugins (run before the sanitizer) | `remarkPlugins` |
 | Highlighted code with copy button, hydration-safe, bounded LRU cache | `ShikiCode`, `PlainCodeBlock`, `highlightCode`, `MarkdownCodeBlockContext` |
 
 Retheme in one place: `lib/markdown-theme.ts`. Plugins: `lib/remark-profile-mentions`,
-`lib/remark-repo-number-references`, `lib/remark-resource-references`; schema: `lib/markdown-sanitize-schema`.
+`lib/remark-text-references`, `lib/remark-resource-references`, `lib/rehype-footnote-ids`; schema: `lib/markdown-sanitize-schema`.
 `MarkdownEditor` keeps its textarea-based API; upload placeholders live in `components/markdown-editor-upload`.
 
 ## Lib & hooks

@@ -34,7 +34,6 @@ import {
 	DropdownMenuItem,
 	DropdownMenuTrigger,
 } from "@diffkit/ui/components/dropdown-menu";
-import { Markdown } from "@diffkit/ui/components/markdown";
 import { MarkdownEditor } from "@diffkit/ui/components/markdown-editor";
 import { MenuCheck } from "@diffkit/ui/components/menu";
 import { Skeleton } from "@diffkit/ui/components/skeleton";
@@ -76,6 +75,7 @@ import {
 	groupTimelineEvents,
 } from "#/components/details/grouped-label-event";
 import { LabelPill } from "#/components/details/label-pill";
+import { AppMarkdown } from "#/components/markdown/app-markdown";
 import { useMergeBypass } from "#/components/pulls/detail/use-merge-bypass";
 import { formatRelativeTime } from "#/lib/format-relative-time";
 import {
@@ -2424,9 +2424,13 @@ function TimelineEventRow({
 					)}
 				</div>
 				{hasReviewBody && (
-					<Markdown className="text-muted-foreground">
+					<AppMarkdown
+						owner={owner}
+						repo={repo}
+						className="text-muted-foreground"
+					>
 						{event.body as string}
-					</Markdown>
+					</AppMarkdown>
 				)}
 				{hasReviewComments && (
 					<div className="flex flex-col gap-2">
@@ -2638,9 +2642,13 @@ function PullCommentBubble({
 					comment.graphqlId != null && "mb-7",
 				)}
 			>
-				<Markdown className="text-[15px] leading-6 text-text-strong">
+				<AppMarkdown
+					owner={owner}
+					repo={repo}
+					className="text-[15px] leading-6 text-text-strong"
+				>
 					{comment.body}
-				</Markdown>
+				</AppMarkdown>
 				{comment.graphqlId ? (
 					<IssueCommentReactionBar
 						className="absolute left-0 right-0 top-full z-10 mt-1"
@@ -2781,9 +2789,13 @@ function ReviewCommentBubble({
 					</div>
 				)}
 			</div>
-			<Markdown className="text-[15px] leading-6 text-text-strong">
+			<AppMarkdown
+				owner={owner}
+				repo={repo}
+				className="text-[15px] leading-6 text-text-strong"
+			>
 				{comment.body}
-			</Markdown>
+			</AppMarkdown>
 		</div>
 	);
 }

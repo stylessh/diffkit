@@ -3,6 +3,7 @@ import {
 	type CommandPaletteSearchInput,
 	getBranchComparison,
 	getCommentPage,
+	getCommitReference,
 	getCompareDetail,
 	getFileLastCommit,
 	getGitHubViewer,
@@ -11,6 +12,7 @@ import {
 	getIssuePageData,
 	getIssuesFromRepo,
 	getIssuesFromUser,
+	getItemReference,
 	getMyIssues,
 	getMyPulls,
 	getMyReviewDrafts,
@@ -915,5 +917,29 @@ export function githubReviewDraftsQueryOptions(scope: GitHubQueryScope) {
 		queryFn: () => getMyReviewDrafts(),
 		staleTime: githubCachePolicy.mine.staleTimeMs,
 		gcTime: githubCachePolicy.mine.gcTimeMs,
+	});
+}
+
+export function githubItemReferenceQueryOptions(
+	scope: GitHubQueryScope,
+	input: { owner: string; repo: string; number: number },
+) {
+	return queryOptions({
+		queryKey: githubQueryKeys.references.item(scope, input),
+		queryFn: () => getItemReference({ data: input }),
+		staleTime: githubCachePolicy.itemReference.staleTimeMs,
+		gcTime: githubCachePolicy.itemReference.gcTimeMs,
+	});
+}
+
+export function githubCommitReferenceQueryOptions(
+	scope: GitHubQueryScope,
+	input: { owner: string; repo: string; sha: string },
+) {
+	return queryOptions({
+		queryKey: githubQueryKeys.references.commit(scope, input),
+		queryFn: () => getCommitReference({ data: input }),
+		staleTime: githubCachePolicy.commitReference.staleTimeMs,
+		gcTime: githubCachePolicy.commitReference.gcTimeMs,
 	});
 }

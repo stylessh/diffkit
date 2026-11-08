@@ -123,6 +123,7 @@ export {
 	updatePullBranch,
 	updatePullState,
 } from "./github/pulls";
+export { getCommitReference, getItemReference } from "./github/references";
 export {
 	createRepoRelease,
 	deleteRepoRelease,

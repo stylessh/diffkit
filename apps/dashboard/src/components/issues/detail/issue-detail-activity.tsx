@@ -10,7 +10,6 @@ import {
 	ReviewsIcon,
 	UserAddIcon,
 } from "@diffkit/icons";
-import { Markdown } from "@diffkit/ui/components/markdown";
 import { cn } from "@diffkit/ui/lib/utils";
 import { useQueryClient } from "@tanstack/react-query";
 import { useCallback, useMemo, useRef, useState } from "react";
@@ -29,6 +28,7 @@ import {
 	groupTimelineEvents,
 } from "#/components/details/grouped-label-event";
 import { LabelPill } from "#/components/details/label-pill";
+import { AppMarkdown } from "#/components/markdown/app-markdown";
 import { formatRelativeTime } from "#/lib/format-relative-time";
 import { getCommentPage, getTimelineEventPage } from "#/lib/github.functions";
 import type { GitHubQueryScope } from "#/lib/github.query";
@@ -698,9 +698,13 @@ function IssueCommentBubble({
 					comment.graphqlId != null && "mb-7",
 				)}
 			>
-				<Markdown className="text-[15px] leading-6 text-text-strong">
+				<AppMarkdown
+					owner={owner}
+					repo={repo}
+					className="text-[15px] leading-6 text-text-strong"
+				>
 					{comment.body}
-				</Markdown>
+				</AppMarkdown>
 				{comment.graphqlId ? (
 					<IssueCommentReactionBar
 						className="absolute left-0 right-0 top-full z-10 mt-1"

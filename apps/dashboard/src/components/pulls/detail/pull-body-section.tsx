@@ -10,11 +10,11 @@ import {
 	DropdownMenuItem,
 	DropdownMenuTrigger,
 } from "@diffkit/ui/components/dropdown-menu";
-import { Markdown } from "@diffkit/ui/components/markdown";
 import { MarkdownEditor } from "@diffkit/ui/components/markdown-editor";
 import { Spinner } from "@diffkit/ui/components/spinner";
 import { useState } from "react";
 import { IssueCommentReactionBar } from "#/components/details/comment-reaction-bar";
+import { AppMarkdown } from "#/components/markdown/app-markdown";
 import { updatePullBody } from "#/lib/github.functions";
 import { type GitHubQueryScope, githubQueryKeys } from "#/lib/github.query";
 import type { PullDetail, PullPageData } from "#/lib/github.types";
@@ -165,9 +165,13 @@ export function PullBodySection({
 				}}
 			>
 				{pr.body ? (
-					<Markdown className="text-[15px] leading-6 text-text-header">
+					<AppMarkdown
+						owner={owner}
+						repo={repo}
+						className="text-[15px] leading-6 text-text-header"
+					>
 						{pr.body}
-					</Markdown>
+					</AppMarkdown>
 				) : (
 					<p className="text-sm italic text-muted-foreground">
 						No description provided.
