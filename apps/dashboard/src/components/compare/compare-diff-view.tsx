@@ -1,6 +1,6 @@
 import { cn } from "@diffkit/ui/lib/utils";
 import type { DiffLineAnnotation } from "@pierre/diffs/react";
-import { type ReactNode, useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
 	DiffCommitList,
 	type DiffStyle,
@@ -43,14 +43,12 @@ export function CompareDiffView({
 	filesTruncated = false,
 	owner,
 	repo,
-	header,
 }: {
 	commits: PullCommit[];
 	files: PullFile[];
 	filesTruncated?: boolean;
 	owner: string;
 	repo: string;
-	header?: ReactNode;
 }) {
 	const [diffStyle, setDiffStyle] = useState<DiffStyle>("split");
 	const [view, setView] = useState<DiffView>("files");
@@ -91,7 +89,6 @@ export function CompareDiffView({
 
 	return (
 		<div className="flex min-w-0 flex-col gap-2">
-			{header}
 			<DiffToolbar
 				view={view}
 				onViewChange={setView}

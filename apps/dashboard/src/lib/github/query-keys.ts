@@ -211,6 +211,10 @@ export const githubQueryKeys = {
 		scope: GitHubQueryScope,
 		input: { owner: string; repo: string },
 	) => ["github", scope.userId, "repoLabels", input] as const,
+	repoMilestones: (
+		scope: GitHubQueryScope,
+		input: { owner: string; repo: string },
+	) => ["github", scope.userId, "repoMilestones", input] as const,
 	orgTeams: (
 		scope: GitHubQueryScope,
 		input: { org: string; owner: string; repo: string },

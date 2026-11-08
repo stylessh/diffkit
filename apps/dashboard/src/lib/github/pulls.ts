@@ -2003,6 +2003,7 @@ export type CreatePullRequestInput = {
 	assignees?: string[];
 	reviewers?: string[];
 	teamReviewers?: string[];
+	milestone?: number;
 };
 
 export type CreatePullRequestResult =
@@ -2050,6 +2051,17 @@ export const createPullRequest = createServerFn({ method: "POST" })
 						repo: data.repo,
 						issue_number: pullNumber,
 						assignees: data.assignees,
+					}),
+				});
+			}
+			if (data.milestone !== undefined) {
+				followUps.push({
+					name: "setMilestone",
+					promise: context.octokit.rest.issues.update({
+						owner: data.owner,
+						repo: data.repo,
+						issue_number: pullNumber,
+						milestone: data.milestone,
 					}),
 				});
 			}

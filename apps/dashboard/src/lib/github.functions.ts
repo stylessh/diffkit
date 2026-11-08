@@ -85,6 +85,8 @@ export {
 	getRepoLabels,
 	setIssueLabels,
 } from "./github/labels";
+export type { RepoMilestonesInput } from "./github/milestones";
+export { getRepoMilestones } from "./github/milestones";
 export {
 	getNotifications,
 	markAllNotificationsRead,

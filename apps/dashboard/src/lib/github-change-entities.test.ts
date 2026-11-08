@@ -26,6 +26,7 @@ describe("parseEntityKey / formatEntityKey", () => {
 		"run:acme/api#123456",
 		"release:acme/api",
 		"labels:acme/api",
+		"milestones:acme/api",
 		"collaborators:acme/api",
 		"discussions:acme/api",
 	];
@@ -172,6 +173,7 @@ describe("getWebhookChangeEntities", () => {
 	it("releases, labels, members and discussions", () => {
 		expect(keys("release", { repository })).toEqual(["release:acme/api"]);
 		expect(keys("label", { repository })).toEqual(["labels:acme/api"]);
+		expect(keys("milestone", { repository })).toEqual(["milestones:acme/api"]);
 		expect(keys("member", { repository })).toEqual(["collaborators:acme/api"]);
 		expect(keys("discussion", { repository })).toEqual([
 			"discussions:acme/api",

@@ -56,6 +56,7 @@ export {
 	githubRepoDiscussionsQueryOptions,
 	githubRepoFileContentQueryOptions,
 	githubRepoLabelsQueryOptions,
+	githubRepoMilestonesQueryOptions,
 	githubRepoOverviewQueryOptions,
 	githubRepoParticipationQueryOptions,
 	githubRepoRefComparisonQueryOptions,

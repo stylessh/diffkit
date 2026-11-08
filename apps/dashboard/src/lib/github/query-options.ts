@@ -37,6 +37,7 @@ import {
 	getRepoDiscussions,
 	getRepoFileContent,
 	getRepoLabels,
+	getRepoMilestones,
 	getRepoOverview,
 	getRepoParticipationStats,
 	getRepoRefNames,
@@ -325,6 +326,18 @@ export function githubRepoLabelsQueryOptions(
 	return queryOptions({
 		queryKey: githubQueryKeys.repoLabels(scope, input),
 		queryFn: () => getRepoLabels({ data: input }),
+		staleTime: githubCachePolicy.viewer.staleTimeMs,
+		gcTime: githubCachePolicy.viewer.gcTimeMs,
+	});
+}
+
+export function githubRepoMilestonesQueryOptions(
+	scope: GitHubQueryScope,
+	input: { owner: string; repo: string },
+) {
+	return queryOptions({
+		queryKey: githubQueryKeys.repoMilestones(scope, input),
+		queryFn: () => getRepoMilestones({ data: input }),
 		staleTime: githubCachePolicy.viewer.staleTimeMs,
 		gcTime: githubCachePolicy.viewer.gcTimeMs,
 	});

@@ -558,6 +558,14 @@ export type OrgTeam = {
 	name: string;
 };
 
+export type RepoMilestone = {
+	number: number;
+	title: string;
+	dueOn: string | null;
+	openIssues: number;
+	closedIssues: number;
+};
+
 export type CreateReviewCommentInput = {
 	owner: string;
 	repo: string;

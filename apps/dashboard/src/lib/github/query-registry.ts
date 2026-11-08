@@ -32,6 +32,7 @@ export const githubQueryEntityCoverage: Record<
 	"pulls.reviewThreads": ["pull"],
 	collaborators: ["collaborators"],
 	repoLabels: ["labels"],
+	repoMilestones: ["milestones"],
 	orgTeams: "exempt",
 	commentPage: ["pull", "issue"],
 	timelineEventPage: ["pull", "issue"],

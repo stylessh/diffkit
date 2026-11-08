@@ -45,6 +45,7 @@ import {
 	SEED_ADMIN_TOKEN,
 	seedTokenFor,
 } from "./seed/identity.ts";
+import { withoutOwnForkPrefix } from "./shims/compare.ts";
 import { enrichResponse } from "./shims/enrich.ts";
 import { registerNotificationRoutes } from "./shims/notifications.ts";
 import { autoApproveAppAuthorize } from "./shims/oauth-auto-approve.ts";
@@ -373,7 +374,7 @@ export async function createDiffkitEmulator(
 				return orgAsUser;
 			}
 			const bridged = await bridgePullIssueRequest(context, inner);
-			return bridged ?? app.fetch(inner);
+			return bridged ?? app.fetch(withoutOwnForkPrefix(inner));
 		});
 	const run = pipeline;
 

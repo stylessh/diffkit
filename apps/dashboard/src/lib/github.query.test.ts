@@ -59,6 +59,7 @@ const samples: Record<string, GitHubChangeEntity> = {
 	run: { kind: "run", repo: "acme/api", runId: 99 },
 	release: { kind: "release", repo: "acme/api" },
 	labels: { kind: "labels", repo: "acme/api" },
+	milestones: { kind: "milestones", repo: "acme/api" },
 	collaborators: { kind: "collaborators", repo: "acme/api" },
 	discussions: { kind: "discussions", repo: "acme/api" },
 };
