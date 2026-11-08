@@ -173,19 +173,7 @@ describe("adaptiveRefetchInterval", () => {
 });
 
 describe("cache policy vs poll intervals", () => {
-	it("keeps every polled tier's staleTime at or below its interval", () => {
-		expect(githubCachePolicy.list.staleTimeMs).toBeLessThanOrEqual(
-			githubPollIntervalMs.list,
-		);
-		expect(githubCachePolicy.mine.staleTimeMs).toBeLessThanOrEqual(
-			githubPollIntervalMs.mine,
-		);
-		expect(githubCachePolicy.detail.staleTimeMs).toBeLessThanOrEqual(
-			githubPollIntervalMs.detail,
-		);
-		expect(githubCachePolicy.activity.staleTimeMs).toBeLessThanOrEqual(
-			githubPollIntervalMs.activity,
-		);
+	it("keeps every adaptively polled tier's staleTime at or below its interval", () => {
 		expect(githubCachePolicy.status.staleTimeMs).toBeLessThanOrEqual(
 			githubPollIntervalMs.active,
 		);

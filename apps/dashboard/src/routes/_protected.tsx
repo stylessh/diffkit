@@ -7,6 +7,7 @@ import { ErrorScreen } from "#/components/layouts/error-screen";
 import { getSession } from "#/lib/auth.functions";
 import { readDocumentCookie } from "#/lib/cookies";
 import { checkSetupComplete } from "#/lib/github.functions";
+import { useGitHubChangeFeed } from "#/lib/github-change-feed";
 import { validateProtectedSessionInBackground } from "#/lib/protected-auth";
 import {
 	authFromSession,
@@ -117,6 +118,8 @@ function ProtectedLayout() {
 			rememberConfirmedAuth(auth);
 		}
 	}, [user, session, optimistic]);
+
+	useGitHubChangeFeed(user.id);
 
 	return <DashboardLayout />;
 }

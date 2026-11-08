@@ -1,22 +1,19 @@
 import type { PullStatus, WorkflowRun, WorkflowRunJob } from "./github.types";
 
 /**
- * Client polling tiers.
+ * Client polling — only for things that change without a webhook we receive.
  *
- * Freshness model: GitHub webhooks mark D1 revalidation signals (and bump
- * cache namespaces) so the next server read for an affected resource bypasses
- * its cached payload. The client just needs to ask again — these intervals
- * decide how often it does while the tab is visible. Every tier's
- * `githubCachePolicy.*.staleTimeMs` must stay <= its interval here so focus /
- * mount refetches and polling agree on what "stale" means.
+ * Freshness comes from the change feed (`/api/changes`, see
+ * github-change-feed.ts): webhooks record which entities changed and the
+ * client refetches only the active queries they affect. Lists and details no
+ * longer poll on a fixed interval.
+ *
+ * What still polls: PR status and workflow runs/jobs, adaptively, while
+ * something is queued or running (check runs from third-party CI and repos
+ * without the app installed send us nothing). Everything else refetches on
+ * focus, reconnect and mount once past its `staleTime`.
  */
 export const githubPollIntervalMs = {
-	/** Repo lists, notifications, the "mine" aggregates, repo overview. */
-	list: 30 * 1000,
-	mine: 30 * 1000,
-	/** PR / issue detail pages and their activity timelines. */
-	detail: 20 * 1000,
-	activity: 20 * 1000,
 	/** Adaptive tiers (PR status, workflow runs/jobs) while something runs. */
 	active: 5 * 1000,
 	/** Adaptive tiers when nothing is queued or running. */
@@ -25,19 +22,6 @@ export const githubPollIntervalMs = {
 
 /** Adaptive tiers stop polling once terminal and unchanged for this long. */
 export const GITHUB_TERMINAL_POLL_STOP_AFTER_MS = 10 * 60 * 1000;
-
-type StaticPollTier = "list" | "mine" | "detail" | "activity";
-
-/**
- * Spread into a query options object for fixed-interval polling. Polling is
- * paused while the tab is hidden; `refetchOnWindowFocus` catches up on return.
- */
-export function githubPollOptions(tier: StaticPollTier) {
-	return {
-		refetchInterval: githubPollIntervalMs[tier],
-		refetchIntervalInBackground: false,
-	} as const;
-}
 
 export type GitHubAdaptivePollState = {
 	/** Something is queued or in progress — poll fast. */
