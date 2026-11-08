@@ -13,6 +13,8 @@ import type {
 	CreateReviewCommentInput,
 	DiscussionsResult,
 	FileLastCommit,
+	GenerateReleaseNotesInput,
+	GenerateReleaseNotesResult,
 	GitHubActor,
 	GitHubContributionCalendar,
 	GitHubLabel,
@@ -46,20 +48,39 @@ import type {
 	PullWorkflowApproval,
 	ReplyToReviewCommentInput,
 	RepoBranch,
+	RepoBranchesListInput,
+	RepoBranchesListPage,
+	RepoBranchListItem,
 	RepoCollaborator,
 	RepoCommitDetail,
 	RepoCommitInput,
+	RepoCommitSummary,
+	RepoCommitsInput,
+	RepoCommitsPage,
 	RepoContributorsResult,
 	RepoOverview,
 	RepoParticipationStats,
+	RepoRefNames,
+	RepoRefNamesInput,
+	RepoRelease,
+	RepoReleaseInput,
+	RepoReleasesInput,
+	RepoReleasesPage,
 	RepositoryRef,
+	RepoTagListItem,
+	RepoTagsListInput,
+	RepoTagsListPage,
 	RepoTreeEntry,
+	RepoViewerPermission,
 	RequestedTeam,
 	RequestReviewersInput,
 	ReviewThreadInfo,
+	SaveRepoReleaseInput,
+	SaveRepoReleaseResult,
 	SetLabelsInput,
 	SubmitReviewInput,
 	TimelineEvent,
+	UpdateRepoReleaseInput,
 	UserActivityEvent,
 	UserRepoSummary,
 	WorkflowDefinition,
@@ -11118,3 +11139,876 @@ export const getWorkflowRunLogsBundle = createServerFn({ method: "GET" })
 export function workflowZipJobName(jobName: string): string {
 	return sanitizeJobNameForZip(jobName);
 }
+
+// ===========================================================================
+// Repository commits, releases, branches and tags
+// ---------------------------------------------------------------------------
+// Reads go through the split D1 cache; commits/branches/tags are invalidated
+// by `repoCode` signals (push), releases by `repoMeta` (release webhooks).
+// Every read is a single GitHub request per call so pages stay bounded:
+//   commits list ......... 1 REST call (or 1 search call when filtering by message)
+//   releases list ........ 1 REST call + 1 cached `latest` lookup
+//   branches list ........ 1 GraphQL call per 100 branches
+//   tags list ............ 1 GraphQL call per 30 tags
+//   ref names (pickers) .. 1 REST call (first 100 refs)
+// ===========================================================================
+
+type GitHubCommitListItem = {
+	sha: string;
+	html_url: string;
+	author?: GitHubApiUser | null;
+	commit: {
+		message: string;
+		comment_count?: number;
+		author?: { name?: string; date?: string } | null;
+		committer?: { name?: string; date?: string } | null;
+		verification?: { verified?: boolean } | null;
+	};
+};
+
+function mapRepoCommitSummary(item: GitHubCommitListItem): RepoCommitSummary {
+	return {
+		sha: item.sha,
+		message: item.commit.message ?? "",
+		date:
+			item.commit.author?.date ??
+			item.commit.committer?.date ??
+			new Date(0).toISOString(),
+		author: mapActor(item.author),
+		authorName: item.commit.author?.name ?? null,
+		verified: item.commit.verification?.verified === true,
+		commentCount: item.commit.comment_count ?? 0,
+		url: item.html_url,
+	};
+}
+
+function emptyRepoCommitsPage(searched = false): RepoCommitsPage {
+	return { commits: [], hasNextPage: false, searched };
+}
+
+/** GitHub's commit search caps results at 1000. */
+const GITHUB_SEARCH_RESULT_LIMIT = 1000;
+
+function buildCommitSearchQuery(data: RepoCommitsInput, query: string) {
+	const qualifiers = [`repo:${data.owner}/${data.repo}`];
+	const author = data.author?.trim();
+	if (author) {
+		qualifiers.push(
+			author.includes("@") ? `author-email:${author}` : `author:${author}`,
+		);
+	}
+	return `${query} ${qualifiers.join(" ")}`;
+}
+
+export const getRepoCommits = createServerFn({ method: "GET" })
+	.inputValidator(identityValidator<RepoCommitsInput>)
+	.handler(async ({ data }): Promise<RepoCommitsPage> => {
+		const context = await getGitHubContextForRepository(data);
+		if (!context) return emptyRepoCommitsPage();
+
+		const perPage = clampPerPage(data.perPage, 30);
+		const page = clampPage(data.page);
+		const ref = data.ref?.trim() || undefined;
+		const path = data.path?.trim() || undefined;
+		const author = data.author?.trim() || undefined;
+		const query = data.query?.trim() || undefined;
+		const repoCodeKey = githubRevalidationSignalKeys.repoCode(data);
+
+		try {
+			if (query) {
+				const q = buildCommitSearchQuery(data, query);
+				return await getCachedGitHubRequest({
+					context,
+					resource: "repo.commits.search.v1",
+					params: { owner: data.owner, repo: data.repo, q, page, perPage },
+					freshForMs: githubCachePolicy.list.staleTimeMs,
+					signalKeys: [repoCodeKey],
+					namespaceKeys: [repoCodeKey],
+					cacheMode: "split",
+					request: (headers, signal) =>
+						context.octokit.rest.search.commits({
+							q,
+							sort: "author-date",
+							order: "desc",
+							per_page: perPage,
+							page,
+							headers,
+							request: { signal },
+						}),
+					mapData: (result): RepoCommitsPage => ({
+						commits: result.items.map((item) =>
+							mapRepoCommitSummary(item as unknown as GitHubCommitListItem),
+						),
+						hasNextPage:
+							page * perPage <
+							Math.min(result.total_count, GITHUB_SEARCH_RESULT_LIMIT),
+						searched: true,
+					}),
+				});
+			}
+
+			return await getCachedGitHubRequest({
+				context,
+				resource: "repo.commits.v1",
+				params: {
+					owner: data.owner,
+					repo: data.repo,
+					ref: ref ?? null,
+					path: path ?? null,
+					author: author ?? null,
+					page,
+					perPage,
+				},
+				freshForMs: githubCachePolicy.list.staleTimeMs,
+				signalKeys: [repoCodeKey],
+				namespaceKeys: [repoCodeKey],
+				cacheMode: "split",
+				request: (headers, signal) =>
+					context.octokit.rest.repos.listCommits({
+						owner: data.owner,
+						repo: data.repo,
+						sha: ref,
+						path,
+						author,
+						per_page: perPage,
+						page,
+						headers,
+						request: { signal },
+					}),
+				mapData: (items): RepoCommitsPage => ({
+					commits: items.map((item) =>
+						mapRepoCommitSummary(item as GitHubCommitListItem),
+					),
+					hasNextPage: items.length === perPage,
+					searched: false,
+				}),
+			});
+		} catch (error) {
+			// 404: unknown ref/path. 409: empty repository. 422: invalid search.
+			if (
+				error instanceof RequestError &&
+				(error.status === 404 || error.status === 409 || error.status === 422)
+			) {
+				return emptyRepoCommitsPage(Boolean(query));
+			}
+			throw error;
+		}
+	});
+
+export const getRepoRefNames = createServerFn({ method: "GET" })
+	.inputValidator(identityValidator<RepoRefNamesInput>)
+	.handler(async ({ data }): Promise<RepoRefNames> => {
+		const context = await getGitHubContextForRepository(data);
+		if (!context) return { names: [], truncated: false };
+
+		const repoCodeKey = githubRevalidationSignalKeys.repoCode(data);
+		const perPage = 100;
+		const mapNames = (items: Array<{ name: string }>): RepoRefNames => ({
+			names: items.map((item) => item.name),
+			truncated: items.length === perPage,
+		});
+
+		try {
+			if (data.kind === "tags") {
+				return await getCachedGitHubRequest({
+					context,
+					resource: "repo.refNames.tags.v1",
+					params: { owner: data.owner, repo: data.repo },
+					freshForMs: githubCachePolicy.repoMeta.staleTimeMs,
+					signalKeys: [repoCodeKey],
+					namespaceKeys: [repoCodeKey],
+					cacheMode: "split",
+					request: (headers, signal) =>
+						context.octokit.rest.repos.listTags({
+							owner: data.owner,
+							repo: data.repo,
+							per_page: perPage,
+							headers,
+							request: { signal },
+						}),
+					mapData: mapNames,
+				});
+			}
+
+			return await getCachedGitHubRequest({
+				context,
+				resource: "repo.refNames.branches.v1",
+				params: { owner: data.owner, repo: data.repo },
+				freshForMs: githubCachePolicy.repoMeta.staleTimeMs,
+				signalKeys: [repoCodeKey],
+				namespaceKeys: [repoCodeKey],
+				cacheMode: "split",
+				request: (headers, signal) =>
+					context.octokit.rest.repos.listBranches({
+						owner: data.owner,
+						repo: data.repo,
+						per_page: perPage,
+						headers,
+						request: { signal },
+					}),
+				mapData: mapNames,
+			});
+		} catch (error) {
+			if (
+				error instanceof RequestError &&
+				(error.status === 404 || error.status === 409)
+			) {
+				return { names: [], truncated: false };
+			}
+			throw error;
+		}
+	});
+
+type GitHubGraphQLRefCommitTarget = {
+	__typename?: string;
+	oid?: string;
+	committedDate?: string;
+	author?: {
+		name?: string | null;
+		user?: { login: string; avatarUrl: string; url: string } | null;
+	} | null;
+} | null;
+
+type GitHubGraphQLBranchNode = {
+	name: string;
+	target: GitHubGraphQLRefCommitTarget;
+	associatedPullRequests?: {
+		nodes: Array<{
+			number: number;
+			state: "OPEN" | "CLOSED" | "MERGED";
+			isDraft: boolean;
+			title: string;
+		} | null>;
+	} | null;
+};
+
+type GitHubGraphQLBranchesResponse = {
+	repository: {
+		defaultBranchRef: GitHubGraphQLBranchNode | null;
+		refs: {
+			totalCount: number;
+			pageInfo: { hasNextPage: boolean; endCursor: string | null };
+			nodes: Array<GitHubGraphQLBranchNode | null>;
+		} | null;
+	} | null;
+};
+
+const BRANCH_NODE_FIELDS = `
+	name
+	target {
+		__typename
+		... on Commit {
+			oid
+			committedDate
+			author {
+				name
+				user { login avatarUrl url }
+			}
+		}
+	}
+	associatedPullRequests(first: 1, orderBy: { field: UPDATED_AT, direction: DESC }) {
+		nodes { number state isDraft title }
+	}
+`;
+
+function mapGraphQLBranchNode(
+	node: GitHubGraphQLBranchNode,
+): RepoBranchListItem {
+	const target = node.target;
+	const pr = node.associatedPullRequests?.nodes?.[0] ?? null;
+	return {
+		name: node.name,
+		commit: target?.oid
+			? {
+					sha: target.oid,
+					date: target.committedDate ?? null,
+					author: mapGraphQLActor(target.author?.user ?? null),
+					authorName: target.author?.name ?? null,
+				}
+			: null,
+		pullRequest: pr
+			? {
+					number: pr.number,
+					state: pr.state,
+					isDraft: pr.isDraft,
+					title: pr.title,
+				}
+			: null,
+	};
+}
+
+/** Branches page size. GitHub can't order branches by date, so we load in big pages and sort client-side. */
+const REPO_BRANCHES_PAGE_SIZE = 100;
+const REPO_TAGS_PAGE_SIZE = 30;
+
+export const getRepoBranchesList = createServerFn({ method: "GET" })
+	.inputValidator(identityValidator<RepoBranchesListInput>)
+	.handler(async ({ data }): Promise<RepoBranchesListPage> => {
+		const empty: RepoBranchesListPage = {
+			defaultBranch: null,
+			branches: [],
+			totalCount: 0,
+			endCursor: null,
+			hasNextPage: false,
+		};
+		const context = await getGitHubContextForRepository(data);
+		if (!context) return empty;
+
+		const repoCodeKey = githubRevalidationSignalKeys.repoCode(data);
+		const query = data.query?.trim() || null;
+		const after = data.after ?? null;
+
+		return getOrRevalidateGitHubResource<RepoBranchesListPage>({
+			userId: context.session.user.id,
+			resource: "repo.branchesList.v1",
+			params: { owner: data.owner, repo: data.repo, query, after },
+			freshForMs: githubCachePolicy.list.staleTimeMs,
+			signalKeys: [repoCodeKey],
+			namespaceKeys: [repoCodeKey],
+			cacheMode: "split",
+			fetcher: async () => {
+				const response =
+					await executeGitHubGraphQL<GitHubGraphQLBranchesResponse>(
+						context,
+						`github repo branches ${data.owner}/${data.repo}`,
+						`query($owner: String!, $repo: String!, $first: Int!, $after: String, $query: String) {
+							repository(owner: $owner, name: $repo) {
+								defaultBranchRef { ${BRANCH_NODE_FIELDS} }
+								refs(refPrefix: "refs/heads/", first: $first, after: $after, query: $query) {
+									totalCount
+									pageInfo { hasNextPage endCursor }
+									nodes { ${BRANCH_NODE_FIELDS} }
+								}
+							}
+						}`,
+						{
+							owner: data.owner,
+							repo: data.repo,
+							first: REPO_BRANCHES_PAGE_SIZE,
+							after,
+							query,
+						},
+					);
+
+				const repository = response.repository;
+				const refs = repository?.refs;
+				return {
+					kind: "success",
+					data: refs
+						? {
+								defaultBranch: repository?.defaultBranchRef
+									? mapGraphQLBranchNode(repository.defaultBranchRef)
+									: null,
+								branches: refs.nodes
+									.filter((node): node is GitHubGraphQLBranchNode =>
+										Boolean(node),
+									)
+									.map(mapGraphQLBranchNode),
+								totalCount: refs.totalCount,
+								endCursor: refs.pageInfo.endCursor,
+								hasNextPage: refs.pageInfo.hasNextPage,
+							}
+						: empty,
+					metadata: createGitHubResponseMetadata(200, {}),
+				};
+			},
+		});
+	});
+
+type GitHubGraphQLTagNode = {
+	name: string;
+	target:
+		| (GitHubGraphQLRefCommitTarget & {
+				message?: string | null;
+				tagger?: {
+					date?: string | null;
+					name?: string | null;
+					user?: { login: string; avatarUrl: string; url: string } | null;
+				} | null;
+				target?: GitHubGraphQLRefCommitTarget;
+		  })
+		| null;
+};
+
+type GitHubGraphQLTagsResponse = {
+	repository: {
+		refs: {
+			totalCount: number;
+			pageInfo: { hasNextPage: boolean; endCursor: string | null };
+			nodes: Array<GitHubGraphQLTagNode | null>;
+		} | null;
+	} | null;
+};
+
+function mapGraphQLTagNode(node: GitHubGraphQLTagNode): RepoTagListItem {
+	const target = node.target;
+	// Annotated tags point at a Tag object which in turn points at the commit.
+	if (target?.__typename === "Tag") {
+		const commit = target.target;
+		return {
+			name: node.name,
+			commitSha: commit?.oid ?? null,
+			date: target.tagger?.date ?? commit?.committedDate ?? null,
+			message: target.message?.trim() || null,
+			tagger: mapGraphQLActor(target.tagger?.user ?? null),
+		};
+	}
+	return {
+		name: node.name,
+		commitSha: target?.oid ?? null,
+		date: target?.committedDate ?? null,
+		message: null,
+		tagger: mapGraphQLActor(target?.author?.user ?? null),
+	};
+}
+
+export const getRepoTagsList = createServerFn({ method: "GET" })
+	.inputValidator(identityValidator<RepoTagsListInput>)
+	.handler(async ({ data }): Promise<RepoTagsListPage> => {
+		const empty: RepoTagsListPage = {
+			tags: [],
+			totalCount: 0,
+			endCursor: null,
+			hasNextPage: false,
+		};
+		const context = await getGitHubContextForRepository(data);
+		if (!context) return empty;
+
+		const repoCodeKey = githubRevalidationSignalKeys.repoCode(data);
+		const query = data.query?.trim() || null;
+		const after = data.after ?? null;
+
+		return getOrRevalidateGitHubResource<RepoTagsListPage>({
+			userId: context.session.user.id,
+			resource: "repo.tagsList.v1",
+			params: { owner: data.owner, repo: data.repo, query, after },
+			freshForMs: githubCachePolicy.list.staleTimeMs,
+			signalKeys: [repoCodeKey],
+			namespaceKeys: [repoCodeKey],
+			cacheMode: "split",
+			fetcher: async () => {
+				const response = await executeGitHubGraphQL<GitHubGraphQLTagsResponse>(
+					context,
+					`github repo tags ${data.owner}/${data.repo}`,
+					`query($owner: String!, $repo: String!, $first: Int!, $after: String, $query: String) {
+						repository(owner: $owner, name: $repo) {
+							refs(
+								refPrefix: "refs/tags/"
+								first: $first
+								after: $after
+								query: $query
+								orderBy: { field: TAG_COMMIT_DATE, direction: DESC }
+							) {
+								totalCount
+								pageInfo { hasNextPage endCursor }
+								nodes {
+									name
+									target {
+										__typename
+										oid
+										... on Commit {
+											committedDate
+											author { name user { login avatarUrl url } }
+										}
+										... on Tag {
+											message
+											tagger { date name user { login avatarUrl url } }
+											target {
+												__typename
+												oid
+												... on Commit { committedDate }
+											}
+										}
+									}
+								}
+							}
+						}
+					}`,
+					{
+						owner: data.owner,
+						repo: data.repo,
+						first: REPO_TAGS_PAGE_SIZE,
+						after,
+						query,
+					},
+				);
+
+				const refs = response.repository?.refs;
+				return {
+					kind: "success",
+					data: refs
+						? {
+								tags: refs.nodes
+									.filter((node): node is GitHubGraphQLTagNode => Boolean(node))
+									.map(mapGraphQLTagNode),
+								totalCount: refs.totalCount,
+								endCursor: refs.pageInfo.endCursor,
+								hasNextPage: refs.pageInfo.hasNextPage,
+							}
+						: empty,
+					metadata: createGitHubResponseMetadata(200, {}),
+				};
+			},
+		});
+	});
+
+type GitHubReleasePayload = Awaited<
+	ReturnType<GitHubClient["rest"]["repos"]["getRelease"]>
+>["data"];
+
+function mapRepoRelease(
+	release: GitHubReleasePayload,
+	latestTagName: string | null,
+): RepoRelease {
+	return {
+		id: release.id,
+		tagName: release.tag_name,
+		name: release.name?.trim() || release.tag_name,
+		body: release.body ?? "",
+		isDraft: release.draft,
+		isPrerelease: release.prerelease,
+		isLatest:
+			latestTagName != null &&
+			!release.draft &&
+			release.tag_name === latestTagName,
+		createdAt: release.created_at,
+		publishedAt: release.published_at ?? null,
+		author: mapActor(release.author),
+		targetCommitish: release.target_commitish,
+		url: release.html_url,
+		tarballUrl: release.tarball_url ?? null,
+		zipballUrl: release.zipball_url ?? null,
+		assets: release.assets.map((asset) => ({
+			id: asset.id,
+			name: asset.name,
+			size: asset.size,
+			downloadCount: asset.download_count,
+			contentType: asset.content_type,
+			downloadUrl: asset.browser_download_url,
+			updatedAt: asset.updated_at,
+		})),
+	};
+}
+
+/** Tag of the repo's "Latest" release, or null when there is none. */
+async function getLatestReleaseTagName(
+	context: GitHubContext,
+	data: { owner: string; repo: string },
+): Promise<string | null> {
+	const repoMetaKey = githubRevalidationSignalKeys.repoMeta(data);
+	try {
+		return await getCachedGitHubRequest({
+			context,
+			resource: "repo.latestRelease.v1",
+			params: { owner: data.owner, repo: data.repo },
+			freshForMs: githubCachePolicy.list.staleTimeMs,
+			signalKeys: [repoMetaKey],
+			namespaceKeys: [repoMetaKey],
+			cacheMode: "split",
+			request: (headers, signal) =>
+				context.octokit.rest.repos.getLatestRelease({
+					owner: data.owner,
+					repo: data.repo,
+					headers,
+					request: { signal },
+				}),
+			mapData: (release): string | null => release.tag_name,
+		});
+	} catch {
+		// 404 when the repo has no published release.
+		return null;
+	}
+}
+
+async function listRepoReleasesRaw(
+	context: GitHubContext,
+	data: { owner: string; repo: string; page: number; perPage: number },
+) {
+	const repoMetaKey = githubRevalidationSignalKeys.repoMeta(data);
+	return getCachedGitHubRequest({
+		context,
+		resource: "repo.releases.v1",
+		params: data,
+		freshForMs: githubCachePolicy.list.staleTimeMs,
+		signalKeys: [repoMetaKey],
+		namespaceKeys: [repoMetaKey],
+		cacheMode: "split",
+		request: (headers, signal) =>
+			context.octokit.rest.repos.listReleases({
+				owner: data.owner,
+				repo: data.repo,
+				per_page: data.perPage,
+				page: data.page,
+				headers,
+				request: { signal },
+			}),
+		mapData: (releases): GitHubReleasePayload[] => releases,
+	});
+}
+
+export const getRepoReleases = createServerFn({ method: "GET" })
+	.inputValidator(identityValidator<RepoReleasesInput>)
+	.handler(async ({ data }): Promise<RepoReleasesPage> => {
+		const context = await getGitHubContextForRepository(data);
+		if (!context) return { releases: [], hasNextPage: false };
+
+		const perPage = clampPerPage(data.perPage, 10);
+		const page = clampPage(data.page);
+		try {
+			const [releases, latestTagName] = await Promise.all([
+				listRepoReleasesRaw(context, {
+					owner: data.owner,
+					repo: data.repo,
+					page,
+					perPage,
+				}),
+				getLatestReleaseTagName(context, data),
+			]);
+			return {
+				releases: releases.map((release) =>
+					mapRepoRelease(release, latestTagName),
+				),
+				hasNextPage: releases.length === perPage,
+			};
+		} catch (error) {
+			if (error instanceof RequestError && error.status === 404) {
+				return { releases: [], hasNextPage: false };
+			}
+			throw error;
+		}
+	});
+
+export const getRepoRelease = createServerFn({ method: "GET" })
+	.inputValidator(identityValidator<RepoReleaseInput>)
+	.handler(async ({ data }): Promise<RepoRelease | null> => {
+		const context = await getGitHubContextForRepository(data);
+		if (!context) return null;
+
+		const repoMetaKey = githubRevalidationSignalKeys.repoMeta(data);
+		const latestTagPromise = getLatestReleaseTagName(context, data);
+		try {
+			const release = await getCachedGitHubRequest({
+				context,
+				resource: "repo.release.v1",
+				params: { owner: data.owner, repo: data.repo, tag: data.tag },
+				freshForMs: githubCachePolicy.detail.staleTimeMs,
+				signalKeys: [repoMetaKey],
+				namespaceKeys: [repoMetaKey],
+				cacheMode: "split",
+				request: (headers, signal) =>
+					context.octokit.rest.repos.getReleaseByTag({
+						owner: data.owner,
+						repo: data.repo,
+						tag: data.tag,
+						headers,
+						request: { signal },
+					}),
+				mapData: (payload): GitHubReleasePayload => payload,
+			});
+			return mapRepoRelease(release, await latestTagPromise);
+		} catch (error) {
+			if (!(error instanceof RequestError) || error.status !== 404) {
+				throw error;
+			}
+		}
+
+		// Drafts aren't addressable by tag — find them in the newest releases.
+		try {
+			const recent = await listRepoReleasesRaw(context, {
+				owner: data.owner,
+				repo: data.repo,
+				page: 1,
+				perPage: 100,
+			});
+			const draft = recent.find((release) => release.tag_name === data.tag);
+			return draft ? mapRepoRelease(draft, await latestTagPromise) : null;
+		} catch (error) {
+			if (error instanceof RequestError && error.status === 404) {
+				return null;
+			}
+			throw error;
+		}
+	});
+
+type GitHubGraphQLViewerPermissionResponse = {
+	repository: { viewerPermission: RepoViewerPermission["permission"] } | null;
+};
+
+export const getRepoViewerPermission = createServerFn({ method: "GET" })
+	.inputValidator(identityValidator<{ owner: string; repo: string }>)
+	.handler(async ({ data }): Promise<RepoViewerPermission> => {
+		const unknown: RepoViewerPermission = { permission: null, canPush: false };
+		// User token (not the installation token) so the answer reflects the viewer.
+		const context = await getGitHubUserContextForRepository(data);
+		if (!context) return unknown;
+
+		const repoMetaKey = githubRevalidationSignalKeys.repoMeta(data);
+		try {
+			return await getOrRevalidateGitHubResource<RepoViewerPermission>({
+				userId: context.session.user.id,
+				resource: "repo.viewerPermission.v1",
+				params: { owner: data.owner, repo: data.repo },
+				freshForMs: githubCachePolicy.repoMeta.staleTimeMs,
+				signalKeys: [repoMetaKey],
+				namespaceKeys: [repoMetaKey],
+				cacheMode: "split",
+				fetcher: async () => {
+					const response =
+						await executeGitHubGraphQL<GitHubGraphQLViewerPermissionResponse>(
+							context,
+							`github repo viewer permission ${data.owner}/${data.repo}`,
+							`query($owner: String!, $repo: String!) {
+								repository(owner: $owner, name: $repo) { viewerPermission }
+							}`,
+							{ owner: data.owner, repo: data.repo },
+						);
+					const permission = response.repository?.viewerPermission ?? null;
+					return {
+						kind: "success",
+						data: {
+							permission,
+							canPush:
+								permission === "ADMIN" ||
+								permission === "MAINTAIN" ||
+								permission === "WRITE",
+						},
+						metadata: createGitHubResponseMetadata(200, {}),
+					};
+				},
+			});
+		} catch (error) {
+			console.error("[getRepoViewerPermission]", error);
+			return unknown;
+		}
+	});
+
+/** Releases live under `repoMeta`; publishing can also create a tag (`repoCode`). */
+async function bustRepoReleaseCaches(params: { owner: string; repo: string }) {
+	await bumpGitHubCacheNamespaces([
+		githubRevalidationSignalKeys.repoMeta(params),
+		githubRevalidationSignalKeys.repoCode(params),
+	]);
+}
+
+function toReleaseMutationError(
+	action: string,
+	error: unknown,
+): { ok: false; error: string; installUrl?: string } {
+	if (error instanceof RequestError && error.status === 422) {
+		const payload = error.response?.data as
+			| {
+					message?: string;
+					errors?: Array<{ code?: string; field?: string; message?: string }>;
+			  }
+			| undefined;
+		const first = payload?.errors?.[0];
+		if (first?.code === "already_exists" && first.field === "tag_name") {
+			return {
+				ok: false,
+				error: `Failed to ${action}: a release for this tag already exists`,
+			};
+		}
+		const detail = first?.message ?? payload?.message;
+		if (detail) {
+			return { ok: false, error: `Failed to ${action}: ${detail}` };
+		}
+	}
+	const result = toMutationError(action, error);
+	return result.ok
+		? { ok: false, error: `Failed to ${action}` }
+		: { ok: false, error: result.error, installUrl: result.installUrl };
+}
+
+export const createRepoRelease = createServerFn({ method: "POST" })
+	.inputValidator(identityValidator<SaveRepoReleaseInput>)
+	.handler(async ({ data }): Promise<SaveRepoReleaseResult> => {
+		const context = await getGitHubUserContextForRepository(data);
+		if (!context) return { ok: false, error: "Not authenticated" };
+
+		try {
+			const response = await context.octokit.rest.repos.createRelease({
+				owner: data.owner,
+				repo: data.repo,
+				tag_name: data.tagName,
+				target_commitish: data.targetCommitish || undefined,
+				name: data.name,
+				body: data.body,
+				draft: data.draft,
+				prerelease: data.prerelease,
+				...(data.makeLatest ? { make_latest: data.makeLatest } : {}),
+			});
+			await bustRepoReleaseCaches(data);
+			return { ok: true, release: mapRepoRelease(response.data, null) };
+		} catch (error) {
+			return toReleaseMutationError("create release", error);
+		}
+	});
+
+export const updateRepoRelease = createServerFn({ method: "POST" })
+	.inputValidator(identityValidator<UpdateRepoReleaseInput>)
+	.handler(async ({ data }): Promise<SaveRepoReleaseResult> => {
+		const context = await getGitHubUserContextForRepository(data);
+		if (!context) return { ok: false, error: "Not authenticated" };
+
+		try {
+			const response = await context.octokit.rest.repos.updateRelease({
+				owner: data.owner,
+				repo: data.repo,
+				release_id: data.releaseId,
+				tag_name: data.tagName,
+				target_commitish: data.targetCommitish || undefined,
+				name: data.name,
+				body: data.body,
+				draft: data.draft,
+				prerelease: data.prerelease,
+				...(data.makeLatest ? { make_latest: data.makeLatest } : {}),
+			});
+			await bustRepoReleaseCaches(data);
+			return { ok: true, release: mapRepoRelease(response.data, null) };
+		} catch (error) {
+			return toReleaseMutationError("update release", error);
+		}
+	});
+
+export const deleteRepoRelease = createServerFn({ method: "POST" })
+	.inputValidator(
+		identityValidator<{ owner: string; repo: string; releaseId: number }>,
+	)
+	.handler(async ({ data }): Promise<MutationResult> => {
+		const context = await getGitHubUserContextForRepository(data);
+		if (!context) return { ok: false, error: "Not authenticated" };
+
+		try {
+			await context.octokit.rest.repos.deleteRelease({
+				owner: data.owner,
+				repo: data.repo,
+				release_id: data.releaseId,
+			});
+			await bustRepoReleaseCaches(data);
+			return { ok: true };
+		} catch (error) {
+			return toReleaseMutationError("delete release", error);
+		}
+	});
+
+/** Asks GitHub to draft release notes. Read-only despite being a POST upstream. */
+export const generateRepoReleaseNotes = createServerFn({ method: "POST" })
+	.inputValidator(identityValidator<GenerateReleaseNotesInput>)
+	.handler(async ({ data }): Promise<GenerateReleaseNotesResult> => {
+		const context = await getGitHubUserContextForRepository(data);
+		if (!context) return { ok: false, error: "Not authenticated" };
+
+		try {
+			const response = await context.octokit.rest.repos.generateReleaseNotes({
+				owner: data.owner,
+				repo: data.repo,
+				tag_name: data.tagName,
+				target_commitish: data.targetCommitish || undefined,
+				previous_tag_name: data.previousTagName || undefined,
+			});
+			return { ok: true, name: response.data.name, body: response.data.body };
+		} catch (error) {
+			const result = toReleaseMutationError("generate release notes", error);
+			return { ok: false, error: result.error };
+		}
+	});
