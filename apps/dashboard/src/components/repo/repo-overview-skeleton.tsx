@@ -1,66 +1,54 @@
+import { DetailLayout } from "@diffkit/ui/components/detail-layout";
 import { Skeleton } from "@diffkit/ui/components/skeleton";
+import { cardRowClassName, RepoCard, RepoCardHead } from "./repo-ui";
 
+const ROWS = Array.from({ length: 8 }, (_, i) => `skeleton-row-${i}`);
+const PANEL_ROWS = ["a", "b", "c", "d"];
+
+/** The overview's body while the repository loads, in the page's own shapes. */
 export function RepoOverviewSkeleton() {
 	return (
-		<div className="h-full overflow-auto">
-			<div className="mx-auto grid max-w-7xl gap-10 px-3 py-10 md:px-6 xl:grid-cols-[minmax(0,1fr)_minmax(16rem,20rem)]">
-				<div className="flex min-w-0 flex-col gap-6">
-					{/* Header */}
-					<div className="flex items-center gap-2">
-						<Skeleton className="size-4 rounded" />
-						<Skeleton className="h-5 w-48 rounded-md" />
-						<Skeleton className="h-5 w-14 rounded-full" />
+		<DetailLayout
+			panel={
+				<div className="flex flex-col gap-7">
+					<div className="flex flex-col gap-2">
+						<Skeleton className="h-5 w-40 rounded" />
+						<Skeleton className="h-3.5 w-full rounded" />
+						<Skeleton className="h-3.5 w-3/4 rounded" />
 					</div>
-
-					{/* Toolbar */}
-					<div className="flex items-center justify-between">
-						<Skeleton className="h-8 w-36 rounded-md" />
-						<Skeleton className="h-8 w-20 rounded-md" />
-					</div>
-
-					{/* Commit bar + file rows */}
-					<div>
-						<div className="rounded-t-lg border-[0.5px] border-b-0 px-4 py-2.5">
-							<div className="flex items-center gap-3">
-								<Skeleton className="size-5 rounded-full" />
-								<Skeleton className="h-4 w-24 rounded-md" />
-								<Skeleton className="h-4 flex-1 rounded-md" />
-								<Skeleton className="h-4 w-16 rounded-md" />
-							</div>
-						</div>
-						<div className="overflow-hidden rounded-b-lg border-[0.5px]">
-							{Array.from({ length: 8 }, (_, i) => `skeleton-row-${i}`).map(
-								(key) => (
-									<div
-										key={key}
-										className="flex items-center gap-4 border-b-[0.5px] px-4 py-2.5 last:border-b-0"
-									>
-										<Skeleton className="size-4 shrink-0 rounded" />
-										<Skeleton className="h-4 w-32 rounded-md" />
-										<Skeleton className="h-4 flex-1 rounded-md" />
-										<Skeleton className="h-4 w-12 shrink-0 rounded-md" />
-									</div>
-								),
-							)}
-						</div>
+					<div className="flex flex-col gap-3">
+						<Skeleton className="h-3.5 w-20 rounded" />
+						{PANEL_ROWS.map((key) => (
+							<Skeleton key={key} className="h-3.5 w-52 rounded" />
+						))}
 					</div>
 				</div>
-
-				{/* Sidebar skeleton */}
-				<aside className="flex h-fit flex-col gap-6 xl:sticky xl:top-10">
-					{Array.from({ length: 4 }, (_, i) => `sidebar-skel-${i}`).map(
-						(key) => (
-							<div key={key} className="flex flex-col gap-2.5">
-								<Skeleton className="h-4 w-24 rounded-md" />
-								<div className="flex flex-col gap-2">
-									<Skeleton className="h-4 w-full rounded-md" />
-									<Skeleton className="h-4 w-[85%] rounded-md" />
-								</div>
+			}
+		>
+			<div className="flex min-w-0 flex-col">
+				<div className="flex items-center gap-1.5">
+					<Skeleton className="h-7 w-24 rounded-full" />
+					<Skeleton className="h-7 w-24 rounded-full" />
+					<Skeleton className="ml-auto h-7 w-44 rounded-full" />
+					<Skeleton className="h-7 w-20 rounded-full" />
+				</div>
+				<RepoCard className="-mx-3 mt-4">
+					<RepoCardHead>
+						<Skeleton className="size-[18px] rounded-full" />
+						<Skeleton className="h-3.5 w-56 rounded" />
+					</RepoCardHead>
+					<div>
+						{ROWS.map((key) => (
+							<div key={key} className={cardRowClassName}>
+								<Skeleton className="size-3.5 shrink-0 rounded" />
+								<Skeleton className="h-3.5 w-28 shrink-0 rounded sm:w-40" />
+								<Skeleton className="h-3.5 flex-1 rounded" />
+								<Skeleton className="h-3.5 w-8 shrink-0 rounded" />
 							</div>
-						),
-					)}
-				</aside>
+						))}
+					</div>
+				</RepoCard>
 			</div>
-		</div>
+		</DetailLayout>
 	);
 }

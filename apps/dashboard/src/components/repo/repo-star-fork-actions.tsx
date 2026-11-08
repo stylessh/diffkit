@@ -9,6 +9,7 @@ import { forkRepository, setRepoStarred } from "#/lib/github.functions";
 import { type GitHubQueryScope, githubQueryKeys } from "#/lib/github.query";
 import type { RepoOverview } from "#/lib/github.types";
 import { checkPermissionWarning } from "#/lib/warning-store";
+import { pillButtonClassName } from "./repo-ui";
 
 function formatCount(n: number): string {
 	if (n >= 1000) return `${(n / 1000).toFixed(1).replace(/\.0$/, "")}k`;
@@ -97,13 +98,12 @@ export function RepoStarForkActions({
 	};
 
 	return (
-		<div className="flex shrink-0 items-center gap-2">
+		<div className="flex shrink-0 items-center gap-1.5">
 			<button
 				type="button"
 				onClick={() => void handleStar()}
-				className={cn(
-					"inline-flex h-7 items-center gap-1.5 rounded-md bg-button px-2.5 text-xs font-medium text-foreground shadow-button transition-colors hover:bg-button-hover",
-				)}
+				aria-pressed={repo.viewerHasStarred}
+				className={pillButtonClassName}
 			>
 				<StarIcon
 					size={14}
@@ -114,8 +114,10 @@ export function RepoStarForkActions({
 							: "text-muted-foreground",
 					)}
 				/>
-				<span>{repo.viewerHasStarred ? "Starred" : "Star"}</span>
-				<span className={cn("tabular-nums", "text-muted-foreground")}>
+				<span className="max-sm:sr-only">
+					{repo.viewerHasStarred ? "Starred" : "Star"}
+				</span>
+				<span className="tabular-nums text-muted-foreground">
 					{formatCount(repo.stars)}
 				</span>
 			</button>
@@ -123,14 +125,18 @@ export function RepoStarForkActions({
 				type="button"
 				disabled={forkPending}
 				onClick={() => void handleFork()}
-				className="inline-flex h-7 items-center gap-1.5 rounded-md bg-button px-2.5 text-xs font-medium text-foreground shadow-button transition-colors hover:bg-button-hover disabled:opacity-60"
+				className={pillButtonClassName}
 			>
 				{forkPending ? (
 					<Spinner size={12} />
 				) : (
-					<GitForkIcon size={14} strokeWidth={2} />
+					<GitForkIcon
+						size={14}
+						strokeWidth={2}
+						className="text-muted-foreground"
+					/>
 				)}
-				<span>Fork</span>
+				<span className="max-sm:sr-only">Fork</span>
 				<span className="tabular-nums text-muted-foreground">
 					{formatCount(repo.forks)}
 				</span>

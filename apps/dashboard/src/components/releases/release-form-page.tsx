@@ -1,8 +1,9 @@
-import { ChevronLeftIcon, PackageIcon } from "@diffkit/icons";
+import { PackageIcon } from "@diffkit/icons";
 import { Button } from "@diffkit/ui/components/button";
 import { Input } from "@diffkit/ui/components/input";
 import { Label } from "@diffkit/ui/components/label";
 import { MarkdownEditor } from "@diffkit/ui/components/markdown-editor";
+import { PageHeaderTitle } from "@diffkit/ui/components/page-header";
 import { toast } from "@diffkit/ui/components/sonner";
 import { Spinner } from "@diffkit/ui/components/spinner";
 import { Switch } from "@diffkit/ui/components/switch";
@@ -17,6 +18,8 @@ import {
 	useState,
 } from "react";
 import { DashboardContentLoading } from "#/components/layouts/dashboard-content-loading";
+import { RepoCrumb, RepoPageHeader } from "#/components/repo/repo-page-header";
+import { RepoEmptyState } from "#/components/repo/repo-ui";
 import {
 	createRepoRelease,
 	generateRepoReleaseNotes,
@@ -87,26 +90,6 @@ export function ReleaseFormPage({
 		refetchOnWindowFocus: false,
 	});
 
-	const backLink = editTag ? (
-		<Link
-			to="/$owner/$repo/releases/$tag"
-			params={{ owner, repo, tag: editTag }}
-			className="flex w-fit items-center gap-1 text-sm text-muted-foreground transition-colors hover:text-foreground"
-		>
-			<ChevronLeftIcon size={14} />
-			Back to {editTag}
-		</Link>
-	) : (
-		<Link
-			to="/$owner/$repo/releases"
-			params={{ owner, repo }}
-			className="flex w-fit items-center gap-1 text-sm text-muted-foreground transition-colors hover:text-foreground"
-		>
-			<ChevronLeftIcon size={14} />
-			Releases
-		</Link>
-	);
-
 	const repoData = overviewQuery.data;
 	const permission = permissionQuery.data;
 	const loading =
@@ -124,18 +107,19 @@ export function ReleaseFormPage({
 		);
 	} else if (!permission.canPush) {
 		content = (
-			<div className="rounded-lg border-[0.5px] px-5 py-8 text-center">
-				<p className="text-sm font-medium">You can't publish releases here</p>
-				<p className="mt-1 text-sm text-muted-foreground">
-					Creating and editing releases needs write access to {owner}/{repo}.
-				</p>
-			</div>
+			<RepoEmptyState
+				icon={<PackageIcon />}
+				title="You can't publish releases here"
+			>
+				Creating and editing releases needs write access to {owner}/{repo}.
+			</RepoEmptyState>
 		);
 	} else if (editTag && !releaseQuery.data) {
 		content = (
-			<div className="rounded-lg border-[0.5px] px-5 py-8 text-center text-sm text-muted-foreground">
-				Release {editTag} wasn't found.
-			</div>
+			<RepoEmptyState
+				icon={<PackageIcon />}
+				title={`Release ${editTag} wasn't found`}
+			/>
 		);
 	} else {
 		const release = releaseQuery.data ?? null;
@@ -152,19 +136,46 @@ export function ReleaseFormPage({
 		);
 	}
 
+	const title = editTag ? `Edit release ${editTag}` : "New release";
+
 	return (
-		<div className="h-full overflow-auto py-10">
-			<div className="mx-auto flex min-h-full max-w-3xl flex-col gap-6 px-3 md:px-6">
-				{backLink}
-				<div className="flex items-center gap-3">
-					<PackageIcon size={20} className="shrink-0 text-muted-foreground" />
-					<h1 className="text-xl font-semibold tracking-tight">
-						{editTag ? `Edit release ${editTag}` : "New release"}
-					</h1>
-				</div>
+		<RepoPageHeader
+			owner={owner}
+			repo={repo}
+			scope={scope}
+			active="releases"
+			trail={
+				<>
+					<RepoCrumb asChild>
+						<Link to="/$owner/$repo/releases" params={{ owner, repo }}>
+							Releases
+						</Link>
+					</RepoCrumb>
+					{editTag ? (
+						<RepoCrumb asChild>
+							<Link
+								to="/$owner/$repo/releases/$tag"
+								params={{ owner, repo, tag: editTag }}
+								className="font-mono"
+							>
+								{editTag}
+							</Link>
+						</RepoCrumb>
+					) : null}
+					<PageHeaderTitle asChild>
+						<span>{editTag ? "Edit" : "New release"}</span>
+					</PageHeaderTitle>
+				</>
+			}
+			bodyClassName="px-0"
+		>
+			<div className="mx-auto flex w-full max-w-[780px] flex-col gap-6 px-4 pt-6 md:px-[46px]">
+				<h1 className="text-[22px] leading-8 font-semibold text-foreground">
+					{title}
+				</h1>
 				{content}
 			</div>
-		</div>
+		</RepoPageHeader>
 	);
 }
 
@@ -504,7 +515,7 @@ function ReleaseForm({
 				</FieldHint>
 			</section>
 
-			<section className="flex flex-col gap-4 rounded-lg border-[0.5px] p-4">
+			<section className="flex flex-col gap-4 rounded-lg bg-surface-0 p-4 shadow-card">
 				<div className="flex items-start gap-3">
 					<Switch
 						id="release-prerelease"
@@ -542,13 +553,13 @@ function ReleaseForm({
 			{submitError ? (
 				<div
 					role="alert"
-					className="rounded-lg border-[0.5px] border-destructive/50 bg-destructive/10 px-4 py-3 text-sm text-destructive"
+					className="rounded-lg bg-pill-blocked px-4 py-3 text-[13px] text-pill-blocked-text"
 				>
 					{submitError}
 				</div>
 			) : null}
 
-			<div className="flex flex-wrap items-center gap-2 border-t-[0.5px] pt-6">
+			<div className="flex flex-wrap items-center gap-2 border-t-[0.5px] border-header-rule pt-6">
 				{release ? (
 					<ReleaseDeleteButton
 						owner={owner}

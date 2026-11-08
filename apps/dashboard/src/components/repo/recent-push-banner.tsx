@@ -10,17 +10,20 @@ import {
 	type GitHubQueryScope,
 	githubRecentPushableBranchQueryOptions,
 } from "#/lib/github.query";
+import { pillButtonClassName } from "./repo-ui";
 
 export function RecentPushBanner({
 	owner,
 	repo,
 	scope,
 	defaultBranch,
+	className,
 }: {
 	owner: string;
 	repo: string;
 	scope: GitHubQueryScope;
 	defaultBranch: string;
+	className?: string;
 }) {
 	const recentQuery = useQuery(
 		githubRecentPushableBranchQueryOptions(scope, { owner, repo }),
@@ -32,21 +35,20 @@ export function RecentPushBanner({
 	const createPrUrl = `/${owner}/${repo}/compare/${defaultBranch}...${recent.branch}?expand=1`;
 
 	return (
-		<Callout variant="warning">
+		<Callout variant="warning" className={className}>
 			<CalloutContent>
-				<GitBranchIcon size={15} strokeWidth={2} />
-				<span className="font-medium">{recent.branch}</span>
-				<span className="text-pill-warning-text">
+				<GitBranchIcon size={14} strokeWidth={2} />
+				<span className="min-w-0 truncate font-mono text-xs font-medium">
+					{recent.branch}
+				</span>
+				<span className="shrink-0 text-pill-warning-text max-sm:hidden">
 					had recent pushes {formatRelativeTime(recent.pushedAt)}
 				</span>
 			</CalloutContent>
 			<CalloutAction>
-				<a
-					href={createPrUrl}
-					className="inline-flex h-7 items-center gap-1.5 rounded-md bg-button px-2.5 text-xs font-medium text-foreground shadow-button transition-colors hover:bg-button-hover"
-				>
-					<GitPullRequestIcon size={13} strokeWidth={2} />
-					Compare & pull request
+				<a href={createPrUrl} className={pillButtonClassName}>
+					<GitPullRequestIcon size={14} strokeWidth={2} />
+					Compare &amp; pull request
 				</a>
 			</CalloutAction>
 		</Callout>

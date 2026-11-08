@@ -1,10 +1,12 @@
-import { ChevronLeftIcon } from "@diffkit/icons";
+import { PackageIcon } from "@diffkit/icons";
+import { PageHeaderTitle } from "@diffkit/ui/components/page-header";
 import { useQuery } from "@tanstack/react-query";
 import { Link, useNavigate } from "@tanstack/react-router";
 import { DashboardContentLoading } from "#/components/layouts/dashboard-content-loading";
 import { SidePanelPortal } from "#/components/layouts/dashboard-side-panel";
 import { RepoActivityCards } from "#/components/repo/repo-activity-cards";
-import { RepoNav } from "#/components/repo/repo-nav";
+import { RepoCrumb, RepoPageHeader } from "#/components/repo/repo-page-header";
+import { pillButtonClassName, RepoEmptyState } from "#/components/repo/repo-ui";
 import {
 	type GitHubQueryScope,
 	githubRepoOverviewQueryOptions,
@@ -60,52 +62,60 @@ export function RepoReleaseDetailPage({
 
 	return (
 		<>
-			<div className="h-full overflow-auto py-10">
-				<div className="mx-auto flex min-h-full max-w-4xl flex-col gap-6 px-3 md:px-6">
-					<RepoNav
-						owner={owner}
-						repo={repo}
-						active="releases"
-						repoData={repoData}
-					/>
-					<Link
-						to="/$owner/$repo/releases"
-						params={{ owner, repo }}
-						className="flex w-fit items-center gap-1 text-sm text-muted-foreground transition-colors hover:text-foreground"
-					>
-						<ChevronLeftIcon size={14} />
-						All releases
-					</Link>
-
+			<RepoPageHeader
+				owner={owner}
+				repo={repo}
+				scope={scope}
+				active="releases"
+				trail={
+					<>
+						<RepoCrumb asChild>
+							<Link to="/$owner/$repo/releases" params={{ owner, repo }}>
+								Releases
+							</Link>
+						</RepoCrumb>
+						<PageHeaderTitle asChild>
+							<span className="font-mono">{tag}</span>
+						</PageHeaderTitle>
+					</>
+				}
+				bodyClassName="px-0"
+			>
+				<div className="mx-auto flex w-full max-w-[780px] flex-col px-4 pt-6 md:px-[46px]">
 					{!hasMounted || releaseQuery.isPending ? (
 						<div className="flex flex-1 items-center justify-center py-24">
 							<DashboardContentLoading />
 						</div>
 					) : releaseQuery.isError ? (
-						<p className="py-12 text-center text-sm text-muted-foreground">
-							Couldn't load this release.{" "}
-							<button
-								type="button"
-								onClick={() => void releaseQuery.refetch()}
-								className="underline underline-offset-2 hover:text-foreground"
-							>
-								Try again
-							</button>
-						</p>
+						<RepoEmptyState
+							icon={<PackageIcon />}
+							title="Couldn't load this release"
+							action={
+								<button
+									type="button"
+									onClick={() => void releaseQuery.refetch()}
+									className={pillButtonClassName}
+								>
+									Try again
+								</button>
+							}
+						/>
 					) : !release ? (
-						<div className="rounded-xl border-[0.5px] border-dashed px-5 py-12 text-center">
-							<p className="text-sm font-medium">No release for {tag}</p>
-							<p className="mt-1 text-sm text-muted-foreground">
-								It may have been deleted, or the tag has no release yet.{" "}
+						<RepoEmptyState
+							icon={<PackageIcon />}
+							title={`No release for ${tag}`}
+							action={
 								<Link
 									to="/$owner/$repo/tree/$"
 									params={{ owner, repo, _splat: tag }}
-									className="underline underline-offset-2 hover:text-foreground"
+									className={pillButtonClassName}
 								>
 									Browse the tag
 								</Link>
-							</p>
-						</div>
+							}
+						>
+							It may have been deleted, or the tag has no release yet.
+						</RepoEmptyState>
 					) : (
 						<ReleaseCard
 							owner={owner}
@@ -123,7 +133,7 @@ export function RepoReleaseDetailPage({
 						/>
 					)}
 				</div>
-			</div>
+			</RepoPageHeader>
 			{repoData ? (
 				<SidePanelPortal>
 					<RepoActivityCards

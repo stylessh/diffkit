@@ -16,6 +16,7 @@ import type {
 } from "#/lib/github.types";
 import { LatestCommitBar } from "./latest-commit-bar";
 import { RepoMarkdownFiles } from "./repo-markdown-files";
+import { cardRowClassName, RepoCard } from "./repo-ui";
 
 export function FolderView({
 	entries,
@@ -48,7 +49,7 @@ export function FolderView({
 
 	return (
 		<div className="flex flex-col gap-6">
-			<div>
+			<RepoCard>
 				<LatestCommitBar
 					owner={owner}
 					repoName={repoName}
@@ -58,8 +59,8 @@ export function FolderView({
 					defaultBranchTip={repo.latestCommit}
 					path={currentPath}
 				/>
-				<div className="overflow-hidden rounded-b-lg border-[0.5px]">
-					{entries.map((entry, index) => (
+				<div>
+					{entries.map((entry) => (
 						<FolderViewRow
 							key={entry.sha}
 							entry={entry}
@@ -69,11 +70,10 @@ export function FolderView({
 							currentPath={currentPath}
 							commit={commitsQuery.data?.[entry.name] ?? null}
 							isCommitLoading={commitsQuery.isLoading}
-							isLast={index === entries.length - 1}
 						/>
 					))}
 				</div>
-			</div>
+			</RepoCard>
 
 			<RepoMarkdownFiles
 				entries={entries}
@@ -94,7 +94,6 @@ function FolderViewRow({
 	currentPath,
 	commit,
 	isCommitLoading,
-	isLast,
 }: {
 	entry: RepoTreeEntry;
 	owner: string;
@@ -103,19 +102,13 @@ function FolderViewRow({
 	currentPath: string;
 	commit: FileLastCommit | null;
 	isCommitLoading: boolean;
-	isLast: boolean;
 }) {
 	const Icon = entry.type === "dir" ? FolderIcon : FileIcon;
 	const isDir = entry.type === "dir";
 	const entryPath = currentPath ? `${currentPath}/${entry.name}` : entry.name;
 
 	return (
-		<div
-			className={cn(
-				"grid grid-cols-[minmax(0,1fr)_minmax(0,2fr)_80px] items-center gap-4 px-4 py-2 text-sm hover:bg-surface-1",
-				!isLast && "border-b-[0.5px]",
-			)}
-		>
+		<div className={cardRowClassName}>
 			<Link
 				to={isDir ? "/$owner/$repo/tree/$" : "/$owner/$repo/blob/$"}
 				params={{
@@ -123,43 +116,45 @@ function FolderViewRow({
 					repo: repoName,
 					_splat: `${currentRef}/${entryPath}`,
 				}}
-				className="flex min-w-0 items-center gap-2.5"
+				className="flex w-36 min-w-0 shrink-0 items-center gap-[9px] rounded-sm sm:w-56"
 			>
 				<Icon
-					size={15}
+					size={16}
 					strokeWidth={1.8}
 					className={cn(
 						"shrink-0",
-						isDir ? "text-accent-foreground" : "text-muted-foreground",
+						isDir ? "text-text-header" : "text-muted-foreground",
 					)}
 				/>
 				<span
 					className={cn(
-						"truncate",
-						isDir ? "font-medium text-accent-foreground" : "text-foreground",
+						"truncate text-[13px]",
+						isDir
+							? "font-medium text-foreground"
+							: "font-[450] text-text-header",
 					)}
 				>
 					{entry.name}
 				</span>
 			</Link>
-			<div className="min-w-0">
+			<div className="min-w-0 flex-1">
 				{commit ? (
 					<Link
 						to="/$owner/$repo/commit/$sha"
 						params={{ owner, repo: repoName, sha: commit.sha }}
-						className="block truncate text-muted-foreground transition-colors hover:text-foreground hover:underline"
+						className="block truncate rounded-sm text-[13px] font-[450] text-muted-foreground transition-colors hover:text-foreground"
 					>
 						{commit.message.split("\n")[0]}
 					</Link>
 				) : isCommitLoading ? (
-					<Skeleton className="h-3.5 w-48 rounded" />
+					<Skeleton className="h-3.5 w-48 max-w-full rounded" />
 				) : null}
 			</div>
-			<span className="text-right text-xs text-muted-foreground">
+			<span className="w-10 shrink-0 text-right text-xs font-[450] tabular-nums text-muted-foreground">
 				{commit?.date ? (
-					formatRelativeTime(commit.date)
+					formatRelativeTime(commit.date, undefined, { compact: true })
 				) : isCommitLoading ? (
-					<Skeleton className="ml-auto h-3.5 w-12 rounded" />
+					<Skeleton className="ml-auto h-3.5 w-8 rounded" />
 				) : null}
 			</span>
 		</div>
@@ -169,18 +164,15 @@ function FolderViewRow({
 export function FolderViewSkeleton() {
 	const rows = Array.from({ length: 8 }, (_, i) => i);
 	return (
-		<div className="overflow-hidden rounded-lg border-[0.5px]">
+		<RepoCard>
 			{rows.map((key) => (
-				<div
-					key={key}
-					className="flex items-center gap-4 border-b-[0.5px] px-4 py-2.5 last:border-b-0"
-				>
-					<div className="size-4 shrink-0 animate-pulse rounded bg-surface-1" />
-					<div className="h-4 w-32 animate-pulse rounded-md bg-surface-1" />
-					<div className="h-4 flex-1 animate-pulse rounded-md bg-surface-1" />
-					<div className="h-4 w-12 shrink-0 animate-pulse rounded-md bg-surface-1" />
+				<div key={key} className={cardRowClassName}>
+					<Skeleton className="size-4 shrink-0 rounded" />
+					<Skeleton className="h-3.5 w-32 rounded" />
+					<Skeleton className="h-3.5 flex-1 rounded" />
+					<Skeleton className="h-3.5 w-8 shrink-0 rounded" />
 				</div>
 			))}
-		</div>
+		</RepoCard>
 	);
 }

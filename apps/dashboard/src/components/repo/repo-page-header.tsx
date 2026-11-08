@@ -1,57 +1,75 @@
 import { CloseIcon, SearchIcon } from "@diffkit/icons";
 import { cn } from "@diffkit/ui/lib/utils";
-import { Link } from "@tanstack/react-router";
-import type { ReactNode } from "react";
-import { RepoNav, type RepoNavKey } from "#/components/repo/repo-nav";
-import type { RepoOverview } from "#/lib/github.types";
+import type { ReactNode, RefObject } from "react";
+import { RepoHeader } from "#/components/repo/repo-header";
+import type { RepoNavKey } from "#/components/repo/repo-nav";
+import type { GitHubQueryScope } from "#/lib/github.query";
 
 /**
- * Title block for repo subpages (commits, branches, tags, releases): the repo
- * section nav, then the page heading with an optional action slot.
+ * A repository sub-page (commits, branches, tags, releases), after Linear's
+ * list views: the repo's breadcrumb header and section tabs, an optional 44px
+ * toolbar row (search, filters, the page's own actions), then the page body,
+ * full width, scrolling under all three.
  */
 export function RepoPageHeader({
 	owner,
 	repo,
-	repoData,
+	scope,
 	active,
-	title,
-	subtitle,
-	actions,
+	trail,
+	tabActions,
+	toolbar,
+	scrollRef,
+	bodyClassName,
+	children,
 }: {
 	owner: string;
 	repo: string;
-	repoData?: RepoOverview | null;
-	active: RepoNavKey;
-	title: ReactNode;
-	subtitle?: ReactNode;
-	actions?: ReactNode;
+	scope: GitHubQueryScope;
+	active?: RepoNavKey;
+	trail?: ReactNode;
+	tabActions?: ReactNode;
+	toolbar?: ReactNode;
+	scrollRef?: RefObject<HTMLDivElement | null>;
+	bodyClassName?: string;
+	children: ReactNode;
 }) {
 	return (
-		<div className="flex flex-col gap-5">
-			<RepoNav owner={owner} repo={repo} active={active} repoData={repoData} />
-			<div className="flex flex-wrap items-end justify-between gap-3">
-				<div className="flex min-w-0 flex-col gap-2">
-					<h1 className="text-base font-semibold tracking-tight">{title}</h1>
-					<p className="text-[13px] text-muted-foreground">
-						<Link
-							to="/$owner/$repo"
-							params={{ owner, repo }}
-							className="text-muted-foreground underline-offset-2 hover:underline"
-						>
-							{owner}/{repo}
-						</Link>
-						{subtitle ? <span> · {subtitle}</span> : null}
-					</p>
+		<div className="flex h-full min-h-0 flex-col">
+			<RepoHeader
+				owner={owner}
+				repo={repo}
+				scope={scope}
+				active={active}
+				trail={trail}
+				tabActions={tabActions}
+			/>
+			{toolbar ? (
+				<div className="flex min-h-11 shrink-0 flex-wrap items-center gap-1.5 px-2 py-1.5">
+					{toolbar}
 				</div>
-				{actions ? (
-					<div className="flex shrink-0 items-center gap-2">{actions}</div>
-				) : null}
+			) : null}
+			<div
+				ref={scrollRef}
+				className={cn(
+					"min-h-0 flex-1 overflow-y-auto px-2 pb-10",
+					!toolbar && "pt-2",
+					bodyClassName,
+				)}
+			>
+				{children}
 			</div>
 		</div>
 	);
 }
 
-/** Search box styled like the list `FilterBar` input. */
+/** A crumb after the repository in the header: a link back up, then its ›. */
+export { PageHeaderCrumb as RepoCrumb } from "@diffkit/ui/components/page-header";
+
+/**
+ * The toolbar's search: a compact 28px field on a hairline, 12px text, as
+ * the reference's "Go to file" filter.
+ */
 export function RepoListSearchInput({
 	value,
 	onChange,
@@ -64,31 +82,31 @@ export function RepoListSearchInput({
 	className?: string;
 }) {
 	return (
-		<div
+		<label
 			className={cn(
-				"flex min-w-0 items-center gap-2 rounded-lg border-[0.5px] border-border/50 bg-surface-1 px-3 py-1.5 transition-colors focus-within:border-border",
+				"flex h-7 min-w-0 items-center gap-2 rounded-lg px-2 text-xs text-muted-foreground shadow-field transition-shadow focus-within:shadow-[0_0_0_1px_var(--color-focus)]",
 				className,
 			)}
 		>
-			<SearchIcon size={14} className="shrink-0 text-muted-foreground" />
+			<SearchIcon size={13} className="shrink-0" />
 			<input
 				type="text"
 				aria-label={placeholder}
 				value={value}
 				onChange={(e) => onChange(e.target.value)}
 				placeholder={placeholder}
-				className="min-w-0 flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground/60"
+				className="min-w-0 flex-1 bg-transparent text-xs font-[450] text-foreground outline-none placeholder:text-muted-foreground"
 			/>
 			{value ? (
 				<button
 					type="button"
 					onClick={() => onChange("")}
 					aria-label="Clear search"
-					className="shrink-0 text-muted-foreground transition-colors hover:text-foreground"
+					className="-mr-1 flex size-5 shrink-0 items-center justify-center rounded-full transition-colors hover:bg-ghost-hover hover:text-foreground"
 				>
-					<CloseIcon size={13} />
+					<CloseIcon size={12} />
 				</button>
 			) : null}
-		</div>
+		</label>
 	);
 }

@@ -1,3 +1,5 @@
+import { DetailLayout } from "@diffkit/ui/components/detail-layout";
+import { Skeleton } from "@diffkit/ui/components/skeleton";
 import { useQuery } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
 import { useCallback } from "react";
@@ -19,6 +21,7 @@ import { RepoHeader } from "./repo-header";
 import { RepoMarkdownFiles } from "./repo-markdown-files";
 import { RepoOverviewSkeleton } from "./repo-overview-skeleton";
 import { RepoSidebar } from "./repo-sidebar";
+import { cardRowClassName, RepoCard } from "./repo-ui";
 
 export function RepoOverviewPage({
 	owner,
@@ -85,103 +88,110 @@ export function RepoOverviewPage({
 	});
 
 	if (overviewQuery.error) throw overviewQuery.error;
-	if (!repoData) return <RepoOverviewSkeleton />;
 
 	return (
 		<>
-			<div className="h-full overflow-auto">
-				<div className="mx-auto grid max-w-7xl gap-10 px-3 py-10 md:px-6 xl:grid-cols-[minmax(0,1fr)_minmax(16rem,20rem)]">
-					<div className="flex min-w-0 flex-col gap-6">
-						<RepoHeader repo={repoData} scope={scope} />
-
-						<CodeExplorerToolbar
-							repo={repoData}
-							currentRef={activeRef}
-							scope={scope}
-							onBranchChange={handleBranchChange}
-						/>
-
-						{!isDefaultBranch && (
-							<BranchComparisonBanner
-								owner={owner}
-								repo={repo}
-								scope={scope}
-								currentBranch={activeRef}
-								defaultBranch={repoData.defaultBranch}
-							/>
-						)}
-
-						{isDefaultBranch && (
-							<RecentPushBanner
-								owner={owner}
-								repo={repo}
-								scope={scope}
-								defaultBranch={repoData.defaultBranch}
-							/>
-						)}
-
-						<div>
-							<LatestCommitBar
-								owner={owner}
-								repoName={repo}
-								ref={activeRef}
-								scope={scope}
-								defaultBranch={repoData.defaultBranch}
-								defaultBranchTip={repoData.latestCommit}
-							/>
-							{treeQuery.data ? (
-								<FileTree
-									entries={treeQuery.data}
-									owner={owner}
-									repo={repo}
-									currentRef={activeRef}
-									scope={scope}
-								/>
-							) : (
-								<FileTreeSkeleton />
-							)}
-						</div>
-
-						{treeQuery.data && (
-							<RepoMarkdownFiles
-								entries={treeQuery.data}
-								owner={owner}
-								repo={repo}
+			<div className="flex h-full min-h-0 flex-col">
+				<RepoHeader owner={owner} repo={repo} scope={scope} active="code" />
+				{repoData ? (
+					<DetailLayout
+						panel={<RepoSidebar repo={repoData} scope={scope} />}
+						panelLabel="About this repository"
+					>
+						<div className="flex min-w-0 flex-col">
+							<CodeExplorerToolbar
+								repo={repoData}
 								currentRef={activeRef}
 								scope={scope}
+								onBranchChange={handleBranchChange}
 							/>
-						)}
-					</div>
 
-					<RepoSidebar repo={repoData} scope={scope} />
-				</div>
+							{!isDefaultBranch && (
+								<div className="mt-4">
+									<BranchComparisonBanner
+										owner={owner}
+										repo={repo}
+										scope={scope}
+										currentBranch={activeRef}
+										defaultBranch={repoData.defaultBranch}
+									/>
+								</div>
+							)}
+
+							{isDefaultBranch && (
+								<RecentPushBanner
+									owner={owner}
+									repo={repo}
+									scope={scope}
+									defaultBranch={repoData.defaultBranch}
+									className="mt-4"
+								/>
+							)}
+
+							<RepoCard className="-mx-3 mt-4">
+								<LatestCommitBar
+									owner={owner}
+									repoName={repo}
+									ref={activeRef}
+									scope={scope}
+									defaultBranch={repoData.defaultBranch}
+									defaultBranchTip={repoData.latestCommit}
+								/>
+								{treeQuery.data ? (
+									<FileTree
+										entries={treeQuery.data}
+										owner={owner}
+										repo={repo}
+										currentRef={activeRef}
+										scope={scope}
+									/>
+								) : (
+									<FileTreeSkeleton />
+								)}
+							</RepoCard>
+
+							{treeQuery.data && (
+								<div className="mt-6">
+									<RepoMarkdownFiles
+										entries={treeQuery.data}
+										owner={owner}
+										repo={repo}
+										currentRef={activeRef}
+										scope={scope}
+									/>
+								</div>
+							)}
+						</div>
+					</DetailLayout>
+				) : (
+					<RepoOverviewSkeleton />
+				)}
 			</div>
-			<SidePanelPortal>
-				<RepoActivityCards
-					owner={owner}
-					repo={repo}
-					scope={scope}
-					repoData={repoData}
-				/>
-			</SidePanelPortal>
+			{repoData ? (
+				<SidePanelPortal>
+					<RepoActivityCards
+						owner={owner}
+						repo={repo}
+						scope={scope}
+						repoData={repoData}
+					/>
+				</SidePanelPortal>
+			) : null}
 		</>
 	);
 }
 
 const skeletonRows = ["s0", "s1", "s2", "s3", "s4", "s5", "s6", "s7"];
 
-function FileTreeSkeleton() {
+export function FileTreeSkeleton() {
 	return (
-		<div className="overflow-hidden rounded-b-lg border-[0.5px]">
+		<div>
 			{skeletonRows.map((key) => (
-				<div
-					key={key}
-					className="flex items-center gap-4 border-b-[0.5px] px-4 py-2.5 last:border-b-0"
-				>
-					<div className="size-4 shrink-0 animate-pulse rounded bg-surface-1" />
-					<div className="h-4 w-32 animate-pulse rounded-md bg-surface-1" />
-					<div className="h-4 flex-1 animate-pulse rounded-md bg-surface-1" />
-					<div className="h-4 w-12 shrink-0 animate-pulse rounded-md bg-surface-1" />
+				<div key={key} className={cardRowClassName}>
+					<Skeleton className="size-3.5 shrink-0 rounded" />
+					<Skeleton className="h-3.5 w-28 shrink-0 rounded sm:w-40" />
+					<Skeleton className="h-3.5 flex-1 rounded" />
+					<Skeleton className="h-3.5 w-8 shrink-0 rounded" />
 				</div>
 			))}
 		</div>

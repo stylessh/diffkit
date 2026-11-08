@@ -1,9 +1,9 @@
 import {
+	CheckIcon,
 	CodeIcon,
 	CopyIcon,
 	DownloadIcon,
 	FileIcon,
-	GitCommitIcon,
 	ViewIcon,
 } from "@diffkit/icons";
 import { highlightCode } from "@diffkit/ui/components/markdown";
@@ -26,6 +26,12 @@ import {
 } from "#/lib/github.query";
 import type { FileLastCommit } from "#/lib/github.types";
 import { CommitHistoryLink } from "./commits/commit-history-link";
+import {
+	iconButtonClassName,
+	RepoAvatar,
+	RepoCard,
+	RepoCardHead,
+} from "./repo-ui";
 
 const IMAGE_EXTENSIONS = new Set([
 	"png",
@@ -217,7 +223,7 @@ export function CodeFileView({
 	if (isImage && !isSvg) {
 		const rawUrl = `https://raw.githubusercontent.com/${owner}/${repo}/${currentRef}/${path}`;
 		return (
-			<div className="flex flex-col gap-4">
+			<RepoCard>
 				<FileCommitBar
 					owner={owner}
 					repo={repo}
@@ -225,24 +231,22 @@ export function CodeFileView({
 					currentRef={currentRef}
 					path={path}
 				/>
-				<div className="overflow-hidden rounded-lg border-[0.5px]">
-					<FileViewHeader
-						fileName={fileName}
-						size={fileEntry?.size ?? null}
-						owner={owner}
-						repo={repo}
-						currentRef={currentRef}
-						path={path}
+				<FileViewHeader
+					fileName={fileName}
+					size={fileEntry?.size ?? null}
+					owner={owner}
+					repo={repo}
+					currentRef={currentRef}
+					path={path}
+				/>
+				<div className="flex items-center justify-center p-8">
+					<img
+						src={rawUrl}
+						alt={fileName}
+						className="max-h-[70vh] max-w-full object-contain"
 					/>
-					<div className="flex items-center justify-center bg-surface-0 p-8">
-						<img
-							src={rawUrl}
-							alt={fileName}
-							className="max-h-[70vh] max-w-full object-contain"
-						/>
-					</div>
 				</div>
-			</div>
+			</RepoCard>
 		);
 	}
 
@@ -252,12 +256,12 @@ export function CodeFileView({
 
 	if (contentQuery.error || contentQuery.data == null) {
 		return (
-			<div className="rounded-lg border-[0.5px]">
+			<RepoCard>
 				<FileViewHeader fileName={fileName} />
-				<div className="p-6 text-sm text-muted-foreground">
+				<p className="px-4 py-6 text-[13px] text-muted-foreground">
 					Unable to load file content.
-				</div>
-			</div>
+				</p>
+			</RepoCard>
 		);
 	}
 
@@ -284,7 +288,7 @@ export function CodeFileView({
 	}
 
 	return (
-		<div className="flex flex-col gap-4">
+		<RepoCard>
 			<FileCommitBar
 				owner={owner}
 				repo={repo}
@@ -292,24 +296,22 @@ export function CodeFileView({
 				currentRef={currentRef}
 				path={path}
 			/>
-			<div className="overflow-hidden rounded-lg border-[0.5px]">
-				<FileViewHeader
-					fileName={fileName}
-					lineCount={lineCount}
-					size={fileEntry?.size ?? null}
-					code={code}
-					owner={owner}
-					repo={repo}
-					currentRef={currentRef}
-					path={path}
-				/>
-				<div className="overflow-x-auto">
-					<Suspense fallback={<PlainCode code={code} />}>
-						<HighlightedCode code={code} lang={lang} />
-					</Suspense>
-				</div>
+			<FileViewHeader
+				fileName={fileName}
+				lineCount={lineCount}
+				size={fileEntry?.size ?? null}
+				code={code}
+				owner={owner}
+				repo={repo}
+				currentRef={currentRef}
+				path={path}
+			/>
+			<div className="overflow-x-auto">
+				<Suspense fallback={<PlainCode code={code} />}>
+					<HighlightedCode code={code} lang={lang} />
+				</Suspense>
 			</div>
-		</div>
+		</RepoCard>
 	);
 }
 
@@ -340,7 +342,7 @@ function SvgFileView({
 	const rawUrl = `https://raw.githubusercontent.com/${owner}/${repo}/${currentRef}/${path}`;
 
 	return (
-		<div className="flex flex-col gap-4">
+		<RepoCard>
 			<FileCommitBar
 				owner={owner}
 				repo={repo}
@@ -348,63 +350,56 @@ function SvgFileView({
 				currentRef={currentRef}
 				path={path}
 			/>
-			<div className="overflow-hidden rounded-lg border-[0.5px]">
-				<FileViewHeader
-					fileName={fileName}
-					lineCount={mode === "code" ? lineCount : undefined}
-					size={size}
-					code={code}
-					owner={owner}
-					repo={repo}
-					currentRef={currentRef}
-					path={path}
-				>
-					<div className="flex items-center rounded-md border-[0.5px] border-border/60">
+			<FileViewHeader
+				fileName={fileName}
+				lineCount={mode === "code" ? lineCount : undefined}
+				size={size}
+				code={code}
+				owner={owner}
+				repo={repo}
+				currentRef={currentRef}
+				path={path}
+			>
+				<div className="flex gap-0.5">
+					{(["preview", "code"] as const).map((value) => (
 						<button
+							key={value}
 							type="button"
-							onClick={() => setMode("preview")}
+							aria-pressed={mode === value}
+							onClick={() => setMode(value)}
 							className={cn(
-								"flex items-center gap-1.5 rounded-l-md px-2 py-1 text-xs transition-colors",
-								mode === "preview"
-									? "bg-surface-1 text-foreground"
-									: "text-muted-foreground hover:text-foreground",
+								"flex h-6 items-center gap-1.5 rounded-md px-2 font-medium transition-colors",
+								mode === value
+									? "bg-pill-neutral text-foreground"
+									: "hover:text-text-header",
 							)}
 						>
-							<ViewIcon size={13} />
-							Preview
-						</button>
-						<button
-							type="button"
-							onClick={() => setMode("code")}
-							className={cn(
-								"flex items-center gap-1.5 rounded-r-md border-l-[0.5px] border-border/60 px-2 py-1 text-xs transition-colors",
-								mode === "code"
-									? "bg-surface-1 text-foreground"
-									: "text-muted-foreground hover:text-foreground",
+							{value === "preview" ? (
+								<ViewIcon size={13} />
+							) : (
+								<CodeIcon size={13} />
 							)}
-						>
-							<CodeIcon size={13} />
-							Code
+							{value === "preview" ? "Preview" : "Code"}
 						</button>
-					</div>
-				</FileViewHeader>
-				{mode === "preview" ? (
-					<div className="flex items-center justify-center bg-surface-0 p-8">
-						<img
-							src={rawUrl}
-							alt={fileName}
-							className="max-h-[70vh] max-w-full object-contain"
-						/>
-					</div>
-				) : (
-					<div className="overflow-x-auto">
-						<Suspense fallback={<PlainCode code={code} />}>
-							<HighlightedCode code={code} lang={lang} />
-						</Suspense>
-					</div>
-				)}
-			</div>
-		</div>
+					))}
+				</div>
+			</FileViewHeader>
+			{mode === "preview" ? (
+				<div className="flex items-center justify-center p-8">
+					<img
+						src={rawUrl}
+						alt={fileName}
+						className="max-h-[70vh] max-w-full object-contain"
+					/>
+				</div>
+			) : (
+				<div className="overflow-x-auto">
+					<Suspense fallback={<PlainCode code={code} />}>
+						<HighlightedCode code={code} lang={lang} />
+					</Suspense>
+				</div>
+			)}
+		</RepoCard>
 	);
 }
 
@@ -441,30 +436,32 @@ function FileViewHeader({
 	}, [code]);
 
 	return (
-		<div className="flex items-center gap-2 border-b-[0.5px] bg-surface-0 px-4 py-2.5 text-sm">
-			<FileIcon size={14} className="shrink-0 text-muted-foreground" />
-			<span className="font-medium text-foreground">{fileName}</span>
-			<div className="flex items-center gap-2 text-xs text-muted-foreground">
-				{lineCount != null && (
-					<span>
-						{lineCount} {lineCount === 1 ? "line" : "lines"}
-					</span>
-				)}
-				{lineCount != null && size != null && (
-					<span aria-hidden="true">&middot;</span>
-				)}
-				{size != null && <span>{formatFileSize(size)}</span>}
-			</div>
-			<div className="ml-auto flex items-center gap-2">
-				{children}
+		<div className="flex h-10 min-w-0 items-center gap-3 border-b-[0.5px] border-card-border pr-2 pl-4 text-xs font-[450] text-muted-foreground">
+			{children}
+			{lineCount == null && size == null ? (
+				<span className="flex min-w-0 items-center gap-1.5 text-text-header">
+					<FileIcon size={14} className="shrink-0 text-muted-foreground" />
+					<span className="truncate">{fileName}</span>
+				</span>
+			) : (
+				<span className="tabular-nums">
+					{lineCount != null
+						? `${lineCount} ${lineCount === 1 ? "line" : "lines"}`
+						: null}
+					{lineCount != null && size != null ? " · " : null}
+					{size != null ? formatFileSize(size) : null}
+				</span>
+			)}
+			<div className="ml-auto flex items-center gap-0.5">
 				{code && (
 					<button
 						type="button"
 						onClick={handleCopy}
-						className="flex size-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-surface-1 hover:text-foreground"
+						className={iconButtonClassName}
+						aria-label={copied ? "Copied" : "Copy file content"}
 						title={copied ? "Copied!" : "Copy file content"}
 					>
-						<CopyIcon size={14} />
+						{copied ? <CheckIcon size={14} /> : <CopyIcon size={14} />}
 					</button>
 				)}
 				{owner && repo && currentRef && path && (
@@ -472,7 +469,8 @@ function FileViewHeader({
 						href={`https://raw.githubusercontent.com/${owner}/${repo}/${currentRef}/${path}`}
 						target="_blank"
 						rel="noopener noreferrer"
-						className="flex size-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-surface-1 hover:text-foreground"
+						className={iconButtonClassName}
+						aria-label="View raw"
 						title="View raw"
 					>
 						<DownloadIcon size={14} />
@@ -498,10 +496,10 @@ function FileCommitBar({
 }) {
 	if (!commit) {
 		return (
-			<div className="flex items-center gap-3 rounded-lg bg-surface-1 px-4 py-2.5 text-sm">
-				<Skeleton className="size-5 rounded-full" />
-				<Skeleton className="h-4 w-48 rounded" />
-			</div>
+			<RepoCardHead>
+				<Skeleton className="size-[18px] rounded-full" />
+				<Skeleton className="h-3.5 w-48 rounded" />
+			</RepoCardHead>
 		);
 	}
 
@@ -509,50 +507,49 @@ function FileCommitBar({
 	const firstLine = commit.message.split("\n")[0];
 
 	return (
-		<div className="flex items-center gap-3 rounded-lg bg-surface-1 px-4 py-2.5 text-sm">
+		<RepoCardHead>
 			{commit.author && (
-				<img
-					src={commit.author.avatarUrl}
-					alt={commit.author.login}
-					className="size-5 shrink-0 rounded-full"
-				/>
+				<RepoAvatar src={commit.author.avatarUrl} alt={commit.author.login} />
 			)}
-			<span className="font-medium">{commit.author?.login ?? "Unknown"}</span>
-			<Link
-				to="/$owner/$repo/commit/$sha"
-				params={{ owner, repo, sha: commit.sha }}
-				className="min-w-0 flex-1 truncate text-left text-muted-foreground transition-colors hover:text-foreground hover:underline"
-			>
-				{firstLine}
-			</Link>
-			<div className="flex shrink-0 items-center gap-3 text-xs text-muted-foreground">
+			<p className="min-w-0 flex-1 truncate font-[450] text-muted-foreground">
+				<span className="font-medium text-foreground">
+					{commit.author?.login ?? "Unknown"}
+				</span>{" "}
+				<Link
+					to="/$owner/$repo/commit/$sha"
+					params={{ owner, repo, sha: commit.sha }}
+					className="rounded-sm transition-colors hover:text-foreground"
+				>
+					{firstLine}
+				</Link>
+			</p>
+			<div className="flex shrink-0 items-center gap-1 text-xs font-[450] text-muted-foreground">
 				<Tooltip>
 					<TooltipTrigger asChild>
-						<span className="flex items-center gap-1">
-							<GitCommitIcon size={14} />
-							<code>{shortSha}</code>
-						</span>
+						<span className="mr-2 font-mono max-sm:hidden">{shortSha}</span>
 					</TooltipTrigger>
 					<TooltipContent side="bottom">
 						<code>{commit.sha}</code>
 					</TooltipContent>
 				</Tooltip>
-				<span>{formatRelativeTime(commit.date)}</span>
+				<time dateTime={commit.date} className="mr-1 tabular-nums">
+					{formatRelativeTime(commit.date)}
+				</time>
 				<CommitHistoryLink
 					owner={owner}
 					repo={repo}
 					ref={currentRef}
 					path={path}
-					className="-mr-1.5"
+					className="-mr-2"
 				/>
 			</div>
-		</div>
+		</RepoCardHead>
 	);
 }
 
 function LineNumbers({ count }: { count: number }) {
 	return (
-		<div className="sticky left-0 z-10 flex flex-col items-end border-r-[0.5px] bg-surface-0 px-3 py-3 text-muted-foreground select-none">
+		<div className="sticky left-0 z-10 flex w-[50px] shrink-0 flex-col items-end bg-surface-0 py-2 pr-3 font-mono text-line-number tabular-nums select-none">
 			{Array.from({ length: count }, (_, i) => (
 				// biome-ignore lint/suspicious/noArrayIndexKey: line numbers are stable indices
 				<span key={i} className="leading-5">
@@ -570,7 +567,7 @@ function PlainCode({ code }: { code: string }) {
 		<div className="overflow-x-auto text-xs">
 			<div className="flex min-w-fit">
 				<LineNumbers count={lineCount} />
-				<pre className="flex-1 p-3">
+				<pre className="flex-1 py-2 pr-4">
 					<code className="leading-5 text-foreground">{code}</code>
 				</pre>
 			</div>
@@ -587,7 +584,7 @@ function HighlightedCode({ code, lang }: { code: string; lang: string }) {
 			<div className="flex min-w-fit">
 				<LineNumbers count={lineCount} />
 				<div
-					className="flex-1 [&_pre]:p-3 [&_pre]:leading-5 [&_code]:text-xs"
+					className="flex-1 [&_pre]:py-2 [&_pre]:pr-4 [&_pre]:leading-5 [&_code]:text-xs"
 					// biome-ignore lint/security/noDangerouslySetInnerHtml: shiki output is trusted
 					dangerouslySetInnerHTML={{ __html: html }}
 				/>
@@ -613,13 +610,13 @@ const skeletonWidths = [
 
 function CodeFileViewSkeleton({ fileName }: { fileName: string }) {
 	return (
-		<div className="overflow-hidden rounded-lg border-[0.5px]">
+		<RepoCard>
 			<FileViewHeader fileName={fileName} />
-			<div className="flex flex-col gap-2 p-4">
+			<div className="flex flex-col gap-2 py-3 pr-4 pl-[50px]">
 				{skeletonWidths.map((width) => (
-					<Skeleton key={width} className="h-4 rounded" style={{ width }} />
+					<Skeleton key={width} className="h-3.5 rounded" style={{ width }} />
 				))}
 			</div>
-		</div>
+		</RepoCard>
 	);
 }

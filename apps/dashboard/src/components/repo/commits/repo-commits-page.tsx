@@ -1,4 +1,6 @@
 import { CloseIcon, FileIcon, GitCommitIcon } from "@diffkit/icons";
+import { Chip } from "@diffkit/ui/components/chip";
+import { Skeleton } from "@diffkit/ui/components/skeleton";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { Link, useNavigate } from "@tanstack/react-router";
 import { parseAsInteger, parseAsString, useQueryStates } from "nuqs";
@@ -11,6 +13,7 @@ import {
 	RepoListSearchInput,
 	RepoPageHeader,
 } from "#/components/repo/repo-page-header";
+import { ListGroup } from "#/components/shared/list-page";
 import { filterCommitsByMessage, groupCommitsByDay } from "#/lib/commit-groups";
 import { buildCommitsSplat, splitCommitsSplat } from "#/lib/commits-route";
 import {
@@ -23,6 +26,11 @@ import {
 import { useHasMounted } from "#/lib/use-has-mounted";
 import { useRegisterTab } from "#/lib/use-register-tab";
 import { useUrlSearchInput } from "#/lib/use-url-search-input";
+import {
+	ghostPillClassName,
+	pillButtonClassName,
+	RepoEmptyState,
+} from "../repo-ui";
 import { CommitAuthorFilter } from "./commit-author-filter";
 import { RepoCommitRow, RepoCommitRowSkeleton } from "./repo-commit-row";
 
@@ -185,170 +193,164 @@ export function RepoCommitsPage({
 		(commitsQuery.isPending && !commitsQuery.data);
 	const pathSegments = path ? path.split("/") : [];
 
-	return (
+	const toolbar = (
 		<>
-			<div className="h-full overflow-auto py-10">
-				<div className="mx-auto flex min-h-full max-w-4xl flex-col gap-6 px-3 md:px-6">
-					<RepoPageHeader
+			<RepoListSearchInput
+				value={searchInput}
+				onChange={setSearchInput}
+				placeholder="Search commit messages…"
+				className="w-full sm:w-60"
+			/>
+			{path ? (
+				<Chip className="h-7 max-w-full gap-1 pr-1 pl-2.5">
+					<FileIcon size={12} className="shrink-0" />
+					<span className="shrink-0">History for</span>
+					<span className="flex min-w-0 items-center gap-0.5 truncate font-mono">
+						{pathSegments.map((segment, index) => {
+							const segmentPath = pathSegments.slice(0, index + 1).join("/");
+							const isLast = index === pathSegments.length - 1;
+							return (
+								<span key={segmentPath} className="flex items-center gap-0.5">
+									{index > 0 ? <span aria-hidden>/</span> : null}
+									{isLast ? (
+										<span className="text-foreground">{segment}</span>
+									) : (
+										<button
+											type="button"
+											onClick={() => goToRef(currentRef, segmentPath)}
+											className="rounded-sm hover:text-foreground hover:underline"
+										>
+											{segment}
+										</button>
+									)}
+								</span>
+							);
+						})}
+					</span>
+					<button
+						type="button"
+						onClick={() => goToRef(currentRef, "")}
+						aria-label="Show all commits"
+						className="flex size-5 shrink-0 items-center justify-center rounded-full transition-colors hover:bg-ghost-hover hover:text-foreground"
+					>
+						<CloseIcon size={12} />
+					</button>
+				</Chip>
+			) : null}
+			<div className="flex items-center gap-1.5 sm:ml-auto">
+				<CommitAuthorFilter
+					owner={owner}
+					repo={repo}
+					scope={scope}
+					value={params.author}
+					onChange={setAuthor}
+					pageCommits={pageCommits}
+				/>
+				{defaultBranch ? (
+					<RepoRefPicker
 						owner={owner}
 						repo={repo}
-						repoData={repoData}
-						active="commits"
-						title={path ? "History" : "Commits"}
-						subtitle={currentRef || undefined}
+						scope={scope}
+						currentRef={currentRef}
+						defaultBranch={defaultBranch}
+						onSelect={(ref) => goToRef(ref)}
+						align="end"
 					/>
+				) : null}
+			</div>
+		</>
+	);
 
-					{path ? (
-						<div className="flex min-w-0 items-center gap-2 rounded-lg border-[0.5px] border-border/60 bg-surface-1/50 px-3 py-2 text-sm">
-							<FileIcon size={14} className="shrink-0 text-muted-foreground" />
-							<span className="shrink-0 text-muted-foreground">
-								History for
-							</span>
-							<span className="flex min-w-0 items-center gap-1 truncate font-mono text-xs">
-								{pathSegments.map((segment, index) => {
-									const segmentPath = pathSegments
-										.slice(0, index + 1)
-										.join("/");
-									const isLast = index === pathSegments.length - 1;
-									return (
-										<span key={segmentPath} className="flex items-center gap-1">
-											{index > 0 ? (
-												<span className="text-muted-foreground">/</span>
-											) : null}
-											{isLast ? (
-												<span className="font-medium text-foreground">
-													{segment}
-												</span>
-											) : (
-												<button
-													type="button"
-													onClick={() => goToRef(currentRef, segmentPath)}
-													className="text-muted-foreground hover:text-foreground hover:underline"
-												>
-													{segment}
-												</button>
-											)}
-										</span>
-									);
-								})}
-							</span>
-							<button
-								type="button"
-								onClick={() => goToRef(currentRef, "")}
-								aria-label="Show all commits"
-								className="ml-auto flex shrink-0 items-center gap-1 rounded-md px-1.5 py-0.5 text-xs text-muted-foreground transition-colors hover:bg-surface-2 hover:text-foreground"
-							>
-								<CloseIcon size={12} />
-								All files
-							</button>
-						</div>
-					) : null}
+	return (
+		<>
+			<RepoPageHeader
+				owner={owner}
+				repo={repo}
+				scope={scope}
+				active="commits"
+				toolbar={toolbar}
+			>
+				{searchQuery && !useServerSearch ? (
+					<p className="px-3 pb-2 text-xs text-muted-foreground">
+						GitHub only indexes the default branch for commit search, so this
+						filters the commits on the current page.
+					</p>
+				) : null}
 
-					<div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-						<RepoListSearchInput
-							value={searchInput}
-							onChange={setSearchInput}
-							placeholder="Search commit messages…"
-							className="sm:w-[280px]"
-						/>
-						<div className="flex items-center gap-2 sm:ml-auto">
-							<CommitAuthorFilter
-								owner={owner}
-								repo={repo}
-								scope={scope}
-								value={params.author}
-								onChange={setAuthor}
-								pageCommits={pageCommits}
-							/>
-							{defaultBranch ? (
-								<RepoRefPicker
-									owner={owner}
-									repo={repo}
-									scope={scope}
-									currentRef={currentRef}
-									defaultBranch={defaultBranch}
-									onSelect={(ref) => goToRef(ref)}
-									align="end"
-								/>
-							) : null}
-						</div>
-					</div>
-
-					{searchQuery && !useServerSearch ? (
-						<p className="-mt-3 text-xs text-muted-foreground">
-							GitHub only indexes the default branch for commit search, so this
-							filters the commits on the current page.
-						</p>
-					) : null}
-
-					{showSkeleton ? (
-						<CommitsSkeleton />
-					) : commitsQuery.isError ? (
-						<p className="py-12 text-center text-sm text-muted-foreground">
-							Couldn't load commits.{" "}
+				{showSkeleton ? (
+					<CommitsSkeleton />
+				) : commitsQuery.isError ? (
+					<RepoEmptyState
+						icon={<GitCommitIcon />}
+						title="Couldn't load commits"
+						action={
 							<button
 								type="button"
 								onClick={() => void commitsQuery.refetch()}
-								className="underline underline-offset-2 hover:text-foreground"
+								className={pillButtonClassName}
 							>
 								Try again
 							</button>
-						</p>
-					) : groups.length === 0 ? (
-						<div className="flex flex-col items-center gap-2 py-16 text-center">
-							<GitCommitIcon size={20} className="text-muted-foreground" />
-							<p className="text-sm text-muted-foreground">
-								{hasFilters
-									? "No commits match these filters."
-									: path
-										? "No commits touch this path on this ref."
-										: "No commits on this ref yet."}
-							</p>
-							{hasFilters ? (
+						}
+					/>
+				) : groups.length === 0 ? (
+					<RepoEmptyState
+						icon={<GitCommitIcon />}
+						title={
+							hasFilters
+								? "No commits match these filters"
+								: path
+									? "No commits touch this path on this ref"
+									: "No commits on this ref yet"
+						}
+						action={
+							hasFilters ? (
 								<button
 									type="button"
 									onClick={() => {
 										void setParams({ author: null, q: null, page: null });
 									}}
-									className="text-xs text-muted-foreground underline underline-offset-2 hover:text-foreground"
+									className={pillButtonClassName}
 								>
 									Clear filters
 								</button>
-							) : null}
-						</div>
-					) : (
-						<div
-							className="flex flex-col gap-6 transition-opacity"
-							style={{ opacity: commitsQuery.isPlaceholderData ? 0.6 : 1 }}
-						>
-							{groups.map((group) => (
-								<section key={group.key} className="flex flex-col gap-2">
-									<h2 className="flex items-center gap-2 text-xs font-medium text-muted-foreground">
-										<GitCommitIcon size={14} />
-										{group.label}
-									</h2>
-									<ol className="divide-y-[0.5px] overflow-hidden rounded-lg border-[0.5px]">
-										{group.commits.map((commit) => (
-											<li
-												key={commit.sha}
-												style={{
-													contentVisibility: "auto",
-													containIntrinsicSize: "auto 64px",
-												}}
-											>
-												<RepoCommitRow
-													commit={commit}
-													owner={owner}
-													repo={repo}
-												/>
-											</li>
-										))}
-									</ol>
-								</section>
-							))}
-						</div>
-					)}
+							) : undefined
+						}
+					/>
+				) : (
+					<div
+						className="flex flex-col transition-opacity"
+						style={{ opacity: commitsQuery.isPlaceholderData ? 0.6 : 1 }}
+					>
+						{groups.map((group) => (
+							<ListGroup
+								key={group.key}
+								title={group.label.replace(/^Commits on /, "")}
+								count={group.commits.length}
+							>
+								<ol>
+									{group.commits.map((commit) => (
+										<li
+											key={commit.sha}
+											style={{
+												contentVisibility: "auto",
+												containIntrinsicSize: "auto 44px",
+											}}
+										>
+											<RepoCommitRow
+												commit={commit}
+												owner={owner}
+												repo={repo}
+											/>
+										</li>
+									))}
+								</ol>
+							</ListGroup>
+						))}
+					</div>
+				)}
 
+				<div className="mt-6 flex flex-col items-center gap-4">
 					<Pagination
 						page={params.page}
 						hasNextPage={commitsQuery.data?.hasNextPage ?? false}
@@ -356,18 +358,17 @@ export function RepoCommitsPage({
 					/>
 
 					{!showSkeleton && !path && currentRef ? (
-						<p className="text-center text-xs text-muted-foreground">
-							<Link
-								to="/$owner/$repo/tree/$"
-								params={{ owner, repo, _splat: currentRef }}
-								className="hover:text-foreground hover:underline"
-							>
-								Browse files on {currentRef}
-							</Link>
-						</p>
+						<Link
+							to="/$owner/$repo/tree/$"
+							params={{ owner, repo, _splat: currentRef }}
+							className={ghostPillClassName}
+						>
+							Browse files on{" "}
+							<span className="font-mono font-[450]">{currentRef}</span>
+						</Link>
 					) : null}
 				</div>
-			</div>
+			</RepoPageHeader>
 			{repoData ? (
 				<SidePanelPortal>
 					<RepoActivityCards
@@ -384,9 +385,11 @@ export function RepoCommitsPage({
 
 function CommitsSkeleton() {
 	return (
-		<section className="flex flex-col gap-2">
-			<div className="h-4 w-48 animate-pulse rounded bg-surface-1" />
-			<div className="divide-y-[0.5px] overflow-hidden rounded-lg border-[0.5px]">
+		<section className="flex flex-col">
+			<div className="flex h-9 items-center gap-2 rounded-lg bg-group pl-2.5">
+				<Skeleton className="h-3.5 w-48 rounded" />
+			</div>
+			<div className="flex flex-col py-0.5">
 				{SKELETON_WIDTHS.map((width) => (
 					<RepoCommitRowSkeleton key={width} width={width} />
 				))}

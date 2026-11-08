@@ -1,5 +1,4 @@
 import { CheckIcon, ChevronDownIcon, GitBranchIcon } from "@diffkit/icons";
-import { Button } from "@diffkit/ui/components/button";
 import {
 	Command,
 	CommandEmpty,
@@ -21,6 +20,7 @@ import {
 	githubRepoRefNamesQueryOptions,
 } from "#/lib/github.query";
 import type { RepoRefKind } from "#/lib/github.types";
+import { pillButtonClassName } from "../repo-ui";
 import { TagIcon } from "./tag-icon";
 
 const SHA_RE = /^[0-9a-f]{7,40}$/i;
@@ -93,23 +93,26 @@ export function RepoRefPicker({
 	return (
 		<Popover open={open} onOpenChange={setOpen}>
 			<PopoverTrigger asChild>
-				<Button
-					variant="secondary"
-					size="sm"
+				<button
+					type="button"
 					onMouseEnter={prefetch}
 					onFocus={prefetch}
 					aria-label={`Switch branch or tag, current ${currentRef}`}
-					className="max-w-[240px] border-[0.5px] border-border dark:border-transparent"
+					className={cn(pillButtonClassName, "max-w-[240px]")}
 				>
-					<TriggerIcon size={14} />
-					<span className={cn("truncate", isSha && "font-mono text-xs")}>
+					<TriggerIcon size={14} strokeWidth={2} />
+					<span className="min-w-0 truncate font-mono font-[450]">
 						{isSha ? currentRef.slice(0, 7) : currentRef}
 					</span>
-					<ChevronDownIcon size={14} className="shrink-0 opacity-60" />
-				</Button>
+					<ChevronDownIcon
+						size={12}
+						strokeWidth={2}
+						className="text-muted-foreground"
+					/>
+				</button>
 			</PopoverTrigger>
 			<PopoverContent className="w-80 p-0" align={align}>
-				<div className="flex gap-1 border-b-[0.5px] p-1.5">
+				<div className="flex gap-1 border-b-[0.5px] border-popover-border p-1.5">
 					{(["branches", "tags"] as const).map((value) => (
 						<button
 							key={value}
@@ -117,10 +120,10 @@ export function RepoRefPicker({
 							onClick={() => setKind(value)}
 							aria-pressed={kind === value}
 							className={cn(
-								"flex flex-1 items-center justify-center gap-1.5 rounded-md px-2 py-1 text-xs transition-colors",
+								"flex h-7 flex-1 items-center justify-center gap-1.5 rounded-full text-xs font-medium transition-colors",
 								kind === value
-									? "bg-surface-1 font-medium text-foreground"
-									: "text-muted-foreground hover:text-foreground",
+									? "bg-tab-selected text-foreground shadow-tab-selected"
+									: "text-muted-foreground hover:bg-ghost-hover hover:text-foreground",
 							)}
 						>
 							{value === "branches" ? (
@@ -162,7 +165,7 @@ export function RepoRefPicker({
 								/>
 								<span className="truncate">{name}</span>
 								{kind === "branches" && name === defaultBranch ? (
-									<span className="ml-auto text-[10px] text-muted-foreground">
+									<span className="ml-auto text-xs text-muted-foreground">
 										default
 									</span>
 								) : null}
@@ -170,7 +173,7 @@ export function RepoRefPicker({
 						))}
 					</CommandList>
 				</Command>
-				<div className="flex items-center justify-between border-t-[0.5px] px-3 py-2 text-xs">
+				<div className="flex items-center justify-between border-t-[0.5px] border-popover-border px-3 py-2 text-xs">
 					<span className="text-muted-foreground">
 						{activeQuery.data?.truncated ? "Showing first 100" : null}
 					</span>

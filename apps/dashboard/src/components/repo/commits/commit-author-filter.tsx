@@ -1,5 +1,4 @@
 import { CheckIcon, ChevronDownIcon, FollowersIcon } from "@diffkit/icons";
-import { Button } from "@diffkit/ui/components/button";
 import {
 	Command,
 	CommandEmpty,
@@ -20,6 +19,7 @@ import {
 	githubRepoContributorsQueryOptions,
 } from "#/lib/github.query";
 import type { RepoCommitSummary } from "#/lib/github.types";
+import { pillButtonClassName } from "../repo-ui";
 
 type AuthorOption = { login: string; avatarUrl: string };
 
@@ -84,24 +84,27 @@ export function CommitAuthorFilter({
 	return (
 		<Popover open={open} onOpenChange={setOpen}>
 			<PopoverTrigger asChild>
-				<Button
-					variant="secondary"
-					size="sm"
+				<button
+					type="button"
 					aria-label={value ? `Author: ${value}` : "Filter by author"}
-					className="max-w-[200px] border-[0.5px] border-border dark:border-transparent"
+					className={cn(pillButtonClassName, "max-w-[200px]")}
 				>
 					{selected ? (
 						<img
 							src={selected.avatarUrl}
 							alt=""
-							className="size-4 rounded-full"
+							className="size-4 rounded-full ring-[0.5px] ring-chip-border"
 						/>
 					) : (
-						<FollowersIcon size={14} />
+						<FollowersIcon size={14} className="text-muted-foreground" />
 					)}
 					<span className="truncate">{value ?? "All authors"}</span>
-					<ChevronDownIcon size={14} className="shrink-0 opacity-60" />
-				</Button>
+					<ChevronDownIcon
+						size={12}
+						strokeWidth={2}
+						className="text-muted-foreground"
+					/>
+				</button>
 			</PopoverTrigger>
 			<PopoverContent className="w-64 p-0" align="end">
 				<Command>
