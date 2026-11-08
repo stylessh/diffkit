@@ -76,9 +76,7 @@ export const userForbiddenOrg = sqliteTable(
 		org: text("org").notNull(),
 		createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
 	},
-	(table) => ({
-		pk: primaryKey({ columns: [table.userId, table.org] }),
-	}),
+	(table) => [primaryKey({ columns: [table.userId, table.org] })],
 );
 
 /**
@@ -95,13 +93,14 @@ export const githubChange = sqliteTable(
 		/** Lowercased `owner/repo`. */
 		repo: text("repo").notNull(),
 		entityKey: text("entity_key").notNull(),
-		/** 0 only when the webhook payload said the repo is public. */
-		isPrivate: integer("is_private").notNull().default(1),
+		isPrivate: integer("is_private", { mode: "boolean" })
+			.notNull()
+			.default(true),
 		/** Epoch milliseconds. */
 		changedAt: integer("changed_at").notNull(),
 	},
-	(table) => ({
-		repoIdIdx: index("github_change_repo_id_idx").on(table.repo, table.id),
-		changedAtIdx: index("github_change_changed_at_idx").on(table.changedAt),
-	}),
+	(table) => [
+		index("github_change_repo_id_idx").on(table.repo, table.id),
+		index("github_change_changed_at_idx").on(table.changedAt),
+	],
 );

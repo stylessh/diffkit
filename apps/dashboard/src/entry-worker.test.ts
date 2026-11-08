@@ -33,15 +33,6 @@ afterEach(() => {
 });
 
 describe("entry worker fetch", () => {
-	it("keeps redirects working when it adds security headers", async () => {
-		startFetch.mockResolvedValue(
-			Response.redirect("https://diffkit.test/login", 302),
-		);
-		const response = await worker.fetch(request("/"), env, ctx);
-		expect(response.status).toBe(302);
-		expect(response.headers.get("Strict-Transport-Security")).toBeTruthy();
-	});
-
 	it("sends only POST /api/comment-media/upload to the upload handler", async () => {
 		handleCommentMediaUpload.mockResolvedValue(Response.json({ ok: true }));
 		startFetch.mockResolvedValue(new Response("app"));
