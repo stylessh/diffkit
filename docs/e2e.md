@@ -65,6 +65,8 @@ user.
 | `isolated/inbox` | marking a notification as read |
 | `isolated/instant-ui` | a revisited pull request paints from IndexedDB with no skeleton while every server function is held |
 | `isolated/repo-settings` | repository settings: saving the description, the last-merge-method guard, labels, an Actions secret and variable, collaborators and invitations, a webhook and its redelivery |
+| `isolated/org-settings` | organization settings: saving the profile, promoting a member, cancelling and sending invitations, creating a team, adding a member and deleting it |
+| `isolated/org-settings-member` | a signed-in member sees the roster but none of the owner controls |
 | `isolated/change-feed` | a signed webhook refreshes an open list without a reload |
 
 The emulator does not deliver app webhooks in this mode, so only the webhooks a

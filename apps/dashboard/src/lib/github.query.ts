@@ -104,6 +104,14 @@ export {
 	queryFiltersForEntity,
 } from "./github/query-registry";
 export {
+	githubOrgMembersQueryOptions,
+	githubOrgSettingsQueryOptions,
+	githubOrgTeamListQueryOptions,
+	githubOrgTeamMembersQueryOptions,
+	githubOrgViewerRoleQueryOptions,
+	githubViewerOrganizationsQueryOptions,
+} from "./github/settings-org-query-options";
+export {
 	githubRepoAccessQueryOptions,
 	githubRepoActionsSecretsQueryOptions,
 	githubRepoActionsVariablesQueryOptions,
