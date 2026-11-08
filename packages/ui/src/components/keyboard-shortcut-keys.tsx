@@ -59,11 +59,24 @@ function KeyboardShortcutKeys({
 	}
 
 	if (shouldCombineShortcutKeys(keys)) {
+		// A letter sequence reads as Linear draws it: one box per key, "then"
+		// between them.
 		return (
-			<kbd className={cn("flex items-center gap-1", className)}>
-				<span className={keyBoxClassName}>
-					{formatCombinedShortcutKeys(keys)}
-				</span>
+			<kbd
+				aria-label={formatCombinedShortcutKeys(keys)}
+				className={cn("flex items-center gap-1", className)}
+			>
+				{keys.map((key, index) => (
+					// biome-ignore lint/suspicious/noArrayIndexKey: a sequence can repeat a key
+					<span key={index} className="flex items-center gap-1">
+						{index > 0 ? (
+							<span className="font-sans text-[11px] font-[450] text-muted-foreground">
+								then
+							</span>
+						) : null}
+						<span className={keyBoxClassName}>{render(key)}</span>
+					</span>
+				))}
 			</kbd>
 		);
 	}

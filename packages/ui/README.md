@@ -45,8 +45,24 @@ from Linear's live app and live in `src/styles/globals.css` in three layers:
 | Text steps | `text-foreground` › `text-text-strong` › `text-text-header` › `text-muted-foreground` › `text-icon-faint` |
 | Status colors | `text-success`, `text-warning`, `text-merged`, `text-danger`, `text-added`, `text-removed`, `bg-pill-ok`, `bg-pill-blocked`, `bg-pill-neutral` |
 | The one saturated action | `bg-indigo text-indigo-foreground` (`<Button variant="accent">`) |
+| GitHub state of a PR / issue (icon) | `text-state-open`, `text-state-draft`, `text-state-merged`, `text-state-closed` |
+| CI check conclusion (icon, dot) | `text-check-passed`, `text-check-running`, `text-check-failed`, `text-check-skipped` (and `bg-*`) |
+| Review verdict | `text-review-approved`, `text-review-changes`, `text-review-required` (and `bg-*`) |
+| Tinted state pill | `bg-pill-ok text-pill-ok-text`, `bg-pill-merged text-pill-merged-text`, `bg-pill-blocked text-pill-blocked-text`, `bg-pill-warning text-pill-warning-text`, `bg-pill-neutral text-muted-foreground` (`<StatePill tone>` / `<Badge variant>` use these) |
+| Row metadata chip (repo, label, branch) | `<Chip>`: `h-6 rounded-full bg-chip shadow-chip text-xs text-muted-foreground` |
+| Diff line tints | `bg-line-added`, `bg-line-removed`, `bg-word-added`, `bg-word-removed`, `text-line-number`; `@pierre/diffs` picks them up through its `--diffs-*-override` variables |
+| Top nav / tab items on the shell | `text-text-nav hover:bg-nav-hover [&.active]:bg-nav-selected` |
+| Tooltip surface | `bg-tooltip shadow-tooltip` |
+| Focus | `outline-focus` / the base `:focus-visible` rule (1px `--ln-focus`, offset -1px) |
 
-Rules of thumb: never add `border` + `shadow-sm`; use a ring token. Focus is a 1px indigo outline
+Motion: hover, selection and popover transitions share `--ln-duration` (140ms) and `--ln-ease`
+(`ease-ln`); `prefers-reduced-motion` collapses every animation and transition. Menus use 28px rows
+with 6px radii inside a 10px popover with 4px padding, so the corners stay concentric.
+
+Rules of thumb: never add `border` + `shadow-sm`; use a ring token. Bare `border` utilities are
+written `border-[0.5px]` so they match the rings (Chrome rounds them to one device pixel on 1x
+screens). Never use raw Tailwind hues (`text-green-500`, `bg-yellow-400`) for state; use the state
+tokens above. Focus is a 1px indigo outline
 (`focus-visible:outline-1 focus-visible:-outline-offset-1 focus-visible:outline-ring`), not a glow.
 Keep corners ≤ 12px except fully-round pills and avatars.
 

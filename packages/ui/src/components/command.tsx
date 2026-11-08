@@ -157,11 +157,7 @@ function CommandShortcut({
 }: React.ComponentProps<"span"> & {
 	keys?: string[];
 }) {
-	const content = keys ? (
-		<KeyboardShortcutKeys keys={keys} variant="flat" />
-	) : (
-		children
-	);
+	const content = keys ? <KeyboardShortcutKeys keys={keys} /> : children;
 
 	return (
 		<span
