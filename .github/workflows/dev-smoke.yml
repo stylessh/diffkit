@@ -1,0 +1,65 @@
+name: Dev Smoke
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+  workflow_dispatch:
+
+concurrency:
+  group: dev-smoke-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  dev-smoke:
+    name: Dev Server Smoke
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Boot pnpm dev:demo from a cold cache
+        run: |
+          log="$RUNNER_TEMP/dev-demo.log"
+          pnpm dev:demo > "$log" 2>&1 &
+          pid=$!
+          until grep -q "dashboard ready" "$log"; do
+            if ! kill -0 "$pid" 2>/dev/null; then
+              echo "::error::pnpm dev:demo exited before the dashboard answered"
+              exit 1
+            fi
+            if [ "$SECONDS" -gt 240 ]; then
+              echo "::error::dashboard was not ready after 240s"
+              exit 1
+            fi
+            sleep 1
+          done
+          grep "dashboard ready" "$log"
+
+      - name: Request /login and a protected route
+        run: |
+          login=$(curl -s -o /dev/null -w '%{http_code}' -L --max-time 60 http://localhost:3000/login)
+          echo "/login (following redirects) -> $login"
+          [ "$login" = "200" ] || { echo "::error::/login returned $login"; exit 1; }
+
+          read -r code location < <(curl -s -o /dev/null -w '%{http_code} %{redirect_url}\n' --max-time 60 http://localhost:3000/pulls)
+          echo "/pulls -> $code $location"
+          [ "$code" = "307" ] && [[ "$location" == */login?redirect=%2Fpulls ]] \
+            || { echo "::error::/pulls should redirect signed-out users to /login"; exit 1; }
+
+      - name: Dev server output
+        if: always()
+        run: cat "$RUNNER_TEMP/dev-demo.log" || true
