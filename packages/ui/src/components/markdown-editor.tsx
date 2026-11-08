@@ -14,6 +14,10 @@ import { useTextareaContentFieldSizing } from "../hooks/use-textarea-content-fie
 import { getCaretCoordinates } from "../lib/get-caret-coordinates";
 import { cn } from "../lib/utils";
 import { highlightCode, Markdown } from "./markdown";
+import {
+	getCommentMediaUploadPlaceholderText,
+	replaceCommentMediaUploadPlaceholder,
+} from "./markdown-editor-upload";
 import { Spinner } from "./spinner";
 import {
 	Tooltip,
@@ -45,10 +49,7 @@ export type MarkdownEditorHandle = {
 	replaceUploadPlaceholder: (id: string, replacement: string) => void;
 };
 
-/** Machine-readable token embedded in the composer; replaced when the upload finishes. */
-export function getCommentMediaUploadPlaceholderText(id: string): string {
-	return `⏳ Uploading asset… [[DIFFKIT_UPLOAD:${id}]]`;
-}
+export { getCommentMediaUploadPlaceholderText };
 
 export type MarkdownEditorMediaUpload = {
 	isDragActive: boolean;
@@ -342,11 +343,9 @@ export const MarkdownEditor = forwardRef<
 
 	const replaceUploadPlaceholder = useCallback(
 		(id: string, replacement: string) => {
-			const needle = getCommentMediaUploadPlaceholderText(id);
-			onChange((prev) => {
-				if (!prev.includes(needle)) return prev;
-				return prev.replace(needle, replacement);
-			});
+			onChange((prev) =>
+				replaceCommentMediaUploadPlaceholder(prev, id, replacement),
+			);
 		},
 		[onChange],
 	);

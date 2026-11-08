@@ -6,5 +6,18 @@
 		"parser": {
 			"tailwindDirectives": true
 		}
-	}
+	},
+	"overrides": [
+		{
+			// Brand marks are decorative; consumers add aria-label/title where needed.
+			"includes": ["src/components/svgs/**"],
+			"linter": {
+				"rules": {
+					"a11y": {
+						"noSvgWithoutTitle": "off"
+					}
+				}
+			}
+		}
+	]
 }

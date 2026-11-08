@@ -12,6 +12,7 @@ import {
 	DialogHeader,
 	DialogTitle,
 } from "./dialog";
+import { KeyboardShortcutKeys } from "./keyboard-shortcut-keys";
 
 function Command({
 	className,
@@ -60,13 +61,13 @@ function CommandInput({
 	return (
 		<div
 			data-slot="command-input-wrapper"
-			className="flex h-9 items-center gap-2 border-b px-3"
+			className="flex h-9 items-center gap-2 border-b-[0.5px] border-popover-border px-3"
 		>
 			<SearchIcon className="size-4 shrink-0 opacity-50" />
 			<CommandPrimitive.Input
 				data-slot="command-input"
 				className={cn(
-					"placeholder:text-muted-foreground flex h-10 w-full rounded-md bg-transparent py-3 text-sm outline-hidden disabled:cursor-not-allowed disabled:opacity-50",
+					"placeholder:text-muted-foreground flex h-10 w-full rounded-md bg-transparent py-3 text-[13px] outline-hidden disabled:cursor-not-allowed disabled:opacity-50",
 					className,
 				)}
 				{...props}
@@ -126,7 +127,7 @@ function CommandSeparator({
 	return (
 		<CommandPrimitive.Separator
 			data-slot="command-separator"
-			className={cn("bg-border -mx-1 h-px", className)}
+			className={cn("bg-popover-border -mx-1.5 h-[0.5px]", className)}
 			{...props}
 		/>
 	);
@@ -140,7 +141,7 @@ function CommandItem({
 		<CommandPrimitive.Item
 			data-slot="command-item"
 			className={cn(
-				"data-[selected=true]:bg-accent data-[selected=true]:text-accent-foreground [&_svg:not([class*='text-'])]:text-muted-foreground relative flex cursor-default items-center gap-2 rounded-md px-3 py-1.5 text-sm outline-hidden select-none data-[disabled=true]:pointer-events-none data-[disabled=true]:opacity-50 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
+				"data-[selected=true]:bg-accent data-[selected=true]:text-accent-foreground [&_svg:not([class*='text-'])]:text-muted-foreground relative flex cursor-default items-center gap-2 rounded-lg px-3 py-1.5 text-[13px] outline-hidden select-none data-[disabled=true]:pointer-events-none data-[disabled=true]:opacity-50 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
 				className,
 			)}
 			{...props}
@@ -156,6 +157,12 @@ function CommandShortcut({
 }: React.ComponentProps<"span"> & {
 	keys?: string[];
 }) {
+	const content = keys ? (
+		<KeyboardShortcutKeys keys={keys} variant="flat" />
+	) : (
+		children
+	);
+
 	return (
 		<span
 			data-slot="command-shortcut"
@@ -165,14 +172,7 @@ function CommandShortcut({
 			)}
 			{...props}
 		>
-			{keys
-				? keys.map((key, i) => (
-						<span key={key} className="flex items-center gap-1">
-							{i > 0 && <span>then</span>}
-							<kbd className="font-sans">{key}</kbd>
-						</span>
-					))
-				: children}
+			{content}
 		</span>
 	);
 }
