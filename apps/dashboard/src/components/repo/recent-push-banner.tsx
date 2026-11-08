@@ -5,15 +5,11 @@ import {
 	CalloutContent,
 } from "@diffkit/ui/components/callout";
 import { useQuery } from "@tanstack/react-query";
-import { useMemo } from "react";
 import { formatRelativeTime } from "#/lib/format-relative-time";
 import {
 	type GitHubQueryScope,
-	githubQueryKeys,
 	githubRecentPushableBranchQueryOptions,
 } from "#/lib/github.query";
-import { githubRevalidationSignalKeys } from "#/lib/github-revalidation";
-import { useGitHubSignalStream } from "#/lib/use-github-signal-stream";
 
 export function RecentPushBanner({
 	owner,
@@ -29,23 +25,6 @@ export function RecentPushBanner({
 	const recentQuery = useQuery(
 		githubRecentPushableBranchQueryOptions(scope, { owner, repo }),
 	);
-
-	const webhookRefreshTargets = useMemo(
-		() => [
-			{
-				queryKey: githubQueryKeys.repo.recentPushableBranch(scope, {
-					owner,
-					repo,
-				}),
-				signalKeys: [
-					githubRevalidationSignalKeys.repoCode({ owner, repo }),
-					githubRevalidationSignalKeys.repoMeta({ owner, repo }),
-				],
-			},
-		],
-		[owner, repo, scope],
-	);
-	useGitHubSignalStream(webhookRefreshTargets);
 
 	const recent = recentQuery.data;
 	if (!recent) return null;

@@ -51,8 +51,6 @@ import type {
 	PullFileSummary,
 	PullReviewComment,
 } from "#/lib/github.types";
-import { githubRevalidationSignalKeys } from "#/lib/github-revalidation";
-import { useGitHubSignalStream } from "#/lib/use-github-signal-stream";
 import { usePageTitle } from "#/lib/use-page-title";
 import { useRegisterTab } from "#/lib/use-register-tab";
 import { checkPermissionWarning } from "#/lib/warning-store";
@@ -102,10 +100,6 @@ export function ReviewPage() {
 		() => ({ owner, repo, pullNumber }),
 		[owner, repo, pullNumber],
 	);
-	const pageQueryKey = useMemo(
-		() => githubQueryKeys.pulls.page(scope, input),
-		[scope, input],
-	);
 	const fileSummariesQueryKey = useMemo(
 		() => githubQueryKeys.pulls.fileSummaries(scope, input),
 		[scope, input],
@@ -113,26 +107,6 @@ export function ReviewPage() {
 	const filesQueryKey = useMemo(
 		() => githubQueryKeys.pulls.files(scope, input),
 		[scope, input],
-	);
-	const reviewCommentsQueryKey = useMemo(
-		() => githubQueryKeys.pulls.reviewComments(scope, input),
-		[scope, input],
-	);
-	const pullSignalKey = githubRevalidationSignalKeys.pullEntity(input);
-	const webhookRefreshTargets = useMemo(
-		() => [
-			{ queryKey: pageQueryKey, signalKeys: [pullSignalKey] },
-			{ queryKey: fileSummariesQueryKey, signalKeys: [pullSignalKey] },
-			{ queryKey: filesQueryKey, signalKeys: [pullSignalKey] },
-			{ queryKey: reviewCommentsQueryKey, signalKeys: [pullSignalKey] },
-		],
-		[
-			pageQueryKey,
-			fileSummariesQueryKey,
-			filesQueryKey,
-			reviewCommentsQueryKey,
-			pullSignalKey,
-		],
 	);
 	const diffPaneRef = useRef<ReviewDiffPaneHandle>(null);
 
@@ -187,9 +161,24 @@ export function ReviewPage() {
 	const threadStatusesQuery = useQuery(
 		githubReviewThreadStatusesQueryOptions(scope, input),
 	);
-	useGitHubSignalStream(webhookRefreshTargets);
 
 	const pr = pageQuery.data?.detail ?? null;
+
+	// The diff queries are large paginated payloads, so they don't poll. The
+	// page query does (detail tier); when it reports a new head commit, refetch
+	// the diff so the review reflects the push.
+	const headSha = pr?.headSha;
+	const lastHeadShaRef = useRef(headSha);
+	useEffect(() => {
+		if (!headSha) return;
+		const previousHeadSha = lastHeadShaRef.current;
+		lastHeadShaRef.current = headSha;
+		if (previousHeadSha && previousHeadSha !== headSha) {
+			void queryClient.invalidateQueries({ queryKey: fileSummariesQueryKey });
+			void queryClient.invalidateQueries({ queryKey: filesQueryKey });
+		}
+	}, [headSha, queryClient, fileSummariesQueryKey, filesQueryKey]);
+
 	const sidebarFiles = useMemo(
 		() => fileSummariesQuery.data?.pages.flatMap((page) => page.items) ?? [],
 		[fileSummariesQuery.data],

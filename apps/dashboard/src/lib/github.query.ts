@@ -61,6 +61,13 @@ import {
 	workflowZipJobName,
 } from "./github.functions";
 import { githubCachePolicy } from "./github-cache-policy";
+import {
+	adaptiveRefetchInterval,
+	classifyPullStatus,
+	classifyWorkflowJobs,
+	classifyWorkflowRun,
+	githubPollOptions,
+} from "./github-refetch-policy";
 import { ensureDefinedQueryData } from "./query-data";
 import type { ReposHubInput } from "./repos-hub-filter";
 
@@ -442,6 +449,7 @@ export function githubMyPullsQueryOptions(scope: GitHubQueryScope) {
 		queryFn: () => getMyPulls(),
 		staleTime: githubCachePolicy.mine.staleTimeMs,
 		gcTime: githubCachePolicy.mine.gcTimeMs,
+		...githubPollOptions("mine"),
 		meta: persistedMeta,
 	});
 }
@@ -455,6 +463,7 @@ export function githubPullsFromUserQueryOptions(
 		queryFn: () => getPullsFromUser({ data: input }),
 		staleTime: githubCachePolicy.list.staleTimeMs,
 		gcTime: githubCachePolicy.list.gcTimeMs,
+		...githubPollOptions("list"),
 		meta: persistedMeta,
 	});
 }
@@ -468,6 +477,7 @@ export function githubPullsFromRepoQueryOptions(
 		queryFn: () => getPullsFromRepo({ data: input }),
 		staleTime: githubCachePolicy.list.staleTimeMs,
 		gcTime: githubCachePolicy.list.gcTimeMs,
+		...githubPollOptions("list"),
 		meta: persistedMeta,
 	});
 }
@@ -481,6 +491,7 @@ export function githubPullDetailQueryOptions(
 		queryFn: () => getPullFromRepo({ data: input }),
 		staleTime: githubCachePolicy.detail.staleTimeMs,
 		gcTime: githubCachePolicy.detail.gcTimeMs,
+		...githubPollOptions("detail"),
 		meta: tabPersistedMeta,
 	});
 }
@@ -505,6 +516,7 @@ export function githubPullPageQueryOptions(
 		},
 		staleTime: githubCachePolicy.detail.staleTimeMs,
 		gcTime: githubCachePolicy.detail.gcTimeMs,
+		...githubPollOptions("detail"),
 		meta: tabPersistedMeta,
 	});
 }
@@ -531,6 +543,8 @@ export function githubPullStatusQueryOptions(
 		queryFn: () => getPullStatus({ data: input }),
 		staleTime: githubCachePolicy.status.staleTimeMs,
 		gcTime: githubCachePolicy.status.gcTimeMs,
+		refetchInterval: adaptiveRefetchInterval(classifyPullStatus),
+		refetchIntervalInBackground: false,
 		meta: tabPersistedMeta,
 	});
 }
@@ -580,6 +594,7 @@ export function githubPullReviewCommentsQueryOptions(
 		queryFn: () => getPullReviewComments({ data: input }),
 		staleTime: githubCachePolicy.activity.staleTimeMs,
 		gcTime: githubCachePolicy.activity.gcTimeMs,
+		...githubPollOptions("activity"),
 		meta: tabPersistedMeta,
 	});
 }
@@ -593,6 +608,7 @@ export function githubReviewThreadStatusesQueryOptions(
 		queryFn: () => getReviewThreadStatuses({ data: input }),
 		staleTime: githubCachePolicy.activity.staleTimeMs,
 		gcTime: githubCachePolicy.activity.gcTimeMs,
+		...githubPollOptions("activity"),
 		meta: tabPersistedMeta,
 	});
 }
@@ -639,6 +655,7 @@ export function githubMyIssuesQueryOptions(scope: GitHubQueryScope) {
 		queryFn: () => getMyIssues(),
 		staleTime: githubCachePolicy.mine.staleTimeMs,
 		gcTime: githubCachePolicy.mine.gcTimeMs,
+		...githubPollOptions("mine"),
 		meta: persistedMeta,
 	});
 }
@@ -652,6 +669,7 @@ export function githubIssuesFromUserQueryOptions(
 		queryFn: () => getIssuesFromUser({ data: input }),
 		staleTime: githubCachePolicy.list.staleTimeMs,
 		gcTime: githubCachePolicy.list.gcTimeMs,
+		...githubPollOptions("list"),
 		meta: persistedMeta,
 	});
 }
@@ -665,6 +683,7 @@ export function githubIssuesFromRepoQueryOptions(
 		queryFn: () => getIssuesFromRepo({ data: input }),
 		staleTime: githubCachePolicy.list.staleTimeMs,
 		gcTime: githubCachePolicy.list.gcTimeMs,
+		...githubPollOptions("list"),
 		meta: persistedMeta,
 	});
 }
@@ -678,6 +697,7 @@ export function githubIssueDetailQueryOptions(
 		queryFn: () => getIssueFromRepo({ data: input }),
 		staleTime: githubCachePolicy.detail.staleTimeMs,
 		gcTime: githubCachePolicy.detail.gcTimeMs,
+		...githubPollOptions("detail"),
 		meta: tabPersistedMeta,
 	});
 }
@@ -691,6 +711,7 @@ export function githubIssuePageQueryOptions(
 		queryFn: () => getIssuePageData({ data: input }),
 		staleTime: githubCachePolicy.detail.staleTimeMs,
 		gcTime: githubCachePolicy.detail.gcTimeMs,
+		...githubPollOptions("detail"),
 		meta: tabPersistedMeta,
 	});
 }
@@ -799,8 +820,11 @@ export function githubRepoOverviewQueryOptions(
 	return queryOptions({
 		queryKey: githubQueryKeys.repo.overview(scope, input),
 		queryFn: () => getRepoOverview({ data: input }),
-		staleTime: githubCachePolicy.repoMeta.staleTimeMs,
+		// Server keeps the repoMeta freshness window (webhooks bust it); the
+		// client polls on the list tier, so its staleTime must not exceed that.
+		staleTime: githubCachePolicy.list.staleTimeMs,
 		gcTime: githubCachePolicy.repoMeta.gcTimeMs,
+		...githubPollOptions("list"),
 		meta: persistedMeta,
 	});
 }
@@ -853,6 +877,7 @@ export function githubRecentPushableBranchQueryOptions(
 		queryFn: () => getRecentPushableBranch({ data: input }),
 		staleTime: githubCachePolicy.detail.staleTimeMs,
 		gcTime: githubCachePolicy.detail.gcTimeMs,
+		...githubPollOptions("list"),
 	});
 }
 
@@ -1008,6 +1033,7 @@ export function githubNotificationsQueryOptions(
 		queryFn: () => getNotifications({ data: input }),
 		staleTime: githubCachePolicy.list.staleTimeMs,
 		gcTime: githubCachePolicy.list.gcTimeMs,
+		...githubPollOptions("list"),
 		meta: persistedMeta,
 	});
 }
@@ -1021,6 +1047,7 @@ export function githubWorkflowRunsFromRepoQueryOptions(
 		queryFn: () => getWorkflowRunsForRepo({ data: input }),
 		staleTime: githubCachePolicy.workflowRun.staleTimeMs,
 		gcTime: githubCachePolicy.workflowRun.gcTimeMs,
+		...githubPollOptions("list"),
 		meta: tabPersistedMeta,
 	});
 }
@@ -1034,6 +1061,8 @@ export function githubWorkflowRunQueryOptions(
 		queryFn: () => getWorkflowRun({ data: input }),
 		staleTime: githubCachePolicy.workflowRun.staleTimeMs,
 		gcTime: githubCachePolicy.workflowRun.gcTimeMs,
+		refetchInterval: adaptiveRefetchInterval(classifyWorkflowRun),
+		refetchIntervalInBackground: false,
 		meta: tabPersistedMeta,
 	});
 }
@@ -1047,6 +1076,8 @@ export function githubWorkflowRunJobsQueryOptions(
 		queryFn: () => listWorkflowRunJobs({ data: input }),
 		staleTime: githubCachePolicy.workflowRun.staleTimeMs,
 		gcTime: githubCachePolicy.workflowRun.gcTimeMs,
+		refetchInterval: adaptiveRefetchInterval(classifyWorkflowJobs),
+		refetchIntervalInBackground: false,
 		meta: tabPersistedMeta,
 	});
 }
