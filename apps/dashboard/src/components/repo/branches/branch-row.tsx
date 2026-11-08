@@ -105,7 +105,6 @@ export const BranchRow = memo(function BranchRow({
 			</RowStateIcon>
 			<div className="flex min-w-0 flex-1 flex-col gap-1 md:flex-row md:items-center md:gap-2">
 				<span className="flex min-w-0 items-center gap-2">
-					{/* the name's link stretches over the row, so the whole row opens the branch */}
 					<Link
 						to="/$owner/$repo/tree/$"
 						params={{ owner, repo, _splat: branch.name }}

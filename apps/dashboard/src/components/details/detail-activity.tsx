@@ -59,6 +59,8 @@ export function DetailActivityHeader({
 	);
 }
 
+type CommentBoxAction = "send" | "toggle-pull" | "toggle-issue";
+
 export function DetailCommentBox({
 	owner,
 	repo,
@@ -77,9 +79,12 @@ export function DetailCommentBox({
 	issueState?: "open" | "closed";
 }) {
 	const [value, setValue] = useState("");
-	const [isSending, setIsSending] = useState(false);
-	const [isTogglingState, setIsTogglingState] = useState(false);
-	const [isTogglingIssueState, setIsTogglingIssueState] = useState(false);
+	const [pendingAction, setPendingAction] = useState<CommentBoxAction | null>(
+		null,
+	);
+	const isSending = pendingAction === "send";
+	const isTogglingState = pendingAction === "toggle-pull";
+	const isTogglingIssueState = pendingAction === "toggle-issue";
 	const [mentionActivated, setMentionActivated] = useState(false);
 	const queryClient = useQueryClient();
 	const editorRef = useRef<MarkdownEditorHandle>(null);
@@ -103,10 +108,8 @@ export function DetailCommentBox({
 		const seen = new Set<string>();
 		const candidates: MentionCandidate[] = [];
 
-		// Exclude the current user
 		if (viewerLogin) seen.add(viewerLogin);
 
-		// Involved users first (commenters, reviewers, author)
 		if (involvedUsers) {
 			for (const user of involvedUsers) {
 				if (seen.has(user.login)) continue;
@@ -120,7 +123,6 @@ export function DetailCommentBox({
 			}
 		}
 
-		// Remaining collaborators
 		for (const c of collaboratorsQuery.data ?? []) {
 			if (seen.has(c.login)) continue;
 			seen.add(c.login);
@@ -137,7 +139,7 @@ export function DetailCommentBox({
 
 	const handleSend = async () => {
 		if (!value.trim()) return;
-		setIsSending(true);
+		setPendingAction("send");
 		try {
 			const result = await createComment({
 				data: { owner, repo, issueNumber, body: value.trim() },
@@ -154,14 +156,14 @@ export function DetailCommentBox({
 		} catch {
 			toast.error("Failed to send comment");
 		} finally {
-			setIsSending(false);
+			setPendingAction(null);
 		}
 	};
 
 	const handleTogglePullState = async () => {
 		if (!pullState) return;
 		const newState = pullState === "open" ? "closed" : "open";
-		setIsTogglingState(true);
+		setPendingAction("toggle-pull");
 		try {
 			if (value.trim()) {
 				const commentResult = await createComment({
@@ -202,7 +204,7 @@ export function DetailCommentBox({
 				`Failed to ${pullState === "open" ? "close" : "reopen"} pull request`,
 			);
 		} finally {
-			setIsTogglingState(false);
+			setPendingAction(null);
 		}
 	};
 
@@ -210,7 +212,7 @@ export function DetailCommentBox({
 		next: "open" | "closed",
 		closeReason?: "completed" | "not_planned",
 	) => {
-		setIsTogglingIssueState(true);
+		setPendingAction("toggle-issue");
 		try {
 			if (value.trim()) {
 				const commentResult = await createComment({
@@ -243,7 +245,7 @@ export function DetailCommentBox({
 		} catch {
 			toast.error(`Failed to ${next === "closed" ? "close" : "reopen"} issue`);
 		} finally {
-			setIsTogglingIssueState(false);
+			setPendingAction(null);
 		}
 	};
 

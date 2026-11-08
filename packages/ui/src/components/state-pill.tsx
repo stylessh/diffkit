@@ -7,7 +7,6 @@ const statePillVariants = cva(
 	"inline-flex h-5 items-center gap-1 rounded-full px-2 text-xs leading-none font-medium whitespace-nowrap shrink-0 [&_svg]:size-3 [&_svg]:shrink-0",
 	{
 		variants: {
-			// Linear's state hues, mapped from GitHub's states (see `--ln-state-*`).
 			tone: {
 				open: "bg-pill-ok text-pill-ok-text",
 				closed: "bg-pill-blocked text-pill-blocked-text",

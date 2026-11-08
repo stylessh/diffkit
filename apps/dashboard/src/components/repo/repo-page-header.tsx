@@ -63,13 +63,8 @@ export function RepoPageHeader({
 	);
 }
 
-/** A crumb after the repository in the header: a link back up, then its ›. */
 export { PageHeaderCrumb as RepoCrumb } from "@diffkit/ui/components/page-header";
 
-/**
- * The toolbar's search: a compact 28px field on a hairline, 12px text, as
- * the reference's "Go to file" filter.
- */
 export function RepoListSearchInput({
 	value,
 	onChange,

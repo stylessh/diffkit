@@ -21,10 +21,6 @@ import { SplitDiffGlyph, UnifiedDiffGlyph } from "./review-icons";
 export type DiffView = "files" | "commits";
 export type DiffStyle = "unified" | "split";
 
-/**
- * The 36px bar above a diff's file cards, after Linear's Diff tab: Files and
- * Commits on the left, the comment count and display options on the right.
- */
 export function DiffToolbar({
 	view,
 	onViewChange,
@@ -46,7 +42,6 @@ export function DiffToolbar({
 	onDiffStyleChange: (style: DiffStyle) => void;
 	wrapLines: boolean;
 	onWrapLinesChange: (wrap: boolean) => void;
-	/** Rendered before the tabs (the file tree button on small screens). */
 	leading?: ReactNode;
 }) {
 	return (
@@ -122,7 +117,6 @@ function DiffToolbarTab({
 	);
 }
 
-/** The sliders button and its popover: Split | Unified, then Wrap lines. */
 function DiffDisplayOptions({
 	diffStyle,
 	onDiffStyleChange,
@@ -189,7 +183,6 @@ function DiffDisplayOptions({
 	);
 }
 
-/** The branch's commits as a card of 40px rows, for the toolbar's Commits view. */
 export function DiffCommitList({
 	commits,
 	owner,

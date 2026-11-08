@@ -41,10 +41,6 @@ export function DetailSidebarSection({
 	);
 }
 
-/**
- * A dated or counted property in the panel, as Linear's Properties rows read:
- * a 14px muted icon, then "Created 3h ago" on one 28px line.
- */
 export function DetailSidebarRow({
 	icon: Icon,
 	label,

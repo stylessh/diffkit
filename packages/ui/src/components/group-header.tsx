@@ -2,11 +2,6 @@ import type * as React from "react";
 
 import { cn } from "../lib/utils";
 
-/**
- * A list group's banner, after Linear's: 36px, rounded, the group fill, a
- * caret that folds the group, its icon, name and count. Make it sticky from
- * the caller when its rows scroll under it.
- */
 function GroupHeader({
 	className,
 	icon,
@@ -21,12 +16,9 @@ function GroupHeader({
 	title: React.ReactNode;
 	count?: React.ReactNode;
 	open?: boolean;
-	/** Folds or unfolds the group; omit for a group that can't fold. */
 	onToggle?: () => void;
 	actions?: React.ReactNode;
 }) {
-	// Measured off Linear's Reviews list: caret centred 18px in, the icon's
-	// 16px box at 34px, the title at 60px; 36px tall, 8px corners.
 	return (
 		<div
 			data-slot="group-header"

@@ -60,10 +60,6 @@ function formatCount(n: number) {
 	return String(n);
 }
 
-/**
- * The repository's sections as Linear's pill tabs (Code, Commits, Branches
- * 10, …), the 44px row under the page header that every repo page shares.
- */
 export function RepoNav({
 	owner,
 	repo,
@@ -77,7 +73,6 @@ export function RepoNav({
 	active?: RepoNavKey;
 	repoData?: RepoOverview | null;
 	className?: string;
-	/** Page actions at the row's right. */
 	actions?: ReactNode;
 }) {
 	return (
@@ -86,7 +81,6 @@ export function RepoNav({
 				const count = repoData && item.count ? item.count(repoData) : null;
 				return (
 					<ViewTab key={item.key} asChild active={item.key === active}>
-						{/* exact, so the router's own active state never lights "Code" on every sub-page */}
 						<Link
 							to={item.to}
 							params={{ owner, repo }}

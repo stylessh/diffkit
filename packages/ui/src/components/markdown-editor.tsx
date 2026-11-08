@@ -26,8 +26,6 @@ import {
 	TooltipTrigger,
 } from "./tooltip";
 
-// ── Mention types ─────────────────────────────────────────────────
-
 export type MentionCandidate = {
 	id: string;
 	label: string;
@@ -41,11 +39,8 @@ export type MentionConfig = {
 	isLoading?: boolean;
 };
 
-// ── Editor props ──────────────────────────────────────────────────
-
 export type MarkdownEditorHandle = {
 	insertAtCaret: (snippet: string) => void;
-	/** Swap a pending upload line (see `getCommentMediaUploadPlaceholderText`) for final HTML or an error line. */
 	replaceUploadPlaceholder: (id: string, replacement: string) => void;
 };
 
@@ -62,20 +57,15 @@ type MarkdownEditorProps = {
 	value: string;
 	onChange: Dispatch<SetStateAction<string>>;
 	placeholder?: string;
-	/** Compact mode for comment boxes — shorter height, no syntax highlight overlay */
 	compact?: boolean;
 	onKeyDown?: React.KeyboardEventHandler<HTMLTextAreaElement>;
 	onPaste?: React.ClipboardEventHandler<HTMLTextAreaElement>;
 	textareaRef?: React.RefObject<HTMLTextAreaElement | null>;
 	mentions?: MentionConfig;
 	media?: MarkdownEditorMediaUpload;
-	/** Scroll into view when typing at end — e.g. ref on the row below the editor (Send / Close PR). */
 	scrollAnchorRef?: React.RefObject<HTMLElement | null>;
-	/** Actions rendered inside the card, under the text (Linear's composer keeps send in the card). */
 	footer?: React.ReactNode;
 };
-
-// ── Mention hook ──────────────────────────────────────────────────
 
 type MentionState = {
 	query: string;
@@ -109,7 +99,6 @@ function useMentions(
 		const cursor = textarea.selectionStart;
 		const text = value.slice(0, cursor);
 
-		// Walk backwards to find @ preceded by whitespace or at start
 		let triggerIdx = -1;
 		for (let i = text.length - 1; i >= 0; i--) {
 			const ch = text[i];
@@ -119,7 +108,6 @@ function useMentions(
 				}
 				break;
 			}
-			// Stop on whitespace — no valid @mention
 			if (/\s/.test(ch)) break;
 		}
 
@@ -132,13 +120,11 @@ function useMentions(
 		setMentionState({ query, triggerIndex: triggerIdx });
 		setActiveIndex(0);
 
-		// Fire onActivate once
 		if (!activatedRef.current) {
 			activatedRef.current = true;
 			config.onActivate?.();
 		}
 
-		// Measure caret position for dropdown
 		const coords = getCaretCoordinates(textarea, cursor);
 		const rect = textarea.getBoundingClientRect();
 		setDropdownPos({
@@ -216,8 +202,6 @@ function useMentions(
 	};
 }
 
-// ── Compact write surface (comment box) ────────────────────────────
-
 function CompactWriteSurface({
 	value,
 	onChange,
@@ -271,8 +255,6 @@ function CompactWriteSurface({
 		/>
 	);
 }
-
-// ── Main component ────────────────────────────────────────────────
 
 export const MarkdownEditor = forwardRef<
 	MarkdownEditorHandle,
@@ -361,7 +343,6 @@ export const MarkdownEditor = forwardRef<
 
 	const handleKeyDown = useCallback(
 		(event: React.KeyboardEvent<HTMLTextAreaElement>) => {
-			// Mention dropdown takes priority
 			if (handleMentionKeyDown(event)) return;
 
 			const mod = event.metaKey || event.ctrlKey;
@@ -400,7 +381,6 @@ export const MarkdownEditor = forwardRef<
 		[onChange],
 	);
 
-	// Detect mentions after value or cursor changes
 	// biome-ignore lint/correctness/useExhaustiveDependencies: value triggers re-detection of @mentions on text change
 	useEffect(() => {
 		if (tab === "write" && mentionConfig) {
@@ -433,8 +413,6 @@ export const MarkdownEditor = forwardRef<
 			<div
 				className={cn(
 					"items-center justify-between px-2 pt-2",
-					// Compact composers idle as one line, as Linear's do: the
-					// tabs and tools appear once you focus or type.
 					compact
 						? "hidden group-focus-within/editor:flex group-data-[filled=true]/editor:flex"
 						: "flex",
@@ -618,8 +596,6 @@ export const MarkdownEditor = forwardRef<
 	);
 });
 
-// ── Mention dropdown ──────────────────────────────────────────────
-
 function MentionDropdown({
 	candidates,
 	activeIndex,
@@ -637,7 +613,6 @@ function MentionDropdown({
 }) {
 	const listRef = useRef<HTMLDivElement>(null);
 
-	// Scroll active item into view
 	useEffect(() => {
 		const list = listRef.current;
 		if (!list) return;
@@ -645,7 +620,6 @@ function MentionDropdown({
 		item?.scrollIntoView({ block: "nearest" });
 	}, [activeIndex]);
 
-	// Dismiss on outside click
 	useEffect(() => {
 		const handleClick = (e: MouseEvent) => {
 			if (listRef.current && !listRef.current.contains(e.target as Node)) {
@@ -711,8 +685,6 @@ function MentionDropdown({
 	);
 }
 
-// ── Toolbar button ─────────────────────────────────────────────────
-
 function MdToolbarButton({
 	label,
 	shortcut,
@@ -729,8 +701,6 @@ function MdToolbarButton({
 			<TooltipTrigger asChild>
 				<button
 					type="button"
-					// Preserve textarea focus when the toolbar is clicked so the
-					// focus ring on the editor root doesn't flicker.
 					onMouseDown={(e) => e.preventDefault()}
 					onClick={onClick}
 					className="flex size-6 items-center justify-center rounded-md transition-colors hover:bg-ghost-hover hover:text-foreground"
@@ -756,8 +726,6 @@ function MdToolbarButton({
 		</Tooltip>
 	);
 }
-
-// ── Highlighted editor (full mode) ────────────────────────────────
 
 function HighlightedMarkdownEditor({
 	value,

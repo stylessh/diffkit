@@ -388,27 +388,29 @@ function MergedBranchBanner({
 	branchName: string;
 	headRefDeleted: boolean;
 }) {
-	const [isDeleting, setIsDeleting] = useState(false);
-	const [isDeleted, setIsDeleted] = useState(false);
+	const [branchStatus, setBranchStatus] = useState<
+		"present" | "deleting" | "deleted"
+	>("present");
+	const isDeleting = branchStatus === "deleting";
 
-	const deleted = headRefDeleted || isDeleted;
+	const deleted = headRefDeleted || branchStatus === "deleted";
 
 	const handleDelete = async () => {
-		setIsDeleting(true);
+		setBranchStatus("deleting");
 		try {
 			const result = await deleteBranch({
 				data: { owner, repo, branch: branchName, pullNumber },
 			});
 			if (result.ok) {
-				setIsDeleted(true);
+				setBranchStatus("deleted");
 			} else {
 				toast.error(result.error);
 				checkPermissionWarning(result, `${owner}/${repo}`);
-				setIsDeleting(false);
+				setBranchStatus("present");
 			}
 		} catch {
 			toast.error("Failed to delete branch");
-			setIsDeleting(false);
+			setBranchStatus("present");
 		}
 	};
 
@@ -816,8 +818,11 @@ function ChecksSection({
 	pullNumber: number;
 }) {
 	const [open, setOpen] = useState(true);
-	const [isRerunning, setIsRerunning] = useState(false);
-	const [isApproving, setIsApproving] = useState(false);
+	const [pendingAction, setPendingAction] = useState<
+		"rerun" | "approve" | null
+	>(null);
+	const isRerunning = pendingAction === "rerun";
+	const isApproving = pendingAction === "approve";
 	const queryClient = useQueryClient();
 	const statusQueryKey = useMemo(
 		() => githubQueryKeys.pulls.status(scope, { owner, repo, pullNumber }),
@@ -889,7 +894,7 @@ function ChecksSection({
 	];
 
 	const handleRerun = async (failedOnly: boolean) => {
-		setIsRerunning(true);
+		setPendingAction("rerun");
 		try {
 			const result = await rerunChecks({
 				data: { owner, repo, pullNumber, failedOnly },
@@ -921,12 +926,12 @@ function ChecksSection({
 		} catch {
 			toast.error("Failed to rerun checks");
 		} finally {
-			setIsRerunning(false);
+			setPendingAction(null);
 		}
 	};
 
 	const handleApprove = async () => {
-		setIsApproving(true);
+		setPendingAction("approve");
 		try {
 			const result = await approveWorkflowRuns({
 				data: {
@@ -960,7 +965,7 @@ function ChecksSection({
 		} catch {
 			toast.error("Failed to approve workflows");
 		} finally {
-			setIsApproving(false);
+			setPendingAction(null);
 		}
 	};
 
@@ -1434,8 +1439,9 @@ function MergeFooter({
 	const [mergeMethod, setMergeMethod] = useState<"merge" | "squash" | "rebase">(
 		"squash",
 	);
-	const [isMerging, setIsMerging] = useState(false);
-	const [showCommitForm, setShowCommitForm] = useState(false);
+	const [phase, setPhase] = useState<"idle" | "confirming" | "merging">("idle");
+	const isMerging = phase === "merging";
+	const showCommitForm = phase !== "idle";
 	const [commitTitle, setCommitTitle] = useState("");
 	const [commitDescription, setCommitDescription] = useState("");
 	const queryClient = useQueryClient();
@@ -1456,11 +1462,11 @@ function MergeFooter({
 	const openCommitForm = () => {
 		setCommitTitle(getDefaultCommitTitle());
 		setCommitDescription("");
-		setShowCommitForm(true);
+		setPhase("confirming");
 	};
 
 	const handleMerge = async () => {
-		setIsMerging(true);
+		setPhase("merging");
 		try {
 			const result = await mergePullRequest({
 				data: {
@@ -1486,11 +1492,11 @@ function MergeFooter({
 			} else {
 				toast.error(result.error);
 				checkPermissionWarning(result, `${owner}/${repo}`);
-				setIsMerging(false);
+				setPhase("confirming");
 			}
 		} catch {
 			toast.error("Failed to merge pull request");
-			setIsMerging(false);
+			setPhase("confirming");
 		}
 	};
 
@@ -1546,7 +1552,7 @@ function MergeFooter({
 					<Button
 						variant="ghost"
 						size="sm"
-						onClick={() => setShowCommitForm(false)}
+						onClick={() => setPhase("idle")}
 						disabled={isMerging}
 					>
 						Cancel
@@ -2803,9 +2809,12 @@ function ReviewCommentBlock({
 	const { resolvedTheme } = useTheme();
 	const isDark = resolvedTheme === "dark";
 	const queryClient = useQueryClient();
-	const [showReplyForm, setShowReplyForm] = useState(false);
+	const [replyStatus, setReplyStatus] = useState<"closed" | "open" | "sending">(
+		"closed",
+	);
+	const showReplyForm = replyStatus !== "closed";
+	const isSending = replyStatus === "sending";
 	const [replyBody, setReplyBody] = useState("");
-	const [isSending, setIsSending] = useState(false);
 	const [isCollapsed, setIsCollapsed] = useState(
 		threadInfo?.isResolved ?? false,
 	);
@@ -2866,7 +2875,7 @@ function ReviewCommentBlock({
 
 	const handleReply = useCallback(async () => {
 		if (!replyBody.trim() || !owner || !repo || pullNumber == null) return;
-		setIsSending(true);
+		setReplyStatus("sending");
 		try {
 			const result = await replyToReviewComment({
 				data: {
@@ -2879,17 +2888,17 @@ function ReviewCommentBlock({
 			});
 			if (result) {
 				setReplyBody("");
-				setShowReplyForm(false);
+				setReplyStatus("closed");
 				void queryClient.invalidateQueries({
 					queryKey: githubQueryKeys.all,
 				});
 			} else {
 				toast.error("Failed to send reply");
+				setReplyStatus("open");
 			}
 		} catch {
 			toast.error("Failed to send reply");
-		} finally {
-			setIsSending(false);
+			setReplyStatus("open");
 		}
 	}, [replyBody, owner, repo, pullNumber, comment.id, queryClient]);
 
@@ -2960,7 +2969,7 @@ function ReviewCommentBlock({
 									<button
 										type="button"
 										onClick={() => {
-											setShowReplyForm(false);
+											setReplyStatus("closed");
 											setReplyBody("");
 										}}
 										className="rounded-md px-3 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:text-foreground"
@@ -2987,7 +2996,7 @@ function ReviewCommentBlock({
 								{canReply && (
 									<button
 										type="button"
-										onClick={() => setShowReplyForm(true)}
+										onClick={() => setReplyStatus("open")}
 										className="flex items-center gap-1.5 text-xs text-muted-foreground transition-colors hover:text-foreground"
 									>
 										<CommentIcon size={12} strokeWidth={2} />

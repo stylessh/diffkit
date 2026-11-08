@@ -50,7 +50,6 @@ export function CompareDiffView({
 	filesTruncated?: boolean;
 	owner: string;
 	repo: string;
-	/** Rendered above the toolbar (the compared refs). */
 	header?: ReactNode;
 }) {
 	const [diffStyle, setDiffStyle] = useState<DiffStyle>("split");

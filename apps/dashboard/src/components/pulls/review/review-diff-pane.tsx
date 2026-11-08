@@ -58,9 +58,7 @@ type ReviewDiffPaneProps = {
 		number,
 		{ threadId: string; isResolved: boolean }
 	>;
-	/** The bar above the file cards (Files / Commits, display options). */
 	toolbar?: ReactNode;
-	/** Shown in place of the file cards (e.g. the commit list); the cards stay mounted. */
 	alternateView?: ReactNode;
 	wrapLines?: boolean;
 };

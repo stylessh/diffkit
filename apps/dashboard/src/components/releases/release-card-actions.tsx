@@ -87,20 +87,23 @@ export function ReleaseDeleteButton({
 	variant?: "icon" | "button";
 }) {
 	const queryClient = useQueryClient();
-	const [open, setOpen] = useState(false);
-	const [deleting, setDeleting] = useState(false);
+	const [dialog, setDialog] = useState<"closed" | "confirming" | "deleting">(
+		"closed",
+	);
+	const deleting = dialog === "deleting";
 
 	const handleDelete = async () => {
-		setDeleting(true);
+		setDialog("deleting");
 		try {
 			const result = await deleteRepoRelease({
 				data: { owner, repo, releaseId: release.id },
 			});
 			if (!result.ok) {
 				toast.error(result.error);
+				setDialog("confirming");
 				return;
 			}
-			setOpen(false);
+			setDialog("closed");
 			toast.success(`Deleted release ${release.tagName}`, {
 				description: "The git tag was kept.",
 			});
@@ -110,8 +113,7 @@ export function ReleaseDeleteButton({
 			});
 		} catch {
 			toast.error("Failed to delete release");
-		} finally {
-			setDeleting(false);
+			setDialog("confirming");
 		}
 	};
 
@@ -138,7 +140,12 @@ export function ReleaseDeleteButton({
 		);
 
 	return (
-		<AlertDialog open={open} onOpenChange={setOpen}>
+		<AlertDialog
+			open={dialog !== "closed"}
+			onOpenChange={(open) => {
+				if (!deleting) setDialog(open ? "confirming" : "closed");
+			}}
+		>
 			{variant === "icon" ? (
 				<Tooltip>
 					<TooltipTrigger asChild>

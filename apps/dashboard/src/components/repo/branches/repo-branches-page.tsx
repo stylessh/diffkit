@@ -341,7 +341,6 @@ export function RepoBranchesPage({
 	);
 }
 
-/** A section of branches under Linear's 36px group banner; "View all" on its right. */
 function BranchSection({
 	title,
 	count,

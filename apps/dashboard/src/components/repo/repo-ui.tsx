@@ -1,35 +1,21 @@
 import { cn } from "@diffkit/ui/lib/utils";
 import type * as React from "react";
 
-/**
- * The repository pages' small parts, measured off the Linear reference's
- * repo overview and code view (1440px, both themes).
- */
-
-/** A raised 28px pill: the toolbar's branch, Code and filter buttons. */
 export const pillButtonClassName =
 	"inline-flex h-7 max-w-full min-w-0 shrink-0 items-center gap-1.5 rounded-full bg-button px-2.5 text-xs font-medium whitespace-nowrap text-text-header shadow-button transition-colors hover:bg-button-hover hover:text-foreground disabled:pointer-events-none disabled:opacity-50 aria-expanded:text-foreground [&_svg]:shrink-0";
 
-/** A 28px ghost pill: "14 branches", "History", row actions with a label. */
 export const ghostPillClassName =
 	"inline-flex h-7 shrink-0 items-center gap-1.5 rounded-full px-2 text-xs font-medium whitespace-nowrap text-muted-foreground transition-colors hover:bg-ghost-hover hover:text-foreground [&_svg]:shrink-0";
 
-/** A pill tab inside a page (branch views, README / License): selected via aria-selected or aria-pressed. */
 export const pillTabClassName =
 	"inline-flex h-7 shrink-0 items-center gap-1.5 rounded-full bg-button px-[10.5px] text-xs font-medium whitespace-nowrap text-muted-foreground shadow-button transition-colors hover:bg-button-hover hover:text-foreground aria-selected:bg-tab-selected aria-selected:text-foreground aria-selected:shadow-tab-selected aria-pressed:bg-tab-selected aria-pressed:text-foreground aria-pressed:shadow-tab-selected [&_svg]:shrink-0";
 
-/** A round 28px ghost icon button for row and card actions. */
 export const iconButtonClassName =
 	"flex size-7 shrink-0 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-ghost-hover hover:text-foreground disabled:pointer-events-none disabled:opacity-40 aria-disabled:pointer-events-none aria-disabled:opacity-30";
 
-/** The rows inside a repo card: 36px, a hairline between, 16px in, 9px apart. */
 export const cardRowClassName =
 	"flex h-9 w-full min-w-0 items-center gap-[9px] border-t-[0.5px] border-card-border px-4 text-left transition-colors first:border-t-0 hover:bg-item-hover";
 
-/**
- * A card on the page: the card fill under the card ring and its soft drop,
- * 8px corners so 36px rows sit flush inside.
- */
 export function RepoCard({ className, ...props }: React.ComponentProps<"div">) {
 	return (
 		<div
@@ -43,7 +29,6 @@ export function RepoCard({ className, ...props }: React.ComponentProps<"div">) {
 	);
 }
 
-/** A card's 44px head row: the commit that last touched what's listed. */
 export function RepoCardHead({
 	className,
 	...props
@@ -60,7 +45,6 @@ export function RepoCardHead({
 	);
 }
 
-/** A key box, as menus show shortcuts: 11px in a 17px hairline square. */
 export function KeyHint({
 	className,
 	children,
@@ -80,7 +64,6 @@ export function KeyHint({
 	);
 }
 
-/** A property in the repo panel: its name in a muted 112px column, then the value. */
 export function LabeledRow({
 	label,
 	children,
@@ -100,7 +83,6 @@ export function LabeledRow({
 	);
 }
 
-/** A small hairline badge: "Latest", "Default", "Public". */
 export function HairlineBadge({
 	className,
 	...props
@@ -116,7 +98,6 @@ export function HairlineBadge({
 	);
 }
 
-/** A calm, centred empty or error state for a repo list. */
 export function RepoEmptyState({
 	icon,
 	title,
@@ -151,7 +132,6 @@ export function RepoEmptyState({
 	);
 }
 
-/** The muted author avatar used in repo rows: 18px with a hairline ring. */
 export function RepoAvatar({
 	src,
 	alt = "",
@@ -179,7 +159,6 @@ export function RepoAvatar({
 	);
 }
 
-/** A release's diamond, as Linear draws milestones; the latest one in the open color. */
 export function ReleaseGlyph({
 	latest = false,
 	size = 14,

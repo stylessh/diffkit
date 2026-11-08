@@ -9,28 +9,23 @@ const buttonVariants = cva(
 		"inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-[13px] font-medium transition-[color,background-color,box-shadow]",
 		"disabled:pointer-events-none disabled:opacity-50 aria-disabled:pointer-events-none aria-disabled:opacity-50",
 		"[&_svg]:pointer-events-none [&_svg:not([class*='size-'])]:size-4 [&_svg]:shrink-0",
-		// Linear focus: a 1px indigo outline drawn just inside the edge, no glow.
 		"outline-none focus-visible:outline-1 focus-visible:-outline-offset-1 focus-visible:outline-ring",
 		"aria-invalid:outline-1 aria-invalid:-outline-offset-1 aria-invalid:outline-destructive",
 	].join(" "),
 	{
 		variants: {
 			variant: {
-				// Solid neutral action: flat fill + a contained two-layer drop.
 				default:
 					"bg-primary text-primary-foreground shadow-[0_1px_1px_0_lch(0_0_0/0.12),0_3px_6px_-2px_lch(0_0_0/0.12)] hover:bg-primary/90",
-				// Linear's indigo accent — the single saturated action.
 				accent:
 					"bg-indigo text-indigo-foreground shadow-[0_1px_1px_0_lch(0_0_0/0.12),0_3px_6px_-2px_lch(0_0_0/0.12)] hover:bg-indigo/90",
 				destructive:
 					"bg-destructive text-white shadow-[0_1px_1px_0_lch(0_0_0/0.12),0_3px_6px_-2px_lch(0_0_0/0.12)] hover:bg-destructive/90 focus-visible:outline-destructive",
 				success:
 					"bg-success text-white shadow-[0_1px_1px_0_lch(0_0_0/0.12),0_3px_6px_-2px_lch(0_0_0/0.12)] hover:bg-success/90",
-				// Merged / completed — the merged state's purple.
 				purple:
 					"bg-merge text-white shadow-[0_1px_1px_0_lch(0_0_0/0.12),0_3px_6px_-2px_lch(0_0_0/0.12)] hover:bg-merge-hover",
 				gold: "bg-warning text-neutral-950 shadow-[0_1px_1px_0_lch(0_0_0/0.12),0_3px_6px_-2px_lch(0_0_0/0.12)] hover:bg-warning/90",
-				// Raised pill button: fill + 0.5px ring + two-layer drop.
 				outline:
 					"bg-button text-foreground shadow-button hover:bg-button-hover",
 				pill: "rounded-full bg-button text-foreground shadow-button hover:bg-button-hover",

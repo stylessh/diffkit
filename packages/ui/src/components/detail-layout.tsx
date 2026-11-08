@@ -3,13 +3,6 @@ import type * as React from "react";
 
 import { cn } from "../lib/utils";
 
-/**
- * A detail page's body, after Linear's issue and diff pages: a content column
- * of at most 780px (688px of text with 46px either side), centred in what the
- * properties panel leaves; the panel takes about a third of the pane and
- * stays pinned while the content scrolls. Under 1024px the panel follows the
- * content.
- */
 function DetailLayout({
 	className,
 	children,
@@ -18,7 +11,6 @@ function DetailLayout({
 	...props
 }: React.ComponentProps<"div"> & {
 	panel: React.ReactNode;
-	/** Accessible name for the panel landmark. */
 	panelLabel?: string;
 }) {
 	return (
@@ -42,7 +34,6 @@ function DetailLayout({
 	);
 }
 
-/** A section of the properties panel: a muted 13px label, an optional action, then its rows. */
 function PanelSection({
 	className,
 	label,
@@ -68,12 +59,6 @@ function PanelSection({
 	);
 }
 
-/**
- * The ghost pill a panel value sits in, as Linear's issue panel draws them:
- * it hugs its content, hangs 6px past the text on both sides and lights on
- * hover (or while its menu is open). Render a button or a trigger with
- * `asChild` when clicking it changes the value.
- */
 function PanelPill({
 	className,
 	icon,
@@ -108,10 +93,6 @@ function PanelPill({
 	);
 }
 
-/**
- * A row in a panel section: the pill, then (for values with their own page)
- * the round › that shows on hover, and anything that sits after it.
- */
 function PanelRow({
 	className,
 	icon,
@@ -123,7 +104,6 @@ function PanelRow({
 }: React.ComponentProps<"div"> & {
 	icon?: React.ReactNode;
 	muted?: boolean;
-	/** A `PanelGoButton` that opens the value's own page. */
 	go?: React.ReactNode;
 	after?: React.ReactNode;
 }) {
@@ -145,11 +125,6 @@ function PanelRow({
 	);
 }
 
-/**
- * The round › beside a panel item, shown on hover: a 28px circle 4px after
- * the pill, fainter than the pill, with a 4x7.5 chevron. Pass a link with
- * `asChild`.
- */
 function PanelGoButton({
 	className,
 	asChild = false,
@@ -186,10 +161,6 @@ function PanelGoButton({
 	);
 }
 
-/**
- * A panel section's +: on a row of its own under the section's items, a
- * 24px muted round button whose glyph centres on the 14px icon column above.
- */
 function PanelAddButton({
 	className,
 	...props
@@ -222,7 +193,6 @@ function PanelAddButton({
 	);
 }
 
-/** A labelled property: a muted 96px label column, then the value. */
 function PropertyRow({
 	className,
 	label,
@@ -245,7 +215,6 @@ function PropertyRow({
 	);
 }
 
-/** Green and red line counts in tabular figures, as diffs show them. */
 function LineCounts({
 	className,
 	additions,
@@ -266,7 +235,6 @@ function LineCounts({
 	);
 }
 
-/** A branch or ref as a badge: the mono face on a faint tint, truncating. */
 function BranchBadge({ className, ...props }: React.ComponentProps<"span">) {
 	return (
 		<span

@@ -3,10 +3,6 @@ import type * as React from "react";
 
 import { cn } from "../lib/utils";
 
-/**
- * The 44px row of pill tabs under a page header (Linear's "For me / Created",
- * "Overview / Diff"), with optional actions at its right.
- */
 function ViewTabs({
 	className,
 	children,
@@ -15,7 +11,6 @@ function ViewTabs({
 	...props
 }: React.ComponentProps<"div"> & {
 	actions?: React.ReactNode;
-	/** Accessible name for the tab row. */
 	label: string;
 }) {
 	return (
@@ -42,11 +37,6 @@ function ViewTabs({
 	);
 }
 
-/**
- * One pill: 28px, the button fill under a 0.5px ring; the current one takes
- * the selected fill. Pass a router link with `asChild` — its
- * `aria-current="page"` (or `active`) marks it current.
- */
 function ViewTab({
 	className,
 	active,
@@ -71,7 +61,6 @@ function ViewTab({
 	);
 }
 
-/** A muted count inside a tab: "Diffs 10". */
 function ViewTabCount({ className, ...props }: React.ComponentProps<"span">) {
 	return (
 		<span

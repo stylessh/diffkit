@@ -362,7 +362,6 @@ export function ComparePage({
 	);
 }
 
-/** The page's breadcrumb row: the repository › what this page does. */
 function ComparePageHeader({
 	owner,
 	repo,

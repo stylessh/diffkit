@@ -5,7 +5,6 @@ import { cardRowClassName, RepoCard, RepoCardHead } from "./repo-ui";
 const ROWS = Array.from({ length: 8 }, (_, i) => `skeleton-row-${i}`);
 const PANEL_ROWS = ["a", "b", "c", "d"];
 
-/** The overview's body while the repository loads, in the page's own shapes. */
 export function RepoOverviewSkeleton() {
 	return (
 		<DetailLayout

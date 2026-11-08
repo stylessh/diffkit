@@ -7,7 +7,6 @@ const calloutVariants = cva(
 	"flex min-h-11 items-center justify-between gap-3 rounded-lg px-3 py-2 text-[13px] text-text-strong [&_svg]:shrink-0",
 	{
 		variants: {
-			// Calm fills; the hue lives on the leading icon, as in Linear's banners.
 			variant: {
 				default: "bg-group",
 				info: "bg-indigo/8 [&_svg]:text-indigo",

@@ -30,8 +30,6 @@ import type {
 	SortOption,
 } from "./use-list-filters";
 
-// ── Main FilterBar ─────────────────────────────────────────────────────
-
 export const FilterBar = memo(function FilterBar<T extends FilterableItem>({
 	state,
 	searchPlaceholder = "Search by title, author, repo, or #…",
@@ -101,8 +99,6 @@ export const FilterBar = memo(function FilterBar<T extends FilterableItem>({
 	className?: string;
 }) => React.ReactNode;
 
-// ── Search Input ───────────────────────────────────────────────────────
-
 function SearchInput({
 	value,
 	onChange,
@@ -137,13 +133,6 @@ function SearchInput({
 	);
 }
 
-// ── Sort Dropdown ──────────────────────────────────────────────────────
-
-/**
- * Linear's Display options: a round raised icon button opening a 300px
- * popover whose rows are a muted label and a compact select. Ordering is the
- * one option a list has here.
- */
 function DisplayOptions({
 	options,
 	value,
@@ -194,8 +183,6 @@ function DisplayOptions({
 		</Popover>
 	);
 }
-
-// ── Filter Pill ────────────────────────────────────────────────────────
 
 function FilterPill({
 	filter,
@@ -285,8 +272,6 @@ function FilterPill({
 		</div>
 	);
 }
-
-// ── Add Filter Button ──────────────────────────────────────────────────
 
 function AddFilterButton({
 	filterDefs,
@@ -381,8 +366,6 @@ function AddFilterButton({
 	);
 }
 
-// ── Field Picker (inline, no backdrop) ─────────────────────────────────
-
 function FieldPickerInline({
 	filterDefs,
 	activeFieldIds,
@@ -449,8 +432,6 @@ function FieldPickerInline({
 	);
 }
 
-// ── Value Picker (inline, no backdrop) ─────────────────────────────────
-
 function ValuePickerInline({
 	options,
 	selectedValues,
@@ -515,8 +496,6 @@ function ValuePickerInline({
 		</div>
 	);
 }
-
-// ── Value Picker Dropdown ──────────────────────────────────────────────
 
 function ValuePicker({
 	options,
@@ -586,8 +565,6 @@ function ValuePicker({
 		</DropdownPanel>
 	);
 }
-
-// ── Dropdown Panel (shared) ────────────────────────────────────────────
 
 function DropdownPanel({
 	children,

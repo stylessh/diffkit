@@ -253,7 +253,6 @@ export function RepoExplorerLayout({
 	return (
 		<div className="flex h-full min-h-0 flex-col">
 			{header}
-			{/* a hairline under the tabs, meeting the tree's own on the left, so the two panes read as one frame */}
 			<div className="flex min-h-0 flex-1 border-t-[0.5px] border-header-rule">
 				{isDesktop ? (
 					<ResizablePanelGroup direction="horizontal" className="flex-1">
@@ -281,11 +280,6 @@ export function RepoExplorerLayout({
 	);
 }
 
-/**
- * The path as a breadcrumb, as the reference's code view draws it: the repo
- * and each folder as links back up in the accent, the open entry last, then
- * a button that copies the path.
- */
 function RepoPathBreadcrumb({
 	owner,
 	repoName,

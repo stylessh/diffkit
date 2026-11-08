@@ -93,7 +93,6 @@ export function ReviewSubmitPopover({
 			</span>
 		) : null;
 
-	// The page's one saturated action: an indigo pill beside the round buttons.
 	const trigger = (
 		<button
 			type="button"

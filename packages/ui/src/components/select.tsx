@@ -30,7 +30,6 @@ function SelectTrigger({
 	size = "default",
 	...props
 }: React.ComponentProps<typeof SelectPrimitive.Trigger> & {
-	/** `sm` is Linear's compact option select: 24px, 12px text (Display options). */
 	size?: "default" | "sm";
 }) {
 	return (

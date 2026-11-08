@@ -30,7 +30,6 @@ export const IssueRow = memo(function IssueRow({
 	showRepository = true,
 }: {
 	issue: IssueSummary;
-	/** Hide the repository chip in lists scoped to one repository. */
 	showRepository?: boolean;
 }) {
 	const { color } = getIssueStateProps(issue);

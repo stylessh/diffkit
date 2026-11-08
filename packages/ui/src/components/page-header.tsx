@@ -3,11 +3,6 @@ import type * as React from "react";
 
 import { cn } from "../lib/utils";
 
-/**
- * A page's first row, as Linear draws it: 44px, a hairline under it, what
- * you're looking at on the left (a title or a breadcrumb, 13px medium) and
- * its actions on the right.
- */
 function PageHeader({
 	className,
 	children,
@@ -37,15 +32,12 @@ function PageHeader({
 	);
 }
 
-/** A link back up the breadcrumb (pass a router link with `asChild`), then the › after it. */
 function PageHeaderCrumb({
 	className,
 	asChild = false,
 	...props
 }: React.ComponentProps<"a"> & { asChild?: boolean }) {
 	const Comp = asChild ? Slot : "a";
-	// The crumb and its › live in one wrapper, so `className` (e.g. a
-	// responsive `hidden`) applies to both.
 	return (
 		<span className={cn("flex min-w-0 shrink items-center", className)}>
 			<Comp
@@ -60,10 +52,6 @@ function PageHeaderCrumb({
 	);
 }
 
-/**
- * The page's own name at the end of the breadcrumb: the page's h1, unless the
- * page has its own big title (a detail page) — then pass `asChild` with a span.
- */
 function PageHeaderTitle({
 	className,
 	asChild = false,
@@ -82,7 +70,6 @@ function PageHeaderTitle({
 	);
 }
 
-/** A muted count after the title. */
 function PageHeaderCount({
 	className,
 	...props
@@ -99,7 +86,6 @@ function PageHeaderCount({
 	);
 }
 
-/** A round 28px icon button for the header and tab rows; `raised` gives it the pill fill and ring. */
 function PageIconButton({
 	className,
 	raised = false,

@@ -1,14 +1,6 @@
-/**
- * Markdown typography + surfaces.
- *
- * Every class string the `Markdown` renderer uses lives here so a consumer (or a
- * later design pass) can retheme markdown in one place. Values use the Linear-derived
- * tokens from globals.css; keep the export names stable so overrides stay mechanical.
- */
 import { cn } from "./utils";
 
-// Sizes are relative (em) so the container sets the scale: 13px by default,
-// 15px/24px on detail pages (Linear's document text).
+// Child sizes are in em so callers set the scale (13px lists, 15px documents).
 export const markdownRootClassName =
 	"not-prose break-words text-[13px] leading-[1.6] text-foreground";
 
@@ -33,13 +25,8 @@ export const markdownListClassNames = {
 export const markdownBlockquoteClassName =
 	"border-l-2 border-chip-border pl-[0.8em] text-muted-foreground mb-[0.6em]";
 
-/**
- * GitHub alerts (`> [!NOTE]`) are styled by the `.markdown-alert*` rules in
- * globals.css; the renderer adds nothing on top of the generated classes.
- */
 export const markdownAlertBlockquoteClassName = "";
 
-/** Alert titles keep only the generated `markdown-alert-title` class (see globals.css). */
 export const markdownAlertTitleClassName = "";
 
 export const markdownInlineCodeClassName =

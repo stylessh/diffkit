@@ -192,7 +192,6 @@ export function LabelsSection({
 				createAndAssign();
 			}
 		} else if (!search && /^[1-9]$/.test(e.key)) {
-			// As in Linear's pickers, a number toggles the row it labels.
 			const label = filtered[Number(e.key) - 1];
 			if (!label) return;
 			e.preventDefault();

@@ -16,12 +16,6 @@ import {
 import { useHasMounted } from "#/lib/use-has-mounted";
 import { HairlineBadge } from "./repo-ui";
 
-/**
- * Every repository page's chrome, as Linear draws a repository: the 44px
- * breadcrumb (Repositories › owner/name, its visibility, star and fork on the
- * right), then the 44px row of section tabs. Reads the repo overview from the
- * query cache (every repo route already loads it).
- */
 export function RepoHeader({
 	owner,
 	repo,
@@ -34,9 +28,7 @@ export function RepoHeader({
 	repo: string;
 	scope: GitHubQueryScope;
 	active?: RepoNavKey;
-	/** Crumbs after the repository (a release, "New release"); the last is the page's title. */
 	trail?: ReactNode;
-	/** Actions at the right of the tab row. */
 	tabActions?: ReactNode;
 }) {
 	const hasMounted = useHasMounted();
@@ -60,7 +52,6 @@ export function RepoHeader({
 					) : null
 				}
 			>
-				{/* wrapped so the crumb's own › hides with it on a phone */}
 				<span className="flex min-w-0 shrink items-center max-md:hidden">
 					<PageHeaderCrumb asChild>
 						<Link to="/repos">Repositories</Link>

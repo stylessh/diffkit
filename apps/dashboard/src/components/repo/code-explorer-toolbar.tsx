@@ -42,11 +42,6 @@ import { useRepoCloneProtocol } from "#/lib/repo-clone-protocol-storage";
 import { useGlobalShortcuts } from "#/lib/shortcuts";
 import { ghostPillClassName, KeyHint, pillButtonClassName } from "./repo-ui";
 
-/**
- * The overview's branch bar, as the reference draws it: the branch in a
- * raised pill, the branch and tag counts as ghost pills, then "Go to file"
- * and Code at the right.
- */
 export function CodeExplorerToolbar({
 	repo,
 	currentRef,
@@ -358,7 +353,6 @@ function CloneInput({
 	);
 }
 
-/** Every file and folder of this ref the tree queries have already loaded. */
 function useCachedTreeEntries(
 	open: boolean,
 	repo: RepoOverview,
@@ -400,10 +394,6 @@ function useCachedTreeEntries(
 	}, [open, queryClient, repo.owner, repo.name, currentRef]);
 }
 
-/**
- * "Go to file": a compact pill field with its T key box that opens a fuzzy
- * search over the files this ref has loaded so far.
- */
 function GoToFile({
 	repo,
 	currentRef,

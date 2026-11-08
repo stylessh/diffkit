@@ -18,11 +18,6 @@ type ListIcon = ComponentType<{
 	className?: string;
 }>;
 
-/**
- * The frame every list page shares, after Linear's list views: a 44px header
- * with the page's name and count, a 44px toolbar row (search, filters,
- * sort), then the list itself, full width, scrolling under both.
- */
 export function ListPage({
 	title,
 	count,
@@ -67,11 +62,6 @@ export function ListPage({
 	);
 }
 
-/**
- * A folding group in a list: Linear's 36px banner, sticky at the top of the
- * list while its rows scroll under it, then the rows. An empty group shows
- * its banner (count 0) with nothing under it.
- */
 export function ListGroup({
 	id,
 	icon: Icon,
@@ -111,7 +101,6 @@ export function ListGroup({
 	);
 }
 
-/** The message a list shows when it has nothing to list. */
 export function ListEmpty({ children }: { children: ReactNode }) {
 	return (
 		<p className="px-3 py-16 text-center text-[13px] text-pretty text-muted-foreground">

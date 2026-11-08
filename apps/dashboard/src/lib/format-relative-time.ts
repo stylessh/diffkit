@@ -1,7 +1,3 @@
-/**
- * "5m ago", "3h ago", "2d ago"… With `compact`, the list-row form Linear uses
- * in its right-aligned time column: "now", "5m", "3h", "2d", "4mo", "1y".
- */
 export function formatRelativeTime(
 	dateStr: string,
 	now?: number,

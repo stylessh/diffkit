@@ -51,10 +51,7 @@ function useIsActiveFile(store: ActiveFileStore, path: string): boolean {
 	return useSyncExternalStore(subscribe, getSnapshot);
 }
 
-// Row pitch is fixed so useVirtualizer can compute absolute positions without
-// measuring: a 28px Linear sidebar item plus a 1px gap under it.
 const ROW_HEIGHT = 29;
-// Each level of nesting steps the row's content in by this much.
 const INDENT = 12;
 
 type FlatRow = {

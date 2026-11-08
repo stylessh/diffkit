@@ -1,9 +1,5 @@
 import { cn } from "@diffkit/ui/lib/utils";
 
-/**
- * A label inline in text, as Linear's timeline names them: an 18px hairline
- * chip with the label's color as a 7px dot (`md` is the 24px row chip).
- */
 const sizes = {
 	sm: "h-[18px] gap-[5px] pr-1.5 pl-[7px] text-xs",
 	md: "h-6 gap-1.5 px-2 text-xs",

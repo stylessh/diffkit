@@ -55,7 +55,6 @@ const AVATAR_MAX_VISIBLE = 4;
 const AVATAR_SIZE = 24;
 const AVATAR_OVERLAP = 8;
 
-// Hoisted regexes — avoids recreation per call (js-hoist-regexp)
 const RE_PULLS_NUMBER = /\/(?:pulls|issues)\/(\d+)$/;
 const RE_API_PULLS = /\/repos\/[^/]+\/[^/]+\/pulls\/(\d+)$/;
 const RE_API_ISSUES = /\/repos\/[^/]+\/[^/]+\/issues\/(\d+)$/;
@@ -134,7 +133,6 @@ export function InboxPage() {
 		(notification: NotificationItem) => {
 			setSelectedId(notification.id);
 
-			// Prefetch the next notification's detail data
 			const idx = notifications.findIndex((n) => n.id === notification.id);
 			const next = idx >= 0 ? notifications[idx + 1] : null;
 			if (next) {

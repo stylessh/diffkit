@@ -68,13 +68,6 @@ const LARGE_PATCH_CHAR_THRESHOLD = 24_000;
 const DIFF_LINE_HEIGHT = 20;
 const DIFF_HUNK_SEPARATOR_HEIGHT = 28;
 
-/**
- * Pierre's diff, restyled after Linear's file card (measured from the
- * reference's Diff tab): 20px rows of 12px mono on the card's own fill, a 50px
- * number column (12px right padding, numbers green/red on changed lines), no
- * change bars or gutter gaps, a calm 28px hunk row, a hairline between split
- * halves, and comment threads on the page fill between hairlines.
- */
 const DIFF_UNSAFE_CSS = `
 :host {
 	--diffs-font-family: 'Geist Mono Variable', 'SF Mono', ui-monospace, 'Cascadia Code', monospace;
@@ -157,7 +150,6 @@ const DIFF_UNSAFE_CSS = `
 [data-line-annotation] code { font-family: var(--diffs-font-family, var(--diffs-font-fallback)); }
 [data-annotation-content] {
 	background-color: transparent;
-	/* keep threads in view when long lines scroll the column sideways */
 	position: sticky;
 	left: var(--diffs-column-number-width, 50px);
 	width: var(--diffs-column-content-width, auto);
@@ -276,10 +268,8 @@ export const ReviewFileDiffBlock = memo(function ReviewFileDiffBlock({
 		number,
 		{ threadId: string; isResolved: boolean }
 	>;
-	/** Wrap long lines instead of scrolling them sideways. */
 	wrapLines?: boolean;
 }) {
-	// A deleted file starts folded: its lines are all red and rarely worth reading.
 	const [isCollapsed, setIsCollapsed] = useState(file.status === "removed");
 	const [isViewed, setIsViewed] = useState(false);
 	const { resolvedTheme } = useTheme();
@@ -370,7 +360,6 @@ export const ReviewFileDiffBlock = memo(function ReviewFileDiffBlock({
 	);
 
 	const toggleCollapse = useCallback(() => setIsCollapsed((prev) => !prev), []);
-	// Marking a file viewed folds it away; unmarking opens it again.
 	const toggleViewed = useCallback((viewed: boolean) => {
 		setIsViewed(viewed);
 		setIsCollapsed(viewed);
@@ -509,11 +498,6 @@ function splitPath(path: string) {
 	return { name: path.slice(at + 1), dir: path.slice(0, at + 1) };
 }
 
-/**
- * A file card's 36px header, after Linear's diff view: the file's glyph (it
- * folds the card), name, muted path and what happened to it, copy, the line
- * counts, Viewed and a more menu. It sticks to the top while its lines scroll.
- */
 const FileHeader = memo(function FileHeader({
 	file,
 	isCollapsed,
@@ -524,7 +508,6 @@ const FileHeader = memo(function FileHeader({
 	file: PullFile;
 	isCollapsed: boolean;
 	onToggleCollapse: () => void;
-	/** Omit to hide the Viewed checkbox (read-only diffs). */
 	isViewed?: boolean;
 	onViewedChange: (viewed: boolean) => void;
 }) {
@@ -565,7 +548,6 @@ const FileHeader = memo(function FileHeader({
 				<FileTypeIcon path={file.filename} />
 			</button>
 
-			{/* a moved file reads "old → new", the old name struck through when it changed too */}
 			{moved ? (
 				<>
 					<span
@@ -787,14 +769,17 @@ function ReviewCommentThread({
 	threadInfo?: { threadId: string; isResolved: boolean };
 }) {
 	const queryClient = useQueryClient();
-	const [showReplyForm, setShowReplyForm] = useState(false);
+	const [replyStatus, setReplyStatus] = useState<"closed" | "open" | "sending">(
+		"closed",
+	);
+	const showReplyForm = replyStatus !== "closed";
+	const isSending = replyStatus === "sending";
 	const [replyBody, setReplyBody] = useState("");
-	const [isSending, setIsSending] = useState(false);
 	const [isResolving, setIsResolving] = useState(false);
 
 	const handleReply = async () => {
 		if (!replyBody.trim()) return;
-		setIsSending(true);
+		setReplyStatus("sending");
 		try {
 			const result = await replyToReviewComment({
 				data: {
@@ -807,17 +792,17 @@ function ReviewCommentThread({
 			});
 			if (result) {
 				setReplyBody("");
-				setShowReplyForm(false);
+				setReplyStatus("closed");
 				void invalidateGitHubEntities(queryClient, null, [
 					pullEntityKey({ owner, repo, pullNumber }),
 				]);
 			} else {
 				toast.error("Failed to send reply");
+				setReplyStatus("open");
 			}
 		} catch {
 			toast.error("Failed to send reply");
-		} finally {
-			setIsSending(false);
+			setReplyStatus("open");
 		}
 	};
 
@@ -883,7 +868,7 @@ function ReviewCommentThread({
 							<button
 								type="button"
 								onClick={() => {
-									setShowReplyForm(false);
+									setReplyStatus("closed");
 									setReplyBody("");
 								}}
 								className="h-7 rounded-full px-2.5 text-xs font-medium text-text-header transition-colors hover:bg-ghost-hover"
@@ -909,7 +894,7 @@ function ReviewCommentThread({
 					<>
 						<button
 							type="button"
-							onClick={() => setShowReplyForm(true)}
+							onClick={() => setReplyStatus("open")}
 							className="-ml-2 flex h-6 items-center gap-1.5 rounded-full px-2 text-xs font-medium text-muted-foreground transition-colors hover:bg-ghost-hover hover:text-foreground"
 						>
 							<CommentIcon size={12} strokeWidth={2} />

@@ -386,7 +386,6 @@ function ReviewersSection({
 				toggleReviewer(item.login);
 			}
 		} else if (!search && /^[1-9]$/.test(event.key)) {
-			// As in Linear's pickers, a number toggles the row it labels.
 			const item = flatItems[Number(event.key) - 1];
 			if (!item) return;
 			event.preventDefault();
@@ -581,7 +580,6 @@ function ReviewersSection({
 	);
 }
 
-/** A person's avatar in a panel row (14px) or menu row (16px), with a hairline ring. */
 function PanelAvatar({ src, size = 14 }: { src: string; size?: number }) {
 	return (
 		<img
@@ -595,7 +593,6 @@ function PanelAvatar({ src, size = 14 }: { src: string; size?: number }) {
 	);
 }
 
-/** A team's mark: a rounded square with its initial, as an avatar stand-in. */
 function TeamMark() {
 	return (
 		<span
@@ -641,7 +638,6 @@ function ParticipantsList({
 	return <DetailParticipantAvatars actors={participants} />;
 }
 
-/** Linear's Properties section: where the pull request stands at a glance. */
 function PullPropertiesSection({ pr }: { pr: PullDetail }) {
 	const state = getPrStateConfig(pr);
 	const StateIcon = state.icon;

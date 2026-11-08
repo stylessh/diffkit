@@ -76,11 +76,7 @@ const primaryNavRoutes = [
 	"/reviews",
 ] as const;
 const MAX_TAB_SHORTCUTS = 9;
-/**
- * The strip of open detail tabs (and its Shift+1…9 / Shift+W / Shift+←→
- * shortcuts). Hidden for now: on the web the browser's own tabs do this job.
- * Pages still record tabs, so flipping this back on restores them.
- */
+// Off on the web, where the browser's own tabs do this job; pages still record tabs.
 const SHOW_OPEN_TABS = false;
 
 export function DashboardTopbar({
@@ -245,7 +241,6 @@ export function DashboardTopbar({
 		<nav
 			className={cn(
 				"flex h-12 min-w-0 shrink-0 items-center gap-3 overflow-hidden px-3 max-md:h-11 max-md:border-b-[0.5px] max-md:border-header-rule",
-				// On mobile the bottom bar carries navigation; without open tabs the top row would be empty.
 				!SHOW_OPEN_TABS && "max-md:hidden",
 			)}
 		>

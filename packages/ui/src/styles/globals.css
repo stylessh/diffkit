@@ -106,9 +106,7 @@
 	--ln-ghost-hover: lch(0 0 0 / 0.05);
 	--ln-menu-hover: lch(0 0 0 / 0.045);
 	--ln-item-hover: lch(0 0 0 / 0.05);
-	/* the round › beside a hovered panel item: fainter than the item's own pill */
 	--ln-go-fill: lch(0 0 0 / 0.03);
-	/* a composer's send button: a filled 24px circle under a hairline ring */
 	--ln-send: lch(100 0 282);
 	--ln-send-ring: lch(0 0 0 / 0.1) 0 0 0 0.5px, lch(0 0 0 / 0.06) 0 0.5px 1px 0;
 
@@ -160,8 +158,6 @@
 	--ln-inline-code: lch(20 50 286.91 / 0.05);
 	--ln-inline-code-ring: lch(84.44 0 282);
 
-	/* GitHub states on Linear's hues: a pull request or issue's state, a
-	   check's conclusion and a review's verdict. */
 	--ln-state-open: lch(60 64.37 141.95);
 	--ln-state-draft: lch(57 1.25 282);
 	--ln-state-merged: lch(50 62 300);
@@ -173,16 +169,13 @@
 	--ln-review-approved: lch(60 64.37 141.95);
 	--ln-review-changes: lch(58 73 29);
 	--ln-review-required: lch(72 80 80);
-	/* Tinted pill fills for the hues above (text sits in the hue itself) */
 	--ln-pill-merged: lch(50 62 300 / 0.1);
 	--ln-pill-warning: lch(72 80 80 / 0.16);
-	/* Pill text for the hues above: a step darker so it clears 4.5:1 on its fill */
 	--ln-pill-ok-text: lch(42 60 141.95);
 	--ln-pill-merged-text: lch(42 62 300);
 	--ln-pill-blocked-text: lch(45 73 29);
 	--ln-pill-warning-text: lch(45 60 70);
 
-	/* Diff lines: a faint tint per line, a stronger one on changed words */
 	--ln-line-added: lch(97.94 3.829 148.469);
 	--ln-line-removed: lch(97.112 3.635 17.957);
 	--ln-word-added: lch(94.733 9.903 148.136);
@@ -190,10 +183,8 @@
 	--ln-line-number: lch(64.64 1.25 282);
 	--ln-number-added: lch(60 64.37 141.95);
 	--ln-number-removed: lch(50 73 29);
-	/* a hunk separator's fill */
 	--ln-gap: lch(95.542 0.067 281.853);
 
-	/* Motion: quick, linear-ish easing for hover, selection and popovers */
 	--ln-duration: 140ms;
 	--ln-ease: cubic-bezier(0.25, 0.46, 0.45, 0.94);
 }
@@ -522,21 +513,17 @@
 		font-weight: 450;
 	}
 
-	/* Linear's focus: a 1px indigo outline just inside the edge, never a glow.
-	   Components that draw their own ring override this with utilities. */
 	:focus-visible {
 		outline: 1px solid var(--ln-focus);
 		outline-offset: -1px;
 	}
 
-	/* Hover, selection and popover transitions run at one speed. */
 	:where(a, button, [role="button"], [role="menuitem"], [role="tab"]) {
 		transition-duration: var(--ln-duration);
 		transition-timing-function: var(--ln-ease);
 	}
 }
 
-/* Respect reduced motion everywhere: keep state changes, drop the movement. */
 @media (prefers-reduced-motion: reduce) {
 	*,
 	*::before,
@@ -642,8 +629,6 @@ input[type="search"] {
 [data-diffs],
 diffs-container {
 	--diffs-font-family: var(--font-mono);
-	/* Linear's diff: a faint tint per changed line, a stronger one on the
-	   changed words, quiet gutter numbers. */
 	--diffs-bg-addition-override: var(--ln-line-added);
 	--diffs-bg-addition-number-override: var(--ln-line-added);
 	--diffs-bg-addition-emphasis-override: var(--ln-word-added);

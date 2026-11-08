@@ -80,7 +80,6 @@ export const RepoFileTreeSidebar = memo(function RepoFileTreeSidebar({
 	currentRef: string;
 	scope: GitHubQueryScope;
 	entries: RepoTreeEntry[];
-	/** Sits on the "Files" row's right (the branch switcher). */
 	header?: ReactNode;
 }) {
 	const navigate = useNavigate();
@@ -113,7 +112,6 @@ export const RepoFileTreeSidebar = memo(function RepoFileTreeSidebar({
 				<span className="shrink-0">Files</span>
 				{header ? <span className="ml-auto flex min-w-0">{header}</span> : null}
 			</div>
-			{/* the search card brings its own 16px top inset; pull it up to the reference's 8px gap */}
 			<div className="-mt-2">
 				<FileSearchCard
 					entries={allFiles}
@@ -146,7 +144,6 @@ export const RepoFileTreeSidebar = memo(function RepoFileTreeSidebar({
 // Tree nodes
 // ---------------------------------------------------------------------------
 
-/** A tree row as the reference draws it: 28px, rounded, 13px, 12px a level. */
 const treeRowClassName =
 	"flex h-7 w-full min-w-0 items-center gap-1.5 rounded-md pr-2 text-[13px] font-[450] transition-colors";
 

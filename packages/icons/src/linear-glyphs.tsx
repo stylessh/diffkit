@@ -1,9 +1,5 @@
 import type { SVGProps } from "react";
 
-/**
- * Linear's own toolbar glyphs (16px grid, filled), for the list toolbar's
- * Filter and Display options buttons.
- */
 type LinearGlyphProps = SVGProps<SVGSVGElement> & {
   size?: number;
   strokeWidth?: number | string;

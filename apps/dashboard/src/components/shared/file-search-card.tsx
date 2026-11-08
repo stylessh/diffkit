@@ -17,10 +17,6 @@ import {
 	searchFiles,
 } from "#/lib/fuzzy-file-search";
 
-// ---------------------------------------------------------------------------
-// Highlighted text for fuzzy match results
-// ---------------------------------------------------------------------------
-
 function HighlightedText({
 	text,
 	indices,
@@ -55,32 +51,18 @@ function HighlightedText({
 	return <span className={className}>{parts}</span>;
 }
 
-// ---------------------------------------------------------------------------
-// Spring config
-// ---------------------------------------------------------------------------
-
 const spring = {
 	type: "spring" as const,
 	duration: 0.18,
 	bounce: 0.05,
 };
 
-// ---------------------------------------------------------------------------
-// FileSearchCard
-// ---------------------------------------------------------------------------
-
 export type FileSearchCardProps = {
-	/** All searchable file entries. */
 	entries: FileSearchEntry[];
-	/** Called when the user selects a result (Enter key or click). */
 	onSelect: (entry: FileSearchResult) => void;
-	/** Placeholder text for the search input. */
 	placeholder?: string;
-	/** Entries to display when the query is empty. If not provided, shows first 5 file entries. */
 	defaultEntries?: FileSearchEntry[];
-	/** Whether the currently selected path matches a result (for active highlight). */
 	activePath?: string;
-	/** Global keyboard shortcut character to focus the input (default: "f"). Set to null to disable. */
 	shortcutKey?: string | null;
 };
 
@@ -116,7 +98,6 @@ export const FileSearchCard = memo(function FileSearchCard({
 
 	const visibleResults = hasResults ? searchResults : computedDefaults;
 
-	// Reset active index when results change
 	// biome-ignore lint/correctness/useExhaustiveDependencies: reset index when query or result count changes
 	useEffect(() => {
 		setActiveIndex(0);
@@ -158,7 +139,6 @@ export const FileSearchCard = memo(function FileSearchCard({
 		[visibleResults, activeIndex, handleSelect],
 	);
 
-	// Close card on click outside
 	useEffect(() => {
 		if (!isExpanded) return;
 		function handlePointerDown(e: PointerEvent) {
@@ -171,7 +151,6 @@ export const FileSearchCard = memo(function FileSearchCard({
 		return () => document.removeEventListener("pointerdown", handlePointerDown);
 	}, [isExpanded]);
 
-	// Close on Escape + global shortcut
 	useEffect(() => {
 		function handleKeyDown(e: KeyboardEvent) {
 			if (e.key === "Escape" && isExpanded) {
@@ -200,7 +179,6 @@ export const FileSearchCard = memo(function FileSearchCard({
 		<div className="relative z-10 shrink-0 px-3 pt-4 pb-2">
 			<div className="h-8" />
 
-			{/* Floating card — absolutely positioned over the tree */}
 			<div
 				ref={cardRef}
 				className={cn(
@@ -304,10 +282,6 @@ export const FileSearchCard = memo(function FileSearchCard({
 	);
 });
 
-// ---------------------------------------------------------------------------
-// Search result row
-// ---------------------------------------------------------------------------
-
 const SearchResultRow = memo(function SearchResultRow({
 	result,
 	isHighlighted,
@@ -336,7 +310,6 @@ const SearchResultRow = memo(function SearchResultRow({
 		[query, dir],
 	);
 
-	// Scroll highlighted item into view
 	useEffect(() => {
 		if (isHighlighted && ref.current) {
 			ref.current.scrollIntoView({ block: "nearest" });

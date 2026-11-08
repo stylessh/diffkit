@@ -1,8 +1,3 @@
-// File-type glyphs for the diff's file cards and tree, as Linear's diff view
-// draws them: the Material Icon Theme symbols (MIT,
-// github.com/material-extensions/vscode-material-icon-theme) in their own
-// colors. Chrome glyphs (copy, more, chevrons) stay on @diffkit/icons.
-
 const FILE_ICONS = {
 	"react-ts": {
 		viewBox: "0 0 32 32",
@@ -210,7 +205,6 @@ function fileKind(path: string): FileKind {
 	return BY_EXTENSION[ext] ?? "file";
 }
 
-/** A file's 16px type glyph, picked from its name. */
 export function FileTypeIcon({
 	path,
 	size = 16,
@@ -234,7 +228,6 @@ export function FileTypeIcon({
 	);
 }
 
-/** Split view: two panes side by side. */
 export function SplitDiffGlyph({ size = 14 }: { size?: number }) {
 	return (
 		<svg
@@ -263,7 +256,6 @@ export function SplitDiffGlyph({ size = 14 }: { size?: number }) {
 	);
 }
 
-/** Unified view: one pane, removed above added. */
 export function UnifiedDiffGlyph({ size = 14 }: { size?: number }) {
 	return (
 		<svg

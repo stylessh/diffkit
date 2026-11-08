@@ -35,7 +35,6 @@ export const PullRequestRow = memo(function PullRequestRow({
 }: {
 	pr: PullSummary;
 	scope: GitHubQueryScope;
-	/** Hide the repository chip in lists scoped to one repository. */
 	showRepository?: boolean;
 }) {
 	const { icon: Icon, color } = getPrStateConfig(pr);

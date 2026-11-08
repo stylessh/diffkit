@@ -41,7 +41,6 @@ function TooltipContent({
 	keys,
 	...props
 }: React.ComponentProps<typeof TooltipPrimitive.Content> & {
-	/** Shortcut shown after the label, one hairline box per key: ["⌘", "K"]. */
 	keys?: readonly string[];
 }) {
 	return (

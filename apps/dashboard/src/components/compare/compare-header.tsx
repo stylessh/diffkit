@@ -2,11 +2,6 @@ import { GitCompareIcon } from "@diffkit/icons";
 import { BranchBadge } from "@diffkit/ui/components/detail-layout";
 import type { CompareDetail } from "#/lib/github.functions";
 
-/**
- * What's being compared, as a 36px card in the diff's own system: the base
- * and compare refs as branch badges, then how far ahead and behind the
- * compare branch is.
- */
 export function CompareHeader({
 	base,
 	head,

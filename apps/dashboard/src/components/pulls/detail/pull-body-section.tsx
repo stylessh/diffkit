@@ -41,9 +41,10 @@ export function PullBodySection({
 	const { mutate } = useOptimisticMutation();
 	const [bodyActive, setBodyActive] = useState(false);
 	const prefersNoHover = usePrefersNoHover();
-	const [isEditing, setIsEditing] = useState(false);
+	const [mode, setMode] = useState<"viewing" | "editing" | "saving">("viewing");
+	const isEditing = mode !== "viewing";
+	const isSaving = mode === "saving";
 	const [draft, setDraft] = useState(pr.body);
-	const [isSaving, setIsSaving] = useState(false);
 
 	const pageQueryKey = githubQueryKeys.pulls.page(scope, {
 		owner,
@@ -53,11 +54,11 @@ export function PullBodySection({
 
 	const startEditing = () => {
 		setDraft(pr.body);
-		setIsEditing(true);
+		setMode("editing");
 	};
 
 	const saveBody = async () => {
-		setIsSaving(true);
+		setMode("saving");
 		try {
 			await mutate({
 				mutationFn: () =>
@@ -76,9 +77,10 @@ export function PullBodySection({
 					},
 				],
 			});
-			setIsEditing(false);
-		} finally {
-			setIsSaving(false);
+			setMode("viewing");
+		} catch (error) {
+			setMode("editing");
+			throw error;
 		}
 	};
 
@@ -93,7 +95,7 @@ export function PullBodySection({
 				<div className="flex items-center justify-end gap-2 pt-2">
 					<button
 						type="button"
-						onClick={() => setIsEditing(false)}
+						onClick={() => setMode("viewing")}
 						disabled={isSaving}
 						className="rounded-md px-3 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:text-foreground disabled:opacity-50"
 					>

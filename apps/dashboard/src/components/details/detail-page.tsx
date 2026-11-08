@@ -9,7 +9,6 @@ import { Link } from "@tanstack/react-router";
 import { animate, motion, useMotionValue, useTransform } from "motion/react";
 import { createContext, useContext, useEffect, useState } from "react";
 
-// Skeleton stagger: quick and calm (no bounce), then a long rest before it replays.
 const STAGGER_DELAY = 0.08;
 const ITEM_DURATION = 0.3;
 const FADE_OUT_DURATION = 0.3;
@@ -118,11 +117,6 @@ type DetailHeaderIcon = React.ComponentType<{
 	className?: string;
 }>;
 
-/**
- * A pull request or issue page, after Linear's issue and diff pages: the
- * breadcrumb header, an optional row of view tabs, then the content column
- * with the properties panel pinned on its right.
- */
 export function DetailPageLayout({
 	main,
 	sidebar,
@@ -143,7 +137,6 @@ export function DetailPageLayout({
 	);
 }
 
-/** The breadcrumb row of a detail page: collection › repository › #number title. */
 export function DetailPageHeader({
 	collectionHref,
 	collectionLabel,
@@ -164,7 +157,6 @@ export function DetailPageHeader({
 	icon: DetailHeaderIcon;
 	iconClassName?: string;
 	title: string;
-	/** Shown right after the title, e.g. a pull request's line counts. */
 	titleSuffix?: React.ReactNode;
 	actions?: React.ReactNode;
 }) {
@@ -190,11 +182,6 @@ export function DetailPageHeader({
 	);
 }
 
-/**
- * The page's own title block: a 22px title and the line under it (state,
- * author, branches). The breadcrumb lives in `DetailPageHeader`; the props
- * that fed it are still accepted so callers stay unchanged.
- */
 export function DetailPageTitle({
 	title,
 	subtitle,

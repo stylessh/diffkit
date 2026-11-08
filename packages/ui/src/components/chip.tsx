@@ -3,11 +3,6 @@ import type * as React from "react";
 
 import { cn } from "../lib/utils";
 
-/**
- * Linear's metadata chip: a 24px pill on the main surface held by a 0.5px
- * chip-border ring, 12px muted text. Used for the repository, label and
- * branch chips on the right of a list row.
- */
 function Chip({
 	className,
 	asChild = false,

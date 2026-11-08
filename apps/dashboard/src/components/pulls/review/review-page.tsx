@@ -368,9 +368,6 @@ export function ReviewPage() {
 		return map;
 	}, [pendingComments]);
 
-	// Read the file count off the PR node (one cheap GraphQL call) instead of
-	// counting streamed file summaries — otherwise the toolbar can't show the
-	// real number until every summary page arrives (~seconds for a 3k-file PR).
 	const prChangedFiles = pr?.changedFiles ?? 0;
 	const commits = pageQuery.data?.commits ?? EMPTY_COMMITS;
 
@@ -669,8 +666,6 @@ export function ReviewPage() {
 }
 
 // ---------------------------------------------------------------------------
-// ReviewTabs — the PR's Overview / Files changed tabs (as on the PR page) with
-// the review actions on the right; memoized so typing elsewhere skips it.
 // ---------------------------------------------------------------------------
 
 const ReviewTabs = memo(function ReviewTabs({

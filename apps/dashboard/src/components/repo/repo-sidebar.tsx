@@ -38,7 +38,6 @@ function formatCount(n: number): string {
 	return String(n);
 }
 
-/** A panel row whose pill is a link (pass the link as the child). */
 function LinkRow({
 	icon,
 	children,
@@ -58,11 +57,6 @@ function LinkRow({
 	);
 }
 
-/**
- * The overview's right panel, as the reference lays out a repository: its
- * name and description, then its properties with their names on the left,
- * topics, stats, the latest releases and the contributors.
- */
 export function RepoSidebar({
 	repo,
 	scope,
@@ -214,7 +208,6 @@ function ForkParentLink({ fullName }: { fullName: string }) {
 	);
 }
 
-/** The latest three releases, a diamond each, the newest in the open color. */
 function ReleasesSection({
 	repo,
 	scope,
@@ -287,7 +280,6 @@ function ReleasesSection({
 	);
 }
 
-/** Contributors as a facepile: 20px faces, each cut out of the one before. */
 function ContributorsSection({
 	repo,
 	scope,

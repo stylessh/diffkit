@@ -55,7 +55,6 @@ export const RepoCommitRow = memo(function RepoCommitRow({
 				</RowStateIcon>
 				<div className="flex min-w-0 flex-1 flex-col gap-1 md:flex-row md:items-center md:gap-2">
 					<span className="flex min-w-0 items-center gap-1.5">
-						{/* the title's link stretches over the row, so the whole row opens the commit */}
 						<Link
 							to="/$owner/$repo/commit/$sha"
 							params={{ owner, repo, sha: commit.sha }}
