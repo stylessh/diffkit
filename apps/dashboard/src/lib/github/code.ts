@@ -61,40 +61,6 @@ export const getRepoTree = createServerFn({ method: "GET" })
 		});
 	});
 
-type RepoFileContentInput = {
-	owner: string;
-	repo: string;
-	path: string;
-	ref: string;
-};
-
-export const getRepoFileContent = createServerFn({ method: "GET" })
-	.inputValidator(identityValidator<RepoFileContentInput>)
-	.handler(async ({ data }): Promise<string | null> => {
-		const context = await getGitHubContextForRepository(data);
-		if (!context) return null;
-
-		return fetchGitHubResource<
-			Awaited<ReturnType<GitHubClient["rest"]["repos"]["getContent"]>>["data"],
-			string | null
-		>({
-			context,
-			resource: "repo.fileContent.v1",
-			params: data,
-			request: () =>
-				context.octokit.rest.repos.getContent({
-					owner: data.owner,
-					repo: data.repo,
-					path: data.path,
-					ref: data.ref,
-				}),
-			mapData: (content) => {
-				if (Array.isArray(content) || !("content" in content)) return null;
-				return Buffer.from(content.content, "base64").toString("utf-8");
-			},
-		}).catch(() => null);
-	});
-
 type FileLastCommitInput = {
 	owner: string;
 	repo: string;

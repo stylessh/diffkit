@@ -1,6 +1,8 @@
+import { isFullCommitSha } from "../code-browsing/code-location";
 import {
 	type GitHubChangeEntity,
 	type GitHubChangeEntityKind,
+	type GitHubRepoEntity,
 	normalizeRepoFullName,
 	parseEntityKey,
 } from "../github-change-entities";
@@ -47,7 +49,6 @@ export const githubQueryEntityCoverage: Record<
 	"repo.recentPushableBranch": ["repo"],
 	"repo.template": ["repo"],
 	"repo.tree": ["repo"],
-	"repo.fileContent": ["repo"],
 	"repo.fileLastCommit": ["repo"],
 	"repo.commit": ["checks"],
 	"repo.refHeadCommit": ["repo"],
@@ -55,6 +56,10 @@ export const githubQueryEntityCoverage: Record<
 	"repo.contributors": ["repo"],
 	"repo.participation": ["repo"],
 	"repo.discussions": ["discussions"],
+	"code.gitTree": ["repo"],
+	"code.blob": ["repo"],
+	"code.blame": ["repo"],
+	"code.search": "exempt",
 	"issues.mine": ["issue"],
 	"issues.user": ["issue"],
 	"issues.repo": ["issue"],
@@ -82,6 +87,20 @@ export const githubQueryEntityCoverage: Record<
 	"references.item": ["pull", "issue"],
 	"references.commit": "exempt",
 	"reviewDrafts.mine": ["pull"],
+	"repoSettings.general": ["repo"],
+	"repoSettings.rulesets": ["repo"],
+	"repoSettings.protections": ["repo"],
+	"repoSettings.access": ["collaborators"],
+	"repoSettings.webhooks": ["settings"],
+	"repoSettings.webhookDeliveries": ["settings"],
+	"repoSettings.actionsSecrets": ["settings"],
+	"repoSettings.actionsVariables": ["settings"],
+	"orgSettings.general": ["org"],
+	"orgSettings.role": ["org"],
+	"orgSettings.members": ["org"],
+	"orgSettings.teams": ["org"],
+	"orgSettings.teamMembers": ["org"],
+	"orgSettings.viewerOrgs": "exempt",
 };
 
 /**
@@ -146,6 +165,12 @@ export function githubQueryRepo(queryKey: readonly unknown[]): string | null {
 	return null;
 }
 
+/** Lowercased organization login an organization query is scoped to. */
+function githubQueryOrg(queryKey: readonly unknown[]): string | null {
+	const org = githubQueryInput(queryKey)?.org;
+	return typeof org === "string" ? org.toLowerCase() : null;
+}
+
 function* itemsOf(data: unknown): Generator<Record<string, unknown>> {
 	const lists = Array.isArray(data)
 		? [data]
@@ -196,7 +221,7 @@ function itemNumber(item: Record<string, unknown>): number | null {
 	return match ? Number(match[1]) : null;
 }
 
-function aggregateContains(data: unknown, entity: GitHubChangeEntity) {
+function aggregateContains(data: unknown, entity: GitHubRepoEntity) {
 	for (const item of itemsOf(data)) {
 		if (itemRepo(item) !== entity.repo) continue;
 		if (entity.kind === "pull" || entity.kind === "issue") {
@@ -227,6 +252,8 @@ export function githubQueryMatchesEntity(
 		return false;
 	}
 
+	if (entity.kind === "org") return githubQueryOrg(queryKey) === entity.org;
+
 	const repo = githubQueryRepo(queryKey);
 	if (AGGREGATE_PATHS.has(path) && (repo === null || repo === entity.repo)) {
 		return change === "created" || aggregateContains(data, entity);
@@ -252,6 +279,9 @@ export function githubQueryMatchesEntity(
 				? input.sha.toLowerCase().startsWith(entity.sha) ||
 						entity.sha.startsWith(input.sha.toLowerCase())
 				: true;
+		case "repo":
+			// Content read at a full commit SHA can never change.
+			return !isFullCommitSha(input.ref);
 		default:
 			return true;
 	}

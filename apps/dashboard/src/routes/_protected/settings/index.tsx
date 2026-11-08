@@ -10,7 +10,8 @@ import { Logo } from "@diffkit/ui/components/logo";
 import { cn } from "@diffkit/ui/lib/utils";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useTheme } from "next-themes";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { ViewerOrganizations } from "#/components/org/settings/viewer-orgs-section";
 import { signOutToLogin } from "#/lib/auth-actions";
 import { isDiffKitExtensionPresent } from "#/lib/diffkit-extension-detect";
 import { getExtensionStoreInstallUrl } from "#/lib/extension-store-url";
@@ -40,6 +41,7 @@ export const Route = createFileRoute("/_protected/settings/")({
 
 function GeneralSettingsPage() {
 	const { user } = Route.useRouteContext();
+	const scope = useMemo(() => ({ userId: user.id }), [user.id]);
 
 	return (
 		<>
@@ -72,6 +74,13 @@ function GeneralSettingsPage() {
 						<Link to="/setup">Configure</Link>
 					</Button>
 				</div>
+			</SettingsSection>
+
+			<SettingsSection
+				title="Organizations"
+				description="Manage members, teams and defaults for organizations you belong to."
+			>
+				<ViewerOrganizations scope={scope} />
 			</SettingsSection>
 
 			<SettingsSection

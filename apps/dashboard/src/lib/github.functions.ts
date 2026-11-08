@@ -33,7 +33,6 @@ export {
 export {
 	getFileLastCommit,
 	getRefHeadCommit,
-	getRepoFileContent,
 	getRepoTree,
 	getTreeEntryCommits,
 } from "./github/code";
@@ -79,10 +78,12 @@ export {
 	getIssuesFromRepo,
 	updateIssueState,
 } from "./github/issues";
-export type { RepoLabelsInput } from "./github/labels";
+export type { RepoLabelsInput, SaveRepoLabelInput } from "./github/labels";
 export {
 	createRepoLabel,
+	deleteRepoLabel,
 	getRepoLabels,
+	saveRepoLabel,
 	setIssueLabels,
 } from "./github/labels";
 export {
@@ -192,6 +193,57 @@ export {
 	getPullsFromUser,
 	searchCommandPaletteGitHub,
 } from "./github/search";
+export {
+	getRepoAccess,
+	removeRepoCollaborator,
+	removeRepoTeam,
+	setRepoCollaboratorRole,
+	setRepoTeamRole,
+} from "./github/settings-access";
+export {
+	deleteRepoActionsSecret,
+	deleteRepoActionsVariable,
+	getRepoActionsSecrets,
+	getRepoActionsVariables,
+	saveRepoActionsSecret,
+	saveRepoActionsVariable,
+} from "./github/settings-actions";
+export type { ViewerOrg } from "./github/settings-org";
+export {
+	cancelOrgInvitation,
+	deleteOrgTeam,
+	getOrgMembers,
+	getOrgSettings,
+	getOrgTeamList,
+	getOrgTeamMembers,
+	getOrgViewerRole,
+	getViewerOrganizations,
+	inviteOrgMember,
+	removeOrgMember,
+	removeOrgTeamMember,
+	saveOrgTeam,
+	setOrgMemberRole,
+	setOrgTeamMember,
+	updateOrgSettings,
+} from "./github/settings-org";
+export {
+	changeRepoVisibility,
+	deleteRepository,
+	getRepoGeneralSettings,
+	setRepoArchived,
+	updateRepoGeneralSettings,
+} from "./github/settings-repo";
+export {
+	getRepoBranchProtections,
+	getRepoRulesets,
+} from "./github/settings-rules";
+export {
+	deleteRepoWebhook,
+	getRepoWebhooks,
+	getWebhookDeliveries,
+	redeliverWebhookDelivery,
+	saveRepoWebhook,
+} from "./github/settings-webhooks";
 export type { MutationResult, PullFromRepoInput } from "./github/shared";
 export {
 	getUserActivity,

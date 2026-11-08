@@ -15,7 +15,8 @@ export type RepoNavKey =
 	| "releases"
 	| "pulls"
 	| "issues"
-	| "actions";
+	| "actions"
+	| "settings";
 
 type RepoNavItem = {
 	key: RepoNavKey;
@@ -53,6 +54,7 @@ const ITEMS: RepoNavItem[] = [
 		count: (repo) => repo.openIssueCount,
 	},
 	{ key: "actions", label: "Actions", to: "/$owner/$repo/actions" },
+	{ key: "settings", label: "Settings", to: "/$owner/$repo/settings" },
 ];
 
 export function repoSectionLabel(key: RepoNavKey) {
@@ -71,6 +73,7 @@ export function RepoNav({
 	repoData,
 	className,
 	actions,
+	showSettings = false,
 }: {
 	owner: string;
 	repo: string;
@@ -78,10 +81,14 @@ export function RepoNav({
 	repoData?: RepoOverview | null;
 	className?: string;
 	actions?: ReactNode;
+	showSettings?: boolean;
 }) {
+	const items = ITEMS.filter(
+		(item) => item.key !== "settings" || showSettings || active === "settings",
+	);
 	return (
 		<ViewTabs label="Repository" className={className} actions={actions}>
-			{ITEMS.map((item) => {
+			{items.map((item) => {
 				const count = repoData && item.count ? item.count(repoData) : null;
 				return (
 					<ViewTab key={item.key} asChild active={item.key === active}>
