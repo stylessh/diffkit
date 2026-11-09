@@ -275,7 +275,7 @@ const TagRow = memo(function TagRow({
 					{time ? <span className="tabular-nums">{time}</span> : null}
 				</p>
 			</div>
-			<div className="relative z-[1] hidden min-w-0 shrink items-center gap-1 md:flex">
+			<div className="relative z-[1] flex min-w-0 shrink items-center gap-1">
 				{release ? (
 					<Chip
 						asChild
@@ -294,7 +294,7 @@ const TagRow = memo(function TagRow({
 				{tag.commitSha ? (
 					<Chip
 						asChild
-						className="shrink-0 font-mono transition-colors hover:text-foreground"
+						className="shrink-0 font-mono transition-colors hover:text-foreground max-md:hidden"
 					>
 						<Link
 							to="/$owner/$repo/commit/$sha"
