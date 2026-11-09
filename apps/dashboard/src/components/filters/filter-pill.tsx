@@ -21,7 +21,10 @@ function ValueSummary({ selected }: { selected: FilterOption[] }) {
 		return (
 			<span className="flex min-w-0 items-center gap-1.5">
 				{selected.map((option) => (
-					<span key={option.value} className="flex min-w-0 items-center gap-1">
+					<span
+						key={option.value}
+						className="flex min-w-0 items-center gap-1.5"
+					>
 						{option.icon ? (
 							<span className="flex shrink-0 [&_img]:size-3.5">
 								{option.icon}

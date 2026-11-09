@@ -1,11 +1,28 @@
-import { GitBranchIcon } from "@diffkit/icons";
+import {
+	CalendarIcon,
+	ClockIcon,
+	GitBranchIcon,
+	GitCommitIcon,
+	GitPullRequestIcon,
+	PlayIcon,
+} from "@diffkit/icons";
+import { Chip } from "@diffkit/ui/components/chip";
 import { cn } from "@diffkit/ui/lib/utils";
 import { Link, useRouter } from "@tanstack/react-router";
-import { memo, useEffect, useMemo, useState } from "react";
+import { type ComponentType, memo, useEffect, useMemo, useState } from "react";
 import {
 	CheckStateIcon,
 	getCheckState,
 } from "#/components/checks/check-state-icon";
+import { TagIcon } from "#/components/repo/refs/tag-icon";
+import {
+	listRowClassName,
+	listRowHoverClassName,
+	RowAvatar,
+	RowNumber,
+	RowStateIcon,
+	RowTime,
+} from "#/components/shared/list-row";
 import { formatRelativeTime } from "#/lib/format-relative-time";
 import type { WorkflowRun } from "#/lib/github.types";
 import { preloadRouteOnce } from "#/lib/route-preload";
@@ -44,6 +61,10 @@ export const WorkflowRunRow = memo(function WorkflowRunRow({
 		[run.name, run.path],
 	);
 
+	const time = formatRelativeTime(run.updatedAt, undefined, {
+		compact: true,
+	});
+
 	return (
 		<Link
 			to="/$owner/$repo/actions/runs/$runId"
@@ -52,55 +73,75 @@ export const WorkflowRunRow = memo(function WorkflowRunRow({
 			onMouseEnter={preloadDetail}
 			onFocus={preloadDetail}
 			onTouchStart={preloadDetail}
-			className="group flex items-start gap-3 rounded-lg px-3 py-2.5 transition-colors hover:bg-row-hover"
+			aria-label={`${run.displayTitle}, ${workflowName} #${run.runNumber}`}
+			className={cn(listRowClassName, listRowHoverClassName)}
 		>
-			<div className="mt-0.5 flex shrink-0">
+			<RowStateIcon>
 				<CheckStateIcon state={state} />
-			</div>
-			<div className="flex min-w-0 flex-1 flex-col gap-1">
-				<p className="truncate text-[13px] font-medium text-foreground">
+			</RowStateIcon>
+			<RowNumber number={run.runNumber} />
+			<div className="flex min-w-0 flex-1 flex-col gap-1 md:flex-row md:items-center md:gap-2">
+				<p
+					title={run.displayTitle}
+					className="text-[13px] font-medium text-foreground md:truncate"
+				>
 					{run.displayTitle}
 				</p>
-				<p className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-xs text-muted-foreground">
-					<span className="font-medium">{workflowName}</span>
-					<span>·</span>
-					<span className="tabular-nums">#{run.runNumber}</span>
-					{run.headBranch ? (
-						<>
-							<span>·</span>
-							<span className="inline-flex items-center gap-1">
-								<GitBranchIcon size={12} strokeWidth={2} />
-								<span className="truncate font-mono">{run.headBranch}</span>
-							</span>
-						</>
-					) : null}
-					<span>·</span>
-					<span>{run.event}</span>
-					{run.actor ? (
-						<>
-							<span>·</span>
-							<img
-								src={run.actor.avatarUrl}
-								alt={run.actor.login}
-								className="size-3.5 rounded-full ring-[0.5px] ring-chip-border"
-							/>
-							<span className="truncate">{run.actor.login}</span>
-						</>
-					) : null}
-					<span>·</span>
-					<span>{formatRelativeTime(run.updatedAt)}</span>
-				</p>
+				{workflowName !== run.displayTitle ? (
+					<span className="shrink-0 text-[13px] font-[450] text-muted-foreground max-md:text-xs">
+						{workflowName}
+					</span>
+				) : null}
 			</div>
-			<RunDuration
-				startedAt={run.runStartedAt ?? run.createdAt}
-				completedAt={isLive ? null : run.updatedAt}
-				isLive={isLive}
-			/>
+			<div className="hidden min-w-0 shrink items-center gap-1 md:flex">
+				{run.headBranch ? (
+					<Chip className="max-w-48 shrink" title={run.headBranch}>
+						<GitBranchIcon size={12} strokeWidth={2} />
+						<span className="truncate font-mono">{run.headBranch}</span>
+					</Chip>
+				) : null}
+				<EventChip event={run.event} />
+				<RunDuration
+					startedAt={run.runStartedAt ?? run.createdAt}
+					completedAt={isLive ? null : run.updatedAt}
+					isLive={isLive}
+				/>
+			</div>
+			<span className="hidden shrink-0 items-center gap-2 md:ml-3 md:flex">
+				<RowAvatar actor={run.actor} />
+				<RowTime>{time}</RowTime>
+			</span>
 		</Link>
 	);
 });
 
-/** Renders the duration — subscribes to a 1s tick only when the run is live. */
+type EventIcon = ComponentType<{ size?: number; strokeWidth?: number }>;
+
+/** What started a run, as GitHub's event names map to something a person reads. */
+const EVENTS: Record<string, { label: string; icon: EventIcon }> = {
+	pull_request: { label: "Pull request", icon: GitPullRequestIcon },
+	pull_request_target: { label: "Pull request", icon: GitPullRequestIcon },
+	push: { label: "Push", icon: GitCommitIcon },
+	release: { label: "Release", icon: TagIcon },
+	schedule: { label: "Schedule", icon: CalendarIcon },
+	workflow_dispatch: { label: "Manual", icon: PlayIcon },
+};
+
+function EventChip({ event }: { event: string }) {
+	const known = EVENTS[event];
+	const Icon = known?.icon ?? PlayIcon;
+	const label =
+		known?.label ??
+		event.replace(/_/g, " ").replace(/^./, (first) => first.toUpperCase());
+	return (
+		<Chip className="shrink-0" title={`Triggered by ${label.toLowerCase()}`}>
+			<Icon size={12} strokeWidth={2} />
+			{label}
+		</Chip>
+	);
+}
+
+/** How long the run took, or has been running; ticks every second only while live. */
 const RunDuration = memo(function RunDuration({
 	startedAt,
 	completedAt,
@@ -126,18 +167,18 @@ const RunDuration = memo(function RunDuration({
 	if (!duration) return null;
 
 	return (
-		<div className="mt-0.5 hidden shrink-0 items-center gap-1.5 text-xs tabular-nums text-muted-foreground md:flex">
+		<Chip
+			className={cn("shrink-0 tabular-nums", isLive && "text-foreground")}
+			title={isLive ? "Running for" : "Took"}
+		>
 			{isLive ? (
-				<span className="inline-flex size-1.5 animate-pulse rounded-full bg-check-running" />
-			) : null}
-			<span
-				className={cn(
-					"text-xs tabular-nums text-muted-foreground",
-					isLive && "text-foreground",
-				)}
-			>
-				{duration}
-			</span>
-		</div>
+				<span className="flex size-3 items-center justify-center">
+					<span className="size-1.5 animate-pulse rounded-full bg-check-running" />
+				</span>
+			) : (
+				<ClockIcon size={12} strokeWidth={2} />
+			)}
+			{duration}
+		</Chip>
 	);
 });

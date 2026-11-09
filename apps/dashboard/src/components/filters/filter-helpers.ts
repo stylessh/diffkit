@@ -76,11 +76,17 @@ export const labelFilterDef: FilterDefinition = {
 		return sortedOptions(labels, (name, color) => ({
 			value: name,
 			label: name,
-			icon: createElement("span", {
-				"aria-hidden": true,
-				className: "size-2 rounded-full",
-				style: { backgroundColor: `#${color}` },
-			}),
+			icon: createElement(
+				"span",
+				{
+					"aria-hidden": true,
+					className: "flex size-2 shrink-0 items-center justify-center",
+				},
+				createElement("span", {
+					className: "size-1.5 rounded-full",
+					style: { backgroundColor: `#${color}` },
+				}),
+			),
 		}));
 	},
 	match: (item, values) =>

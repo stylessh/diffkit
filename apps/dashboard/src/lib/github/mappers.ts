@@ -62,6 +62,7 @@ export function mapGraphQLRepositoryRef(
 		fullName: repository.nameWithOwner,
 		url: repository.url,
 		isPrivate: repository.isPrivate,
+		ownerAvatarUrl: repository.owner.avatarUrl,
 	};
 }
 

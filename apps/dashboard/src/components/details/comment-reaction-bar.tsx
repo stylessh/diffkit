@@ -1,3 +1,9 @@
+import { SmileIcon } from "@diffkit/icons";
+import {
+	Popover,
+	PopoverContent,
+	PopoverTrigger,
+} from "@diffkit/ui/components/popover";
 import { toast } from "@diffkit/ui/components/sonner";
 import {
 	Tooltip,
@@ -8,7 +14,7 @@ import { cn } from "@diffkit/ui/lib/utils";
 import NumberFlow from "@number-flow/react";
 import { useQueryClient } from "@tanstack/react-query";
 import { AnimatePresence, LayoutGroup, motion } from "motion/react";
-import { Fragment, useCallback, useRef } from "react";
+import { useCallback, useRef, useState } from "react";
 import { toggleIssueCommentReaction } from "#/lib/github.functions";
 import { type GitHubQueryScope, githubQueryKeys } from "#/lib/github.query";
 import type {
@@ -193,6 +199,13 @@ export type IssueCommentReactionBarProps =
 			detailPage: "issue" | "pull";
 	  });
 
+/** Whether a comment has any reaction to show under its body. */
+export function hasReactions(
+	reactions: { counts?: Record<string, number> } | null | undefined,
+) {
+	return Object.values(reactions?.counts ?? {}).some((count) => count > 0);
+}
+
 export function IssueCommentReactionBar(props: IssueCommentReactionBarProps) {
 	const {
 		owner,
@@ -305,12 +318,9 @@ export function IssueCommentReactionBar(props: IssueCommentReactionBarProps) {
 	};
 
 	const counts = reactions?.counts ?? {};
-	const orderedReactions = [
-		...QUICK_REACTIONS.filter((item) => (counts[item.content] ?? 0) > 0),
-		...(revealZeroCount
-			? QUICK_REACTIONS.filter((item) => (counts[item.content] ?? 0) === 0)
-			: []),
-	];
+	const present = QUICK_REACTIONS.filter(
+		(item) => (counts[item.content] ?? 0) > 0,
+	);
 
 	return (
 		<LayoutGroup>
@@ -320,71 +330,113 @@ export function IssueCommentReactionBar(props: IssueCommentReactionBarProps) {
 				transition={reactionSpring}
 			>
 				<AnimatePresence initial={false} mode="popLayout">
-					{orderedReactions.map(({ content, emoji }) => {
+					{present.map(({ content, emoji }) => {
 						const count = counts[content] ?? 0;
 						const active = reactions?.viewerReacted.includes(content) ?? false;
-						const tooltipText = reactionActorTooltipText(
-							reactions?.userLoginsByContent?.[content],
-							count,
-						);
-						const chip = (
-							<motion.button
-								key={content}
-								type="button"
-								layout
-								initial={{ opacity: 0, scale: 0.82 }}
-								animate={{ opacity: 1, scale: 1 }}
-								exit={{ opacity: 0, scale: 0.82 }}
-								transition={reactionSpring}
-								onClick={() => void handleToggle(content)}
-								className={cn(
-									"relative inline-flex h-6 items-center gap-2 rounded-md border-[0.5px] px-2.5 text-xs transition-colors",
-									"border-transparent text-muted-foreground hover:bg-ghost-hover hover:text-foreground",
-									active
-										? "bg-surface-2 hover:bg-ghost-hover hover:text-foreground"
-										: "bg-surface-1 hover:bg-ghost-hover hover:text-foreground",
-								)}
-								aria-label={`React with ${content}`}
-							>
-								<span
-									aria-hidden
-									className={cn(content === "eyes" && "translate-y-px")}
-								>
-									{emoji}
-								</span>
-								<AnimatePresence initial={false} mode="popLayout">
-									{count > 0 ? (
-										<motion.span
-											key="count"
-											layout
-											initial={{ opacity: 0, scale: 0.88 }}
-											animate={{ opacity: 1, scale: 1 }}
-											exit={{ opacity: 0, scale: 0.88 }}
-											transition={reactionSpring}
-											className="inline-flex min-w-[1ch] items-center"
+						return (
+							<Tooltip key={content}>
+								<TooltipTrigger asChild>
+									<motion.button
+										type="button"
+										layout
+										initial={{ opacity: 0, scale: 0.82 }}
+										animate={{ opacity: 1, scale: 1 }}
+										exit={{ opacity: 0, scale: 0.82 }}
+										transition={reactionSpring}
+										onClick={() => void handleToggle(content)}
+										aria-pressed={active}
+										aria-label={`React with ${content}`}
+										className={cn(
+											"inline-flex h-6 items-center gap-1 rounded-full border-[0.5px] px-2 text-xs font-[450] transition-colors",
+											active
+												? "border-indigo bg-indigo/12 text-foreground"
+												: "border-chip-border bg-pill-neutral text-muted-foreground hover:text-foreground",
+										)}
+									>
+										<span
+											aria-hidden
+											className={cn(
+												"text-xs leading-none",
+												content === "eyes" && "translate-y-px",
+											)}
 										>
-											<NumberFlow value={count} className="tabular-nums" />
-										</motion.span>
-									) : null}
-								</AnimatePresence>
-							</motion.button>
-						);
-						return count > 0 ? (
-							<Tooltip key={content} delayDuration={300}>
-								<TooltipTrigger asChild>{chip}</TooltipTrigger>
+											{emoji}
+										</span>
+										<NumberFlow value={count} className="tabular-nums" />
+									</motion.button>
+								</TooltipTrigger>
 								<TooltipContent
 									side="top"
 									className="max-w-xs text-xs leading-snug"
 								>
-									{tooltipText}
+									{reactionActorTooltipText(
+										reactions?.userLoginsByContent?.[content],
+										count,
+									)}
 								</TooltipContent>
 							</Tooltip>
-						) : (
-							<Fragment key={content}>{chip}</Fragment>
 						);
 					})}
 				</AnimatePresence>
+				<ReactionPicker
+					revealed={revealZeroCount}
+					active={reactions?.viewerReacted ?? []}
+					onPick={(content) => void handleToggle(content)}
+				/>
 			</motion.div>
 		</LayoutGroup>
+	);
+}
+
+/**
+ * The add-reaction button and its popover of emoji. Hidden until the comment
+ * is hovered or focused (`revealed`), and while its popover is open.
+ */
+function ReactionPicker({
+	revealed,
+	active,
+	onPick,
+}: {
+	revealed: boolean;
+	active: CommentReactionContent[];
+	onPick: (content: CommentReactionContent) => void;
+}) {
+	const [open, setOpen] = useState(false);
+	return (
+		<Popover open={open} onOpenChange={setOpen}>
+			<PopoverTrigger asChild>
+				<button
+					type="button"
+					aria-label="Add reaction"
+					className={cn(
+						"flex size-6 items-center justify-center rounded-full text-muted-foreground transition-[opacity,color,background-color] hover:bg-ghost-hover hover:text-foreground focus-visible:opacity-100 data-[state=open]:bg-ghost-hover data-[state=open]:text-foreground",
+						revealed || open ? "opacity-100" : "opacity-0",
+					)}
+				>
+					<SmileIcon size={14} strokeWidth={2} />
+				</button>
+			</PopoverTrigger>
+			<PopoverContent
+				align="start"
+				sideOffset={6}
+				className="flex w-auto gap-0.5 p-1"
+			>
+				{QUICK_REACTIONS.map(({ content, emoji }) => (
+					<button
+						type="button"
+						key={content}
+						aria-label={`React with ${content}`}
+						aria-pressed={active.includes(content)}
+						onClick={() => {
+							onPick(content);
+							setOpen(false);
+						}}
+						className="flex size-8 items-center justify-center rounded-lg text-base transition-colors hover:bg-menu-hover aria-pressed:bg-indigo/12"
+					>
+						{emoji}
+					</button>
+				))}
+			</PopoverContent>
+		</Popover>
 	);
 }

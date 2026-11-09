@@ -4,10 +4,8 @@ import { cn } from "@diffkit/ui/lib/utils";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import { parseAsInteger, useQueryState } from "nuqs";
-import { SidePanelPortal } from "#/components/layouts/dashboard-side-panel";
 import { Pagination } from "#/components/pagination";
 import { TagIcon } from "#/components/repo/refs/tag-icon";
-import { RepoActivityCards } from "#/components/repo/repo-activity-cards";
 import { RepoPageHeader } from "#/components/repo/repo-page-header";
 import {
 	ghostPillClassName,
@@ -16,7 +14,6 @@ import {
 } from "#/components/repo/repo-ui";
 import {
 	type GitHubQueryScope,
-	githubRepoOverviewQueryOptions,
 	githubRepoReleasesQueryOptions,
 	githubRepoViewerPermissionQueryOptions,
 	REPO_RELEASES_PER_PAGE,
@@ -41,11 +38,6 @@ export function RepoReleasesPage({
 		parseAsInteger.withDefault(1).withOptions({ history: "push" }),
 	);
 
-	const overviewQuery = useQuery({
-		...githubRepoOverviewQueryOptions(scope, { owner, repo }),
-		enabled: hasMounted,
-	});
-	const repoData = overviewQuery.data;
 	const permissionQuery = useQuery({
 		...githubRepoViewerPermissionQueryOptions(scope, { owner, repo }),
 		enabled: hasMounted,
@@ -146,12 +138,13 @@ export function RepoReleasesPage({
 						</RepoEmptyState>
 					) : (
 						<div
-							className="flex flex-col gap-4 transition-opacity"
+							className="flex flex-col pt-4 transition-opacity"
 							style={{ opacity: releasesQuery.isPlaceholderData ? 0.6 : 1 }}
 						>
-							{releases.map((release) => (
+							{releases.map((release, index) => (
 								<ReleaseCard
 									key={release.id}
+									defaultOpen={index === 0 && page === 1}
 									owner={owner}
 									repo={repo}
 									scope={scope}
@@ -169,16 +162,6 @@ export function RepoReleasesPage({
 					/>
 				</div>
 			</RepoPageHeader>
-			{repoData ? (
-				<SidePanelPortal>
-					<RepoActivityCards
-						owner={owner}
-						repo={repo}
-						scope={scope}
-						repoData={repoData}
-					/>
-				</SidePanelPortal>
-			) : null}
 		</>
 	);
 }

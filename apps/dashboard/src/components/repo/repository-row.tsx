@@ -1,20 +1,15 @@
-import {
-	GitForkIcon,
-	SquareLock02Icon,
-	StarIcon,
-	ViewIcon,
-} from "@diffkit/icons";
+import { GitForkIcon, LockIcon, RepoIcon, StarIcon } from "@diffkit/icons";
+import { Chip } from "@diffkit/ui/components/chip";
+import { cn } from "@diffkit/ui/lib/utils";
 import { Link } from "@tanstack/react-router";
+import { lazy, memo, Suspense, useEffect, useRef, useState } from "react";
 import {
-	Fragment,
-	lazy,
-	memo,
-	type ReactNode,
-	Suspense,
-	useEffect,
-	useRef,
-	useState,
-} from "react";
+	listRowClassName,
+	listRowHoverClassName,
+	RowStateIcon,
+	RowTime,
+} from "#/components/shared/list-row";
+import { HighlightedText } from "#/components/shared/search-highlight";
 import { formatRelativeTime } from "#/lib/format-relative-time";
 import type { GitHubQueryScope } from "#/lib/github.query";
 import type { UserRepoSummary } from "#/lib/github.types";
@@ -26,10 +21,7 @@ const RepoCommitSparkline = lazy(() =>
 );
 
 const SparklinePlaceholder = (
-	<div
-		className="h-[52px] w-[168px] shrink-0 rounded-sm bg-muted/15"
-		aria-hidden
-	/>
+	<div className="h-[22px] w-[78px] shrink-0" aria-hidden />
 );
 
 const languageColors: Record<string, string> = {
@@ -46,31 +38,11 @@ const languageColors: Record<string, string> = {
 	TypeScript: "#3178c6",
 };
 
-const visibilityAria: Record<UserRepoSummary["visibility"], string> = {
+const visibilityLabel: Record<UserRepoSummary["visibility"], string> = {
 	public: "Public repository",
 	private: "Private repository",
 	internal: "Internal repository",
 };
-
-function VisibilityBadge({
-	visibility,
-}: {
-	visibility: UserRepoSummary["visibility"];
-}) {
-	const label = visibilityAria[visibility];
-	const Icon = visibility === "public" ? ViewIcon : SquareLock02Icon;
-
-	return (
-		<span
-			role="img"
-			className="inline-flex size-6 shrink-0 items-center justify-center rounded-full bg-group text-muted-foreground"
-			aria-label={label}
-			title={label}
-		>
-			<Icon size={14} strokeWidth={2} aria-hidden />
-		</span>
-	);
-}
 
 export const RepositoryRow = memo(function RepositoryRow({
 	repo,
@@ -79,105 +51,81 @@ export const RepositoryRow = memo(function RepositoryRow({
 	repo: UserRepoSummary;
 	scope: GitHubQueryScope;
 }) {
-	const metaEntries: { key: string; node: ReactNode }[] = [];
-	if (repo.language) {
-		metaEntries.push({
-			key: "lang",
-			node: (
-				<span className="flex shrink-0 items-center gap-1">
-					<span
-						className="inline-block size-2 shrink-0 rounded-full"
-						style={{
-							backgroundColor: languageColors[repo.language] ?? "var(--muted)",
-						}}
-					/>
-					{repo.language}
-				</span>
-			),
-		});
-	}
-	if (repo.updatedAt) {
-		metaEntries.push({
-			key: "time",
-			node: (
-				<span className="shrink-0">{formatRelativeTime(repo.updatedAt)}</span>
-			),
-		});
-	}
-	if (repo.stars > 0) {
-		metaEntries.push({
-			key: "stars",
-			node: (
-				<span className="flex shrink-0 items-center gap-1 tabular-nums">
-					<StarIcon size={13} strokeWidth={2} />
-					{formatCount(repo.stars)}
-				</span>
-			),
-		});
-	}
-	if (repo.forks > 0) {
-		metaEntries.push({
-			key: "forks",
-			node: (
-				<span className="flex shrink-0 items-center gap-1 tabular-nums">
-					<GitForkIcon size={13} strokeWidth={2} />
-					{formatCount(repo.forks)}
-				</span>
-			),
-		});
-	}
+	const VisibilityIcon = repo.visibility === "public" ? RepoIcon : LockIcon;
+	const updated = repo.updatedAt
+		? formatRelativeTime(repo.updatedAt, undefined, { compact: true })
+		: null;
 
 	return (
 		<Link
 			to="/$owner/$repo"
 			params={{ owner: repo.owner, repo: repo.name }}
-			className="grid w-full grid-cols-1 items-center gap-x-4 gap-y-2 rounded-lg px-3 py-3 text-left transition-colors hover:bg-row-hover md:grid-cols-[minmax(10rem,22%)_minmax(0,1fr)_minmax(10rem,auto)_11rem] md:gap-y-1"
+			aria-label={`${repo.fullName}, ${visibilityLabel[repo.visibility].toLowerCase()}`}
+			className={cn(listRowClassName, listRowHoverClassName)}
 		>
-			<div className="flex min-w-0 flex-col gap-0.5">
-				<div className="flex min-w-0 max-w-full items-center gap-x-2">
-					<p
-						className="flex min-w-0 items-baseline text-[13px] font-medium"
-						title={repo.fullName}
-					>
-						<span className="min-w-0 flex-1 truncate text-muted-foreground">
-							{repo.owner}
-						</span>
-						<span className="shrink-0 text-muted-foreground">/</span>
-						<span className="shrink-0 truncate">{repo.name}</span>
-					</p>
-					<VisibilityBadge visibility={repo.visibility} />
-				</div>
-			</div>
-			<div className="min-w-0">
+			<RowStateIcon className="text-muted-foreground">
+				<span title={visibilityLabel[repo.visibility]} className="flex">
+					<VisibilityIcon size={14} strokeWidth={2} />
+				</span>
+			</RowStateIcon>
+			<div className="flex min-w-0 flex-1 flex-col gap-1 md:flex-row md:items-center md:gap-3">
+				<p
+					title={repo.fullName}
+					className="min-w-0 shrink-0 truncate text-[13px] font-medium text-foreground md:max-w-[45%]"
+				>
+					<span className="text-muted-foreground">{repo.owner}/</span>
+					<HighlightedText text={repo.name} />
+				</p>
 				{repo.description ? (
-					<p className="line-clamp-2 text-xs leading-snug break-words text-muted-foreground md:max-w-none">
+					<p className="min-w-0 truncate text-xs text-muted-foreground md:text-[13px]">
 						{repo.description}
 					</p>
-				) : (
-					<span className="text-xs text-icon-faint">—</span>
-				)}
+				) : null}
 			</div>
-			{metaEntries.length > 0 ? (
-				<div className="flex min-w-0 flex-wrap items-center gap-x-1 gap-y-1 text-xs text-muted-foreground md:justify-end">
-					{metaEntries.map((entry, index) => (
-						<Fragment key={entry.key}>
-							{index > 0 ? (
-								<span className="shrink-0 text-muted-foreground/60">·</span>
-							) : null}
-							{entry.node}
-						</Fragment>
-					))}
-				</div>
-			) : (
-				<div className="md:text-right">
-					<span className="text-xs text-muted-foreground/40">—</span>
-				</div>
-			)}
-			<LazyRepoCommitSparkline
-				scope={scope}
-				owner={repo.owner}
-				repo={repo.name}
-			/>
+			<div className="hidden shrink-0 items-center gap-1 md:flex">
+				{repo.language ? (
+					<Chip>
+						<span
+							aria-hidden
+							className="flex size-2 shrink-0 items-center justify-center"
+						>
+							<span
+								className="size-1.5 rounded-full"
+								style={{
+									backgroundColor:
+										languageColors[repo.language] ?? "var(--muted-foreground)",
+								}}
+							/>
+						</span>
+						{repo.language}
+					</Chip>
+				) : null}
+				{repo.stars > 0 ? (
+					<Chip className="tabular-nums" title={`${repo.stars} stars`}>
+						<StarIcon size={12} strokeWidth={2} />
+						{formatCount(repo.stars)}
+					</Chip>
+				) : null}
+				{repo.forks > 0 ? (
+					<Chip className="tabular-nums" title={`${repo.forks} forks`}>
+						<GitForkIcon size={12} strokeWidth={2} />
+						{formatCount(repo.forks)}
+					</Chip>
+				) : null}
+				<Chip
+					className="hidden overflow-hidden p-px lg:inline-flex"
+					title="Commits per week, last year"
+				>
+					<LazyRepoCommitSparkline
+						scope={scope}
+						owner={repo.owner}
+						repo={repo.name}
+					/>
+				</Chip>
+			</div>
+			<span className="hidden shrink-0 md:ml-3 md:flex">
+				<RowTime>{updated}</RowTime>
+			</span>
 		</Link>
 	);
 });
@@ -215,7 +163,7 @@ function LazyRepoCommitSparkline({
 	}, []);
 
 	return (
-		<div ref={containerRef} className="flex items-start justify-end">
+		<div ref={containerRef} className="flex items-center">
 			{showChart ? (
 				<Suspense fallback={SparklinePlaceholder}>
 					<RepoCommitSparkline scope={scope} owner={owner} repo={repo} />

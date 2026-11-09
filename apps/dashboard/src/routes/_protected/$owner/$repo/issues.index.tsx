@@ -5,20 +5,15 @@ import {
 	apiFilterValues,
 	applyListView,
 	issueSortOptions,
-	ListToolbar,
 	repoIssueFilterDefs,
 	useListFilters,
 } from "#/components/filters";
 import { IssueRow } from "#/components/issues/issue-row";
 import { DashboardContentLoading } from "#/components/layouts/dashboard-content-loading";
-import { SidePanelPortal } from "#/components/layouts/dashboard-side-panel";
 import { Pagination } from "#/components/pagination";
-import { RepoActivityCards } from "#/components/repo/repo-activity-cards";
 import { RepoPageHeader } from "#/components/repo/repo-page-header";
-import {
-	githubIssuesFromRepoQueryOptions,
-	githubRepoOverviewQueryOptions,
-} from "#/lib/github.query";
+import { ListEmpty } from "#/components/shared/list-page";
+import { githubIssuesFromRepoQueryOptions } from "#/lib/github.query";
 import { buildSeo, formatPageTitle } from "#/lib/seo";
 import { useHasMounted } from "#/lib/use-has-mounted";
 
@@ -62,11 +57,6 @@ function RepoIssuesPage() {
 		apiFilterValues(filterState.activeFilters, "status"),
 	);
 
-	const overviewQuery = useQuery({
-		...githubRepoOverviewQueryOptions(scope, { owner, repo }),
-		enabled: hasMounted,
-	});
-
 	const query = useQuery({
 		...githubIssuesFromRepoQueryOptions(scope, {
 			owner,
@@ -87,8 +77,6 @@ function RepoIssuesPage() {
 		[issues, filterState],
 	);
 
-	const repoData = overviewQuery.data;
-
 	return (
 		<>
 			<RepoPageHeader
@@ -96,14 +84,11 @@ function RepoIssuesPage() {
 				repo={repo}
 				scope={scope}
 				active="issues"
-				searchQuery={filterState.searchQuery}
-				toolbar={
-					<ListToolbar
-						state={filterState}
-						items={issues}
-						searchPlaceholder="Search issues…"
-					/>
-				}
+				filters={{
+					state: filterState,
+					items: issues,
+					searchPlaceholder: "Search issues…",
+				}}
 			>
 				{query.isLoading ? (
 					<div className="flex flex-1 items-center justify-center">
@@ -111,11 +96,13 @@ function RepoIssuesPage() {
 					</div>
 				) : (
 					<div className="flex flex-col">
-						{filtered.length === 0 && (
-							<p className="py-16 text-center text-[13px] text-muted-foreground">
-								No issues found.
-							</p>
-						)}
+						{filtered.length === 0 ? (
+							<ListEmpty>
+								{filterState.activeFilters.length > 0 || filterState.searchQuery
+									? "No issues match your filters."
+									: "No issues yet."}
+							</ListEmpty>
+						) : null}
 						{filtered.map((issue) => (
 							<div
 								key={issue.id}
@@ -136,16 +123,6 @@ function RepoIssuesPage() {
 					onPageChange={filterState.setPage}
 				/>
 			</RepoPageHeader>
-			{repoData && (
-				<SidePanelPortal>
-					<RepoActivityCards
-						owner={owner}
-						repo={repo}
-						scope={scope}
-						repoData={repoData}
-					/>
-				</SidePanelPortal>
-			)}
 		</>
 	);
 }

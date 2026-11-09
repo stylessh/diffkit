@@ -20,7 +20,7 @@ function SearchTrigger() {
 					type="button"
 					aria-label="Search"
 					onClick={openCommandPalette}
-					className="flex h-7 w-44 shrink-0 items-center gap-2 rounded-md pr-1.5 pl-2 text-[13px] text-muted-foreground shadow-chip transition-colors hover:bg-nav-hover hover:text-foreground max-xl:w-auto max-xl:shadow-none"
+					className="flex h-7 w-44 shrink-0 items-center gap-2 rounded-md pr-1.5 pl-2 text-[13px] text-muted-foreground shadow-chip transition-colors hover:bg-nav-hover hover:text-foreground max-xl:search-icon-alone max-xl:w-auto max-xl:shadow-none"
 				>
 					<SearchIcon size={14} strokeWidth={2} className="shrink-0" />
 					<span className="flex-1 text-left max-xl:hidden">Search…</span>
@@ -46,8 +46,7 @@ export function AppTopbar({
 	return (
 		<header className="flex h-11 shrink-0 items-center gap-2 px-3 max-md:hidden">
 			<AccountMenu user={user} viewerLogin={viewerLogin} />
-			<span aria-hidden className="h-4 w-px shrink-0 bg-header-rule" />
-			<nav aria-label="Workspace" className="min-w-0 flex-1">
+			<nav aria-label="Workspace" className="ml-3 min-w-0 flex-1">
 				<TopbarNav items={navItems} />
 			</nav>
 			<div className="flex shrink-0 items-center gap-1.5">

@@ -238,9 +238,13 @@ export function LabelsSection({
 								>
 									<span
 										aria-hidden
-										className="size-2 shrink-0 rounded-full"
-										style={{ backgroundColor: `#${label.color}` }}
-									/>
+										className="flex size-2 shrink-0 items-center justify-center"
+									>
+										<span
+											className="size-1.5 rounded-full"
+											style={{ backgroundColor: `#${label.color}` }}
+										/>
+									</span>
 									<span className="truncate">{label.name}</span>
 								</button>
 							))}

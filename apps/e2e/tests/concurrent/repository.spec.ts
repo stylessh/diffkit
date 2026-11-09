@@ -1,6 +1,6 @@
 import { expect, test } from "../../support/test.ts";
 
-test("the repository tabs show history, branches with their pull requests, and releases", async ({
+test("the repository tabs, and the pages tucked behind them, show history, branches with their pull requests, and releases", async ({
 	page,
 }) => {
 	await page.goto("/lumen-labs/beacon/commits");
@@ -23,7 +23,11 @@ test("the repository tabs show history, branches with their pull requests, and r
 	).toBeVisible();
 
 	const repositoryTabs = page.getByRole("navigation", { name: "Repository" });
-	await repositoryTabs.getByRole("link", { name: /^Branches/ }).click();
+	const morePages = repositoryTabs.getByRole("button", {
+		name: "More repository pages",
+	});
+	await morePages.click();
+	await page.getByRole("menuitem", { name: /^Branches/ }).click();
 	await expect(page).toHaveURL(/\/lumen-labs\/beacon\/branches$/);
 	await expect(
 		page.getByRole("heading", { level: 1, name: "Branches" }),
@@ -41,7 +45,8 @@ test("the repository tabs show history, branches with their pull requests, and r
 		page.getByRole("link", { name: "#20", exact: true }),
 	).toHaveAttribute("href", "/lumen-labs/beacon/pull/20");
 
-	await repositoryTabs.getByRole("link", { name: "Releases" }).click();
+	await morePages.click();
+	await page.getByRole("menuitem", { name: "Releases" }).click();
 	await expect(page).toHaveURL(/\/lumen-labs\/beacon\/releases$/);
 	const draft = page.getByRole("article", { name: "v1.4.0", exact: true });
 	await expect(draft.getByText("Draft", { exact: true })).toBeVisible();

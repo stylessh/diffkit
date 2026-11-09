@@ -13,7 +13,6 @@ import {
 	apiFilterValues,
 	type FilterableItem,
 	type FilterDefinition,
-	ListToolbar,
 	parseFilterString,
 	type SortOption,
 	useListFilters,
@@ -232,25 +231,11 @@ function RepositoriesPage() {
 			title="Repositories"
 			count={totals.all}
 			className="overflow-stable"
-			actions={
-				<span className="hidden items-center gap-3 pr-2 text-xs tabular-nums sm:flex">
-					<span className="flex items-center gap-1.5">
-						<ViewIcon size={13} strokeWidth={2} />
-						{totals.public} public
-					</span>
-					<span className="flex items-center gap-1.5">
-						<LockIcon size={13} strokeWidth={2} />
-						{totals.private} private
-					</span>
-				</span>
-			}
-			toolbar={
-				<ListToolbar
-					state={filterState}
-					items={NO_ITEMS}
-					searchPlaceholder="Search repositories…"
-				/>
-			}
+			filters={{
+				state: filterState,
+				items: NO_ITEMS,
+				searchPlaceholder: "Search repositories…",
+			}}
 		>
 			{totals.all === 0 ? (
 				<ListEmpty>No repositories found.</ListEmpty>
@@ -264,7 +249,7 @@ function RepositoriesPage() {
 								key={repo.id}
 								style={{
 									contentVisibility: "auto",
-									containIntrinsicSize: "auto 72px",
+									containIntrinsicSize: "auto 44px",
 								}}
 							>
 								<RepositoryRow repo={repo} scope={scope} />

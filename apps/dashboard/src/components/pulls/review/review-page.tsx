@@ -1,4 +1,5 @@
 import { PanelLeftIcon } from "@diffkit/icons";
+import { LineCounts } from "@diffkit/ui/components/detail-layout";
 import {
 	Drawer,
 	DrawerContent,
@@ -12,11 +13,6 @@ import {
 	ResizablePanelGroup,
 } from "@diffkit/ui/components/resizable";
 import { toast } from "@diffkit/ui/components/sonner";
-import {
-	Tooltip,
-	TooltipContent,
-	TooltipTrigger,
-} from "@diffkit/ui/components/tooltip";
 import {
 	ViewTab,
 	ViewTabCount,
@@ -33,7 +29,6 @@ import { getRouteApi, Link, useNavigate } from "@tanstack/react-router";
 import {
 	lazy,
 	memo,
-	type ReactNode,
 	Suspense,
 	useCallback,
 	useEffect,
@@ -42,7 +37,6 @@ import {
 	useState,
 	useSyncExternalStore,
 } from "react";
-import { DetailPageHeader } from "#/components/details/detail-page";
 import { getPrStateConfig } from "#/components/pulls/detail/pull-detail-header";
 import { PullStackBadge } from "#/components/pulls/stack/pull-stack-badge";
 import { FileSearchCard } from "#/components/shared/file-search-card";
@@ -73,16 +67,16 @@ import { checkPermissionWarning } from "#/lib/warning-store";
 import type { ReviewDiffPaneHandle } from "./review-diff-pane";
 import {
 	DiffCommitList,
+	DiffDisplayOptions,
 	type DiffStyle,
-	DiffToolbar,
 	type DiffView,
+	DiffViewSwitch,
 } from "./review-diff-toolbar";
 import {
 	type ActiveFileStore,
 	createActiveFileStore,
 	ReviewVirtualizedFileTree,
 } from "./review-file-tree";
-import { SplitDiffGlyph, UnifiedDiffGlyph } from "./review-icons";
 import { ReviewSubmitPopover } from "./review-submit-popover";
 import type {
 	ActiveCommentForm,
@@ -538,29 +532,14 @@ export function ReviewPage() {
 	const isStreamingSummaries =
 		fileSummariesQuery.isFetching || fileSummariesQuery.hasNextPage;
 
-	const toolbar = (
-		<DiffToolbar
-			view={diffView}
-			onViewChange={setDiffView}
-			fileCount={prChangedFiles}
-			commitCount={pr.commits}
-			commentCount={reviewComments.length}
-			diffStyle={diffStyle}
-			onDiffStyleChange={setDiffStyle}
-			wrapLines={wrapLines}
-			onWrapLinesChange={setWrapLines}
-		/>
-	);
-
 	const diffContent = hasDiffPayload ? (
-		<Suspense fallback={<ReviewDiffPanePlaceholder toolbar={toolbar} />}>
+		<Suspense fallback={<ReviewDiffPanePlaceholder />}>
 			<ReviewDiffPane
 				ref={diffPaneRef}
 				files={diffFiles}
 				totalFileCount={sidebarFileCount}
 				diffStyle={diffStyle}
 				wrapLines={wrapLines}
-				toolbar={toolbar}
 				alternateView={
 					diffView === "commits" ? (
 						<DiffCommitList commits={commits} owner={owner} repo={repo} />
@@ -588,31 +567,26 @@ export function ReviewPage() {
 			/>
 		</Suspense>
 	) : (
-		<ReviewDiffPanePlaceholder toolbar={toolbar} />
+		<ReviewDiffPanePlaceholder />
 	);
-
-	const stateConfig = getPrStateConfig(pr);
 
 	return (
 		<div className="flex h-full min-h-0 flex-col">
-			<DetailPageHeader
-				collectionHref="/pulls"
-				collectionLabel="Pull Requests"
-				owner={owner}
-				repo={repo}
-				number={pr.number}
-				icon={stateConfig.icon}
-				iconClassName={stateConfig.color}
-				title={pr.title}
-				actions={<PullStackBadge owner={owner} repo={repo} pr={pr} />}
-			/>
 			<ReviewTabs
+				stack={<PullStackBadge owner={owner} repo={repo} pr={pr} />}
 				owner={owner}
 				repo={repo}
 				pullId={pullId}
 				changedFiles={prChangedFiles}
+				commitCount={pr.commits}
+				additions={pr.additions}
+				deletions={pr.deletions}
+				diffView={diffView}
+				onDiffViewChange={setDiffView}
 				diffStyle={diffStyle}
 				onSetDiffStyle={setDiffStyle}
+				wrapLines={wrapLines}
+				onWrapLinesChange={setWrapLines}
 				pendingCount={pendingComments.length}
 				isSubmitting={isSubmitting}
 				onSubmitReview={handleSubmitReview}
@@ -621,7 +595,10 @@ export function ReviewPage() {
 			/>
 
 			{isDesktop ? (
-				<ResizablePanelGroup direction="horizontal" className="min-h-0 flex-1">
+				<ResizablePanelGroup
+					direction="horizontal"
+					className="min-h-0 flex-1 border-t-[0.5px] border-header-rule"
+				>
 					<ResizablePanel defaultSize={20} minSize={12} maxSize={40}>
 						<ReviewSidebar
 							sidebarFiles={sidebarFiles}
@@ -638,7 +615,9 @@ export function ReviewPage() {
 				</ResizablePanelGroup>
 			) : (
 				<>
-					<div className="min-h-0 flex-1 overflow-hidden">{diffContent}</div>
+					<div className="min-h-0 flex-1 overflow-hidden border-t-[0.5px] border-header-rule">
+						{diffContent}
+					</div>
 					<Drawer open={fileSheetOpen} onOpenChange={setFileSheetOpen}>
 						<DrawerContent className="max-h-[70dvh]">
 							<DrawerTitle className="sr-only">Files</DrawerTitle>
@@ -661,40 +640,60 @@ export function ReviewPage() {
 // ---------------------------------------------------------------------------
 
 const ReviewTabs = memo(function ReviewTabs({
+	stack,
 	owner,
 	repo,
 	pullId,
 	changedFiles,
+	commitCount,
+	additions,
+	deletions,
+	diffView,
+	onDiffViewChange,
 	diffStyle,
 	onSetDiffStyle,
+	wrapLines,
+	onWrapLinesChange,
 	pendingCount,
 	isSubmitting,
 	onSubmitReview,
 	onOpenFileSheet,
 	isDesktop,
 }: {
+	stack: React.ReactNode;
 	owner: string;
 	repo: string;
 	pullId: string;
 	changedFiles: number;
+	commitCount: number;
+	additions: number;
+	deletions: number;
+	diffView: DiffView;
+	onDiffViewChange: (view: DiffView) => void;
 	diffStyle: DiffStyle;
 	onSetDiffStyle: (style: DiffStyle) => void;
+	wrapLines: boolean;
+	onWrapLinesChange: (wrap: boolean) => void;
 	pendingCount: number;
 	isSubmitting: boolean;
 	onSubmitReview: (body: string, event: ReviewEvent) => Promise<boolean>;
 	onOpenFileSheet: () => void;
 	isDesktop: boolean;
 }) {
-	const nextStyle = diffStyle === "split" ? "unified" : "split";
-	const diffStyleLabel =
-		nextStyle === "unified" ? "Show unified diff" : "Show split diff";
-
 	return (
 		<ViewTabs
 			label="Pull request views"
 			actions={
 				<>
-					{!isDesktop ? (
+					{stack}
+					<DiffViewSwitch
+						view={diffView}
+						onViewChange={onDiffViewChange}
+						fileCount={changedFiles}
+						commitCount={commitCount}
+					/>
+					<span aria-hidden className="mx-2 h-4 w-[0.5px] bg-header-rule" />
+					{isDesktop ? null : (
 						<PageIconButton
 							raised
 							type="button"
@@ -703,25 +702,14 @@ const ReviewTabs = memo(function ReviewTabs({
 						>
 							<PanelLeftIcon size={14} strokeWidth={2} />
 						</PageIconButton>
-					) : (
-						<Tooltip>
-							<TooltipTrigger asChild>
-								<PageIconButton
-									raised
-									type="button"
-									onClick={() => onSetDiffStyle(nextStyle)}
-									aria-label={diffStyleLabel}
-								>
-									{diffStyle === "split" ? (
-										<SplitDiffGlyph />
-									) : (
-										<UnifiedDiffGlyph />
-									)}
-								</PageIconButton>
-							</TooltipTrigger>
-							<TooltipContent>{diffStyleLabel}</TooltipContent>
-						</Tooltip>
 					)}
+					<DiffDisplayOptions
+						raised
+						diffStyle={diffStyle}
+						onDiffStyleChange={onSetDiffStyle}
+						wrapLines={wrapLines}
+						onWrapLinesChange={onWrapLinesChange}
+					/>
 					<ReviewSubmitPopover
 						pendingCount={pendingCount}
 						isSubmitting={isSubmitting}
@@ -746,6 +734,11 @@ const ReviewTabs = memo(function ReviewTabs({
 				>
 					Files changed
 					<ViewTabCount>{changedFiles}</ViewTabCount>
+					<LineCounts
+						additions={additions}
+						deletions={deletions}
+						className="ml-1.5 text-xs max-md:hidden"
+					/>
 				</Link>
 			</ViewTab>
 		</ViewTabs>
@@ -829,10 +822,6 @@ export const ReviewSidebar = memo(function ReviewSidebar({
 	);
 });
 
-function ReviewDiffPanePlaceholder({ toolbar }: { toolbar?: ReactNode }) {
-	return (
-		<div className="h-full overflow-hidden px-[14px] max-md:px-2">
-			{toolbar}
-		</div>
-	);
+function ReviewDiffPanePlaceholder() {
+	return <div className="h-full overflow-hidden px-[14px] max-md:px-2" />;
 }

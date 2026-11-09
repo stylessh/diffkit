@@ -11,6 +11,11 @@ import {
 	type RefObject,
 	useState,
 } from "react";
+import {
+	ActiveFilters,
+	ListActions,
+	type ListFiltersConfig,
+} from "#/components/filters/list-toolbar";
 import { SearchQueryProvider } from "./search-highlight";
 
 type ListIcon = ComponentType<{
@@ -23,8 +28,8 @@ export function ListPage({
 	title,
 	count,
 	actions,
+	filters,
 	toolbar,
-	searchQuery = "",
 	scrollRef,
 	className,
 	children,
@@ -32,20 +37,30 @@ export function ListPage({
 	title: ReactNode;
 	count?: number;
 	actions?: ReactNode;
+	filters?: ListFiltersConfig;
 	toolbar?: ReactNode;
-	searchQuery?: string;
 	scrollRef?: RefObject<HTMLDivElement | null>;
 	className?: string;
 	children: ReactNode;
 }) {
 	return (
 		<div className="flex h-full min-h-0 flex-col">
-			<PageHeader actions={actions}>
+			<PageHeader
+				actions={
+					actions || filters ? (
+						<>
+							{actions}
+							{filters ? <ListActions {...filters} /> : null}
+						</>
+					) : undefined
+				}
+			>
 				<PageHeaderTitle>{title}</PageHeaderTitle>
 				{count !== undefined ? (
 					<PageHeaderCount>{count}</PageHeaderCount>
 				) : null}
 			</PageHeader>
+			{filters ? <ActiveFilters {...filters} /> : null}
 			{toolbar}
 			<div
 				ref={scrollRef}
@@ -54,7 +69,7 @@ export function ListPage({
 					className,
 				)}
 			>
-				<SearchQueryProvider query={searchQuery}>
+				<SearchQueryProvider query={filters?.state.searchQuery ?? ""}>
 					{children}
 				</SearchQueryProvider>
 			</div>
@@ -80,7 +95,7 @@ export function ListGroup({
 	children: ReactNode;
 }) {
 	const [open, setOpen] = useState(defaultOpen);
-	const isEmpty = count === 0;
+	if (count === 0) return null;
 
 	return (
 		<section
@@ -89,17 +104,15 @@ export function ListGroup({
 			style={{ contentVisibility: "auto", containIntrinsicSize: "auto 44px" }}
 		>
 			<GroupHeader
-				className={cn("sticky top-0 z-10", isEmpty && "opacity-60")}
+				className="sticky top-0 z-10"
 				icon={Icon ? <Icon size={14} strokeWidth={2} /> : undefined}
 				title={title}
 				label={label}
 				count={count}
-				open={open && !isEmpty}
-				onToggle={isEmpty ? undefined : () => setOpen((value) => !value)}
+				open={open}
+				onToggle={() => setOpen((value) => !value)}
 			/>
-			{open && !isEmpty ? (
-				<div className="flex flex-col py-0.5">{children}</div>
-			) : null}
+			{open ? <div className="flex flex-col py-0.5">{children}</div> : null}
 		</section>
 	);
 }

@@ -6,12 +6,11 @@ import {
 	applyListView,
 	issueFilterDefs,
 	issueSortOptions,
-	ListToolbar,
 	useListFilters,
 } from "#/components/filters";
 import { IssueRow } from "#/components/issues/issue-row";
 import { DashboardContentLoading } from "#/components/layouts/dashboard-content-loading";
-import { ListGroup, ListPage } from "#/components/shared/list-page";
+import { ListEmpty, ListGroup, ListPage } from "#/components/shared/list-page";
 import { githubMyIssuesQueryOptions } from "#/lib/github.query";
 import type { IssueSummary } from "#/lib/github.types";
 import { buildSeo, formatPageTitle } from "#/lib/seo";
@@ -91,15 +90,19 @@ function IssuesPage() {
 				title="Issues"
 				count={totalIssues}
 				scrollRef={scrollContainerRef}
-				searchQuery={filterState.searchQuery}
-				toolbar={
-					<ListToolbar
-						state={filterState}
-						items={allIssues}
-						searchPlaceholder="Search issues…"
-					/>
-				}
+				filters={{
+					state: filterState,
+					items: allIssues,
+					searchPlaceholder: "Search issues…",
+				}}
 			>
+				{totalIssues === 0 ? (
+					<ListEmpty>
+						{filterState.activeFilters.length > 0 || filterState.searchQuery
+							? "No issues match your filters."
+							: "No issues right now."}
+					</ListEmpty>
+				) : null}
 				{groups.map((group) => (
 					<ListGroup
 						key={group.id}

@@ -10,14 +10,13 @@ import { createFileRoute } from "@tanstack/react-router";
 import { type ComponentType, useMemo, useRef } from "react";
 import {
 	applyListView,
-	ListToolbar,
 	pullFilterDefs,
 	pullSortOptions,
 	useListFilters,
 } from "#/components/filters";
 import { DashboardContentLoading } from "#/components/layouts/dashboard-content-loading";
 import { PullRequestRow } from "#/components/pulls/pull-request-row";
-import { ListGroup, ListPage } from "#/components/shared/list-page";
+import { ListEmpty, ListGroup, ListPage } from "#/components/shared/list-page";
 import { githubMyPullsQueryOptions } from "#/lib/github.query";
 import type { PullSummary } from "#/lib/github.types";
 import { buildSeo, formatPageTitle } from "#/lib/seo";
@@ -115,15 +114,19 @@ function PullRequestsPage() {
 				title="Pull Requests"
 				count={totalPulls}
 				scrollRef={scrollContainerRef}
-				searchQuery={filterState.searchQuery}
-				toolbar={
-					<ListToolbar
-						state={filterState}
-						items={allPulls}
-						searchPlaceholder="Search pull requests…"
-					/>
-				}
+				filters={{
+					state: filterState,
+					items: allPulls,
+					searchPlaceholder: "Search pull requests…",
+				}}
 			>
+				{totalPulls === 0 ? (
+					<ListEmpty>
+						{filterState.activeFilters.length > 0 || filterState.searchQuery
+							? "No pull requests match your filters."
+							: "No pull requests right now."}
+					</ListEmpty>
+				) : null}
 				{groups.map((group) => (
 					<ListGroup
 						key={group.id}
@@ -133,7 +136,7 @@ function PullRequestsPage() {
 						count={group.pulls.length}
 					>
 						{group.pulls.map((pull) => (
-							<PullRequestRow key={pull.id} pr={pull} scope={scope} />
+							<PullRequestRow key={pull.id} pr={pull} />
 						))}
 					</ListGroup>
 				))}

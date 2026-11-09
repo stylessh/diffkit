@@ -1,11 +1,5 @@
 import { DetailLayout } from "@diffkit/ui/components/detail-layout";
-import {
-	PageHeader,
-	PageHeaderCrumb,
-	PageHeaderTitle,
-} from "@diffkit/ui/components/page-header";
 import { Skeleton } from "@diffkit/ui/components/skeleton";
-import { Link } from "@tanstack/react-router";
 import { animate, motion, useMotionValue, useTransform } from "motion/react";
 import { createContext, useContext, useEffect, useState } from "react";
 
@@ -131,54 +125,10 @@ export function DetailPageLayout({
 	return (
 		<div className="flex h-full min-h-0 flex-col">
 			{header}
-			{tabs}
+			{/* A page without view tabs keeps their row's height, so its content starts where a tabbed page's does. */}
+			{tabs ?? <div aria-hidden className="h-11 shrink-0" />}
 			<DetailLayout panel={sidebar}>{main}</DetailLayout>
 		</div>
-	);
-}
-
-export function DetailPageHeader({
-	collectionHref,
-	collectionLabel,
-	owner,
-	repo,
-	number,
-	icon: Icon,
-	iconClassName,
-	title,
-	titleSuffix,
-	actions,
-}: {
-	collectionHref: string;
-	collectionLabel: string;
-	owner: string;
-	repo: string;
-	number: number;
-	icon: DetailHeaderIcon;
-	iconClassName?: string;
-	title: string;
-	titleSuffix?: React.ReactNode;
-	actions?: React.ReactNode;
-}) {
-	return (
-		<PageHeader actions={actions}>
-			<PageHeaderCrumb asChild className="max-md:hidden">
-				<Link to={collectionHref}>{collectionLabel}</Link>
-			</PageHeaderCrumb>
-			<PageHeaderCrumb asChild>
-				<Link to="/$owner/$repo" params={{ owner, repo }}>
-					{owner}/{repo}
-				</Link>
-			</PageHeaderCrumb>
-			<PageHeaderTitle asChild>
-				<span title={title}>
-					<Icon size={14} strokeWidth={2} className={iconClassName} />
-					<span className="tabular-nums text-muted-foreground">#{number}</span>
-					<span className="truncate">{title}</span>
-					{titleSuffix}
-				</span>
-			</PageHeaderTitle>
-		</PageHeader>
 	);
 }
 
@@ -198,7 +148,7 @@ export function DetailPageTitle({
 }) {
 	return (
 		<div className="flex min-w-0 flex-col gap-2">
-			<h1 className="text-[24px] leading-8 font-semibold tracking-[-0.01em] text-pretty text-foreground">
+			<h1 className="text-[23px] leading-8 font-semibold tracking-[-0.01em] text-pretty text-foreground">
 				{title}
 			</h1>
 			{subtitle}
@@ -221,9 +171,6 @@ export function DetailPageSkeletonLayout({
 	return (
 		<StaggerLoop itemCount={totalItems}>
 			<div className="flex h-full min-h-0 flex-col">
-				<PageHeader>
-					<Skeleton className="h-3.5 w-56 rounded-md" />
-				</PageHeader>
 				<DetailLayout
 					panel={Array.from({ length: sidebarSectionCount }, (_, i) => (
 						// biome-ignore lint/suspicious/noArrayIndexKey: static skeleton items, order never changes

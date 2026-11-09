@@ -100,10 +100,10 @@ export function FilterValueOptions({
 						checked={selected.has(option.value)}
 						onSelect={(event) => event.preventDefault()}
 						onCheckedChange={() => onToggle(option.value)}
-						className="gap-2"
+						className="gap-1.5"
 					>
 						{option.icon ? (
-							<span className="flex size-4 shrink-0 items-center justify-center">
+							<span className="flex shrink-0 items-center justify-center">
 								{option.icon}
 							</span>
 						) : null}

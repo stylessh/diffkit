@@ -5,6 +5,7 @@ export type RepositoryRef = {
 	url: string;
 	/** `null` means the visibility is unknown (e.g. REST search doesn't return it). */
 	isPrivate: boolean | null;
+	ownerAvatarUrl?: string;
 };
 
 export type GitHubActor = {
@@ -65,6 +66,9 @@ export type PullSummary = {
 	author: GitHubActor | null;
 	labels: GitHubLabel[];
 	repository: RepositoryRef;
+	/** Only set where the source carries line counts (GraphQL search); REST list endpoints do not. */
+	additions?: number;
+	deletions?: number;
 	/** Branch the PR merges into. Only set for REST-sourced pulls (repo list, detail). */
 	baseRefName?: string;
 	/** Branch the PR is opened from. Only set for REST-sourced pulls. */

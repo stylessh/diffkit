@@ -1,22 +1,30 @@
+import { ChevronDownIcon } from "@diffkit/icons";
+import {
+	DropdownMenu,
+	DropdownMenuCheckboxItem,
+	DropdownMenuContent,
+	DropdownMenuItem,
+	DropdownMenuLabel,
+	DropdownMenuSeparator,
+	DropdownMenuTrigger,
+} from "@diffkit/ui/components/dropdown-menu";
 import {
 	ViewTab,
 	ViewTabCount,
 	ViewTabs,
 } from "@diffkit/ui/components/view-tabs";
-import { Link } from "@tanstack/react-router";
+import { getRouteApi, Link } from "@tanstack/react-router";
 import type { ReactNode } from "react";
 import type { RepoOverview } from "#/lib/github.types";
+import {
+	type RepoNavKey,
+	toggleRepoTab,
+	useRepoTabs,
+} from "#/lib/repo-nav-tabs";
 
-export type RepoNavKey =
-	| "code"
-	| "commits"
-	| "branches"
-	| "tags"
-	| "releases"
-	| "pulls"
-	| "issues"
-	| "actions"
-	| "settings";
+const protectedRoute = getRouteApi("/_protected");
+
+export type { RepoNavKey };
 
 type RepoNavItem = {
 	key: RepoNavKey;
@@ -83,13 +91,22 @@ export function RepoNav({
 	actions?: ReactNode;
 	showSettings?: boolean;
 }) {
+	const { user } = protectedRoute.useRouteContext();
+	const pinned = useRepoTabs(user.id);
 	const items = ITEMS.filter(
 		(item) => item.key !== "settings" || showSettings || active === "settings",
 	);
+	const inBar = items.filter(
+		(item) => pinned.includes(item.key) || item.key === active,
+	);
+	const tucked = items.filter((item) => !inBar.includes(item));
+	const countOf = (item: RepoNavItem) =>
+		repoData && item.count ? item.count(repoData) : null;
+
 	return (
 		<ViewTabs label="Repository" className={className} actions={actions}>
-			{items.map((item) => {
-				const count = repoData && item.count ? item.count(repoData) : null;
+			{inBar.map((item) => {
+				const count = countOf(item);
 				return (
 					<ViewTab key={item.key} asChild active={item.key === active}>
 						<Link
@@ -105,6 +122,47 @@ export function RepoNav({
 					</ViewTab>
 				);
 			})}
+			<DropdownMenu modal={false}>
+				<DropdownMenuTrigger asChild>
+					<ViewTab
+						aria-label="More repository pages"
+						className="px-2 data-[state=open]:bg-button-hover data-[state=open]:text-foreground"
+					>
+						<ChevronDownIcon size={14} strokeWidth={2} />
+					</ViewTab>
+				</DropdownMenuTrigger>
+				<DropdownMenuContent align="start" className="w-56">
+					{tucked.map((item) => {
+						const count = countOf(item);
+						return (
+							<DropdownMenuItem key={item.key} asChild>
+								<Link to={item.to} params={{ owner, repo }}>
+									<span className="flex-1">{item.label}</span>
+									{count != null && count > 0 ? (
+										<span className="text-xs tabular-nums text-muted-foreground">
+											{formatCount(count)}
+										</span>
+									) : null}
+								</Link>
+							</DropdownMenuItem>
+						);
+					})}
+					{tucked.length > 0 ? <DropdownMenuSeparator /> : null}
+					<DropdownMenuLabel>Show in tabs</DropdownMenuLabel>
+					{items
+						.filter((item) => item.key !== "code")
+						.map((item) => (
+							<DropdownMenuCheckboxItem
+								key={item.key}
+								checked={pinned.includes(item.key)}
+								onSelect={(event) => event.preventDefault()}
+								onCheckedChange={() => toggleRepoTab(user.id, item.key)}
+							>
+								{item.label}
+							</DropdownMenuCheckboxItem>
+						))}
+				</DropdownMenuContent>
+			</DropdownMenu>
 		</ViewTabs>
 	);
 }

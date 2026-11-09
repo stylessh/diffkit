@@ -168,7 +168,7 @@ export function PullBodySection({
 					<AppMarkdown
 						owner={owner}
 						repo={repo}
-						className="text-[15px] leading-6 text-text-header"
+						className="text-[15px] leading-6 font-[450] text-text-header"
 					>
 						{pr.body}
 					</AppMarkdown>

@@ -6,17 +6,15 @@ import {
 	applyListView,
 	deriveWorkflowRunApiStatus,
 	type FilterableItem,
-	ListToolbar,
 	makeBranchFilterDef,
 	repoWorkflowRunFilterDefs,
 	useListFilters,
 	workflowRunSortOptions,
 } from "#/components/filters";
 import { DashboardContentLoading } from "#/components/layouts/dashboard-content-loading";
-import { SidePanelPortal } from "#/components/layouts/dashboard-side-panel";
 import { Pagination } from "#/components/pagination";
-import { RepoActivityCards } from "#/components/repo/repo-activity-cards";
 import { RepoPageHeader } from "#/components/repo/repo-page-header";
+import { ListEmpty } from "#/components/shared/list-page";
 import { WorkflowRunRow } from "#/components/workflows/workflow-run-row";
 import {
 	githubRepoBranchesQueryOptions,
@@ -104,11 +102,6 @@ function RepoActionsPage() {
 	const hasMounted = useHasMounted();
 	const ownerRepo = `${owner}/${repo}`;
 
-	const overviewQuery = useQuery({
-		...githubRepoOverviewQueryOptions(scope, { owner, repo }),
-		enabled: hasMounted,
-	});
-
 	const branchesQuery = useQuery({
 		...githubRepoBranchesQueryOptions(scope, { owner, repo }),
 		enabled: hasMounted,
@@ -168,8 +161,6 @@ function RepoActionsPage() {
 		[filterableRuns, filterState],
 	);
 
-	const repoData = overviewQuery.data;
-
 	return (
 		<>
 			<RepoPageHeader
@@ -177,14 +168,11 @@ function RepoActionsPage() {
 				repo={repo}
 				scope={scope}
 				active="actions"
-				searchQuery={filterState.searchQuery}
-				toolbar={
-					<ListToolbar
-						state={filterState}
-						items={filterableRuns}
-						searchPlaceholder="Search workflow runs…"
-					/>
-				}
+				filters={{
+					state: filterState,
+					items: filterableRuns,
+					searchPlaceholder: "Search workflow runs…",
+				}}
 			>
 				{query.isLoading ? (
 					<div className="flex flex-1 items-center justify-center">
@@ -192,17 +180,19 @@ function RepoActionsPage() {
 					</div>
 				) : (
 					<div className="flex flex-col">
-						{filtered.length === 0 && (
-							<p className="py-16 text-center text-[13px] text-muted-foreground">
-								No workflow runs found.
-							</p>
-						)}
+						{filtered.length === 0 ? (
+							<ListEmpty>
+								{filterState.activeFilters.length > 0 || filterState.searchQuery
+									? "No workflow runs match your filters."
+									: "No workflow runs yet."}
+							</ListEmpty>
+						) : null}
 						{filtered.map((item) => (
 							<div
 								key={item.run.id}
 								style={{
 									contentVisibility: "auto",
-									containIntrinsicSize: "auto 56px",
+									containIntrinsicSize: "auto 44px",
 								}}
 							>
 								<WorkflowRunRow run={item.run} owner={owner} repo={repo} />
@@ -217,16 +207,6 @@ function RepoActionsPage() {
 					onPageChange={filterState.setPage}
 				/>
 			</RepoPageHeader>
-			{repoData && (
-				<SidePanelPortal>
-					<RepoActivityCards
-						owner={owner}
-						repo={repo}
-						scope={scope}
-						repoData={repoData}
-					/>
-				</SidePanelPortal>
-			)}
 		</>
 	);
 }

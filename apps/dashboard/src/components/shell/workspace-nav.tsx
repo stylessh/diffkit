@@ -142,7 +142,7 @@ export function TopbarNav({ items }: { items: NavItem[] }) {
 						<Link
 							to={item.to}
 							preload={false}
-							activeOptions={{ exact: true }}
+							activeOptions={{ exact: true, includeSearch: false }}
 							activeProps={{ className: "active", "aria-current": "page" }}
 							aria-label={accessibleName(item)}
 							className="relative flex h-7 shrink-0 items-center gap-1.5 rounded-md px-2 text-[13px] font-medium text-text-nav transition-colors hover:bg-nav-hover hover:text-foreground lg:px-2.5 [&.active]:bg-nav-selected [&.active]:text-foreground"
@@ -170,7 +170,7 @@ export function MobileNavBar({ items }: { items: NavItem[] }) {
 					key={item.to}
 					to={item.to}
 					preload={false}
-					activeOptions={{ exact: true }}
+					activeOptions={{ exact: true, includeSearch: false }}
 					activeProps={{ className: "active", "aria-current": "page" }}
 					aria-label={accessibleName(item)}
 					className="flex flex-1 flex-col items-center gap-1 pt-2 pb-1.5 text-icon-faint transition-colors [&.active]:text-foreground"

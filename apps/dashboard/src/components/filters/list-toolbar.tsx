@@ -281,20 +281,103 @@ function SortMenu({ state }: { state: ListFilterState }) {
 }
 
 /**
- * The search and filter header every list shares: a search field with the
- * Filter and Sort menus at its right, and the active filters as pills below.
+ * The list's search behind an icon: `/` or a click opens it, Esc clears it and
+ * then closes it. It stays open while it holds a query.
  */
-export function ListToolbar({
-	state,
-	items,
-	searchPlaceholder,
-	action,
+function ToolbarSearchToggle({
+	value,
+	onChange,
+	placeholder,
 }: {
+	value: string;
+	onChange: (value: string) => void;
+	placeholder: string;
+}) {
+	const inputRef = useRef<HTMLInputElement>(null);
+	const [editing, setEditing] = useState(false);
+	const shellIdle = useShellOverlay().kind === "none";
+	useGlobalShortcuts([
+		{
+			shortcut: { key: "/" },
+			enabled: shellIdle,
+			onTrigger: () => {
+				setEditing(true);
+				inputRef.current?.focus();
+			},
+		},
+	]);
+
+	if (!editing && !value) {
+		return (
+			<Tooltip>
+				<TooltipTrigger asChild>
+					<PageIconButton
+						raised
+						aria-label={placeholder}
+						aria-keyshortcuts="/"
+						onClick={() => setEditing(true)}
+					>
+						<SearchIcon size={14} strokeWidth={2} />
+					</PageIconButton>
+				</TooltipTrigger>
+				<TooltipContent keys={["/"]}>Search</TooltipContent>
+			</Tooltip>
+		);
+	}
+
+	const onKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
+		if (event.key !== "Escape") return;
+		event.preventDefault();
+		if (value) onChange("");
+		else event.currentTarget.blur();
+	};
+	return (
+		<div className="flex h-7 w-56 items-center gap-1.5 rounded-md bg-button pr-1 pl-2 text-muted-foreground shadow-button max-md:w-40">
+			<SearchIcon size={13} strokeWidth={2} className="shrink-0" />
+			<input
+				ref={inputRef}
+				// biome-ignore lint/a11y/noAutofocus: it only mounts when the person asked to search
+				autoFocus={editing}
+				type="search"
+				value={value}
+				onChange={(event) => onChange(event.target.value)}
+				onKeyDown={onKeyDown}
+				onBlur={() => setEditing(false)}
+				placeholder={placeholder}
+				aria-label={placeholder}
+				aria-keyshortcuts="/"
+				className="h-full min-w-0 flex-1 bg-transparent text-[13px] font-[450] text-foreground outline-none placeholder:text-muted-foreground [&::-webkit-search-cancel-button]:hidden"
+			/>
+			{value ? (
+				<button
+					type="button"
+					aria-label="Clear search"
+					onMouseDown={(event) => event.preventDefault()}
+					onClick={() => {
+						onChange("");
+						inputRef.current?.focus();
+					}}
+					className="flex size-5 shrink-0 items-center justify-center rounded-[5px] transition-colors hover:bg-ghost-hover hover:text-foreground"
+				>
+					<CloseIcon size={12} />
+				</button>
+			) : null}
+		</div>
+	);
+}
+
+export type ListFiltersConfig = {
 	state: ListFilterState;
 	items: FilterableItem[];
 	searchPlaceholder: string;
-	action?: ReactNode;
-}) {
+};
+
+/** Search, Filter and Sort for a list, set in the page header's action slot. */
+export function ListActions({
+	state,
+	items,
+	searchPlaceholder,
+}: ListFiltersConfig) {
 	const [filterMenuOpen, setFilterMenuOpen] = useState(false);
 	const options = useFilterOptions(state.filterDefs, items);
 	const shellIdle = useShellOverlay().kind === "none";
@@ -308,56 +391,59 @@ export function ListToolbar({
 	]);
 
 	return (
-		<div className="shrink-0">
-			<ToolbarRow
-				search={
-					<ToolbarSearchField
-						value={state.searchQuery}
-						onChange={state.setSearchQuery}
-						placeholder={searchPlaceholder}
-					/>
-				}
-			>
-				{state.filterDefs.length > 0 ? (
-					<FilterMenu
-						state={state}
-						options={options}
-						open={filterMenuOpen}
-						onOpenChange={setFilterMenuOpen}
-					/>
-				) : null}
-				{state.sortOptions.length > 1 ? <SortMenu state={state} /> : null}
-				{action}
-			</ToolbarRow>
-			{state.activeFilters.length > 0 ? (
-				<fieldset
-					aria-label="Active filters"
-					className="m-0 flex min-w-0 flex-wrap items-center gap-1.5 border-0 border-b-[0.5px] border-header-rule py-2 pr-3 pl-5 max-md:pl-3"
-				>
-					{state.activeFilters.map((filter) => {
-						const definition = state.filterDefs.find(
-							(def) => def.id === filter.fieldId,
-						);
-						if (!definition) return null;
-						return (
-							<FilterPill
-								key={filter.fieldId}
-								filter={filter}
-								definition={definition}
-								options={options.get(filter.fieldId) ?? []}
-								state={state}
-							/>
-						);
-					})}
-					<button
-						type="button"
-						onClick={state.clearAllFilters}
-						className="h-6 rounded-md px-2 text-xs font-medium text-muted-foreground transition-colors hover:bg-ghost-hover hover:text-foreground"
-					>
-						Clear
-					</button>
-				</fieldset>
+		<div className="flex items-center gap-1.5">
+			<ToolbarSearchToggle
+				value={state.searchQuery}
+				onChange={state.setSearchQuery}
+				placeholder={searchPlaceholder}
+			/>
+			{state.filterDefs.length > 0 ? (
+				<FilterMenu
+					state={state}
+					options={options}
+					open={filterMenuOpen}
+					onOpenChange={setFilterMenuOpen}
+				/>
 			) : null}
+			{state.sortOptions.length > 1 ? <SortMenu state={state} /> : null}
 		</div>
+	);
+}
+
+/** The active filters as pills, in a row under the page header. */
+export function ActiveFilters({
+	state,
+	items,
+}: Pick<ListFiltersConfig, "state" | "items">) {
+	const options = useFilterOptions(state.filterDefs, items);
+	if (state.activeFilters.length === 0) return null;
+	return (
+		<fieldset
+			aria-label="Active filters"
+			className="m-0 flex min-w-0 shrink-0 flex-wrap items-center gap-1.5 border-0 border-b-[0.5px] border-header-rule py-2 pr-3 pl-5 max-md:pl-3"
+		>
+			{state.activeFilters.map((filter) => {
+				const definition = state.filterDefs.find(
+					(def) => def.id === filter.fieldId,
+				);
+				if (!definition) return null;
+				return (
+					<FilterPill
+						key={filter.fieldId}
+						filter={filter}
+						definition={definition}
+						options={options.get(filter.fieldId) ?? []}
+						state={state}
+					/>
+				);
+			})}
+			<button
+				type="button"
+				onClick={state.clearAllFilters}
+				className="h-6 rounded-md px-2 text-xs font-medium text-muted-foreground transition-colors hover:bg-ghost-hover hover:text-foreground"
+			>
+				Clear
+			</button>
+		</fieldset>
 	);
 }

@@ -4,7 +4,6 @@ import {
 	CodeIcon,
 	CopyIcon,
 	DownloadIcon,
-	GitBranchIcon,
 } from "@diffkit/icons";
 import {
 	Popover,
@@ -18,15 +17,13 @@ import {
 	TabsTrigger,
 } from "@diffkit/ui/components/tabs";
 import { cn } from "@diffkit/ui/lib/utils";
-import { Link } from "@tanstack/react-router";
 import { useCallback, useState } from "react";
 import { RepoRefPicker } from "#/components/repo/refs/repo-ref-picker";
-import { TagIcon } from "#/components/repo/refs/tag-icon";
 import type { GitHubQueryScope } from "#/lib/github.query";
 import type { RepoOverview } from "#/lib/github.types";
 import { useRepoCloneProtocol } from "#/lib/repo-clone-protocol-storage";
 import { FileFinder } from "./code/file-finder";
-import { ghostPillClassName, pillButtonClassName } from "./repo-ui";
+import { pillButtonClassName } from "./repo-ui";
 
 export function CodeExplorerToolbar({
 	repo,
@@ -40,7 +37,7 @@ export function CodeExplorerToolbar({
 	onBranchChange: (branch: string) => void;
 }) {
 	return (
-		<div className="flex flex-wrap items-center gap-1.5">
+		<div className="flex min-w-0 items-center gap-1.5">
 			<RepoRefPicker
 				owner={repo.owner}
 				repo={repo.name}
@@ -49,42 +46,13 @@ export function CodeExplorerToolbar({
 				defaultBranch={repo.defaultBranch}
 				onSelect={onBranchChange}
 			/>
-			<Link
-				to="/$owner/$repo/branches"
-				params={{ owner: repo.owner, repo: repo.name }}
-				className={cn(ghostPillClassName, "max-sm:hidden")}
-			>
-				<GitBranchIcon size={14} strokeWidth={2} />
-				<span className="tabular-nums">
-					{repo.branchCount} {repo.branchCount === 1 ? "branch" : "branches"}
-				</span>
-			</Link>
-			<Link
-				to="/$owner/$repo/tags"
-				params={{ owner: repo.owner, repo: repo.name }}
-				className={cn(ghostPillClassName, "max-sm:hidden")}
-			>
-				<TagIcon size={14} />
-				<span className="tabular-nums">
-					{repo.tagCount} {repo.tagCount === 1 ? "tag" : "tags"}
-				</span>
-			</Link>
-			<div className="ml-auto flex items-center gap-1.5">
+			<div className="ml-auto flex min-w-0 items-center gap-1.5">
 				<FileFinder
 					scope={scope}
 					owner={repo.owner}
 					repo={repo.name}
 					currentRef={currentRef}
 				/>
-				<Link
-					to="/$owner/$repo/search"
-					params={{ owner: repo.owner, repo: repo.name }}
-					aria-label="Search code"
-					className={cn(ghostPillClassName, "max-lg:hidden")}
-				>
-					<CodeIcon size={14} />
-					Search
-				</Link>
 				<CodePopover repo={repo} />
 			</div>
 		</div>

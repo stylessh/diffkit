@@ -1,4 +1,5 @@
 import { Toaster } from "@diffkit/ui/components/sonner";
+import { TooltipProvider } from "@diffkit/ui/components/tooltip";
 import { TanStackDevtools } from "@tanstack/react-devtools";
 import type { QueryClient } from "@tanstack/react-query";
 import {
@@ -108,7 +109,9 @@ function RootComponent() {
 	return (
 		<ThemeProvider attribute="class" defaultTheme="system" enableSystem>
 			<NuqsAdapter>
-				<Outlet />
+				<TooltipProvider>
+					<Outlet />
+				</TooltipProvider>
 				<Toaster />
 			</NuqsAdapter>
 		</ThemeProvider>

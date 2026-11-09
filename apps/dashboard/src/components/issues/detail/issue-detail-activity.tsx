@@ -19,12 +19,16 @@ import {
 	useCommentEditor,
 } from "#/components/details/comment-body";
 import { CommentMoreMenu } from "#/components/details/comment-more-menu";
-import { IssueCommentReactionBar } from "#/components/details/comment-reaction-bar";
+import {
+	hasReactions,
+	IssueCommentReactionBar,
+} from "#/components/details/comment-reaction-bar";
 import { CommentReplyForm } from "#/components/details/comment-reply-form";
 import { buildCommentThreads } from "#/components/details/comment-threads";
 import {
 	DetailActivityHeader,
 	DetailCommentBox,
+	eventThreadClassName,
 } from "#/components/details/detail-activity";
 import {
 	GroupedIssueStateToggleDescription,
@@ -442,23 +446,23 @@ export function IssueDetailActivitySection({
 									<div
 										key={`${item.type}-${group.createdAt}`}
 										className={cn(
-											"flex items-center gap-1.5",
+											"relative flex items-start gap-[11.5px]",
 											index === 0
 												? "pt-5"
 												: isConsecutiveEvent
-													? "pt-2"
+													? "pt-1"
 													: "pt-5",
-											isLastInEventRun ? "pb-5" : "pb-2",
+											isLastInEventRun ? "pb-5" : eventThreadClassName,
 										)}
 									>
 										{hasActorAvatar ? (
 											<img
 												src={group.actor?.avatarUrl}
 												alt={group.actor?.login}
-												className="mt-[3px] size-3.5 shrink-0 self-start rounded-full ring-[0.5px] ring-chip-border"
+												className="ml-[10px] mt-[3px] size-3.5 shrink-0 self-start rounded-full ring-[0.5px] ring-chip-border"
 											/>
 										) : (
-											<div className="flex h-[17px] w-[18px] shrink-0 items-center justify-center self-start rounded-[4px] bg-main text-muted-foreground mt-[1.5px] [&_svg]:size-3.5">
+											<div className="ml-[10px] mt-[3px] flex size-3.5 shrink-0 items-center justify-center self-start text-muted-foreground [&_svg]:size-3.5">
 												{icon}
 											</div>
 										)}
@@ -473,7 +477,7 @@ export function IssueDetailActivitySection({
 												/>
 											)}
 										</span>
-										<span className="ml-auto shrink-0 text-xs font-[450] tabular-nums text-icon-faint">
+										<span className="-ml-[7.5px] shrink-0 text-xs leading-5 font-[450] tabular-nums text-muted-foreground before:mr-1 before:content-['·']">
 											{formatRelativeTime(group.createdAt)}
 										</span>
 									</div>
@@ -499,23 +503,23 @@ export function IssueDetailActivitySection({
 									<div
 										key={`issue_state_toggle_group-${toggleKey}-${group.createdAt}`}
 										className={cn(
-											"flex items-center gap-1.5",
+											"relative flex items-start gap-[11.5px]",
 											index === 0
 												? "pt-5"
 												: isConsecutiveEvent
-													? "pt-2"
+													? "pt-1"
 													: "pt-5",
-											isLastInEventRun ? "pb-5" : "pb-2",
+											isLastInEventRun ? "pb-5" : eventThreadClassName,
 										)}
 									>
 										{hasActorAvatar ? (
 											<img
 												src={group.actor?.avatarUrl}
 												alt={group.actor?.login}
-												className="mt-[3px] size-3.5 shrink-0 self-start rounded-full ring-[0.5px] ring-chip-border"
+												className="ml-[10px] mt-[3px] size-3.5 shrink-0 self-start rounded-full ring-[0.5px] ring-chip-border"
 											/>
 										) : (
-											<div className="flex h-[17px] w-[18px] shrink-0 items-center justify-center self-start rounded-[4px] bg-main text-muted-foreground mt-[1.5px] [&_svg]:size-3.5">
+											<div className="ml-[10px] mt-[3px] flex size-3.5 shrink-0 items-center justify-center self-start text-muted-foreground [&_svg]:size-3.5">
 												{icon}
 											</div>
 										)}
@@ -534,7 +538,7 @@ export function IssueDetailActivitySection({
 												}
 											/>
 										</span>
-										<span className="ml-auto shrink-0 text-xs font-[450] tabular-nums text-icon-faint">
+										<span className="-ml-[7.5px] shrink-0 text-xs leading-5 font-[450] tabular-nums text-muted-foreground before:mr-1 before:content-['·']">
 											{formatRelativeTime(group.createdAt)}
 										</span>
 									</div>
@@ -559,19 +563,19 @@ export function IssueDetailActivitySection({
 								<div
 									key={`event-${event.event}-${event.id}-${event.createdAt}`}
 									className={cn(
-										"flex items-center gap-1.5",
-										index === 0 ? "pt-5" : isConsecutiveEvent ? "pt-2" : "pt-5",
-										isLastInEventRun ? "pb-5" : "pb-2",
+										"relative flex items-start gap-[11.5px]",
+										index === 0 ? "pt-5" : isConsecutiveEvent ? "pt-1" : "pt-5",
+										isLastInEventRun ? "pb-5" : eventThreadClassName,
 									)}
 								>
 									{hasActorAvatar ? (
 										<img
 											src={event.actor?.avatarUrl}
 											alt={event.actor?.login}
-											className="mt-[3px] size-3.5 shrink-0 self-start rounded-full ring-[0.5px] ring-chip-border"
+											className="ml-[10px] mt-[3px] size-3.5 shrink-0 self-start rounded-full ring-[0.5px] ring-chip-border"
 										/>
 									) : (
-										<div className="flex h-[17px] w-[18px] shrink-0 items-center justify-center self-start rounded-[4px] bg-main text-muted-foreground mt-[1.5px] [&_svg]:size-3.5">
+										<div className="ml-[10px] mt-[3px] flex size-3.5 shrink-0 items-center justify-center self-start text-muted-foreground [&_svg]:size-3.5">
 											{icon}
 										</div>
 									)}
@@ -579,7 +583,7 @@ export function IssueDetailActivitySection({
 										{description}
 									</span>
 									{event.createdAt && (
-										<span className="ml-auto shrink-0 text-xs font-[450] tabular-nums text-icon-faint">
+										<span className="-ml-[7.5px] shrink-0 text-xs leading-5 font-[450] tabular-nums text-muted-foreground before:mr-1 before:content-['·']">
 											{formatRelativeTime(event.createdAt)}
 										</span>
 									)}
@@ -629,7 +633,6 @@ function IssueCommentBubble({
 	scope,
 	viewerLogin,
 	onReply,
-	isReply,
 }: {
 	comment: IssueComment;
 	owner: string;
@@ -638,7 +641,6 @@ function IssueCommentBubble({
 	scope: GitHubQueryScope;
 	viewerLogin?: string;
 	onReply?: () => void;
-	isReply?: boolean;
 }) {
 	const [commentActive, setCommentActive] = useState(false);
 	const editor = useCommentEditor({
@@ -652,7 +654,7 @@ function IssueCommentBubble({
 
 	return (
 		<div
-			className="group/comment relative flex flex-col gap-1.5 px-4 py-3"
+			className="group/comment relative flex flex-col gap-[6.5px] px-[16.5px] pt-[13.5px] pb-3"
 			onPointerEnter={() => setCommentActive(true)}
 			onPointerLeave={() => setCommentActive(false)}
 			onFocusCapture={() => setCommentActive(true)}
@@ -662,7 +664,7 @@ function IssueCommentBubble({
 				}
 			}}
 		>
-			<div className="flex h-[18.5px] items-center gap-2">
+			<div className="flex h-[19px] items-center gap-[9px]">
 				{comment.author ? (
 					<img
 						src={comment.author.avatarUrl}
@@ -675,11 +677,25 @@ function IssueCommentBubble({
 				<span className="text-[13px] font-medium text-foreground">
 					{comment.author?.login ?? "Unknown"}
 				</span>
-				<span className="ml-0.5 text-[13px] font-[450] text-icon-faint">
+				<span className="-ml-0.5 text-[13px] font-[450] text-muted-foreground">
 					{formatRelativeTime(comment.createdAt)}
 				</span>
 				<EditedMark editedAt={comment.editedAt} />
 				<div className="ml-auto flex items-center gap-1">
+					{comment.graphqlId && !hasReactions(comment.reactions) ? (
+						<IssueCommentReactionBar
+							className="opacity-0 transition-opacity group-hover/comment:opacity-100 focus-within:opacity-100"
+							revealZeroCount={commentActive || prefersNoHover}
+							viewerLogin={viewerLogin}
+							owner={owner}
+							repo={repo}
+							issueNumber={issueNumber}
+							commentId={comment.id}
+							commentGraphqlId={comment.graphqlId}
+							scope={scope}
+							reactions={comment.reactions}
+						/>
+					) : null}
 					{onReply && (
 						<button
 							type="button"
@@ -704,13 +720,7 @@ function IssueCommentBubble({
 					/>
 				</div>
 			</div>
-			<div
-				className={cn(
-					"relative",
-					isReply && "pl-[27px]",
-					comment.graphqlId != null && "mb-7",
-				)}
-			>
+			<div className={cn("relative", "pl-[27px]")}>
 				<CommentBody
 					editor={editor}
 					body={comment.body}
@@ -718,9 +728,9 @@ function IssueCommentBubble({
 					repo={repo}
 					className="text-[15px] leading-6 text-text-strong"
 				/>
-				{comment.graphqlId ? (
+				{comment.graphqlId && hasReactions(comment.reactions) ? (
 					<IssueCommentReactionBar
-						className="absolute left-0 right-0 top-full z-10 mt-1"
+						className="mt-2.5"
 						revealZeroCount={commentActive || prefersNoHover}
 						viewerLogin={viewerLogin}
 						owner={owner}
@@ -762,7 +772,7 @@ function IssueCommentWithThread({
 	return (
 		<div
 			className={cn(
-				"relative -mx-3 my-2 flex flex-col rounded-lg bg-card shadow-card",
+				"relative -mx-[8.5px] my-2 flex flex-col rounded-lg border-[0.5px] border-border bg-card shadow-[var(--ln-main-shadow)]",
 				isFirst && "mt-0",
 			)}
 		>
@@ -788,7 +798,6 @@ function IssueCommentWithThread({
 							scope={scope}
 							viewerLogin={viewerLogin}
 							onReply={() => setShowReplyForm(true)}
-							isReply
 						/>
 					))}
 				</div>

@@ -43,6 +43,13 @@ import {
 } from "#/lib/github-query-updates";
 import { checkPermissionWarning } from "#/lib/warning-store";
 
+/**
+ * Spacing for an event followed by another event, and the 0.5px thread joining
+ * its glyph to the next one's, 1.5px clear of each (glyphs sit 10px in, 14px wide).
+ */
+export const eventThreadClassName =
+	"pb-1 after:absolute after:top-[calc(100%-5.5px)] after:left-[16.75px] after:h-[11.5px] after:w-[0.5px] after:bg-activity-line";
+
 export function DetailActivityHeader({
 	title,
 	count,
@@ -253,7 +260,7 @@ export function DetailCommentBox({
 	};
 
 	return (
-		<div className="-mx-3 flex flex-col">
+		<div className="-mx-[8.5px] flex flex-col">
 			<MarkdownEditor
 				ref={editorRef}
 				scrollAnchorRef={commentActionsRef}
@@ -277,7 +284,7 @@ export function DetailCommentBox({
 										<button
 											type="button"
 											disabled={isBusy}
-											className="flex h-7 items-center gap-1.5 rounded-md bg-button px-2.5 text-xs font-medium text-text-header shadow-button transition-colors hover:bg-button-hover hover:text-foreground disabled:opacity-40"
+											className="flex h-[23px] items-center gap-1.5 rounded-full px-2 text-xs font-medium text-muted-foreground transition-colors hover:bg-ghost-hover hover:text-foreground disabled:opacity-40"
 										>
 											{pendingAction === "toggle-state" ? (
 												<Spinner size={12} />
@@ -330,7 +337,7 @@ export function DetailCommentBox({
 									type="button"
 									disabled={isBusy}
 									onClick={() => void runIssueStateChange("open")}
-									className="flex h-7 items-center gap-1.5 rounded-md bg-button px-2.5 text-xs font-medium text-text-header shadow-button transition-colors hover:bg-button-hover hover:text-foreground disabled:opacity-40"
+									className="flex h-[23px] items-center gap-1.5 rounded-full px-2 text-xs font-medium text-muted-foreground transition-colors hover:bg-ghost-hover hover:text-foreground disabled:opacity-40"
 								>
 									{pendingAction === "toggle-state" ? (
 										<Spinner size={12} />
@@ -345,7 +352,7 @@ export function DetailCommentBox({
 								type="button"
 								disabled={isBusy || hasPendingUploads}
 								onClick={handleTogglePullState}
-								className="flex h-7 items-center gap-1.5 rounded-md bg-button px-2.5 text-xs font-medium text-text-header shadow-button transition-colors hover:bg-button-hover hover:text-foreground disabled:opacity-40"
+								className="flex h-[23px] items-center gap-1.5 rounded-full px-2 text-xs font-medium text-muted-foreground transition-colors hover:bg-ghost-hover hover:text-foreground disabled:opacity-40"
 							>
 								{pendingAction === "toggle-state" ? (
 									<Spinner size={12} />
@@ -363,7 +370,7 @@ export function DetailCommentBox({
 							title="Send comment"
 							disabled={!value.trim() || isBusy || hasPendingUploads}
 							onClick={handleSend}
-							className="flex size-7 items-center justify-center rounded-md bg-send text-text-strong shadow-send transition-opacity hover:text-foreground disabled:opacity-40"
+							className="flex size-[23px] items-center justify-center rounded-full bg-composer-send text-text-header transition-colors enabled:hover:text-foreground disabled:text-muted-foreground"
 						>
 							{pendingAction === "send" ? (
 								<Spinner size={12} />

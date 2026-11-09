@@ -13,7 +13,13 @@ export {
 	issueSortOptions,
 	repoIssueFilterDefs,
 } from "./issue-filters";
-export { ListToolbar, ToolbarRow, ToolbarSearchField } from "./list-toolbar";
+export {
+	ActiveFilters,
+	ListActions,
+	type ListFiltersConfig,
+	ToolbarRow,
+	ToolbarSearchField,
+} from "./list-toolbar";
 export {
 	pullFilterDefs,
 	pullSortOptions,

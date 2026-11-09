@@ -4,21 +4,20 @@ import { useMemo } from "react";
 import {
 	apiFilterValues,
 	applyListView,
-	ListToolbar,
 	pullSortOptions,
 	repoPullFilterDefs,
 	useListFilters,
 } from "#/components/filters";
 import { DashboardContentLoading } from "#/components/layouts/dashboard-content-loading";
-import { SidePanelPortal } from "#/components/layouts/dashboard-side-panel";
 import { Pagination } from "#/components/pagination";
-import { StackedPullList } from "#/components/pulls/stack/stacked-pull-list";
-import { RepoActivityCards } from "#/components/repo/repo-activity-cards";
-import { RepoPageHeader } from "#/components/repo/repo-page-header";
 import {
-	githubPullsFromRepoQueryOptions,
-	githubRepoOverviewQueryOptions,
-} from "#/lib/github.query";
+	GroupStacksToggle,
+	StackedPullList,
+	useGroupStacks,
+} from "#/components/pulls/stack/stacked-pull-list";
+import { RepoPageHeader } from "#/components/repo/repo-page-header";
+import { ListEmpty } from "#/components/shared/list-page";
+import { githubPullsFromRepoQueryOptions } from "#/lib/github.query";
 import { buildSeo, formatPageTitle } from "#/lib/seo";
 import { useHasMounted } from "#/lib/use-has-mounted";
 
@@ -61,11 +60,6 @@ function RepoPullsPage() {
 		apiFilterValues(filterState.activeFilters, "status"),
 	);
 
-	const overviewQuery = useQuery({
-		...githubRepoOverviewQueryOptions(scope, { owner, repo }),
-		enabled: hasMounted,
-	});
-
 	const query = useQuery({
 		...githubPullsFromRepoQueryOptions(scope, {
 			owner,
@@ -86,7 +80,7 @@ function RepoPullsPage() {
 		[pulls, filterState],
 	);
 
-	const repoData = overviewQuery.data;
+	const [groupStacks, setGroupStacks] = useGroupStacks();
 
 	return (
 		<>
@@ -95,14 +89,14 @@ function RepoPullsPage() {
 				repo={repo}
 				scope={scope}
 				active="pulls"
-				searchQuery={filterState.searchQuery}
-				toolbar={
-					<ListToolbar
-						state={filterState}
-						items={pulls}
-						searchPlaceholder="Search pull requests…"
-					/>
+				tabActions={
+					<GroupStacksToggle value={groupStacks} onChange={setGroupStacks} />
 				}
+				filters={{
+					state: filterState,
+					items: pulls,
+					searchPlaceholder: "Search pull requests…",
+				}}
 			>
 				{query.isLoading ? (
 					<div className="flex flex-1 items-center justify-center">
@@ -110,12 +104,18 @@ function RepoPullsPage() {
 					</div>
 				) : (
 					<div className="flex flex-col">
-						{filtered.length === 0 && (
-							<p className="py-16 text-center text-[13px] text-muted-foreground">
-								No pull requests found.
-							</p>
-						)}
-						<StackedPullList pulls={filtered} allPulls={pulls} scope={scope} />
+						{filtered.length === 0 ? (
+							<ListEmpty>
+								{filterState.activeFilters.length > 0 || filterState.searchQuery
+									? "No pull requests match your filters."
+									: "No pull requests yet."}
+							</ListEmpty>
+						) : null}
+						<StackedPullList
+							pulls={filtered}
+							allPulls={pulls}
+							groupStacks={groupStacks}
+						/>
 					</div>
 				)}
 
@@ -125,16 +125,6 @@ function RepoPullsPage() {
 					onPageChange={filterState.setPage}
 				/>
 			</RepoPageHeader>
-			{repoData && (
-				<SidePanelPortal>
-					<RepoActivityCards
-						owner={owner}
-						repo={repo}
-						scope={scope}
-						repoData={repoData}
-					/>
-				</SidePanelPortal>
-			)}
 		</>
 	);
 }

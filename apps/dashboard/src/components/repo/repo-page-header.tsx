@@ -1,5 +1,10 @@
 import { cn } from "@diffkit/ui/lib/utils";
 import type { ReactNode, RefObject } from "react";
+import {
+	ActiveFilters,
+	ListActions,
+	type ListFiltersConfig,
+} from "#/components/filters/list-toolbar";
 import { RepoHeader } from "#/components/repo/repo-header";
 import type { RepoNavKey } from "#/components/repo/repo-nav";
 import { SearchQueryProvider } from "#/components/shared/search-highlight";
@@ -12,6 +17,7 @@ export function RepoPageHeader({
 	active,
 	trail,
 	tabActions,
+	filters,
 	toolbar,
 	searchQuery = "",
 	scrollRef,
@@ -24,6 +30,7 @@ export function RepoPageHeader({
 	active?: RepoNavKey;
 	trail?: ReactNode;
 	tabActions?: ReactNode;
+	filters?: ListFiltersConfig;
 	toolbar?: ReactNode;
 	searchQuery?: string;
 	scrollRef?: RefObject<HTMLDivElement | null>;
@@ -38,19 +45,31 @@ export function RepoPageHeader({
 				scope={scope}
 				active={active}
 				trail={trail}
-				tabActions={tabActions}
+				tabActions={
+					tabActions || filters ? (
+						<>
+							{tabActions}
+							{filters ? <ListActions {...filters} /> : null}
+						</>
+					) : undefined
+				}
 			/>
-			{toolbar}
-			<div
-				ref={scrollRef}
-				className={cn(
-					"min-h-0 flex-1 overflow-y-auto px-2 pt-2 pb-10",
-					bodyClassName,
-				)}
-			>
-				<SearchQueryProvider query={searchQuery}>
-					{children}
-				</SearchQueryProvider>
+			<div className="flex min-h-0 flex-1 flex-col border-t-[0.5px] border-header-rule">
+				{filters ? <ActiveFilters {...filters} /> : null}
+				{toolbar}
+				<div
+					ref={scrollRef}
+					className={cn(
+						"min-h-0 flex-1 overflow-y-auto px-2 pt-2 pb-10",
+						bodyClassName,
+					)}
+				>
+					<SearchQueryProvider
+						query={filters?.state.searchQuery ?? searchQuery}
+					>
+						{children}
+					</SearchQueryProvider>
+				</div>
 			</div>
 		</div>
 	);

@@ -131,6 +131,9 @@
 	--ln-card-border: lch(91.9 0 282);
 	--ln-comment-card: #ffffff;
 	--ln-comment-card-border: lch(89 0 282);
+	--ln-activity-line: lch(84 0 282);
+	--ln-composer-placeholder: lch(64.64 1.25 282);
+	--ln-composer-send: lch(94 0.5 282);
 	--ln-pill-neutral: lch(40 1 282 / 0.1);
 	--ln-pill-ok: lch(60 64.37 141.95 / 0.12);
 	--ln-pill-blocked: lch(50 73 29 / 0.1);
@@ -235,6 +238,9 @@
 	--ln-card-border: lch(16.793 1.93 272);
 	--ln-comment-card: #1a1a1b;
 	--ln-comment-card-border: #292a2c;
+	--ln-activity-line: #404042;
+	--ln-composer-placeholder: #59595b;
+	--ln-composer-send: #232325;
 	--ln-pill-neutral: lch(63.304 1.425 272 / 0.1);
 	--ln-pill-ok: lch(67.2 64.37 141.95 / 0.14);
 	--ln-pill-blocked: lch(65.2 73 29 / 0.14);
@@ -476,6 +482,9 @@
 	--color-number-removed: var(--ln-number-removed);
 	--color-gap: var(--ln-gap);
 	--color-card-border: var(--ln-card-border);
+	--color-activity-line: var(--ln-activity-line);
+	--color-composer-placeholder: var(--ln-composer-placeholder);
+	--color-composer-send: var(--ln-composer-send);
 	--color-main-border: var(--ln-main-border);
 
 	/* Contained shadows: hairline 0.5px ring + low-alpha drops */
@@ -502,15 +511,15 @@
 	}
 
 	body {
-		@apply bg-background text-foreground;
 		font-size: 13px;
 		font-weight: 450;
+		@apply bg-background text-foreground;
 	}
 
 	code,
 	.font-mono {
-		letter-spacing: -0.02em;
 		font-weight: 450;
+		letter-spacing: -0.02em;
 	}
 
 	:focus-visible {
@@ -519,8 +528,8 @@
 	}
 
 	:where(a, button, [role="button"], [role="menuitem"], [role="tab"]) {
-		transition-duration: var(--ln-duration);
 		transition-timing-function: var(--ln-ease);
+		transition-duration: var(--ln-duration);
 	}
 }
 
@@ -537,8 +546,8 @@
 
 /* Custom scrollbar — thumb only, no track, overlays content */
 * {
-	scrollbar-width: thin;
 	scrollbar-color: var(--scrollbar-thumb) transparent;
+	scrollbar-width: thin;
 }
 
 *::-webkit-scrollbar {
@@ -570,8 +579,8 @@
 .overflow-stable {
 	overflow-y: auto;
 	scrollbar-gutter: stable;
-	scrollbar-width: auto;
 	scrollbar-color: transparent transparent;
+	scrollbar-width: auto;
 }
 
 .overflow-stable::-webkit-scrollbar {
@@ -580,22 +589,22 @@
 
 .overflow-stable::-webkit-scrollbar-thumb {
 	background: transparent;
+	background-clip: padding-box;
 	border: 7px solid transparent;
 	border-radius: 9999px;
-	background-clip: padding-box;
 	transition: background 0.2s;
 }
 
 .overflow-stable:hover::-webkit-scrollbar-thumb {
 	background: var(--scrollbar-thumb);
-	border: 7px solid transparent;
 	background-clip: padding-box;
+	border: 7px solid transparent;
 }
 
 .overflow-stable:hover::-webkit-scrollbar-thumb:hover {
 	background: var(--ln-icon-faint);
-	border: 7px solid transparent;
 	background-clip: padding-box;
+	border: 7px solid transparent;
 }
 
 /* Firefox — hide when not hovering */
@@ -608,21 +617,62 @@
 }
 
 input::-webkit-search-cancel-button {
+	width: 16px;
+	height: 16px;
 	-webkit-appearance: none;
 	appearance: none;
-	height: 16px;
-	width: 16px;
+	cursor: pointer;
 	background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='hsl(215.4 16.3% 46.9%)' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><line x1='18' y1='6' x2='6' y2='18'></line><line x1='6' y1='6' x2='18' y2='18'></line></svg>");
 	background-size: 16px 16px;
-	cursor: pointer;
 }
 
 .dark input::-webkit-search-cancel-button {
 	background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%239E9FAA' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><line x1='18' y1='6' x2='6' y2='18'></line><line x1='6' y1='6' x2='18' y2='18'></line></svg>");
 }
 
-input[type="search"] {
-	font-size: 16px;
+/* Registered so ScrollFade's edge fades can ease in and out. */
+@property --scroll-fade-start {
+	syntax: "<length>";
+	inherits: false;
+	initial-value: 0px;
+}
+
+@property --scroll-fade-end {
+	syntax: "<length>";
+	inherits: false;
+	initial-value: 0px;
+}
+
+[data-slot="scroll-fade"] {
+	transition:
+		--scroll-fade-start 150ms ease-out,
+		--scroll-fade-end 150ms ease-out;
+}
+
+@media (prefers-reduced-motion: reduce) {
+	[data-slot="scroll-fade"] {
+		transition: none;
+	}
+}
+
+/* The lens sits up-left in the search glyph (the handle fills the other corner), so a
+   search icon alone in a box looks off-centre; centre it on the lens instead. 1/24 of
+   the icon, as the lens is one unit off the 24-unit grid's centre, less 1px tuned by eye. */
+svg[data-icon="search"]:only-child {
+	translate: calc(4.1667% - 1px) calc(4.1667% - 1px);
+}
+
+@utility search-icon-alone {
+	& svg[data-icon="search"] {
+		translate: calc(4.1667% - 1px) calc(4.1667% - 1px);
+	}
+}
+
+/* iOS zooms into inputs under 16px on focus. */
+@media (pointer: coarse) {
+	input[type="search"] {
+		font-size: 16px;
+	}
 }
 
 /* @pierre/diffs — use our monospace font */
@@ -661,13 +711,13 @@ diffs-container {
 
 /* Label pills: darker in light mode, vibrant in dark mode */
 .label-pill {
-	background-color: color-mix(in srgb, var(--label-color) 30%, transparent);
 	color: color-mix(in srgb, var(--label-color) 50%, black);
+	background-color: color-mix(in srgb, var(--label-color) 30%, transparent);
 }
 
 .dark .label-pill {
-	background-color: color-mix(in srgb, var(--label-color) 20%, transparent);
 	color: var(--label-color);
+	background-color: color-mix(in srgb, var(--label-color) 20%, transparent);
 }
 
 .label-pill-close-gradient {
@@ -689,25 +739,25 @@ diffs-container {
 .markdown-alert {
 	padding: 0.625rem 0.875rem;
 	margin-bottom: 0.5rem;
-	border-radius: var(--radius);
 	background: color-mix(in srgb, var(--alert-color) 8%, transparent);
+	border-radius: var(--radius);
 	box-shadow: inset 0 0 0 0.5px
 		color-mix(in srgb, var(--alert-color) 32%, transparent);
 }
 
 .markdown-alert-title {
 	display: flex;
-	align-items: center;
 	gap: 0.5rem;
+	align-items: center;
+	margin-bottom: 0.25rem;
 	font-size: 0.8125rem;
 	font-weight: 600;
 	color: var(--alert-color);
-	margin-bottom: 0.25rem;
 }
 
 .markdown-alert-title .octicon {
-	fill: var(--alert-color);
 	flex-shrink: 0;
+	fill: var(--alert-color);
 }
 
 .markdown-alert-note {

@@ -111,12 +111,9 @@ export function AccountMenu({
 				<button
 					type="button"
 					aria-label={`Account, ${viewerLogin ?? displayName}`}
-					className="flex h-7 min-w-0 shrink-0 items-center gap-2 rounded-md pr-1.5 pl-1 text-text-strong transition-colors hover:bg-nav-hover data-[state=open]:bg-nav-hover"
+					className="flex h-7 shrink-0 items-center gap-1 rounded-md pr-1.5 pl-1 text-text-strong transition-colors hover:bg-nav-hover data-[state=open]:bg-nav-hover"
 				>
 					<UserAvatar user={user} className="size-5 shrink-0" />
-					<span className="max-w-32 truncate text-[13px] font-[550] tracking-[-0.1px]">
-						{viewerLogin ?? displayName}
-					</span>
 					<ChevronDownIcon
 						size={12}
 						strokeWidth={2}

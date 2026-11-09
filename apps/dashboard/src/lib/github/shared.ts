@@ -35,6 +35,7 @@ export type GitHubGraphQLRepositoryRef = {
 	isPrivate: boolean;
 	owner: {
 		login: string;
+		avatarUrl?: string;
 	};
 };
 type GitHubGraphQLCommentNode = {

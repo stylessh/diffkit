@@ -19,12 +19,7 @@ import {
 	replaceCommentMediaUploadPlaceholder,
 } from "./markdown-editor-upload";
 import { Spinner } from "./spinner";
-import {
-	Tooltip,
-	TooltipContent,
-	TooltipProvider,
-	TooltipTrigger,
-} from "./tooltip";
+import { Tooltip, TooltipContent, TooltipTrigger } from "./tooltip";
 
 export type MentionCandidate = {
 	id: string;
@@ -87,14 +82,18 @@ function useMentions(
 	const activatedRef = useRef(false);
 
 	const filtered = useMemo(() => {
-		if (!mentionState || !config) return [];
+		if (!(mentionState && config)) {
+			return [];
+		}
 		const q = mentionState.query.toLowerCase();
 		return config.candidates.filter((c) => c.label.toLowerCase().includes(q));
 	}, [mentionState, config]);
 
 	const detectMention = useCallback(() => {
 		const textarea = editorRef.current;
-		if (!textarea || !config) return;
+		if (!(textarea && config)) {
+			return;
+		}
 
 		const cursor = textarea.selectionStart;
 		const text = value.slice(0, cursor);
@@ -108,7 +107,9 @@ function useMentions(
 				}
 				break;
 			}
-			if (/\s/.test(ch)) break;
+			if (/\s/.test(ch)) {
+				break;
+			}
 		}
 
 		if (triggerIdx === -1) {
@@ -135,9 +136,13 @@ function useMentions(
 
 	const selectCandidate = useCallback(
 		(candidate: MentionCandidate) => {
-			if (!mentionState) return;
+			if (!mentionState) {
+				return;
+			}
 			const textarea = editorRef.current;
-			if (!textarea) return;
+			if (!textarea) {
+				return;
+			}
 
 			const before = value.slice(0, mentionState.triggerIndex);
 			const after = value.slice(
@@ -160,7 +165,9 @@ function useMentions(
 
 	const handleMentionKeyDown = useCallback(
 		(event: React.KeyboardEvent<HTMLTextAreaElement>): boolean => {
-			if (!mentionState || filtered.length === 0) return false;
+			if (!mentionState || filtered.length === 0) {
+				return false;
+			}
 
 			switch (event.key) {
 				case "ArrowDown":
@@ -221,7 +228,7 @@ function CompactWriteSurface({
 }) {
 	const contentSizingOpts = useMemo(
 		() => ({
-			minHeightPx: 88,
+			minHeightPx: 24,
 			maxHeightPx:
 				typeof window !== "undefined"
 					? Math.min(Math.floor(window.innerHeight * 0.85), 40 * 16)
@@ -239,19 +246,19 @@ function CompactWriteSurface({
 
 	return (
 		<textarea
-			ref={editorRef}
-			value={value}
+			className={cn(
+				"max-h-[min(85vh,40rem)] min-h-6 w-full resize-none overflow-y-auto bg-transparent px-4 pt-3 pb-1 font-[450] text-[15px] text-text-strong leading-6 outline-none placeholder:font-normal placeholder:text-composer-placeholder focus-visible:outline-none",
+				contentSizing.sizingClassName,
+			)}
 			onChange={(event) => onChange(event.target.value)}
 			onKeyDown={onKeyDown}
 			onPaste={onPaste}
 			onPointerDown={contentSizing.onPointerDown}
-			style={contentSizing.heightStyle}
 			placeholder={placeholder}
-			rows={4}
-			className={cn(
-				"min-h-12 max-h-[min(85vh,40rem)] w-full resize-y overflow-y-auto bg-transparent px-4 py-3 focus:min-h-[5.5rem] group-data-[filled=true]/editor:min-h-[5.5rem] text-[15px] leading-6 font-[450] text-text-strong outline-none placeholder:text-icon-faint focus-visible:outline-none",
-				contentSizing.sizingClassName,
-			)}
+			ref={editorRef}
+			rows={1}
+			style={contentSizing.heightStyle}
+			value={value}
 		/>
 	);
 }
@@ -294,7 +301,9 @@ export const MarkdownEditor = forwardRef<
 	const insertMarkdown = useCallback(
 		(before: string, after = "", placeholderText = "") => {
 			const textarea = editorRef.current;
-			if (!textarea) return;
+			if (!textarea) {
+				return;
+			}
 			const start = textarea.selectionStart;
 			const end = textarea.selectionEnd;
 			const selected = value.slice(start, end);
@@ -313,7 +322,9 @@ export const MarkdownEditor = forwardRef<
 	const insertAtCaret = useCallback(
 		(snippet: string) => {
 			const textarea = editorRef.current;
-			if (!textarea) return;
+			if (!textarea) {
+				return;
+			}
 			const start = textarea.selectionStart;
 			const end = textarea.selectionEnd;
 			onChange((prev) => `${prev.slice(0, start)}${snippet}${prev.slice(end)}`);
@@ -343,7 +354,9 @@ export const MarkdownEditor = forwardRef<
 
 	const handleKeyDown = useCallback(
 		(event: React.KeyboardEvent<HTMLTextAreaElement>) => {
-			if (handleMentionKeyDown(event)) return;
+			if (handleMentionKeyDown(event)) {
+				return;
+			}
 
 			const mod = event.metaKey || event.ctrlKey;
 			if (mod) {
@@ -390,7 +403,10 @@ export const MarkdownEditor = forwardRef<
 
 	const rootProps = mediaUpload?.rootProps;
 	const rootClassName = cn(
-		"flex flex-col overflow-hidden rounded-lg bg-card shadow-card transition-[box-shadow]",
+		"flex flex-col overflow-hidden rounded-lg bg-card transition-[box-shadow]",
+		compact
+			? "min-h-[82px] border-[0.5px] border-border shadow-[var(--ln-main-shadow)]"
+			: "shadow-card",
 		"has-[textarea:focus-visible]:shadow-[0_0_0_1px_var(--ln-focus),var(--ln-main-shadow)]",
 		mediaUpload?.isDragActive && "ring-1 ring-focus ring-inset",
 		rootProps?.className,
@@ -399,14 +415,14 @@ export const MarkdownEditor = forwardRef<
 	return (
 		<div
 			{...(rootProps ?? {})}
-			data-filled={value.length > 0 ? "true" : undefined}
 			className={cn("group/editor", rootClassName, mediaUpload && "relative")}
+			data-filled={value.length > 0 ? "true" : undefined}
 		>
 			{mediaUpload ? (
 				<input
 					{...mediaUpload.inputProps}
-					className="sr-only"
 					aria-label="Attach images or videos"
+					className="sr-only"
 				/>
 			) : null}
 			{/* Tabs + Toolbar */}
@@ -420,118 +436,116 @@ export const MarkdownEditor = forwardRef<
 			>
 				<div className="flex items-center gap-0.5">
 					<button
-						type="button"
-						onClick={() => {
-							setTab("write");
-							requestAnimationFrame(() => editorRef.current?.focus());
-						}}
 						className={cn(
-							"flex h-6 items-center rounded-md px-2.5 text-xs font-medium transition-colors",
+							"flex h-6 items-center rounded-md px-2.5 font-medium text-xs transition-colors",
 							tab === "write"
 								? "bg-tab-selected text-foreground shadow-tab-selected"
 								: "text-muted-foreground hover:text-foreground",
 						)}
+						onClick={() => {
+							setTab("write");
+							requestAnimationFrame(() => editorRef.current?.focus());
+						}}
+						type="button"
 					>
 						Write
 					</button>
 					<button
-						type="button"
-						onClick={() => setTab("preview")}
 						className={cn(
-							"flex h-6 items-center rounded-md px-2.5 text-xs font-medium transition-colors",
+							"flex h-6 items-center rounded-md px-2.5 font-medium text-xs transition-colors",
 							tab === "preview"
 								? "bg-tab-selected text-foreground shadow-tab-selected"
 								: "text-muted-foreground hover:text-foreground",
 						)}
+						onClick={() => setTab("preview")}
+						type="button"
 					>
 						Preview
 					</button>
 				</div>
 
-				<TooltipProvider delayDuration={300}>
-					<div
-						className={cn(
-							"flex items-center gap-0.5 text-muted-foreground",
-							tab !== "write" && "invisible",
-						)}
+				<div
+					className={cn(
+						"flex items-center gap-0.5 text-muted-foreground",
+						tab !== "write" && "invisible",
+					)}
+				>
+					<MdToolbarButton
+						label="Heading"
+						onClick={() => insertMarkdown("### ", "", "heading")}
+						shortcut="⌘H"
 					>
+						<path d="M4 12h8M4 4v16M12 4v16M20 8v8" />
+					</MdToolbarButton>
+					<MdToolbarButton
+						label="Bold"
+						onClick={() => insertMarkdown("**", "**", "bold")}
+						shortcut="⌘B"
+					>
+						<path d="M6 4h8a4 4 0 0 1 4 4 4 4 0 0 1-4 4H6zM6 12h9a4 4 0 0 1 4 4 4 4 0 0 1-4 4H6z" />
+					</MdToolbarButton>
+					<MdToolbarButton
+						label="Italic"
+						onClick={() => insertMarkdown("_", "_", "italic")}
+						shortcut="⌘I"
+					>
+						<path d="M10 4h4M8 20h4M15 4l-6 16" />
+					</MdToolbarButton>
+					<span aria-hidden className="mx-1 h-3.5 w-px bg-header-rule" />
+					<MdToolbarButton
+						label="Code"
+						onClick={() => insertMarkdown("`", "`", "code")}
+						shortcut="⌘E"
+					>
+						<path d="M16 18l6-6-6-6M8 6l-6 6 6 6" />
+					</MdToolbarButton>
+					<MdToolbarButton
+						label="Link"
+						onClick={() => insertMarkdown("[", "](url)", "text")}
+						shortcut="⌘K"
+					>
+						<path d="M10 14a3.5 3.5 0 0 0 5 0l4-4a3.5 3.5 0 0 0-5-5l-.5.5" />
+						<path d="M14 10a3.5 3.5 0 0 0-5 0l-4 4a3.5 3.5 0 0 0 5 5l.5-.5" />
+					</MdToolbarButton>
+					{mediaUpload ? (
 						<MdToolbarButton
-							label="Heading"
-							shortcut="⌘H"
-							onClick={() => insertMarkdown("### ", "", "heading")}
+							label="Attach images or videos"
+							onClick={mediaUpload.onToolbarAttach}
 						>
-							<path d="M4 12h8M4 4v16M12 4v16M20 8v8" />
+							<path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48" />
 						</MdToolbarButton>
-						<MdToolbarButton
-							label="Bold"
-							shortcut="⌘B"
-							onClick={() => insertMarkdown("**", "**", "bold")}
-						>
-							<path d="M6 4h8a4 4 0 0 1 4 4 4 4 0 0 1-4 4H6zM6 12h9a4 4 0 0 1 4 4 4 4 0 0 1-4 4H6z" />
-						</MdToolbarButton>
-						<MdToolbarButton
-							label="Italic"
-							shortcut="⌘I"
-							onClick={() => insertMarkdown("_", "_", "italic")}
-						>
-							<path d="M10 4h4M8 20h4M15 4l-6 16" />
-						</MdToolbarButton>
-						<span aria-hidden className="mx-1 h-3.5 w-px bg-header-rule" />
-						<MdToolbarButton
-							label="Code"
-							shortcut="⌘E"
-							onClick={() => insertMarkdown("`", "`", "code")}
-						>
-							<path d="M16 18l6-6-6-6M8 6l-6 6 6 6" />
-						</MdToolbarButton>
-						<MdToolbarButton
-							label="Link"
-							shortcut="⌘K"
-							onClick={() => insertMarkdown("[", "](url)", "text")}
-						>
-							<path d="M10 14a3.5 3.5 0 0 0 5 0l4-4a3.5 3.5 0 0 0-5-5l-.5.5" />
-							<path d="M14 10a3.5 3.5 0 0 0-5 0l-4 4a3.5 3.5 0 0 0 5 5l.5-.5" />
-						</MdToolbarButton>
-						{mediaUpload ? (
-							<MdToolbarButton
-								label="Attach images or videos"
-								onClick={mediaUpload.onToolbarAttach}
-							>
-								<path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48" />
-							</MdToolbarButton>
-						) : null}
-						<MdToolbarButton
-							label="Quote"
-							shortcut="⌘⇧."
-							onClick={() => insertMarkdown("> ", "", "quote")}
-						>
-							<path d="M3 21c3 0 7-1 7-8V5c0-1.25-.756-2.017-2-2H4c-1.25 0-2 .75-2 1.972V11c0 1.25.75 2 2 2 1 0 1 0 1 1v1c0 1-1 2-2 2s-1 .008-1 1.031V21z" />
-							<path d="M15 21c3 0 7-1 7-8V5c0-1.25-.757-2.017-2-2h-4c-1.25 0-2 .75-2 1.972V11c0 1.25.75 2 2 2h.75c0 2.25.25 4-2.75 4v3c0 1 0 1 1 1z" />
-						</MdToolbarButton>
-						<span aria-hidden className="mx-1 h-3.5 w-px bg-header-rule" />
-						<MdToolbarButton
-							label="Unordered list"
-							shortcut="⌘⇧8"
-							onClick={() => insertMarkdown("- ", "", "item")}
-						>
-							<path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01" />
-						</MdToolbarButton>
-						<MdToolbarButton
-							label="Ordered list"
-							shortcut="⌘⇧7"
-							onClick={() => insertMarkdown("1. ", "", "item")}
-						>
-							<path d="M10 6h11M10 12h11M10 18h11M4 6h1v4M3 10h3M4 14.5a.5.5 0 0 1 .5-.5H5a.5.5 0 0 1 .5.5v0a1.5 1.5 0 0 1-1.5 1.5H3.5a.5.5 0 0 0-.5.5v0a.5.5 0 0 0 .5.5H5a.5.5 0 0 1 .5.5v0a1.5 1.5 0 0 1-1.5 1.5H3" />
-						</MdToolbarButton>
-						<MdToolbarButton
-							label="Task list"
-							onClick={() => insertMarkdown("- [ ] ", "", "task")}
-						>
-							<path d="M9 11l3 3L22 4" />
-							<path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11" />
-						</MdToolbarButton>
-					</div>
-				</TooltipProvider>
+					) : null}
+					<MdToolbarButton
+						label="Quote"
+						onClick={() => insertMarkdown("> ", "", "quote")}
+						shortcut="⌘⇧."
+					>
+						<path d="M3 21c3 0 7-1 7-8V5c0-1.25-.756-2.017-2-2H4c-1.25 0-2 .75-2 1.972V11c0 1.25.75 2 2 2 1 0 1 0 1 1v1c0 1-1 2-2 2s-1 .008-1 1.031V21z" />
+						<path d="M15 21c3 0 7-1 7-8V5c0-1.25-.757-2.017-2-2h-4c-1.25 0-2 .75-2 1.972V11c0 1.25.75 2 2 2h.75c0 2.25.25 4-2.75 4v3c0 1 0 1 1 1z" />
+					</MdToolbarButton>
+					<span aria-hidden className="mx-1 h-3.5 w-px bg-header-rule" />
+					<MdToolbarButton
+						label="Unordered list"
+						onClick={() => insertMarkdown("- ", "", "item")}
+						shortcut="⌘⇧8"
+					>
+						<path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01" />
+					</MdToolbarButton>
+					<MdToolbarButton
+						label="Ordered list"
+						onClick={() => insertMarkdown("1. ", "", "item")}
+						shortcut="⌘⇧7"
+					>
+						<path d="M10 6h11M10 12h11M10 18h11M4 6h1v4M3 10h3M4 14.5a.5.5 0 0 1 .5-.5H5a.5.5 0 0 1 .5.5v0a1.5 1.5 0 0 1-1.5 1.5H3.5a.5.5 0 0 0-.5.5v0a.5.5 0 0 0 .5.5H5a.5.5 0 0 1 .5.5v0a1.5 1.5 0 0 1-1.5 1.5H3" />
+					</MdToolbarButton>
+					<MdToolbarButton
+						label="Task list"
+						onClick={() => insertMarkdown("- [ ] ", "", "task")}
+					>
+						<path d="M9 11l3 3L22 4" />
+						<path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11" />
+					</MdToolbarButton>
+				</div>
 			</div>
 
 			{/* Editor / Preview */}
@@ -540,32 +554,32 @@ export const MarkdownEditor = forwardRef<
 					{compact ? (
 						<CompactWriteSurface
 							editorRef={editorRef}
-							scrollAnchorRef={scrollAnchorRef}
-							value={value}
 							onChange={handleChange}
 							onKeyDown={handleKeyDown}
 							onPaste={onPaste}
 							placeholder={placeholder}
+							scrollAnchorRef={scrollAnchorRef}
+							value={value}
 						/>
 					) : (
 						<HighlightedMarkdownEditor
-							value={value}
 							onChange={handleChange}
+							onKeyDown={handleKeyDown}
+							onPaste={onPaste}
 							placeholder={placeholder}
 							scrollAnchorRef={scrollAnchorRef}
 							textareaRef={editorRef}
-							onKeyDown={handleKeyDown}
-							onPaste={onPaste}
+							value={value}
 						/>
 					)}
 					{mentionState && dropdownPos && (
 						<MentionDropdown
-							candidates={filtered}
 							activeIndex={activeIndex}
+							candidates={filtered}
 							isLoading={mentionLoading}
-							position={dropdownPos}
-							onSelect={selectCandidate}
 							onDismiss={dismissMention}
+							onSelect={selectCandidate}
+							position={dropdownPos}
 						/>
 					)}
 				</div>
@@ -577,7 +591,7 @@ export const MarkdownEditor = forwardRef<
 					)}
 				>
 					{value ? (
-						<Markdown className="text-[15px] leading-6 text-text-strong">
+						<Markdown className="text-[15px] text-text-strong leading-6">
 							{value}
 						</Markdown>
 					) : (
@@ -588,7 +602,12 @@ export const MarkdownEditor = forwardRef<
 				</div>
 			)}
 			{footer ? (
-				<div className="flex items-center justify-end gap-2 px-3 pt-1 pb-3">
+				<div
+					className={cn(
+						"mt-auto flex items-center justify-end gap-2",
+						compact ? "pt-1 pr-3.5 pb-3" : "px-3 pt-1 pb-3",
+					)}
+				>
 					{footer}
 				</div>
 			) : null}
@@ -615,7 +634,9 @@ function MentionDropdown({
 
 	useEffect(() => {
 		const list = listRef.current;
-		if (!list) return;
+		if (!list) {
+			return;
+		}
 		const item = list.children[activeIndex] as HTMLElement | undefined;
 		item?.scrollIntoView({ block: "nearest" });
 	}, [activeIndex]);
@@ -634,47 +655,47 @@ function MentionDropdown({
 
 	return createPortal(
 		<div
-			ref={listRef}
 			className="fixed z-50 max-h-56 min-w-[206px] overflow-y-auto rounded-xl bg-popover p-1 shadow-popover"
+			ref={listRef}
 			style={{ top: position.top, left: position.left }}
 		>
 			{isLoading && candidates.length === 0 && (
 				<div className="flex items-center justify-center px-3 py-2">
-					<Spinner size={14} className="text-muted-foreground" />
+					<Spinner className="text-muted-foreground" size={14} />
 				</div>
 			)}
 			{isEmpty && (
-				<div className="px-3 py-2 text-xs text-muted-foreground">
+				<div className="px-3 py-2 text-muted-foreground text-xs">
 					No users found
 				</div>
 			)}
 			{candidates.map((candidate, index) => (
 				<button
-					key={candidate.id}
-					type="button"
-					onMouseDown={(e) => {
-						e.preventDefault();
-						onSelect(candidate);
-					}}
 					className={cn(
-						"flex h-8 w-full items-center gap-2 rounded-lg pr-2.5 pl-[7.75px] text-left text-[13px] font-[450] transition-colors",
+						"flex h-8 w-full items-center gap-2 rounded-lg pr-2.5 pl-[7.75px] text-left font-[450] text-[13px] transition-colors",
 						index === activeIndex
 							? "bg-menu-hover text-foreground"
 							: "text-text-header hover:bg-menu-hover hover:text-foreground",
 					)}
+					key={candidate.id}
+					onMouseDown={(e) => {
+						e.preventDefault();
+						onSelect(candidate);
+					}}
+					type="button"
 				>
 					{candidate.avatarUrl ? (
 						<img
-							src={candidate.avatarUrl}
 							alt={candidate.label}
 							className="size-4 rounded-full ring-[0.5px] ring-chip-border"
+							src={candidate.avatarUrl}
 						/>
 					) : (
 						<div className="size-4 rounded-full bg-group" />
 					)}
 					<span className="truncate">{candidate.label}</span>
 					{candidate.secondary && (
-						<span className="ml-auto shrink-0 text-xs text-muted-foreground">
+						<span className="ml-auto shrink-0 text-muted-foreground text-xs">
 							{candidate.secondary}
 						</span>
 					)}
@@ -700,10 +721,10 @@ function MdToolbarButton({
 		<Tooltip>
 			<TooltipTrigger asChild>
 				<button
-					type="button"
-					onMouseDown={(e) => e.preventDefault()}
-					onClick={onClick}
 					className="flex size-6 items-center justify-center rounded-md transition-colors hover:bg-ghost-hover hover:text-foreground"
+					onClick={onClick}
+					onMouseDown={(e) => e.preventDefault()}
+					type="button"
 				>
 					<svg
 						aria-hidden="true"
@@ -788,29 +809,29 @@ function HighlightedMarkdownEditor({
 	};
 
 	return (
-		<div className="relative w-full min-h-[640px]">
+		<div className="relative min-h-[640px] w-full">
 			<div
-				ref={highlightRef}
 				aria-hidden
-				className="pointer-events-none absolute inset-0 overflow-auto whitespace-pre-wrap break-words p-5 [scrollbar-width:none] [word-break:break-all] [&::-webkit-scrollbar]:hidden [&_pre]:!m-0 [&_pre]:!bg-transparent [&_pre]:!p-0 [&_pre]:!whitespace-pre-wrap [&_pre]:!break-words [&_pre]:font-mono [&_pre]:text-sm [&_pre]:!leading-[1.625] [&_code]:!font-mono [&_code]:!text-sm [&_code]:!leading-[1.625]"
+				className="[&_pre]:!m-0 [&_pre]:!bg-transparent [&_pre]:!p-0 [&_pre]:!whitespace-pre-wrap [&_pre]:!break-words [&_pre]:!leading-[1.625] [&_code]:!font-mono [&_code]:!text-sm [&_code]:!leading-[1.625] pointer-events-none absolute inset-0 overflow-auto whitespace-pre-wrap break-words p-5 [scrollbar-width:none] [word-break:break-all] [&::-webkit-scrollbar]:hidden [&_pre]:font-mono [&_pre]:text-sm"
 				// biome-ignore lint/security/noDangerouslySetInnerHtml: HTML from shiki highlighter is trusted
 				dangerouslySetInnerHTML={{ __html: highlightedHtml }}
+				ref={highlightRef}
 			/>
 			<textarea
-				ref={textareaRef}
-				value={value}
+				className={cn(
+					"relative box-border max-h-[1200px] min-h-[640px] w-full resize-y overflow-y-auto whitespace-pre-wrap break-words bg-transparent p-5 font-mono text-sm text-transparent leading-[1.625] caret-foreground outline-none [word-break:break-all] placeholder:text-muted-foreground",
+					fullContentSizing.sizingClassName,
+				)}
 				onChange={(event) => onChange(event.target.value)}
 				onKeyDown={onKeyDown}
 				onPaste={onPaste}
 				onPointerDown={fullContentSizing.onPointerDown}
 				onScroll={syncScroll}
-				style={fullContentSizing.heightStyle}
-				className={cn(
-					"relative box-border min-h-[640px] max-h-[1200px] w-full resize-y overflow-y-auto whitespace-pre-wrap break-words bg-transparent p-5 font-mono text-sm leading-[1.625] text-transparent caret-foreground outline-none [word-break:break-all] placeholder:text-muted-foreground",
-					fullContentSizing.sizingClassName,
-				)}
 				placeholder={placeholder}
+				ref={textareaRef}
 				spellCheck={false}
+				style={fullContentSizing.heightStyle}
+				value={value}
 			/>
 		</div>
 	);

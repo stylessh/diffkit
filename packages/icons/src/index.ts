@@ -10,14 +10,10 @@ export {
   ArchiveIcon,
   ArchiveIcon as RepoIcon,
   ArrangeIcon as SortIcon,
-  ArrowDown01Icon as ChevronDownIcon,
   ArrowExpand02Icon as ExpandIcon,
-  ArrowLeft01Icon as ChevronLeftIcon,
   ArrowLeftRightIcon,
   ArrowMoveDownRightIcon,
   ArrowReloadHorizontalIcon as RefreshCwIcon,
-  ArrowRight01Icon as ChevronRightIcon,
-  ArrowUp01Icon as ChevronUpIcon,
   ArrowUp02Icon as ArrowUpIcon,
   AtIcon,
   BookOpen01Icon as BookOpenIcon,
@@ -29,7 +25,6 @@ export {
   CancelCircleIcon as IssueClosedNotPlannedIcon,
   CellsIcon,
   CenterFocusIcon,
-  CheckListIcon as ReviewsIcon,
   CheckmarkCircle01Icon as IssueClosedCompletedIcon,
   CheckmarkCircle01Icon as CircleCheckIcon,
   CircleIcon,
@@ -49,10 +44,10 @@ export {
   File02Icon as FileIcon,
   FilterIcon,
   FilterMailCircleIcon as FilterMailIcon,
+  Flag02Icon as MilestoneIcon,
   Folder01Icon as FolderIcon,
   FolderLibraryIcon,
   Forward01Icon as SkipIcon,
-  GitBranchIcon,
   GitCommitIcon,
   GitCompareIcon,
   GitForkIcon,
@@ -89,7 +84,7 @@ export {
   PlayIcon,
   PlusSignIcon,
   Remove01Icon,
-  Search01Icon as SearchIcon,
+  SearchList01Icon as ReviewsIcon,
   Settings01Icon as SettingsIcon,
   SidebarLeftIcon as PanelLeftIcon,
   SmileIcon,
@@ -128,14 +123,22 @@ export {
   XLogo,
 } from "./brand-logos";
 export { ChangesRequestIcon } from "./changes-request-icon";
+export {
+  ChevronDownIcon,
+  ChevronLeftIcon,
+  ChevronRightIcon,
+  ChevronUpIcon,
+} from "./chevron-icons";
 export { CircleXIcon } from "./circle-x-icon";
 export { CodeTabIcon } from "./code-tab-icon";
 export { FileEmpty02Icon } from "./file-empty-02-icon";
 export { FullScreenIcon } from "./full-screen-icon";
+export { GitBranchIcon } from "./git-branch-icon";
 export { LayersIcon } from "./layers-icon";
 export { DisplayOptionsIcon, FilterLinesIcon } from "./linear-glyphs";
 export { PasskeyIcon } from "./passkey-icon";
 export { PenIcon } from "./pen-icon";
+export { SearchIcon } from "./search-icon";
 export { SeparatorHorizontalIcon } from "./separator-horizontal-icon";
 export { StarIcon } from "./star-icon";
 export { WorkflowQueueIcon } from "./workflow-queue-icon";

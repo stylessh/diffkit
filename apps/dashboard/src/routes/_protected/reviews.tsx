@@ -4,7 +4,6 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useRef } from "react";
 import {
 	applyListView,
-	ListToolbar,
 	pullFilterDefs,
 	pullSortOptions,
 	useListFilters,
@@ -65,14 +64,11 @@ function ReviewsPage() {
 				title="Reviews"
 				count={reviews.length}
 				scrollRef={scrollContainerRef}
-				searchQuery={filterState.searchQuery}
-				toolbar={
-					<ListToolbar
-						state={filterState}
-						items={rawReviews}
-						searchPlaceholder="Search reviews…"
-					/>
-				}
+				filters={{
+					state: filterState,
+					items: rawReviews,
+					searchPlaceholder: "Search reviews…",
+				}}
 			>
 				{reviews.length === 0 ? (
 					<ListEmpty>
@@ -87,7 +83,7 @@ function ReviewsPage() {
 						count={reviews.length}
 					>
 						{reviews.map((pr) => (
-							<PullRequestRow key={pr.id} pr={pr} scope={scope} />
+							<PullRequestRow key={pr.id} pr={pr} />
 						))}
 					</ListGroup>
 				)}

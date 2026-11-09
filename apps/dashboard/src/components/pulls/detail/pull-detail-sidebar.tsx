@@ -1,13 +1,4 @@
-import {
-	CalendarIcon,
-	ClockIcon,
-	CloseIcon,
-	CommentIcon,
-	FileIcon,
-	GitCommitIcon,
-	GitMergeIcon,
-	MessageIcon,
-} from "@diffkit/icons";
+import { FileIcon, GitCommitIcon } from "@diffkit/icons";
 import {
 	LineCounts,
 	PanelAddButton,
@@ -25,18 +16,15 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import { useCallback, useMemo, useRef, useState } from "react";
 import {
-	DetailParticipantAvatars,
 	DetailSidebar,
-	DetailSidebarRow,
-	DetailSidebarSection,
+	RepoRow,
+	UpdatedRow,
 } from "#/components/details/detail-sidebar";
 import {
 	PanelPicker,
 	PanelPickerEmpty,
 } from "#/components/details/panel-picker";
 import { LabelsSection } from "#/components/issues/labels-section";
-import { PullStackSection } from "#/components/pulls/stack/pull-stack-section";
-import { formatRelativeTime } from "#/lib/format-relative-time";
 import {
 	removeReviewRequest,
 	requestPullReviewers,
@@ -47,13 +35,7 @@ import {
 	githubQueryKeys,
 	githubRepoCollaboratorsQueryOptions,
 } from "#/lib/github.query";
-import type {
-	GitHubActor,
-	PullComment,
-	PullCommit,
-	PullDetail,
-	PullPageData,
-} from "#/lib/github.types";
+import type { PullDetail, PullPageData } from "#/lib/github.types";
 import { getPrStateConfig } from "#/lib/pr-state";
 import { useOptimisticMutation } from "#/lib/use-optimistic-mutation";
 
@@ -63,22 +45,16 @@ export function PullDetailSidebar({
 	repo,
 	pullNumber,
 	scope,
-	comments,
-	commits,
 }: {
 	pr: PullDetail;
 	owner: string;
 	repo: string;
 	pullNumber: number;
 	scope: GitHubQueryScope;
-	comments: PullComment[];
-	commits: PullCommit[];
 }) {
 	return (
 		<DetailSidebar>
-			<PullStackSection pr={pr} owner={owner} repo={repo} scope={scope} />
-
-			<PullPropertiesSection pr={pr} />
+			<PullPropertiesSection pr={pr} owner={owner} repo={repo} />
 
 			<LabelsSection
 				currentLabels={pr.labels}
@@ -100,37 +76,6 @@ export function PullDetailSidebar({
 				pullNumber={pullNumber}
 				scope={scope}
 			/>
-
-			<DetailSidebarSection title="Participants">
-				<ParticipantsList pr={pr} comments={comments} commits={commits} />
-			</DetailSidebarSection>
-
-			<DetailSidebarSection title="Details">
-				<div className="flex flex-col gap-1">
-					<DetailSidebarRow icon={CalendarIcon} label="Created">
-						{formatRelativeTime(pr.createdAt)}
-					</DetailSidebarRow>
-					<DetailSidebarRow icon={ClockIcon} label="Updated">
-						{formatRelativeTime(pr.updatedAt)}
-					</DetailSidebarRow>
-					{pr.mergedAt && (
-						<DetailSidebarRow icon={GitMergeIcon} label="Merged">
-							{formatRelativeTime(pr.mergedAt)}
-						</DetailSidebarRow>
-					)}
-					{pr.closedAt && !pr.mergedAt && (
-						<DetailSidebarRow icon={CloseIcon} label="Closed">
-							{formatRelativeTime(pr.closedAt)}
-						</DetailSidebarRow>
-					)}
-					<DetailSidebarRow icon={CommentIcon} label="Comments">
-						<span className="tabular-nums">{pr.comments}</span>
-					</DetailSidebarRow>
-					<DetailSidebarRow icon={MessageIcon} label="Review comments">
-						<span className="tabular-nums">{pr.reviewComments}</span>
-					</DetailSidebarRow>
-				</div>
-			</DetailSidebarSection>
 		</DetailSidebar>
 	);
 }
@@ -604,61 +549,38 @@ function TeamMark() {
 	);
 }
 
-function ParticipantsList({
+function PullPropertiesSection({
 	pr,
-	comments,
-	commits,
+	owner,
+	repo,
 }: {
 	pr: PullDetail;
-	comments: PullComment[];
-	commits: PullCommit[];
+	owner: string;
+	repo: string;
 }) {
-	const seen = new Set<string>();
-	const participants: GitHubActor[] = [];
-
-	const addActor = (actor: GitHubActor | null) => {
-		if (actor && !seen.has(actor.login)) {
-			seen.add(actor.login);
-			participants.push(actor);
-		}
-	};
-
-	addActor(pr.author);
-	for (const comment of comments) {
-		addActor(comment.author);
-	}
-	for (const commit of commits) {
-		addActor(commit.author);
-	}
-
-	if (participants.length === 0) {
-		return <p className="text-xs text-muted-foreground">No participants yet</p>;
-	}
-
-	return <DetailParticipantAvatars actors={participants} />;
-}
-
-function PullPropertiesSection({ pr }: { pr: PullDetail }) {
 	const state = getPrStateConfig(pr);
 	const StateIcon = state.icon;
 	return (
 		<PanelSection label="Properties">
+			<RepoRow owner={owner} repo={repo} />
 			<PanelRow
+				muted
 				icon={<StateIcon size={14} strokeWidth={2} className={state.color} />}
 			>
 				{state.label}
 			</PanelRow>
-			<PanelRow icon={<FileIcon size={14} strokeWidth={2} />}>
+			<PanelRow muted icon={<FileIcon size={14} strokeWidth={2} />}>
 				<span className="tabular-nums">
 					{pr.changedFiles} {pr.changedFiles === 1 ? "file" : "files"}
 				</span>
 				<LineCounts additions={pr.additions} deletions={pr.deletions} />
 			</PanelRow>
-			<PanelRow icon={<GitCommitIcon size={14} strokeWidth={2} />}>
+			<PanelRow muted icon={<GitCommitIcon size={14} strokeWidth={2} />}>
 				<span className="tabular-nums">
 					{pr.commits} {pr.commits === 1 ? "commit" : "commits"}
 				</span>
 			</PanelRow>
+			<UpdatedRow at={pr.mergedAt ?? pr.closedAt ?? pr.updatedAt} />
 		</PanelSection>
 	);
 }
