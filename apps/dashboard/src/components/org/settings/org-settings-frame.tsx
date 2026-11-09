@@ -13,9 +13,10 @@ import { SettingsNavItem } from "@diffkit/ui/components/settings-nav";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import type { ReactNode } from "react";
+import { Skeleton } from "skullet/react";
 import {
 	SettingsNotice,
-	SettingsSkeleton,
+	SettingsRowsSample,
 } from "#/components/settings/settings-read";
 import { SettingsShell } from "#/components/settings/settings-shell";
 import {
@@ -100,22 +101,29 @@ export function OrgSettingsFrame({
 						</>
 					}
 				>
-					{access.status === "loading" ? <SettingsSkeleton /> : null}
-					{access.status === "outsider" ? (
-						<SettingsNotice
-							title="You're not a member of this organization"
-							action={
-								<Button asChild variant="outline" size="sm">
-									<Link to="/$owner" params={{ owner: org }}>
-										Back to {org}
-									</Link>
-								</Button>
-							}
-						>
-							Only members can see its settings.
-						</SettingsNotice>
-					) : null}
-					{access.status === "member" ? children : null}
+					<Skeleton
+						loading={access.status === "loading"}
+						label="Loading settings"
+					>
+						<div className="flex flex-col gap-8">
+							{access.status === "loading" ? <SettingsRowsSample /> : null}
+							{access.status === "outsider" ? (
+								<SettingsNotice
+									title="You're not a member of this organization"
+									action={
+										<Button asChild variant="outline" size="sm">
+											<Link to="/$owner" params={{ owner: org }}>
+												Back to {org}
+											</Link>
+										</Button>
+									}
+								>
+									Only members can see its settings.
+								</SettingsNotice>
+							) : null}
+							{access.status === "member" ? children : null}
+						</div>
+					</Skeleton>
 				</SettingsShell>
 			</div>
 		</div>

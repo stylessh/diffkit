@@ -13,14 +13,17 @@ import {
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import type * as React from "react";
+import { Skeleton } from "skullet/react";
+import { SAMPLE_RELEASES } from "#/components/releases/release-samples";
 import { TagIcon } from "#/components/repo/refs/tag-icon";
+import { useIsSkeletonSample } from "#/components/shared/skeleton-sample";
 import {
 	type GitHubQueryScope,
 	githubRepoContributorsQueryOptions,
 	githubRepoReleasesQueryOptions,
 	REPO_RELEASES_PER_PAGE,
 } from "#/lib/github.query";
-import type { RepoOverview } from "#/lib/github.types";
+import type { RepoOverview, RepoRelease } from "#/lib/github.types";
 import { useHasMounted } from "#/lib/use-has-mounted";
 import { HairlineBadge, ReleaseGlyph } from "./repo-ui";
 
@@ -146,6 +149,7 @@ function ReleasesSection({
 	scope: GitHubQueryScope;
 }) {
 	const hasMounted = useHasMounted();
+	const isSample = useIsSkeletonSample();
 	const params = { owner: repo.owner, repo: repo.name };
 	const releasesQuery = useQuery({
 		...githubRepoReleasesQueryOptions(scope, {
@@ -153,18 +157,39 @@ function ReleasesSection({
 			page: 1,
 			perPage: REPO_RELEASES_PER_PAGE,
 		}),
-		enabled: hasMounted,
+		enabled: hasMounted && !isSample,
 	});
-	const all = releasesQuery.data?.releases ?? [];
-	const latest = all.find((release) => release.isLatest) ?? all[0];
-	const releases = latest ? [latest] : [];
-	if (!releasesQuery.data) return null;
+	const latest = isSample
+		? SAMPLE_RELEASES[0]
+		: releasesQuery.data
+			? (releasesQuery.data.releases.find((release) => release.isLatest) ??
+				releasesQuery.data.releases[0] ??
+				null)
+			: undefined;
 
+	return (
+		<Skeleton
+			data={latest === undefined ? undefined : { latest }}
+			sample={{ latest: SAMPLE_RELEASES[0] }}
+			label="Loading releases"
+		>
+			{({ latest }) => <ReleasesPanel params={params} latest={latest} />}
+		</Skeleton>
+	);
+}
+
+function ReleasesPanel({
+	params,
+	latest,
+}: {
+	params: { owner: string; repo: string };
+	latest: RepoRelease | null;
+}) {
 	return (
 		<PanelSection
 			label="Releases"
 			action={
-				releases.length > 0 ? (
+				latest ? (
 					<Link
 						to="/$owner/$repo/releases"
 						params={params}
@@ -175,36 +200,31 @@ function ReleasesSection({
 				) : undefined
 			}
 		>
-			{releases.length === 0 ? (
+			{latest ? (
+				<LinkRow
+					icon={<ReleaseGlyph latest />}
+					after={
+						latest.isPrerelease ? (
+							<HairlineBadge>Pre-release</HairlineBadge>
+						) : null
+					}
+				>
+					<Link
+						to="/$owner/$repo/releases/$tag"
+						params={{ ...params, tag: latest.tagName }}
+					>
+						<span className="shrink-0 font-mono text-xs">{latest.tagName}</span>
+						{latest.name && latest.name !== latest.tagName ? (
+							<span className="truncate font-[450] text-muted-foreground">
+								{latest.name}
+							</span>
+						) : null}
+					</Link>
+				</LinkRow>
+			) : (
 				<PanelRow muted icon={<ReleaseGlyph />}>
 					No releases yet
 				</PanelRow>
-			) : (
-				releases.map((release) => (
-					<LinkRow
-						key={release.id}
-						icon={<ReleaseGlyph latest />}
-						after={
-							release.isPrerelease ? (
-								<HairlineBadge>Pre-release</HairlineBadge>
-							) : null
-						}
-					>
-						<Link
-							to="/$owner/$repo/releases/$tag"
-							params={{ ...params, tag: release.tagName }}
-						>
-							<span className="shrink-0 font-mono text-xs">
-								{release.tagName}
-							</span>
-							{release.name && release.name !== release.tagName ? (
-								<span className="truncate font-[450] text-muted-foreground">
-									{release.name}
-								</span>
-							) : null}
-						</Link>
-					</LinkRow>
-				))
 			)}
 		</PanelSection>
 	);
@@ -218,12 +238,13 @@ function ContributorsSection({
 	scope: GitHubQueryScope;
 }) {
 	const hasMounted = useHasMounted();
+	const isSample = useIsSkeletonSample();
 	const contributorsQuery = useQuery({
 		...githubRepoContributorsQueryOptions(scope, {
 			owner: repo.owner,
 			repo: repo.name,
 		}),
-		enabled: hasMounted,
+		enabled: hasMounted && !isSample,
 	});
 
 	const data = contributorsQuery.data;

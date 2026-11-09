@@ -9,6 +9,7 @@ import {
 import { cn } from "@diffkit/ui/lib/utils";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
+import { Skeleton } from "skullet/react";
 import {
 	CheckStateIcon,
 	getCheckState,
@@ -30,6 +31,12 @@ import type {
 } from "#/lib/github.types";
 import { getPrStateConfig } from "#/lib/pr-state";
 import { useHasMounted } from "#/lib/use-has-mounted";
+import {
+	SAMPLE_DISCUSSIONS,
+	SAMPLE_ISSUES,
+	SAMPLE_PULLS,
+	SAMPLE_RUNS,
+} from "./repo-samples";
 
 export function RepoActivityCards({
 	owner,
@@ -40,7 +47,7 @@ export function RepoActivityCards({
 	owner: string;
 	repo: string;
 	scope: GitHubQueryScope;
-	repoData: RepoOverview;
+	repoData: RepoOverview | null | undefined;
 }) {
 	const hasMounted = useHasMounted();
 
@@ -79,7 +86,7 @@ export function RepoActivityCards({
 
 	const discussionsQuery = useQuery({
 		...githubRepoDiscussionsQueryOptions(scope, { owner, repo }),
-		enabled: hasMounted && !!repoData.hasDiscussions,
+		enabled: hasMounted && !!repoData?.hasDiscussions,
 	});
 
 	const discussionsData = discussionsQuery.data;
@@ -100,7 +107,8 @@ export function RepoActivityCards({
 				title="Pull Requests"
 				icon={GitPullRequestIcon}
 				items={pullsQuery.data}
-				count={repoData.openPullCount}
+				sample={SAMPLE_PULLS}
+				count={repoData?.openPullCount}
 				viewAllHref={`/${owner}/${repo}/pulls`}
 				renderItem={(pr) => <PullItem key={pr.id} pr={pr} />}
 			/>
@@ -108,7 +116,8 @@ export function RepoActivityCards({
 				title="Issues"
 				icon={IssuesIcon}
 				items={issuesQuery.data}
-				count={repoData.openIssueCount}
+				sample={SAMPLE_ISSUES}
+				count={repoData?.openIssueCount}
 				viewAllHref={`/${owner}/${repo}/issues`}
 				actionHref={`/${owner}/${repo}/issues/new`}
 				renderItem={(issue) => <IssueItem key={issue.id} issue={issue} />}
@@ -117,16 +126,18 @@ export function RepoActivityCards({
 				title="Actions"
 				icon={ActionsIcon}
 				items={runsQuery.data}
+				sample={SAMPLE_RUNS}
 				viewAllHref={`/${owner}/${repo}/actions`}
 				renderItem={(run) => (
 					<RunItem key={run.id} run={run} owner={owner} repo={repo} />
 				)}
 			/>
-			{repoData.hasDiscussions && (
+			{repoData?.hasDiscussions && (
 				<ActivityCard
 					title="Discussions"
 					icon={CommentIcon}
 					items={discussions}
+					sample={SAMPLE_DISCUSSIONS}
 					count={discussionCount}
 					viewAllHref={`${repoData.url}/discussions`}
 					renderItem={(d) => (
@@ -142,6 +153,7 @@ function ActivityCard<T>({
 	title,
 	icon: Icon,
 	items,
+	sample,
 	count,
 	viewAllHref,
 	actionHref,
@@ -154,6 +166,7 @@ function ActivityCard<T>({
 		className?: string;
 	}>;
 	items: T[] | undefined;
+	sample: T[];
 	count?: number;
 	viewAllHref: string;
 	actionHref?: string;
@@ -180,11 +193,13 @@ function ActivityCard<T>({
 					</Link>
 				)}
 			</div>
-			<div className="flex flex-col">
-				{!items ? (
-					<ActivityCardSkeleton />
-				) : (
-					<>
+			<Skeleton
+				data={items}
+				sample={sample}
+				label={`Loading ${title.toLowerCase()}`}
+			>
+				{(items) => (
+					<div className="flex flex-col">
 						{items.length === 0 ? (
 							<p className="px-4 pb-8 pt-6 text-center text-xs text-muted-foreground">
 								No open {title.toLowerCase()}
@@ -198,9 +213,9 @@ function ActivityCard<T>({
 						>
 							View all
 						</Link>
-					</>
+					</div>
 				)}
-			</div>
+			</Skeleton>
 		</div>
 	);
 }
@@ -318,21 +333,5 @@ function DiscussionItem({
 				</p>
 			</div>
 		</a>
-	);
-}
-
-function ActivityCardSkeleton() {
-	return (
-		<div className="flex flex-col gap-1 px-4 pb-3">
-			{[0, 1, 2].map((i) => (
-				<div key={i} className="flex items-start gap-2.5 py-2">
-					<div className="mt-0.5 size-3.5 shrink-0 animate-pulse rounded-full bg-surface-1" />
-					<div className="flex-1">
-						<div className="h-4 w-full animate-pulse rounded bg-surface-1" />
-						<div className="mt-1.5 h-3 w-20 animate-pulse rounded bg-surface-1" />
-					</div>
-				</div>
-			))}
-		</div>
 	);
 }

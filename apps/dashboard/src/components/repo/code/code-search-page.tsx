@@ -5,11 +5,11 @@ import {
 	FolderIcon,
 	SearchIcon,
 } from "@diffkit/icons";
-import { Skeleton } from "@diffkit/ui/components/skeleton";
 import { cn } from "@diffkit/ui/lib/utils";
-import { useQuery } from "@tanstack/react-query";
+import { type UseQueryResult, useQuery } from "@tanstack/react-query";
 import { Link, useNavigate } from "@tanstack/react-router";
 import { type FormEvent, useEffect, useMemo, useState } from "react";
+import { Skeleton } from "skullet/react";
 import { splitHighlights } from "#/lib/code-browsing/mappers";
 import {
 	CODE_SEARCH_PAGE_SIZE,
@@ -34,6 +34,7 @@ import {
 	RepoCardHead,
 	RepoEmptyState,
 } from "../repo-ui";
+import { SAMPLE_CODE_SEARCH_HITS } from "./code-samples";
 import { useTreeIndex } from "./use-directory-listing";
 
 const PATH_MATCH_LIMIT = 6;
@@ -212,6 +213,24 @@ function PathMatches({
 	);
 }
 
+type CodeMatchesState =
+	| { status: "loading" }
+	| { status: "error"; message: string }
+	| { status: "ready"; result: RepoCodeSearch; defaultBranch: string };
+
+function codeMatchesState(
+	searchQuery: UseQueryResult<RepoCodeSearch>,
+	defaultBranch: string | undefined,
+): CodeMatchesState {
+	if (searchQuery.error) {
+		return { status: "error", message: searchQuery.error.message };
+	}
+	if (searchQuery.data && defaultBranch) {
+		return { status: "ready", result: searchQuery.data, defaultBranch };
+	}
+	return { status: "loading" };
+}
+
 function CodeMatches({
 	scope,
 	owner,
@@ -223,6 +242,7 @@ function CodeMatches({
 	const searchQuery = useQuery(
 		githubRepoCodeSearchQueryOptions(scope, { owner, repo, query, page }),
 	);
+	const state = codeMatchesState(searchQuery, defaultBranch);
 
 	return (
 		<section aria-labelledby="code-matches" className="flex flex-col gap-2">
@@ -235,24 +255,26 @@ function CodeMatches({
 					? ` · ${searchQuery.data.totalCount.toLocaleString()} ${searchQuery.data.totalCount === 1 ? "file" : "files"}`
 					: null}
 			</h2>
-			{searchQuery.error ? (
-				<RepoCard>
-					<RepoEmptyState title="Search failed">
-						{searchQuery.error.message}
-					</RepoEmptyState>
-				</RepoCard>
-			) : searchQuery.data && defaultBranch ? (
-				<SearchOutcome
-					result={searchQuery.data}
-					owner={owner}
-					repo={repo}
-					query={query}
-					page={page}
-					defaultBranch={defaultBranch}
-				/>
-			) : (
-				<ResultsSkeleton />
-			)}
+			<Skeleton loading={state.status === "loading"} label="Searching code">
+				{state.status === "error" ? (
+					<RepoCard>
+						<RepoEmptyState title="Search failed">
+							{state.message}
+						</RepoEmptyState>
+					</RepoCard>
+				) : state.status === "ready" ? (
+					<SearchOutcome
+						result={state.result}
+						owner={owner}
+						repo={repo}
+						query={query}
+						page={page}
+						defaultBranch={state.defaultBranch}
+					/>
+				) : (
+					<SearchHitsSample owner={owner} repo={repo} />
+				)}
+			</Skeleton>
 		</section>
 	);
 }
@@ -435,19 +457,17 @@ function Pagination({
 	);
 }
 
-function ResultsSkeleton() {
+function SearchHitsSample({ owner, repo }: { owner: string; repo: string }) {
 	return (
 		<div className="flex flex-col gap-3">
-			{["a", "b", "c"].map((key) => (
-				<RepoCard key={key}>
-					<RepoCardHead className="h-9">
-						<Skeleton className="h-3.5 w-56 rounded" />
-					</RepoCardHead>
-					<div className="flex flex-col gap-2 px-4 py-3">
-						<Skeleton className="h-3 w-4/5 rounded" />
-						<Skeleton className="h-3 w-3/5 rounded" />
-					</div>
-				</RepoCard>
+			{SAMPLE_CODE_SEARCH_HITS.map((hit) => (
+				<SearchHitCard
+					key={hit.path}
+					hit={hit}
+					owner={owner}
+					repo={repo}
+					defaultBranch="main"
+				/>
 			))}
 		</div>
 	);

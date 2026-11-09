@@ -524,6 +524,18 @@
 	--contrib-level-4: oklch(0.78 0.22 150);
 }
 
+/* Skeletons (skullet): tinted from the theme's own text and surface colours so
+   every colour theme gets matching bones. */
+:root {
+	--skullet-base: color-mix(in oklch, var(--ln-text) 7%, transparent);
+	--skullet-highlight: color-mix(in oklch, var(--ln-main) 60%, transparent);
+}
+
+.dark {
+	--skullet-base: color-mix(in oklch, var(--ln-text) 5%, transparent);
+	--skullet-highlight: color-mix(in oklch, var(--ln-text) 3%, transparent);
+}
+
 /* 2. shadcn variables, aliased onto the Linear tokens ----------------------
    Declared for both scopes so a nested `.dark` re-resolves them. Existing
    token names keep working; their values now come from the Linear set. */

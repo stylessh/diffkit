@@ -25,6 +25,10 @@ import {
 	githubRepoRulesetsQueryOptions,
 } from "#/lib/github.query";
 import type { RulesetEnforcement } from "#/lib/settings/rules";
+import {
+	SAMPLE_BRANCH_PROTECTIONS,
+	SAMPLE_REPO_RULESETS,
+} from "./repo-settings-samples";
 
 const ENFORCEMENT: Record<
 	RulesetEnforcement,
@@ -81,6 +85,7 @@ export function BranchRulesSettings({
 
 			<SettingsReadView
 				query={rulesets}
+				sample={SAMPLE_REPO_RULESETS}
 				forbiddenTitle="Rulesets aren't available"
 				forbiddenHint="You need access to this repository to see its rulesets."
 				githubUrl={`${githubUrl}/rules`}
@@ -135,6 +140,7 @@ export function BranchRulesSettings({
 
 			<SettingsReadView
 				query={protections}
+				sample={SAMPLE_BRANCH_PROTECTIONS}
 				forbiddenTitle="Branch protection isn't available"
 				forbiddenHint="GitHub shows branch protection to people with admin access."
 				githubUrl={`${githubUrl}/branches`}

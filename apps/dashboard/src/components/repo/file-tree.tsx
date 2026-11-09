@@ -1,9 +1,10 @@
 import { FileIcon, FolderIcon } from "@diffkit/icons";
-import { Skeleton } from "@diffkit/ui/components/skeleton";
 import { cn } from "@diffkit/ui/lib/utils";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import { useMemo } from "react";
+import { SkeletonBox } from "skullet/react";
+import { useIsSkeletonSample } from "#/components/shared/skeleton-sample";
 import { formatRelativeTime } from "#/lib/format-relative-time";
 import {
 	type GitHubQueryScope,
@@ -25,17 +26,19 @@ export function FileTree({
 	currentRef: string;
 	scope: GitHubQueryScope;
 }) {
+	const isSample = useIsSkeletonSample();
 	const entryNames = useMemo(() => entries.map((e) => e.name), [entries]);
 
-	const commitsQuery = useQuery(
-		githubTreeEntryCommitsQueryOptions(scope, {
+	const commitsQuery = useQuery({
+		...githubTreeEntryCommitsQueryOptions(scope, {
 			owner,
 			repo,
 			ref: currentRef,
 			dirPath: "",
 			entries: entryNames,
 		}),
-	);
+		enabled: !isSample && entryNames.length > 0,
+	});
 
 	return (
 		<div>
@@ -47,7 +50,7 @@ export function FileTree({
 					repo={repo}
 					currentRef={currentRef}
 					commit={commitsQuery.data?.[entry.name] ?? null}
-					isCommitLoading={commitsQuery.isLoading}
+					isCommitLoading={isSample || commitsQuery.isLoading}
 				/>
 			))}
 		</div>
@@ -102,14 +105,19 @@ function FileTreeRow({
 				{commit ? (
 					commit.message.split("\n")[0]
 				) : isCommitLoading ? (
-					<Skeleton className="h-3.5 w-48 max-w-full rounded" />
+					<SkeletonBox
+						width={192}
+						height={14}
+						radius={4}
+						className="max-w-full"
+					/>
 				) : null}
 			</span>
 			<span className="w-10 shrink-0 text-right text-xs font-[450] tabular-nums text-muted-foreground">
 				{commit?.date ? (
 					formatRelativeTime(commit.date, undefined, { compact: true })
 				) : isCommitLoading ? (
-					<Skeleton className="ml-auto h-3.5 w-8 rounded" />
+					<SkeletonBox width={32} height={14} radius={4} className="ml-auto" />
 				) : null}
 			</span>
 		</Link>

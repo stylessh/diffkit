@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import type { Dispatch } from "react";
 import { useMemo } from "react";
+import { useIsSkeletonSample } from "#/components/shared/skeleton-sample";
 import {
 	type GitHubQueryScope,
 	githubOrgTeamsQueryOptions,
@@ -90,18 +91,23 @@ export function CompareProperties({
 	draft: PullRequestDraft;
 	dispatch: Dispatch<PullRequestDraftAction>;
 }) {
-	const collaboratorsQuery = useQuery(
-		githubRepoCollaboratorsQueryOptions(scope, { owner, repo }),
-	);
-	const teamsQuery = useQuery(
-		githubOrgTeamsQueryOptions(scope, { org: owner, owner, repo }),
-	);
-	const labelsQuery = useQuery(
-		githubRepoLabelsQueryOptions(scope, { owner, repo }),
-	);
-	const milestonesQuery = useQuery(
-		githubRepoMilestonesQueryOptions(scope, { owner, repo }),
-	);
+	const enabled = !useIsSkeletonSample();
+	const collaboratorsQuery = useQuery({
+		...githubRepoCollaboratorsQueryOptions(scope, { owner, repo }),
+		enabled,
+	});
+	const teamsQuery = useQuery({
+		...githubOrgTeamsQueryOptions(scope, { org: owner, owner, repo }),
+		enabled,
+	});
+	const labelsQuery = useQuery({
+		...githubRepoLabelsQueryOptions(scope, { owner, repo }),
+		enabled,
+	});
+	const milestonesQuery = useQuery({
+		...githubRepoMilestonesQueryOptions(scope, { owner, repo }),
+		enabled,
+	});
 
 	const collaborators = collaboratorsQuery.data ?? [];
 	const teams = teamsQuery.data ?? [];

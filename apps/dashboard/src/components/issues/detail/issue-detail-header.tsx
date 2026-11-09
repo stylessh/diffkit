@@ -42,7 +42,53 @@ export function getIssueStateConfig(
 	};
 }
 
-export function IssueDetailHeader({
+/** The title row; a cached list summary is enough to draw it. */
+export function IssueDetailTitle({
+	owner,
+	repo,
+	issue,
+}: {
+	owner: string;
+	repo: string;
+	issue: Pick<
+		IssueDetail,
+		"number" | "title" | "state" | "stateReason" | "author" | "createdAt"
+	>;
+}) {
+	const stateConfig = getIssueStateConfig(issue);
+	return (
+		<DetailPageTitle
+			collectionHref="/issues"
+			collectionLabel="Issues"
+			owner={owner}
+			repo={repo}
+			number={issue.number}
+			icon={IssuesIcon}
+			iconClassName={stateConfig.color}
+			title={issue.title}
+			subtitle={
+				<div className="flex flex-wrap items-center gap-2">
+					<StatePill tone={stateConfig.tone}>{stateConfig.label}</StatePill>
+					{issue.author && (
+						<span className="flex items-center gap-1.5 text-xs font-[450] text-muted-foreground">
+							<img
+								src={issue.author.avatarUrl}
+								alt={issue.author.login}
+								className="size-4 rounded-full ring-[0.5px] ring-chip-border"
+							/>
+							<span className="font-medium text-foreground">
+								{issue.author.login}
+							</span>
+							<span>opened {formatRelativeTime(issue.createdAt)}</span>
+						</span>
+					)}
+				</div>
+			}
+		/>
+	);
+}
+
+export function IssueDescription({
 	owner,
 	repo,
 	issue,
@@ -57,81 +103,49 @@ export function IssueDetailHeader({
 }) {
 	const [descActive, setDescActive] = useState(false);
 	const prefersNoHover = usePrefersNoHover();
-	const stateConfig = getIssueStateConfig(issue);
 
 	return (
-		<>
-			<DetailPageTitle
-				collectionHref="/issues"
-				collectionLabel="Issues"
-				owner={owner}
-				repo={repo}
-				number={issue.number}
-				icon={IssuesIcon}
-				iconClassName={stateConfig.color}
-				title={issue.title}
-				subtitle={
-					<div className="flex flex-wrap items-center gap-2">
-						<StatePill tone={stateConfig.tone}>{stateConfig.label}</StatePill>
-						{issue.author && (
-							<span className="flex items-center gap-1.5 text-xs font-[450] text-muted-foreground">
-								<img
-									src={issue.author.avatarUrl}
-									alt={issue.author.login}
-									className="size-4 rounded-full ring-[0.5px] ring-chip-border"
-								/>
-								<span className="font-medium text-foreground">
-									{issue.author.login}
-								</span>
-								<span>opened {formatRelativeTime(issue.createdAt)}</span>
-							</span>
-						)}
-					</div>
-				}
-			/>
-
-			<div className="relative">
-				<div
-					className="group/description flex flex-col"
-					onPointerEnter={() => setDescActive(true)}
-					onPointerLeave={() => setDescActive(false)}
-					onFocusCapture={() => setDescActive(true)}
-					onBlurCapture={(e) => {
-						if (!e.currentTarget.contains(e.relatedTarget as Node | null)) {
-							setDescActive(false);
-						}
-					}}
-				>
-					{issue.body ? (
-						<AppMarkdown
-							owner={owner}
-							repo={repo}
-							className="text-[15px] leading-6 font-[450] text-text-header"
-						>
-							{issue.body}
-						</AppMarkdown>
-					) : (
-						<p className="text-sm italic text-muted-foreground">
-							No description provided.
-						</p>
-					)}
-					{issue.graphqlId ? (
-						<IssueCommentReactionBar
-							className="mt-3 min-h-6 justify-start"
-							revealZeroCount={descActive || prefersNoHover}
-							viewerLogin={viewerLogin}
-							owner={owner}
-							repo={repo}
-							issueNumber={issue.number}
-							commentGraphqlId={issue.graphqlId}
-							scope={scope}
-							reactions={issue.reactions}
-							variant="detail"
-							detailPage="issue"
-						/>
-					) : null}
-				</div>
+		<div className="relative">
+			<div
+				className="group/description flex flex-col"
+				onPointerEnter={() => setDescActive(true)}
+				onPointerLeave={() => setDescActive(false)}
+				onFocusCapture={() => setDescActive(true)}
+				onBlurCapture={(e) => {
+					if (!e.currentTarget.contains(e.relatedTarget as Node | null)) {
+						setDescActive(false);
+					}
+				}}
+			>
+				{issue.body ? (
+					<AppMarkdown
+						owner={owner}
+						repo={repo}
+						className="text-[15px] leading-6 font-[450] text-text-header"
+					>
+						{issue.body}
+					</AppMarkdown>
+				) : (
+					<p className="text-sm italic text-muted-foreground">
+						No description provided.
+					</p>
+				)}
+				{issue.graphqlId ? (
+					<IssueCommentReactionBar
+						className="mt-3 min-h-6 justify-start"
+						revealZeroCount={descActive || prefersNoHover}
+						viewerLogin={viewerLogin}
+						owner={owner}
+						repo={repo}
+						issueNumber={issue.number}
+						commentGraphqlId={issue.graphqlId}
+						scope={scope}
+						reactions={issue.reactions}
+						variant="detail"
+						detailPage="issue"
+					/>
+				) : null}
 			</div>
-		</>
+		</div>
 	);
 }

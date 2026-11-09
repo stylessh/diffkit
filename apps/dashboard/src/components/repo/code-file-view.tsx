@@ -1,5 +1,4 @@
 import { FileIcon, FolderIcon, PackageIcon } from "@diffkit/icons";
-import { Skeleton } from "@diffkit/ui/components/skeleton";
 import {
 	Tooltip,
 	TooltipContent,
@@ -7,7 +6,8 @@ import {
 } from "@diffkit/ui/components/tooltip";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
-import { lazy, type ReactNode, Suspense, useCallback, useState } from "react";
+import { lazy, type ReactNode, useCallback, useState } from "react";
+import { Skeleton, SkeletonSuspense } from "skullet/react";
 import {
 	detectLang,
 	formatFileSize,
@@ -31,10 +31,15 @@ import {
 	SegmentToggle,
 } from "./code/blob-header";
 import { CodeLines, countLines } from "./code/code-lines";
+import { SAMPLE_CODE } from "./code/code-samples";
 import { useLineSelection } from "./code/use-line-selection";
 import { usePermalink } from "./code/use-permalink";
 import { CommitHistoryLink } from "./commits/commit-history-link";
-import { resolveGitHubMarkdownAssetUrl } from "./repo-markdown-files";
+import {
+	MarkdownDocumentSample,
+	resolveGitHubMarkdownAssetUrl,
+} from "./repo-markdown-files";
+import { SAMPLE_COMMIT } from "./repo-samples";
 import { RepoAvatar, RepoCard, RepoCardHead, RepoEmptyState } from "./repo-ui";
 
 const Markdown = lazy(() =>
@@ -79,7 +84,9 @@ export function CodeFileView({ location, scope, entry }: CodeFileViewProps) {
 							{blobQuery.error.message}
 						</RepoEmptyState>
 					) : (
-						<CodeSkeleton />
+						<Skeleton loading label="Loading file">
+							<CodeSample />
+						</Skeleton>
 					)}
 				</>
 			)}
@@ -324,14 +331,17 @@ function MarkdownPreview({
 	);
 	return (
 		<div className="px-6 py-5 md:px-8">
-			<Suspense fallback={<CodeSkeleton />}>
+			<SkeletonSuspense
+				skeleton={<MarkdownDocumentSample />}
+				label="Loading preview"
+			>
 				<Markdown
 					className="text-[15px] leading-6 text-text-header"
 					resolveAssetUrl={resolveAssetUrl}
 				>
 					{text}
 				</Markdown>
-			</Suspense>
+			</SkeletonSuspense>
 		</div>
 	);
 }
@@ -355,16 +365,26 @@ function FileCommitBar({
 	location: BlobLocation;
 	commit: FileLastCommit | null | undefined;
 }) {
-	if (commit === undefined) {
-		return (
-			<RepoCardHead>
-				<Skeleton className="size-[18px] rounded-full" />
-				<Skeleton className="h-3.5 w-48 rounded" />
-			</RepoCardHead>
-		);
-	}
 	if (commit === null) return null;
 
+	return (
+		<Skeleton
+			data={commit}
+			sample={SAMPLE_COMMIT}
+			label="Loading latest commit"
+		>
+			{(commit) => <FileCommitHead location={location} commit={commit} />}
+		</Skeleton>
+	);
+}
+
+function FileCommitHead({
+	location,
+	commit,
+}: {
+	location: BlobLocation;
+	commit: FileLastCommit;
+}) {
 	return (
 		<RepoCardHead>
 			{commit.author ? (
@@ -412,14 +432,19 @@ function FileCommitBar({
 	);
 }
 
-const skeletonWidths = ["75%", "60%", "85%", "45%", "90%", "55%", "70%", "80%"];
+const SAMPLE_CODE_LINE_COUNT = countLines(SAMPLE_CODE);
 
-export function CodeSkeleton() {
+function ignoreLineSelection() {}
+
+export function CodeSample({ gutter }: { gutter?: ReactNode }) {
 	return (
-		<div className="flex flex-col gap-2 py-3 pr-4 pl-14">
-			{skeletonWidths.map((width) => (
-				<Skeleton key={width} className="h-3.5 rounded" style={{ width }} />
-			))}
-		</div>
+		<CodeLines
+			code={SAMPLE_CODE}
+			lang="text"
+			lineCount={SAMPLE_CODE_LINE_COUNT}
+			selection={null}
+			onSelectLine={ignoreLineSelection}
+			gutter={gutter}
+		/>
 	);
 }

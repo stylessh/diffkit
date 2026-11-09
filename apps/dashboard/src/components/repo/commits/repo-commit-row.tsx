@@ -7,7 +7,6 @@ import {
 	MoreHorizontalIcon,
 } from "@diffkit/icons";
 import { Chip } from "@diffkit/ui/components/chip";
-import { Skeleton } from "@diffkit/ui/components/skeleton";
 import {
 	Tooltip,
 	TooltipContent,
@@ -206,23 +205,5 @@ function ShaButton({
 				<TooltipContent>{copied ? "Copied!" : "Copy full SHA"}</TooltipContent>
 			</Tooltip>
 		</span>
-	);
-}
-
-export function RepoCommitRowSkeleton({ width }: { width: string }) {
-	return (
-		<div className={listRowClassName}>
-			<RowStateIcon>
-				<Skeleton className="size-3.5 rounded-full" />
-			</RowStateIcon>
-			<div className="flex min-w-0 flex-1 items-center">
-				<Skeleton className="h-3.5 rounded" style={{ width }} />
-			</div>
-			<span className="hidden shrink-0 items-center gap-2 md:flex">
-				<Skeleton className="h-6 w-20 rounded-full" />
-				<Skeleton className="size-[18px] rounded-full" />
-				<Skeleton className="h-3 w-8 rounded" />
-			</span>
-		</div>
 	);
 }

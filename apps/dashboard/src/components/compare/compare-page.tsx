@@ -12,7 +12,6 @@ import {
 	PageHeaderCrumb,
 	PageHeaderTitle,
 } from "@diffkit/ui/components/page-header";
-import { Skeleton } from "@diffkit/ui/components/skeleton";
 import { toast } from "@diffkit/ui/components/sonner";
 import {
 	useInfiniteQuery,
@@ -21,6 +20,8 @@ import {
 } from "@tanstack/react-query";
 import { Link, useRouter } from "@tanstack/react-router";
 import { type ReactNode, useMemo, useReducer, useState } from "react";
+import { Skeleton } from "skullet/react";
+import { SkeletonSample } from "#/components/shared/skeleton-sample";
 import {
 	type CompareRefs,
 	formatCompareSplat,
@@ -63,12 +64,30 @@ import { CompareDiffView } from "./compare-diff-view";
 import { CompareForm, type SubmitState } from "./compare-form";
 import { CompareProperties } from "./compare-properties";
 import { CompareRecentBranches } from "./compare-recent-branches";
+import {
+	SAMPLE_COMPARE_COMMITS,
+	SAMPLE_COMPARE_FILES,
+} from "./compare-samples";
 
 type CompareView =
 	| { kind: "choose-branch" }
 	| { kind: "loading" }
 	| { kind: "unavailable" }
 	| { kind: "ready"; compare: CompareDetail };
+
+type CompareTarget = {
+	base: string;
+	head: string | null;
+	defaultBranch: string;
+};
+
+const NO_BRANCHES: CompareBranches = {
+	items: [],
+	loading: false,
+	truncated: false,
+};
+
+const noop = () => {};
 
 function resolveCompareView(
 	head: string | null,
@@ -135,19 +154,23 @@ export function ComparePage({
 	});
 
 	if (overviewQuery.error) throw overviewQuery.error;
-	if (!resolved?.base || !defaultBranch) return <ComparePageSkeleton />;
 
+	const target: CompareTarget | null =
+		resolved?.base && defaultBranch
+			? { base: resolved.base, head: resolved.head, defaultBranch }
+			: null;
 	const firstBranchPage = branchesQuery.data?.pages[0];
 	const branches: CompareBranches = {
 		items: firstBranchPage?.branches ?? [],
 		loading: branchesQuery.isPending,
 		truncated: firstBranchPage?.hasNextPage ?? false,
 	};
-	const { base, head } = resolved;
-	const view = resolveCompareView(head, compareQuery);
+	const view: CompareView = target
+		? resolveCompareView(target.head, compareQuery)
+		: { kind: "loading" };
 	const access = pullRequestAccess({
 		lookup: permissionLookup(permissionQuery),
-		head: head ?? "",
+		head: target?.head ?? "",
 		repoOwner: owner,
 	});
 	const compare = view.kind === "ready" ? view.compare : null;
@@ -169,6 +192,7 @@ export function ComparePage({
 		<div className="flex h-full min-h-0 flex-col">
 			<PageHeader
 				actions={
+					target &&
 					view.kind === "ready" &&
 					view.compare.aheadBy > 0 &&
 					!showForm &&
@@ -187,8 +211,8 @@ export function ComparePage({
 							<CreatePullRequestLink
 								owner={owner}
 								repo={repo}
-								base={base}
-								head={head}
+								base={target.base}
+								head={target.head}
 							/>
 						)
 					) : undefined
@@ -210,26 +234,50 @@ export function ComparePage({
 			</PageHeader>
 			<div className="min-h-0 flex-1 overflow-y-auto">
 				<div className="flex flex-col gap-4 px-3 pt-3 pb-10 md:px-[14px]">
-					<CompareBranchBar
-						base={base}
-						head={head}
-						defaultBranch={defaultBranch}
-						branches={branches}
-						compare={compare}
-						onBaseChange={(next) => navigateTo({ base: next, head })}
-						onHeadChange={(next) => navigateTo({ base, head: next })}
-					/>
-					<CompareBody
-						view={view}
-						owner={owner}
-						repo={repo}
-						scope={scope}
-						base={base}
-						head={head}
-						branches={branches}
-						showForm={showForm}
-						access={access}
-					/>
+					<Skeleton loading={target === null} label="Loading branches">
+						{target ? (
+							<CompareBranchBar
+								base={target.base}
+								head={target.head}
+								defaultBranch={target.defaultBranch}
+								branches={branches}
+								compare={compare}
+								onBaseChange={(next) =>
+									navigateTo({ base: next, head: target.head })
+								}
+								onHeadChange={(next) =>
+									navigateTo({ base: target.base, head: next })
+								}
+							/>
+						) : (
+							<CompareBranchBar
+								base="main"
+								head="feature/review-threads"
+								defaultBranch="main"
+								branches={NO_BRANCHES}
+								compare={null}
+								onBaseChange={noop}
+								onHeadChange={noop}
+							/>
+						)}
+					</Skeleton>
+					<Skeleton loading={view.kind === "loading"} label="Loading changes">
+						{target ? (
+							<CompareBody
+								view={view}
+								owner={owner}
+								repo={repo}
+								scope={scope}
+								base={target.base}
+								head={target.head}
+								branches={branches}
+								showForm={showForm}
+								access={access}
+							/>
+						) : (
+							<CompareDiffSample owner={owner} repo={repo} />
+						)}
+					</Skeleton>
 				</div>
 			</div>
 		</div>
@@ -268,7 +316,7 @@ function CompareBody({
 				/>
 			);
 		case "loading":
-			return <CompareBodySkeleton />;
+			return <CompareDiffSample owner={owner} repo={repo} />;
 		case "unavailable":
 			return <NothingToCompare base={base} head={head} />;
 		case "ready":
@@ -309,7 +357,7 @@ function CompareReady({
 	const noCommits = showForm && compare.aheadBy === 0;
 
 	return (
-		<>
+		<div className="flex flex-col gap-4">
 			{noCommits ? (
 				<Notice>
 					{head} has no commits that {base} doesn't, so there is nothing to open
@@ -337,7 +385,7 @@ function CompareReady({
 				owner={owner}
 				repo={repo}
 			/>
-		</>
+		</div>
 	);
 }
 
@@ -390,17 +438,6 @@ function PullRequestComposer({
 	const title = pullRequestTitle(draft, titleSuggestion);
 	const body = pullRequestBody(draft, bodyTemplate);
 
-	if (access === "checking") return <ComposerSkeleton />;
-	if (access === "read-only") {
-		return (
-			<Notice>
-				You don't have push access to {owner}/{repo}. To open a pull request,
-				compare from a fork by choosing its branch as{" "}
-				<span className="font-mono">owner:branch</span>.
-			</Notice>
-		);
-	}
-
 	const handleSubmit = async () => {
 		const input = buildCreatePullRequestInput({
 			owner,
@@ -451,36 +488,54 @@ function PullRequestComposer({
 	};
 
 	return (
-		<div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(17rem,34%)]">
-			<div className="mx-auto w-full max-w-[780px] min-w-0">
-				<CompareForm
-					owner={owner}
-					repo={repo}
-					title={title}
-					body={body}
-					isDraft={draft.isDraft}
-					submit={submit}
-					canSubmit={title.trim() !== ""}
-					mentionConfig={mentionConfig}
-					onTitleChange={(value) => dispatch({ type: "title-edited", value })}
-					onBodyChange={(value) => dispatch({ type: "body-edited", value })}
-					onDraftChange={(value) => dispatch({ type: "draft-set", value })}
-					onSubmit={handleSubmit}
-				/>
-			</div>
-			<aside aria-label="Pull request properties" className="min-w-0">
-				<div className="flex max-w-80 flex-col">
-					<CompareProperties
-						owner={owner}
-						repo={repo}
-						scope={scope}
-						viewerLogin={viewerQuery.data?.login ?? null}
-						draft={draft}
-						dispatch={dispatch}
-					/>
-				</div>
-			</aside>
-		</div>
+		<Skeleton loading={access === "checking"} label="Checking your access">
+			{access === "read-only" ? (
+				<Notice>
+					You don't have push access to {owner}/{repo}. To open a pull request,
+					compare from a fork by choosing its branch as{" "}
+					<span className="font-mono">owner:branch</span>.
+				</Notice>
+			) : (
+				<ComposerShape isSample={access === "checking"}>
+					<div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(17rem,34%)]">
+						<div className="mx-auto w-full max-w-[780px] min-w-0">
+							<CompareForm
+								owner={owner}
+								repo={repo}
+								title={title}
+								body={body}
+								isDraft={draft.isDraft}
+								submit={submit}
+								canSubmit={title.trim() !== ""}
+								mentionConfig={mentionConfig}
+								onTitleChange={(value) =>
+									dispatch({ type: "title-edited", value })
+								}
+								onBodyChange={(value) =>
+									dispatch({ type: "body-edited", value })
+								}
+								onDraftChange={(value) =>
+									dispatch({ type: "draft-set", value })
+								}
+								onSubmit={handleSubmit}
+							/>
+						</div>
+						<aside aria-label="Pull request properties" className="min-w-0">
+							<div className="flex max-w-80 flex-col">
+								<CompareProperties
+									owner={owner}
+									repo={repo}
+									scope={scope}
+									viewerLogin={viewerQuery.data?.login ?? null}
+									draft={draft}
+									dispatch={dispatch}
+								/>
+							</div>
+						</aside>
+					</div>
+				</ComposerShape>
+			)}
+		</Skeleton>
 	);
 }
 
@@ -587,41 +642,24 @@ function NothingToCompare({
 	);
 }
 
-function ComposerSkeleton() {
+function CompareDiffSample({ owner, repo }: { owner: string; repo: string }) {
 	return (
-		<div className="flex flex-col gap-3">
-			<Skeleton className="h-9 w-full rounded-lg" />
-			<Skeleton className="h-48 w-full rounded-lg" />
-		</div>
+		<CompareDiffView
+			commits={SAMPLE_COMPARE_COMMITS}
+			files={SAMPLE_COMPARE_FILES}
+			owner={owner}
+			repo={repo}
+		/>
 	);
 }
 
-function CompareBodySkeleton() {
-	return (
-		<div className="flex flex-col gap-2">
-			<Skeleton className="h-9 w-full rounded-lg" />
-			<Skeleton className="h-40 w-full rounded-lg" />
-		</div>
-	);
-}
-
-function ComparePageSkeleton() {
-	return (
-		<div className="flex h-full min-h-0 flex-col">
-			<PageHeader>
-				<PageHeaderTitle>
-					<GitCompareIcon
-						size={14}
-						strokeWidth={2}
-						className="text-muted-foreground"
-					/>
-					Compare changes
-				</PageHeaderTitle>
-			</PageHeader>
-			<div className="flex flex-col gap-4 px-3 pt-3 md:px-[14px]">
-				<Skeleton className="h-12 w-full rounded-lg" />
-				<CompareBodySkeleton />
-			</div>
-		</div>
-	);
+/** While access is checked the form is only a measured shape, so its pickers stay idle. */
+function ComposerShape({
+	isSample,
+	children,
+}: {
+	isSample: boolean;
+	children: React.ReactNode;
+}) {
+	return isSample ? <SkeletonSample>{children}</SkeletonSample> : children;
 }

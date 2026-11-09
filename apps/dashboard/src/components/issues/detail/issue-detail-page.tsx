@@ -1,28 +1,27 @@
-import { IssuesIcon } from "@diffkit/icons";
-import { Skeleton } from "@diffkit/ui/components/skeleton";
-import { StatePill } from "@diffkit/ui/components/state-pill";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { getRouteApi } from "@tanstack/react-router";
 import { useMemo } from "react";
+import { Skeleton } from "skullet/react";
+import { DetailPageLayout } from "#/components/details/detail-page";
+import { SkeletonSample } from "#/components/shared/skeleton-sample";
 import {
-	DetailPageLayout,
-	DetailPageSkeletonLayout,
-	DetailPageTitle,
-	StaggerItem,
-} from "#/components/details/detail-page";
-import { formatRelativeTime } from "#/lib/format-relative-time";
-import {
+	type GitHubQueryScope,
 	githubIssuePageQueryOptions,
 	githubQueryKeys,
 	githubViewerQueryOptions,
 } from "#/lib/github.query";
-import type { IssueSummary } from "#/lib/github.types";
+import type { IssueDetail, IssuePageData } from "#/lib/github.types";
 import { findIssueSummaryInLists } from "#/lib/github-query-updates";
 import { useHasMounted } from "#/lib/use-has-mounted";
 import { usePageTitle } from "#/lib/use-page-title";
 import { useRegisterTab } from "#/lib/use-register-tab";
 import { IssueDetailActivitySection } from "./issue-detail-activity";
-import { getIssueStateConfig, IssueDetailHeader } from "./issue-detail-header";
+import {
+	getIssueStateConfig,
+	IssueDescription,
+	IssueDetailTitle,
+} from "./issue-detail-header";
+import { SAMPLE_ISSUE, SAMPLE_ISSUE_PAGE } from "./issue-detail-samples";
 import { IssueDetailSidebar } from "./issue-detail-sidebar";
 
 const routeApi = getRouteApi("/_protected/$owner/$repo/issues/$issueId");
@@ -77,12 +76,9 @@ export function IssueDetailContent({
 		enabled: hasMounted,
 	});
 
-	const issue = pageQuery.data?.detail;
+	const page = pageQuery.data;
+	const issue = page?.detail;
 	const viewerLogin = viewerQuery.data?.login;
-	const comments = pageQuery.data?.comments;
-	const events = pageQuery.data?.events;
-	const commentPagination = pageQuery.data?.commentPagination;
-	const eventPagination = pageQuery.data?.eventPagination;
 
 	usePageTitle(issue?.title);
 
@@ -108,179 +104,126 @@ export function IssueDetailContent({
 	);
 
 	if (pageQuery.error) throw pageQuery.error;
-	if (!issue)
-		return <IssueDetailPageSkeleton owner={owner} repo={repo} seed={seed} />;
+
+	const activityProps = {
+		owner,
+		repo,
+		issueNumber,
+		scope,
+		pageQueryKey,
+		viewerLogin,
+	};
 
 	return (
 		<DetailPageLayout
 			main={
 				<>
-					<IssueDetailHeader
-						owner={owner}
-						repo={repo}
-						issue={issue}
-						scope={scope}
-						viewerLogin={viewerLogin}
-					/>
-					<IssueDetailActivitySection
-						comments={comments}
-						events={events}
-						commentPagination={commentPagination}
-						eventPagination={eventPagination}
-						pageQueryKey={pageQueryKey}
-						isFetching={pageQuery.isFetching}
-						owner={owner}
-						repo={repo}
-						issueNumber={issueNumber}
-						scope={scope}
-						issueAuthor={issue.author}
-						issueState={issue.state === "closed" ? "closed" : "open"}
-						issueClosedAt={issue.closedAt}
-						issueStateReason={issue.stateReason}
-						viewerLogin={viewerQuery.data?.login}
-					/>
+					<div className="flex flex-col gap-8">
+						<Skeleton loading={!issue && !seed}>
+							<IssueDetailTitle
+								owner={owner}
+								repo={repo}
+								issue={issue ?? seed ?? SAMPLE_ISSUE}
+							/>
+						</Skeleton>
+						<Skeleton loading={!issue} label="Loading description">
+							{issue ? (
+								<IssueDescription
+									owner={owner}
+									repo={repo}
+									issue={issue}
+									scope={scope}
+									viewerLogin={viewerLogin}
+								/>
+							) : (
+								<SkeletonSample>
+									<IssueDescription
+										owner={owner}
+										repo={repo}
+										issue={SAMPLE_ISSUE}
+										scope={scope}
+										viewerLogin={viewerLogin}
+									/>
+								</SkeletonSample>
+							)}
+						</Skeleton>
+					</div>
+					<Skeleton loading={!issue} label="Loading issue">
+						{page && issue ? (
+							<IssueDetailActivity
+								{...activityProps}
+								issue={issue}
+								page={page}
+								isFetching={pageQuery.isFetching}
+							/>
+						) : (
+							<SkeletonSample>
+								<IssueDetailActivity
+									{...activityProps}
+									issue={SAMPLE_ISSUE}
+									page={SAMPLE_ISSUE_PAGE}
+									isFetching={false}
+								/>
+							</SkeletonSample>
+						)}
+					</Skeleton>
 				</>
 			}
 			sidebar={
-				<IssueDetailSidebar
-					issue={issue}
-					owner={owner}
-					repo={repo}
-					issueNumber={issueNumber}
-					scope={scope}
-				/>
+				<Skeleton data={issue} sample={SAMPLE_ISSUE}>
+					{(detail) => (
+						<IssueDetailSidebar
+							issue={detail}
+							owner={owner}
+							repo={repo}
+							issueNumber={issueNumber}
+							scope={scope}
+						/>
+					)}
+				</Skeleton>
 			}
 		/>
 	);
 }
 
-function IssueSeedTitle({
+function IssueDetailActivity({
 	owner,
 	repo,
-	seed,
+	issueNumber,
+	scope,
+	pageQueryKey,
+	viewerLogin,
+	issue,
+	page,
+	isFetching,
 }: {
 	owner: string;
 	repo: string;
-	seed: IssueSummary;
+	issueNumber: number;
+	scope: GitHubQueryScope;
+	pageQueryKey: readonly unknown[];
+	viewerLogin: string | undefined;
+	issue: IssueDetail;
+	page: IssuePageData;
+	isFetching: boolean;
 }) {
-	const stateConfig = getIssueStateConfig(seed);
 	return (
-		<DetailPageTitle
-			collectionHref="/issues"
-			collectionLabel="Issues"
+		<IssueDetailActivitySection
+			comments={page.comments}
+			events={page.events}
+			commentPagination={page.commentPagination}
+			eventPagination={page.eventPagination}
+			pageQueryKey={pageQueryKey}
+			isFetching={isFetching}
 			owner={owner}
 			repo={repo}
-			number={seed.number}
-			icon={IssuesIcon}
-			iconClassName={stateConfig.color}
-			title={seed.title}
-			subtitle={
-				<div className="flex flex-wrap items-center gap-2">
-					<StatePill tone={stateConfig.tone}>{stateConfig.label}</StatePill>
-					{seed.author && (
-						<span className="flex items-center gap-1.5 text-xs font-[450] text-muted-foreground">
-							<img
-								src={seed.author.avatarUrl}
-								alt={seed.author.login}
-								className="size-4 rounded-full ring-[0.5px] ring-chip-border"
-							/>
-							<span className="font-medium text-foreground">
-								{seed.author.login}
-							</span>
-							<span>opened {formatRelativeTime(seed.createdAt)}</span>
-						</span>
-					)}
-				</div>
-			}
+			issueNumber={issueNumber}
+			scope={scope}
+			issueAuthor={issue.author}
+			issueState={issue.state === "closed" ? "closed" : "open"}
+			issueClosedAt={issue.closedAt}
+			issueStateReason={issue.stateReason}
+			viewerLogin={viewerLogin}
 		/>
-	);
-}
-
-function IssueDetailPageSkeleton({
-	owner,
-	repo,
-	seed,
-}: {
-	owner: string;
-	repo: string;
-	seed?: IssueSummary;
-}) {
-	return (
-		<DetailPageSkeletonLayout mainItemCount={4}>
-			{seed ? (
-				<IssueSeedTitle owner={owner} repo={repo} seed={seed} />
-			) : (
-				<StaggerItem index={0}>
-					<div className="flex flex-col gap-3">
-						<Skeleton className="h-4 w-48 rounded-md" />
-						<div className="flex items-start gap-3">
-							<Skeleton className="mt-1 size-5 rounded-full" />
-							<div className="flex min-w-0 flex-1 flex-col gap-2">
-								<Skeleton className="h-8 w-3/4 rounded-md" />
-								<div className="flex gap-2">
-									<Skeleton className="h-5 w-16 rounded-full" />
-									<Skeleton className="h-4 w-48" />
-								</div>
-							</div>
-						</div>
-					</div>
-				</StaggerItem>
-			)}
-
-			<StaggerItem index={1}>
-				<div className="flex flex-wrap gap-1.5">
-					<Skeleton className="h-6 w-20 rounded-full" />
-					<Skeleton className="h-6 w-24 rounded-full" />
-				</div>
-			</StaggerItem>
-
-			<StaggerItem index={2}>
-				<div className="rounded-lg border-[0.5px] bg-surface-0 p-5">
-					<div className="flex flex-col gap-3">
-						<Skeleton className="h-4 w-full rounded-md" />
-						<Skeleton className="h-4 w-5/6 rounded-md" />
-						<Skeleton className="h-4 w-2/3 rounded-md" />
-					</div>
-				</div>
-			</StaggerItem>
-
-			<StaggerItem index={3}>
-				<div className="flex flex-col gap-6">
-					<div className="flex items-center justify-between gap-2 rounded-lg bg-surface-1 px-4 py-2.5">
-						<Skeleton className="h-4 w-14 rounded-md" />
-						<Skeleton className="h-4 w-6 rounded-md" />
-					</div>
-					<div className="flex flex-col gap-5 pl-8">
-						{/* Comment */}
-						<div className="flex items-start gap-2">
-							<Skeleton className="size-5 rounded-full" />
-							<div className="flex flex-col gap-1.5">
-								<Skeleton className="h-3.5 w-36 rounded-md" />
-								<Skeleton className="h-12 w-64 rounded-lg" />
-							</div>
-						</div>
-						{/* Label event */}
-						<div className="flex items-center gap-2">
-							<Skeleton className="size-4 rounded" />
-							<Skeleton className="h-3.5 w-32 rounded-md" />
-							<Skeleton className="h-5 w-16 rounded-full" />
-						</div>
-						{/* Comment */}
-						<div className="flex items-start gap-2">
-							<Skeleton className="size-5 rounded-full" />
-							<div className="flex flex-col gap-1.5">
-								<Skeleton className="h-3.5 w-44 rounded-md" />
-								<Skeleton className="h-3.5 w-56 rounded-md" />
-							</div>
-						</div>
-						{/* Assignment */}
-						<div className="flex items-center gap-2">
-							<Skeleton className="size-4 rounded" />
-							<Skeleton className="h-3.5 w-40 rounded-md" />
-						</div>
-					</div>
-				</div>
-			</StaggerItem>
-		</DetailPageSkeletonLayout>
 	);
 }

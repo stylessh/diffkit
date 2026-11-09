@@ -1,5 +1,4 @@
 import { LineCounts } from "@diffkit/ui/components/detail-layout";
-import { Skeleton } from "@diffkit/ui/components/skeleton";
 import { StatePill } from "@diffkit/ui/components/state-pill";
 import {
 	ViewTab,
@@ -9,28 +8,39 @@ import {
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { getRouteApi, Link } from "@tanstack/react-router";
 import { useMemo } from "react";
+import { Skeleton, SkeletonBox } from "skullet/react";
 import {
 	DetailPageLayout,
-	DetailPageSkeletonLayout,
 	DetailPageTitle,
-	StaggerItem,
 } from "#/components/details/detail-page";
 import { PullStackSection } from "#/components/pulls/stack/pull-stack-section";
+import { SkeletonSample } from "#/components/shared/skeleton-sample";
 import {
+	type GitHubQueryScope,
 	githubPullPageQueryOptions,
 	githubPullReviewCommentsQueryOptions,
 	githubQueryKeys,
 	githubReviewThreadStatusesQueryOptions,
 	githubViewerQueryOptions,
 } from "#/lib/github.query";
-import type { PullSummary } from "#/lib/github.types";
+import type {
+	PullDetail,
+	PullPageData,
+	PullReviewComment,
+	PullSummary,
+} from "#/lib/github.types";
 import { findPullSummaryInLists } from "#/lib/github-query-updates";
 import { useHasMounted } from "#/lib/use-has-mounted";
 import { usePageTitle } from "#/lib/use-page-title";
 import { useRegisterTab } from "#/lib/use-register-tab";
 import { PullBodySection } from "./pull-body-section";
 import { PullDetailActivitySection } from "./pull-detail-activity";
-import { getPrStateConfig, PullDetailHeader } from "./pull-detail-header";
+import {
+	getPrStateConfig,
+	PullDetailTitle,
+	PullReviewRequest,
+} from "./pull-detail-header";
+import { SAMPLE_PULL, SAMPLE_PULL_PAGE } from "./pull-detail-samples";
 import { PullDetailSidebar } from "./pull-detail-sidebar";
 
 const routeApi = getRouteApi("/_protected/$owner/$repo/pull/$pullId");
@@ -104,14 +114,9 @@ export function PullDetailContent({
 		return map;
 	}, [threadStatusesQuery.data]);
 
-	const pr = pageQuery.data?.detail;
-	const comments = pageQuery.data?.comments;
-	const commits = pageQuery.data?.commits;
-	const events = pageQuery.data?.events;
-	const commentPagination = pageQuery.data?.commentPagination;
-	const eventPagination = pageQuery.data?.eventPagination;
-	const headRefDeleted = pageQuery.data?.headRefDeleted ?? false;
-	const viewer = viewerQuery.data ?? null;
+	const page = pageQuery.data;
+	const pr = page?.detail;
+	const viewerLogin = viewerQuery.data?.login;
 
 	usePageTitle(pr?.title);
 
@@ -137,92 +142,197 @@ export function PullDetailContent({
 	);
 
 	if (pageQuery.error) throw pageQuery.error;
-	if (!pr)
-		return <PullDetailPageSkeleton owner={owner} repo={repo} seed={seed} />;
+
+	const bodyProps = {
+		owner,
+		repo,
+		pullNumber,
+		scope,
+		pageQueryKey,
+		viewerLogin,
+	};
 
 	return (
 		<DetailPageLayout
 			tabs={
-				<ViewTabs label="Pull request views">
-					<ViewTab asChild>
-						<Link
-							to="/$owner/$repo/pull/$pullId"
-							params={{ owner, repo, pullId: String(pullNumber) }}
-							activeOptions={{ exact: true }}
-						>
-							Overview
-						</Link>
-					</ViewTab>
-					<ViewTab asChild>
-						<Link
-							to="/$owner/$repo/review/$pullId"
-							params={{ owner, repo, pullId: String(pullNumber) }}
-						>
-							Files changed
+				<PullDetailTabs
+					owner={owner}
+					repo={repo}
+					pullNumber={pullNumber}
+					pr={pr}
+				/>
+			}
+			main={
+				<>
+					<div className="flex flex-col gap-8">
+						<Skeleton loading={!pr && !seed}>
+							{!pr && seed ? (
+								<PullSeedTitle owner={owner} repo={repo} seed={seed} />
+							) : (
+								<PullDetailTitle
+									owner={owner}
+									repo={repo}
+									pr={pr ?? SAMPLE_PULL}
+								/>
+							)}
+						</Skeleton>
+						<PullReviewRequest
+							owner={owner}
+							repo={repo}
+							pullId={String(pullNumber)}
+							pr={pr}
+							viewerLogin={viewerLogin}
+						/>
+					</div>
+					<Skeleton loading={!pr} label="Loading pull request">
+						{page && pr ? (
+							<PullDetailBody
+								{...bodyProps}
+								pr={pr}
+								page={page}
+								reviewComments={reviewCommentsQuery.data}
+								threadInfoByCommentId={threadInfoByCommentId}
+								isFetching={pageQuery.isFetching}
+							/>
+						) : (
+							<SkeletonSample>
+								<PullDetailBody
+									{...bodyProps}
+									pr={SAMPLE_PULL}
+									page={SAMPLE_PULL_PAGE}
+									isFetching={false}
+								/>
+							</SkeletonSample>
+						)}
+					</Skeleton>
+				</>
+			}
+			sidebar={
+				<Skeleton data={pr} sample={SAMPLE_PULL}>
+					{(detail) => (
+						<PullDetailSidebar
+							pr={detail}
+							owner={owner}
+							repo={repo}
+							pullNumber={pullNumber}
+							scope={scope}
+						/>
+					)}
+				</Skeleton>
+			}
+		/>
+	);
+}
+
+function PullDetailTabs({
+	owner,
+	repo,
+	pullNumber,
+	pr,
+}: {
+	owner: string;
+	repo: string;
+	pullNumber: number;
+	pr: PullDetail | null | undefined;
+}) {
+	return (
+		<ViewTabs label="Pull request views">
+			<ViewTab asChild>
+				<Link
+					to="/$owner/$repo/pull/$pullId"
+					params={{ owner, repo, pullId: String(pullNumber) }}
+					activeOptions={{ exact: true }}
+				>
+					Overview
+				</Link>
+			</ViewTab>
+			<ViewTab asChild>
+				<Link
+					to="/$owner/$repo/review/$pullId"
+					params={{ owner, repo, pullId: String(pullNumber) }}
+				>
+					Files changed
+					{pr ? (
+						<>
 							<ViewTabCount>{pr.changedFiles}</ViewTabCount>
 							<LineCounts
 								additions={pr.additions}
 								deletions={pr.deletions}
 								className="ml-1.5 text-xs max-md:hidden"
 							/>
-						</Link>
-					</ViewTab>
-				</ViewTabs>
-			}
-			main={
-				<>
-					<PullDetailHeader
-						owner={owner}
-						repo={repo}
-						pullId={String(pullNumber)}
-						pr={pr}
-						viewerLogin={viewer?.login}
-					/>
+						</>
+					) : (
+						<SkeletonBox width={14} height={12} radius={4} />
+					)}
+				</Link>
+			</ViewTab>
+		</ViewTabs>
+	);
+}
 
-					<PullBodySection
-						pr={pr}
-						owner={owner}
-						repo={repo}
-						pullNumber={pullNumber}
-						isAuthor={viewer?.login === pr.author?.login}
-						scope={scope}
-						viewerLogin={viewer?.login}
-					/>
+function PullDetailBody({
+	owner,
+	repo,
+	pullNumber,
+	scope,
+	pageQueryKey,
+	viewerLogin,
+	pr,
+	page,
+	reviewComments,
+	threadInfoByCommentId,
+	isFetching,
+}: {
+	owner: string;
+	repo: string;
+	pullNumber: number;
+	scope: GitHubQueryScope;
+	pageQueryKey: readonly unknown[];
+	viewerLogin: string | undefined;
+	pr: PullDetail;
+	page: PullPageData;
+	reviewComments?: PullReviewComment[];
+	threadInfoByCommentId?: ReadonlyMap<
+		number,
+		{ threadId: string; isResolved: boolean }
+	>;
+	isFetching: boolean;
+}) {
+	return (
+		<div className="flex flex-col gap-8">
+			<PullBodySection
+				pr={pr}
+				owner={owner}
+				repo={repo}
+				pullNumber={pullNumber}
+				isAuthor={viewerLogin === pr.author?.login}
+				scope={scope}
+				viewerLogin={viewerLogin}
+			/>
 
-					{pr.isMerged || pr.state === "closed" ? (
-						<PullStackSection pr={pr} owner={owner} repo={repo} scope={scope} />
-					) : null}
+			{pr.isMerged || pr.state === "closed" ? (
+				<PullStackSection pr={pr} owner={owner} repo={repo} scope={scope} />
+			) : null}
 
-					<PullDetailActivitySection
-						comments={comments}
-						commits={commits}
-						events={events}
-						reviewComments={reviewCommentsQuery.data}
-						commentPagination={commentPagination}
-						eventPagination={eventPagination}
-						pageQueryKey={pageQueryKey}
-						isFetching={pageQuery.isFetching}
-						pr={pr}
-						owner={owner}
-						repo={repo}
-						pullNumber={pullNumber}
-						scope={scope}
-						headRefDeleted={headRefDeleted}
-						viewerLogin={viewer?.login}
-						threadInfoByCommentId={threadInfoByCommentId}
-					/>
-				</>
-			}
-			sidebar={
-				<PullDetailSidebar
-					pr={pr}
-					owner={owner}
-					repo={repo}
-					pullNumber={pullNumber}
-					scope={scope}
-				/>
-			}
-		/>
+			<PullDetailActivitySection
+				comments={page.comments}
+				commits={page.commits}
+				events={page.events}
+				reviewComments={reviewComments}
+				commentPagination={page.commentPagination}
+				eventPagination={page.eventPagination}
+				pageQueryKey={pageQueryKey}
+				isFetching={isFetching}
+				pr={pr}
+				owner={owner}
+				repo={repo}
+				pullNumber={pullNumber}
+				scope={scope}
+				headRefDeleted={page.headRefDeleted}
+				viewerLogin={viewerLogin}
+				threadInfoByCommentId={threadInfoByCommentId}
+			/>
+		</div>
 	);
 }
 
@@ -264,107 +374,5 @@ function PullSeedTitle({
 				</div>
 			}
 		/>
-	);
-}
-
-function PullDetailPageSkeleton({
-	owner,
-	repo,
-	seed,
-}: {
-	owner: string;
-	repo: string;
-	seed?: PullSummary;
-}) {
-	return (
-		<DetailPageSkeletonLayout mainItemCount={5}>
-			{seed ? (
-				<PullSeedTitle owner={owner} repo={repo} seed={seed} />
-			) : (
-				<StaggerItem index={0}>
-					<div className="flex flex-col gap-3">
-						<Skeleton className="h-3 w-32" />
-						<div className="flex items-start gap-3">
-							<Skeleton className="mt-1 size-5 rounded-full" />
-							<div className="flex min-w-0 flex-1 flex-col gap-2">
-								<Skeleton className="h-7 w-3/5" />
-								<div className="flex items-center gap-2">
-									<Skeleton className="h-5 w-14 rounded-full" />
-									<Skeleton className="h-4 w-64" />
-								</div>
-							</div>
-						</div>
-					</div>
-				</StaggerItem>
-			)}
-
-			<StaggerItem index={1}>
-				<div className="flex items-center gap-3 rounded-lg bg-surface-1 px-4 py-2.5">
-					<Skeleton className="h-4 w-20" />
-					<Skeleton className="h-4 w-16" />
-					<Skeleton className="h-4 w-24" />
-				</div>
-			</StaggerItem>
-
-			<StaggerItem index={2}>
-				<div className="rounded-lg border-[0.5px] bg-surface-0 p-5">
-					<div className="flex flex-col gap-3">
-						<Skeleton className="h-4 w-full" />
-						<Skeleton className="h-4 w-5/6" />
-						<Skeleton className="h-4 w-2/3" />
-					</div>
-				</div>
-			</StaggerItem>
-
-			<StaggerItem index={3}>
-				<div className="flex flex-col gap-6">
-					<div className="flex items-center justify-between gap-2 rounded-lg bg-surface-1 px-4 py-2.5">
-						<Skeleton className="h-4 w-16" />
-						<Skeleton className="h-4 w-6" />
-					</div>
-					<div className="flex flex-col gap-5 pl-8">
-						{/* Comment */}
-						<div className="flex items-start gap-2">
-							<Skeleton className="size-5 rounded-full" />
-							<div className="flex flex-col gap-1.5">
-								<Skeleton className="h-3.5 w-36" />
-								<Skeleton className="h-12 w-64 rounded-lg" />
-							</div>
-						</div>
-						{/* Commit */}
-						<div className="flex items-center gap-2">
-							<Skeleton className="size-4 rounded" />
-							<Skeleton className="h-3.5 w-52" />
-						</div>
-						{/* Review */}
-						<div className="flex items-start gap-2">
-							<Skeleton className="size-5 rounded-full" />
-							<div className="flex flex-col gap-1.5">
-								<Skeleton className="h-3.5 w-44" />
-								<Skeleton className="h-3.5 w-28" />
-							</div>
-						</div>
-						{/* Label event */}
-						<div className="flex items-center gap-2">
-							<Skeleton className="size-4 rounded" />
-							<Skeleton className="h-3.5 w-32" />
-							<Skeleton className="h-5 w-16 rounded-full" />
-						</div>
-					</div>
-				</div>
-			</StaggerItem>
-
-			<StaggerItem index={4}>
-				<div className="rounded-lg border-[0.5px] p-4">
-					<div className="flex flex-col gap-3">
-						<div className="flex items-center gap-2">
-							<Skeleton className="size-5 rounded-full" />
-							<Skeleton className="h-4 w-40" />
-						</div>
-						<Skeleton className="h-9 w-24 rounded-lg" />
-					</div>
-				</div>
-			</StaggerItem>
-		</DetailPageSkeletonLayout>
 	);
 }

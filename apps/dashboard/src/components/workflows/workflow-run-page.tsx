@@ -3,26 +3,30 @@ import {
 	PageHeaderCrumb,
 	PageHeaderTitle,
 } from "@diffkit/ui/components/page-header";
-import { Skeleton } from "@diffkit/ui/components/skeleton";
 import { useQuery } from "@tanstack/react-query";
 import { getRouteApi, Link } from "@tanstack/react-router";
 import { useMemo } from "react";
+import { Skeleton } from "skullet/react";
 import {
 	getCheckState,
 	getCheckStateColor,
 } from "#/components/checks/check-state-icon";
+import { DetailPageLayout } from "#/components/details/detail-page";
+import { SkeletonSample } from "#/components/shared/skeleton-sample";
 import {
-	DetailPageLayout,
-	DetailPageSkeletonLayout,
-	StaggerItem,
-} from "#/components/details/detail-page";
-import {
+	type GitHubQueryScope,
 	githubViewerQueryOptions,
 	githubWorkflowDefinitionQueryOptions,
 	githubWorkflowRunArtifactsQueryOptions,
 	githubWorkflowRunJobsQueryOptions,
 	githubWorkflowRunQueryOptions,
 } from "#/lib/github.query";
+import type {
+	WorkflowDefinition,
+	WorkflowRun,
+	WorkflowRunArtifact,
+	WorkflowRunJob,
+} from "#/lib/github.types";
 import { adaptiveRefetchInterval } from "#/lib/github-refetch-policy";
 import { useHasMounted } from "#/lib/use-has-mounted";
 import { useRegisterTab } from "#/lib/use-register-tab";
@@ -31,6 +35,7 @@ import { WorkflowRunGraph } from "./workflow-run-graph";
 import { WorkflowRunHeader } from "./workflow-run-header";
 import { WorkflowRunSidebar } from "./workflow-run-sidebar";
 import { WorkflowRunSummary } from "./workflow-run-summary";
+import { SAMPLE_WORKFLOW_JOBS, SAMPLE_WORKFLOW_RUN } from "./workflow-samples";
 
 const routeApi = getRouteApi("/_protected/$owner/$repo/actions/runs/$runId");
 
@@ -104,13 +109,10 @@ export function WorkflowRunPage() {
 
 	if (runQuery.error) throw runQuery.error;
 	const run = runQuery.data;
-	if (!run) return <WorkflowRunPageSkeleton />;
-
 	const jobs = jobsQuery.data ?? [];
 	const artifacts = artifactsQuery.data ?? [];
 	const definition = definitionQuery.data ?? null;
-	const pullRequestNumber =
-		prNumberFromSearch ?? run.pullRequests[0]?.number ?? null;
+	const routeProps = { owner, repo, scope, runId: runIdNum };
 
 	return (
 		<DetailPageLayout
@@ -126,47 +128,53 @@ export function WorkflowRunPage() {
 							Actions
 						</Link>
 					</PageHeaderCrumb>
-					<PageHeaderTitle asChild>
-						<span title={run.displayTitle}>
-							<span className="truncate">{run.displayTitle}</span>
-							<span className="tabular-nums text-muted-foreground">
-								#{run.runNumber}
-							</span>
-						</span>
-					</PageHeaderTitle>
+					<Skeleton data={run} sample={SAMPLE_WORKFLOW_RUN} className="min-w-0">
+						{(run) => (
+							<PageHeaderTitle asChild>
+								<span title={run.displayTitle}>
+									<span className="truncate">{run.displayTitle}</span>
+									<span className="tabular-nums text-muted-foreground">
+										#{run.runNumber}
+									</span>
+								</span>
+							</PageHeaderTitle>
+						)}
+					</Skeleton>
 				</PageHeader>
 			}
 			main={
-				<>
-					<WorkflowRunHeader
-						owner={owner}
-						repo={repo}
-						run={run}
-						pullRequestNumber={pullRequestNumber}
-						scope={scope}
-					/>
-					<WorkflowRunSummary
-						run={run}
-						jobs={jobs}
-						artifacts={artifacts}
-						isJobsLoading={jobsQuery.isLoading}
-					/>
-					<WorkflowRunGraph
-						run={run}
-						jobs={jobs}
-						definition={definition}
-						scope={scope}
-						owner={owner}
-						repo={repo}
-						runId={runIdNum}
-					/>
-					<WorkflowRunArtifacts artifacts={artifacts} />
-				</>
+				<Skeleton loading={!run} label="Loading workflow run">
+					{run ? (
+						<WorkflowRunMain
+							{...routeProps}
+							run={run}
+							jobs={jobs}
+							artifacts={artifacts}
+							definition={definition}
+							isJobsLoading={jobsQuery.isLoading}
+							pullRequestNumber={
+								prNumberFromSearch ?? run.pullRequests[0]?.number ?? null
+							}
+						/>
+					) : (
+						<SkeletonSample>
+							<WorkflowRunMain
+								{...routeProps}
+								run={SAMPLE_WORKFLOW_RUN}
+								jobs={SAMPLE_WORKFLOW_JOBS}
+								artifacts={[]}
+								definition={null}
+								isJobsLoading={false}
+								pullRequestNumber={null}
+							/>
+						</SkeletonSample>
+					)}
+				</Skeleton>
 			}
 			sidebar={
 				<WorkflowRunSidebar
 					jobs={jobs}
-					isJobsLoading={jobsQuery.isLoading}
+					isJobsLoading={!run || jobsQuery.isLoading}
 					owner={owner}
 					repo={repo}
 					runId={runIdNum}
@@ -176,31 +184,54 @@ export function WorkflowRunPage() {
 	);
 }
 
-function WorkflowRunPageSkeleton() {
+function WorkflowRunMain({
+	owner,
+	repo,
+	scope,
+	runId,
+	run,
+	jobs,
+	artifacts,
+	definition,
+	isJobsLoading,
+	pullRequestNumber,
+}: {
+	owner: string;
+	repo: string;
+	scope: GitHubQueryScope;
+	runId: number;
+	run: WorkflowRun;
+	jobs: WorkflowRunJob[];
+	artifacts: WorkflowRunArtifact[];
+	definition: WorkflowDefinition | null;
+	isJobsLoading: boolean;
+	pullRequestNumber: number | null;
+}) {
 	return (
-		<DetailPageSkeletonLayout mainItemCount={3}>
-			<StaggerItem index={0}>
-				<div className="flex flex-col gap-3">
-					<Skeleton className="h-3 w-40" />
-					<div className="flex items-start gap-3">
-						<Skeleton className="mt-1 size-5 rounded-full" />
-						<div className="flex min-w-0 flex-1 flex-col gap-2">
-							<Skeleton className="h-7 w-3/5" />
-							<Skeleton className="h-4 w-40" />
-						</div>
-					</div>
-				</div>
-			</StaggerItem>
-			<StaggerItem index={1}>
-				<div className="rounded-lg bg-surface-1 px-4 py-3">
-					<Skeleton className="h-4 w-full" />
-				</div>
-			</StaggerItem>
-			<StaggerItem index={2}>
-				<div className="flex h-48 items-center rounded-xl border-[0.5px] px-6">
-					<Skeleton className="h-12 w-52" />
-				</div>
-			</StaggerItem>
-		</DetailPageSkeletonLayout>
+		<div className="flex flex-col gap-8">
+			<WorkflowRunHeader
+				owner={owner}
+				repo={repo}
+				run={run}
+				pullRequestNumber={pullRequestNumber}
+				scope={scope}
+			/>
+			<WorkflowRunSummary
+				run={run}
+				jobs={jobs}
+				artifacts={artifacts}
+				isJobsLoading={isJobsLoading}
+			/>
+			<WorkflowRunGraph
+				run={run}
+				jobs={jobs}
+				definition={definition}
+				scope={scope}
+				owner={owner}
+				repo={repo}
+				runId={runId}
+			/>
+			<WorkflowRunArtifacts artifacts={artifacts} />
+		</div>
 	);
 }

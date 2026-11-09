@@ -1,5 +1,6 @@
-import { Skeleton } from "@diffkit/ui/components/skeleton";
-import { lazy, Suspense } from "react";
+import { lazy } from "react";
+import { Skeleton, SkeletonSuspense } from "skullet/react";
+import { useIsSkeletonSample } from "#/components/shared/skeleton-sample";
 import type { GitHubQueryScope } from "#/lib/github.query";
 import type {
 	WorkflowDefinition,
@@ -32,11 +33,20 @@ export function WorkflowRunGraph({
 	runId: number;
 }) {
 	const hasMounted = useHasMounted();
+	const isSample = useIsSkeletonSample();
+	const frame = <GraphFrame run={run} />;
 
-	if (!hasMounted) return <GraphPlaceholder />;
+	if (isSample) return frame;
+	if (!hasMounted) {
+		return (
+			<Skeleton loading label="Loading workflow graph">
+				{frame}
+			</Skeleton>
+		);
+	}
 
 	return (
-		<Suspense fallback={<GraphPlaceholder />}>
+		<SkeletonSuspense skeleton={frame} label="Loading workflow graph">
 			<WorkflowRunGraphCanvas
 				run={run}
 				jobs={jobs}
@@ -46,18 +56,21 @@ export function WorkflowRunGraph({
 				repo={repo}
 				runId={runId}
 			/>
-		</Suspense>
+		</SkeletonSuspense>
 	);
 }
 
-function GraphPlaceholder() {
+function GraphFrame({ run }: { run: WorkflowRun }) {
+	const segments = run.path.split("/");
+	const workflowFilename = segments[segments.length - 1] || run.path;
+
 	return (
-		<div className="rounded-xl border-[0.5px] bg-surface-1">
-			<div className="flex flex-col gap-2 px-6 pt-5 pb-3">
-				<Skeleton className="h-4 w-40" />
-				<Skeleton className="h-3 w-24" />
+		<div className="relative flex flex-col overflow-hidden rounded-xl border-[0.5px] bg-surface-1">
+			<div skullet-ignore="" className="h-[620px] w-full rounded-b-xl" />
+			<div className="pointer-events-none absolute top-3 left-3 z-10 flex w-fit flex-col gap-0.5 rounded-lg bg-surface-1 px-4 py-3">
+				<h2 className="font-medium text-sm">{workflowFilename}</h2>
+				<p className="text-muted-foreground text-xs">on: {run.event}</p>
 			</div>
-			<div className="h-[620px] w-full border-t-[0.5px]" />
 		</div>
 	);
 }

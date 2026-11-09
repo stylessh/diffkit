@@ -53,6 +53,7 @@
 		"react-dom": "^19.2.0",
 		"react-dropzone": "^15.0.0",
 		"recharts": "^3.8.1",
+		"skullet": "0.0.3",
 		"tailwindcss": "^4.1.18",
 		"yaml": "^2.8.3"
 	},

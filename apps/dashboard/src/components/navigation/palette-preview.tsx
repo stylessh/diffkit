@@ -8,10 +8,12 @@ import {
 	StarIcon,
 	UserCircleIcon,
 } from "@diffkit/icons";
-import { Skeleton } from "@diffkit/ui/components/skeleton";
 import { cn } from "@diffkit/ui/lib/utils";
 import { useQuery } from "@tanstack/react-query";
 import { type ReactNode, useLayoutEffect, useRef, useState } from "react";
+import { Skeleton } from "skullet/react";
+import { SAMPLE_ISSUE } from "#/components/issues/detail/issue-detail-samples";
+import { SAMPLE_PULL } from "#/components/pulls/detail/pull-detail-samples";
 import type { CommandPreview } from "#/lib/command-palette/types";
 import { formatRelativeTime } from "#/lib/format-relative-time";
 import {
@@ -120,16 +122,6 @@ function MetaItem({
 	);
 }
 
-function BodyLines() {
-	return (
-		<>
-			<Skeleton className="h-3 w-full" />
-			<Skeleton className="h-3 w-4/5" />
-			<Skeleton className="h-3 w-3/5" />
-		</>
-	);
-}
-
 function Excerpt({ body }: { body: string | null | undefined }) {
 	const text = plain(body ?? "");
 	return text ? (
@@ -193,16 +185,16 @@ function PullPreview({
 						</span>
 					) : null}
 				</p>
-				{data ? (
-					<>
-						<p className="truncate font-mono text-[11px]">
-							{data.headRefName} → {data.baseRefName}
-						</p>
-						<Excerpt body={data.body} />
-					</>
-				) : (
-					<BodyLines />
-				)}
+				<Skeleton data={data} sample={SAMPLE_PULL} label="Loading details">
+					{(pr) => (
+						<div className="flex flex-col gap-1.5">
+							<p className="truncate font-mono text-[11px]">
+								{pr.headRefName} → {pr.baseRefName}
+							</p>
+							<Excerpt body={pr.body} />
+						</div>
+					)}
+				</Skeleton>
 			</Inset>
 			<Meta>
 				<MetaItem icon={<RepoIcon size={12} strokeWidth={2} />}>
@@ -263,7 +255,9 @@ function IssuePreview({
 						</span>
 					) : null}
 				</p>
-				{data ? <Excerpt body={data.body} /> : <BodyLines />}
+				<Skeleton data={data} sample={SAMPLE_ISSUE} label="Loading details">
+					{(detail) => <Excerpt body={detail.body} />}
+				</Skeleton>
 			</Inset>
 			<Meta>
 				<MetaItem icon={<RepoIcon size={12} strokeWidth={2} />}>

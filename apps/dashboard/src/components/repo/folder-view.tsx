@@ -1,9 +1,10 @@
 import { FileIcon, FolderIcon } from "@diffkit/icons";
-import { Skeleton } from "@diffkit/ui/components/skeleton";
 import { cn } from "@diffkit/ui/lib/utils";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import { useMemo } from "react";
+import { SkeletonBox } from "skullet/react";
+import { useIsSkeletonSample } from "#/components/shared/skeleton-sample";
 import { formatRelativeTime } from "#/lib/format-relative-time";
 import {
 	type GitHubQueryScope,
@@ -35,17 +36,19 @@ export function FolderView({
 	currentPath: string;
 	scope: GitHubQueryScope;
 }) {
+	const isSample = useIsSkeletonSample();
 	const entryNames = useMemo(() => entries.map((e) => e.name), [entries]);
 
-	const commitsQuery = useQuery(
-		githubTreeEntryCommitsQueryOptions(scope, {
+	const commitsQuery = useQuery({
+		...githubTreeEntryCommitsQueryOptions(scope, {
 			owner,
 			repo: repoName,
 			ref: currentRef,
 			dirPath: currentPath,
 			entries: entryNames,
 		}),
-	);
+		enabled: !isSample && entryNames.length > 0,
+	});
 
 	return (
 		<div className="flex flex-col gap-6">
@@ -69,7 +72,7 @@ export function FolderView({
 							currentRef={currentRef}
 							currentPath={currentPath}
 							commit={commitsQuery.data?.[entry.name] ?? null}
-							isCommitLoading={commitsQuery.isLoading}
+							isCommitLoading={isSample || commitsQuery.isLoading}
 						/>
 					))}
 				</div>
@@ -147,32 +150,21 @@ function FolderViewRow({
 						{commit.message.split("\n")[0]}
 					</Link>
 				) : isCommitLoading ? (
-					<Skeleton className="h-3.5 w-48 max-w-full rounded" />
+					<SkeletonBox
+						width={192}
+						height={14}
+						radius={4}
+						className="max-w-full"
+					/>
 				) : null}
 			</div>
 			<span className="w-10 shrink-0 text-right text-xs font-[450] tabular-nums text-muted-foreground">
 				{commit?.date ? (
 					formatRelativeTime(commit.date, undefined, { compact: true })
 				) : isCommitLoading ? (
-					<Skeleton className="ml-auto h-3.5 w-8 rounded" />
+					<SkeletonBox width={32} height={14} radius={4} className="ml-auto" />
 				) : null}
 			</span>
 		</div>
-	);
-}
-
-export function FolderViewSkeleton() {
-	const rows = Array.from({ length: 8 }, (_, i) => i);
-	return (
-		<RepoCard>
-			{rows.map((key) => (
-				<div key={key} className={cardRowClassName}>
-					<Skeleton className="size-4 shrink-0 rounded" />
-					<Skeleton className="h-3.5 w-32 rounded" />
-					<Skeleton className="h-3.5 flex-1 rounded" />
-					<Skeleton className="h-3.5 w-8 shrink-0 rounded" />
-				</div>
-			))}
-		</RepoCard>
 	);
 }

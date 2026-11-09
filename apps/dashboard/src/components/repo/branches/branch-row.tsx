@@ -8,7 +8,6 @@ import {
 	GitPullRequestIcon,
 } from "@diffkit/icons";
 import { Chip } from "@diffkit/ui/components/chip";
-import { Skeleton } from "@diffkit/ui/components/skeleton";
 import {
 	Tooltip,
 	TooltipContent,
@@ -216,18 +215,3 @@ export const BranchRow = memo(function BranchRow({
 		</div>
 	);
 });
-
-export function BranchRowSkeleton() {
-	return (
-		<div className={listRowClassName}>
-			<RowStateIcon>
-				<Skeleton className="size-3.5 rounded-full" />
-			</RowStateIcon>
-			<div className="flex flex-1 items-center gap-2">
-				<Skeleton className="h-3.5 w-40 rounded" />
-			</div>
-			<Skeleton className="hidden h-3.5 w-24 rounded sm:block" />
-			<Skeleton className="h-6 w-14 rounded-full" />
-		</div>
-	);
-}

@@ -5,12 +5,13 @@ import {
 	CalloutContent,
 } from "@diffkit/ui/components/callout";
 import { BranchBadge } from "@diffkit/ui/components/detail-layout";
-import { Skeleton } from "@diffkit/ui/components/skeleton";
 import { useQuery } from "@tanstack/react-query";
+import { Skeleton } from "skullet/react";
 import {
 	type GitHubQueryScope,
 	githubBranchComparisonQueryOptions,
 } from "#/lib/github.query";
+import { SAMPLE_BRANCH_COMPARISON } from "./repo-samples";
 import { iconButtonClassName, pillButtonClassName } from "./repo-ui";
 
 export function BranchComparisonBanner({
@@ -39,22 +40,46 @@ export function BranchComparisonBanner({
 
 	if (isSameBranch) return null;
 
-	if (comparisonQuery.isPending) {
-		return (
-			<Callout variant="default">
-				<CalloutContent>
-					<Skeleton className="h-4 w-64 rounded" />
-				</CalloutContent>
-			</Callout>
-		);
-	}
-
 	const comparison = comparisonQuery.data;
-	if (!comparison) return null;
+	const hasDifference =
+		comparison != null && (comparison.aheadBy > 0 || comparison.behindBy > 0);
+	if (!comparisonQuery.isPending && !hasDifference) return null;
 
-	const { aheadBy, behindBy } = comparison;
-	if (aheadBy === 0 && behindBy === 0) return null;
+	return (
+		<Skeleton
+			data={comparison}
+			sample={SAMPLE_BRANCH_COMPARISON}
+			label="Comparing with the default branch"
+		>
+			{({ aheadBy, behindBy }) => (
+				<ComparisonCallout
+					owner={owner}
+					repo={repo}
+					currentBranch={currentBranch}
+					defaultBranch={defaultBranch}
+					aheadBy={aheadBy}
+					behindBy={behindBy}
+				/>
+			)}
+		</Skeleton>
+	);
+}
 
+function ComparisonCallout({
+	owner,
+	repo,
+	currentBranch,
+	defaultBranch,
+	aheadBy,
+	behindBy,
+}: {
+	owner: string;
+	repo: string;
+	currentBranch: string;
+	defaultBranch: string;
+	aheadBy: number;
+	behindBy: number;
+}) {
 	const compareUrl = `/${owner}/${repo}/compare/${defaultBranch}...${currentBranch}`;
 	const createPrUrl = `${compareUrl}?expand=1`;
 

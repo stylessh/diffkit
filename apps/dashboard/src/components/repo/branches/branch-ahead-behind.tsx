@@ -1,10 +1,11 @@
-import { Skeleton } from "@diffkit/ui/components/skeleton";
 import {
 	Tooltip,
 	TooltipContent,
 	TooltipTrigger,
 } from "@diffkit/ui/components/tooltip";
 import { useQuery } from "@tanstack/react-query";
+import { SkeletonBox } from "skullet/react";
+import { useIsSkeletonSample } from "#/components/shared/skeleton-sample";
 import {
 	type GitHubQueryScope,
 	githubRepoRefComparisonQueryOptions,
@@ -33,13 +34,15 @@ export function BranchAheadBehind({
 	base: string;
 	head: string;
 }) {
-	const comparisonQuery = useQuery(
-		githubRepoRefComparisonQueryOptions(scope, { owner, repo, base, head }),
-	);
+	const isSample = useIsSkeletonSample();
+	const comparisonQuery = useQuery({
+		...githubRepoRefComparisonQueryOptions(scope, { owner, repo, base, head }),
+		enabled: !isSample,
+	});
 	const comparison = comparisonQuery.data;
 
 	if (comparisonQuery.isPending) {
-		return <Skeleton className="h-4 w-24 rounded" />;
+		return <SkeletonBox width={96} height={16} radius={4} />;
 	}
 	if (!comparison) {
 		return (

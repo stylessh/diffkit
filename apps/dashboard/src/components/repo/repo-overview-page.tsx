@@ -1,9 +1,10 @@
 import { DetailLayout } from "@diffkit/ui/components/detail-layout";
-import { Skeleton } from "@diffkit/ui/components/skeleton";
 import { useQuery } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
 import { useCallback } from "react";
+import { Skeleton, SkeletonBox } from "skullet/react";
 import { SidePanelPortal } from "#/components/layouts/dashboard-side-panel";
+import { SkeletonSample } from "#/components/shared/skeleton-sample";
 import {
 	type GitHubQueryScope,
 	githubRepoOverviewQueryOptions,
@@ -19,9 +20,9 @@ import { RecentPushBanner } from "./recent-push-banner";
 import { RepoActivityCards } from "./repo-activity-cards";
 import { RepoHeader } from "./repo-header";
 import { RepoMarkdownFiles } from "./repo-markdown-files";
-import { RepoOverviewSkeleton } from "./repo-overview-skeleton";
+import { SAMPLE_TREE_ENTRIES, sampleRepoOverview } from "./repo-samples";
 import { RepoSidebar } from "./repo-sidebar";
-import { cardRowClassName, RepoCard } from "./repo-ui";
+import { RepoCard } from "./repo-ui";
 
 export function RepoOverviewPage({
 	owner,
@@ -91,107 +92,163 @@ export function RepoOverviewPage({
 		<>
 			<div className="flex h-full min-h-0 flex-col">
 				<RepoHeader owner={owner} repo={repo} scope={scope} active="code" />
-				{repoData ? (
-					<DetailLayout
-						panel={<RepoSidebar repo={repoData} scope={scope} />}
-						panelLabel="About this repository"
-					>
-						<div className="flex min-w-0 flex-col">
-							<CodeExplorerToolbar
-								repo={repoData}
-								currentRef={activeRef}
-								scope={scope}
-								onBranchChange={handleBranchChange}
-							/>
+				<DetailLayout
+					panel={
+						<Skeleton loading={!repoData}>
+							{repoData ? (
+								<RepoSidebar repo={repoData} scope={scope} />
+							) : (
+								<SkeletonSample>
+									<RepoSidebar
+										repo={sampleRepoOverview(owner, repo)}
+										scope={scope}
+									/>
+								</SkeletonSample>
+							)}
+						</Skeleton>
+					}
+					panelLabel="About this repository"
+				>
+					<Skeleton loading={!repoData} label="Loading repository">
+						{repoData ? (
+							<div className="flex min-w-0 flex-col">
+								<CodeExplorerToolbar
+									repo={repoData}
+									currentRef={activeRef}
+									scope={scope}
+									onBranchChange={handleBranchChange}
+								/>
 
-							{!isDefaultBranch && (
-								<div className="mt-4">
-									<BranchComparisonBanner
+								{!isDefaultBranch && (
+									<div className="mt-4">
+										<BranchComparisonBanner
+											owner={owner}
+											repo={repo}
+											scope={scope}
+											currentBranch={activeRef}
+											defaultBranch={repoData.defaultBranch}
+										/>
+									</div>
+								)}
+
+								{isDefaultBranch && (
+									<RecentPushBanner
 										owner={owner}
 										repo={repo}
 										scope={scope}
-										currentBranch={activeRef}
 										defaultBranch={repoData.defaultBranch}
+										className="mt-4"
 									/>
-								</div>
-							)}
+								)}
 
-							{isDefaultBranch && (
-								<RecentPushBanner
+								<RepoCard className="-mx-3 mt-4">
+									<LatestCommitBar
+										owner={owner}
+										repoName={repo}
+										ref={activeRef}
+										scope={scope}
+										defaultBranch={repoData.defaultBranch}
+										defaultBranchTip={repoData.latestCommit}
+									/>
+									<Skeleton loading={!rootEntries} label="Loading files">
+										{rootEntries ? (
+											<FileTree
+												entries={rootEntries}
+												owner={owner}
+												repo={repo}
+												currentRef={activeRef}
+												scope={scope}
+											/>
+										) : (
+											<SkeletonSample>
+												<FileTree
+													entries={SAMPLE_TREE_ENTRIES}
+													owner={owner}
+													repo={repo}
+													currentRef={activeRef}
+													scope={scope}
+												/>
+											</SkeletonSample>
+										)}
+									</Skeleton>
+								</RepoCard>
+
+								{rootEntries && (
+									<div className="mt-6">
+										<RepoMarkdownFiles
+											entries={rootEntries}
+											owner={owner}
+											repo={repo}
+											currentRef={activeRef}
+											scope={scope}
+										/>
+									</div>
+								)}
+							</div>
+						) : (
+							<SkeletonSample>
+								<RepoOverviewSample
 									owner={owner}
 									repo={repo}
 									scope={scope}
-									defaultBranch={repoData.defaultBranch}
-									className="mt-4"
+									currentRef={activeRef}
 								/>
-							)}
-
-							<RepoCard className="-mx-3 mt-4">
-								<LatestCommitBar
-									owner={owner}
-									repoName={repo}
-									ref={activeRef}
-									scope={scope}
-									defaultBranch={repoData.defaultBranch}
-									defaultBranchTip={repoData.latestCommit}
-								/>
-								{rootEntries ? (
-									<FileTree
-										entries={rootEntries}
-										owner={owner}
-										repo={repo}
-										currentRef={activeRef}
-										scope={scope}
-									/>
-								) : (
-									<FileTreeSkeleton />
-								)}
-							</RepoCard>
-
-							{rootEntries && (
-								<div className="mt-6">
-									<RepoMarkdownFiles
-										entries={rootEntries}
-										owner={owner}
-										repo={repo}
-										currentRef={activeRef}
-										scope={scope}
-									/>
-								</div>
-							)}
-						</div>
-					</DetailLayout>
-				) : (
-					<RepoOverviewSkeleton />
-				)}
+							</SkeletonSample>
+						)}
+					</Skeleton>
+				</DetailLayout>
 			</div>
-			{repoData ? (
-				<SidePanelPortal>
-					<RepoActivityCards
-						owner={owner}
-						repo={repo}
-						scope={scope}
-						repoData={repoData}
-					/>
-				</SidePanelPortal>
-			) : null}
+			<SidePanelPortal>
+				<RepoActivityCards
+					owner={owner}
+					repo={repo}
+					scope={scope}
+					repoData={repoData}
+				/>
+			</SidePanelPortal>
 		</>
 	);
 }
 
-const skeletonRows = ["s0", "s1", "s2", "s3", "s4", "s5", "s6", "s7"];
-
-export function FileTreeSkeleton() {
+/**
+ * The toolbar's ref picker and file finder register shortcuts and fetch on
+ * their own, so the sample draws boxes in their place.
+ */
+function RepoOverviewSample({
+	owner,
+	repo,
+	scope,
+	currentRef,
+}: {
+	owner: string;
+	repo: string;
+	scope: GitHubQueryScope;
+	currentRef: string;
+}) {
 	return (
-		<div>
-			{skeletonRows.map((key) => (
-				<div key={key} className={cardRowClassName}>
-					<Skeleton className="size-3.5 shrink-0 rounded" />
-					<Skeleton className="h-3.5 w-28 shrink-0 rounded sm:w-40" />
-					<Skeleton className="h-3.5 flex-1 rounded" />
-					<Skeleton className="h-3.5 w-8 shrink-0 rounded" />
-				</div>
-			))}
+		<div className="flex min-w-0 flex-col">
+			<div className="flex min-w-0 items-center gap-1.5">
+				<SkeletonBox width={96} height={28} radius={6} />
+				<SkeletonBox width={176} height={28} radius={6} className="ml-auto" />
+				<SkeletonBox width={80} height={28} radius={6} />
+			</div>
+			<RepoCard className="-mx-3 mt-4">
+				<LatestCommitBar
+					owner={owner}
+					repoName={repo}
+					ref={currentRef}
+					scope={scope}
+					defaultBranch={currentRef}
+					defaultBranchTip={null}
+				/>
+				<FileTree
+					entries={SAMPLE_TREE_ENTRIES}
+					owner={owner}
+					repo={repo}
+					currentRef={currentRef}
+					scope={scope}
+				/>
+			</RepoCard>
 		</div>
 	);
 }

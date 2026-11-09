@@ -21,6 +21,7 @@ import {
 import { SettingsReadView } from "#/components/settings/settings-read";
 import { SettingsHeading } from "#/components/settings/settings-shell";
 import { useSettingsAction } from "#/components/settings/use-settings-action";
+import { useIsSkeletonSample } from "#/components/shared/skeleton-sample";
 import {
 	deleteOrgTeam,
 	removeOrgTeamMember,
@@ -41,6 +42,10 @@ import {
 	validateOrgTeamDraft,
 } from "#/lib/settings/org";
 import { useOrgSettingsAccess } from "./org-settings-frame";
+import {
+	SAMPLE_ORG_TEAM_MEMBERS,
+	SAMPLE_ORG_TEAMS,
+} from "./org-settings-samples";
 
 type OrgProps = { org: string; scope: GitHubQueryScope };
 
@@ -87,7 +92,7 @@ export function OrgTeamsSettings({ org, scope }: OrgProps) {
 			/>
 			<SettingsReadView
 				query={query}
-				skeletonRows={4}
+				sample={SAMPLE_ORG_TEAMS}
 				forbiddenTitle="Teams aren't available"
 				forbiddenHint="You need to be a member of this organization."
 				githubUrl={`https://github.com/orgs/${org}/teams`}
@@ -337,9 +342,11 @@ function TeamMembers({
 	scope,
 	canManage,
 }: OrgProps & { team: OrgTeamSummary; canManage: boolean }) {
-	const query = useQuery(
-		githubOrgTeamMembersQueryOptions(scope, { org, teamSlug: team.slug }),
-	);
+	const isSample = useIsSkeletonSample();
+	const query = useQuery({
+		...githubOrgTeamMembersQueryOptions(scope, { org, teamSlug: team.slug }),
+		enabled: !isSample,
+	});
 	const [login, setLogin] = useState("");
 	const { status, run } = useSettingsAction(scope, [orgEntityKey(org)]);
 	const pending = status.kind === "pending";
@@ -357,7 +364,7 @@ function TeamMembers({
 		<div className="bg-group/40">
 			<SettingsReadView
 				query={query}
-				skeletonRows={2}
+				sample={SAMPLE_ORG_TEAM_MEMBERS}
 				forbiddenTitle="Members aren't available"
 				forbiddenHint="You can't see who is on this team."
 				githubUrl={`https://github.com/orgs/${org}/teams/${team.slug}/members`}

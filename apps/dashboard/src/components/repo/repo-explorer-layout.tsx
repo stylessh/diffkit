@@ -9,9 +9,10 @@ import {
 	ResizablePanel,
 	ResizablePanelGroup,
 } from "@diffkit/ui/components/resizable";
-import { Skeleton } from "@diffkit/ui/components/skeleton";
 import { Link } from "@tanstack/react-router";
 import { type ReactNode, useState, useSyncExternalStore } from "react";
+import { Skeleton, SkeletonBox } from "skullet/react";
+import { SkeletonSample } from "#/components/shared/skeleton-sample";
 import { type CodeView, isCommitSha } from "#/lib/code-browsing/code-location";
 import { parentPath } from "#/lib/code-browsing/tree-index";
 import { setExplorerPath } from "#/lib/explorer-path-store";
@@ -27,9 +28,10 @@ import {
 	useDirectoryListing,
 } from "./code/use-directory-listing";
 import { CodeFileView } from "./code-file-view";
-import { FolderView, FolderViewSkeleton } from "./folder-view";
+import { FolderView } from "./folder-view";
 import { RepoFileTreeSidebar } from "./repo-file-tree-sidebar";
 import { RepoHeader } from "./repo-header";
+import { SAMPLE_TREE_ENTRIES } from "./repo-samples";
 import { iconButtonClassName, RepoCard, RepoEmptyState } from "./repo-ui";
 
 const DESKTOP_QUERY = "(min-width: 768px)";
@@ -192,20 +194,33 @@ function TreeContent({ scope, repo, location }: Omit<ExplorerProps, "view">) {
 	);
 }
 
-function DirectoryListingView({
-	listing,
-	missing,
-	children,
-}: {
+type DirectoryListingViewProps = {
 	listing: DirectoryListing;
 	missing: ReactNode;
 	children: (
 		entries: Extract<DirectoryListing, { status: "ready" }>["entries"],
 	) => ReactNode;
-}) {
+};
+
+function DirectoryListingView(props: DirectoryListingViewProps) {
+	return (
+		<Skeleton
+			loading={props.listing.status === "loading"}
+			label="Loading folder"
+		>
+			<DirectoryListingBody {...props} />
+		</Skeleton>
+	);
+}
+
+function DirectoryListingBody({
+	listing,
+	missing,
+	children,
+}: DirectoryListingViewProps) {
 	switch (listing.status) {
 		case "loading":
-			return <FolderViewSkeleton />;
+			return <SkeletonSample>{children(SAMPLE_TREE_ENTRIES)}</SkeletonSample>;
 		case "missing":
 			return <RepoCard>{missing}</RepoCard>;
 		case "error":
@@ -259,18 +274,18 @@ export function ExplorerSkeleton() {
 	return (
 		<div className="flex min-h-0 flex-1 border-t-[0.5px] border-header-rule">
 			<div className="hidden w-[22%] shrink-0 flex-col gap-2 border-r-[0.5px] border-header-rule p-3 md:flex">
-				<Skeleton className="h-7 w-full rounded-lg" />
+				<SkeletonBox width="100%" height={28} radius={8} />
 				{["a", "b", "c", "d", "e", "f"].map((key) => (
-					<Skeleton key={key} className="h-4 w-3/4 rounded" />
+					<SkeletonBox key={key} width="75%" height={16} radius={4} />
 				))}
 			</div>
 			<div className="flex-1">
 				<div className="flex h-11 items-center gap-2 border-b-[0.5px] border-header-rule px-4">
-					<Skeleton className="h-7 w-24 rounded-md" />
-					<Skeleton className="h-4 w-48 rounded" />
+					<SkeletonBox width={96} height={28} radius={6} />
+					<SkeletonBox width={192} height={16} radius={4} />
 				</div>
 				<div className="px-6 pt-4">
-					<Skeleton className="h-64 w-full rounded-lg" />
+					<SkeletonBox width="100%" height={256} radius={8} />
 				</div>
 			</div>
 		</div>

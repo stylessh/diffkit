@@ -39,6 +39,7 @@ import {
 	parseInvitee,
 } from "#/lib/settings/org";
 import { useOrgSettingsAccess } from "./org-settings-frame";
+import { SAMPLE_ORG_MEMBERS } from "./org-settings-samples";
 
 type OrgProps = { org: string; scope: GitHubQueryScope };
 
@@ -62,7 +63,7 @@ export function OrgMembersSettings({ org, scope }: OrgProps) {
 			/>
 			<SettingsReadView
 				query={query}
-				skeletonRows={5}
+				sample={SAMPLE_ORG_MEMBERS}
 				forbiddenTitle="Members aren't available"
 				forbiddenHint="You need to be a member of this organization."
 				githubUrl={`https://github.com/orgs/${org}/people`}
