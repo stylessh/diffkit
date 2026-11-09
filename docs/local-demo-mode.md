@@ -41,7 +41,9 @@ browser ──▶ dashboard (vite dev, CLOUDFLARE_ENV=demo, :3000)
   statuses and combined status, stars, participation stats, user events,
   contributors, real PR files and commits, zipped Actions logs, reviews with
   line ranges, review replies, deleting pending reviews, `GET/PATCH
-  /issues/:n` for pull requests, `/users/<org>`, and SVG avatars.
+  /issues/:n` for pull requests, `/users/<org>`, SVG avatars, and the PR diff
+  media type (`Accept: application/vnd.github.diff`, refused with 406 past 300
+  files like GitHub).
 - **Settings shims** (`src/shims/settings-*.ts`): what the repository and
   organization settings pages call on top of emulate. Actions variables and
   secrets (with a real X25519 public key), collaborator roles and invitations,
@@ -51,9 +53,11 @@ browser ──▶ dashboard (vite dev, CLOUDFLARE_ENV=demo, :3000)
   `allow_update_branch`, per-viewer `permissions`, repo delete cleanup), org
   profile, owner/member roles, org invitations and team counts. `lumen-labs/beacon`
   carries the seed for all of it.
-- **Seed** (`src/seed`): `content/*.ts` declares people, an org, five repos
-  (a TypeScript library, a pnpm monorepo, a docs repo, a private repo and a
-  personal repo), commit histories, ~13 PRs in every state (draft, approved,
+- **Seed** (`src/seed`): `content/*.ts` declares people, an org, six repos
+  (a TypeScript library, a pnpm monorepo, a docs repo, a private repo, a
+  personal repo, and `lumen-labs/atlas`, generated for diff-viewer performance:
+  PR #1 has 250 files and ~43k changed lines, PR #2 has 400 files and exercises
+  the too-large fallback), commit histories, ~13 PRs in every state (draft, approved,
   changes requested, conflicting, merged, closed, a three-PR stack), ~19 issues,
   review threads (resolved, unresolved, pending drafts), reactions,
   cross-references, Actions runs with jobs and logs, check runs, statuses,

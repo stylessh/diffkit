@@ -129,6 +129,51 @@ describe("REST shims", () => {
 		expect(commits.data).toHaveLength(2);
 	});
 
+	it("serves PR diffs in git format and refuses ones past 300 files", async () => {
+		const octokit = client();
+		const repo = { owner: "lumen-labs", repo: "atlas" };
+		const numberOf = async (head: string) =>
+			(await octokit.rest.pulls.list({ ...repo, head: `lumen-labs:${head}` }))
+				.data[0].number;
+
+		const refactor = await numberOf("refactor/atlas-v2");
+		const { data: diff } = await octokit.request(
+			"GET /repos/{owner}/{repo}/pulls/{pull_number}",
+			{ ...repo, pull_number: refactor, mediaType: { format: "diff" } },
+		);
+		const text = diff as unknown as string;
+		const sections = text.split(/^diff --git /mu).slice(1);
+		expect(sections).toHaveLength(250);
+		const { data: pull } = await octokit.rest.pulls.get({
+			...repo,
+			pull_number: refactor,
+		});
+		expect(pull.additions + pull.deletions).toBeGreaterThan(40_000);
+		expect(text).toMatch(/^new file mode 100644$/mu);
+		expect(text).toMatch(/^deleted file mode 100644$/mu);
+		expect(text).toMatch(/^rename from packages\/(?!legacy)/mu);
+		expect(text).toMatch(/^index [0-9a-f]{7}\.\.[0-9a-f]{7} 100644$/mu);
+
+		const vendor = await numberOf("chore/vendor-locales");
+		const refused = await octokit
+			.request("GET /repos/{owner}/{repo}/pulls/{pull_number}", {
+				...repo,
+				pull_number: vendor,
+				mediaType: { format: "diff" },
+			})
+			.catch((error: { status: number; response: { data: unknown } }) => error);
+		expect(refused).toMatchObject({
+			status: 406,
+			response: { data: { errors: [{ code: "too_large" }] } },
+		});
+		const files = await octokit.paginate(octokit.rest.pulls.listFiles, {
+			...repo,
+			pull_number: vendor,
+			per_page: 100,
+		});
+		expect(files).toHaveLength(400);
+	});
+
 	it("serves Actions logs as a GitHub-style zip", async () => {
 		const gh = getGitHubStore(emulator.store);
 		const run = gh.workflowRuns
