@@ -1,4 +1,5 @@
 import { ReviewsIcon } from "@diffkit/icons";
+import { Button } from "@diffkit/ui/components/button";
 import {
 	Callout,
 	CalloutAction,
@@ -103,13 +104,14 @@ export function PullReviewRequest({
 						Your review has been requested
 					</CalloutContent>
 					<CalloutAction>
-						<Link
-							to="/$owner/$repo/review/$pullId"
-							params={{ owner, repo, pullId }}
-							className="inline-flex h-7 items-center gap-1.5 rounded-md bg-warning px-2.5 text-xs font-semibold text-black/85 transition-[filter] hover:brightness-110"
-						>
-							Review changes
-						</Link>
+						<Button asChild size="sm" variant="gold">
+							<Link
+								to="/$owner/$repo/review/$pullId"
+								params={{ owner, repo, pullId }}
+							>
+								Review changes
+							</Link>
+						</Button>
 					</CalloutAction>
 				</Callout>
 			)}

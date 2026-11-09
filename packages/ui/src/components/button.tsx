@@ -16,16 +16,14 @@ const buttonVariants = cva(
 		variants: {
 			variant: {
 				default:
-					"bg-primary text-primary-foreground shadow-[0_1px_1px_0_lch(0_0_0/0.12),0_3px_6px_-2px_lch(0_0_0/0.12)] hover:bg-primary/90",
+					"bg-primary text-primary-foreground shadow-solid hover:bg-primary/90",
 				accent:
-					"bg-indigo text-indigo-foreground shadow-[0_1px_1px_0_lch(0_0_0/0.12),0_3px_6px_-2px_lch(0_0_0/0.12)] hover:bg-indigo/90",
+					"bg-indigo text-indigo-foreground shadow-solid hover:bg-indigo/90",
 				destructive:
-					"bg-destructive text-white shadow-[0_1px_1px_0_lch(0_0_0/0.12),0_3px_6px_-2px_lch(0_0_0/0.12)] hover:bg-destructive/90 focus-visible:outline-destructive",
-				success:
-					"bg-success text-white shadow-[0_1px_1px_0_lch(0_0_0/0.12),0_3px_6px_-2px_lch(0_0_0/0.12)] hover:bg-success/90",
-				purple:
-					"bg-merge text-white shadow-[0_1px_1px_0_lch(0_0_0/0.12),0_3px_6px_-2px_lch(0_0_0/0.12)] hover:bg-merge-hover",
-				gold: "bg-warning text-neutral-950 shadow-[0_1px_1px_0_lch(0_0_0/0.12),0_3px_6px_-2px_lch(0_0_0/0.12)] hover:bg-warning/90",
+					"bg-destructive text-white shadow-solid hover:bg-destructive/90 focus-visible:outline-destructive",
+				success: "bg-success text-white shadow-solid hover:bg-success/90",
+				purple: "bg-merge text-white shadow-solid hover:bg-merge-hover",
+				gold: "bg-warning text-neutral-950 shadow-solid hover:bg-warning/90",
 				outline:
 					"bg-button text-foreground shadow-button hover:bg-button-hover",
 				secondary:

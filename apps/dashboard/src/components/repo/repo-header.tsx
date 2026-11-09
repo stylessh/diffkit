@@ -22,21 +22,11 @@ import { repoSettingsCapabilities } from "#/lib/settings/permissions";
 import { useHasMounted } from "#/lib/use-has-mounted";
 import { HairlineBadge } from "./repo-ui";
 
-export function RepoHeader({
-	owner,
-	repo,
-	scope,
-	active,
-	trail,
-	tabActions,
-}: {
-	owner: string;
-	repo: string;
-	scope: GitHubQueryScope;
-	active?: RepoNavKey;
-	trail?: ReactNode;
-	tabActions?: ReactNode;
-}) {
+function useRepoHeaderData(
+	owner: string,
+	repo: string,
+	scope: GitHubQueryScope,
+) {
 	const hasMounted = useHasMounted();
 	const overviewQuery = useQuery({
 		...githubRepoOverviewQueryOptions(scope, { owner, repo }),
@@ -49,7 +39,50 @@ export function RepoHeader({
 	const showSettings = repoSettingsCapabilities(
 		permissionQuery.data?.permission ?? null,
 	).openSettings;
-	const repoData = overviewQuery.data;
+	return { repoData: overviewQuery.data, showSettings };
+}
+
+type RepoNavProps = {
+	owner: string;
+	repo: string;
+	scope: GitHubQueryScope;
+	active?: RepoNavKey;
+	tabActions?: ReactNode;
+};
+
+export function RepoHeaderNav({
+	owner,
+	repo,
+	scope,
+	active,
+	tabActions,
+}: RepoNavProps) {
+	const { repoData, showSettings } = useRepoHeaderData(owner, repo, scope);
+	return (
+		<RepoNav
+			owner={owner}
+			repo={repo}
+			active={active}
+			repoData={repoData}
+			actions={tabActions}
+			showSettings={showSettings}
+		/>
+	);
+}
+
+export function RepoHeader({
+	owner,
+	repo,
+	scope,
+	active,
+	trail,
+	tabActions,
+	withNav = true,
+}: RepoNavProps & {
+	trail?: ReactNode;
+	withNav?: boolean;
+}) {
+	const { repoData, showSettings } = useRepoHeaderData(owner, repo, scope);
 	const name = repoData?.name ?? repo;
 	const section = active && active !== "code" ? active : null;
 
@@ -122,14 +155,16 @@ export function RepoHeader({
 			{section ? (
 				<h1 className="sr-only">{repoSectionLabel(section)}</h1>
 			) : null}
-			<RepoNav
-				owner={owner}
-				repo={repo}
-				active={active}
-				repoData={repoData}
-				actions={tabActions}
-				showSettings={showSettings}
-			/>
+			{withNav ? (
+				<RepoNav
+					owner={owner}
+					repo={repo}
+					active={active}
+					repoData={repoData}
+					actions={tabActions}
+					showSettings={showSettings}
+				/>
+			) : null}
 		</>
 	);
 }

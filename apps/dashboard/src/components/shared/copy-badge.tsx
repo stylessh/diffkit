@@ -40,7 +40,7 @@ export function CopyBadge({
 					type="button"
 					onClick={handleClick}
 					className={cn(
-						"shrink-0 cursor-pointer rounded bg-surface-1 px-1.5 py-0.5 font-mono text-xs font-[550] transition-colors hover:bg-surface-2",
+						"shrink-0 cursor-pointer rounded bg-pill-neutral px-1.5 py-0.5 font-mono text-xs font-[550] transition-colors hover:bg-row-selected",
 						canTruncate && "min-w-0 shrink truncate",
 						className,
 					)}
