@@ -7,9 +7,9 @@ export const SAMPLE_AVATAR_URL =
 const SkeletonSampleContext = createContext(false);
 
 /**
- * Marks real components rendered from sample data for skullet to measure.
- * Anything inside that fetches on its own must stay idle, or the skeleton
- * would request made-up resources.
+ * Marks real components rendered from sample data: for skullet to measure, or
+ * as the landing page's product preview. Anything inside that fetches or
+ * preloads on its own must stay idle, or it would request made-up resources.
  */
 export function SkeletonSample({ children }: { children: ReactNode }) {
 	return (

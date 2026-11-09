@@ -357,7 +357,7 @@ function DraftCommentRow({
 	);
 }
 
-function ReviewDraftsEmptyState() {
+export function ReviewDraftsEmptyState() {
 	return (
 		<div className="flex flex-col items-center gap-3 px-4 py-16 text-center sm:px-6">
 			<div className="flex size-12 items-center justify-center rounded-full bg-surface-1 text-muted-foreground">

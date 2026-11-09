@@ -15,6 +15,7 @@ import {
 	rowAccessibleName,
 } from "#/components/shared/list-row";
 import { HighlightedText } from "#/components/shared/search-highlight";
+import { useIsSkeletonSample } from "#/components/shared/skeleton-sample";
 import { formatRelativeTime } from "#/lib/format-relative-time";
 import type { IssueSummary } from "#/lib/github.types";
 
@@ -41,10 +42,12 @@ export const IssueRow = memo(function IssueRow({
 	const time = formatRelativeTime(issue.updatedAt, undefined, {
 		compact: true,
 	});
+	const isSample = useIsSkeletonSample();
 
 	return (
 		<Link
 			to={href}
+			preload={isSample ? false : undefined}
 			aria-label={rowAccessibleName(issue)}
 			className={cn(listRowClassName, listRowHoverClassName)}
 		>

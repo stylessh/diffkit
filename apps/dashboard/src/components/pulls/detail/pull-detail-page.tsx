@@ -270,7 +270,7 @@ function PullDetailTabs({
 	);
 }
 
-function PullDetailBody({
+export function PullDetailBody({
 	owner,
 	repo,
 	pullNumber,

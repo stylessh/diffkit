@@ -17,3 +17,25 @@
 .pending-reveal {
 	animation: pending-reveal 150ms ease-out 300ms both;
 }
+
+/*
+ * Landing entrance: `enter-<n>` is the nth step of a stagger, each rising out
+ * of a blur. `backwards` holds the hidden frame through the delay and leaves
+ * no filter behind once a step has landed.
+ */
+@keyframes landing-enter {
+	from {
+		opacity: 0;
+		filter: blur(12px);
+		translate: 0 var(--enter-distance, 14px);
+	}
+}
+
+@utility enter-* {
+	animation: landing-enter 1600ms cubic-bezier(0.22, 1, 0.36, 1) backwards;
+	animation-delay: calc(--value(integer) * 120ms);
+
+	@media (prefers-reduced-motion: reduce) {
+		animation: none;
+	}
+}

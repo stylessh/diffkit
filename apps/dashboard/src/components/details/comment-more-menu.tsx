@@ -28,6 +28,7 @@ import { toast } from "@diffkit/ui/components/sonner";
 import { cn } from "@diffkit/ui/lib/utils";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
+import { useIsSkeletonSample } from "#/components/shared/skeleton-sample";
 import { minimizeComment } from "#/lib/github.functions";
 import { githubRepoViewerPermissionQueryOptions } from "#/lib/github.query";
 import {
@@ -51,9 +52,10 @@ type CommentMoreMenuProps = {
 /** GitHub lets the author and anyone with write access edit, hide or delete. */
 function useCanModerate(owner: string, repo: string, isAuthor: boolean) {
 	const scope = useGitHubQueryScope();
+	const isSample = useIsSkeletonSample();
 	const permission = useQuery({
 		...githubRepoViewerPermissionQueryOptions(scope, { owner, repo }),
-		enabled: !isAuthor,
+		enabled: !isAuthor && !isSample,
 	});
 	return isAuthor || permission.data?.canPush === true;
 }

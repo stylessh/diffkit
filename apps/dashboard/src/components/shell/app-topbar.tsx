@@ -11,8 +11,8 @@ import { AccountMenu, type ShellUser } from "./account-menu";
 import { CreateMenu } from "./create-menu";
 import { type NavItem, TopbarNav } from "./workspace-nav";
 
-function SearchTrigger() {
-	const keys = [modKeyLabel(), "K"];
+function SearchTrigger({ modKey }: { modKey: string }) {
+	const keys = [modKey, "K"];
 	return (
 		<Tooltip>
 			<TooltipTrigger asChild>
@@ -38,10 +38,12 @@ export function AppTopbar({
 	user,
 	viewerLogin,
 	navItems,
+	modKey = modKeyLabel(),
 }: {
 	user: ShellUser;
 	viewerLogin?: string;
 	navItems: NavItem[];
+	modKey?: string;
 }) {
 	return (
 		<header className="flex h-11 shrink-0 items-center gap-2 px-3 max-md:hidden">
@@ -50,7 +52,7 @@ export function AppTopbar({
 				<TopbarNav items={navItems} />
 			</nav>
 			<div className="flex shrink-0 items-center gap-1.5">
-				<SearchTrigger />
+				<SearchTrigger modKey={modKey} />
 				<CreateMenu />
 			</div>
 		</header>

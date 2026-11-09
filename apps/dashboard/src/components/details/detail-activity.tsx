@@ -22,6 +22,7 @@ import { toast } from "@diffkit/ui/components/sonner";
 import { Spinner } from "@diffkit/ui/components/spinner";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMemo, useRef, useState } from "react";
+import { useIsSkeletonSample } from "#/components/shared/skeleton-sample";
 import { useCommentMediaUpload } from "#/hooks/use-comment-media-upload";
 import {
 	createComment,
@@ -103,7 +104,11 @@ export function DetailCommentBox({
 	} = useCommentMediaUpload(editorRef);
 	const hasPendingUploads = pendingUploads > 0;
 
-	const viewerQuery = useQuery(githubViewerQueryOptions(scope));
+	const isSample = useIsSkeletonSample();
+	const viewerQuery = useQuery({
+		...githubViewerQueryOptions(scope),
+		enabled: !isSample,
+	});
 	const viewerLogin = viewerQuery.data?.login;
 
 	const collaboratorsQuery = useQuery({
