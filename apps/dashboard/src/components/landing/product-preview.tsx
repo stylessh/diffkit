@@ -52,8 +52,6 @@ const ACTIVE_NAV: Record<PreviewPage, string> = {
 		"[&_header_a[href='/reviews']]:bg-nav-selected [&_header_a[href='/reviews']]:text-foreground",
 	issues:
 		"[&_header_a[href='/issues']]:bg-nav-selected [&_header_a[href='/issues']]:text-foreground",
-	drafts:
-		"[&_header_a[href='/drafts']]:bg-nav-selected [&_header_a[href='/drafts']]:text-foreground",
 };
 
 /* Search, create and the account menu all need a signed-in account. */

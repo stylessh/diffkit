@@ -2,7 +2,6 @@ import {
 	ArchiveIcon,
 	DashboardIcon,
 	ExternalLinkIcon,
-	GitPullRequestDraftIcon,
 	GitPullRequestIcon,
 	IssuesIcon,
 	ReviewsIcon,
@@ -84,15 +83,6 @@ registerCommands([
 		keywords: ["review", "requested"],
 		shortcut: ["G", "R"],
 		action: { type: "navigate", to: "/reviews" },
-	},
-	{
-		id: "nav:drafts",
-		label: "Go to Review Drafts",
-		group: "Pages",
-		icon: GitPullRequestDraftIcon,
-		keywords: ["drafts", "pending", "review", "unsubmitted", "comments"],
-		shortcut: ["G", "D"],
-		action: { type: "navigate", to: "/drafts" },
 	},
 	{
 		id: "nav:settings",

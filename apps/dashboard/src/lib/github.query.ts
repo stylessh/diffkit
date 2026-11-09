@@ -78,7 +78,6 @@ export {
 	githubRepoTemplateQueryOptions,
 	githubRepoTreeQueryOptions,
 	githubRepoViewerPermissionQueryOptions,
-	githubReviewDraftsQueryOptions,
 	githubReviewThreadStatusesQueryOptions,
 	githubTimelineEventPageQueryOptions,
 	githubTreeEntryCommitsQueryOptions,

@@ -15,7 +15,6 @@ import {
 import { useRecordRecentRepo } from "#/lib/shell/use-shell-actions";
 import { useShellShortcuts } from "#/lib/shell/use-shell-shortcuts";
 import { useHasMounted } from "#/lib/use-has-mounted";
-import { useReviewDraftCount } from "#/lib/use-review-draft-count";
 import {
 	surfaceForbiddenOrgWarnings,
 	surfaceTimeoutWarning,
@@ -94,13 +93,11 @@ export function DashboardLayout() {
 			: undefined;
 	const countsReady =
 		hasMounted && Boolean(pullsQuery.data && issuesQuery.data);
-	const draftCount = useReviewDraftCount(user.id);
 
 	const counts = {
 		pulls: pullCount,
 		issues: issueCount,
 		reviews: hasMounted ? pullsQuery.data?.reviewRequested.length : undefined,
-		drafts: draftCount,
 	};
 	usePreloadPrimaryRoutes(countsReady);
 	useRecordRecentRepo(user.id);
