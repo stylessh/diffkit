@@ -266,7 +266,8 @@ function DiffCodeViewSurface({
 	const idByHash = useRef(new Map<string, string>()).current;
 	const appliedAnnotations = useRef(new Map<string, Annotation[]>()).current;
 	const addedCount = useRef(0);
-	const pendingScrollTarget = useRef<string | null>(null);
+	/** The `#diff-…` id of a file asked for before it streamed in. */
+	const pendingReveal = useRef<string | null>(null);
 	const activeFile = useRef<string | null>(null);
 
 	const createItem = (file: DiffFile): Item => {
@@ -303,10 +304,10 @@ function DiffCodeViewSurface({
 	const scrollToFile = useStableCallback((path: string) => {
 		const viewer = viewerRef.current;
 		if (!viewer?.getItem(path)) {
-			pendingScrollTarget.current = path;
+			pendingReveal.current = encodeFileId(path);
 			return;
 		}
-		pendingScrollTarget.current = null;
+		pendingReveal.current = null;
 		updateItem(path, (item) => {
 			item.collapsed = false;
 		});
@@ -325,8 +326,8 @@ function DiffCodeViewSurface({
 		const added = files.slice(addedCount.current).map(createItem);
 		addedCount.current = files.length;
 		viewer.addItems(added);
-		const target = pendingScrollTarget.current;
-		if (target && filesById.has(target)) scrollToFile(target);
+		const target = pendingReveal.current && idByHash.get(pendingReveal.current);
+		if (target) scrollToFile(target);
 	});
 
 	useEffect(() => {
@@ -356,8 +357,11 @@ function DiffCodeViewSurface({
 
 	useEffect(() => {
 		const revealHash = () => {
-			const path = idByHash.get(window.location.hash.slice(1));
+			const id = window.location.hash.slice(1);
+			if (!id) return;
+			const path = idByHash.get(id);
 			if (path) scrollToFile(path);
+			else pendingReveal.current = id;
 		};
 		revealHash();
 		window.addEventListener("hashchange", revealHash);

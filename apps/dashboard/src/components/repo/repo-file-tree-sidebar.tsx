@@ -216,17 +216,25 @@ function ExplorerFileTree({
 		});
 	}, [model]);
 
-	// Opening a folder the recursive tree could not answer lists it.
+	// Opening a folder the recursive tree could not answer lists it, and
+	// reopening one that failed tries again.
 	useEffect(() => {
+		let expanded = new Set<string>();
 		const loadExpanded = () => {
+			const nowExpanded = new Set<string>();
 			for (const id of syncedPathsRef.current) {
-				if (!id.endsWith("/")) continue;
+				if (!id.endsWith("/") || !directoryItem(model, id)?.isExpanded()) {
+					continue;
+				}
+				nowExpanded.add(id);
 				const dir = id.slice(0, -1);
-				if (directoriesRef.current.listing(dir) !== undefined) continue;
-				if (directoryItem(model, id)?.isExpanded()) {
+				const status = directoriesRef.current.listing(dir)?.status;
+				const reopenedAfterError = status === "error" && !expanded.has(id);
+				if (status === undefined || reopenedAfterError) {
 					directoriesRef.current.load(dir);
 				}
 			}
+			expanded = nowExpanded;
 		};
 		loadExpanded();
 		return model.subscribe(loadExpanded);

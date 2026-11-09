@@ -19,7 +19,7 @@ export type ExplorerContext = {
 export type ExplorerDirectories = {
 	/** `undefined` until the directory has been asked for. */
 	listing: (dir: string) => DirectoryListing | undefined;
-	/** Fetches a directory GitHub's recursive tree could not answer. */
+	/** Fetches a directory GitHub's recursive tree could not answer, or retries one that failed. */
 	load: (dir: string) => void;
 	/** Every known path, directories with a trailing slash, parents first. */
 	paths: readonly string[];
@@ -45,11 +45,8 @@ export function useExplorerDirectories(
 	});
 	const index = indexQuery.data;
 	const complete = index !== undefined && !index.truncated;
-	const [fetched, setFetched] = useState<ReadonlyMap<string, DirectoryListing>>(
-		() => new Map(),
-	);
-	const fetchedRef = useRef(fetched);
-	fetchedRef.current = fetched;
+	const fetchedRef = useRef<ReadonlyMap<string, DirectoryListing>>(new Map());
+	const [fetched, setFetched] = useState(fetchedRef.current);
 
 	const listing = useCallback(
 		(dir: string): DirectoryListing | undefined => {
@@ -67,11 +64,13 @@ export function useExplorerDirectories(
 
 	const load = useCallback(
 		(dir: string) => {
-			if (complete || fetchedRef.current.has(dir)) return;
-			const settle = (result: DirectoryListing) =>
-				setFetched((previous) => new Map(previous).set(dir, result));
+			const known = fetchedRef.current.get(dir);
+			if (complete || (known && known.status !== "error")) return;
+			const settle = (result: DirectoryListing) => {
+				fetchedRef.current = new Map(fetchedRef.current).set(dir, result);
+				setFetched(fetchedRef.current);
+			};
 			settle(LOADING);
-			fetchedRef.current = new Map(fetchedRef.current).set(dir, LOADING);
 			queryClient
 				.fetchQuery(
 					githubRepoTreeQueryOptions(scope, {
@@ -89,7 +88,12 @@ export function useExplorerDirectories(
 		[complete, currentRef, owner, queryClient, repoName, scope],
 	);
 
-	useEffect(() => load(""), [load]);
+	useEffect(() => {
+		const loadRoot = () => load("");
+		loadRoot();
+		window.addEventListener("focus", loadRoot);
+		return () => window.removeEventListener("focus", loadRoot);
+	}, [load]);
 
 	const paths = useMemo(() => {
 		const out: string[] = [];
