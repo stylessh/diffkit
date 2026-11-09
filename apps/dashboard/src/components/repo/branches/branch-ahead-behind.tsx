@@ -49,6 +49,7 @@ export function BranchAheadBehind({
 	if (!comparison) return null;
 
 	const { aheadBy, behindBy } = comparison;
+	const label = `${behindBy} behind, ${aheadBy} ahead of ${base}`;
 	const summary = `${behindBy} ${behindBy === 1 ? "commit" : "commits"} behind, ${aheadBy} ahead of ${base}`;
 
 	return (
@@ -56,7 +57,7 @@ export function BranchAheadBehind({
 			<TooltipTrigger asChild>
 				<Chip
 					role="img"
-					aria-label={summary}
+					aria-label={label}
 					className="shrink-0 gap-1.5 tabular-nums"
 				>
 					<span>{behindBy}</span>
