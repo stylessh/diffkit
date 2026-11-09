@@ -28,7 +28,6 @@ const buttonVariants = cva(
 				gold: "bg-warning text-neutral-950 shadow-[0_1px_1px_0_lch(0_0_0/0.12),0_3px_6px_-2px_lch(0_0_0/0.12)] hover:bg-warning/90",
 				outline:
 					"bg-button text-foreground shadow-button hover:bg-button-hover",
-				pill: "rounded-full bg-button text-foreground shadow-button hover:bg-button-hover",
 				secondary:
 					"bg-secondary text-secondary-foreground hover:bg-row-selected",
 				subtle: "bg-muted text-secondary-foreground hover:bg-row-selected",

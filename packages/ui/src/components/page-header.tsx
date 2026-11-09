@@ -97,7 +97,7 @@ function PageIconButton({
 		<Comp
 			data-slot="page-icon-button"
 			className={cn(
-				"flex size-7 shrink-0 items-center justify-center rounded-full text-muted-foreground transition-colors hover:text-foreground disabled:pointer-events-none disabled:opacity-50 [&_svg]:shrink-0",
+				"flex size-7 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:text-foreground disabled:pointer-events-none disabled:opacity-50 [&_svg]:shrink-0",
 				raised
 					? "bg-button shadow-button hover:bg-button-hover"
 					: "hover:bg-ghost-hover",

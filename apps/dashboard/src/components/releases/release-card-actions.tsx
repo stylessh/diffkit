@@ -135,7 +135,7 @@ export function ReleaseDeleteButton({
 				type="button"
 				className={cn(
 					buttonVariants({ variant: "ghost", size: "sm" }),
-					"rounded-full text-danger hover:bg-pill-blocked hover:text-danger",
+					"rounded-md text-danger hover:bg-pill-blocked hover:text-danger",
 				)}
 			>
 				<Delete01Icon size={14} />

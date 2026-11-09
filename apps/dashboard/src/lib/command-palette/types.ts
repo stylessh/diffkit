@@ -1,4 +1,9 @@
 import type { ComponentType } from "react";
+import type {
+	IssueSummary,
+	PullSummary,
+	UserRepoSummary,
+} from "#/lib/github.types";
 
 export type CommandAction =
 	| { type: "navigate"; to: string }
@@ -12,6 +17,12 @@ export type CommandItemMeta = {
 	stars?: number;
 };
 
+/** What the card beside the palette shows for a row. */
+export type CommandPreview =
+	| { kind: "pull"; pull: PullSummary }
+	| { kind: "issue"; issue: IssueSummary }
+	| { kind: "repo"; repo: UserRepoSummary };
+
 export type CommandItem = {
 	id: string;
 	label: string;
@@ -23,4 +34,5 @@ export type CommandItem = {
 	action: CommandAction;
 	priority?: number;
 	meta?: CommandItemMeta;
+	preview?: CommandPreview;
 };

@@ -97,7 +97,7 @@ export function ReviewSubmitPopover({
 		<button
 			type="button"
 			onClick={isDesktop ? undefined : () => setIsOpen(true)}
-			className="flex h-7 shrink-0 items-center gap-1.5 rounded-full bg-indigo px-3 text-xs font-medium text-indigo-foreground shadow-[0_1px_1px_0_lch(0_0_0/0.12),0_3px_6px_-2px_lch(0_0_0/0.12)] transition-colors hover:bg-indigo/90"
+			className="flex h-7 shrink-0 items-center gap-1.5 rounded-md bg-indigo px-3 text-xs font-medium text-indigo-foreground shadow-[0_1px_1px_0_lch(0_0_0/0.12),0_3px_6px_-2px_lch(0_0_0/0.12)] transition-colors hover:bg-indigo/90"
 		>
 			Submit review
 			{pendingBadge}
@@ -114,7 +114,7 @@ export function ReviewSubmitPopover({
 					<button
 						type="button"
 						aria-label="Close"
-						className="flex size-6 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-ghost-hover hover:text-foreground"
+						className="flex size-6 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-ghost-hover hover:text-foreground"
 						onClick={() => setIsOpen(false)}
 					>
 						<CloseIcon size={14} strokeWidth={2} />
@@ -180,7 +180,7 @@ export function ReviewSubmitPopover({
 				<button
 					type="button"
 					onClick={() => setIsOpen(false)}
-					className="h-7 rounded-full px-2.5 text-xs font-medium text-text-header transition-colors hover:bg-ghost-hover"
+					className="h-7 rounded-md px-2.5 text-xs font-medium text-text-header transition-colors hover:bg-ghost-hover"
 				>
 					Cancel
 				</button>
@@ -188,7 +188,7 @@ export function ReviewSubmitPopover({
 					type="button"
 					onClick={handleSubmit}
 					disabled={isSubmitting}
-					className="flex h-7 items-center gap-1.5 rounded-full bg-indigo px-3 text-xs font-medium text-indigo-foreground shadow-[0_1px_1px_0_lch(0_0_0/0.12),0_3px_6px_-2px_lch(0_0_0/0.12)] transition-colors hover:bg-indigo/90 disabled:opacity-45"
+					className="flex h-7 items-center gap-1.5 rounded-md bg-indigo px-3 text-xs font-medium text-indigo-foreground shadow-[0_1px_1px_0_lch(0_0_0/0.12),0_3px_6px_-2px_lch(0_0_0/0.12)] transition-colors hover:bg-indigo/90 disabled:opacity-45"
 				>
 					{isSubmitting ? <Spinner size={12} /> : null}
 					Submit review

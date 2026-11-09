@@ -1,15 +1,40 @@
+import { ClockIcon, RepoIcon } from "@diffkit/icons";
+import { PanelPill, PanelRow } from "@diffkit/ui/components/detail-layout";
 import {
 	Tooltip,
 	TooltipContent,
 	TooltipTrigger,
 } from "@diffkit/ui/components/tooltip";
 import { Link } from "@tanstack/react-router";
+import { formatRelativeTime } from "#/lib/format-relative-time";
 
 type DetailRowIcon = React.ComponentType<{
 	size?: number;
 	strokeWidth?: number;
 	className?: string;
 }>;
+
+/** The repository the PR or issue lives in, first in each sidebar's Properties. */
+export function RepoRow({ owner, repo }: { owner: string; repo: string }) {
+	return (
+		<PanelPill asChild icon={<RepoIcon size={14} strokeWidth={2} />}>
+			<Link to="/$owner/$repo" params={{ owner, repo }}>
+				<span className="truncate">
+					{owner}/{repo}
+				</span>
+			</Link>
+		</PanelPill>
+	);
+}
+
+/** "Updated 3d ago": the last change, last in each sidebar's Properties. */
+export function UpdatedRow({ at }: { at: string }) {
+	return (
+		<PanelRow muted icon={<ClockIcon size={14} strokeWidth={2} />}>
+			Updated {formatRelativeTime(at)}
+		</PanelRow>
+	);
+}
 
 export function DetailSidebar({ children }: { children: React.ReactNode }) {
 	return <div className="flex flex-col">{children}</div>;

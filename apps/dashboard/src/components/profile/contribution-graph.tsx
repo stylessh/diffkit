@@ -1,8 +1,21 @@
+import { easedFadeMask } from "@diffkit/ui/lib/eased-mask";
 import { cn } from "@diffkit/ui/lib/utils";
 import NumberFlow from "@number-flow/react";
 import { AnimatePresence, animate, motion, useMotionValue } from "motion/react";
-import { useCallback, useLayoutEffect, useMemo, useRef, useState } from "react";
+import {
+	useCallback,
+	useEffect,
+	useLayoutEffect,
+	useMemo,
+	useRef,
+	useState,
+} from "react";
 import { createPortal } from "react-dom";
+import {
+	type ContributionGridLayout,
+	dayIndexForSlot,
+	fitContributionGrid,
+} from "#/lib/contribution-grid";
 import type { GitHubContributionCalendar } from "#/lib/github.types";
 
 type ContributionGraphProps = {
@@ -10,51 +23,22 @@ type ContributionGraphProps = {
 	className?: string;
 };
 
-type CellData = {
-	x: number;
-	y: number;
-	level: 0 | 1 | 2 | 3 | 4;
-	date: string;
-	count: number;
-};
+type Day = { date: string; count: number; level: 0 | 1 | 2 | 3 | 4 };
 
-const CELL_SIZE = 11;
-const CELL_GAP = 3;
-const CELL_STEP = CELL_SIZE + CELL_GAP;
+/** Resolved fill per level; index 0 is also the empty slot before the first day. */
+type Palette = readonly [string, string, string, string, string];
 
-const LEVEL_COLORS_LIGHT = [
-	"oklch(0.93 0.003 286)",
-	"oklch(0.84 0.10 150)",
-	"oklch(0.72 0.16 150)",
-	"oklch(0.58 0.20 150)",
-	"oklch(0.42 0.19 150)",
-] as const;
+/** The entrance plays once, the first time there is a grid to draw. */
+type Intro =
+	| { phase: "pending" }
+	| { phase: "running"; startedAt: number }
+	| { phase: "done" };
 
-const LEVEL_COLORS_DARK = [
-	"oklch(0.22 0.005 286)",
-	"oklch(0.32 0.09 150)",
-	"oklch(0.46 0.15 150)",
-	"oklch(0.62 0.20 150)",
-	"oklch(0.78 0.22 150)",
-] as const;
+const INTRO_SPREAD_MS = 700;
+const INTRO_CELL_MS = 450;
 
-// Hoisted — string is constant, no reason to rebuild on every render
-const CONTRIB_STYLES = `
-  :root {
-    --contrib-level-0: ${LEVEL_COLORS_LIGHT[0]};
-    --contrib-level-1: ${LEVEL_COLORS_LIGHT[1]};
-    --contrib-level-2: ${LEVEL_COLORS_LIGHT[2]};
-    --contrib-level-3: ${LEVEL_COLORS_LIGHT[3]};
-    --contrib-level-4: ${LEVEL_COLORS_LIGHT[4]};
-  }
-  .dark {
-    --contrib-level-0: ${LEVEL_COLORS_DARK[0]};
-    --contrib-level-1: ${LEVEL_COLORS_DARK[1]};
-    --contrib-level-2: ${LEVEL_COLORS_DARK[2]};
-    --contrib-level-3: ${LEVEL_COLORS_DARK[3]};
-    --contrib-level-4: ${LEVEL_COLORS_DARK[4]};
-  }
-`;
+/** Fades eat into every edge, deepest at the bottom so the avatar and name sit on clean ground. */
+const BANNER_MASK = `${easedFadeMask("to right", "clamp(3rem, 14%, 12rem)", "clamp(3rem, 14%, 12rem)")}, ${easedFadeMask("to bottom", "2.5rem", "55%")}`;
 
 function ordinalSuffix(n: number) {
 	const v = n % 100;
@@ -78,202 +62,293 @@ function parseDateParts(dateStr: string) {
 	};
 }
 
+/**
+ * The level colours as the browser resolves them right now (themes mix them
+ * from tokens), turned into concrete colours a canvas can fill with.
+ */
+function readPalette(host: HTMLElement): Palette {
+	const probe = document.createElement("span");
+	probe.style.display = "none";
+	host.appendChild(probe);
+	const level = (n: number) => {
+		probe.style.color = `var(--contrib-level-${n})`;
+		return getComputedStyle(probe).color;
+	};
+	const palette: Palette = [level(0), level(1), level(2), level(3), level(4)];
+	probe.remove();
+	return palette;
+}
+
+function easeOutBack(t: number) {
+	const c1 = 1.4;
+	const c3 = c1 + 1;
+	return 1 + c3 * (t - 1) ** 3 + c1 * (t - 1) ** 2;
+}
+
+function drawGrid(
+	context: CanvasRenderingContext2D,
+	layout: ContributionGridLayout,
+	days: readonly Day[],
+	palette: Palette,
+	elapsed: number | null,
+) {
+	const { cell, gap, cols, rows, offsetX, offsetY } = layout;
+	const step = cell + gap;
+	const radius = Math.min(2.5, cell * 0.22);
+	const centerCol = (cols - 1) / 2;
+	const centerRow = (rows - 1) / 2;
+	const farthest = Math.hypot(centerCol, centerRow) || 1;
+
+	if (elapsed === null) {
+		// At rest: one path per level, five fills for the whole grid.
+		const paths = palette.map(() => new Path2D());
+		for (let col = 0; col < cols; col++) {
+			for (let row = 0; row < rows; row++) {
+				const index = dayIndexForSlot(layout, col, row);
+				const level = index === null ? 0 : (days[index]?.level ?? 0);
+				paths[level].roundRect(
+					offsetX + col * step,
+					offsetY + row * step,
+					cell,
+					cell,
+					radius,
+				);
+			}
+		}
+		paths.forEach((path, level) => {
+			context.fillStyle = palette[level];
+			context.fill(path);
+		});
+		return;
+	}
+
+	for (let col = 0; col < cols; col++) {
+		for (let row = 0; row < rows; row++) {
+			const delay =
+				(Math.hypot(col - centerCol, row - centerRow) / farthest) *
+				INTRO_SPREAD_MS;
+			const t = Math.min(1, Math.max(0, (elapsed - delay) / INTRO_CELL_MS));
+			if (t === 0) continue;
+			const index = dayIndexForSlot(layout, col, row);
+			const level = index === null ? 0 : (days[index]?.level ?? 0);
+			const size = cell * (0.65 + 0.35 * easeOutBack(t));
+			const inset = (cell - size) / 2;
+			context.globalAlpha = t;
+			context.fillStyle = palette[level];
+			context.beginPath();
+			context.roundRect(
+				offsetX + col * step + inset,
+				offsetY + row * step + inset,
+				size,
+				size,
+				radius,
+			);
+			context.fill();
+		}
+	}
+	context.globalAlpha = 1;
+}
+
+/**
+ * A year of contributions filling the whole banner: the cell size, rows and
+ * columns come from the banner's measured size, so every day shows at any
+ * width. Drawn on one canvas, and redrawn only when the size or theme changes.
+ */
 export function ContributionGraph({
 	calendar,
 	className,
 }: ContributionGraphProps) {
-	const svgRef = useRef<SVGSVGElement>(null);
+	const frameRef = useRef<HTMLDivElement>(null);
+	const canvasRef = useRef<HTMLCanvasElement>(null);
 	const tooltipRef = useRef<HTMLDivElement>(null);
-	const [activeCell, setActiveCell] = useState<CellData | null>(null);
-	const activeCellRef = useRef<CellData | null>(null);
+	const introRef = useRef<Intro>({ phase: "pending" });
+
+	const [size, setSize] = useState<{ width: number; height: number } | null>(
+		null,
+	);
+	const [palette, setPalette] = useState<Palette | null>(null);
+	const [activeIndex, setActiveIndex] = useState<number | null>(null);
 
 	const mouseX = useMotionValue(0);
 	const mouseY = useMotionValue(0);
 	const tooltipX = useMotionValue(10);
 
+	const days = useMemo<Day[]>(
+		() =>
+			calendar.weeks.flatMap((week) =>
+				week.days.map((day) => ({
+					date: day.date,
+					count: day.count,
+					level: day.level,
+				})),
+			),
+		[calendar.weeks],
+	);
+
+	const layout = useMemo(
+		() =>
+			size ? fitContributionGrid(size.width, size.height, days.length) : null,
+		[size, days.length],
+	);
+
 	useLayoutEffect(() => {
-		if (!activeCell || !tooltipRef.current) return;
-		const w = tooltipRef.current.offsetWidth;
-		const overflows = mouseX.get() + 10 + w > window.innerWidth - 8;
-		animate(tooltipX, overflows ? -10 - w : 10, {
+		const frame = frameRef.current;
+		if (!frame) return;
+		const measure = () => {
+			const { width, height } = frame.getBoundingClientRect();
+			setSize((previous) =>
+				previous?.width === width && previous.height === height
+					? previous
+					: { width, height },
+			);
+		};
+		measure();
+		const observer = new ResizeObserver(measure);
+		observer.observe(frame);
+		return () => observer.disconnect();
+	}, []);
+
+	useEffect(() => {
+		const frame = frameRef.current;
+		if (!frame) return;
+		const refresh = () => setPalette(readPalette(frame));
+		refresh();
+		const observer = new MutationObserver(refresh);
+		observer.observe(document.documentElement, {
+			attributes: true,
+			attributeFilter: ["class", "data-light-theme", "data-dark-theme"],
+		});
+		return () => observer.disconnect();
+	}, []);
+
+	useEffect(() => {
+		const canvas = canvasRef.current;
+		if (!canvas || !layout || !size || !palette) return;
+		const context = canvas.getContext("2d");
+		if (!context) return;
+
+		const ratio = window.devicePixelRatio || 1;
+		canvas.width = Math.round(size.width * ratio);
+		canvas.height = Math.round(size.height * ratio);
+
+		const paint = (elapsed: number | null) => {
+			context.setTransform(ratio, 0, 0, ratio, 0, 0);
+			context.clearRect(0, 0, size.width, size.height);
+			drawGrid(context, layout, days, palette, elapsed);
+		};
+
+		if (introRef.current.phase === "pending") {
+			const reduceMotion = window.matchMedia(
+				"(prefers-reduced-motion: reduce)",
+			).matches;
+			introRef.current = reduceMotion
+				? { phase: "done" }
+				: { phase: "running", startedAt: performance.now() };
+		}
+
+		const intro = introRef.current;
+		if (intro.phase !== "running") {
+			paint(null);
+			return;
+		}
+
+		let frameId = 0;
+		const total = INTRO_SPREAD_MS + INTRO_CELL_MS;
+		const tick = (now: number) => {
+			const elapsed = now - intro.startedAt;
+			if (elapsed >= total) {
+				introRef.current = { phase: "done" };
+				paint(null);
+				return;
+			}
+			paint(elapsed);
+			frameId = requestAnimationFrame(tick);
+		};
+		frameId = requestAnimationFrame(tick);
+		return () => cancelAnimationFrame(frameId);
+	}, [layout, size, palette, days]);
+
+	useLayoutEffect(() => {
+		if (activeIndex === null || !tooltipRef.current) return;
+		const width = tooltipRef.current.offsetWidth;
+		const overflows = mouseX.get() + 10 + width > window.innerWidth - 8;
+		animate(tooltipX, overflows ? -10 - width : 10, {
 			duration: 0.15,
 			ease: "easeOut",
 		});
-	}, [activeCell, mouseX, tooltipX]);
+	}, [activeIndex, mouseX, tooltipX]);
 
-	const {
-		cells,
-		cellsByPosition,
-		svgWidth,
-		svgHeight,
-		centerCol,
-		centerRow,
-		maxDist,
-	} = useMemo(() => {
-		const cells: CellData[] = [];
-		const cellsByPosition = new Map<string, CellData>();
-
-		for (let weekIdx = 0; weekIdx < calendar.weeks.length; weekIdx++) {
-			const week = calendar.weeks[weekIdx];
-			for (const day of week.days) {
-				const dayOfWeek = new Date(day.date).getUTCDay();
-				const cell: CellData = {
-					x: weekIdx * CELL_STEP,
-					y: dayOfWeek * CELL_STEP,
-					level: day.level,
-					date: day.date,
-					count: day.count,
-				};
-				cells.push(cell);
-				cellsByPosition.set(`${weekIdx}:${dayOfWeek}`, cell);
-			}
-		}
-
-		const totalCols = calendar.weeks.length;
-		const svgWidth = totalCols * CELL_STEP - CELL_GAP;
-		const svgHeight = 7 * CELL_STEP - CELL_GAP;
-		const centerCol = (totalCols - 1) / 2;
-		const centerRow = 3; // (7 - 1) / 2
-		const maxDist = Math.sqrt(centerCol ** 2 + centerRow ** 2);
-
-		return {
-			cells,
-			cellsByPosition,
-			svgWidth,
-			svgHeight,
-			centerCol,
-			centerRow,
-			maxDist,
-		};
-	}, [calendar.weeks]);
-
-	const dateParts = useMemo(
-		() => (activeCell ? parseDateParts(activeCell.date) : null),
-		[activeCell],
-	);
-
-	const cellElements = useMemo(
-		() =>
-			cells.map((cell) => {
-				const col = cell.x / CELL_STEP;
-				const row = cell.y / CELL_STEP;
-				return (
-					<motion.rect
-						key={cell.date}
-						x={cell.x}
-						y={cell.y}
-						width={CELL_SIZE}
-						height={CELL_SIZE}
-						rx={2.5}
-						className="transition-colors"
-						style={
-							{
-								fill: `var(--contrib-level-${cell.level})`,
-								transformOrigin: `${cell.x + CELL_SIZE / 2}px ${cell.y + CELL_SIZE / 2}px`,
-							} as React.CSSProperties
-						}
-						initial={{ scale: 0.65, opacity: 0 }}
-						animate={{ scale: 1, opacity: 1 }}
-						transition={{
-							type: "spring",
-							duration: 1,
-							bounce: 0.5,
-							delay:
-								(Math.sqrt((col - centerCol) ** 2 + (row - centerRow) ** 2) /
-									maxDist) *
-								0.8,
-						}}
-					/>
-				);
-			}),
-		[cells, centerCol, centerRow, maxDist],
-	);
-
-	const handleMouseMove = useCallback(
-		(e: React.MouseEvent<SVGSVGElement>) => {
-			const svg = svgRef.current;
-			if (!svg) return;
-
-			const pt = svg.createSVGPoint();
-			pt.x = e.clientX;
-			pt.y = e.clientY;
-			const svgPt = pt.matrixTransform(svg.getScreenCTM()?.inverse());
-
-			const col = Math.floor(svgPt.x / CELL_STEP);
-			const row = Math.floor(svgPt.y / CELL_STEP);
-
-			mouseX.set(e.clientX);
-			mouseY.set(e.clientY + 8);
-
-			const cell = cellsByPosition.get(`${col}:${row}`);
-			if (!cell) {
-				if (activeCellRef.current !== null) {
-					activeCellRef.current = null;
-					setActiveCell(null);
-				}
-				return;
-			}
-
-			if (activeCellRef.current?.date !== cell.date) {
-				activeCellRef.current = cell;
-				setActiveCell(cell);
-			}
+	const handlePointerMove = useCallback(
+		(event: React.PointerEvent<HTMLDivElement>) => {
+			const frame = frameRef.current;
+			if (!frame || !layout) return;
+			const bounds = frame.getBoundingClientRect();
+			const step = layout.cell + layout.gap;
+			const col = Math.floor(
+				(event.clientX - bounds.left - layout.offsetX) / step,
+			);
+			const row = Math.floor(
+				(event.clientY - bounds.top - layout.offsetY) / step,
+			);
+			mouseX.set(event.clientX);
+			mouseY.set(event.clientY + 8);
+			const index = dayIndexForSlot(layout, col, row);
+			setActiveIndex((previous) => (previous === index ? previous : index));
 		},
-		[cellsByPosition, mouseX, mouseY],
+		[layout, mouseX, mouseY],
 	);
 
-	const handleMouseLeave = useCallback(() => {
-		activeCellRef.current = null;
-		setActiveCell(null);
-	}, []);
+	const handlePointerLeave = useCallback(() => setActiveIndex(null), []);
+
+	const activeDay = activeIndex === null ? null : (days[activeIndex] ?? null);
+	const dateParts = useMemo(
+		() => (activeDay ? parseDateParts(activeDay.date) : null),
+		[activeDay],
+	);
+	const ringSlot =
+		activeIndex !== null && layout
+			? activeIndex - layout.skipped + layout.leading
+			: null;
 
 	return (
 		<div
-			className={cn(
-				"relative flex items-center justify-center overflow-hidden",
-				className,
-			)}
+			ref={frameRef}
+			className={cn("relative overflow-hidden", className)}
+			style={{
+				maskImage: BANNER_MASK,
+				WebkitMaskImage: BANNER_MASK,
+				maskComposite: "intersect",
+				WebkitMaskComposite: "source-in",
+			}}
+			onPointerMove={handlePointerMove}
+			onPointerLeave={handlePointerLeave}
 		>
-			<svg
-				ref={svgRef}
-				viewBox={`0 0 ${svgWidth} ${svgHeight}`}
-				className="h-auto w-full"
-				preserveAspectRatio="xMidYMid meet"
+			<canvas
+				ref={canvasRef}
 				role="img"
-				aria-label="Contribution graph"
-				onMouseMove={handleMouseMove}
-				onMouseLeave={handleMouseLeave}
-			>
-				{cellElements}
-				<AnimatePresence>
-					{activeCell && (
-						<motion.rect
-							key="ring"
-							x={0}
-							y={0}
-							width={CELL_SIZE}
-							height={CELL_SIZE}
-							rx={2.5}
-							fill="none"
-							stroke="var(--primary)"
-							strokeWidth={1.5}
-							initial={{ opacity: 0, x: activeCell.x, y: activeCell.y }}
-							animate={{ opacity: 1, x: activeCell.x, y: activeCell.y }}
-							exit={{ opacity: 0 }}
-							transition={{ duration: 0.15, ease: "easeOut" }}
-						/>
-					)}
-				</AnimatePresence>
-			</svg>
+				aria-label={`${calendar.totalContributions.toLocaleString()} contributions in the last year`}
+				className="absolute inset-0 size-full opacity-70 dark:opacity-55"
+			/>
+			{layout && ringSlot !== null ? (
+				<span
+					aria-hidden
+					className="pointer-events-none absolute top-0 left-0 rounded-[3px] border-[1.5px] border-primary transition-transform duration-150 ease-out"
+					style={{
+						width: layout.cell,
+						height: layout.cell,
+						transform: `translate(${layout.offsetX + Math.floor(ringSlot / layout.rows) * (layout.cell + layout.gap)}px, ${layout.offsetY + (ringSlot % layout.rows) * (layout.cell + layout.gap)}px)`,
+					}}
+				/>
+			) : null}
 
 			{createPortal(
 				<AnimatePresence>
-					{activeCell && dateParts && (
+					{activeDay && dateParts && (
 						<motion.div
 							ref={tooltipRef}
 							layout
 							key="tooltip"
-							className="pointer-events-none fixed z-50 whitespace-nowrap rounded-md bg-popover px-2.5 py-1.5 text-xs text-popover-foreground shadow-md border-[0.5px] border-border"
+							className="pointer-events-none fixed z-50 whitespace-nowrap rounded-md border-[0.5px] border-border bg-popover px-2.5 py-1.5 text-xs text-popover-foreground shadow-md"
 							style={{ left: mouseX, top: mouseY, x: tooltipX }}
 							initial={{ opacity: 0, scale: 0.95 }}
 							animate={{ opacity: 1, scale: 1 }}
@@ -281,8 +356,8 @@ export function ContributionGraph({
 							transition={{ duration: 0.15, ease: "easeOut" }}
 						>
 							<span className="font-semibold">
-								<NumberFlow value={activeCell.count} className="tabular-nums" />{" "}
-								contribution{activeCell.count !== 1 ? "s" : ""}
+								<NumberFlow value={activeDay.count} className="tabular-nums" />{" "}
+								contribution{activeDay.count !== 1 ? "s" : ""}
 							</span>{" "}
 							on{" "}
 							<AnimatePresence mode="popLayout" initial={false}>
@@ -308,8 +383,6 @@ export function ContributionGraph({
 				</AnimatePresence>,
 				document.body,
 			)}
-
-			<style>{CONTRIB_STYLES}</style>
 		</div>
 	);
 }

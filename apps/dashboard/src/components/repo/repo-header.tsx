@@ -1,4 +1,4 @@
-import { LockIcon, RepoIcon } from "@diffkit/icons";
+import { LockIcon } from "@diffkit/icons";
 import {
 	PageHeader,
 	PageHeaderCrumb,
@@ -53,8 +53,14 @@ export function RepoHeader({
 	const name = repoData?.name ?? repo;
 	const section = active && active !== "code" ? active : null;
 
-	const repoIcon = (
-		<RepoIcon size={14} strokeWidth={2} className="text-muted-foreground" />
+	const repoIcon = repoData?.ownerAvatarUrl ? (
+		<img
+			src={repoData.ownerAvatarUrl}
+			alt=""
+			className="size-4 shrink-0 rounded-[4px] ring-[0.5px] ring-chip-border"
+		/>
+	) : (
+		<span aria-hidden className="size-4 shrink-0 rounded-[4px] bg-group" />
 	);
 
 	const title = (
@@ -83,11 +89,6 @@ export function RepoHeader({
 					) : null
 				}
 			>
-				<span className="flex min-w-0 shrink items-center max-md:hidden">
-					<PageHeaderCrumb asChild>
-						<Link to="/repos">Repositories</Link>
-					</PageHeaderCrumb>
-				</span>
 				{trail ? (
 					<>
 						<PageHeaderCrumb asChild>

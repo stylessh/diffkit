@@ -3,11 +3,9 @@ import { useQuery } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useRef } from "react";
 import {
-	applyFilters,
-	FilterBar,
+	applyListView,
 	pullFilterDefs,
 	pullSortOptions,
-	readFilterCookieClient,
 	useListFilters,
 } from "#/components/filters";
 import { DashboardContentLoading } from "#/components/layouts/dashboard-content-loading";
@@ -22,8 +20,6 @@ export const Route = createFileRoute("/_protected/reviews")({
 	loader: ({ context }) => {
 		const scope = { userId: context.user.id };
 		void context.queryClient.prefetchQuery(githubMyPullsQueryOptions(scope));
-		const filterStore = readFilterCookieClient();
-		return { filterStore };
 	},
 	pendingComponent: DashboardContentLoading,
 	head: ({ match }) =>
@@ -38,7 +34,6 @@ export const Route = createFileRoute("/_protected/reviews")({
 });
 
 function ReviewsPage() {
-	const { filterStore } = Route.useLoaderData();
 	const { user } = Route.useRouteContext();
 	const scope = useMemo(() => ({ userId: user.id }), [user.id]);
 	const hasMounted = useHasMounted();
@@ -54,28 +49,30 @@ function ReviewsPage() {
 	);
 
 	const filterState = useListFilters({
-		pageId: "reviews",
-		items: rawReviews,
+		listId: "reviews",
 		filterDefs: pullFilterDefs,
 		sortOptions: pullSortOptions,
 		defaultSortId: "updated",
-		initialStore: filterStore,
 	});
 
 	if (query.error) throw query.error;
 	if (query.data) {
-		const reviews = applyFilters(rawReviews, filterState);
+		const reviews = applyListView(rawReviews, filterState);
 
 		return (
 			<ListPage
 				title="Reviews"
 				count={reviews.length}
 				scrollRef={scrollContainerRef}
-				toolbar={<FilterBar state={filterState} />}
+				filters={{
+					state: filterState,
+					items: rawReviews,
+					searchPlaceholder: "Search reviews…",
+				}}
 			>
 				{reviews.length === 0 ? (
 					<ListEmpty>
-						{filterState.hasActiveFilters
+						{filterState.activeFilters.length > 0 || filterState.searchQuery
 							? "No reviews match your filters."
 							: "No review requests right now — you're all caught up."}
 					</ListEmpty>
@@ -86,7 +83,7 @@ function ReviewsPage() {
 						count={reviews.length}
 					>
 						{reviews.map((pr) => (
-							<PullRequestRow key={pr.id} pr={pr} scope={scope} />
+							<PullRequestRow key={pr.id} pr={pr} />
 						))}
 					</ListGroup>
 				)}

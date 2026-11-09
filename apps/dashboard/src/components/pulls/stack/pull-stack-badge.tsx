@@ -1,4 +1,4 @@
-import { GitBranchIcon } from "@diffkit/icons";
+import { LayersIcon } from "@diffkit/icons";
 import {
 	Popover,
 	PopoverContent,
@@ -35,10 +35,10 @@ export function PullStackBadge({
 			<PopoverTrigger asChild>
 				<button
 					type="button"
-					className="flex shrink-0 items-center gap-1.5 rounded-md border-[0.5px] bg-surface-1 px-2 py-1 text-xs font-medium text-muted-foreground transition-colors hover:bg-ghost-hover hover:text-foreground"
+					className="flex h-7 shrink-0 items-center gap-1.5 rounded-md bg-button px-2.5 text-xs font-medium text-text-header shadow-button transition-colors hover:bg-button-hover hover:text-foreground data-[state=open]:bg-button-hover"
 					aria-label={`Stacked pull request ${context.position} of ${context.size}`}
 				>
-					<GitBranchIcon size={13} strokeWidth={2} />
+					<LayersIcon size={13} strokeWidth={2} />
 					<span className="hidden sm:inline">Stack</span>
 					<span className="tabular-nums">
 						{context.position}/{context.size}

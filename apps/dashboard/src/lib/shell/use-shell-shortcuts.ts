@@ -7,13 +7,7 @@ import { CREATE_ACTIONS } from "./create-actions";
 import { openRepoPicker, useShellOverlay } from "./shell-overlay";
 import { useStartCreateAction } from "./use-shell-actions";
 
-export function useShellShortcuts({
-	userId,
-	onToggleSidebar,
-}: {
-	userId: string;
-	onToggleSidebar: () => void;
-}) {
+export function useShellShortcuts({ userId }: { userId: string }) {
 	const router = useRouter();
 	const hasMounted = useHasMounted();
 	const overlay = useShellOverlay();
@@ -26,11 +20,6 @@ export function useShellShortcuts({
 	const idle = overlay.kind === "none";
 
 	const shortcuts: ShortcutDefinition[] = [
-		{
-			shortcut: { key: "[" },
-			enabled: idle,
-			onTrigger: onToggleSidebar,
-		},
 		{
 			shortcut: [{ key: "o" }, { key: "r" }],
 			enabled: idle,

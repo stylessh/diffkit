@@ -81,16 +81,18 @@ export function PullDetailHeader({
 
 			<div className="flex flex-col gap-2">
 				{isReviewRequested && (
-					<Callout variant="warning">
-						<CalloutContent>
-							<ReviewsIcon size={15} strokeWidth={2} />
+					<Callout>
+						<CalloutContent className="leading-5">
+							<span className="flex size-4 items-center justify-center text-muted-foreground">
+								<ReviewsIcon size={14} strokeWidth={2} />
+							</span>
 							Your review has been requested
 						</CalloutContent>
 						<CalloutAction>
 							<Link
 								to="/$owner/$repo/review/$pullId"
 								params={{ owner, repo, pullId }}
-								className="inline-flex h-7 items-center gap-1.5 rounded-md bg-button px-2.5 text-xs font-medium text-foreground shadow-button transition-colors hover:bg-button-hover"
+								className="inline-flex h-7 items-center gap-1.5 rounded-md bg-warning px-2.5 text-xs font-semibold text-black/85 transition-[filter] hover:brightness-110"
 							>
 								Review changes
 							</Link>

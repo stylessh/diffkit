@@ -4,7 +4,7 @@ import type * as React from "react";
 import { cn } from "../lib/utils";
 
 const calloutVariants = cva(
-	"flex min-h-11 items-center justify-between gap-3 rounded-lg px-3 py-2 text-[13px] text-text-strong [&_svg]:shrink-0",
+	"flex min-h-11 items-center justify-between gap-3 rounded-lg px-3 py-2 text-[13px] text-text-strong has-[[data-slot=callout-action]]:rounded-[18px] has-[[data-slot=callout-action]]:pr-2 [&_[data-slot=callout-action]>*]:rounded-[10px] [&_svg]:shrink-0",
 	{
 		variants: {
 			variant: {
@@ -28,8 +28,8 @@ function Callout({
 }: React.ComponentProps<"div"> & VariantProps<typeof calloutVariants>) {
 	return (
 		<div
-			data-slot="callout"
 			className={cn(calloutVariants({ variant }), className)}
+			data-slot="callout"
 			{...props}
 		/>
 	);
@@ -38,8 +38,8 @@ function Callout({
 function CalloutContent({ className, ...props }: React.ComponentProps<"div">) {
 	return (
 		<div
-			data-slot="callout-content"
 			className={cn("flex min-w-0 items-center gap-2", className)}
+			data-slot="callout-content"
 			{...props}
 		/>
 	);
@@ -48,8 +48,8 @@ function CalloutContent({ className, ...props }: React.ComponentProps<"div">) {
 function CalloutAction({ className, ...props }: React.ComponentProps<"div">) {
 	return (
 		<div
-			data-slot="callout-action"
 			className={cn("shrink-0", className)}
+			data-slot="callout-action"
 			{...props}
 		/>
 	);

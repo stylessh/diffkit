@@ -25,6 +25,7 @@ import { useCompleteRepoPick } from "#/lib/shell/use-shell-actions";
 import {
 	canPinMoreRepos,
 	isRepoPinned,
+	MAX_PINNED_REPOS,
 	type RepoRef,
 	repoFullName,
 	useWorkspaceRepos,
@@ -42,7 +43,7 @@ function pickerTitle(intent: RepoPickerIntent) {
 		case "open":
 			return "Switch repository";
 		case "pin":
-			return "Pin a repository";
+			return "Pin or unpin a repository";
 		case "create":
 			return `${createActionLabel(intent.action)} in…`;
 	}
@@ -53,7 +54,7 @@ function pickerPlaceholder(intent: RepoPickerIntent) {
 		case "open":
 			return "Switch to repository…";
 		case "pin":
-			return "Pin which repository?";
+			return "Pin or unpin which repository?";
 		case "create":
 			return `${createActionLabel(intent.action)} in which repository?`;
 	}
@@ -77,16 +78,22 @@ function toRow(repo: UserRepoSummary): PickerRow {
 }
 
 function splitRows(
+	intent: RepoPickerIntent,
 	workspace: WorkspaceRepos,
 	repos: UserRepoSummary[] | undefined,
 ) {
-	const recentNames = new Set(
-		workspace.recent.map((repo) => repoFullName(repo).toLowerCase()),
+	const listedAbove = intent.kind === "create" ? [] : workspace.pinned;
+	const aboveNames = new Set(
+		listedAbove.map((repo) => repoFullName(repo).toLowerCase()),
 	);
+	const recent = workspace.recent.filter(
+		(repo) => !aboveNames.has(repoFullName(repo).toLowerCase()),
+	);
+	for (const repo of recent) aboveNames.add(repoFullName(repo).toLowerCase());
 	const all = (repos ?? [])
-		.filter((repo) => !recentNames.has(repo.fullName.toLowerCase()))
+		.filter((repo) => !aboveNames.has(repo.fullName.toLowerCase()))
 		.map(toRow);
-	return { recent: workspace.recent as PickerRow[], all };
+	return { recent: recent as PickerRow[], all };
 }
 
 function RepoRow({
@@ -102,11 +109,12 @@ function RepoRow({
 }) {
 	const fullName = repoFullName(repo);
 	const pinned = intent.kind === "pin" && isRepoPinned(workspace, repo);
+	const pinsFull = intent.kind === "pin" && !canPinMoreRepos(workspace);
 	return (
 		<CommandItem
 			value={fullName}
 			keywords={[repo.owner, repo.name]}
-			disabled={pinned}
+			disabled={pinsFull && !pinned}
 			onSelect={() => onPick(repo)}
 		>
 			<RepoIcon className="size-4 shrink-0 text-muted-foreground" />
@@ -121,6 +129,11 @@ function RepoRow({
 				<span className="flex shrink-0 items-center gap-1 text-[11px] text-muted-foreground">
 					<CheckIcon className="size-3.5" />
 					Pinned
+				</span>
+			) : null}
+			{pinsFull && !pinned ? (
+				<span className="shrink-0 text-[11px] text-muted-foreground">
+					{MAX_PINNED_REPOS} pinned
 				</span>
 			) : null}
 		</CommandItem>
@@ -147,10 +160,9 @@ export function RepoPickerDialog() {
 		enabled: open,
 	});
 	const rows = useMemo(
-		() => splitRows(workspace, reposQuery.data),
-		[workspace, reposQuery.data],
+		() => splitRows(intent, workspace, reposQuery.data),
+		[intent, workspace, reposQuery.data],
 	);
-	const pinsFull = intent.kind === "pin" && !canPinMoreRepos(workspace);
 	const title = pickerTitle(intent);
 
 	const pick = (repo: RepoRef) => {
@@ -175,41 +187,50 @@ export function RepoPickerDialog() {
 				onValueChange={setSearch}
 			/>
 			<CommandList>
-				{pinsFull ? (
-					<p className="px-4 py-6 text-center text-[13px] text-muted-foreground">
-						Unpin a repository first: the sidebar holds up to 12.
-					</p>
-				) : (
-					<>
-						<CommandEmpty>{emptyMessage(reposQuery.status)}</CommandEmpty>
-						{rows.recent.length > 0 ? (
-							<CommandGroup heading="Recent">
-								{rows.recent.map((repo) => (
-									<RepoRow
-										key={repoFullName(repo)}
-										repo={repo}
-										intent={intent}
-										workspace={workspace}
-										onPick={pick}
-									/>
-								))}
-							</CommandGroup>
-						) : null}
-						{rows.all.length > 0 ? (
-							<CommandGroup heading="Your repositories">
-								{rows.all.map((repo) => (
-									<RepoRow
-										key={repoFullName(repo)}
-										repo={repo}
-										intent={intent}
-										workspace={workspace}
-										onPick={pick}
-									/>
-								))}
-							</CommandGroup>
-						) : null}
-					</>
-				)}
+				<CommandEmpty>{emptyMessage(reposQuery.status)}</CommandEmpty>
+				{intent.kind !== "create" && workspace.pinned.length > 0 ? (
+					<CommandGroup
+						heading={
+							intent.kind === "pin" ? "Pinned · select to unpin" : "Pinned"
+						}
+					>
+						{workspace.pinned.map((repo) => (
+							<RepoRow
+								key={repoFullName(repo)}
+								repo={repo}
+								intent={intent}
+								workspace={workspace}
+								onPick={pick}
+							/>
+						))}
+					</CommandGroup>
+				) : null}
+				{rows.recent.length > 0 ? (
+					<CommandGroup heading="Recent">
+						{rows.recent.map((repo) => (
+							<RepoRow
+								key={repoFullName(repo)}
+								repo={repo}
+								intent={intent}
+								workspace={workspace}
+								onPick={pick}
+							/>
+						))}
+					</CommandGroup>
+				) : null}
+				{rows.all.length > 0 ? (
+					<CommandGroup heading="Your repositories">
+						{rows.all.map((repo) => (
+							<RepoRow
+								key={repoFullName(repo)}
+								repo={repo}
+								intent={intent}
+								workspace={workspace}
+								onPick={pick}
+							/>
+						))}
+					</CommandGroup>
+				) : null}
 			</CommandList>
 		</CommandDialog>
 	);

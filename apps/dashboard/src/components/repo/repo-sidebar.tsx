@@ -1,13 +1,4 @@
-import {
-	CodeIcon,
-	GitBranchIcon,
-	GitForkIcon,
-	GlobeIcon,
-	LicenseIcon,
-	LockIcon,
-	StarIcon,
-	ViewIcon,
-} from "@diffkit/icons";
+import { GitBranchIcon, GitForkIcon, StarIcon, ViewIcon } from "@diffkit/icons";
 import { Chip } from "@diffkit/ui/components/chip";
 import {
 	PanelPill,
@@ -31,7 +22,7 @@ import {
 } from "#/lib/github.query";
 import type { RepoOverview } from "#/lib/github.types";
 import { useHasMounted } from "#/lib/use-has-mounted";
-import { HairlineBadge, LabeledRow, ReleaseGlyph } from "./repo-ui";
+import { HairlineBadge, ReleaseGlyph } from "./repo-ui";
 
 function formatCount(n: number): string {
 	if (n >= 1000) return `${(n / 1000).toFixed(1).replace(/\.0$/, "")}k`;
@@ -57,6 +48,10 @@ function LinkRow({
 	);
 }
 
+/**
+ * What a repository is, beside its files: the description, its stats, topics,
+ * the latest release and who builds it.
+ */
 export function RepoSidebar({
 	repo,
 	scope,
@@ -67,68 +62,48 @@ export function RepoSidebar({
 	const params = { owner: repo.owner, repo: repo.name };
 	return (
 		<>
-			<section className="mb-7">
-				<div className="flex h-6 items-center">
-					<h2 className="min-w-0 truncate text-[15px] font-semibold text-foreground">
-						{repo.name}
-					</h2>
-				</div>
-				{repo.description ? (
-					<p className="mt-1 text-[13px] leading-5 font-[450] text-pretty text-muted-foreground">
-						{repo.description}
-					</p>
-				) : null}
-				{repo.isFork && repo.forkParentFullName ? (
-					<p className="mt-1.5 flex min-w-0 items-center gap-1.5 text-[13px] font-[450] text-muted-foreground">
-						<GitForkIcon size={14} strokeWidth={2} className="shrink-0" />
-						Forked from
-						<ForkParentLink fullName={repo.forkParentFullName} />
-					</p>
-				) : null}
-			</section>
+			{repo.description || (repo.isFork && repo.forkParentFullName) ? (
+				<section className="mb-7 flex flex-col gap-1.5">
+					{repo.description ? (
+						<p className="text-[13px] leading-5 font-[450] text-pretty text-text-header">
+							{repo.description}
+						</p>
+					) : null}
+					{repo.isFork && repo.forkParentFullName ? (
+						<p className="flex min-w-0 items-center gap-1.5 text-[13px] font-[450] text-muted-foreground">
+							<GitForkIcon size={14} strokeWidth={2} className="shrink-0" />
+							Forked from
+							<ForkParentLink fullName={repo.forkParentFullName} />
+						</p>
+					) : null}
+				</section>
+			) : null}
 
-			<PanelSection label="Properties">
-				<LabeledRow label="Visibility">
-					<PanelRow
-						icon={
-							repo.isPrivate ? (
-								<LockIcon className="text-muted-foreground" />
-							) : (
-								<GlobeIcon className="text-muted-foreground" />
-							)
-						}
-					>
-						{repo.isPrivate ? "Private" : "Public"}
-					</PanelRow>
-				</LabeledRow>
-				<LabeledRow label="Default branch">
-					<PanelRow
-						icon={
-							<GitBranchIcon
-								strokeWidth={2}
-								className="text-muted-foreground"
-							/>
-						}
-					>
-						<span className="truncate font-mono text-xs font-[450]">
-							{repo.defaultBranch}
-						</span>
-					</PanelRow>
-				</LabeledRow>
-				{repo.language ? (
-					<LabeledRow label="Language">
-						<PanelRow icon={<CodeIcon className="text-muted-foreground" />}>
-							{repo.language}
-						</PanelRow>
-					</LabeledRow>
-				) : null}
-				{repo.license ? (
-					<LabeledRow label="License">
-						<PanelRow icon={<LicenseIcon className="text-muted-foreground" />}>
-							{repo.license}
-						</PanelRow>
-					</LabeledRow>
-				) : null}
+			<PanelSection label="Stats">
+				<PanelRow muted icon={<StarIcon size={14} strokeWidth={2} />}>
+					<span className="tabular-nums">{formatCount(repo.stars)}</span>{" "}
+					{repo.stars === 1 ? "star" : "stars"}
+				</PanelRow>
+				<PanelRow muted icon={<ViewIcon size={14} strokeWidth={2} />}>
+					<span className="tabular-nums">{formatCount(repo.watchers)}</span>{" "}
+					watching
+				</PanelRow>
+				<PanelRow muted icon={<GitForkIcon size={14} strokeWidth={2} />}>
+					<span className="tabular-nums">{formatCount(repo.forks)}</span>{" "}
+					{repo.forks === 1 ? "fork" : "forks"}
+				</PanelRow>
+				<LinkRow icon={<GitBranchIcon size={14} strokeWidth={2} />}>
+					<Link to="/$owner/$repo/branches" params={params}>
+						<span className="tabular-nums">{repo.branchCount}</span>
+						{repo.branchCount === 1 ? "branch" : "branches"}
+					</Link>
+				</LinkRow>
+				<LinkRow icon={<TagIcon size={14} strokeWidth={2} />}>
+					<Link to="/$owner/$repo/tags" params={params}>
+						<span className="tabular-nums">{repo.tagCount}</span>
+						{repo.tagCount === 1 ? "tag" : "tags"}
+					</Link>
+				</LinkRow>
 			</PanelSection>
 
 			{repo.topics.length > 0 ? (
@@ -140,51 +115,6 @@ export function RepoSidebar({
 					</div>
 				</PanelSection>
 			) : null}
-
-			<PanelSection label="Stats">
-				<PanelRow icon={<StarIcon className="text-muted-foreground" />}>
-					<span>
-						<span className="tabular-nums">{formatCount(repo.stars)}</span>{" "}
-						<span className="font-[450] text-muted-foreground">
-							{repo.stars === 1 ? "star" : "stars"}
-						</span>
-					</span>
-				</PanelRow>
-				<PanelRow icon={<ViewIcon className="text-muted-foreground" />}>
-					<span>
-						<span className="tabular-nums">{formatCount(repo.watchers)}</span>{" "}
-						<span className="font-[450] text-muted-foreground">watching</span>
-					</span>
-				</PanelRow>
-				<PanelRow icon={<GitForkIcon className="text-muted-foreground" />}>
-					<span>
-						<span className="tabular-nums">{formatCount(repo.forks)}</span>{" "}
-						<span className="font-[450] text-muted-foreground">
-							{repo.forks === 1 ? "fork" : "forks"}
-						</span>
-					</span>
-				</PanelRow>
-				<LinkRow icon={<GitBranchIcon className="text-muted-foreground" />}>
-					<Link to="/$owner/$repo/branches" params={params}>
-						<span>
-							<span className="tabular-nums">{repo.branchCount}</span>{" "}
-							<span className="font-[450] text-muted-foreground">
-								{repo.branchCount === 1 ? "branch" : "branches"}
-							</span>
-						</span>
-					</Link>
-				</LinkRow>
-				<LinkRow icon={<TagIcon className="text-muted-foreground" />}>
-					<Link to="/$owner/$repo/tags" params={params}>
-						<span>
-							<span className="tabular-nums">{repo.tagCount}</span>{" "}
-							<span className="font-[450] text-muted-foreground">
-								{repo.tagCount === 1 ? "tag" : "tags"}
-							</span>
-						</span>
-					</Link>
-				</LinkRow>
-			</PanelSection>
 
 			<ReleasesSection repo={repo} scope={scope} />
 			<ContributorsSection repo={repo} scope={scope} />
@@ -225,7 +155,9 @@ function ReleasesSection({
 		}),
 		enabled: hasMounted,
 	});
-	const releases = (releasesQuery.data?.releases ?? []).slice(0, 3);
+	const all = releasesQuery.data?.releases ?? [];
+	const latest = all.find((release) => release.isLatest) ?? all[0];
+	const releases = latest ? [latest] : [];
 	if (!releasesQuery.data) return null;
 
 	return (
@@ -251,11 +183,9 @@ function ReleasesSection({
 				releases.map((release) => (
 					<LinkRow
 						key={release.id}
-						icon={<ReleaseGlyph latest={release.isLatest} />}
+						icon={<ReleaseGlyph latest />}
 						after={
-							release.isLatest ? (
-								<HairlineBadge>Latest</HairlineBadge>
-							) : release.isPrerelease ? (
+							release.isPrerelease ? (
 								<HairlineBadge>Pre-release</HairlineBadge>
 							) : null
 						}

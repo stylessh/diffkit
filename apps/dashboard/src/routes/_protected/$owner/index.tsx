@@ -19,6 +19,7 @@ import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
 import { parseAsStringLiteral, useQueryState } from "nuqs";
 import { useEffect, useMemo, useRef } from "react";
+import { DetailActivityHeader } from "#/components/details/detail-activity";
 import { ContributionGraph } from "#/components/profile/contribution-graph";
 import { PinnedRepoCard } from "#/components/profile/pinned-repo-card";
 import { UserActivityFeed } from "#/components/profile/user-activity-feed";
@@ -150,18 +151,10 @@ function ProfilePage() {
 			{/* Banner — contribution graph with aurora overlay */}
 			<div className="relative h-48 overflow-hidden sm:h-56">
 				{contributions ? (
-					<>
-						{/* Contribution graph */}
-						<ContributionGraph
-							calendar={contributions}
-							className="absolute inset-0 opacity-60 dark:opacity-40"
-						/>
-
-						{/* Edge fades */}
-						<div className="pointer-events-none absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-card to-transparent" />
-						<div className="pointer-events-none absolute left-0 top-0 h-full w-48 bg-gradient-to-r from-card to-transparent" />
-						<div className="pointer-events-none absolute right-0 top-0 h-full w-48 bg-gradient-to-l from-card to-transparent" />
-					</>
+					<ContributionGraph
+						calendar={contributions}
+						className="absolute inset-0"
+					/>
 				) : null}
 			</div>
 
@@ -285,10 +278,8 @@ function ProfilePage() {
 							<>
 								{/* Pinned Repos */}
 								{pinnedRepos && pinnedRepos.length > 0 && (
-									<section className="flex flex-col gap-2 pt-6">
-										<h2 className="text-sm font-medium text-muted-foreground">
-											Pinned
-										</h2>
+									<section className="flex flex-col pt-6">
+										<DetailActivityHeader title="Pinned" />
 										<div className="grid grid-cols-2 gap-3">
 											{pinnedRepos.map((repo) => (
 												<PinnedRepoCard key={repo.name} repo={repo} />
@@ -299,19 +290,13 @@ function ProfilePage() {
 
 								{/* Activity */}
 								{activity && activity.length > 0 && (
-									<section className="flex flex-col pt-6">
-										<div className="flex items-center justify-between gap-2 rounded-lg bg-surface-1 px-4 py-2.5">
-											<h2 className="text-xs font-medium">Recent activity</h2>
-											<span className="text-xs tabular-nums text-muted-foreground">
-												{activity.length}
-											</span>
-										</div>
+									<section className="flex flex-col pt-10 pb-16">
+										<DetailActivityHeader title="Activity" />
 										<UserActivityFeed events={activity} />
 										{activityQuery.hasNextPage && (
-											<Button
-												variant="secondary"
-												size="sm"
-												className="mx-auto mt-6 rounded-full"
+											<button
+												type="button"
+												className="mt-2 ml-5 flex h-8 w-fit items-center gap-1.5 rounded-md px-2 text-[13px] font-medium text-muted-foreground transition-colors hover:bg-ghost-hover hover:text-foreground disabled:opacity-60"
 												disabled={activityQuery.isFetchingNextPage}
 												onClick={() => activityQuery.fetchNextPage()}
 											>
@@ -320,8 +305,8 @@ function ProfilePage() {
 												) : (
 													<ChevronDownIcon size={14} strokeWidth={2} />
 												)}
-												Load more
-											</Button>
+												Show older activity
+											</button>
 										)}
 									</section>
 								)}

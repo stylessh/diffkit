@@ -15,7 +15,7 @@ import type {
 	FilterDefinition,
 	FilterOption,
 	SortOption,
-} from "./use-list-filters";
+} from "./filter-model";
 
 type WorkflowRunFilterable = FilterableItem & {
 	status: string;
@@ -113,9 +113,9 @@ const runStatusFilterDef: FilterDefinition = {
 	icon: CircleIcon,
 	extractOptions: () => RUN_STATUS_OPTIONS as FilterOption[],
 	match: (item, values) => values.has(runStatus(asRun(item))),
+	negatable: false,
 };
 
-/** Common GitHub Actions event triggers (static — API does not list them). */
 const EVENT_LABELS: Readonly<Record<string, string>> = {
 	push: "Push",
 	pull_request: "Pull request",
@@ -150,9 +150,9 @@ const runEventFilterDef: FilterDefinition = {
 		}));
 	},
 	match: (item, values) => values.has(asRun(item).event),
+	negatable: false,
 };
 
-/** Build a branch FilterDefinition from a list of branch names (data-driven). */
 export function makeBranchFilterDef(
 	branchNames: readonly string[],
 ): FilterDefinition {
@@ -177,13 +177,14 @@ export function makeBranchFilterDef(
 			const b = asRun(item).headBranch;
 			return b ? values.has(b) : false;
 		},
+		negatable: false,
 	};
 }
 
 export const repoWorkflowRunFilterDefs: FilterDefinition[] = [
 	runStatusFilterDef,
 	runEventFilterDef,
-	authorFilterDef,
+	{ ...authorFilterDef, negatable: false },
 ];
 
 export const workflowRunSortOptions: SortOption[] = [
@@ -207,7 +208,6 @@ export const workflowRunSortOptions: SortOption[] = [
 	},
 ];
 
-/** Map a `status` filter pill value to the GitHub API `status` query parameter. */
 export function deriveApiStatus(
 	values: Set<string>,
 ):

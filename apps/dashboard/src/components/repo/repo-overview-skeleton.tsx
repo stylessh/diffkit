@@ -26,10 +26,10 @@ export function RepoOverviewSkeleton() {
 		>
 			<div className="flex min-w-0 flex-col">
 				<div className="flex items-center gap-1.5">
-					<Skeleton className="h-7 w-24 rounded-full" />
-					<Skeleton className="h-7 w-24 rounded-full" />
-					<Skeleton className="ml-auto h-7 w-44 rounded-full" />
-					<Skeleton className="h-7 w-20 rounded-full" />
+					<Skeleton className="h-7 w-24 rounded-md" />
+					<Skeleton className="h-7 w-24 rounded-md" />
+					<Skeleton className="ml-auto h-7 w-44 rounded-md" />
+					<Skeleton className="h-7 w-20 rounded-md" />
 				</div>
 				<RepoCard className="-mx-3 mt-4">
 					<RepoCardHead>

@@ -91,6 +91,45 @@ export function DiffToolbar({
 	);
 }
 
+/** Files or commits, as a compact segmented switch for the review page's tab row. */
+export function DiffViewSwitch({
+	view,
+	onViewChange,
+	fileCount,
+	commitCount,
+}: {
+	view: DiffView;
+	onViewChange: (view: DiffView) => void;
+	fileCount: number;
+	commitCount: number;
+}) {
+	const option = (id: DiffView, label: string, count: number) => (
+		<button
+			type="button"
+			aria-pressed={view === id}
+			onClick={() => onViewChange(id)}
+			className={cn(
+				"flex h-6 items-center gap-1.5 rounded-[5px] px-2 text-xs font-medium transition-colors",
+				view === id
+					? "bg-tab-selected text-foreground shadow-tab-selected"
+					: "text-muted-foreground hover:text-foreground",
+			)}
+		>
+			{label}
+			<span className="tabular-nums text-icon-faint">{count}</span>
+		</button>
+	);
+	return (
+		<fieldset
+			aria-label="Show"
+			className="m-0 flex h-7 min-w-0 items-center gap-0.5 rounded-md border-0 bg-group p-0.5"
+		>
+			{option("files", "Files", fileCount)}
+			{option("commits", "Commits", commitCount)}
+		</fieldset>
+	);
+}
+
 function DiffToolbarTab({
 	active,
 	onClick,
@@ -106,7 +145,7 @@ function DiffToolbarTab({
 			aria-pressed={active}
 			onClick={onClick}
 			className={cn(
-				"flex h-6 items-center gap-1.5 rounded-full px-1.5 transition-colors [&_svg]:shrink-0",
+				"flex h-6 items-center gap-1.5 rounded-md px-1.5 transition-colors [&_svg]:shrink-0",
 				active
 					? "font-[450] text-text-header"
 					: "font-medium text-muted-foreground hover:text-text-header",
@@ -117,16 +156,18 @@ function DiffToolbarTab({
 	);
 }
 
-function DiffDisplayOptions({
+export function DiffDisplayOptions({
 	diffStyle,
 	onDiffStyleChange,
 	wrapLines,
 	onWrapLinesChange,
+	raised = false,
 }: {
 	diffStyle: DiffStyle;
 	onDiffStyleChange: (style: DiffStyle) => void;
 	wrapLines: boolean;
 	onWrapLinesChange: (wrap: boolean) => void;
+	raised?: boolean;
 }) {
 	const wrapId = useId();
 	const side = (id: DiffStyle, label: string, glyph: ReactNode) => (
@@ -135,7 +176,7 @@ function DiffDisplayOptions({
 			aria-pressed={diffStyle === id}
 			onClick={() => onDiffStyleChange(id)}
 			className={cn(
-				"flex h-[27px] flex-1 items-center justify-center gap-1.5 rounded-full text-[13px] font-medium transition-colors",
+				"flex h-[27px] flex-1 items-center justify-center gap-1.5 rounded-md text-[13px] font-medium transition-colors",
 				diffStyle === id
 					? "bg-tab-selected text-foreground shadow-tab-selected"
 					: "bg-button text-muted-foreground shadow-button hover:bg-button-hover hover:text-foreground",
@@ -151,7 +192,8 @@ function DiffDisplayOptions({
 			<PopoverTrigger asChild>
 				<PageIconButton
 					type="button"
-					className="size-6"
+					raised={raised}
+					className={raised ? undefined : "size-6"}
 					aria-label="Display options"
 					title="Display options"
 				>

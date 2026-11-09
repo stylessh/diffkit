@@ -1,49 +1,39 @@
 // @vitest-environment jsdom
 import { afterEach, describe, expect, it } from "vitest";
 import {
-	parseFilterCookie,
-	readFilterCookieClient,
-	writeFilterCookie,
+	parseRememberedViews,
+	readRememberedView,
+	rememberView,
 } from "./filter-cookie";
-
-const store = {
-	pulls: {
-		searchQuery: "fix",
-		activeFilters: [{ fieldId: "repo", values: ["a/b"] }],
-		sortId: "updated",
-	},
-};
 
 afterEach(() => {
 	// biome-ignore lint/suspicious/noDocumentCookie: test teardown
 	document.cookie = "diffkit-filters=; path=/; max-age=0";
 });
 
-describe("parseFilterCookie", () => {
-	it("reads the filter store among other cookies", () => {
-		const header = `a=1; diffkit-filters=${encodeURIComponent(JSON.stringify(store))}; b=2`;
-		expect(parseFilterCookie(header)).toEqual(store);
+describe("remembered list views", () => {
+	it("ignores corrupted cookies and entries from the old cookie shape", () => {
+		const legacy = {
+			pulls: { searchQuery: "fix", activeFilters: [], sortId: "updated" },
+			issues: { filters: "status:open", sort: 7 },
+		};
+		const header = `a=1; diffkit-filters=${encodeURIComponent(JSON.stringify(legacy))}`;
+		expect(parseRememberedViews(header)).toEqual({
+			issues: { filters: "status:open" },
+		});
+		expect(parseRememberedViews("diffkit-filters=%E0%A4%A")).toEqual({});
 	});
 
-	it("keeps '=' inside the value", () => {
-		const value = { pulls: { ...store.pulls, searchQuery: "a=b" } };
-		const header = `diffkit-filters=${encodeURIComponent(JSON.stringify(value))}`;
-		expect(parseFilterCookie(header)).toEqual(value);
-	});
+	it("keeps one view per list and forgets a list whose view was cleared", () => {
+		rememberView("pulls", { filters: "author:nova", sort: "created" });
+		rememberView("issues", { filters: "label:bug" });
+		expect(readRememberedView("pulls")).toEqual({
+			filters: "author:nova",
+			sort: "created",
+		});
 
-	it("falls back to defaults for missing, corrupted or non-object cookies", () => {
-		expect(parseFilterCookie("")).toEqual({});
-		expect(parseFilterCookie(undefined)).toEqual({});
-		expect(parseFilterCookie("diffkit-filters=%E0%A4%A")).toEqual({});
-		expect(parseFilterCookie("diffkit-filters=not-json")).toEqual({});
-		expect(parseFilterCookie("diffkit-filters=%5B1%5D")).toEqual({});
-		expect(parseFilterCookie("other-diffkit-filters=%7B%7D")).toEqual({});
-	});
-});
-
-describe("readFilterCookieClient", () => {
-	it("round-trips what writeFilterCookie stores, synchronously", () => {
-		writeFilterCookie(store);
-		expect(readFilterCookieClient()).toEqual(store);
+		rememberView("pulls", {});
+		expect(readRememberedView("pulls")).toBeNull();
+		expect(readRememberedView("issues")).toEqual({ filters: "label:bug" });
 	});
 });

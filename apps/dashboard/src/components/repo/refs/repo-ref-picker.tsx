@@ -120,7 +120,7 @@ export function RepoRefPicker({
 							onClick={() => setKind(value)}
 							aria-pressed={kind === value}
 							className={cn(
-								"flex h-7 flex-1 items-center justify-center gap-1.5 rounded-full text-xs font-medium transition-colors",
+								"flex h-7 flex-1 items-center justify-center gap-1.5 rounded-md text-xs font-medium transition-colors",
 								kind === value
 									? "bg-tab-selected text-foreground shadow-tab-selected"
 									: "text-muted-foreground hover:bg-ghost-hover hover:text-foreground",

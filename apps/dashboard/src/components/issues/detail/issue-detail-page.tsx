@@ -5,7 +5,6 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { getRouteApi } from "@tanstack/react-router";
 import { useMemo } from "react";
 import {
-	DetailPageHeader,
 	DetailPageLayout,
 	DetailPageSkeletonLayout,
 	DetailPageTitle,
@@ -114,18 +113,6 @@ export function IssueDetailContent({
 
 	return (
 		<DetailPageLayout
-			header={
-				<DetailPageHeader
-					collectionHref="/issues"
-					collectionLabel="Issues"
-					owner={owner}
-					repo={repo}
-					number={issue.number}
-					icon={IssuesIcon}
-					iconClassName={getIssueStateConfig(issue).color}
-					title={issue.title}
-				/>
-			}
 			main={
 				<>
 					<IssueDetailHeader
@@ -161,7 +148,6 @@ export function IssueDetailContent({
 					repo={repo}
 					issueNumber={issueNumber}
 					scope={scope}
-					comments={comments ?? []}
 				/>
 			}
 		/>

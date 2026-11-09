@@ -13,13 +13,11 @@ import {
 	useQueryStates,
 } from "nuqs";
 import { useCallback, useMemo } from "react";
+import { ToolbarRow, ToolbarSearchField } from "#/components/filters";
 import { SidePanelPortal } from "#/components/layouts/dashboard-side-panel";
 import { Pagination } from "#/components/pagination";
 import { RepoActivityCards } from "#/components/repo/repo-activity-cards";
-import {
-	RepoListSearchInput,
-	RepoPageHeader,
-} from "#/components/repo/repo-page-header";
+import { RepoPageHeader } from "#/components/repo/repo-page-header";
 import {
 	groupBranchesIntoSections,
 	sortBranchesByRecency,
@@ -169,11 +167,19 @@ export function RepoBranchesPage({
 	};
 
 	const toolbar = (
-		<>
+		<ToolbarRow
+			search={
+				<ToolbarSearchField
+					value={searchInput}
+					onChange={setSearchInput}
+					placeholder="Search branches…"
+				/>
+			}
+		>
 			<div
 				role="tablist"
 				aria-label="Branch views"
-				className="flex items-center gap-[7px] p-px"
+				className="flex shrink-0 items-center gap-[7px] p-px"
 			>
 				{VIEWS.map((value) => (
 					<button
@@ -188,13 +194,7 @@ export function RepoBranchesPage({
 					</button>
 				))}
 			</div>
-			<RepoListSearchInput
-				value={searchInput}
-				onChange={setSearchInput}
-				placeholder="Search branches…"
-				className="w-full sm:ml-auto sm:w-60"
-			/>
-		</>
+		</ToolbarRow>
 	);
 
 	return (

@@ -1,4 +1,5 @@
 import { Toaster } from "@diffkit/ui/components/sonner";
+import { TooltipProvider } from "@diffkit/ui/components/tooltip";
 import { TanStackDevtools } from "@tanstack/react-devtools";
 import type { QueryClient } from "@tanstack/react-query";
 import {
@@ -12,6 +13,7 @@ import { ThemeProvider } from "next-themes";
 import { NuqsAdapter } from "nuqs/adapters/tanstack-router";
 import { lazy, Suspense } from "react";
 import { ErrorScreen } from "#/components/layouts/error-screen";
+import { COLOR_THEME_BOOT_SCRIPT } from "#/lib/color-themes";
 import { buildSeo, buildWebSiteSchema } from "#/lib/seo";
 import { siteConfig } from "#/lib/site-config";
 
@@ -54,6 +56,7 @@ export const Route = createRootRouteWithContext<{
 				{ rel: "stylesheet", href: appCss },
 			],
 			scripts: [
+				{ children: COLOR_THEME_BOOT_SCRIPT },
 				{
 					type: "application/ld+json",
 					children: JSON.stringify(
@@ -108,7 +111,9 @@ function RootComponent() {
 	return (
 		<ThemeProvider attribute="class" defaultTheme="system" enableSystem>
 			<NuqsAdapter>
-				<Outlet />
+				<TooltipProvider>
+					<Outlet />
+				</TooltipProvider>
 				<Toaster />
 			</NuqsAdapter>
 		</ThemeProvider>

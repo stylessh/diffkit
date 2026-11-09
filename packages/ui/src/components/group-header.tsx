@@ -1,3 +1,4 @@
+import { ChevronRightIcon } from "@diffkit/icons";
 import type * as React from "react";
 
 import { cn } from "../lib/utils";
@@ -23,34 +24,29 @@ function GroupHeader({
 }) {
 	return (
 		<div
-			data-slot="group-header"
 			className={cn(
 				"flex h-9 items-center rounded-lg bg-group pr-2",
 				className,
 			)}
+			data-slot="group-header"
 			{...props}
 		>
 			{onToggle ? (
 				<button
-					type="button"
-					onClick={onToggle}
 					aria-expanded={open}
 					aria-label={`${open ? "Collapse" : "Expand"} ${label ?? (typeof title === "string" ? title : "group")}`}
 					className="ml-1.5 flex size-6 shrink-0 items-center justify-center rounded-md text-icon-faint transition-colors hover:bg-ghost-hover hover:text-muted-foreground"
+					onClick={onToggle}
+					type="button"
 				>
-					<svg
-						width="16"
-						height="16"
-						viewBox="0 0 16 16"
-						fill="currentColor"
-						aria-hidden="true"
+					<ChevronRightIcon
 						className={cn(
 							"transition-transform duration-150",
 							open && "rotate-90",
 						)}
-					>
-						<path d="M6.752 10.624c-.333.194-.752-.046-.752-.432V5.808c0-.386.419-.626.752-.432l3.758 2.192a.5.5 0 0 1 0 .864l-3.758 2.192Z" />
-					</svg>
+						size={14}
+						strokeWidth={2.5}
+					/>
 				</button>
 			) : (
 				<span aria-hidden className="ml-1.5 size-6 shrink-0" />
@@ -60,12 +56,12 @@ function GroupHeader({
 			</span>
 			<h2
 				aria-label={label}
-				className="ml-2.5 min-w-0 truncate text-[13px] font-medium text-text-strong"
+				className="ml-2.5 min-w-0 truncate font-medium text-[13px] text-text-strong"
 			>
 				{title}
 			</h2>
 			{count !== undefined ? (
-				<span className="ml-2 text-[13px] font-[450] tabular-nums text-muted-foreground">
+				<span className="ml-2 font-[450] text-[13px] text-muted-foreground tabular-nums">
 					{count}
 				</span>
 			) : null}

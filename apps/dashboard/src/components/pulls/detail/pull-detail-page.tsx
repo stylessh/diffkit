@@ -10,12 +10,12 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { getRouteApi, Link } from "@tanstack/react-router";
 import { useMemo } from "react";
 import {
-	DetailPageHeader,
 	DetailPageLayout,
 	DetailPageSkeletonLayout,
 	DetailPageTitle,
 	StaggerItem,
 } from "#/components/details/detail-page";
+import { PullStackSection } from "#/components/pulls/stack/pull-stack-section";
 import {
 	githubPullPageQueryOptions,
 	githubPullReviewCommentsQueryOptions,
@@ -140,29 +140,8 @@ export function PullDetailContent({
 	if (!pr)
 		return <PullDetailPageSkeleton owner={owner} repo={repo} seed={seed} />;
 
-	const stateConfig = getPrStateConfig(pr);
-
 	return (
 		<DetailPageLayout
-			header={
-				<DetailPageHeader
-					collectionHref="/pulls"
-					collectionLabel="Pull Requests"
-					owner={owner}
-					repo={repo}
-					number={pr.number}
-					icon={stateConfig.icon}
-					iconClassName={stateConfig.color}
-					title={pr.title}
-					titleSuffix={
-						<LineCounts
-							additions={pr.additions}
-							deletions={pr.deletions}
-							className="text-[13px]"
-						/>
-					}
-				/>
-			}
 			tabs={
 				<ViewTabs label="Pull request views">
 					<ViewTab asChild>
@@ -181,6 +160,11 @@ export function PullDetailContent({
 						>
 							Files changed
 							<ViewTabCount>{pr.changedFiles}</ViewTabCount>
+							<LineCounts
+								additions={pr.additions}
+								deletions={pr.deletions}
+								className="ml-1.5 text-xs max-md:hidden"
+							/>
 						</Link>
 					</ViewTab>
 				</ViewTabs>
@@ -204,6 +188,10 @@ export function PullDetailContent({
 						scope={scope}
 						viewerLogin={viewer?.login}
 					/>
+
+					{pr.isMerged || pr.state === "closed" ? (
+						<PullStackSection pr={pr} owner={owner} repo={repo} scope={scope} />
+					) : null}
 
 					<PullDetailActivitySection
 						comments={comments}
@@ -232,8 +220,6 @@ export function PullDetailContent({
 					repo={repo}
 					pullNumber={pullNumber}
 					scope={scope}
-					comments={comments ?? []}
-					commits={commits ?? []}
 				/>
 			}
 		/>

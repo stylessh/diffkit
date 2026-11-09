@@ -10,13 +10,14 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useQueryState } from "nuqs";
 import { createElement, useEffect, useMemo, useRef } from "react";
 import {
+	apiFilterValues,
 	type FilterableItem,
-	FilterBar,
 	type FilterDefinition,
-	readFilterCookieClient,
+	parseFilterString,
 	type SortOption,
 	useListFilters,
 } from "#/components/filters";
+import { readRememberedView } from "#/components/filters/filter-cookie";
 import { DashboardContentLoading } from "#/components/layouts/dashboard-content-loading";
 import { RepositoryRow } from "#/components/repo/repository-row";
 import { ListEmpty, ListPage } from "#/components/shared/list-page";
@@ -37,33 +38,41 @@ import { useDebouncedValue } from "#/lib/use-debounced-value";
 
 export const Route = createFileRoute("/_protected/repos")({
 	ssr: false,
-	validateSearch: (raw: Record<string, unknown>): { page?: number } => {
-		const pageRaw = raw.page;
-		if (
-			typeof pageRaw === "number" &&
-			Number.isFinite(pageRaw) &&
-			pageRaw > 0
-		) {
-			return { page: Math.floor(pageRaw) };
+	validateSearch: (raw: Record<string, unknown>): ReposSearch => {
+		const search: ReposSearch = {};
+		for (const key of ["q", "filters", "sort"] as const) {
+			const value = raw[key];
+			if (typeof value === "string" && value) search[key] = value;
 		}
-		if (typeof pageRaw === "string" && pageRaw.length > 0) {
-			const n = Number.parseInt(pageRaw, 10);
-			if (Number.isFinite(n) && n > 0) return { page: n };
-		}
-		return {};
+		const page =
+			typeof raw.page === "number"
+				? raw.page
+				: Number.parseInt(String(raw.page ?? ""), 10);
+		if (Number.isFinite(page) && page > 0) search.page = Math.floor(page);
+		return search;
 	},
 	loader: ({ context, location }) => {
 		const scope = { userId: context.user.id };
-		const filterStore = readFilterCookieClient();
-		const search = location.search as { page?: number };
-		const urlPage =
-			typeof search.page === "number" && search.page > 0 ? search.page : 1;
-		const hubPrefetchInput = buildReposHubPrefetchInput(filterStore, urlPage);
+		const search = location.search as ReposSearch;
+		const remembered =
+			search.q || search.filters || search.sort
+				? null
+				: readRememberedView(REPOS_LIST_ID);
+		const filters = parseFilterString(
+			search.filters ?? remembered?.filters ?? null,
+		);
+		const hubPrefetchInput = buildReposHubPrefetchInput(
+			{
+				searchQuery: search.q ?? "",
+				visibility: [...apiFilterValues(filters, "visibility")],
+				sortId: search.sort ?? remembered?.sort ?? "updated",
+			},
+			search.page ?? 1,
+		);
 		void context.queryClient.prefetchQuery(
 			githubReposHubQueryOptions(scope, hubPrefetchInput),
 		);
 		void context.queryClient.prefetchQuery(githubUserReposQueryOptions(scope));
-		return { filterStore };
 	},
 	pendingComponent: DashboardContentLoading,
 	head: ({ match }) =>
@@ -75,6 +84,15 @@ export const Route = createFileRoute("/_protected/repos")({
 		}),
 	component: RepositoriesPage,
 });
+
+const REPOS_LIST_ID = "repos";
+
+type ReposSearch = {
+	q?: string;
+	filters?: string;
+	sort?: string;
+	page?: number;
+};
 
 type RepositoryFilterItem = FilterableItem & {
 	repo: UserRepoSummary;
@@ -106,6 +124,7 @@ const repositoryFilterDefs: FilterDefinition[] = [
 		],
 		match: (item, values) =>
 			values.has(asRepo(item).isPrivate ? "private" : "public"),
+		negatable: false,
 	},
 ];
 
@@ -132,29 +151,26 @@ const repositorySortOptions: SortOption[] = [
 	},
 ];
 
-const EMPTY_REPO_ITEMS: RepositoryFilterItem[] = [];
+const NO_ITEMS: RepositoryFilterItem[] = [];
 
 function RepositoriesPage() {
-	const { filterStore } = Route.useLoaderData();
 	const { user } = Route.useRouteContext();
 	const scope = useMemo(() => ({ userId: user.id }), [user.id]);
 	const [page, setPage] = useQueryState("page", repoListPageQueryParser);
 
 	const filterState = useListFilters({
-		pageId: "repos",
-		items: EMPTY_REPO_ITEMS,
+		listId: REPOS_LIST_ID,
 		filterDefs: repositoryFilterDefs,
 		sortOptions: repositorySortOptions,
 		defaultSortId: "updated",
-		initialStore: filterStore,
 	});
 
 	const debouncedSearch = useDebouncedValue(filterState.searchQuery, 300);
 
-	const visibilityValues = useMemo(() => {
-		const f = filterState.activeFilters.find((x) => x.fieldId === "visibility");
-		return f ? [...f.values].sort() : [];
-	}, [filterState.activeFilters]);
+	const visibilityValues = useMemo(
+		() => [...apiFilterValues(filterState.activeFilters, "visibility")].sort(),
+		[filterState.activeFilters],
+	);
 
 	const limit = (page ?? 1) * REPO_LIST_PAGE_SIZE;
 
@@ -215,21 +231,11 @@ function RepositoriesPage() {
 			title="Repositories"
 			count={totals.all}
 			className="overflow-stable"
-			actions={
-				<span className="hidden items-center gap-3 pr-2 text-xs tabular-nums sm:flex">
-					<span className="flex items-center gap-1.5">
-						<ViewIcon size={13} strokeWidth={2} />
-						{totals.public} public
-					</span>
-					<span className="flex items-center gap-1.5">
-						<LockIcon size={13} strokeWidth={2} />
-						{totals.private} private
-					</span>
-				</span>
-			}
-			toolbar={
-				<FilterBar state={filterState} searchPlaceholder="Search by title…" />
-			}
+			filters={{
+				state: filterState,
+				items: NO_ITEMS,
+				searchPlaceholder: "Search repositories…",
+			}}
 		>
 			{totals.all === 0 ? (
 				<ListEmpty>No repositories found.</ListEmpty>
@@ -243,7 +249,7 @@ function RepositoriesPage() {
 								key={repo.id}
 								style={{
 									contentVisibility: "auto",
-									containIntrinsicSize: "auto 72px",
+									containIntrinsicSize: "auto 44px",
 								}}
 							>
 								<RepositoryRow repo={repo} scope={scope} />
@@ -254,7 +260,7 @@ function RepositoriesPage() {
 						<div className="flex justify-center pt-4">
 							<Button
 								type="button"
-								variant="pill"
+								variant="outline"
 								size="sm"
 								onClick={() => {
 									void setPage(safePage + 1);

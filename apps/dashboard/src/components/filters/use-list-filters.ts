@@ -1,258 +1,174 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import type { SerializedFilterStore } from "./filter-cookie";
-import { readFilterCookieClient, writeFilterCookie } from "./filter-cookie";
+import { parseAsInteger, parseAsString, useQueryStates } from "nuqs";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import {
+	type RememberedView,
+	readRememberedView,
+	rememberView,
+} from "./filter-cookie";
+import {
+	type ActiveFilter,
+	type FilterDefinition,
+	type FilterOperator,
+	parseFilterString,
+	type SortOption,
+	serializeFilters,
+	withOperator,
+	withoutField,
+	withValueToggled,
+} from "./filter-model";
 
-// ── Types ──────────────────────────────────────────────────────────────
-
-export type FilterDefinition = {
-	id: string;
-	label: string;
-	icon: React.ComponentType<{ size?: number; strokeWidth?: number }>;
-	/** Extract all possible values from the full item list */
-	extractOptions: (items: FilterableItem[]) => FilterOption[];
-	/** Test whether an item matches a set of selected values */
-	match: (item: FilterableItem, values: Set<string>) => boolean;
+export const listViewParsers = {
+	q: parseAsString
+		.withDefault("")
+		.withOptions({ history: "replace", throttleMs: 150 }),
+	filters: parseAsString.withOptions({ history: "push" }),
+	sort: parseAsString.withOptions({ history: "push" }),
+	page: parseAsInteger.withDefault(1).withOptions({ history: "push" }),
 };
 
-export type FilterOption = {
-	value: string;
-	label: string;
-	icon?: React.ReactNode;
-};
+type Restoration = { kind: "none" } | { kind: "pending"; view: RememberedView };
 
-export type ActiveFilter = {
-	fieldId: string;
-	values: Set<string>;
-};
-
-export type SortOption = {
-	id: string;
-	label: string;
-	compare: (a: FilterableItem, b: FilterableItem) => number;
-};
-
-export type FilterableItem = {
-	id: number;
-	title: string;
-	updatedAt: string;
-	createdAt: string;
-	comments: number;
-	author: { login: string; avatarUrl: string } | null;
-	repository: { fullName: string };
-	state: string;
-	[key: string]: unknown;
-};
-
-// ── Deserialize from cookie store ──────────────────────────────────────
-
-function readPageState(
-	store: SerializedFilterStore,
-	pageId: string,
-	defaultSortId: string,
-): { searchQuery: string; activeFilters: ActiveFilter[]; sortId: string } {
-	const page = store[pageId];
-	if (!page || typeof page !== "object") {
-		return { searchQuery: "", activeFilters: [], sortId: defaultSortId };
-	}
-
-	const searchQuery =
-		typeof page.searchQuery === "string" ? page.searchQuery : "";
-	const sortId = typeof page.sortId === "string" ? page.sortId : defaultSortId;
-
-	let activeFilters: ActiveFilter[] = [];
-	if (Array.isArray(page.activeFilters)) {
-		activeFilters = page.activeFilters
-			.filter(
-				(f): f is { fieldId: string; values: string[] } =>
-					typeof f === "object" &&
-					f !== null &&
-					typeof f.fieldId === "string" &&
-					Array.isArray(f.values) &&
-					f.values.every((v: unknown) => typeof v === "string"),
-			)
-			.map((f) => ({ fieldId: f.fieldId, values: new Set(f.values) }));
-	}
-
-	return { searchQuery, activeFilters, sortId };
+function initialRestoration(
+	listId: string,
+	params: { filters: string | null; sort: string | null; q: string },
+): Restoration {
+	if (params.filters || params.sort || params.q) return { kind: "none" };
+	if (typeof document === "undefined") return { kind: "none" };
+	const view = readRememberedView(listId);
+	return view ? { kind: "pending", view } : { kind: "none" };
 }
 
-function writePageState(
-	pageId: string,
-	state: { searchQuery: string; activeFilters: ActiveFilter[]; sortId: string },
-) {
-	const store = readFilterCookieClient();
-	store[pageId] = {
-		searchQuery: state.searchQuery,
-		activeFilters: state.activeFilters.map((f) => ({
-			fieldId: f.fieldId,
-			values: [...f.values],
-		})),
-		sortId: state.sortId,
-	};
-	writeFilterCookie(store);
-}
-
-// ── Hook ───────────────────────────────────────────────────────────────
-
-export function useListFilters<T extends FilterableItem>({
-	pageId,
-	items,
+/**
+ * One list's search, filters and sort. The URL is the source of truth; the
+ * filter cookie only remembers the last filters and sort per list, restored
+ * when the list is opened without any.
+ */
+export function useListFilters({
+	listId,
 	filterDefs,
 	sortOptions,
 	defaultSortId,
-	initialStore,
 }: {
-	/** Unique key for this page (e.g. "pulls", "issues", "reviews") */
-	pageId: string;
-	/** All items (used to extract filter options) */
-	items: T[];
+	listId: string;
 	filterDefs: FilterDefinition[];
 	sortOptions: SortOption[];
 	defaultSortId: string;
-	/** Pre-read cookie store from the loader (avoids flash) */
-	initialStore?: SerializedFilterStore;
 }) {
-	const [state, setState] = useState(() =>
-		readPageState(initialStore ?? {}, pageId, defaultSortId),
+	const [params, setParams] = useQueryStates(listViewParsers);
+	const [restoration, setRestoration] = useState<Restoration>(() =>
+		initialRestoration(listId, params),
 	);
 
-	// Validate sortId against available options
-	const sortId = sortOptions.some((o) => o.id === state.sortId)
-		? state.sortId
-		: defaultSortId;
-
-	// Persist to cookie on change
-	const isInitial = useRef(true);
 	useEffect(() => {
-		if (isInitial.current) {
-			isInitial.current = false;
-			return;
-		}
-		writePageState(pageId, state);
-	}, [pageId, state]);
+		if (restoration.kind !== "pending") return;
+		void setParams(
+			{
+				filters: restoration.view.filters ?? null,
+				sort: restoration.view.sort ?? null,
+			},
+			{ history: "replace" },
+		);
+		setRestoration({ kind: "none" });
+	}, [restoration, setParams]);
 
-	const availableOptions = useMemo(() => {
-		const map = new Map<string, FilterOption[]>();
-		for (const def of filterDefs) {
-			map.set(def.id, def.extractOptions(items));
-		}
-		return map;
-	}, [items, filterDefs]);
+	const rawFilters =
+		restoration.kind === "pending"
+			? (restoration.view.filters ?? null)
+			: params.filters;
+	const rawSort =
+		restoration.kind === "pending"
+			? (restoration.view.sort ?? null)
+			: params.sort;
 
-	const setSearchQuery = useCallback((searchQuery: string) => {
-		setState((prev) => ({ ...prev, searchQuery }));
-	}, []);
+	const knownFieldIds = useMemo(
+		() => new Set(filterDefs.map((def) => def.id)),
+		[filterDefs],
+	);
+	const activeFilters = useMemo(
+		() =>
+			parseFilterString(rawFilters).filter((filter) =>
+				knownFieldIds.has(filter.fieldId),
+			),
+		[rawFilters, knownFieldIds],
+	);
+	const sortId =
+		rawSort && sortOptions.some((option) => option.id === rawSort)
+			? rawSort
+			: defaultSortId;
 
-	const setSortId = useCallback((sortId: string) => {
-		setState((prev) => ({ ...prev, sortId }));
-	}, []);
+	const commitFilters = useCallback(
+		(next: ActiveFilter[]) => {
+			const filters = serializeFilters(next);
+			void setParams({ filters, page: null });
+			rememberView(listId, {
+				filters: filters ?? undefined,
+				sort: rawSort ?? undefined,
+			});
+		},
+		[listId, rawSort, setParams],
+	);
 
-	const addFilter = useCallback((fieldId: string, value: string) => {
-		setState((prev) => {
-			const existing = prev.activeFilters.find((f) => f.fieldId === fieldId);
-			if (existing) {
-				return {
-					...prev,
-					activeFilters: prev.activeFilters.map((f) =>
-						f.fieldId === fieldId
-							? { ...f, values: new Set([...f.values, value]) }
-							: f,
-					),
-				};
-			}
-			return {
-				...prev,
-				activeFilters: [
-					...prev.activeFilters,
-					{ fieldId, values: new Set([value]) },
-				],
-			};
-		});
-	}, []);
+	const setSortId = useCallback(
+		(next: string) => {
+			const sort = next === defaultSortId ? null : next;
+			void setParams({ sort, page: null });
+			rememberView(listId, {
+				filters: rawFilters ?? undefined,
+				sort: sort ?? undefined,
+			});
+		},
+		[listId, defaultSortId, rawFilters, setParams],
+	);
 
-	const removeFilterValue = useCallback((fieldId: string, value: string) => {
-		setState((prev) => ({
-			...prev,
-			activeFilters: prev.activeFilters
-				.map((f) => {
-					if (f.fieldId !== fieldId) return f;
-					const next = new Set(f.values);
-					next.delete(value);
-					return { ...f, values: next };
-				})
-				.filter((f) => f.values.size > 0),
-		}));
-	}, []);
+	const setSearchQuery = useCallback(
+		(q: string) => {
+			void setParams({ q: q || null, page: null });
+		},
+		[setParams],
+	);
 
-	const removeFilter = useCallback((fieldId: string) => {
-		setState((prev) => ({
-			...prev,
-			activeFilters: prev.activeFilters.filter((f) => f.fieldId !== fieldId),
-		}));
-	}, []);
-
+	const toggleValue = useCallback(
+		(fieldId: string, value: string) =>
+			commitFilters(withValueToggled(activeFilters, fieldId, value)),
+		[activeFilters, commitFilters],
+	);
+	const setOperator = useCallback(
+		(fieldId: string, operator: FilterOperator) =>
+			commitFilters(withOperator(activeFilters, fieldId, operator)),
+		[activeFilters, commitFilters],
+	);
+	const removeFilter = useCallback(
+		(fieldId: string) => commitFilters(withoutField(activeFilters, fieldId)),
+		[activeFilters, commitFilters],
+	);
 	const clearAllFilters = useCallback(() => {
-		setState((prev) => ({
-			...prev,
-			searchQuery: "",
-			activeFilters: [],
-		}));
-	}, []);
+		void setParams({ filters: null, page: null });
+		rememberView(listId, { sort: rawSort ?? undefined });
+	}, [listId, rawSort, setParams]);
 
-	const hasActiveFilters =
-		state.activeFilters.length > 0 || state.searchQuery.length > 0;
+	const setPage = useCallback(
+		(page: number) => {
+			void setParams({ page: page <= 1 ? null : page });
+		},
+		[setParams],
+	);
 
 	return {
-		searchQuery: state.searchQuery,
+		listId,
+		searchQuery: params.q,
 		setSearchQuery,
-		activeFilters: state.activeFilters,
-		sortId,
-		setSortId,
-		availableOptions,
-		addFilter,
-		removeFilterValue,
+		activeFilters,
+		toggleValue,
+		setOperator,
 		removeFilter,
 		clearAllFilters,
-		hasActiveFilters,
-		sortOptions,
+		sortId,
+		setSortId,
 		filterDefs,
+		sortOptions,
+		page: params.page,
+		setPage,
 	};
 }
 
-export type ListFilterState<T extends FilterableItem> = ReturnType<
-	typeof useListFilters<T>
->;
-
-/** Apply current filter state to an array of items */
-export function applyFilters<T extends FilterableItem>(
-	items: T[],
-	state: ListFilterState<T>,
-): T[] {
-	const query = state.searchQuery.toLowerCase().trim();
-	const sortFn =
-		state.sortOptions.find((s) => s.id === state.sortId)?.compare ??
-		state.sortOptions[0].compare;
-
-	let result: T[] = items;
-
-	// Text search
-	if (query) {
-		result = result.filter(
-			(item) =>
-				item.title.toLowerCase().includes(query) ||
-				item.repository.fullName.toLowerCase().includes(query) ||
-				(item.author?.login.toLowerCase().includes(query) ?? false),
-		);
-	}
-
-	// Active filters (AND across fields, OR within a field)
-	for (const filter of state.activeFilters) {
-		if (filter.values.size === 0) continue;
-		const def = state.filterDefs.find((d) => d.id === filter.fieldId);
-		if (!def) continue;
-		result = result.filter((item) => def.match(item, filter.values));
-	}
-
-	// Sort
-	return [...result].sort(sortFn);
-}
+export type ListFilterState = ReturnType<typeof useListFilters>;

@@ -63,6 +63,8 @@ type GitHubGraphQLPullSearchNode = {
 	closedAt: string | null;
 	mergedAt: string | null;
 	url: string;
+	additions: number;
+	deletions: number;
 	comments: {
 		totalCount: number;
 	};
@@ -113,6 +115,8 @@ function mapGraphQLPullSearchNode(
 		updatedAt: node.updatedAt,
 		closedAt: node.closedAt,
 		mergedAt: node.mergedAt,
+		additions: node.additions,
+		deletions: node.deletions,
 		comments: node.comments.totalCount,
 		url: node.url,
 		author: mapGraphQLActor(node.author),
@@ -562,6 +566,8 @@ export async function getMyPullsResult({
 								closedAt
 								mergedAt
 								url
+								additions
+								deletions
 								comments {
 									totalCount
 								}
@@ -585,6 +591,7 @@ export async function getMyPullsResult({
 									isPrivate
 									owner {
 										login
+										avatarUrl(size: 32)
 									}
 								}
 							}`,
@@ -759,6 +766,7 @@ export async function getMyIssuesResult({
 									isPrivate
 									owner {
 										login
+										avatarUrl(size: 32)
 									}
 								}
 							}`,

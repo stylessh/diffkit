@@ -368,7 +368,7 @@ export const ReviewDiffPane = memo(
 
 		return (
 			<div ref={diffPanelRef} className="h-full overflow-auto">
-				<div className="flex min-w-0 flex-col gap-2 px-[14px] pb-6 max-md:px-2">
+				<div className="flex min-w-0 flex-col gap-2 px-[14px] pt-2 pb-6 max-md:px-2">
 					{toolbar}
 					{alternateView}
 					{isEmpty && !alternateView ? (

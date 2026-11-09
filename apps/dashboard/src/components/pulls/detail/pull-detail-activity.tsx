@@ -66,12 +66,16 @@ import {
 	useCommentEditor,
 } from "#/components/details/comment-body";
 import { CommentMoreMenu } from "#/components/details/comment-more-menu";
-import { IssueCommentReactionBar } from "#/components/details/comment-reaction-bar";
+import {
+	hasReactions,
+	IssueCommentReactionBar,
+} from "#/components/details/comment-reaction-bar";
 import { CommentReplyForm } from "#/components/details/comment-reply-form";
 import { buildCommentThreads } from "#/components/details/comment-threads";
 import {
 	DetailActivityHeader,
 	DetailCommentBox,
+	eventThreadClassName,
 } from "#/components/details/detail-activity";
 import {
 	GroupedIssueStateToggleDescription,
@@ -82,6 +86,7 @@ import {
 import { LabelPill } from "#/components/details/label-pill";
 import { AppMarkdown } from "#/components/markdown/app-markdown";
 import { useMergeBypass } from "#/components/pulls/detail/use-merge-bypass";
+import { PullStackMergeSection } from "#/components/pulls/stack/pull-stack-section";
 import { formatRelativeTime } from "#/lib/format-relative-time";
 import {
 	approveWorkflowRuns,
@@ -259,6 +264,14 @@ export function PullDetailActivitySection({
 			{!pr.isMerged && pr.state !== "closed" && (
 				<div className="mt-6">
 					<MergeStatusSection
+						stack={
+							<PullStackMergeSection
+								pr={pr}
+								owner={owner}
+								repo={repo}
+								scope={scope}
+							/>
+						}
 						scope={scope}
 						owner={owner}
 						repo={repo}
@@ -335,6 +348,7 @@ function getInvolvedUsers(
 // ── Merge status section ─────────────────────────────────────────────
 
 function MergeStatusSection({
+	stack,
 	scope,
 	owner,
 	repo,
@@ -352,6 +366,7 @@ function MergeStatusSection({
 	firstCommitMessage?: string;
 	isDraft: boolean;
 	pullId: string | undefined;
+	stack: React.ReactNode;
 }) {
 	const input = useMemo(
 		() => ({ owner, repo, pullNumber }),
@@ -367,6 +382,7 @@ function MergeStatusSection({
 
 	return (
 		<MergeStatusCard
+			stack={stack}
 			scope={scope}
 			status={status}
 			owner={owner}
@@ -468,6 +484,7 @@ function MergedBranchBanner({
 }
 
 function MergeStatusCard({
+	stack,
 	scope,
 	status,
 	owner,
@@ -487,6 +504,7 @@ function MergeStatusCard({
 	firstCommitMessage?: string;
 	isDraft: boolean;
 	pullId: string | undefined;
+	stack: React.ReactNode;
 }) {
 	const {
 		checks,
@@ -526,7 +544,9 @@ function MergeStatusCard({
 	});
 
 	return (
-		<div className="-mx-3 flex flex-col overflow-hidden rounded-lg bg-card shadow-card">
+		<div className="-mx-[8.5px] flex flex-col overflow-hidden rounded-lg border-[0.5px] border-border bg-card shadow-[var(--ln-main-shadow)]">
+			{stack}
+
 			{/* Reviews section */}
 			<ReviewsSection
 				approvedReviews={approvedReviews}
@@ -628,7 +648,8 @@ function ReviewsSection({
 	repo: string;
 	pullNumber: number;
 }) {
-	const [open, setOpen] = useState(true);
+	// Open only when it needs someone's attention: changes were requested.
+	const [open, setOpen] = useState(hasReviewIssue);
 	const queryClient = useQueryClient();
 
 	const reviewStatus: StatusType = hasReviewIssue
@@ -824,7 +845,10 @@ function ChecksSection({
 	repo: string;
 	pullNumber: number;
 }) {
-	const [open, setOpen] = useState(true);
+	// Open only when it needs someone's attention: a failing check or a workflow waiting on approval.
+	const [open, setOpen] = useState(
+		hasCheckFailures || pendingWorkflowApprovals.length > 0,
+	);
 	const [pendingAction, setPendingAction] = useState<
 		"rerun" | "approve" | null
 	>(null);
@@ -1574,7 +1598,7 @@ function MergeFooter({
 						? "Merging is blocked until the required checks and reviews pass."
 						: "Ready to merge"}
 				</p>
-				<div className="flex shrink-0 overflow-hidden rounded-full shadow-[0_1px_1px_0_lch(0_0_0/0.12),0_3px_6px_-2px_lch(0_0_0/0.12)]">
+				<div className="flex shrink-0 overflow-hidden rounded-md shadow-[0_1px_1px_0_lch(0_0_0/0.12),0_3px_6px_-2px_lch(0_0_0/0.12)]">
 					<button
 						type="button"
 						disabled={isDisabled}
@@ -1681,7 +1705,7 @@ function StatusIcon({ status }: { status: StatusType }) {
 
 function MergeStatusSkeleton() {
 	return (
-		<div className="-mx-3 flex flex-col overflow-hidden rounded-lg bg-card shadow-card">
+		<div className="-mx-[8.5px] flex flex-col overflow-hidden rounded-lg border-[0.5px] border-border bg-card shadow-[var(--ln-main-shadow)]">
 			{[0, 1, 2].map((item) => (
 				<div
 					key={item}
@@ -2067,12 +2091,12 @@ function ActivityTimeline({
 							<div
 								key={`commit-${commit.sha}`}
 								className={cn(
-									"flex items-start gap-[9px]",
-									index === 0 ? "pt-5" : isConsecutiveCommit ? "pt-2" : "pt-5",
-									isLastInCommitRun ? "pb-5" : "pb-2",
+									"relative flex items-start gap-[11.5px]",
+									index === 0 ? "pt-5" : isConsecutiveCommit ? "pt-1" : "pt-5",
+									isLastInCommitRun ? "pb-5" : eventThreadClassName,
 								)}
 							>
-								<div className="flex h-[17px] w-[18px] shrink-0 items-center justify-center rounded-[4px] bg-main text-muted-foreground [&_svg]:size-3.5">
+								<div className="ml-[10px] mt-[3px] flex size-3.5 shrink-0 items-center justify-center self-start text-muted-foreground [&_svg]:size-3.5">
 									<GitCommitIcon
 										size={12}
 										strokeWidth={2}
@@ -2083,7 +2107,7 @@ function ActivityTimeline({
 									<img
 										src={commit.author.avatarUrl}
 										alt={commit.author.login}
-										className="mt-[3px] size-3.5 shrink-0 self-start rounded-full ring-[0.5px] ring-chip-border"
+										className="ml-[10px] mt-[3px] size-3.5 shrink-0 self-start rounded-full ring-[0.5px] ring-chip-border"
 									/>
 								) : (
 									<div className="size-3.5 shrink-0 rounded-full bg-group" />
@@ -2118,7 +2142,7 @@ function ActivityTimeline({
 									<img
 										src={mergedPr.mergedBy.avatarUrl}
 										alt={mergedPr.mergedBy.login}
-										className="mt-[3px] size-3.5 shrink-0 self-start rounded-full ring-[0.5px] ring-chip-border"
+										className="ml-[10px] mt-[3px] size-3.5 shrink-0 self-start rounded-full ring-[0.5px] ring-chip-border"
 									/>
 								) : (
 									<div className="size-3.5 shrink-0 rounded-full bg-group" />
@@ -2138,7 +2162,7 @@ function ActivityTimeline({
 										{mergedPr.baseRefName}
 									</code>
 								</span>
-								<span className="ml-auto shrink-0 text-xs font-[450] tabular-nums text-icon-faint">
+								<span className="-ml-[7.5px] shrink-0 text-xs leading-5 font-[450] tabular-nums text-muted-foreground before:mr-1 before:content-['·']">
 									{formatRelativeTime(mergedPr.mergedAt as string)}
 								</span>
 							</div>
@@ -2172,19 +2196,19 @@ function ActivityTimeline({
 							<div
 								key={`${item.type}-${group.createdAt}`}
 								className={cn(
-									"flex items-start gap-[9px]",
-									index === 0 ? "pt-5" : isConsecutiveEvent ? "pt-2" : "pt-5",
-									isLastInEventRun ? "pb-5" : "pb-2",
+									"relative flex items-start gap-[11.5px]",
+									index === 0 ? "pt-5" : isConsecutiveEvent ? "pt-1" : "pt-5",
+									isLastInEventRun ? "pb-5" : eventThreadClassName,
 								)}
 							>
 								{hasActorAvatar ? (
 									<img
 										src={group.actor?.avatarUrl}
 										alt={group.actor?.login}
-										className="mt-[3px] size-3.5 shrink-0 self-start rounded-full ring-[0.5px] ring-chip-border"
+										className="ml-[10px] mt-[3px] size-3.5 shrink-0 self-start rounded-full ring-[0.5px] ring-chip-border"
 									/>
 								) : (
-									<div className="flex h-[17px] w-[18px] shrink-0 items-center justify-center self-start rounded-[4px] bg-main text-muted-foreground mt-[1.5px] [&_svg]:size-3.5">
+									<div className="ml-[10px] mt-[3px] flex size-3.5 shrink-0 items-center justify-center self-start text-muted-foreground [&_svg]:size-3.5">
 										{icon}
 									</div>
 								)}
@@ -2199,7 +2223,7 @@ function ActivityTimeline({
 										/>
 									)}
 								</span>
-								<span className="ml-auto shrink-0 text-xs font-[450] tabular-nums text-icon-faint">
+								<span className="-ml-[7.5px] shrink-0 text-xs leading-5 font-[450] tabular-nums text-muted-foreground before:mr-1 before:content-['·']">
 									{formatRelativeTime(group.createdAt)}
 								</span>
 							</div>
@@ -2227,19 +2251,19 @@ function ActivityTimeline({
 							<div
 								key={`issue_state_toggle_group-${toggleKey}-${group.createdAt}`}
 								className={cn(
-									"flex items-start gap-[9px]",
-									index === 0 ? "pt-5" : isConsecutiveEvent ? "pt-2" : "pt-5",
-									isLastInEventRun ? "pb-5" : "pb-2",
+									"relative flex items-start gap-[11.5px]",
+									index === 0 ? "pt-5" : isConsecutiveEvent ? "pt-1" : "pt-5",
+									isLastInEventRun ? "pb-5" : eventThreadClassName,
 								)}
 							>
 								{hasActorAvatar ? (
 									<img
 										src={group.actor?.avatarUrl}
 										alt={group.actor?.login}
-										className="mt-[3px] size-3.5 shrink-0 self-start rounded-full ring-[0.5px] ring-chip-border"
+										className="ml-[10px] mt-[3px] size-3.5 shrink-0 self-start rounded-full ring-[0.5px] ring-chip-border"
 									/>
 								) : (
-									<div className="flex h-[17px] w-[18px] shrink-0 items-center justify-center self-start rounded-[4px] bg-main text-muted-foreground mt-[1.5px] [&_svg]:size-3.5">
+									<div className="ml-[10px] mt-[3px] flex size-3.5 shrink-0 items-center justify-center self-start text-muted-foreground [&_svg]:size-3.5">
 										{icon}
 									</div>
 								)}
@@ -2258,7 +2282,7 @@ function ActivityTimeline({
 										}
 									/>
 								</span>
-								<span className="ml-auto shrink-0 text-xs font-[450] tabular-nums text-icon-faint">
+								<span className="-ml-[7.5px] shrink-0 text-xs leading-5 font-[450] tabular-nums text-muted-foreground before:mr-1 before:content-['·']">
 									{formatRelativeTime(group.createdAt)}
 								</span>
 							</div>
@@ -2332,7 +2356,7 @@ function LoadMoreDivider({
 				onClick={onLoadMore}
 				disabled={isPending}
 				className={cn(
-					"flex shrink-0 items-center gap-1.5 rounded-full border-[0.5px] border-border bg-surface-1 px-3 py-1 text-xs text-muted-foreground transition-colors",
+					"flex shrink-0 items-center gap-1.5 rounded-md border-[0.5px] border-border bg-surface-1 px-3 py-1 text-xs text-muted-foreground transition-colors",
 					isPending
 						? "cursor-not-allowed opacity-60"
 						: "hover:bg-ghost-hover hover:text-foreground",
@@ -2423,7 +2447,7 @@ function TimelineEventRow({
 						{description}
 					</span>
 					{event.createdAt && (
-						<span className="ml-auto shrink-0 text-xs font-[450] tabular-nums text-icon-faint">
+						<span className="-ml-[7.5px] shrink-0 text-xs leading-5 font-[450] tabular-nums text-muted-foreground before:mr-1 before:content-['·']">
 							{formatRelativeTime(event.createdAt)}
 						</span>
 					)}
@@ -2460,19 +2484,19 @@ function TimelineEventRow({
 	return (
 		<div
 			className={cn(
-				"flex items-start gap-[9px]",
-				isFirst ? "pt-5" : isConsecutive ? "pt-2" : "pt-5",
-				isLastInRun ? "pb-5" : "pb-2",
+				"relative flex items-start gap-[11.5px]",
+				isFirst ? "pt-5" : isConsecutive ? "pt-1" : "pt-5",
+				isLastInRun ? "pb-5" : eventThreadClassName,
 			)}
 		>
 			{hasActorAvatar ? (
 				<img
 					src={event.actor?.avatarUrl}
 					alt={event.actor?.login}
-					className="mt-[3px] size-3.5 shrink-0 self-start rounded-full ring-[0.5px] ring-chip-border"
+					className="ml-[10px] mt-[3px] size-3.5 shrink-0 self-start rounded-full ring-[0.5px] ring-chip-border"
 				/>
 			) : (
-				<div className="flex h-[17px] w-[18px] shrink-0 items-center justify-center self-start rounded-[4px] bg-main text-muted-foreground mt-[1.5px] [&_svg]:size-3.5">
+				<div className="ml-[10px] mt-[3px] flex size-3.5 shrink-0 items-center justify-center self-start text-muted-foreground [&_svg]:size-3.5">
 					{icon}
 				</div>
 			)}
@@ -2480,7 +2504,7 @@ function TimelineEventRow({
 				{description}
 			</span>
 			{event.createdAt && (
-				<span className="ml-auto shrink-0 text-xs font-[450] tabular-nums text-icon-faint">
+				<span className="-ml-[7.5px] shrink-0 text-xs leading-5 font-[450] tabular-nums text-muted-foreground before:mr-1 before:content-['·']">
 					{formatRelativeTime(event.createdAt)}
 				</span>
 			)}
@@ -2574,7 +2598,6 @@ function PullCommentBubble({
 	scope,
 	viewerLogin,
 	onReply,
-	isReply,
 }: {
 	comment: PullComment;
 	owner: string;
@@ -2583,7 +2606,6 @@ function PullCommentBubble({
 	scope: GitHubQueryScope;
 	viewerLogin?: string;
 	onReply?: () => void;
-	isReply?: boolean;
 }) {
 	const [commentActive, setCommentActive] = useState(false);
 	const editor = useCommentEditor({
@@ -2597,7 +2619,7 @@ function PullCommentBubble({
 
 	return (
 		<div
-			className="group/comment relative flex flex-col gap-1.5 px-4 py-3"
+			className="group/comment relative flex flex-col gap-[6.5px] px-[16.5px] pt-[13.5px] pb-3"
 			onPointerEnter={() => setCommentActive(true)}
 			onPointerLeave={() => setCommentActive(false)}
 			onFocusCapture={() => setCommentActive(true)}
@@ -2607,7 +2629,7 @@ function PullCommentBubble({
 				}
 			}}
 		>
-			<div className="flex h-[18.5px] items-center gap-2">
+			<div className="flex h-[19px] items-center gap-[9px]">
 				{comment.author ? (
 					<img
 						src={comment.author.avatarUrl}
@@ -2620,17 +2642,31 @@ function PullCommentBubble({
 				<span className="text-[13px] font-medium text-foreground">
 					{comment.author?.login ?? "Unknown"}
 				</span>
-				<span className="ml-0.5 text-[13px] font-[450] text-icon-faint">
+				<span className="-ml-0.5 text-[13px] font-[450] text-muted-foreground">
 					{formatRelativeTime(comment.createdAt)}
 				</span>
 				<EditedMark editedAt={comment.editedAt} />
 				<div className="ml-auto flex items-center gap-1">
+					{comment.graphqlId && !hasReactions(comment.reactions) ? (
+						<IssueCommentReactionBar
+							className="opacity-0 transition-opacity group-hover/comment:opacity-100 focus-within:opacity-100"
+							revealZeroCount={commentActive || prefersNoHover}
+							viewerLogin={viewerLogin}
+							owner={owner}
+							repo={repo}
+							issueNumber={pullNumber}
+							commentId={comment.id}
+							commentGraphqlId={comment.graphqlId}
+							scope={scope}
+							reactions={comment.reactions}
+						/>
+					) : null}
 					{onReply && (
 						<button
 							type="button"
 							onClick={onReply}
 							aria-label="Reply"
-							className="flex size-7 items-center justify-center rounded-full text-text-header opacity-0 transition-opacity hover:bg-ghost-hover group-hover/comment:opacity-100 focus-visible:opacity-100"
+							className="flex size-7 items-center justify-center rounded-md text-text-header opacity-0 transition-opacity hover:bg-ghost-hover group-hover/comment:opacity-100 focus-visible:opacity-100"
 						>
 							<CommentIcon size={14} strokeWidth={2} />
 						</button>
@@ -2649,13 +2685,7 @@ function PullCommentBubble({
 					/>
 				</div>
 			</div>
-			<div
-				className={cn(
-					"relative",
-					isReply && "pl-[27px]",
-					comment.graphqlId != null && "mb-7",
-				)}
-			>
+			<div className={cn("relative", "pl-[27px]")}>
 				<CommentBody
 					editor={editor}
 					body={comment.body}
@@ -2663,9 +2693,9 @@ function PullCommentBubble({
 					repo={repo}
 					className="text-[15px] leading-6 text-text-strong"
 				/>
-				{comment.graphqlId ? (
+				{comment.graphqlId && hasReactions(comment.reactions) ? (
 					<IssueCommentReactionBar
-						className="absolute left-0 right-0 top-full z-10 mt-1"
+						className="mt-2.5"
 						revealZeroCount={commentActive || prefersNoHover}
 						viewerLogin={viewerLogin}
 						owner={owner}
@@ -2707,7 +2737,7 @@ function PullCommentWithThread({
 	return (
 		<div
 			className={cn(
-				"relative -mx-3 my-2 flex flex-col rounded-lg bg-card shadow-card",
+				"relative -mx-[8.5px] my-2 flex flex-col rounded-lg border-[0.5px] border-border bg-card shadow-[var(--ln-main-shadow)]",
 				isFirst && "mt-0",
 			)}
 		>
@@ -2733,7 +2763,6 @@ function PullCommentWithThread({
 							scope={scope}
 							viewerLogin={viewerLogin}
 							onReply={() => setShowReplyForm(true)}
-							isReply
 						/>
 					))}
 				</div>
@@ -3014,7 +3043,7 @@ function ReviewCommentBlock({
 										type="button"
 										onClick={() => void handleReply()}
 										disabled={!replyBody.trim() || isSending}
-										className="flex h-7 items-center gap-1.5 rounded-full bg-indigo px-3 text-xs font-medium text-indigo-foreground shadow-[0_1px_1px_0_lch(0_0_0/0.12),0_3px_6px_-2px_lch(0_0_0/0.12)] transition-colors hover:bg-indigo/90 disabled:opacity-50"
+										className="flex h-7 items-center gap-1.5 rounded-md bg-indigo px-3 text-xs font-medium text-indigo-foreground shadow-[0_1px_1px_0_lch(0_0_0/0.12),0_3px_6px_-2px_lch(0_0_0/0.12)] transition-colors hover:bg-indigo/90 disabled:opacity-50"
 									>
 										{isSending ? (
 											<Spinner className="size-3" />

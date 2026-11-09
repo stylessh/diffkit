@@ -41,7 +41,7 @@ export function base64Bytes(base64: string) {
 }
 
 const segmentClassName =
-	"flex h-6 items-center rounded-full px-2.5 text-xs font-medium transition-colors";
+	"flex h-6 items-center rounded-md px-2.5 text-xs font-medium transition-colors";
 
 export function SegmentLinks({
 	location,

@@ -209,7 +209,6 @@ const shortcutGroups: ShortcutGroup[] = [
 			{ keys: ["N", "I"], description: "New issue" },
 			{ keys: ["N", "P"], description: "New pull request" },
 			{ keys: ["N", "R"], description: "New release" },
-			{ keys: ["["], description: "Collapse or expand the sidebar" },
 		],
 	},
 	{

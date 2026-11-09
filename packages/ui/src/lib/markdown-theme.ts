@@ -8,13 +8,13 @@ export const markdownLinkClassName =
 	"font-medium underline underline-offset-2 decoration-chip-border hover:decoration-foreground transition-[text-decoration-color]";
 
 export const markdownHeadingClassNames = {
-	h1: "text-[1.6em] leading-[1.33] font-semibold tracking-tight text-foreground mt-[1.1em] mb-[0.4em] first:mt-0",
-	h2: "text-[1.133em] leading-[1.41] font-semibold text-foreground mt-[1.2em] mb-[0.35em] first:mt-0",
-	h3: "text-[1em] font-semibold text-foreground mt-[1.1em] mb-[0.3em] first:mt-0",
+	h1: "text-[1.4667em] leading-[1.4545] font-semibold tracking-[-0.01em] text-foreground mt-[1.6em] mb-[0.5em] first:mt-0",
+	h2: "text-[1.2667em] leading-[1.4737] font-semibold text-foreground mt-[1.6em] mb-[0.4em] first:mt-0",
+	h3: "text-[1.0667em] leading-[1.5] font-semibold text-foreground mt-[1.4em] mb-[0.3em] first:mt-0",
 	h4: "text-[1em] font-semibold text-foreground mt-[1em] mb-[0.25em] first:mt-0",
 } as const;
 
-export const markdownParagraphClassName = "mb-[0.6em] last:mb-0";
+export const markdownParagraphClassName = "mb-[1.0667em] last:mb-0";
 
 export const markdownListClassNames = {
 	ul: "list-disc pl-[1.4em] mb-[0.6em] flex flex-col gap-[0.2em] marker:text-icon-faint",

@@ -76,26 +76,30 @@ export function RepoMarkdownFiles({
 		);
 	};
 
-	const [activeTab, setActiveTab] = useState<string | null>(null);
-	const selectedFile =
-		mdFiles.find((file) => file.path === activeTab) ?? mdFiles[0] ?? null;
+	// Nothing is open until asked for: the files come first, the docs on demand.
+	const [openPath, setOpenPath] = useState<string | null>(null);
+	const selectedFile = mdFiles.find((file) => file.path === openPath) ?? null;
 
 	if (mdFiles.length === 0) return null;
 
 	return (
 		<section aria-label="Repository documents" className="flex flex-col gap-5">
-			<div role="tablist" className="flex flex-wrap items-center gap-[7px]">
+			<div className="flex flex-wrap items-center gap-[7px]">
 				{mdFiles.map((file) => (
 					<button
 						key={file.path}
 						type="button"
-						role="tab"
-						aria-selected={file === selectedFile}
-						onClick={() => setActiveTab(file.path)}
+						aria-pressed={file === selectedFile}
+						aria-controls={
+							file === selectedFile ? "repository-document" : undefined
+						}
+						onClick={() =>
+							setOpenPath((open) => (open === file.path ? null : file.path))
+						}
 						onMouseEnter={() => prefetch(file.path)}
 						className={cn(
-							"inline-flex h-7 items-center gap-1.5 rounded-full bg-button pr-[10.5px] pl-2 text-xs font-medium whitespace-nowrap text-muted-foreground shadow-button transition-colors hover:bg-button-hover hover:text-foreground",
-							"aria-selected:bg-tab-selected aria-selected:text-foreground aria-selected:shadow-tab-selected",
+							"inline-flex h-7 items-center gap-1.5 rounded-md bg-button pr-[10.5px] pl-2 text-xs font-medium whitespace-nowrap text-muted-foreground shadow-button transition-colors hover:bg-button-hover hover:text-foreground",
+							"aria-pressed:bg-tab-selected aria-pressed:text-foreground aria-pressed:shadow-tab-selected",
 						)}
 					>
 						<FileIcon size={14} strokeWidth={2} className="shrink-0" />
@@ -105,7 +109,7 @@ export function RepoMarkdownFiles({
 			</div>
 
 			{selectedFile && (
-				<div role="tabpanel">
+				<div id="repository-document">
 					<MarkdownFileContent
 						owner={owner}
 						repo={repo}

@@ -12,11 +12,11 @@ function ResizablePanelGroup({
 }: React.ComponentProps<typeof ResizablePrimitive.PanelGroup>) {
 	return (
 		<ResizablePrimitive.PanelGroup
-			data-slot="resizable-panel-group"
 			className={cn(
 				"flex h-full w-full data-[panel-group-direction=vertical]:flex-col",
 				className,
 			)}
+			data-slot="resizable-panel-group"
 			{...props}
 		/>
 	);
@@ -37,15 +37,15 @@ function ResizableHandle({
 }) {
 	return (
 		<ResizablePrimitive.PanelResizeHandle
-			data-slot="resizable-handle"
 			className={cn(
-				"bg-border relative flex w-px items-center justify-center after:absolute after:inset-y-0 after:left-1/2 after:w-1 after:-translate-x-1/2 focus-visible:outline-1 focus-visible:-outline-offset-1 focus-visible:outline-ring data-[panel-group-direction=vertical]:h-px data-[panel-group-direction=vertical]:w-full data-[panel-group-direction=vertical]:after:left-0 data-[panel-group-direction=vertical]:after:h-1 data-[panel-group-direction=vertical]:after:w-full data-[panel-group-direction=vertical]:after:translate-x-0 data-[panel-group-direction=vertical]:after:-translate-y-1/2 [&[data-panel-group-direction=vertical]>div]:rotate-90",
+				"relative flex w-[0.5px] items-center justify-center bg-header-rule after:absolute after:inset-y-0 after:left-1/2 after:w-1 after:-translate-x-1/2 focus-visible:outline-1 focus-visible:outline-ring focus-visible:-outline-offset-1 data-[panel-group-direction=vertical]:h-[0.5px] data-[panel-group-direction=vertical]:w-full data-[panel-group-direction=vertical]:after:left-0 data-[panel-group-direction=vertical]:after:h-1 data-[panel-group-direction=vertical]:after:w-full data-[panel-group-direction=vertical]:after:translate-x-0 data-[panel-group-direction=vertical]:after:-translate-y-1/2 [&[data-panel-group-direction=vertical]>div]:rotate-90",
 				className,
 			)}
+			data-slot="resizable-handle"
 			{...props}
 		>
 			{withHandle && (
-				<div className="bg-border z-10 flex h-4 w-3 items-center justify-center rounded-xs shadow-ring">
+				<div className="z-10 flex h-4 w-3 items-center justify-center rounded-xs bg-border shadow-ring">
 					<GripVerticalIcon className="size-2.5" />
 				</div>
 			)}

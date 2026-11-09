@@ -1,4 +1,4 @@
-import { CheckIcon, XIcon } from "@diffkit/icons";
+import { cn } from "@diffkit/ui/lib/utils";
 
 export type CheckState =
 	| "success"
@@ -42,81 +42,111 @@ export function getCheckState(input: {
 	return "failure";
 }
 
+/**
+ * A run or check's state as one 14px round glyph: filled when it has finished
+ * (green tick, red cross, grey dash for skipped), a ring while it hasn't
+ * (spinning arc while running, dashed while queued, dotted when expected).
+ */
 export function CheckStateIcon({ state }: { state: CheckState }) {
-	if (state === "success") {
-		return (
-			<div className="flex size-3.5 shrink-0 items-center justify-center text-success">
-				<CheckIcon size={12} strokeWidth={3} />
-			</div>
-		);
-	}
-	if (state === "failure") {
-		return (
-			<div className="flex size-3.5 shrink-0 items-center justify-center text-danger">
-				<XIcon size={12} strokeWidth={3} />
-			</div>
-		);
-	}
-	if (state === "skipped") {
-		return (
-			<div className="flex size-3.5 shrink-0 items-center justify-center text-muted-foreground">
-				<div className="size-1.5 rounded-full border-[0.5px] border-current" />
-			</div>
-		);
-	}
-	if (state === "waiting") {
-		return (
-			<div className="flex size-3.5 shrink-0 items-center justify-center text-muted-foreground">
-				<svg
-					className="size-3.5"
-					viewBox="0 0 16 16"
-					fill="none"
-					aria-hidden="true"
-				>
-					<circle
-						cx="8"
-						cy="8"
-						r="6"
-						stroke="currentColor"
-						strokeWidth="2"
-						opacity="0.35"
-					/>
-				</svg>
-			</div>
-		);
-	}
-	if (state === "expected") {
-		return (
-			<div className="flex size-3.5 shrink-0 items-center justify-center text-warning">
-				<div className="size-1.5 rounded-full bg-current" />
-			</div>
-		);
-	}
 	return (
-		<div className="flex size-3.5 shrink-0 items-center justify-center text-warning">
-			<div className="size-3.5 animate-spin">
-				<svg
-					className="size-3.5"
-					viewBox="0 0 16 16"
-					fill="none"
-					aria-hidden="true"
-				>
+		<span
+			role="img"
+			aria-label={CHECK_STATE_LABEL[state]}
+			className={cn(
+				"flex size-3.5 shrink-0 items-center justify-center",
+				getCheckStateColor(state),
+			)}
+		>
+			<svg
+				viewBox="0 0 14 14"
+				className={cn("size-3.5", state === "pending" && "animate-spin")}
+				aria-hidden="true"
+			>
+				{state === "success" ? (
+					<>
+						<circle cx="7" cy="7" r="7" fill="currentColor" />
+						<path
+							d="M4.2 7.2 6.1 9l3.7-4"
+							fill="none"
+							stroke="var(--background)"
+							strokeWidth="1.6"
+							strokeLinecap="round"
+							strokeLinejoin="round"
+						/>
+					</>
+				) : state === "failure" ? (
+					<>
+						<circle cx="7" cy="7" r="7" fill="currentColor" />
+						<path
+							d="m4.75 4.75 4.5 4.5m0-4.5-4.5 4.5"
+							fill="none"
+							stroke="var(--background)"
+							strokeWidth="1.6"
+							strokeLinecap="round"
+						/>
+					</>
+				) : state === "skipped" ? (
+					<>
+						<circle cx="7" cy="7" r="7" fill="currentColor" opacity="0.35" />
+						<path
+							d="M4.5 7h5"
+							stroke="var(--background)"
+							strokeWidth="1.6"
+							strokeLinecap="round"
+						/>
+					</>
+				) : state === "pending" ? (
+					<>
+						<circle
+							cx="7"
+							cy="7"
+							r="5.75"
+							fill="none"
+							stroke="currentColor"
+							strokeWidth="1.5"
+							opacity="0.3"
+						/>
+						<path
+							d="M12.75 7A5.75 5.75 0 0 0 7 1.25"
+							fill="none"
+							stroke="currentColor"
+							strokeWidth="1.5"
+							strokeLinecap="round"
+						/>
+					</>
+				) : state === "waiting" ? (
 					<circle
-						cx="8"
-						cy="8"
-						r="6"
+						cx="7"
+						cy="7"
+						r="5.75"
+						fill="none"
 						stroke="currentColor"
-						strokeWidth="2"
-						opacity="0.25"
+						strokeWidth="1.5"
+						strokeDasharray="2.4 2.1"
 					/>
-					<path
-						d="M14 8a6 6 0 0 0-6-6"
-						stroke="currentColor"
-						strokeWidth="2"
-						strokeLinecap="round"
-					/>
-				</svg>
-			</div>
-		</div>
+				) : (
+					<>
+						<circle
+							cx="7"
+							cy="7"
+							r="5.75"
+							fill="none"
+							stroke="currentColor"
+							strokeWidth="1.5"
+						/>
+						<circle cx="7" cy="7" r="2" fill="currentColor" />
+					</>
+				)}
+			</svg>
+		</span>
 	);
 }
+
+const CHECK_STATE_LABEL: Record<CheckState, string> = {
+	success: "Succeeded",
+	failure: "Failed",
+	pending: "Running",
+	waiting: "Queued",
+	skipped: "Skipped",
+	expected: "Expected",
+};

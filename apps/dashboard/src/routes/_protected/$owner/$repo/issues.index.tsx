@@ -1,27 +1,19 @@
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
-import { useQueryStates } from "nuqs";
 import { useMemo } from "react";
 import {
-	applyRepoFilters,
-	FilterBar,
-	getFilterValues,
+	apiFilterValues,
+	applyListView,
 	issueSortOptions,
-	parseFilterString,
 	repoIssueFilterDefs,
-	repoListUrlParsers,
-	useRepoListFilters,
+	useListFilters,
 } from "#/components/filters";
 import { IssueRow } from "#/components/issues/issue-row";
 import { DashboardContentLoading } from "#/components/layouts/dashboard-content-loading";
-import { SidePanelPortal } from "#/components/layouts/dashboard-side-panel";
 import { Pagination } from "#/components/pagination";
-import { RepoActivityCards } from "#/components/repo/repo-activity-cards";
 import { RepoPageHeader } from "#/components/repo/repo-page-header";
-import {
-	githubIssuesFromRepoQueryOptions,
-	githubRepoOverviewQueryOptions,
-} from "#/lib/github.query";
+import { ListEmpty } from "#/components/shared/list-page";
+import { githubIssuesFromRepoQueryOptions } from "#/lib/github.query";
 import { buildSeo, formatPageTitle } from "#/lib/seo";
 import { useHasMounted } from "#/lib/use-has-mounted";
 
@@ -39,10 +31,6 @@ export const Route = createFileRoute("/_protected/$owner/$repo/issues/")({
 	component: RepoIssuesPage,
 });
 
-/**
- * Map the status filter pill values to the GitHub API `state` parameter.
- * No status selected → default to "open".
- */
 function deriveApiState(statusValues: Set<string>): "open" | "closed" | "all" {
 	if (statusValues.size === 0) return "open";
 	const hasOpen = statusValues.has("open");
@@ -59,27 +47,22 @@ function RepoIssuesPage() {
 	const scope = { userId: user.id };
 	const hasMounted = useHasMounted();
 
-	// 1. Read URL params directly — needed before the query
-	const [urlParams] = useQueryStates(repoListUrlParsers);
-	const urlFilters = useMemo(
-		() => parseFilterString(urlParams.filters),
-		[urlParams.filters],
-	);
-	const statusValues = getFilterValues(urlFilters, "status");
-	const apiState = deriveApiState(statusValues);
-
-	// 2. Fetch data using URL-derived params
-	const overviewQuery = useQuery({
-		...githubRepoOverviewQueryOptions(scope, { owner, repo }),
-		enabled: hasMounted,
+	const filterState = useListFilters({
+		listId: "repo-issues",
+		filterDefs: repoIssueFilterDefs,
+		sortOptions: issueSortOptions,
+		defaultSortId: "updated",
 	});
+	const apiState = deriveApiState(
+		apiFilterValues(filterState.activeFilters, "status"),
+	);
 
 	const query = useQuery({
 		...githubIssuesFromRepoQueryOptions(scope, {
 			owner,
 			repo,
 			state: apiState,
-			page: urlParams.page,
+			page: filterState.page,
 			perPage: PER_PAGE,
 		}),
 		enabled: hasMounted,
@@ -89,20 +72,10 @@ function RepoIssuesPage() {
 	const issues = useMemo(() => query.data ?? [], [query.data]);
 	const hasNextPage = issues.length === PER_PAGE;
 
-	// 3. Full filter hook with loaded items — populates author options
-	const filterState = useRepoListFilters({
-		filterDefs: repoIssueFilterDefs,
-		sortOptions: issueSortOptions,
-		defaultSortId: "updated",
-		items: issues,
-	});
-
 	const filtered = useMemo(
-		() => applyRepoFilters(issues, filterState),
+		() => applyListView(issues, filterState),
 		[issues, filterState],
 	);
-
-	const repoData = overviewQuery.data;
 
 	return (
 		<>
@@ -111,7 +84,11 @@ function RepoIssuesPage() {
 				repo={repo}
 				scope={scope}
 				active="issues"
-				toolbar={<FilterBar state={filterState} />}
+				filters={{
+					state: filterState,
+					items: issues,
+					searchPlaceholder: "Search issues…",
+				}}
 			>
 				{query.isLoading ? (
 					<div className="flex flex-1 items-center justify-center">
@@ -119,11 +96,13 @@ function RepoIssuesPage() {
 					</div>
 				) : (
 					<div className="flex flex-col">
-						{filtered.length === 0 && (
-							<p className="py-16 text-center text-[13px] text-muted-foreground">
-								No issues found.
-							</p>
-						)}
+						{filtered.length === 0 ? (
+							<ListEmpty>
+								{filterState.activeFilters.length > 0 || filterState.searchQuery
+									? "No issues match your filters."
+									: "No issues yet."}
+							</ListEmpty>
+						) : null}
 						{filtered.map((issue) => (
 							<div
 								key={issue.id}
@@ -144,16 +123,6 @@ function RepoIssuesPage() {
 					onPageChange={filterState.setPage}
 				/>
 			</RepoPageHeader>
-			{repoData && (
-				<SidePanelPortal>
-					<RepoActivityCards
-						owner={owner}
-						repo={repo}
-						scope={scope}
-						repoData={repoData}
-					/>
-				</SidePanelPortal>
-			)}
 		</>
 	);
 }

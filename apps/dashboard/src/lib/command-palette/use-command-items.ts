@@ -6,7 +6,6 @@ import {
 	GitPullRequestIcon,
 	IssuesIcon,
 	RefreshCwIcon,
-	UserCircleIcon,
 } from "@diffkit/icons";
 import { type QueryClient, useQueryClient } from "@tanstack/react-query";
 import { getRouteApi, useParams } from "@tanstack/react-router";
@@ -77,9 +76,6 @@ export function useCommandItems(): CommandItem[] {
 	const issues = queryClient.getQueryData<MyIssuesResult>(
 		githubQueryKeys.issues.mine(scope),
 	);
-	const viewer = queryClient.getQueryData<{ login: string } | null>(
-		githubQueryKeys.viewer(scope),
-	);
 	const routeParams = useParams({ strict: false }) as {
 		owner?: string;
 		repo?: string;
@@ -105,21 +101,6 @@ export function useCommandItems(): CommandItem[] {
 		},
 	];
 
-	if (viewer) {
-		dynamicItems.push({
-			id: "nav:profile",
-			label: "Go to Profile",
-			group: "Pages",
-			icon: UserCircleIcon,
-			keywords: ["user", "me", viewer.login],
-			shortcut: ["G", "U"],
-			action: {
-				type: "navigate",
-				to: `/${viewer.login}`,
-			},
-		});
-	}
-
 	if (repos) {
 		for (const repo of repos) {
 			dynamicItems.push({
@@ -137,12 +118,13 @@ export function useCommandItems(): CommandItem[] {
 					stars: repo.stars,
 					updatedAt: repo.updatedAt ?? undefined,
 				},
+				preview: { kind: "repo", repo },
 			});
 		}
 	}
 
 	if (pulls) {
-		const seen = new Set<number>();
+		const seen = new Set<string>();
 		const allPulls = [
 			...pulls.authored,
 			...pulls.assigned,
@@ -151,8 +133,8 @@ export function useCommandItems(): CommandItem[] {
 			...pulls.involved,
 		];
 		for (const pr of allPulls) {
-			if (seen.has(pr.id)) continue;
-			seen.add(pr.id);
+			if (seen.has(itemKey(pr))) continue;
+			seen.add(itemKey(pr));
 			const prState = getPrIcon(pr);
 			dynamicItems.push({
 				id: `pull:${pr.id}`,
@@ -175,20 +157,21 @@ export function useCommandItems(): CommandItem[] {
 					comments: pr.comments,
 					updatedAt: pr.updatedAt,
 				},
+				preview: { kind: "pull", pull: pr },
 			});
 		}
 	}
 
 	if (issues) {
-		const seen = new Set<number>();
+		const seen = new Set<string>();
 		const allIssues = [
 			...issues.authored,
 			...issues.assigned,
 			...issues.mentioned,
 		];
 		for (const issue of allIssues) {
-			if (seen.has(issue.id)) continue;
-			seen.add(issue.id);
+			if (seen.has(itemKey(issue))) continue;
+			seen.add(itemKey(issue));
 			const issueState = getIssueIcon(issue);
 			dynamicItems.push({
 				id: `issue:${issue.id}`,
@@ -211,6 +194,7 @@ export function useCommandItems(): CommandItem[] {
 					comments: issue.comments,
 					updatedAt: issue.updatedAt,
 				},
+				preview: { kind: "issue", issue },
 			});
 		}
 	}
@@ -221,7 +205,11 @@ export function useCommandItems(): CommandItem[] {
 		return bTime.localeCompare(aTime);
 	});
 
-	return [...staticCommands, ...shellItems, ...repoItems, ...dynamicItems];
+	// Pages are reached from the topbar and their G-shortcuts; the palette is for everything else.
+	const commands = staticCommands.filter(
+		(command) => command.group !== "Pages",
+	);
+	return [...commands, ...shellItems, ...repoItems, ...dynamicItems];
 }
 
 export function getCommandSearchItems(
@@ -256,6 +244,7 @@ export function getCommandSearchItems(
 				comments: pr.comments,
 				updatedAt: pr.updatedAt,
 			},
+			preview: { kind: "pull", pull: pr },
 		});
 	}
 
@@ -282,10 +271,16 @@ export function getCommandSearchItems(
 				comments: issue.comments,
 				updatedAt: issue.updatedAt,
 			},
+			preview: { kind: "issue", issue },
 		});
 	}
 
 	return items;
+}
+
+/** GitHub's search and the list queries give one item different ids; its repository and number are the same. */
+function itemKey(item: { repository: { fullName: string }; number: number }) {
+	return `${item.repository.fullName}#${item.number}`;
 }
 
 export function cacheSearchResults(
@@ -298,8 +293,16 @@ export function cacheSearchResults(
 			githubQueryKeys.pulls.mine(scope),
 			(prev) => {
 				if (!prev) return prev;
-				const existingIds = new Set(prev.involved.map((p) => p.id));
-				const newPulls = result.pulls.filter((p) => !existingIds.has(p.id));
+				const known = new Set(
+					[
+						...prev.authored,
+						...prev.assigned,
+						...prev.reviewRequested,
+						...prev.mentioned,
+						...prev.involved,
+					].map(itemKey),
+				);
+				const newPulls = result.pulls.filter((p) => !known.has(itemKey(p)));
 				if (newPulls.length === 0) return prev;
 				return {
 					...prev,
@@ -314,8 +317,10 @@ export function cacheSearchResults(
 			githubQueryKeys.issues.mine(scope),
 			(prev) => {
 				if (!prev) return prev;
-				const existingIds = new Set(prev.mentioned.map((i) => i.id));
-				const newIssues = result.issues.filter((i) => !existingIds.has(i.id));
+				const known = new Set(
+					[...prev.authored, ...prev.assigned, ...prev.mentioned].map(itemKey),
+				);
+				const newIssues = result.issues.filter((i) => !known.has(itemKey(i)));
 				if (newIssues.length === 0) return prev;
 				return {
 					...prev,

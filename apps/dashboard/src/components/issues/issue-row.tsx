@@ -1,8 +1,9 @@
-import { CommentIcon, IssuesIcon } from "@diffkit/icons";
+import { IssuesIcon } from "@diffkit/icons";
 import { cn } from "@diffkit/ui/lib/utils";
 import { Link } from "@tanstack/react-router";
 import { memo } from "react";
 import {
+	CommentsChip,
 	listRowClassName,
 	listRowHoverClassName,
 	RepoChip,
@@ -13,6 +14,7 @@ import {
 	RowTime,
 	rowAccessibleName,
 } from "#/components/shared/list-row";
+import { HighlightedText } from "#/components/shared/search-highlight";
 import { formatRelativeTime } from "#/lib/format-relative-time";
 import type { IssueSummary } from "#/lib/github.types";
 
@@ -55,17 +57,8 @@ export const IssueRow = memo(function IssueRow({
 					title={issue.title}
 					className="text-[13px] font-medium text-foreground md:truncate"
 				>
-					{issue.title}
+					<HighlightedText text={issue.title} />
 				</p>
-				{issue.comments > 0 && (
-					<span
-						className="hidden shrink-0 items-center gap-1 text-xs tabular-nums text-muted-foreground md:flex"
-						title={`${issue.comments} comments`}
-					>
-						<CommentIcon size={12} strokeWidth={2} />
-						{issue.comments}
-					</span>
-				)}
 				<p className="flex min-w-0 items-center gap-1 truncate text-xs text-muted-foreground md:hidden">
 					<span className="truncate">{issue.repository.fullName}</span>
 					<span className="tabular-nums">#{issue.number}</span>
@@ -76,10 +69,14 @@ export const IssueRow = memo(function IssueRow({
 			<div className="hidden min-w-0 shrink items-center gap-1 md:flex">
 				<RowLabels labels={issue.labels} />
 				{showRepository ? (
-					<RepoChip fullName={issue.repository.fullName} />
+					<RepoChip
+						fullName={issue.repository.fullName}
+						ownerAvatarUrl={issue.repository.ownerAvatarUrl}
+					/>
 				) : null}
+				<CommentsChip count={issue.comments} />
 			</div>
-			<span className="hidden shrink-0 items-center gap-2 md:flex">
+			<span className="hidden shrink-0 items-center gap-2 md:ml-3 md:flex">
 				<RowAvatar actor={issue.author} />
 				<RowTime>{time}</RowTime>
 			</span>

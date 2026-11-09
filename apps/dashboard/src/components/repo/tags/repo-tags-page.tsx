@@ -22,13 +22,11 @@ import {
 import { Link } from "@tanstack/react-router";
 import { parseAsString, useQueryState } from "nuqs";
 import { memo, useCallback, useMemo } from "react";
+import { ToolbarRow, ToolbarSearchField } from "#/components/filters";
 import { SidePanelPortal } from "#/components/layouts/dashboard-side-panel";
 import { TagIcon } from "#/components/repo/refs/tag-icon";
 import { RepoActivityCards } from "#/components/repo/repo-activity-cards";
-import {
-	RepoListSearchInput,
-	RepoPageHeader,
-} from "#/components/repo/repo-page-header";
+import { RepoPageHeader } from "#/components/repo/repo-page-header";
 import {
 	listRowClassName,
 	RowStateIcon,
@@ -129,22 +127,24 @@ export function RepoTagsPage({
 				scope={scope}
 				active="tags"
 				toolbar={
-					<>
-						<RepoListSearchInput
-							value={searchInput}
-							onChange={setSearchInput}
-							placeholder="Find a tag…"
-							className="w-full sm:w-60"
-						/>
+					<ToolbarRow
+						search={
+							<ToolbarSearchField
+								value={searchInput}
+								onChange={setSearchInput}
+								placeholder="Search tags…"
+							/>
+						}
+					>
 						<Link
 							to="/$owner/$repo/releases"
 							params={{ owner, repo }}
-							className={cn(ghostPillClassName, "ml-auto")}
+							className={ghostPillClassName}
 						>
 							<PackageIcon size={14} strokeWidth={2} />
 							Releases
 						</Link>
-					</>
+					</ToolbarRow>
 				}
 			>
 				{isLoading ? (
