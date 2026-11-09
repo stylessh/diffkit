@@ -1,9 +1,9 @@
-import { FileIcon, FolderIcon } from "@diffkit/icons";
 import { cn } from "@diffkit/ui/lib/utils";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import { useMemo } from "react";
 import { SkeletonBox } from "skullet/react";
+import { FileTypeIcon } from "#/components/shared/file-type-icon";
 import { useIsSkeletonSample } from "#/components/shared/skeleton-sample";
 import { formatRelativeTime } from "#/lib/format-relative-time";
 import {
@@ -72,7 +72,6 @@ function FileTreeRow({
 	commit: FileLastCommit | null;
 	isCommitLoading: boolean;
 }) {
-	const Icon = entry.type === "dir" ? FolderIcon : FileIcon;
 	const isDir = entry.type === "dir";
 
 	return (
@@ -85,14 +84,7 @@ function FileTreeRow({
 			}}
 			className={cardRowClassName}
 		>
-			<Icon
-				size={16}
-				strokeWidth={1.8}
-				className={cn(
-					"shrink-0",
-					isDir ? "text-text-header" : "text-muted-foreground",
-				)}
-			/>
+			<FileTypeIcon path={entry.name} kind={isDir ? "directory" : "file"} />
 			<span
 				className={cn(
 					"w-28 shrink-0 truncate text-[13px] sm:w-40",

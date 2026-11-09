@@ -1,9 +1,11 @@
 import type { RepoCommitSummary } from "./github.types";
 
-export type CommitDayGroup<T> = {
-	/** `YYYY-MM-DD` in the grouping time zone — stable React key. */
+export type CommitGroup<T> = {
+	/** Stable React key: the period, or `YYYY-MM` for a month. */
 	key: string;
-	/** "Commits on Tue, Nov 4, 2026" */
+	/** Short heading: "Today", "Last week", "October 2026". */
+	title: string;
+	/** Accessible name: "Commits today", "Commits in October 2026". */
 	label: string;
 	commits: T[];
 };
@@ -12,6 +14,23 @@ type GroupOptions = {
 	/** IANA zone; defaults to the runtime's local zone. */
 	timeZone?: string;
 	locale?: string;
+	now?: number;
+};
+
+const DAY_MS = 86_400_000;
+
+type Period =
+	| { key: "today" | "yesterday" | "this-week" | "last-week" }
+	| { key: "month"; month: string; date: Date };
+
+const RECENT: Record<
+	"today" | "yesterday" | "this-week" | "last-week",
+	{ title: string; label: string }
+> = {
+	today: { title: "Today", label: "Commits today" },
+	yesterday: { title: "Yesterday", label: "Commits yesterday" },
+	"this-week": { title: "This week", label: "Commits this week" },
+	"last-week": { title: "Last week", label: "Commits last week" },
 };
 
 function dayKeyFormatter(timeZone?: string) {
@@ -24,55 +43,74 @@ function dayKeyFormatter(timeZone?: string) {
 	});
 }
 
-function dayLabelFormatter(timeZone?: string, locale = "en-US") {
-	return new Intl.DateTimeFormat(locale, {
-		weekday: "short",
-		month: "short",
-		day: "numeric",
-		year: "numeric",
-		timeZone,
-	});
+/** Days since the epoch for a `YYYY-MM-DD` calendar date. */
+function dayNumber(dayKey: string) {
+	const [year, month, day] = dayKey.split("-").map(Number);
+	return Date.UTC(year, month - 1, day) / DAY_MS;
 }
 
 /**
- * Groups commits into consecutive calendar-day buckets, preserving the input
- * order (GitHub returns newest first). Commits with an unparseable date land in
- * a trailing "Unknown date" bucket instead of being dropped.
+ * Groups commits into recent periods (today, yesterday, this week, last week;
+ * weeks start on Monday) and then calendar months, like the pull request and
+ * issue lists group by state. Keeps the input order (GitHub returns newest
+ * first); an out-of-order commit rejoins its period. Commits with an
+ * unparseable date land in a trailing "Unknown date" group.
  */
-export function groupCommitsByDay<T extends Pick<RepoCommitSummary, "date">>(
+export function groupCommitsByPeriod<T extends Pick<RepoCommitSummary, "date">>(
 	commits: readonly T[],
 	options: GroupOptions = {},
-): CommitDayGroup<T>[] {
-	const keyFormat = dayKeyFormatter(options.timeZone);
-	const labelFormat = dayLabelFormatter(options.timeZone, options.locale);
-	const groups: CommitDayGroup<T>[] = [];
-	const byKey = new Map<string, CommitDayGroup<T>>();
-	let unknown: CommitDayGroup<T> | null = null;
+): CommitGroup<T>[] {
+	const dayKey = dayKeyFormatter(options.timeZone);
+	const monthFormat = new Intl.DateTimeFormat(options.locale ?? "en-US", {
+		month: "long",
+		year: "numeric",
+		timeZone: options.timeZone,
+	});
+	const today = dayNumber(dayKey.format(new Date(options.now ?? Date.now())));
+	// 1970-01-01 was a Thursday: day 0 is weekday 3 counting from Monday.
+	const daysSinceMonday = (((today + 3) % 7) + 7) % 7;
+
+	const periodOf = (date: Date): Period => {
+		const key = dayKey.format(date);
+		const age = today - dayNumber(key);
+		if (age <= 0) return { key: "today" };
+		if (age === 1) return { key: "yesterday" };
+		if (age <= daysSinceMonday) return { key: "this-week" };
+		if (age <= daysSinceMonday + 7) return { key: "last-week" };
+		return { key: "month", month: key.slice(0, 7), date };
+	};
+
+	const groups: CommitGroup<T>[] = [];
+	const byKey = new Map<string, CommitGroup<T>>();
+	let unknown: CommitGroup<T> | null = null;
 
 	for (const commit of commits) {
 		const date = new Date(commit.date);
 		if (Number.isNaN(date.getTime())) {
-			unknown ??= { key: "unknown", label: "Unknown date", commits: [] };
+			unknown ??= {
+				key: "unknown",
+				title: "Unknown date",
+				label: "Commits with an unknown date",
+				commits: [],
+			};
 			unknown.commits.push(commit);
 			continue;
 		}
-		const key = keyFormat.format(date);
-		const last = groups.at(-1);
-		if (last?.key === key) {
-			last.commits.push(commit);
-			continue;
-		}
-		// Out-of-order dates (rebases, cherry-picks) rejoin their existing day.
+		const period = periodOf(date);
+		const key = period.key === "month" ? period.month : period.key;
 		const existing = byKey.get(key);
 		if (existing) {
 			existing.commits.push(commit);
 			continue;
 		}
-		const group = {
-			key,
-			label: `Commits on ${labelFormat.format(date)}`,
-			commits: [commit],
-		};
+		const heading =
+			period.key === "month"
+				? {
+						title: monthFormat.format(period.date),
+						label: `Commits in ${monthFormat.format(period.date)}`,
+					}
+				: RECENT[period.key];
+		const group: CommitGroup<T> = { key, ...heading, commits: [commit] };
 		byKey.set(key, group);
 		groups.push(group);
 	}

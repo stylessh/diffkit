@@ -6,16 +6,14 @@ import { parseAsInteger, parseAsString, useQueryStates } from "nuqs";
 import { useCallback, useMemo } from "react";
 import { Skeleton } from "skullet/react";
 import { ToolbarRow, ToolbarSearchField } from "#/components/filters";
-import { SidePanelPortal } from "#/components/layouts/dashboard-side-panel";
 import { Pagination } from "#/components/pagination";
 import { RepoRefPicker } from "#/components/repo/refs/repo-ref-picker";
-import { RepoActivityCards } from "#/components/repo/repo-activity-cards";
 import { RepoPageHeader } from "#/components/repo/repo-page-header";
 import { ListGroup } from "#/components/shared/list-page";
 import {
-	type CommitDayGroup,
+	type CommitGroup,
 	filterCommitsByMessage,
-	groupCommitsByDay,
+	groupCommitsByPeriod,
 } from "#/lib/commit-groups";
 import { buildCommitsSplat, splitCommitsSplat } from "#/lib/commits-route";
 import {
@@ -147,7 +145,7 @@ export function RepoCommitsPage({
 		[pageCommits, searchQuery, useServerSearch],
 	);
 	const groups = useMemo(
-		() => groupCommitsByDay(visibleCommits),
+		() => groupCommitsByPeriod(visibleCommits),
 		[visibleCommits],
 	);
 
@@ -266,104 +264,94 @@ export function RepoCommitsPage({
 	);
 
 	return (
-		<>
-			<RepoPageHeader
-				owner={owner}
-				repo={repo}
-				scope={scope}
-				active="commits"
-				toolbar={toolbar}
-			>
-				{searchQuery && !useServerSearch ? (
-					<p className="px-3 pb-2 text-xs text-muted-foreground">
-						GitHub only indexes the default branch for commit search, so this
-						filters the commits on the current page.
-					</p>
-				) : null}
+		<RepoPageHeader
+			owner={owner}
+			repo={repo}
+			scope={scope}
+			active="commits"
+			toolbar={toolbar}
+		>
+			{searchQuery && !useServerSearch ? (
+				<p className="px-3 pb-2 text-xs text-muted-foreground">
+					GitHub only indexes the default branch for commit search, so this
+					filters the commits on the current page.
+				</p>
+			) : null}
 
-				<Skeleton loading={showSkeleton} label="Loading commits">
-					{showSkeleton ? (
-						<CommitGroupList
-							groups={SAMPLE_COMMIT_GROUPS}
-							owner={owner}
-							repo={repo}
-						/>
-					) : commitsQuery.isError ? (
-						<RepoEmptyState
-							icon={<GitCommitIcon />}
-							title="Couldn't load commits"
-							action={
+			<Skeleton loading={showSkeleton} label="Loading commits">
+				{showSkeleton ? (
+					<CommitGroupList
+						groups={SAMPLE_COMMIT_GROUPS}
+						owner={owner}
+						repo={repo}
+					/>
+				) : commitsQuery.isError ? (
+					<RepoEmptyState
+						icon={<GitCommitIcon />}
+						title="Couldn't load commits"
+						action={
+							<button
+								type="button"
+								onClick={() => void commitsQuery.refetch()}
+								className={pillButtonClassName}
+							>
+								Try again
+							</button>
+						}
+					/>
+				) : groups.length === 0 ? (
+					<RepoEmptyState
+						icon={<GitCommitIcon />}
+						title={
+							hasFilters
+								? "No commits match these filters"
+								: path
+									? "No commits touch this path on this ref"
+									: "No commits on this ref yet"
+						}
+						action={
+							hasFilters ? (
 								<button
 									type="button"
-									onClick={() => void commitsQuery.refetch()}
+									onClick={() => {
+										void setParams({ author: null, q: null, page: null });
+									}}
 									className={pillButtonClassName}
 								>
-									Try again
+									Clear filters
 								</button>
-							}
-						/>
-					) : groups.length === 0 ? (
-						<RepoEmptyState
-							icon={<GitCommitIcon />}
-							title={
-								hasFilters
-									? "No commits match these filters"
-									: path
-										? "No commits touch this path on this ref"
-										: "No commits on this ref yet"
-							}
-							action={
-								hasFilters ? (
-									<button
-										type="button"
-										onClick={() => {
-											void setParams({ author: null, q: null, page: null });
-										}}
-										className={pillButtonClassName}
-									>
-										Clear filters
-									</button>
-								) : undefined
-							}
-						/>
-					) : (
-						<div
-							className="flex flex-col transition-opacity"
-							style={{ opacity: commitsQuery.isPlaceholderData ? 0.6 : 1 }}
-						>
-							<CommitGroupList groups={groups} owner={owner} repo={repo} />
-						</div>
-					)}
-				</Skeleton>
-
-				<div className="mt-6 flex flex-col items-center gap-4">
-					<Pagination
-						page={params.page}
-						hasNextPage={commitsQuery.data?.hasNextPage ?? false}
-						onPageChange={setPage}
+							) : undefined
+						}
 					/>
+				) : (
+					<div
+						className="flex flex-col transition-opacity"
+						style={{ opacity: commitsQuery.isPlaceholderData ? 0.6 : 1 }}
+					>
+						<CommitGroupList groups={groups} owner={owner} repo={repo} />
+					</div>
+				)}
+			</Skeleton>
 
-					{!showSkeleton && !path && currentRef ? (
-						<Link
-							to="/$owner/$repo/tree/$"
-							params={{ owner, repo, _splat: currentRef }}
-							className={ghostPillClassName}
-						>
-							Browse files on{" "}
-							<span className="font-mono font-[450]">{currentRef}</span>
-						</Link>
-					) : null}
-				</div>
-			</RepoPageHeader>
-			<SidePanelPortal>
-				<RepoActivityCards
-					owner={owner}
-					repo={repo}
-					scope={scope}
-					repoData={repoData}
+			<div className="mt-6 flex flex-col items-center gap-4">
+				<Pagination
+					page={params.page}
+					hasNextPage={commitsQuery.data?.hasNextPage ?? false}
+					onPageChange={setPage}
 				/>
-			</SidePanelPortal>
-		</>
+
+				{!showSkeleton && !path && currentRef ? (
+					<Link
+						to="/$owner/$repo/tree/$"
+						params={{ owner, repo, _splat: currentRef }}
+						className={ghostPillClassName}
+					>
+						Browse files on{" "}
+						<span className="font-mono font-[450]">{currentRef}</span>
+					</Link>
+				) : null}
+			</div>
+		</RepoPageHeader>
 	);
 }
 
@@ -372,14 +360,14 @@ function CommitGroupList({
 	owner,
 	repo,
 }: {
-	groups: CommitDayGroup<RepoCommitSummary>[];
+	groups: CommitGroup<RepoCommitSummary>[];
 	owner: string;
 	repo: string;
 }) {
 	return groups.map((group) => (
 		<ListGroup
 			key={group.key}
-			title={group.label.replace(/^Commits on /, "")}
+			title={group.title}
 			label={group.label}
 			count={group.commits.length}
 		>

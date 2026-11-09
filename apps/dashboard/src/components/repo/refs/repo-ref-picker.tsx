@@ -1,4 +1,9 @@
-import { CheckIcon, ChevronDownIcon, GitBranchIcon } from "@diffkit/icons";
+import {
+	CheckIcon,
+	ChevronDownIcon,
+	GitBranchIcon,
+	TagIcon,
+} from "@diffkit/icons";
 import {
 	Command,
 	CommandEmpty,
@@ -21,7 +26,6 @@ import {
 } from "#/lib/github.query";
 import type { RepoRefKind } from "#/lib/github.types";
 import { pillButtonClassName } from "../repo-ui";
-import { TagIcon } from "./tag-icon";
 
 const SHA_RE = /^[0-9a-f]{7,40}$/i;
 

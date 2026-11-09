@@ -1,17 +1,7 @@
-import {
-	DownloadIcon,
-	GitCommitIcon,
-	PackageIcon,
-	PlusSignIcon,
-} from "@diffkit/icons";
+import { GitCommitIcon, PackageIcon, TagIcon } from "@diffkit/icons";
 import { Chip } from "@diffkit/ui/components/chip";
 import { GroupHeader } from "@diffkit/ui/components/group-header";
 import { Spinner } from "@diffkit/ui/components/spinner";
-import {
-	Tooltip,
-	TooltipContent,
-	TooltipTrigger,
-} from "@diffkit/ui/components/tooltip";
 import { cn } from "@diffkit/ui/lib/utils";
 import {
 	keepPreviousData,
@@ -23,23 +13,17 @@ import { parseAsString, useQueryState } from "nuqs";
 import { memo, useCallback, useMemo } from "react";
 import { Skeleton } from "skullet/react";
 import { ToolbarRow, ToolbarSearchField } from "#/components/filters";
-import { SidePanelPortal } from "#/components/layouts/dashboard-side-panel";
-import { TagIcon } from "#/components/repo/refs/tag-icon";
-import { RepoActivityCards } from "#/components/repo/repo-activity-cards";
 import { RepoPageHeader } from "#/components/repo/repo-page-header";
 import {
 	listRowClassName,
 	RowStateIcon,
 	RowTime,
 } from "#/components/shared/list-row";
-import { encodeRefPath } from "#/lib/commits-route";
 import { formatRelativeTime } from "#/lib/format-relative-time";
 import {
 	type GitHubQueryScope,
-	githubRepoOverviewQueryOptions,
 	githubRepoReleasesQueryOptions,
 	githubRepoTagsListInfiniteQueryOptions,
-	githubRepoViewerPermissionQueryOptions,
 	REPO_RELEASES_PER_PAGE,
 } from "#/lib/github.query";
 import type { RepoRelease, RepoTagListItem } from "#/lib/github.types";
@@ -47,11 +31,10 @@ import { useHasMounted } from "#/lib/use-has-mounted";
 import { useUrlSearchInput } from "#/lib/use-url-search-input";
 import {
 	ghostPillClassName,
-	HairlineBadge,
-	iconButtonClassName,
 	pillButtonClassName,
 	RepoEmptyState,
 } from "../repo-ui";
+import { SourceDownloadPill } from "./source-download-pill";
 import { SAMPLE_TAGS } from "./tag-samples";
 
 /**
@@ -77,18 +60,6 @@ export function RepoTagsPage({
 		[setQ],
 	);
 	const [searchInput, setSearchInput] = useUrlSearchInput(q, applySearch);
-
-	const overviewQuery = useQuery({
-		...githubRepoOverviewQueryOptions(scope, { owner, repo }),
-		enabled: hasMounted,
-	});
-	const repoData = overviewQuery.data;
-
-	const permissionQuery = useQuery({
-		...githubRepoViewerPermissionQueryOptions(scope, { owner, repo }),
-		enabled: hasMounted,
-	});
-	const canPush = permissionQuery.data?.canPush ?? false;
 
 	const releasesQuery = useQuery({
 		...githubRepoReleasesQueryOptions(scope, {
@@ -121,98 +92,86 @@ export function RepoTagsPage({
 	const isLoading = !hasMounted || (tagsQuery.isPending && !tagsQuery.data);
 
 	return (
-		<>
-			<RepoPageHeader
-				owner={owner}
-				repo={repo}
-				scope={scope}
-				active="tags"
-				toolbar={
-					<ToolbarRow
-						search={
-							<ToolbarSearchField
-								value={searchInput}
-								onChange={setSearchInput}
-								placeholder="Search tags…"
-							/>
-						}
+		<RepoPageHeader
+			owner={owner}
+			repo={repo}
+			scope={scope}
+			active="tags"
+			toolbar={
+				<ToolbarRow
+					search={
+						<ToolbarSearchField
+							value={searchInput}
+							onChange={setSearchInput}
+							placeholder="Search tags…"
+						/>
+					}
+				>
+					<Link
+						to="/$owner/$repo/releases"
+						params={{ owner, repo }}
+						className={ghostPillClassName}
 					>
-						<Link
-							to="/$owner/$repo/releases"
-							params={{ owner, repo }}
-							className={ghostPillClassName}
-						>
-							<PackageIcon size={14} strokeWidth={2} />
-							Releases
-						</Link>
-					</ToolbarRow>
-				}
-			>
-				<Skeleton loading={isLoading} label="Loading tags">
-					{isLoading ? (
-						<TagList
-							tags={SAMPLE_TAGS}
-							totalCount={SAMPLE_TAGS.length}
-							owner={owner}
-							repo={repo}
-							releasesByTag={NO_RELEASES}
-							canPush={false}
-						/>
-					) : tagsQuery.isError ? (
-						<RepoEmptyState
-							icon={<TagIcon />}
-							title="Couldn't load tags"
-							action={
-								<button
-									type="button"
-									onClick={() => void tagsQuery.refetch()}
-									className={pillButtonClassName}
-								>
-									Try again
-								</button>
-							}
-						/>
-					) : tags.length === 0 ? (
-						<RepoEmptyState
-							icon={<TagIcon />}
-							title={query ? `No tags match “${query}”` : "No tags yet"}
-						/>
-					) : (
-						<TagList
-							tags={tags}
-							totalCount={totalCount}
-							owner={owner}
-							repo={repo}
-							releasesByTag={releasesByTag}
-							canPush={canPush}
-							dimmed={tagsQuery.isPlaceholderData}
-						/>
-					)}
-				</Skeleton>
+						<PackageIcon size={14} strokeWidth={2} />
+						Releases
+					</Link>
+				</ToolbarRow>
+			}
+		>
+			<Skeleton loading={isLoading} label="Loading tags">
+				{isLoading ? (
+					<TagList
+						tags={SAMPLE_TAGS}
+						totalCount={SAMPLE_TAGS.length}
+						owner={owner}
+						repo={repo}
+						releasesByTag={NO_RELEASES}
+					/>
+				) : tagsQuery.isError ? (
+					<RepoEmptyState
+						icon={<TagIcon />}
+						title="Couldn't load tags"
+						action={
+							<button
+								type="button"
+								onClick={() => void tagsQuery.refetch()}
+								className={pillButtonClassName}
+							>
+								Try again
+							</button>
+						}
+					/>
+				) : tags.length === 0 ? (
+					<RepoEmptyState
+						icon={<TagIcon />}
+						title={query ? `No tags match “${query}”` : "No tags yet"}
+					/>
+				) : (
+					<TagList
+						tags={tags}
+						totalCount={totalCount}
+						owner={owner}
+						repo={repo}
+						releasesByTag={releasesByTag}
+						dimmed={tagsQuery.isPlaceholderData}
+					/>
+				)}
+			</Skeleton>
 
-				{tagsQuery.hasNextPage ? (
-					<div className="mt-6 flex justify-center">
-						<button
-							type="button"
-							className={pillButtonClassName}
-							disabled={tagsQuery.isFetchingNextPage}
-							onClick={() => void tagsQuery.fetchNextPage()}
-						>
-							{tagsQuery.isFetchingNextPage ? <Spinner size={14} /> : null}
-							Load more tags
-						</button>
-					</div>
-				) : null}
-			</RepoPageHeader>
-			<SidePanelPortal>
-				<RepoActivityCards
-					owner={owner}
-					repo={repo}
-					scope={scope}
-					repoData={repoData}
-				/>
-			</SidePanelPortal>
-		</>
+			{tagsQuery.hasNextPage ? (
+				<div className="mt-6 flex justify-center">
+					<button
+						type="button"
+						className={pillButtonClassName}
+						disabled={tagsQuery.isFetchingNextPage}
+						onClick={() => void tagsQuery.fetchNextPage()}
+					>
+						{tagsQuery.isFetchingNextPage ? <Spinner size={14} /> : null}
+						Load more tags
+					</button>
+				</div>
+			) : null}
+		</RepoPageHeader>
 	);
 }
 
@@ -224,7 +183,6 @@ function TagList({
 	owner,
 	repo,
 	releasesByTag,
-	canPush,
 	dimmed = false,
 }: {
 	tags: RepoTagListItem[];
@@ -232,7 +190,6 @@ function TagList({
 	owner: string;
 	repo: string;
 	releasesByTag: ReadonlyMap<string, RepoRelease>;
-	canPush: boolean;
 	dimmed?: boolean;
 }) {
 	return (
@@ -259,7 +216,6 @@ function TagList({
 							repo={repo}
 							tag={tag}
 							release={releasesByTag.get(tag.name) ?? null}
-							canPush={canPush}
 						/>
 					</li>
 				))}
@@ -273,15 +229,12 @@ const TagRow = memo(function TagRow({
 	repo,
 	tag,
 	release,
-	canPush,
 }: {
 	owner: string;
 	repo: string;
 	tag: RepoTagListItem;
 	release: RepoRelease | null;
-	canPush: boolean;
 }) {
-	const archiveBase = `https://github.com/${owner}/${repo}/archive/refs/tags/${encodeRefPath(tag.name)}`;
 	const messageLine = tag.message?.split("\n")[0];
 
 	const time = tag.date
@@ -308,17 +261,6 @@ const TagRow = memo(function TagRow({
 					>
 						{tag.name}
 					</Link>
-					{release ? (
-						<HairlineBadge className="relative z-[1] transition-colors hover:text-foreground">
-							<Link
-								to="/$owner/$repo/releases/$tag"
-								params={{ owner, repo, tag: tag.name }}
-								data-action
-							>
-								{release.isDraft ? "Draft release" : "Release"}
-							</Link>
-						</HairlineBadge>
-					) : null}
 				</span>
 				{messageLine ? (
 					<span className="min-w-0 truncate text-[13px] font-[450] text-muted-foreground">
@@ -333,90 +275,42 @@ const TagRow = memo(function TagRow({
 					{time ? <span className="tabular-nums">{time}</span> : null}
 				</p>
 			</div>
-			<div className="relative z-[1] flex shrink-0 items-center gap-0.5">
+			<div className="relative z-[1] hidden min-w-0 shrink items-center gap-1 md:flex">
+				{release ? (
+					<Chip
+						asChild
+						className="shrink-0 transition-colors hover:text-foreground"
+					>
+						<Link
+							to="/$owner/$repo/releases/$tag"
+							params={{ owner, repo, tag: tag.name }}
+							data-action
+						>
+							<PackageIcon size={12} strokeWidth={2} />
+							{release.isDraft ? "Draft release" : "Release"}
+						</Link>
+					</Chip>
+				) : null}
 				{tag.commitSha ? (
 					<Chip
 						asChild
-						className="mr-1 font-mono transition-colors hover:text-foreground max-md:hidden"
+						className="shrink-0 font-mono transition-colors hover:text-foreground"
 					>
 						<Link
 							to="/$owner/$repo/commit/$sha"
 							params={{ owner, repo, sha: tag.commitSha }}
 							data-action
+							title="View the tagged commit"
 						>
 							<GitCommitIcon size={12} />
 							{tag.commitSha.slice(0, 7)}
 						</Link>
 					</Chip>
 				) : null}
-				{!release && canPush ? (
-					<Tooltip>
-						<TooltipTrigger asChild>
-							<Link
-								to="/$owner/$repo/releases/new"
-								params={{ owner, repo }}
-								search={{ tag: tag.name }}
-								data-action
-								aria-label={`Create a release from ${tag.name}`}
-								className={iconButtonClassName}
-							>
-								<PlusSignIcon size={14} />
-							</Link>
-						</TooltipTrigger>
-						<TooltipContent>Create release</TooltipContent>
-					</Tooltip>
-				) : null}
-				<Tooltip>
-					<TooltipTrigger asChild>
-						<Link
-							to="/$owner/$repo/commits/$"
-							params={{ owner, repo, _splat: tag.name }}
-							data-action
-							aria-label={`Commits up to ${tag.name}`}
-							className={iconButtonClassName}
-						>
-							<GitCommitIcon size={14} />
-						</Link>
-					</TooltipTrigger>
-					<TooltipContent>Commits</TooltipContent>
-				</Tooltip>
-				<Tooltip>
-					<TooltipTrigger asChild>
-						<a
-							href={`${archiveBase}.zip`}
-							data-action
-							aria-label={`Download ${tag.name} source (zip)`}
-							className={ghostPillClassName}
-						>
-							<DownloadIcon size={14} />
-							zip
-						</a>
-					</TooltipTrigger>
-					<TooltipContent>Source code (zip)</TooltipContent>
-				</Tooltip>
-				<Tooltip>
-					<TooltipTrigger asChild>
-						<a
-							href={`${archiveBase}.tar.gz`}
-							data-action
-							aria-label={`Download ${tag.name} source (tar.gz)`}
-							className={cn(ghostPillClassName, "max-sm:hidden")}
-						>
-							<DownloadIcon size={14} />
-							tar.gz
-						</a>
-					</TooltipTrigger>
-					<TooltipContent>Source code (tar.gz)</TooltipContent>
-				</Tooltip>
+				<SourceDownloadPill owner={owner} repo={repo} tag={tag.name} />
 			</div>
-			<span className="hidden shrink-0 md:flex">
-				{tag.date ? (
-					<time dateTime={tag.date}>
-						<RowTime>{time}</RowTime>
-					</time>
-				) : (
-					<RowTime>—</RowTime>
-				)}
+			<span className="hidden shrink-0 md:ml-3 md:flex">
+				<RowTime dateTime={tag.date ?? undefined}>{time ?? "—"}</RowTime>
 			</span>
 		</div>
 	);

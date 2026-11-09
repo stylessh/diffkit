@@ -5,6 +5,7 @@ import {
 	GitCommitIcon,
 	GitPullRequestIcon,
 	PlayIcon,
+	TagIcon,
 } from "@diffkit/icons";
 import { Chip } from "@diffkit/ui/components/chip";
 import { cn } from "@diffkit/ui/lib/utils";
@@ -14,7 +15,6 @@ import {
 	CheckStateIcon,
 	getCheckState,
 } from "#/components/checks/check-state-icon";
-import { TagIcon } from "#/components/repo/refs/tag-icon";
 import {
 	listRowClassName,
 	listRowHoverClassName,
