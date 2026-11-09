@@ -4,6 +4,7 @@ import { Input } from "@diffkit/ui/components/input";
 import { Label } from "@diffkit/ui/components/label";
 import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
+import { Skeleton } from "skullet/react";
 import { LabelPill } from "#/components/details/label-pill";
 import { ActionNote } from "#/components/settings/action-note";
 import { InlineConfirmButton } from "#/components/settings/inline-confirm";
@@ -12,7 +13,6 @@ import {
 	SettingsGroup,
 	SettingsListRow,
 } from "#/components/settings/settings-group";
-import { SettingsSkeleton } from "#/components/settings/settings-read";
 import { SettingsHeading } from "#/components/settings/settings-shell";
 import { useSettingsAction } from "#/components/settings/use-settings-action";
 import { deleteRepoLabel, saveRepoLabel } from "#/lib/github.functions";
@@ -30,6 +30,7 @@ import {
 	suggestLabelColor,
 	validateLabelDraft,
 } from "#/lib/settings/labels";
+import { SAMPLE_LABELS } from "./repo-settings-samples";
 
 type RepoProps = { owner: string; repo: string; scope: GitHubQueryScope };
 
@@ -44,7 +45,7 @@ export function LabelsSettings({ owner, repo, scope }: RepoProps) {
 	const { status, run } = useSettingsAction(scope, [
 		labelsEntityKey({ owner, repo }),
 	]);
-	const labels = query.data ?? [];
+	const labels = query.isPending ? null : (query.data ?? []);
 
 	return (
 		<>
@@ -63,76 +64,76 @@ export function LabelsSettings({ owner, repo, scope }: RepoProps) {
 					</Button>
 				}
 			/>
-			{query.isPending ? (
-				<SettingsSkeleton rows={5} />
-			) : (
-				<SettingsGroup
-					title={`${labels.length} ${labels.length === 1 ? "label" : "labels"}`}
-					actions={<ActionNote status={status} doneLabel="Deleted" />}
-				>
-					{editor.kind === "create" ? (
-						<LabelEditor
-							key="create"
-							label={null}
-							labels={labels}
-							owner={owner}
-							repo={repo}
-							scope={scope}
-							onClose={() => setEditor({ kind: "closed" })}
-						/>
-					) : null}
-					{labels.length === 0 && editor.kind === "closed" ? (
-						<SettingsEmptyRow>No labels yet.</SettingsEmptyRow>
-					) : null}
-					{labels.map((label) =>
-						editor.kind === "edit" && editor.name === label.name ? (
+			<Skeleton data={labels} sample={SAMPLE_LABELS} label="Loading labels">
+				{(labels) => (
+					<SettingsGroup
+						title={`${labels.length} ${labels.length === 1 ? "label" : "labels"}`}
+						actions={<ActionNote status={status} doneLabel="Deleted" />}
+					>
+						{editor.kind === "create" ? (
 							<LabelEditor
-								key={label.name}
-								label={label}
+								key="create"
+								label={null}
 								labels={labels}
 								owner={owner}
 								repo={repo}
 								scope={scope}
 								onClose={() => setEditor({ kind: "closed" })}
 							/>
-						) : (
-							<SettingsListRow key={label.name}>
-								<LabelPill name={label.name} color={label.color} />
-								<span className="min-w-0 flex-1 basis-40 truncate text-xs text-muted-foreground">
-									{label.description}
-								</span>
-								<span className="flex items-center gap-1">
-									<Button
-										type="button"
-										variant="ghost"
-										size="xs"
-										aria-label={`Edit label ${label.name}`}
-										onClick={() =>
-											setEditor({ kind: "edit", name: label.name })
-										}
-									>
-										Edit
-									</Button>
-									<InlineConfirmButton
-										label="Delete"
-										ariaLabel={`Delete label ${label.name}`}
-										prompt="Delete label?"
-										confirmLabel="Delete"
-										pending={status.kind === "pending"}
-										onConfirm={() =>
-											void run(() =>
-												deleteRepoLabel({
-													data: { owner, repo, name: label.name },
-												}),
-											)
-										}
-									/>
-								</span>
-							</SettingsListRow>
-						),
-					)}
-				</SettingsGroup>
-			)}
+						) : null}
+						{labels.length === 0 && editor.kind === "closed" ? (
+							<SettingsEmptyRow>No labels yet.</SettingsEmptyRow>
+						) : null}
+						{labels.map((label) =>
+							editor.kind === "edit" && editor.name === label.name ? (
+								<LabelEditor
+									key={label.name}
+									label={label}
+									labels={labels}
+									owner={owner}
+									repo={repo}
+									scope={scope}
+									onClose={() => setEditor({ kind: "closed" })}
+								/>
+							) : (
+								<SettingsListRow key={label.name}>
+									<LabelPill name={label.name} color={label.color} />
+									<span className="min-w-0 flex-1 basis-40 truncate text-xs text-muted-foreground">
+										{label.description}
+									</span>
+									<span className="flex items-center gap-1">
+										<Button
+											type="button"
+											variant="ghost"
+											size="xs"
+											aria-label={`Edit label ${label.name}`}
+											onClick={() =>
+												setEditor({ kind: "edit", name: label.name })
+											}
+										>
+											Edit
+										</Button>
+										<InlineConfirmButton
+											label="Delete"
+											ariaLabel={`Delete label ${label.name}`}
+											prompt="Delete label?"
+											confirmLabel="Delete"
+											pending={status.kind === "pending"}
+											onConfirm={() =>
+												void run(() =>
+													deleteRepoLabel({
+														data: { owner, repo, name: label.name },
+													}),
+												)
+											}
+										/>
+									</span>
+								</SettingsListRow>
+							),
+						)}
+					</SettingsGroup>
+				)}
+			</Skeleton>
 		</>
 	);
 }

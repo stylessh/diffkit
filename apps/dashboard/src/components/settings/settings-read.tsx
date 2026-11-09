@@ -1,29 +1,27 @@
 import { ExternalLinkIcon } from "@diffkit/icons";
 import { Button } from "@diffkit/ui/components/button";
-import { Skeleton } from "@diffkit/ui/components/skeleton";
 import type { UseQueryResult } from "@tanstack/react-query";
 import type * as React from "react";
+import { Skeleton } from "skullet/react";
+import { SkeletonSample } from "#/components/shared/skeleton-sample";
 import type { SettingsRead } from "#/lib/settings/read-result";
-import { SettingsGroup } from "./settings-group";
+import { SettingsGroup, SettingsListRow } from "./settings-group";
 
-export function SettingsSkeleton({ rows = 3 }: { rows?: number }) {
+/** For a page whose shape isn't known yet, such as while access is checked. */
+export function SettingsRowsSample({ rows = 3 }: { rows?: number }) {
 	return (
-		<output
-			aria-label="Loading"
-			className="block overflow-hidden rounded-lg bg-card shadow-card"
-		>
+		<SettingsGroup>
 			{Array.from({ length: rows }, (_, index) => (
-				<div
-					// biome-ignore lint/suspicious/noArrayIndexKey: static placeholder rows
-					key={index}
-					className="flex h-11 items-center gap-3 border-t-[0.5px] border-rule px-4 first:border-t-0"
-				>
-					<Skeleton className="size-5 rounded-full" />
-					<Skeleton className="h-3 w-40" />
-					<Skeleton className="ml-auto h-3 w-16" />
-				</div>
+				// biome-ignore lint/suspicious/noArrayIndexKey: static sample rows
+				<SettingsListRow key={index}>
+					<div className="size-5 shrink-0 rounded-full" />
+					<span className="text-[13px] font-medium text-foreground">
+						Settings entry
+					</span>
+					<span className="ml-auto text-xs text-muted-foreground">Detail</span>
+				</SettingsListRow>
 			))}
-		</output>
+		</SettingsGroup>
 	);
 }
 
@@ -68,22 +66,36 @@ export function EditOnGitHubLink({
 	);
 }
 
-export function SettingsReadView<T>({
-	query,
-	skeletonRows,
-	forbiddenTitle,
-	forbiddenHint,
-	githubUrl,
-	children,
-}: {
+type SettingsReadViewProps<T> = {
 	query: UseQueryResult<SettingsRead<T>>;
-	skeletonRows?: number;
+	sample: T;
 	forbiddenTitle: string;
 	forbiddenHint: string;
 	githubUrl: string;
 	children: (data: T) => React.ReactNode;
-}) {
-	if (query.isPending) return <SettingsSkeleton rows={skeletonRows} />;
+};
+
+export function SettingsReadView<T>(props: SettingsReadViewProps<T>) {
+	return (
+		<Skeleton loading={props.query.isPending} label="Loading settings">
+			<div className="flex flex-col gap-8">
+				<SettingsReadContent {...props} />
+			</div>
+		</Skeleton>
+	);
+}
+
+function SettingsReadContent<T>({
+	query,
+	sample,
+	forbiddenTitle,
+	forbiddenHint,
+	githubUrl,
+	children,
+}: SettingsReadViewProps<T>) {
+	if (query.isPending) {
+		return <SkeletonSample>{children(sample)}</SkeletonSample>;
+	}
 	const result = query.data;
 	if (result?.status === "ok") return <>{children(result.data)}</>;
 	if (result?.status === "forbidden") {

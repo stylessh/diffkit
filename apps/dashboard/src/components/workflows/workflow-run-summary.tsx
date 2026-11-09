@@ -1,11 +1,11 @@
 import { AlertCircleIcon, ClockIcon, PackageIcon } from "@diffkit/icons";
-import { Skeleton } from "@diffkit/ui/components/skeleton";
 import {
 	StatePill,
 	type StatePillTone,
 } from "@diffkit/ui/components/state-pill";
 import { Link } from "@tanstack/react-router";
 import type { ComponentType, ReactNode, SVGProps } from "react";
+import { SkeletonBox } from "skullet/react";
 import {
 	CheckStateIcon,
 	getCheckState,
@@ -82,7 +82,7 @@ export function WorkflowRunSummary({
 					isRunLive ? (
 						<LiveTotalDuration run={run} />
 					) : staticDurationMs == null && isJobsLoading ? (
-						<Skeleton className="h-4 w-12" />
+						<SkeletonBox width={48} height={16} radius={6} />
 					) : (
 						formatDuration(staticDurationMs)
 					)

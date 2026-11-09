@@ -134,16 +134,14 @@ export function RepoReleaseDetailPage({
 					)}
 				</div>
 			</RepoPageHeader>
-			{repoData ? (
-				<SidePanelPortal>
-					<RepoActivityCards
-						owner={owner}
-						repo={repo}
-						scope={scope}
-						repoData={repoData}
-					/>
-				</SidePanelPortal>
-			) : null}
+			<SidePanelPortal>
+				<RepoActivityCards
+					owner={owner}
+					repo={repo}
+					scope={scope}
+					repoData={repoData}
+				/>
+			</SidePanelPortal>
 		</>
 	);
 }

@@ -19,11 +19,11 @@ import {
 } from "@diffkit/ui/components/alert-dialog";
 import { Button } from "@diffkit/ui/components/button";
 import { PageIconButton } from "@diffkit/ui/components/page-header";
-import { Skeleton } from "@diffkit/ui/components/skeleton";
 import { Spinner } from "@diffkit/ui/components/spinner";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
+import { Skeleton } from "skullet/react";
 import { ReviewSubmitPopover } from "#/components/pulls/review/review-submit-popover";
 import { encodeFileId } from "#/components/pulls/review/review-utils";
 import { ListPage } from "#/components/shared/list-page";
@@ -35,6 +35,7 @@ import {
 	reviewDraftBodyPreview,
 } from "#/lib/review-drafts";
 import { useHasMounted } from "#/lib/use-has-mounted";
+import { SAMPLE_REVIEW_DRAFTS } from "./review-draft-samples";
 import {
 	type ReviewDraftBusyState,
 	useReviewDraftActions,
@@ -115,23 +116,29 @@ export function ReviewDraftsPage({ userId }: { userId: string }) {
 					</div>
 				}
 			>
-				<div className="flex min-w-0 flex-col gap-4 pt-1">
-					{!result ? (
-						<ReviewDraftsSkeleton />
-					) : drafts.length === 0 ? (
-						<ReviewDraftsEmptyState />
-					) : (
-						drafts.map((draft) => (
-							<ReviewDraftGroup
-								key={draft.review.reviewId}
-								draft={draft}
-								busy={busy.get(draft.review.reviewId)}
-								onSubmit={(body, event) => submit(draft, event, body)}
-								onDelete={() => setDraftToDelete(draft)}
-							/>
-						))
+				<Skeleton
+					data={result}
+					sample={SAMPLE_REVIEW_DRAFTS}
+					label="Loading drafts"
+				>
+					{(loaded) => (
+						<div className="flex min-w-0 flex-col gap-4 pt-1">
+							{loaded.drafts.length === 0 ? (
+								<ReviewDraftsEmptyState />
+							) : (
+								loaded.drafts.map((draft) => (
+									<ReviewDraftGroup
+										key={draft.review.reviewId}
+										draft={draft}
+										busy={busy.get(draft.review.reviewId)}
+										onSubmit={(body, event) => submit(draft, event, body)}
+										onDelete={() => setDraftToDelete(draft)}
+									/>
+								))
+							)}
+						</div>
 					)}
-				</div>
+				</Skeleton>
 			</ListPage>
 
 			<AlertDialog
@@ -347,31 +354,6 @@ function DraftCommentRow({
 				{reviewDraftBodyPreview(comment.body, 240)}
 			</span>
 		</Link>
-	);
-}
-
-function ReviewDraftsSkeleton() {
-	return (
-		<>
-			{[0, 1].map((key) => (
-				<div key={key} className="overflow-hidden rounded-xl border-[0.5px]">
-					<div className="flex items-start gap-3 border-b-[0.5px] px-4 py-3">
-						<Skeleton className="mt-1 size-4 rounded-full" />
-						<div className="flex flex-1 flex-col gap-2">
-							<Skeleton className="h-4 w-2/3" />
-							<Skeleton className="h-3 w-1/3" />
-						</div>
-						<Skeleton className="h-7 w-28 rounded-lg" />
-					</div>
-					{[0, 1].map((row) => (
-						<div key={row} className="flex flex-col gap-2 px-4 py-3">
-							<Skeleton className="h-3 w-1/2" />
-							<Skeleton className="h-3 w-5/6" />
-						</div>
-					))}
-				</div>
-			))}
-		</>
 	);
 }
 

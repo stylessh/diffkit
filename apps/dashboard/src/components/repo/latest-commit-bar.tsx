@@ -1,4 +1,3 @@
-import { Skeleton } from "@diffkit/ui/components/skeleton";
 import {
 	Tooltip,
 	TooltipContent,
@@ -6,13 +5,16 @@ import {
 } from "@diffkit/ui/components/tooltip";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
+import { Skeleton } from "skullet/react";
+import { useIsSkeletonSample } from "#/components/shared/skeleton-sample";
 import { formatRelativeTime } from "#/lib/format-relative-time";
 import {
 	type GitHubQueryScope,
 	githubRefHeadCommitQueryOptions,
 } from "#/lib/github.query";
-import type { RepoOverview } from "#/lib/github.types";
+import type { FileLastCommit, RepoOverview } from "#/lib/github.types";
 import { CommitHistoryLink } from "./commits/commit-history-link";
+import { SAMPLE_COMMIT } from "./repo-samples";
 import { RepoAvatar, RepoCardHead } from "./repo-ui";
 
 export function LatestCommitBar({
@@ -33,33 +35,55 @@ export function LatestCommitBar({
 	/** Directory being browsed — scopes the History link. */
 	path?: string;
 }) {
+	const isSample = useIsSkeletonSample();
 	const tipQuery = useQuery({
 		...githubRefHeadCommitQueryOptions(scope, {
 			owner,
 			repo: repoName,
 			ref,
 		}),
+		enabled: !isSample,
 		placeholderData:
 			ref === defaultBranch && defaultBranchTip != null
 				? defaultBranchTip
 				: undefined,
 	});
 
-	const commit = tipQuery.data;
+	const commit = isSample ? SAMPLE_COMMIT : tipQuery.data;
+	if (!commit && !tipQuery.isPending) return null;
 
-	if (tipQuery.isPending && commit == null) {
-		return (
-			<RepoCardHead>
-				<Skeleton className="size-[18px] shrink-0 rounded-full" />
-				<Skeleton className="h-3.5 w-20 shrink-0 rounded" />
-				<Skeleton className="h-3.5 min-w-0 flex-1 rounded" />
-				<Skeleton className="h-3.5 w-16 shrink-0 rounded" />
-			</RepoCardHead>
-		);
-	}
+	return (
+		<Skeleton
+			data={commit}
+			sample={SAMPLE_COMMIT}
+			label="Loading latest commit"
+		>
+			{(commit) => (
+				<LatestCommitHead
+					commit={commit}
+					owner={owner}
+					repoName={repoName}
+					ref={ref}
+					path={path}
+				/>
+			)}
+		</Skeleton>
+	);
+}
 
-	if (!commit) return null;
-
+function LatestCommitHead({
+	commit,
+	owner,
+	repoName,
+	ref,
+	path,
+}: {
+	commit: FileLastCommit;
+	owner: string;
+	repoName: string;
+	ref: string;
+	path?: string;
+}) {
 	const shortSha = commit.sha.slice(0, 7);
 	const firstLine = commit.message.split("\n")[0];
 

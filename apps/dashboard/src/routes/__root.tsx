@@ -12,6 +12,8 @@ import { TanStackRouterDevtoolsPanel } from "@tanstack/react-router-devtools";
 import { ThemeProvider } from "next-themes";
 import { NuqsAdapter } from "nuqs/adapters/tanstack-router";
 import { lazy, Suspense } from "react";
+import type { SkulletTheme } from "skullet";
+import { SkulletProvider } from "skullet/react";
 import { ErrorScreen } from "#/components/layouts/error-screen";
 import { COLOR_THEME_BOOT_SCRIPT } from "#/lib/color-themes";
 import { buildSeo, buildWebSiteSchema } from "#/lib/seo";
@@ -107,15 +109,25 @@ function RootDocument({ children }: { children: React.ReactNode }) {
 	);
 }
 
+/* Colours are left to `--skullet-base` and `--skullet-highlight` in globals.css,
+   which follow the app's `.dark` class and colour theme rather than the OS. */
+const SKELETON_THEME = {
+	animation: "pulse",
+	speed: "fast",
+	text: { top: "ascender", bottom: "descender" },
+} satisfies SkulletTheme;
+
 function RootComponent() {
 	return (
 		<ThemeProvider attribute="class" defaultTheme="system" enableSystem>
-			<NuqsAdapter>
-				<TooltipProvider>
-					<Outlet />
-				</TooltipProvider>
-				<Toaster />
-			</NuqsAdapter>
+			<SkulletProvider theme={SKELETON_THEME}>
+				<NuqsAdapter>
+					<TooltipProvider>
+						<Outlet />
+					</TooltipProvider>
+					<Toaster />
+				</NuqsAdapter>
+			</SkulletProvider>
 		</ThemeProvider>
 	);
 }

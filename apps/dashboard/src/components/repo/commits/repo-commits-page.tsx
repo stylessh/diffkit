@@ -1,10 +1,10 @@
 import { CloseIcon, FileIcon, GitCommitIcon } from "@diffkit/icons";
 import { Chip } from "@diffkit/ui/components/chip";
-import { Skeleton } from "@diffkit/ui/components/skeleton";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { Link, useNavigate } from "@tanstack/react-router";
 import { parseAsInteger, parseAsString, useQueryStates } from "nuqs";
 import { useCallback, useMemo } from "react";
+import { Skeleton } from "skullet/react";
 import { ToolbarRow, ToolbarSearchField } from "#/components/filters";
 import { SidePanelPortal } from "#/components/layouts/dashboard-side-panel";
 import { Pagination } from "#/components/pagination";
@@ -12,7 +12,11 @@ import { RepoRefPicker } from "#/components/repo/refs/repo-ref-picker";
 import { RepoActivityCards } from "#/components/repo/repo-activity-cards";
 import { RepoPageHeader } from "#/components/repo/repo-page-header";
 import { ListGroup } from "#/components/shared/list-page";
-import { filterCommitsByMessage, groupCommitsByDay } from "#/lib/commit-groups";
+import {
+	type CommitDayGroup,
+	filterCommitsByMessage,
+	groupCommitsByDay,
+} from "#/lib/commit-groups";
 import { buildCommitsSplat, splitCommitsSplat } from "#/lib/commits-route";
 import {
 	type GitHubQueryScope,
@@ -21,6 +25,7 @@ import {
 	githubRepoRefSplatQueryOptions,
 	REPO_COMMITS_PER_PAGE,
 } from "#/lib/github.query";
+import type { RepoCommitSummary } from "#/lib/github.types";
 import { useHasMounted } from "#/lib/use-has-mounted";
 import { useRegisterTab } from "#/lib/use-register-tab";
 import { useUrlSearchInput } from "#/lib/use-url-search-input";
@@ -30,15 +35,14 @@ import {
 	RepoEmptyState,
 } from "../repo-ui";
 import { CommitAuthorFilter } from "./commit-author-filter";
-import { RepoCommitRow, RepoCommitRowSkeleton } from "./repo-commit-row";
+import { SAMPLE_COMMIT_GROUPS } from "./commit-samples";
+import { RepoCommitRow } from "./repo-commit-row";
 
 const commitsSearchParsers = {
 	page: parseAsInteger.withDefault(1),
 	author: parseAsString,
 	q: parseAsString,
 };
-
-const SKELETON_WIDTHS = ["72%", "54%", "80%", "46%", "64%", "58%"];
 
 /**
  * Commit history for a ref (defaults to the default branch), optionally scoped
@@ -277,79 +281,60 @@ export function RepoCommitsPage({
 					</p>
 				) : null}
 
-				{showSkeleton ? (
-					<CommitsSkeleton />
-				) : commitsQuery.isError ? (
-					<RepoEmptyState
-						icon={<GitCommitIcon />}
-						title="Couldn't load commits"
-						action={
-							<button
-								type="button"
-								onClick={() => void commitsQuery.refetch()}
-								className={pillButtonClassName}
-							>
-								Try again
-							</button>
-						}
-					/>
-				) : groups.length === 0 ? (
-					<RepoEmptyState
-						icon={<GitCommitIcon />}
-						title={
-							hasFilters
-								? "No commits match these filters"
-								: path
-									? "No commits touch this path on this ref"
-									: "No commits on this ref yet"
-						}
-						action={
-							hasFilters ? (
+				<Skeleton loading={showSkeleton} label="Loading commits">
+					{showSkeleton ? (
+						<CommitGroupList
+							groups={SAMPLE_COMMIT_GROUPS}
+							owner={owner}
+							repo={repo}
+						/>
+					) : commitsQuery.isError ? (
+						<RepoEmptyState
+							icon={<GitCommitIcon />}
+							title="Couldn't load commits"
+							action={
 								<button
 									type="button"
-									onClick={() => {
-										void setParams({ author: null, q: null, page: null });
-									}}
+									onClick={() => void commitsQuery.refetch()}
 									className={pillButtonClassName}
 								>
-									Clear filters
+									Try again
 								</button>
-							) : undefined
-						}
-					/>
-				) : (
-					<div
-						className="flex flex-col transition-opacity"
-						style={{ opacity: commitsQuery.isPlaceholderData ? 0.6 : 1 }}
-					>
-						{groups.map((group) => (
-							<ListGroup
-								key={group.key}
-								title={group.label.replace(/^Commits on /, "")}
-								label={group.label}
-								count={group.commits.length}
-							>
-								<ol>
-									{group.commits.map((commit) => (
-										<li
-											key={commit.sha}
-											style={{
-												contentVisibility: "auto",
-												containIntrinsicSize: "auto 44px",
-											}}
-										>
-											<RepoCommitRow
-												commit={commit}
-												owner={owner}
-												repo={repo}
-											/>
-										</li>
-									))}
-								</ol>
-							</ListGroup>
-						))}
-					</div>
-				)}
+							}
+						/>
+					) : groups.length === 0 ? (
+						<RepoEmptyState
+							icon={<GitCommitIcon />}
+							title={
+								hasFilters
+									? "No commits match these filters"
+									: path
+										? "No commits touch this path on this ref"
+										: "No commits on this ref yet"
+							}
+							action={
+								hasFilters ? (
+									<button
+										type="button"
+										onClick={() => {
+											void setParams({ author: null, q: null, page: null });
+										}}
+										className={pillButtonClassName}
+									>
+										Clear filters
+									</button>
+								) : undefined
+							}
+						/>
+					) : (
+						<div
+							className="flex flex-col transition-opacity"
+							style={{ opacity: commitsQuery.isPlaceholderData ? 0.6 : 1 }}
+						>
+							<CommitGroupList groups={groups} owner={owner} repo={repo} />
+						</div>
+					)}
+				</Skeleton>
 
 				<div className="mt-6 flex flex-col items-center gap-4">
 					<Pagination
@@ -370,31 +355,47 @@ export function RepoCommitsPage({
 					) : null}
 				</div>
 			</RepoPageHeader>
-			{repoData ? (
-				<SidePanelPortal>
-					<RepoActivityCards
-						owner={owner}
-						repo={repo}
-						scope={scope}
-						repoData={repoData}
-					/>
-				</SidePanelPortal>
-			) : null}
+			<SidePanelPortal>
+				<RepoActivityCards
+					owner={owner}
+					repo={repo}
+					scope={scope}
+					repoData={repoData}
+				/>
+			</SidePanelPortal>
 		</>
 	);
 }
 
-function CommitsSkeleton() {
-	return (
-		<section className="flex flex-col">
-			<div className="flex h-9 items-center gap-2 rounded-lg bg-group pl-2.5">
-				<Skeleton className="h-3.5 w-48 rounded" />
-			</div>
-			<div className="flex flex-col py-0.5">
-				{SKELETON_WIDTHS.map((width) => (
-					<RepoCommitRowSkeleton key={width} width={width} />
+function CommitGroupList({
+	groups,
+	owner,
+	repo,
+}: {
+	groups: CommitDayGroup<RepoCommitSummary>[];
+	owner: string;
+	repo: string;
+}) {
+	return groups.map((group) => (
+		<ListGroup
+			key={group.key}
+			title={group.label.replace(/^Commits on /, "")}
+			label={group.label}
+			count={group.commits.length}
+		>
+			<ol>
+				{group.commits.map((commit) => (
+					<li
+						key={commit.sha}
+						style={{
+							contentVisibility: "auto",
+							containIntrinsicSize: "auto 44px",
+						}}
+					>
+						<RepoCommitRow commit={commit} owner={owner} repo={repo} />
+					</li>
 				))}
-			</div>
-		</section>
-	);
+			</ol>
+		</ListGroup>
+	));
 }

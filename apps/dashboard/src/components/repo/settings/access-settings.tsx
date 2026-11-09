@@ -44,6 +44,7 @@ import type {
 	RepoTeam,
 	TeamOption,
 } from "#/lib/settings/access";
+import { SAMPLE_REPO_ACCESS } from "./repo-settings-samples";
 import { RoleSelect } from "./role-select";
 
 type RepoProps = { owner: string; repo: string; scope: GitHubQueryScope };
@@ -61,7 +62,7 @@ export function AccessSettings({ owner, repo, scope }: RepoProps) {
 			/>
 			<SettingsReadView
 				query={query}
-				skeletonRows={4}
+				sample={SAMPLE_REPO_ACCESS}
 				forbiddenTitle="Access settings aren't available"
 				forbiddenHint="GitHub only shows collaborators to people with admin access."
 				githubUrl={`https://github.com/${owner}/${repo}/settings/access`}

@@ -6,7 +6,6 @@ import {
 } from "@diffkit/icons";
 import { Chip } from "@diffkit/ui/components/chip";
 import { GroupHeader } from "@diffkit/ui/components/group-header";
-import { Skeleton } from "@diffkit/ui/components/skeleton";
 import { Spinner } from "@diffkit/ui/components/spinner";
 import {
 	Tooltip,
@@ -22,6 +21,7 @@ import {
 import { Link } from "@tanstack/react-router";
 import { parseAsString, useQueryState } from "nuqs";
 import { memo, useCallback, useMemo } from "react";
+import { Skeleton } from "skullet/react";
 import { ToolbarRow, ToolbarSearchField } from "#/components/filters";
 import { SidePanelPortal } from "#/components/layouts/dashboard-side-panel";
 import { TagIcon } from "#/components/repo/refs/tag-icon";
@@ -52,6 +52,7 @@ import {
 	pillButtonClassName,
 	RepoEmptyState,
 } from "../repo-ui";
+import { SAMPLE_TAGS } from "./tag-samples";
 
 /**
  * Tags, newest first (GraphQL orders by tag/commit date), 30 per request.
@@ -147,68 +148,47 @@ export function RepoTagsPage({
 					</ToolbarRow>
 				}
 			>
-				{isLoading ? (
-					<div className="flex flex-col">
-						{["a", "b", "c", "d"].map((key) => (
-							<div key={key} className={listRowClassName}>
-								<RowStateIcon>
-									<Skeleton className="size-3.5 rounded-full" />
-								</RowStateIcon>
-								<Skeleton className="h-3.5 w-32 rounded" />
-								<Skeleton className="h-3.5 w-48 rounded" />
-							</div>
-						))}
-					</div>
-				) : tagsQuery.isError ? (
-					<RepoEmptyState
-						icon={<TagIcon />}
-						title="Couldn't load tags"
-						action={
-							<button
-								type="button"
-								onClick={() => void tagsQuery.refetch()}
-								className={pillButtonClassName}
-							>
-								Try again
-							</button>
-						}
-					/>
-				) : tags.length === 0 ? (
-					<RepoEmptyState
-						icon={<TagIcon />}
-						title={query ? `No tags match “${query}”` : "No tags yet"}
-					/>
-				) : (
-					<section aria-label="Tags">
-						<GroupHeader
-							className="sticky top-0 z-10"
-							title="Tags"
-							count={totalCount}
+				<Skeleton loading={isLoading} label="Loading tags">
+					{isLoading ? (
+						<TagList
+							tags={SAMPLE_TAGS}
+							totalCount={SAMPLE_TAGS.length}
+							owner={owner}
+							repo={repo}
+							releasesByTag={NO_RELEASES}
+							canPush={false}
 						/>
-						<ol
-							className="flex flex-col py-0.5 transition-opacity"
-							style={{ opacity: tagsQuery.isPlaceholderData ? 0.6 : 1 }}
-						>
-							{tags.map((tag) => (
-								<li
-									key={tag.name}
-									style={{
-										contentVisibility: "auto",
-										containIntrinsicSize: "auto 44px",
-									}}
+					) : tagsQuery.isError ? (
+						<RepoEmptyState
+							icon={<TagIcon />}
+							title="Couldn't load tags"
+							action={
+								<button
+									type="button"
+									onClick={() => void tagsQuery.refetch()}
+									className={pillButtonClassName}
 								>
-									<TagRow
-										owner={owner}
-										repo={repo}
-										tag={tag}
-										release={releasesByTag.get(tag.name) ?? null}
-										canPush={canPush}
-									/>
-								</li>
-							))}
-						</ol>
-					</section>
-				)}
+									Try again
+								</button>
+							}
+						/>
+					) : tags.length === 0 ? (
+						<RepoEmptyState
+							icon={<TagIcon />}
+							title={query ? `No tags match “${query}”` : "No tags yet"}
+						/>
+					) : (
+						<TagList
+							tags={tags}
+							totalCount={totalCount}
+							owner={owner}
+							repo={repo}
+							releasesByTag={releasesByTag}
+							canPush={canPush}
+							dimmed={tagsQuery.isPlaceholderData}
+						/>
+					)}
+				</Skeleton>
 
 				{tagsQuery.hasNextPage ? (
 					<div className="mt-6 flex justify-center">
@@ -224,17 +204,67 @@ export function RepoTagsPage({
 					</div>
 				) : null}
 			</RepoPageHeader>
-			{repoData ? (
-				<SidePanelPortal>
-					<RepoActivityCards
-						owner={owner}
-						repo={repo}
-						scope={scope}
-						repoData={repoData}
-					/>
-				</SidePanelPortal>
-			) : null}
+			<SidePanelPortal>
+				<RepoActivityCards
+					owner={owner}
+					repo={repo}
+					scope={scope}
+					repoData={repoData}
+				/>
+			</SidePanelPortal>
 		</>
+	);
+}
+
+const NO_RELEASES: ReadonlyMap<string, RepoRelease> = new Map();
+
+function TagList({
+	tags,
+	totalCount,
+	owner,
+	repo,
+	releasesByTag,
+	canPush,
+	dimmed = false,
+}: {
+	tags: RepoTagListItem[];
+	totalCount: number;
+	owner: string;
+	repo: string;
+	releasesByTag: ReadonlyMap<string, RepoRelease>;
+	canPush: boolean;
+	dimmed?: boolean;
+}) {
+	return (
+		<section aria-label="Tags">
+			<GroupHeader
+				className="sticky top-0 z-10"
+				title="Tags"
+				count={totalCount}
+			/>
+			<ol
+				className="flex flex-col py-0.5 transition-opacity"
+				style={{ opacity: dimmed ? 0.6 : 1 }}
+			>
+				{tags.map((tag) => (
+					<li
+						key={tag.name}
+						style={{
+							contentVisibility: "auto",
+							containIntrinsicSize: "auto 44px",
+						}}
+					>
+						<TagRow
+							owner={owner}
+							repo={repo}
+							tag={tag}
+							release={releasesByTag.get(tag.name) ?? null}
+							canPush={canPush}
+						/>
+					</li>
+				))}
+			</ol>
+		</section>
 	);
 }
 

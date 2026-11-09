@@ -39,6 +39,7 @@ import {
 	type RepoGeneralSettings,
 	validateRepoGeneralDraft,
 } from "#/lib/settings/repo-general";
+import { SAMPLE_REPO_GENERAL_SETTINGS } from "./repo-settings-samples";
 
 type FlagField = {
 	field: keyof RepoGeneralDraft & `${"has" | "allow" | "delete"}${string}`;
@@ -118,7 +119,7 @@ export function GeneralSettings({
 			/>
 			<SettingsReadView
 				query={query}
-				skeletonRows={6}
+				sample={SAMPLE_REPO_GENERAL_SETTINGS}
 				forbiddenTitle="Repository settings aren't available"
 				forbiddenHint="GitHub only shows these to people with admin access to the repository."
 				githubUrl={`https://github.com/${owner}/${repo}/settings`}

@@ -4,21 +4,21 @@ import {
 	ExternalLinkIcon,
 	RefreshCwIcon,
 } from "@diffkit/icons";
-import { Skeleton } from "@diffkit/ui/components/skeleton";
 import { Spinner } from "@diffkit/ui/components/spinner";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { getRouteApi, Link } from "@tanstack/react-router";
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Skeleton } from "skullet/react";
 import {
 	CheckStateIcon,
 	getCheckState,
 	getCheckStateColor,
 } from "#/components/checks/check-state-icon";
+import { DetailPageLayout } from "#/components/details/detail-page";
 import {
-	DetailPageLayout,
-	DetailPageSkeletonLayout,
-	StaggerItem,
-} from "#/components/details/detail-page";
+	SkeletonSample,
+	useIsSkeletonSample,
+} from "#/components/shared/skeleton-sample";
 import {
 	githubQueryKeys,
 	githubViewerQueryOptions,
@@ -44,6 +44,7 @@ import { StepLogContent } from "./graph/step-log-content";
 import { getStepHashId } from "./step-hash";
 import { WorkflowRunHeader } from "./workflow-run-header";
 import { WorkflowRunSidebar } from "./workflow-run-sidebar";
+import { SAMPLE_WORKFLOW_JOB, SAMPLE_WORKFLOW_RUN } from "./workflow-samples";
 
 const routeApi = getRouteApi(
 	"/_protected/$owner/$repo/actions/runs/$runId_/job/$jobId",
@@ -128,61 +129,91 @@ export function WorkflowJobPage() {
 
 	if (runQuery.error) throw runQuery.error;
 	const run = runQuery.data;
-	if (!run) return <WorkflowJobPageSkeleton />;
-
 	const jobs = jobsQuery.data ?? [];
-	const pullRequestNumber = run.pullRequests[0]?.number ?? null;
 
 	return (
 		<DetailPageLayout
 			main={
-				<>
-					<WorkflowRunHeader
-						owner={owner}
-						repo={repo}
-						run={run}
-						pullRequestNumber={pullRequestNumber}
-						scope={scope}
-					/>
-					<JobContainer
-						job={job}
-						isJobLoading={jobsQuery.isLoading}
-						rawLogs={logsQuery.data?.logs ?? null}
-						bundleStepLogs={bundleStepLogs}
-						notAvailable={
-							isRunCompleted
-								? bundleQuery.data?.notAvailable === true
-								: logsQuery.data?.notAvailable === true
-						}
-						isLogsLoading={
-							isRunCompleted ? bundleQuery.isLoading : logsQuery.isLoading
-						}
-						isLogsError={
-							isRunCompleted ? bundleQuery.isError : logsQuery.isError
-						}
-						isLogsFetching={
-							isRunCompleted ? bundleQuery.isFetching : logsQuery.isFetching
-						}
-						onRefresh={() => {
-							if (isRunCompleted) {
-								void bundleQuery.refetch();
-							} else {
-								void logsQuery.refetch();
-							}
-						}}
-						isRunCompleted={isRunCompleted}
-						owner={owner}
-						repo={repo}
-						runId={runIdNum}
-						jobId={jobIdNum}
-						scope={scope}
-					/>
-				</>
+				<Skeleton loading={!run} label="Loading workflow job">
+					{run ? (
+						<div className="flex flex-col gap-8">
+							<WorkflowRunHeader
+								owner={owner}
+								repo={repo}
+								run={run}
+								pullRequestNumber={run.pullRequests[0]?.number ?? null}
+								scope={scope}
+							/>
+							<JobContainer
+								job={job}
+								isJobLoading={jobsQuery.isLoading}
+								rawLogs={logsQuery.data?.logs ?? null}
+								bundleStepLogs={bundleStepLogs}
+								notAvailable={
+									isRunCompleted
+										? bundleQuery.data?.notAvailable === true
+										: logsQuery.data?.notAvailable === true
+								}
+								isLogsLoading={
+									isRunCompleted ? bundleQuery.isLoading : logsQuery.isLoading
+								}
+								isLogsError={
+									isRunCompleted ? bundleQuery.isError : logsQuery.isError
+								}
+								isLogsFetching={
+									isRunCompleted ? bundleQuery.isFetching : logsQuery.isFetching
+								}
+								onRefresh={() => {
+									if (isRunCompleted) {
+										void bundleQuery.refetch();
+									} else {
+										void logsQuery.refetch();
+									}
+								}}
+								isRunCompleted={isRunCompleted}
+								owner={owner}
+								repo={repo}
+								runId={runIdNum}
+								jobId={jobIdNum}
+								scope={scope}
+							/>
+						</div>
+					) : (
+						<SkeletonSample>
+							<div className="flex flex-col gap-8">
+								<WorkflowRunHeader
+									owner={owner}
+									repo={repo}
+									run={SAMPLE_WORKFLOW_RUN}
+									pullRequestNumber={null}
+									scope={scope}
+								/>
+								<JobContainer
+									job={SAMPLE_WORKFLOW_JOB}
+									isJobLoading={false}
+									rawLogs={null}
+									bundleStepLogs={null}
+									notAvailable={false}
+									isLogsLoading={false}
+									isLogsError={false}
+									isLogsFetching={false}
+									onRefresh={() => {}}
+									isRunCompleted
+									owner={owner}
+									repo={repo}
+									runId={runIdNum}
+									jobId={jobIdNum}
+									scope={scope}
+								/>
+							</div>
+						</SkeletonSample>
+					)}
+				</Skeleton>
 			}
 			sidebar={
 				<WorkflowRunSidebar
 					jobs={jobs}
-					isJobsLoading={jobsQuery.isLoading}
+					isJobsLoading={!run || jobsQuery.isLoading}
 					owner={owner}
 					repo={repo}
 					runId={runIdNum}
@@ -190,30 +221,6 @@ export function WorkflowJobPage() {
 				/>
 			}
 		/>
-	);
-}
-
-function WorkflowJobPageSkeleton() {
-	return (
-		<DetailPageSkeletonLayout mainItemCount={2}>
-			<StaggerItem index={0}>
-				<div className="flex flex-col gap-3">
-					<Skeleton className="h-3 w-40" />
-					<div className="flex items-start gap-3">
-						<Skeleton className="mt-1 size-5 rounded-full" />
-						<div className="flex min-w-0 flex-1 flex-col gap-2">
-							<Skeleton className="h-7 w-3/5" />
-							<Skeleton className="h-4 w-40" />
-						</div>
-					</div>
-				</div>
-			</StaggerItem>
-			<StaggerItem index={1}>
-				<div className="flex h-48 items-center rounded-xl border-[0.5px] px-6">
-					<Skeleton className="h-12 w-52" />
-				</div>
-			</StaggerItem>
-		</DetailPageSkeletonLayout>
 	);
 }
 
@@ -449,14 +456,16 @@ const JobStepRow = memo(function JobStepRow({
 	isLogsLoading: boolean;
 	isLogsError: boolean;
 }) {
+	const isSample = useIsSkeletonSample();
 	const hashId = getStepHashId(step.name, step.number);
 	const rowRef = useRef<HTMLDivElement>(null);
 	const [expanded, setExpanded] = useState(() => {
-		if (typeof window === "undefined") return false;
+		if (typeof window === "undefined" || isSample) return false;
 		return window.location.hash.slice(1) === hashId;
 	});
 
 	useEffect(() => {
+		if (isSample) return;
 		const syncFromHash = () => {
 			if (window.location.hash.slice(1) !== hashId) return;
 			setExpanded(true);
@@ -465,7 +474,7 @@ const JobStepRow = memo(function JobStepRow({
 		syncFromHash();
 		window.addEventListener("hashchange", syncFromHash);
 		return () => window.removeEventListener("hashchange", syncFromHash);
-	}, [hashId]);
+	}, [hashId, isSample]);
 
 	const handleToggle = useCallback(() => {
 		setExpanded((prev) => {

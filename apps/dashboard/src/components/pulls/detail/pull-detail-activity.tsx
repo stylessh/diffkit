@@ -36,7 +36,6 @@ import {
 } from "@diffkit/ui/components/dropdown-menu";
 import { MarkdownEditor } from "@diffkit/ui/components/markdown-editor";
 import { MenuCheck } from "@diffkit/ui/components/menu";
-import { Skeleton } from "@diffkit/ui/components/skeleton";
 import { toast } from "@diffkit/ui/components/sonner";
 import { Spinner } from "@diffkit/ui/components/spinner";
 import { StatePill } from "@diffkit/ui/components/state-pill";
@@ -56,6 +55,7 @@ import {
 	useRef,
 	useState,
 } from "react";
+import { Skeleton } from "skullet/react";
 import {
 	CheckStateIcon,
 	getCheckState,
@@ -87,6 +87,7 @@ import { LabelPill } from "#/components/details/label-pill";
 import { AppMarkdown } from "#/components/markdown/app-markdown";
 import { useMergeBypass } from "#/components/pulls/detail/use-merge-bypass";
 import { PullStackMergeSection } from "#/components/pulls/stack/pull-stack-section";
+import { useIsSkeletonSample } from "#/components/shared/skeleton-sample";
 import { formatRelativeTime } from "#/lib/format-relative-time";
 import {
 	approveWorkflowRuns,
@@ -137,6 +138,7 @@ import {
 } from "#/lib/timeline-close-reason";
 import { usePrefersNoHover } from "#/lib/use-prefers-no-hover";
 import { checkPermissionWarning } from "#/lib/warning-store";
+import { SAMPLE_PULL_STATUS } from "./pull-detail-samples";
 
 // Lazy-load PatchDiff for review comment diff hunks
 type ActivityPatchDiffProps = PatchDiffProps<PullReviewComment>;
@@ -199,6 +201,7 @@ export function PullDetailActivitySection({
 		{ threadId: string; isResolved: boolean }
 	>;
 }) {
+	const isSample = useIsSkeletonSample();
 	return (
 		<div className="flex flex-col">
 			<DetailActivityHeader
@@ -265,12 +268,14 @@ export function PullDetailActivitySection({
 				<div className="mt-6">
 					<MergeStatusSection
 						stack={
-							<PullStackMergeSection
-								pr={pr}
-								owner={owner}
-								repo={repo}
-								scope={scope}
-							/>
+							isSample ? null : (
+								<PullStackMergeSection
+									pr={pr}
+									owner={owner}
+									repo={repo}
+									scope={scope}
+								/>
+							)
 						}
 						scope={scope}
 						owner={owner}
@@ -372,27 +377,33 @@ function MergeStatusSection({
 		() => ({ owner, repo, pullNumber }),
 		[owner, repo, pullNumber],
 	);
+	const isSample = useIsSkeletonSample();
 	const statusQuery = useQuery({
 		...githubPullStatusQueryOptions(scope, input),
+		enabled: !isSample,
 	});
 
-	const status = statusQuery.data ?? null;
-
-	if (!status) return <MergeStatusSkeleton />;
-
 	return (
-		<MergeStatusCard
-			stack={stack}
-			scope={scope}
-			status={status}
-			owner={owner}
-			repo={repo}
-			pullNumber={pullNumber}
-			prTitle={prTitle}
-			firstCommitMessage={firstCommitMessage}
-			isDraft={isDraft}
-			pullId={pullId}
-		/>
+		<Skeleton
+			data={isSample ? SAMPLE_PULL_STATUS : statusQuery.data}
+			sample={SAMPLE_PULL_STATUS}
+			label="Loading merge status"
+		>
+			{(status) => (
+				<MergeStatusCard
+					stack={stack}
+					scope={scope}
+					status={status}
+					owner={owner}
+					repo={repo}
+					pullNumber={pullNumber}
+					prTitle={prTitle}
+					firstCommitMessage={firstCommitMessage}
+					isDraft={isDraft}
+					pullId={pullId}
+				/>
+			)}
+		</Skeleton>
 	);
 }
 
@@ -1699,28 +1710,6 @@ function StatusIcon({ status }: { status: StatusType }) {
 	return (
 		<div className="flex size-4 items-center justify-center rounded-full border-2 border-review-required text-review-required">
 			<div className="size-1.5 rounded-full bg-current" />
-		</div>
-	);
-}
-
-function MergeStatusSkeleton() {
-	return (
-		<div className="-mx-[8.5px] flex flex-col overflow-hidden rounded-lg border-[0.5px] border-border bg-card shadow-[var(--ln-main-shadow)]">
-			{[0, 1, 2].map((item) => (
-				<div
-					key={item}
-					className={cn(
-						"flex items-start gap-3 px-4 py-3",
-						item < 2 && "border-b-[0.5px] border-card-border",
-					)}
-				>
-					<Skeleton className="mt-0.5 size-4 rounded-full" />
-					<div className="flex flex-1 flex-col gap-1.5">
-						<Skeleton className="h-3.5 w-48" />
-						<Skeleton className="h-3 w-72" />
-					</div>
-				</div>
-			))}
 		</div>
 	);
 }

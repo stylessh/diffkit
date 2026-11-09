@@ -9,13 +9,13 @@ import {
 	IssueClosedNotPlannedIcon,
 	IssuesIcon,
 } from "@diffkit/icons";
-import { Skeleton } from "@diffkit/ui/components/skeleton";
 import {
 	StatePill,
 	type StatePillTone,
 } from "@diffkit/ui/components/state-pill";
 import { Link } from "@tanstack/react-router";
 import type { ReactNode } from "react";
+import { Skeleton } from "skullet/react";
 import { LabelChip, RowAvatar } from "#/components/shared/list-row";
 import { formatRelativeTime } from "#/lib/format-relative-time";
 import type {
@@ -24,6 +24,10 @@ import type {
 	ItemReference,
 } from "#/lib/github.types";
 import { commitPath, issuePath, pullPath } from "#/lib/github-links";
+import {
+	SAMPLE_COMMIT_REFERENCE,
+	SAMPLE_ITEM_REFERENCE,
+} from "./reference-samples";
 
 type IconComponent = React.ComponentType<{
 	size?: number;
@@ -169,17 +173,6 @@ function CardAuthor({
 	);
 }
 
-function CardSkeleton() {
-	return (
-		<CardFrame>
-			<Skeleton className="h-3 w-28 rounded" />
-			<Skeleton className="h-4 w-56 rounded" />
-			<Skeleton className="h-3 w-full rounded" />
-			<Skeleton className="h-3 w-40 rounded" />
-		</CardFrame>
-	);
-}
-
 function CardUnavailable({ label }: { label: string }) {
 	return (
 		<CardFrame>
@@ -211,14 +204,20 @@ export function ItemHoverCard({
 	state: CardState<ItemReference>;
 	label: string;
 }) {
-	switch (state.status) {
-		case "loading":
-			return <CardSkeleton />;
-		case "unavailable":
-			return <CardUnavailable label={label} />;
-		case "ready":
-			return <ItemCardBody item={state.data} />;
-	}
+	return (
+		<Skeleton
+			data={state.status === "ready" ? state.data : null}
+			sample={SAMPLE_ITEM_REFERENCE}
+			error={
+				state.status === "unavailable" ? (
+					<CardUnavailable label={label} />
+				) : undefined
+			}
+			label="Loading preview"
+		>
+			{(item) => <ItemCardBody item={item} />}
+		</Skeleton>
+	);
 }
 
 function ItemCardBody({ item }: { item: ItemReference }) {
@@ -269,14 +268,20 @@ export function CommitHoverCard({
 	state: CardState<CommitReference>;
 	label: string;
 }) {
-	switch (state.status) {
-		case "loading":
-			return <CardSkeleton />;
-		case "unavailable":
-			return <CardUnavailable label={label} />;
-		case "ready":
-			return <CommitCardBody commit={state.data} />;
-	}
+	return (
+		<Skeleton
+			data={state.status === "ready" ? state.data : null}
+			sample={SAMPLE_COMMIT_REFERENCE}
+			error={
+				state.status === "unavailable" ? (
+					<CardUnavailable label={label} />
+				) : undefined
+			}
+			label="Loading preview"
+		>
+			{(commit) => <CommitCardBody commit={commit} />}
+		</Skeleton>
+	);
 }
 
 function CommitCardBody({ commit }: { commit: CommitReference }) {

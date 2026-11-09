@@ -34,6 +34,7 @@ import {
 	validateOrgDraft,
 } from "#/lib/settings/org";
 import { useOrgSettingsAccess } from "./org-settings-frame";
+import { SAMPLE_ORG_SETTINGS } from "./org-settings-samples";
 
 type TextField = "name" | "description" | "email" | "blog" | "location";
 
@@ -74,7 +75,7 @@ export function OrgGeneralSettings({
 			/>
 			<SettingsReadView
 				query={query}
-				skeletonRows={5}
+				sample={SAMPLE_ORG_SETTINGS}
 				forbiddenTitle="Organization settings aren't available"
 				forbiddenHint="You need to be a member of this organization."
 				githubUrl={`https://github.com/${org}`}

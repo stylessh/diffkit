@@ -11,9 +11,10 @@ import { SettingsNavItem } from "@diffkit/ui/components/settings-nav";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import type { ReactNode } from "react";
+import { Skeleton } from "skullet/react";
 import {
 	SettingsNotice,
-	SettingsSkeleton,
+	SettingsRowsSample,
 } from "#/components/settings/settings-read";
 import { SettingsShell } from "#/components/settings/settings-shell";
 import {
@@ -136,7 +137,37 @@ export function RepoSettingsGate({
 	children: ReactNode;
 }) {
 	const access = useRepoSettingsAccess(scope, owner, repo);
-	if (access.status === "loading") return <SettingsSkeleton />;
+
+	return (
+		<Skeleton loading={access.status === "loading"} label="Loading settings">
+			<div className="flex flex-col gap-8">
+				<RepoSettingsGateContent
+					access={access}
+					owner={owner}
+					repo={repo}
+					need={need}
+				>
+					{children}
+				</RepoSettingsGateContent>
+			</div>
+		</Skeleton>
+	);
+}
+
+function RepoSettingsGateContent({
+	access,
+	owner,
+	repo,
+	need,
+	children,
+}: {
+	access: RepoSettingsAccess;
+	owner: string;
+	repo: string;
+	need: keyof RepoSettingsCapabilities;
+	children: ReactNode;
+}) {
+	if (access.status === "loading") return <SettingsRowsSample />;
 	if (access.capabilities[need]) return <>{children}</>;
 	const canManageLabels = access.capabilities.manageLabels;
 	return (

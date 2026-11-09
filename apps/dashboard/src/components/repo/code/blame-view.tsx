@@ -7,6 +7,7 @@ import {
 import { type UseQueryResult, useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import { memo } from "react";
+import { Skeleton } from "skullet/react";
 import { detectLang } from "#/lib/code-browsing/languages";
 import type {
 	BlameCommit,
@@ -20,10 +21,11 @@ import {
 	githubRepoBlameQueryOptions,
 	githubRepoBlobQueryOptions,
 } from "#/lib/github.query";
-import { CodeSkeleton } from "../code-file-view";
+import { CodeSample } from "../code-file-view";
 import { RepoAvatar, RepoCard, RepoEmptyState } from "../repo-ui";
 import { BlobHeader, type BlobLocation, SegmentLinks } from "./blob-header";
 import { CODE_LINE_HEIGHT_PX, CodeLines, countLines } from "./code-lines";
+import { SAMPLE_BLAME } from "./code-samples";
 import { useLineSelection } from "./use-line-selection";
 import { usePermalink } from "./use-permalink";
 
@@ -89,7 +91,9 @@ export function BlameView({
 				stats={state.status === "ready" ? commitCount(state.blame) : null}
 				onCopyPermalink={copyPermalink}
 			/>
-			<BlameBody state={state} location={location} />
+			<Skeleton loading={state.status === "loading"} label="Loading blame">
+				<BlameBody state={state} location={location} />
+			</Skeleton>
 		</RepoCard>
 	);
 }
@@ -103,7 +107,17 @@ function BlameBody({
 }) {
 	switch (state.status) {
 		case "loading":
-			return <CodeSkeleton />;
+			return (
+				<CodeSample
+					gutter={
+						<BlameGutter
+							ranges={SAMPLE_BLAME.ranges}
+							commits={SAMPLE_BLAME.commits}
+							location={location}
+						/>
+					}
+				/>
+			);
 		case "error":
 			return (
 				<RepoEmptyState title="Couldn't load blame">

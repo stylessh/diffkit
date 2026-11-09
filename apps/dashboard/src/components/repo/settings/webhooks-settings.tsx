@@ -28,6 +28,7 @@ import {
 import { SettingsReadView } from "#/components/settings/settings-read";
 import { SettingsHeading } from "#/components/settings/settings-shell";
 import { useSettingsAction } from "#/components/settings/use-settings-action";
+import { useIsSkeletonSample } from "#/components/shared/skeleton-sample";
 import { formatRelativeTime } from "#/lib/format-relative-time";
 import {
 	deleteRepoWebhook,
@@ -50,6 +51,10 @@ import {
 	type WebhookDraft,
 	type WebhookHealth,
 } from "#/lib/settings/webhooks";
+import {
+	SAMPLE_WEBHOOK_DELIVERIES,
+	SAMPLE_WEBHOOKS,
+} from "./repo-settings-samples";
 
 type RepoProps = { owner: string; repo: string; scope: GitHubQueryScope };
 
@@ -113,6 +118,7 @@ export function WebhooksSettings({ owner, repo, scope }: RepoProps) {
 			) : null}
 			<SettingsReadView
 				query={query}
+				sample={SAMPLE_WEBHOOKS}
 				forbiddenTitle="Webhooks aren't available"
 				forbiddenHint="GitHub only shows webhooks to people with admin access."
 				githubUrl={`https://github.com/${owner}/${repo}/settings/hooks`}
@@ -240,13 +246,15 @@ function Deliveries({
 	repo,
 	scope,
 }: RepoProps & { hook: RepoWebhook }) {
-	const query = useQuery(
-		githubRepoWebhookDeliveriesQueryOptions(scope, {
+	const isSample = useIsSkeletonSample();
+	const query = useQuery({
+		...githubRepoWebhookDeliveriesQueryOptions(scope, {
 			owner,
 			repo,
 			hookId: hook.id,
 		}),
-	);
+		enabled: !isSample,
+	});
 	const { status, run } = useSettingsAction(scope, [
 		settingsEntityKey({ owner, repo }),
 	]);
@@ -259,7 +267,7 @@ function Deliveries({
 			</div>
 			<SettingsReadView
 				query={query}
-				skeletonRows={2}
+				sample={SAMPLE_WEBHOOK_DELIVERIES}
 				forbiddenTitle="Deliveries aren't available"
 				forbiddenHint="Only admins can see delivery history."
 				githubUrl={`https://github.com/${owner}/${repo}/settings/hooks/${hook.id}`}

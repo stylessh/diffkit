@@ -1,12 +1,17 @@
 import { FileIcon } from "@diffkit/icons";
-import { Skeleton } from "@diffkit/ui/components/skeleton";
+import {
+	markdownHeadingClassNames,
+	markdownParagraphClassName,
+	markdownRootClassName,
+} from "@diffkit/ui/lib/markdown-theme";
 import { cn } from "@diffkit/ui/lib/utils";
 import {
 	keepPreviousData,
 	useQuery,
 	useQueryClient,
 } from "@tanstack/react-query";
-import { lazy, Suspense, useCallback, useMemo, useState } from "react";
+import { lazy, useCallback, useMemo, useState } from "react";
+import { Skeleton, SkeletonSuspense } from "skullet/react";
 import {
 	type GitHubQueryScope,
 	githubRepoBlobQueryOptions,
@@ -155,46 +160,49 @@ function MarkdownFileContent({
 		[owner, repo, currentRef, path],
 	);
 
-	if (contentQuery.isLoading) {
-		return (
-			<div className="flex flex-col gap-3">
-				<Skeleton className="h-6 w-48 rounded-md" />
-				<Skeleton className="h-4 w-full rounded-md" />
-				<Skeleton className="h-4 w-[90%] rounded-md" />
-				<Skeleton className="h-4 w-[75%] rounded-md" />
-				<Skeleton className="h-4 w-full rounded-md" />
-				<Skeleton className="h-4 w-[60%] rounded-md" />
-			</div>
-		);
-	}
-
 	const blob = contentQuery.data;
-	if (blob?.kind !== "text") {
-		return (
-			<p className="text-[13px] text-muted-foreground">
-				Unable to load file content.
-			</p>
-		);
-	}
 
 	return (
-		<div>
-			<Suspense
-				fallback={
-					<div className="flex flex-col gap-3">
-						<Skeleton className="h-6 w-48 rounded-md" />
-						<Skeleton className="h-4 w-full rounded-md" />
-						<Skeleton className="h-4 w-[90%] rounded-md" />
-					</div>
-				}
-			>
-				<Markdown
-					className="text-[15px] leading-6 text-text-header"
-					resolveAssetUrl={resolveAssetUrl}
+		<Skeleton loading={contentQuery.isLoading} label="Loading document">
+			{contentQuery.isLoading ? (
+				<MarkdownDocumentSample />
+			) : blob?.kind === "text" ? (
+				<SkeletonSuspense
+					skeleton={<MarkdownDocumentSample />}
+					label="Loading document"
 				>
-					{blob.text}
-				</Markdown>
-			</Suspense>
+					<Markdown
+						className={markdownDocumentClassName}
+						resolveAssetUrl={resolveAssetUrl}
+					>
+						{blob.text}
+					</Markdown>
+				</SkeletonSuspense>
+			) : (
+				<p className="text-[13px] text-muted-foreground">
+					Unable to load file content.
+				</p>
+			)}
+		</Skeleton>
+	);
+}
+
+const markdownDocumentClassName = "text-[15px] leading-6 text-text-header";
+
+/** Mirrors what `Markdown` renders for a short README, without loading it. */
+export function MarkdownDocumentSample() {
+	return (
+		<div className={cn(markdownRootClassName, markdownDocumentClassName)}>
+			<h1 className={markdownHeadingClassNames.h1}>Project name</h1>
+			<p className={markdownParagraphClassName}>
+				A short description of what this project does, who it is for and why it
+				exists, usually followed by a screenshot or a badge or two.
+			</p>
+			<h2 className={markdownHeadingClassNames.h2}>Getting started</h2>
+			<p className={markdownParagraphClassName}>
+				Install the dependencies, copy the example environment file and start
+				the development server to see it running locally.
+			</p>
 		</div>
 	);
 }

@@ -35,6 +35,10 @@ import {
 	validateActionsValue,
 } from "#/lib/settings/actions-config";
 import type { SettingsOutcome } from "#/lib/settings/read-result";
+import {
+	SAMPLE_ACTIONS_SECRETS,
+	SAMPLE_ACTIONS_VARIABLES,
+} from "./repo-settings-samples";
 
 type RepoProps = { owner: string; repo: string; scope: GitHubQueryScope };
 
@@ -92,6 +96,7 @@ function SecretsSection({ owner, repo, scope }: RepoProps) {
 	return (
 		<SettingsReadView
 			query={query}
+			sample={SAMPLE_ACTIONS_SECRETS}
 			forbiddenTitle="Secrets aren't available"
 			forbiddenHint="GitHub only shows Actions secrets to people with admin access."
 			githubUrl={`https://github.com/${owner}/${repo}/settings/secrets/actions`}
@@ -126,6 +131,7 @@ function VariablesSection({ owner, repo, scope }: RepoProps) {
 	return (
 		<SettingsReadView
 			query={query}
+			sample={SAMPLE_ACTIONS_VARIABLES}
 			forbiddenTitle="Variables aren't available"
 			forbiddenHint="GitHub only shows Actions variables to people with admin access."
 			githubUrl={`https://github.com/${owner}/${repo}/settings/variables/actions`}

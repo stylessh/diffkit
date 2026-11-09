@@ -4,15 +4,16 @@ import {
 	HoverCardTrigger,
 } from "@diffkit/ui/components/hover-card";
 import type { MarkdownMentionProps } from "@diffkit/ui/components/markdown";
-import { Skeleton } from "@diffkit/ui/components/skeleton";
 import { markdownLinkClassName } from "@diffkit/ui/lib/markdown-theme";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import { useState } from "react";
+import { Skeleton } from "skullet/react";
 import { githubUserProfileQueryOptions } from "#/lib/github.query";
 import type { GitHubUserProfile } from "#/lib/github.types";
 import { useGitHubQueryScope } from "#/lib/use-github-query-scope";
 import { type CardState, cardState } from "./reference-hover-cards";
+import { SAMPLE_USER_PROFILE } from "./reference-samples";
 
 function UserCard({
 	login,
@@ -21,18 +22,31 @@ function UserCard({
 	login: string;
 	state: CardState<GitHubUserProfile>;
 }) {
-	if (state.status === "loading") {
-		return (
-			<div className="flex items-center gap-3 p-3">
-				<Skeleton className="size-9 rounded-full" />
-				<div className="flex flex-1 flex-col gap-1.5">
-					<Skeleton className="h-3.5 w-24 rounded" />
-					<Skeleton className="h-3 w-16 rounded" />
-				</div>
-			</div>
-		);
+	return (
+		<Skeleton loading={state.status === "loading"} label="Loading profile">
+			<UserCardBody login={login} profile={shownProfile(state)} />
+		</Skeleton>
+	);
+}
+
+function shownProfile(state: CardState<GitHubUserProfile>) {
+	switch (state.status) {
+		case "loading":
+			return SAMPLE_USER_PROFILE;
+		case "unavailable":
+			return null;
+		case "ready":
+			return state.data;
 	}
-	const profile = state.status === "ready" ? state.data : null;
+}
+
+function UserCardBody({
+	login,
+	profile,
+}: {
+	login: string;
+	profile: GitHubUserProfile | null;
+}) {
 	return (
 		<div className="flex items-center gap-3 p-3">
 			{profile ? (

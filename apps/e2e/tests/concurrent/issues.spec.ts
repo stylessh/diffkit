@@ -30,8 +30,12 @@ test("an issue opens from nova's queue with its labels, assignee, milestone and 
 	).toBeVisible();
 
 	const sidebar = page.getByRole("complementary");
-	await expect(sidebar.getByText("bug", { exact: true })).toBeVisible();
-	await expect(sidebar.getByText("priority: high")).toBeVisible();
+	await expect(
+		sidebar.getByRole("button", { name: "bug", exact: true }),
+	).toBeVisible();
+	await expect(
+		sidebar.getByRole("button", { name: "priority: high" }),
+	).toBeVisible();
 	await expect(sidebar.getByText("v1.4")).toBeVisible();
 	await expect(sidebar.getByText("nova", { exact: true })).toBeVisible();
 });
