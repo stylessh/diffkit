@@ -1,13 +1,14 @@
 import { emulator } from "../../support/emulator.ts";
 import { expect, isolatedTest as test } from "../../support/test.ts";
 
-test("a branch row opens the compare form, and the pull request is created with its properties", async ({
+test("a branch opened from the list offers the compare form, and the pull request is created with its properties", async ({
 	page,
 }) => {
 	await page.goto("/lumen-labs/beacon/branches?view=all");
 	await page
-		.getByRole("link", { name: "Create pull request from refactor/on-event" })
+		.getByRole("link", { name: "refactor/on-event", exact: true })
 		.click();
+	await page.getByRole("link", { name: "Create pull request" }).click();
 
 	await expect(page).toHaveURL(
 		/\/lumen-labs\/beacon\/compare\/main\.\.\.refactor\/on-event\?expand=1$/,
