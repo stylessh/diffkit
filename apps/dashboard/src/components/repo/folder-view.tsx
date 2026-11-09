@@ -1,9 +1,9 @@
-import { FileIcon, FolderIcon } from "@diffkit/icons";
 import { cn } from "@diffkit/ui/lib/utils";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import { useMemo } from "react";
 import { SkeletonBox } from "skullet/react";
+import { FileTypeIcon } from "#/components/shared/file-type-icon";
 import { useIsSkeletonSample } from "#/components/shared/skeleton-sample";
 import { formatRelativeTime } from "#/lib/format-relative-time";
 import {
@@ -106,7 +106,6 @@ function FolderViewRow({
 	commit: FileLastCommit | null;
 	isCommitLoading: boolean;
 }) {
-	const Icon = entry.type === "dir" ? FolderIcon : FileIcon;
 	const isDir = entry.type === "dir";
 	const entryPath = currentPath ? `${currentPath}/${entry.name}` : entry.name;
 
@@ -121,14 +120,7 @@ function FolderViewRow({
 				}}
 				className="flex w-36 min-w-0 shrink-0 items-center gap-[9px] rounded-sm sm:w-56"
 			>
-				<Icon
-					size={16}
-					strokeWidth={1.8}
-					className={cn(
-						"shrink-0",
-						isDir ? "text-text-header" : "text-muted-foreground",
-					)}
-				/>
+				<FileTypeIcon path={entryPath} kind={isDir ? "directory" : "file"} />
 				<span
 					className={cn(
 						"truncate text-[13px]",

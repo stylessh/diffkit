@@ -1,11 +1,10 @@
-import { PackageIcon, PlusSignIcon } from "@diffkit/icons";
+import { PackageIcon, PlusSignIcon, TagIcon } from "@diffkit/icons";
 import { cn } from "@diffkit/ui/lib/utils";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import { parseAsInteger, useQueryState } from "nuqs";
 import { Skeleton } from "skullet/react";
 import { Pagination } from "#/components/pagination";
-import { TagIcon } from "#/components/repo/refs/tag-icon";
 import { RepoPageHeader } from "#/components/repo/repo-page-header";
 import {
 	ghostPillClassName,

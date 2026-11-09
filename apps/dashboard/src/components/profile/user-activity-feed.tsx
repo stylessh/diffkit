@@ -7,12 +7,12 @@ import {
 	IssuesIcon,
 	ReviewsIcon,
 	StarIcon,
+	TagIcon,
 } from "@diffkit/icons";
 import { LineCounts } from "@diffkit/ui/components/detail-layout";
 import { cn } from "@diffkit/ui/lib/utils";
 import { Link } from "@tanstack/react-router";
 import { useState } from "react";
-import { TagIcon } from "#/components/repo/refs/tag-icon";
 import { formatRelativeTime } from "#/lib/format-relative-time";
 import type { UserActivityEvent } from "#/lib/github.types";
 import { plainExcerpt } from "#/lib/plain-excerpt";

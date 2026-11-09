@@ -1,4 +1,4 @@
-import type { CommitDayGroup } from "#/lib/commit-groups";
+import type { CommitGroup } from "#/lib/commit-groups";
 import type { RepoCommitSummary } from "#/lib/github.types";
 
 const sampleCommit = (
@@ -33,11 +33,12 @@ const SAMPLE_MESSAGES = [
 ];
 const SAMPLE_AUTHORS = ["octocat", "hubot", "monalisa"];
 
-/** A screenful of day groups, so the list doesn't grow under the reader on reveal. */
-export const SAMPLE_COMMIT_GROUPS: CommitDayGroup<RepoCommitSummary>[] =
+/** A screenful of groups, so the list doesn't grow under the reader on reveal. */
+export const SAMPLE_COMMIT_GROUPS: CommitGroup<RepoCommitSummary>[] =
 	Array.from({ length: SAMPLE_MESSAGES.length / 2 }, (_, day) => ({
 		key: `sample-${day}`,
-		label: "Commits on Tue, Nov 4, 2026",
+		title: "October 2026",
+		label: "Commits in October 2026",
 		commits: [0, 1].map((offset) => {
 			const index = day * 2 + offset;
 			return sampleCommit(

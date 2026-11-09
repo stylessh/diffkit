@@ -1,10 +1,8 @@
 import {
 	CheckIcon,
-	CodeIcon,
-	CommentIcon,
+	ChevronDownIcon,
 	CopyIcon,
 	GitCommitIcon,
-	MoreHorizontalIcon,
 } from "@diffkit/icons";
 import { Chip } from "@diffkit/ui/components/chip";
 import {
@@ -16,6 +14,7 @@ import { cn } from "@diffkit/ui/lib/utils";
 import { Link } from "@tanstack/react-router";
 import { memo, useCallback, useEffect, useRef, useState } from "react";
 import {
+	CommentsChip,
 	listRowClassName,
 	RowAvatar,
 	RowStateIcon,
@@ -24,7 +23,6 @@ import {
 import { splitCommitMessage } from "#/lib/commit-groups";
 import { formatRelativeTime } from "#/lib/format-relative-time";
 import type { RepoCommitSummary } from "#/lib/github.types";
-import { iconButtonClassName } from "../repo-ui";
 
 export const RepoCommitRow = memo(function RepoCommitRow({
 	commit,
@@ -37,6 +35,9 @@ export const RepoCommitRow = memo(function RepoCommitRow({
 }) {
 	const [expanded, setExpanded] = useState(false);
 	const { subject, body } = splitCommitMessage(commit.message);
+	const bodyLines = body
+		? body.split("\n").filter((line) => line.trim()).length
+		: 0;
 	const authorLabel = commit.author?.login ?? commit.authorName ?? "Unknown";
 	const time = formatRelativeTime(commit.date, undefined, { compact: true });
 
@@ -63,29 +64,30 @@ export const RepoCommitRow = memo(function RepoCommitRow({
 							{subject || "(no message)"}
 						</Link>
 						{body ? (
-							<button
-								type="button"
-								data-action
-								onClick={() => setExpanded((value) => !value)}
-								aria-expanded={expanded}
-								aria-label={
-									expanded
-										? "Hide commit description"
-										: "Show commit description"
-								}
-								className="relative z-[1] flex h-5 shrink-0 items-center rounded-md px-1.5 text-muted-foreground transition-colors hover:bg-ghost-hover hover:text-foreground aria-expanded:bg-ghost-hover aria-expanded:text-foreground"
-							>
-								<MoreHorizontalIcon size={12} strokeWidth={2} />
-							</button>
-						) : null}
-						{commit.commentCount > 0 ? (
-							<span
-								className="hidden shrink-0 items-center gap-1 text-xs tabular-nums text-muted-foreground md:flex"
-								title={`${commit.commentCount} comments`}
-							>
-								<CommentIcon size={12} strokeWidth={2} />
-								{commit.commentCount}
-							</span>
+							<Chip asChild className="relative z-[1] shrink-0">
+								<button
+									type="button"
+									data-action
+									onClick={() => setExpanded((value) => !value)}
+									aria-expanded={expanded}
+									aria-label={
+										expanded
+											? "Hide commit description"
+											: "Show commit description"
+									}
+									className="tabular-nums transition-colors hover:text-foreground aria-expanded:text-foreground"
+								>
+									{bodyLines} {bodyLines === 1 ? "line" : "lines"}
+									<ChevronDownIcon
+										size={12}
+										strokeWidth={2}
+										className={cn(
+											"transition-transform duration-150",
+											expanded && "rotate-180",
+										)}
+									/>
+								</button>
+							</Chip>
 						) : null}
 					</span>
 					<p className="flex min-w-0 items-center gap-1 truncate text-xs text-muted-foreground md:hidden">
@@ -96,50 +98,32 @@ export const RepoCommitRow = memo(function RepoCommitRow({
 						<span className="tabular-nums">{time}</span>
 					</p>
 				</div>
-				<div className="relative z-[1] hidden shrink-0 items-center gap-1.5 md:flex">
+				<div className="relative z-[1] hidden min-w-0 shrink items-center gap-1 md:flex">
 					{commit.verified ? (
-						<Chip className="text-pill-ok-text">Verified</Chip>
+						<Chip className="shrink-0 text-pill-ok-text">Verified</Chip>
 					) : null}
+					<CommentsChip count={commit.commentCount} />
 					<ShaButton owner={owner} repo={repo} sha={commit.sha} />
-					<Tooltip>
-						<TooltipTrigger asChild>
-							<Link
-								to="/$owner/$repo/tree/$"
-								params={{ owner, repo, _splat: commit.sha }}
-								data-action
-								aria-label="Browse the repository at this commit"
-								className={iconButtonClassName}
-							>
-								<CodeIcon size={14} />
-							</Link>
-						</TooltipTrigger>
-						<TooltipContent>Browse files at this commit</TooltipContent>
-					</Tooltip>
 				</div>
-				<span className="relative z-[1] hidden shrink-0 items-center gap-2 md:flex">
+				<span className="relative z-[1] hidden shrink-0 items-center gap-2 md:ml-3 md:flex">
 					{commit.author ? (
 						<Link
 							to="/$owner"
 							params={{ owner: commit.author.login }}
 							data-action
-							className="flex max-w-32 items-center gap-1.5 rounded-md text-xs font-[450] text-muted-foreground transition-colors hover:text-foreground"
+							aria-label={authorLabel}
+							className="flex rounded-full"
 						>
-							<span className="truncate max-lg:hidden">{authorLabel}</span>
 							<RowAvatar actor={commit.author} />
 						</Link>
 					) : (
-						<>
-							<span className="max-w-32 truncate text-xs font-[450] text-muted-foreground max-lg:hidden">
-								{authorLabel}
-							</span>
+						<span title={authorLabel} className="flex">
 							<RowAvatar actor={null} />
-						</>
+						</span>
 					)}
 					<Tooltip>
 						<TooltipTrigger asChild>
-							<time dateTime={commit.date}>
-								<RowTime>{time}</RowTime>
-							</time>
+							<RowTime dateTime={commit.date}>{time}</RowTime>
 						</TooltipTrigger>
 						<TooltipContent>
 							{new Date(commit.date).toLocaleString()}
@@ -148,7 +132,7 @@ export const RepoCommitRow = memo(function RepoCommitRow({
 				</span>
 			</div>
 			{expanded ? (
-				<pre className="mb-2 ml-[19px] max-w-2xl px-3 font-sans text-xs leading-relaxed break-words whitespace-pre-wrap text-muted-foreground md:ml-[42px]">
+				<pre className="mb-2 ml-[19px] max-w-2xl px-3 font-sans text-xs leading-relaxed break-words whitespace-pre-wrap text-muted-foreground md:ml-[46px]">
 					{body}
 				</pre>
 			) : null}
@@ -181,7 +165,7 @@ function ShaButton({
 	}, [sha]);
 
 	return (
-		<span className="flex h-6 items-center overflow-hidden rounded-full bg-chip shadow-chip">
+		<span className="flex h-6 shrink-0 items-center overflow-hidden rounded-full bg-chip shadow-chip">
 			<Link
 				to="/$owner/$repo/commit/$sha"
 				params={{ owner, repo, sha }}

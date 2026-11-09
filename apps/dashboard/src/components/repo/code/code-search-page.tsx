@@ -1,15 +1,10 @@
-import {
-	ChevronLeftIcon,
-	ChevronRightIcon,
-	FileIcon,
-	FolderIcon,
-	SearchIcon,
-} from "@diffkit/icons";
+import { ChevronLeftIcon, ChevronRightIcon, SearchIcon } from "@diffkit/icons";
 import { cn } from "@diffkit/ui/lib/utils";
 import { type UseQueryResult, useQuery } from "@tanstack/react-query";
 import { Link, useNavigate } from "@tanstack/react-router";
 import { type FormEvent, useEffect, useMemo, useState } from "react";
 import { Skeleton } from "skullet/react";
+import { FileTypeIcon } from "#/components/shared/file-type-icon";
 import { splitHighlights } from "#/lib/code-browsing/mappers";
 import {
 	CODE_SEARCH_PAGE_SIZE,
@@ -195,14 +190,11 @@ function PathMatches({
 						params={{ owner, repo, _splat: `${defaultBranch}/${entry.path}` }}
 						className={cardRowClassName}
 					>
-						{entry.type === "dir" ? (
-							<FolderIcon
-								size={15}
-								className="shrink-0 text-muted-foreground"
-							/>
-						) : (
-							<FileIcon size={15} className="shrink-0 text-muted-foreground" />
-						)}
+						<FileTypeIcon
+							path={entry.path}
+							kind={entry.type === "dir" ? "directory" : "file"}
+							size={15}
+						/>
 						<span className="truncate text-[13px] text-text-header">
 							{entry.path}
 						</span>
@@ -372,7 +364,7 @@ function SearchHitCard({
 	return (
 		<RepoCard>
 			<RepoCardHead className="h-9">
-				<FileIcon size={14} className="shrink-0 text-muted-foreground" />
+				<FileTypeIcon path={hit.path} kind="file" size={14} />
 				<Link
 					to="/$owner/$repo/blob/$"
 					params={{ owner, repo, _splat: `${defaultBranch}/${hit.path}` }}

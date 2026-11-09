@@ -1,4 +1,10 @@
-import { GitBranchIcon, GitForkIcon, StarIcon, ViewIcon } from "@diffkit/icons";
+import {
+	GitBranchIcon,
+	GitForkIcon,
+	StarIcon,
+	TagIcon,
+	ViewIcon,
+} from "@diffkit/icons";
 import { Chip } from "@diffkit/ui/components/chip";
 import {
 	PanelPill,
@@ -15,7 +21,6 @@ import { Link } from "@tanstack/react-router";
 import type * as React from "react";
 import { Skeleton } from "skullet/react";
 import { SAMPLE_RELEASES } from "#/components/releases/release-samples";
-import { TagIcon } from "#/components/repo/refs/tag-icon";
 import { useIsSkeletonSample } from "#/components/shared/skeleton-sample";
 import {
 	type GitHubQueryScope,
@@ -173,7 +178,9 @@ function ReleasesSection({
 			sample={{ latest: SAMPLE_RELEASES[0] }}
 			label="Loading releases"
 		>
-			{({ latest }) => <ReleasesPanel params={params} latest={latest} />}
+			{({ latest }) =>
+				latest ? <ReleasesPanel params={params} latest={latest} /> : null
+			}
 		</Skeleton>
 	);
 }
@@ -183,49 +190,41 @@ function ReleasesPanel({
 	latest,
 }: {
 	params: { owner: string; repo: string };
-	latest: RepoRelease | null;
+	latest: RepoRelease;
 }) {
 	return (
 		<PanelSection
 			label="Releases"
 			action={
-				latest ? (
-					<Link
-						to="/$owner/$repo/releases"
-						params={params}
-						className="rounded-sm text-xs font-medium text-muted-foreground transition-colors hover:text-foreground"
-					>
-						View all
-					</Link>
-				) : undefined
+				<Link
+					to="/$owner/$repo/releases"
+					params={params}
+					className="rounded-sm text-xs font-medium text-muted-foreground transition-colors hover:text-foreground"
+				>
+					View all
+				</Link>
 			}
 		>
-			{latest ? (
-				<LinkRow
-					icon={<ReleaseGlyph latest />}
-					after={
-						latest.isPrerelease ? (
-							<HairlineBadge>Pre-release</HairlineBadge>
-						) : null
-					}
+			<LinkRow
+				icon={<ReleaseGlyph latest />}
+				after={
+					latest.isPrerelease ? (
+						<HairlineBadge>Pre-release</HairlineBadge>
+					) : null
+				}
+			>
+				<Link
+					to="/$owner/$repo/releases/$tag"
+					params={{ ...params, tag: latest.tagName }}
 				>
-					<Link
-						to="/$owner/$repo/releases/$tag"
-						params={{ ...params, tag: latest.tagName }}
-					>
-						<span className="shrink-0 font-mono text-xs">{latest.tagName}</span>
-						{latest.name && latest.name !== latest.tagName ? (
-							<span className="truncate font-[450] text-muted-foreground">
-								{latest.name}
-							</span>
-						) : null}
-					</Link>
-				</LinkRow>
-			) : (
-				<PanelRow muted icon={<ReleaseGlyph />}>
-					No releases yet
-				</PanelRow>
-			)}
+					<span className="shrink-0 font-mono text-xs">{latest.tagName}</span>
+					{latest.name && latest.name !== latest.tagName ? (
+						<span className="truncate font-[450] text-muted-foreground">
+							{latest.name}
+						</span>
+					) : null}
+				</Link>
+			</LinkRow>
 		</PanelSection>
 	);
 }

@@ -1,4 +1,9 @@
-import { ChevronRightIcon, GitBranchIcon, GitCommitIcon } from "@diffkit/icons";
+import {
+	ChevronRightIcon,
+	GitBranchIcon,
+	GitCommitIcon,
+	TagIcon,
+} from "@diffkit/icons";
 import { Chip } from "@diffkit/ui/components/chip";
 import {
 	Tooltip,
@@ -9,7 +14,6 @@ import { cn } from "@diffkit/ui/lib/utils";
 import { Link } from "@tanstack/react-router";
 import { useCallback, useState } from "react";
 import { AppMarkdown } from "#/components/markdown/app-markdown";
-import { TagIcon } from "#/components/repo/refs/tag-icon";
 import { resolveGitHubMarkdownAssetUrl } from "#/components/repo/repo-markdown-files";
 import { formatRelativeTime } from "#/lib/format-relative-time";
 import type { GitHubQueryScope } from "#/lib/github.query";

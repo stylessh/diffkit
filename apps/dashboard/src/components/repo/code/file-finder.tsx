@@ -1,4 +1,4 @@
-import { CodeIcon, FileIcon, FolderIcon, SearchIcon } from "@diffkit/icons";
+import { CodeIcon, SearchIcon } from "@diffkit/icons";
 import {
 	Command,
 	CommandEmpty,
@@ -15,6 +15,7 @@ import {
 import { cn } from "@diffkit/ui/lib/utils";
 import { useNavigate } from "@tanstack/react-router";
 import { useDeferredValue, useMemo, useState } from "react";
+import { FileTypeIcon } from "#/components/shared/file-type-icon";
 import { type FileSearchEntry, searchFiles } from "#/lib/fuzzy-file-search";
 import type { GitHubQueryScope } from "#/lib/github.query";
 import { useGlobalShortcuts } from "#/lib/shortcuts";
@@ -163,17 +164,11 @@ function FileFinderDialog({
 							onSelect={() => open(entry)}
 							className="gap-2"
 						>
-							{entry.type === "dir" ? (
-								<FolderIcon
-									size={14}
-									className="shrink-0 text-muted-foreground"
-								/>
-							) : (
-								<FileIcon
-									size={14}
-									className="shrink-0 text-muted-foreground"
-								/>
-							)}
+							<FileTypeIcon
+								path={entry.path}
+								kind={entry.type === "dir" ? "directory" : "file"}
+								size={14}
+							/>
 							<span className="shrink-0 truncate text-foreground">
 								{entry.name}
 							</span>

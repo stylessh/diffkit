@@ -1,4 +1,4 @@
-import { FileIcon, FolderIcon, SearchIcon, XIcon } from "@diffkit/icons";
+import { SearchIcon, XIcon } from "@diffkit/icons";
 import { cn } from "@diffkit/ui/lib/utils";
 import { AnimatePresence, motion } from "motion/react";
 import {
@@ -10,6 +10,7 @@ import {
 	useRef,
 	useState,
 } from "react";
+import { FileTypeIcon } from "#/components/shared/file-type-icon";
 import {
 	type FileSearchEntry,
 	type FileSearchResult,
@@ -296,7 +297,6 @@ const SearchResultRow = memo(function SearchResultRow({
 	onSelect: (entry: FileSearchResult) => void;
 }) {
 	const isDir = result.type === "dir";
-	const Icon = isDir ? FolderIcon : FileIcon;
 	const dir = result.path.includes("/")
 		? result.path.slice(0, result.path.lastIndexOf("/"))
 		: null;
@@ -326,13 +326,10 @@ const SearchResultRow = memo(function SearchResultRow({
 				(isActive || isHighlighted) && "bg-surface-1",
 			)}
 		>
-			<Icon
+			<FileTypeIcon
+				path={result.path}
+				kind={isDir ? "directory" : "file"}
 				size={15}
-				strokeWidth={1.8}
-				className={cn(
-					"shrink-0",
-					isDir ? "text-accent-foreground" : "text-muted-foreground",
-				)}
 			/>
 			<div className="flex min-w-0 flex-col text-left">
 				<HighlightedText

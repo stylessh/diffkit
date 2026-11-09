@@ -15,7 +15,7 @@ import {
 import { PageIconButton } from "@diffkit/ui/components/page-header";
 import { cn } from "@diffkit/ui/lib/utils";
 import { memo, useCallback, useState } from "react";
-import { FileTypeIcon } from "#/components/pulls/review/review-icons";
+import { FileTypeIcon } from "#/components/shared/file-type-icon";
 import type { DiffFile, DiffFileStatus } from "#/lib/diffs/diff-files";
 
 const CHANGE_LABEL: Partial<
