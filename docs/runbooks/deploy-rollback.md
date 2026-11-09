@@ -8,24 +8,24 @@ waits for the first deploy to finish.
 
 ## What a deploy does
 
-The workflow builds the Worker, then runs
+The workflow checks that the production resource pins are set (see
+[self-hosting.md](../self-hosting.md#existing-resources)), then runs
 [`scripts/deploy-dashboard.mjs`](../../scripts/deploy-dashboard.mjs), which moves
 through one phase at a time:
 
 | Phase | What happened | If the job stops here |
 | --- | --- | --- |
-| `bookmarked` | Read the serving version id (the rollback target) and a D1 Time Travel bookmark. | Nothing changed. Re-run the job. |
-| `migrated` | Applied pending D1 migrations, with a 5-minute timeout. | Migrations may be applied, old code still serves. See "Migration timed out". |
-| `deployed` | `wrangler deploy` uploaded the new version, tagged with the short commit SHA. | New code serves, not yet verified. |
+| `inspected` | Read the serving version id (the rollback target). | Nothing changed. Re-run the job. |
+| `deployed` | `void deploy` saved a D1 Time Travel restore point, applied pending migrations, uploaded the Worker, checked `/__void/ready` and moved traffic to it. If `/__void/ready` fails, Void itself keeps the previous version serving. | New code serves, not yet verified. |
 | `verified` | Within 2 minutes, `/login` (redirects followed) answered 200 and `/api/health` answered 200 **reporting the new version id**. | Done. |
 | `rolled_back` | The gate failed, and `wrangler rollback` restored the previous version. The job fails. | Previous code serves. Investigate before you merge a fix. |
 | `rollback_failed` | The gate failed and the rollback failed too. The job fails with a 🚨 headline. | Production may be broken. Roll back by hand (below). |
 | `failed after <phase>` | A command threw. The phase it names is the last one that completed. | See that phase's row. |
 
 The job summary (Actions → the run → Summary) shows the phase, the commit,
-the previous and new version ids, the D1 bookmark, and the health-gate result.
-The bookmark is also printed in the log as
-`D1 Time Travel bookmark before migrations: …`.
+the previous and new version ids and the health-gate result. When migrations
+ran, the `void deploy` log prints the restore point as a ready command:
+`void db restore --bookmark=…`.
 
 ## Rolling back by hand
 
@@ -46,8 +46,8 @@ curl -sL -o /dev/null -w '%{http_code}\n' https://diff-kit.com/login   # expect 
 ```
 
 `/api/health` reports `version.id`. It is the version id from step 1 only for
-versions deployed with the `CF_VERSION_METADATA` binding, which the deploy
-workflow adds. Older versions report `{"status":"unknown"}`.
+versions deployed with the `CF_VERSION_METADATA` binding, which
+`void.config.ts` declares. Older versions report `{"status":"unknown"}`.
 
 A rollback restores code, bindings and vars of that version. It does **not**
 undo D1 migrations, KV or R2 data. Write migrations that the previous version
@@ -70,11 +70,11 @@ gh workflow run dashboard-deploy-production.yml -R stylessh/diffkit -f health_ga
 
 The run ends in phase `unverified`. Check the site by hand afterwards.
 
-## Migration timed out
+## Migration failed or stalled
 
-The deploy fails with `D1 migrations timed out after 300s`. The Worker was not
-deployed. The migration statement can still finish on D1's side after the
-client gives up, so check what was applied:
+`void deploy` applies migrations before it uploads the Worker, so a failed
+migration leaves the old code serving. A slow statement can still finish on
+D1's side after the client gives up, so check what was applied:
 
 ```sh
 pnpm exec wrangler d1 migrations list quickhub-db --remote
@@ -86,6 +86,9 @@ pnpm exec wrangler d1 migrations list quickhub-db --remote
   `DROP TABLE` or a table rewrite on a big table. Shrink the table first with
   throttled deletes ([d1-full.md](./d1-full.md#purge-a-large-table)), then
   re-run.
+
+Void also refuses a migration with a destructive statement unless the file
+starts with `-- void:allow-destructive`.
 
 PRs that add destructive migration statements (`DROP`, `ALTER … DROP COLUMN`,
 `TRUNCATE`, or `DELETE` without `WHERE`) fail the **D1 migrations** check
@@ -101,7 +104,7 @@ database**: every sign-in, session and change-feed row written after the
 bookmark is lost.
 
 ```sh
-# The bookmark is in the deploy job summary
+# The bookmark is in the `void deploy` log of that run
 pnpm exec wrangler d1 time-travel restore quickhub-db --bookmark <bookmark>
 ```
 

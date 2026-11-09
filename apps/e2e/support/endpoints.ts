@@ -5,17 +5,17 @@ export const novaAuthFile = fileURLToPath(
 	new URL("../.auth/nova.json", import.meta.url),
 );
 
-const dashboardDevVarsFile = fileURLToPath(
-	new URL("../../dashboard/.dev.vars.demo", import.meta.url),
+export const demoEnvFile = fileURLToPath(
+	new URL("../../emulator/dashboard.env", import.meta.url),
 );
 
 /** The worker only reads its URLs from this file, so the suite follows it. */
 export function demoVar(name: string) {
-	const line = readFileSync(dashboardDevVarsFile, "utf8")
+	const line = readFileSync(demoEnvFile, "utf8")
 		.split("\n")
 		.find((entry) => entry.startsWith(`${name}=`));
 	if (!line) {
-		throw new Error(`${name} is missing from apps/dashboard/.dev.vars.demo`);
+		throw new Error(`${name} is missing from apps/emulator/dashboard.env`);
 	}
 	return line.slice(name.length + 1).trim();
 }

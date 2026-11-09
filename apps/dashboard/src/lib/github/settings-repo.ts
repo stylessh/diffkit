@@ -12,7 +12,7 @@ import { identityValidator } from "./validators";
 type RepoInput = { owner: string; repo: string };
 
 export const getRepoGeneralSettings = createServerFn({ method: "GET" })
-	.inputValidator(identityValidator<RepoInput>)
+	.validator(identityValidator<RepoInput>)
 	.handler(
 		({ data }): Promise<SettingsRead<RepoGeneralSettings>> =>
 			readSettings("repository settings", async (octokit) => {
@@ -22,7 +22,7 @@ export const getRepoGeneralSettings = createServerFn({ method: "GET" })
 	);
 
 export const updateRepoGeneralSettings = createServerFn({ method: "POST" })
-	.inputValidator(
+	.validator(
 		identityValidator<RepoInput & { changes: Partial<RepoGeneralDraft> }>,
 	)
 	.handler(
@@ -37,7 +37,7 @@ export const updateRepoGeneralSettings = createServerFn({ method: "POST" })
 	);
 
 export const changeRepoVisibility = createServerFn({ method: "POST" })
-	.inputValidator(
+	.validator(
 		identityValidator<RepoInput & { visibility: "public" | "private" }>,
 	)
 	.handler(
@@ -52,7 +52,7 @@ export const changeRepoVisibility = createServerFn({ method: "POST" })
 	);
 
 export const setRepoArchived = createServerFn({ method: "POST" })
-	.inputValidator(identityValidator<RepoInput & { archived: boolean }>)
+	.validator(identityValidator<RepoInput & { archived: boolean }>)
 	.handler(
 		({ data }): Promise<SettingsOutcome> =>
 			runSettingsMutation(
@@ -67,7 +67,7 @@ export const setRepoArchived = createServerFn({ method: "POST" })
 	);
 
 export const deleteRepository = createServerFn({ method: "POST" })
-	.inputValidator(identityValidator<RepoInput & { confirmation: string }>)
+	.validator(identityValidator<RepoInput & { confirmation: string }>)
 	.handler(({ data }): Promise<SettingsOutcome> => {
 		const expected = `${data.owner}/${data.repo}`.toLowerCase();
 		if (data.confirmation.trim().toLowerCase() !== expected) {

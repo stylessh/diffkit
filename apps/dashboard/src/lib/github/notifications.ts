@@ -17,7 +17,7 @@ type GetNotificationsInput = {
 };
 
 export const getNotifications = createServerFn({ method: "GET" })
-	.inputValidator(identityValidator<GetNotificationsInput>)
+	.validator(identityValidator<GetNotificationsInput>)
 	.handler(async ({ data }): Promise<NotificationsResult> => {
 		const context = await getGitHubContext();
 		if (!context) {
@@ -207,7 +207,7 @@ export const getNotifications = createServerFn({ method: "GET" })
 type MarkNotificationReadInput = { threadId: string };
 
 export const markNotificationRead = createServerFn({ method: "POST" })
-	.inputValidator(identityValidator<MarkNotificationReadInput>)
+	.validator(identityValidator<MarkNotificationReadInput>)
 	.handler(async ({ data }): Promise<{ ok: boolean }> => {
 		const context = await getGitHubContext();
 		if (!context) {
@@ -222,7 +222,7 @@ export const markNotificationRead = createServerFn({ method: "POST" })
 	});
 
 export const markNotificationDone = createServerFn({ method: "POST" })
-	.inputValidator(identityValidator<MarkNotificationReadInput>)
+	.validator(identityValidator<MarkNotificationReadInput>)
 	.handler(async ({ data }): Promise<{ ok: boolean }> => {
 		const context = await getGitHubContext();
 		if (!context) {
@@ -256,7 +256,7 @@ export const markAllNotificationsRead = createServerFn({
  * mark it done so it leaves the inbox.
  */
 export const unsubscribeNotification = createServerFn({ method: "POST" })
-	.inputValidator(identityValidator<MarkNotificationReadInput>)
+	.validator(identityValidator<MarkNotificationReadInput>)
 	.handler(async ({ data }): Promise<{ ok: boolean }> => {
 		const context = await getGitHubContext();
 		if (!context) {

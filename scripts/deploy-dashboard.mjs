@@ -1,22 +1,20 @@
 import { spawnSync } from "node:child_process";
-import { mkdtempSync, readFileSync, writeFileSync } from "node:fs";
-import { tmpdir } from "node:os";
-import { join, resolve } from "node:path";
+import { writeFileSync } from "node:fs";
+
+// Production deploy: `void deploy` applies D1 migrations (saving a Time Travel
+// restore point first), uploads the Worker and checks /__void/ready. That only
+// proves the Worker starts, so this script then waits for /login and
+// /api/health (D1, KV, serving version) and rolls back if they never pass.
 
 const config = {
   workerName: requireEnv("WORKER_NAME"),
-  databaseName: requireEnv("D1_DATABASE_NAME"),
-  wranglerConfig: requireEnv("WRANGLER_CONFIG"),
   message: git(["log", "-1", "--pretty=format:%h %s"]),
-  tag: git(["log", "-1", "--pretty=format:%h"]),
-  siteUrl: process.env.SITE_URL ?? "https://diff-kit.com",
+  siteUrl: siteUrl(),
   healthGate: process.env.HEALTH_GATE === "skip" ? "skip" : "enforce",
-  migrationTimeoutMs: Number(process.env.MIGRATION_TIMEOUT_SECONDS ?? 300) * 1000,
   healthDeadlineMs: 120_000,
   healthIntervalMs: 5_000,
 };
 
-const MIGRATIONS_SCRIPT = resolve(import.meta.dirname, "run-d1-migrations.mjs");
 const SUCCESSFUL_PHASES = new Set(["verified", "unverified"]);
 const PHASE_HEADLINE = {
   verified: "✅ Deployed and healthy",
@@ -25,6 +23,14 @@ const PHASE_HEADLINE = {
   rollback_failed: "🚨 Health gate failed and rollback failed: production may be broken",
   failed: "❌ Deploy failed",
 };
+
+// Where the health gate looks: the custom domain when there is one, else the
+// Worker's workers.dev URL.
+function siteUrl() {
+  if (process.env.DIFFKIT_DOMAIN) return `https://${process.env.DIFFKIT_DOMAIN}`;
+  const subdomain = requireEnv("CLOUDFLARE_WORKERS_SUBDOMAIN").replace(/\.workers\.dev$/, "");
+  return `https://${requireEnv("WORKER_NAME")}.${subdomain}.workers.dev`;
+}
 
 function requireEnv(name) {
   const value = process.env[name];
@@ -49,62 +55,22 @@ function log(line) {
   console.log(`[deploy] ${line}`);
 }
 
-function wrangler(args, { capture = true, timeoutMs, env } = {}) {
-  const result = spawnSync("pnpm", ["exec", "wrangler", ...args], {
+function exec(command, args, { capture = true } = {}) {
+  const result = spawnSync("pnpm", ["exec", command, ...args], {
     encoding: "utf8",
-    stdio: capture ? ["ignore", "pipe", "pipe"] : "inherit",
-    timeout: timeoutMs,
-    env: { ...process.env, ...env },
+    stdio: capture ? ["ignore", "pipe", "pipe"] : ["ignore", "inherit", "inherit"],
   });
-  if (result.error?.code === "ETIMEDOUT") {
-    throw new Error(`wrangler ${args.slice(0, 3).join(" ")} timed out after ${timeoutMs / 1000}s`);
-  }
   if (result.status !== 0) {
-    throw new Error(`wrangler ${args.slice(0, 3).join(" ")} exited ${result.status}\n${result.stderr ?? ""}${result.stdout ?? ""}`);
+    throw new Error(`${command} ${args.slice(0, 2).join(" ")} exited ${result.status}\n${result.stderr ?? ""}${result.stdout ?? ""}`);
   }
   return result.stdout ?? "";
 }
 
-function currentVersionId() {
-  const status = JSON.parse(wrangler(["deployments", "status", "--name", config.workerName, "--json"]));
+function servingVersionId() {
+  const status = JSON.parse(exec("wrangler", ["deployments", "status", "--name", config.workerName, "--json"]));
   const [primary] = [...status.versions].sort((a, b) => b.percentage - a.percentage);
-  if (!primary) throw new Error("No deployed version to roll back to");
+  if (!primary) throw new Error(`${config.workerName} has no deployed version`);
   return primary.version_id;
-}
-
-function timeTravelBookmark() {
-  const info = JSON.parse(wrangler(["d1", "time-travel", "info", config.databaseName, "--json"]));
-  if (!info.bookmark) throw new Error(`No bookmark in time-travel info: ${JSON.stringify(info)}`);
-  return info.bookmark;
-}
-
-function applyMigrations() {
-  // A migration that rewrites a multi-GB table holds the deploy; on timeout the
-  // statement may still finish server side, so check `wrangler d1 migrations list`.
-  const result = spawnSync(process.execPath, ["--experimental-strip-types", MIGRATIONS_SCRIPT, "DB", "--remote"], {
-    stdio: "inherit",
-    timeout: config.migrationTimeoutMs,
-    env: { ...process.env, WRANGLER_CONFIG: config.wranglerConfig },
-  });
-  if (result.error?.code === "ETIMEDOUT") {
-    throw new Error(`D1 migrations timed out after ${config.migrationTimeoutMs / 1000}s`);
-  }
-  if (result.status !== 0) throw new Error(`D1 migrations exited ${result.status}`);
-}
-
-function deployWorker() {
-  const outputFile = join(mkdtempSync(join(tmpdir(), "wrangler-output-")), "output.ndjson");
-  wrangler(["deploy", "--message", config.message, "--tag", config.tag], {
-    capture: false,
-    env: { WRANGLER_OUTPUT_FILE_PATH: outputFile },
-  });
-  const deploy = readFileSync(outputFile, "utf8")
-    .split("\n")
-    .filter(Boolean)
-    .map((line) => JSON.parse(line))
-    .find((entry) => entry.type === "deploy");
-  if (!deploy?.version_id) throw new Error("wrangler deploy wrote no version_id");
-  return deploy.version_id;
 }
 
 async function settle(deployed) {
@@ -118,13 +84,14 @@ async function settle(deployed) {
 
   log(`Health gate failed; rolling back to ${deployed.previousVersionId}`);
   try {
-    wrangler(
-      ["rollback", deployed.previousVersionId, "--name", config.workerName, "--message", `Health gate failed for ${deployed.versionId} (${config.tag})`, "--yes"],
+    exec(
+      "wrangler",
+      ["rollback", deployed.previousVersionId, "--name", config.workerName, "--message", `Health gate failed for ${deployed.versionId}`, "--yes"],
       { capture: false },
     );
-    const servingVersionId = currentVersionId();
-    if (servingVersionId !== deployed.previousVersionId) {
-      throw new Error(`after rollback ${servingVersionId} is serving, expected ${deployed.previousVersionId}`);
+    const serving = servingVersionId();
+    if (serving !== deployed.previousVersionId) {
+      throw new Error(`after rollback ${serving} is serving, expected ${deployed.previousVersionId}`);
     }
     return { ...deployed, phase: "rolled_back", health };
   } catch (error) {
@@ -177,13 +144,11 @@ async function waitForHealthy(versionId) {
   return { status: "failed", attempts, elapsedMs: Date.now() - startedAt, login: last.login, reason: last.reason };
 }
 
-
 function writeSummary(final) {
   const rows = [
     ["Phase", final.phase === "failed" ? `failed after \`${final.failedAfter}\`` : `\`${final.phase}\``],
     ["Commit", config.message],
     ["Previous version", final.previousVersionId ? `\`${final.previousVersionId}\`` : "—"],
-    ["D1 bookmark (pre-migration)", final.bookmark ? `\`${final.bookmark}\`` : "—"],
     ["New version", final.versionId ? `\`${final.versionId}\`` : "not deployed"],
   ];
   if (final.health) {
@@ -205,10 +170,10 @@ function writeSummary(final) {
   if (final.health?.status === "passed") {
     lines.push("", "<details><summary>/api/health</summary>", "", "```json", JSON.stringify(final.health.report, null, 2), "```", "</details>");
   }
-  if (final.bookmark && final.phase !== "verified") {
+  if (final.phase !== "verified") {
     lines.push(
       "",
-      `Restore D1 to its pre-migration state only if a migration damaged data (docs/runbooks/deploy-rollback.md): \`wrangler d1 time-travel restore ${config.databaseName} --bookmark ${final.bookmark}\``,
+      "If a migration damaged data, restore D1 to the point `void deploy` saved before migrating (its log above prints it; docs/runbooks/deploy-rollback.md): `void db restore --bookmark <bookmark>`",
     );
   }
   const text = lines.join("\n");
@@ -225,14 +190,14 @@ function announce(final) {
 async function main() {
   let state = { phase: "starting" };
   try {
-    state = { phase: "bookmarked", previousVersionId: currentVersionId(), bookmark: timeTravelBookmark() };
-    log(`D1 Time Travel bookmark before migrations: ${state.bookmark}`);
+    state = { phase: "inspected", previousVersionId: servingVersionId() };
     log(`Serving version before deploy: ${state.previousVersionId}`);
 
-    applyMigrations();
-    state = { ...state, phase: "migrated" };
-
-    state = { ...state, phase: "deployed", versionId: deployWorker() };
+    exec("void", ["deploy", "--platform", "cloudflare"], { capture: false });
+    state = { ...state, phase: "deployed", versionId: servingVersionId() };
+    if (state.versionId === state.previousVersionId) {
+      throw new Error(`void deploy finished but ${state.versionId} is still serving`);
+    }
     log(`Deployed version ${state.versionId}`);
 
     state = await settle(state);

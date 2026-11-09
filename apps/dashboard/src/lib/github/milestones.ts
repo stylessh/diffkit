@@ -11,7 +11,7 @@ export type RepoMilestonesInput = {
 };
 
 export const getRepoMilestones = createServerFn({ method: "GET" })
-	.inputValidator(identityValidator<RepoMilestonesInput>)
+	.validator(identityValidator<RepoMilestonesInput>)
 	.handler(async ({ data }): Promise<RepoMilestone[]> => {
 		const context = await getGitHubContextForRepository(data);
 		if (!context) return [];

@@ -2,39 +2,37 @@ import { existsSync, readFileSync } from "node:fs";
 import { createRequire } from "node:module";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { cloudflare } from "@cloudflare/vite-plugin";
 import tailwindcss from "@tailwindcss/vite";
 import { devtools } from "@tanstack/devtools-vite";
 import { tanstackStart } from "@tanstack/react-start/plugin/vite";
 import viteReact from "@vitejs/plugin-react";
 import { defineConfig } from "vite";
 import tsconfigPaths from "vite-tsconfig-paths";
-import { resolveWranglerConfigPath } from "../../scripts/resolve-wrangler-config-path.mts";
+import { voidPlugin } from "void";
 import {
 	getSharedWranglerStatePath,
 	isWorktreeCheckout,
 } from "../../scripts/shared-worktree-paths.mjs";
 
 const dashboardRoot = new URL(".", import.meta.url);
-const dashboardRootDir = fileURLToPath(dashboardRoot);
 
-// Local demo mode (`pnpm dev:demo`): CLOUDFLARE_ENV=demo selects the `demo`
-// environment in wrangler.demo.jsonc and makes Wrangler read `.dev.vars.demo`.
-// Its D1/KV/R2 state lives apart from your normal dev state.
-const isDemoMode = process.env.CLOUDFLARE_ENV === "demo";
-const DEMO_WRANGLER_CONFIG = "wrangler.demo.jsonc";
-const DEMO_STATE_PATH = fileURLToPath(
-	new URL("./.wrangler/demo-state", dashboardRoot),
-);
+// Local demo mode (`pnpm dev:demo`) runs against the emulator with the
+// committed `.env.demo` values in the shell environment, and keeps its
+// D1/KV/R2 state apart from your normal dev state.
+const isDemoMode = process.env.DIFFKIT_DEMO === "1";
 
-const worktreePersistState = isDemoMode
-	? { persistState: { path: DEMO_STATE_PATH } }
-	: isWorktreeCheckout(dashboardRoot)
-		? { persistState: { path: getSharedWranglerStatePath(dashboardRoot) } }
-		: {};
+function localStatePath() {
+	if (isDemoMode) {
+		return fileURLToPath(new URL("./.wrangler/demo-state", dashboardRoot));
+	}
+	if (isWorktreeCheckout(dashboardRoot)) {
+		return getSharedWranglerStatePath(dashboardRoot);
+	}
+	return fileURLToPath(new URL("./.wrangler/state", dashboardRoot));
+}
 
 function getDevVarFromFile(key: string) {
-	const devVarsPath = new URL("./.dev.vars", dashboardRoot);
+	const devVarsPath = new URL("./.env", dashboardRoot);
 	if (!existsSync(devVarsPath)) {
 		return null;
 	}
@@ -330,18 +328,7 @@ function hugeiconsDeepImports(): import("vite").Plugin {
 	};
 }
 
-// Remote R2/KV/D1 bindings require `wrangler login`; Vitest and PR CI use local Miniflare only.
-const useCloudflareRemoteBindings =
-	process.env.CI !== "true" && process.env.VITEST !== "true" && !isDemoMode;
-
-const config = defineConfig(({ command, mode }) => {
-	const wranglerConfigPath = isDemoMode
-		? DEMO_WRANGLER_CONFIG
-		: resolveWranglerConfigPath({
-				command,
-				mode,
-				rootDir: dashboardRootDir,
-			});
+const config = defineConfig(({ command }) => {
 	return {
 		server: command === "serve" ? getTunnelServerConfig() : undefined,
 		plugins: [
@@ -350,12 +337,10 @@ const config = defineConfig(({ command, mode }) => {
 			shikiSSRStub(),
 			shikiTrimmedLanguages(),
 			betterAuthDialectStub(),
-			cloudflare({
-				viteEnvironment: { name: "ssr" },
-				...worktreePersistState,
-				remoteBindings: useCloudflareRemoteBindings,
-				...(wranglerConfigPath ? { configPath: wranglerConfigPath } : {}),
-			}),
+			// Unit tests mock `cloudflare:workers` and run without workerd.
+			...(process.env.VITEST
+				? []
+				: [voidPlugin({ persistTo: localStatePath() })]),
 			tsconfigPaths({ projects: ["./tsconfig.json"] }),
 			tailwindcss(),
 			tanstackStart(),

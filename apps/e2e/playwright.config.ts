@@ -1,6 +1,9 @@
+import { readFileSync } from "node:fs";
+import { parseEnv } from "node:util";
 import { defineConfig, devices } from "@playwright/test";
 import {
 	dashboardUrl,
+	demoEnvFile,
 	emulatorUrl,
 	novaAuthFile,
 } from "./support/endpoints.ts";
@@ -56,11 +59,14 @@ export default defineConfig({
 		{
 			command: [
 				"rm -rf .wrangler/demo-state",
-				"pnpm exec wrangler d1 migrations apply DB --local -c wrangler.demo.jsonc --env demo --persist-to .wrangler/demo-state",
 				`pnpm exec vite dev --port ${new URL(dashboardUrl).port} --strictPort`,
 			].join(" && "),
 			cwd: "../dashboard",
-			env: { CLOUDFLARE_ENV: "demo", CI: "true" },
+			env: {
+				...parseEnv(readFileSync(demoEnvFile, "utf8")),
+				DIFFKIT_DEMO: "1",
+				CI: "true",
+			},
 			url: `${dashboardUrl}/login`,
 			timeout: 240_000,
 			reuseExistingServer: false,

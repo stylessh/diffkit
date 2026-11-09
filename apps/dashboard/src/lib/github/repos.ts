@@ -336,7 +336,7 @@ export const getUserRepos = createServerFn({ method: "GET" }).handler(
 );
 
 export const getReposHub = createServerFn({ method: "GET" })
-	.inputValidator(identityValidator<ReposHubInput>)
+	.validator(identityValidator<ReposHubInput>)
 	.handler(async ({ data }): Promise<ReposHubResult> => {
 		const context = await getGitHubContext();
 		if (!context) {
@@ -368,7 +368,7 @@ export const getReposHub = createServerFn({ method: "GET" })
 	});
 
 export const getProfileRepos = createServerFn({ method: "GET" })
-	.inputValidator(identityValidator<UserProfileInput>)
+	.validator(identityValidator<UserProfileInput>)
 	.handler(async ({ data }): Promise<UserRepoSummary[]> => {
 		const context = await getGitHubContext();
 		if (!context) {
@@ -400,7 +400,7 @@ export type SetRepoStarredInput = {
 };
 
 export const setRepoStarred = createServerFn({ method: "POST" })
-	.inputValidator(identityValidator<SetRepoStarredInput>)
+	.validator(identityValidator<SetRepoStarredInput>)
 	.handler(async ({ data }): Promise<MutationResult> => {
 		const target = `${data.owner}/${data.repo}`;
 		debug("github-star", "setRepoStarred called", {
@@ -484,7 +484,7 @@ export type ForkRepoResult =
 	| MutationFailure;
 
 export const forkRepository = createServerFn({ method: "POST" })
-	.inputValidator(identityValidator<ForkRepoInput>)
+	.validator(identityValidator<ForkRepoInput>)
 	.handler(async ({ data }): Promise<ForkRepoResult> => {
 		const context = await getGitHubUserContextForRepository(data);
 		if (!context) {
@@ -514,7 +514,7 @@ type RepoOverviewInput = {
 };
 
 export const getRepoParticipationStats = createServerFn({ method: "GET" })
-	.inputValidator(identityValidator<RepoOverviewInput>)
+	.validator(identityValidator<RepoOverviewInput>)
 	.handler(async ({ data }): Promise<RepoParticipationStats> => {
 		const context = await getGitHubContextForRepository(data);
 		if (!context) {
@@ -569,7 +569,7 @@ export const getRepoParticipationStats = createServerFn({ method: "GET" })
 	});
 
 export const getRepoOverview = createServerFn({ method: "GET" })
-	.inputValidator(identityValidator<RepoOverviewInput>)
+	.validator(identityValidator<RepoOverviewInput>)
 	.handler(async ({ data }): Promise<RepoOverview | null> => {
 		const context = await getGitHubContextForRepository(data);
 		if (!context) return null;
@@ -704,7 +704,7 @@ type GraphQLDiscussionsResponse = {
 };
 
 export const getRepoDiscussions = createServerFn({ method: "GET" })
-	.inputValidator(identityValidator<RepoDiscussionsInput>)
+	.validator(identityValidator<RepoDiscussionsInput>)
 	.handler(async ({ data }): Promise<DiscussionsResult> => {
 		const context = await getGitHubContextForRepository(data);
 		if (!context) return { discussions: [], totalCount: 0 };
@@ -788,7 +788,7 @@ type RepoBranchesInput = {
 };
 
 export const getRepoBranches = createServerFn({ method: "GET" })
-	.inputValidator(identityValidator<RepoBranchesInput>)
+	.validator(identityValidator<RepoBranchesInput>)
 	.handler(async ({ data }): Promise<RepoBranch[]> => {
 		const context = await getGitHubContextForRepository(data);
 		if (!context) return [];
@@ -824,7 +824,7 @@ type BranchComparisonInput = {
 };
 
 export const getBranchComparison = createServerFn({ method: "GET" })
-	.inputValidator(identityValidator<BranchComparisonInput>)
+	.validator(identityValidator<BranchComparisonInput>)
 	.handler(async ({ data }): Promise<BranchComparison | null> => {
 		if (data.base === data.head) return null;
 		const context = await getGitHubContextForRepository(data);
@@ -888,7 +888,7 @@ type RepoTemplateGraphQLResponse = {
 };
 
 export const getRepoTemplate = createServerFn({ method: "GET" })
-	.inputValidator(identityValidator<RepoTemplateInput>)
+	.validator(identityValidator<RepoTemplateInput>)
 	.handler(async ({ data }): Promise<string | null> => {
 		const context = await getGitHubContextForRepository(data);
 		if (!context) return null;
@@ -953,7 +953,7 @@ type RecentPushableBranchInput = {
 };
 
 export const getRecentPushableBranch = createServerFn({ method: "GET" })
-	.inputValidator(identityValidator<RecentPushableBranchInput>)
+	.validator(identityValidator<RecentPushableBranchInput>)
 	.handler(async ({ data }): Promise<RecentPushableBranch | null> => {
 		const context = await getGitHubContextForRepository(data);
 		if (!context) return null;
@@ -1052,7 +1052,7 @@ const COMPARE_COMMITS_PER_PAGE = 100;
 const COMPARE_FILES_CAP = 300;
 
 export const getCompareDetail = createServerFn({ method: "GET" })
-	.inputValidator(identityValidator<BranchComparisonInput>)
+	.validator(identityValidator<BranchComparisonInput>)
 	.handler(async ({ data }): Promise<CompareDetail | null> => {
 		if (data.base === data.head) return null;
 		const context = await getGitHubContextForRepository(data);
@@ -1140,7 +1140,7 @@ type RepoContributorsInput = {
 };
 
 export const getRepoContributors = createServerFn({ method: "GET" })
-	.inputValidator(identityValidator<RepoContributorsInput>)
+	.validator(identityValidator<RepoContributorsInput>)
 	.handler(async ({ data }): Promise<RepoContributorsResult> => {
 		const context = await getGitHubContextForRepository(data);
 		if (!context) return { contributors: [], totalCount: 0 };
@@ -1180,7 +1180,7 @@ type GitHubGraphQLViewerPermissionResponse = {
 };
 
 export const getRepoViewerPermission = createServerFn({ method: "GET" })
-	.inputValidator(identityValidator<{ owner: string; repo: string }>)
+	.validator(identityValidator<{ owner: string; repo: string }>)
 	.handler(async ({ data }): Promise<RepoViewerPermission> => {
 		const unknown: RepoViewerPermission = { permission: null, canPush: false };
 		// User token (not the installation token) so the answer reflects the viewer.

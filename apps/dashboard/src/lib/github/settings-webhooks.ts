@@ -19,7 +19,7 @@ type RepoInput = { owner: string; repo: string };
 const DELIVERY_LIMIT = 30;
 
 export const getRepoWebhooks = createServerFn({ method: "GET" })
-	.inputValidator(identityValidator<RepoInput>)
+	.validator(identityValidator<RepoInput>)
 	.handler(
 		({ data }): Promise<SettingsRead<RepoWebhook[]>> =>
 			readSettings("webhooks", async (octokit) => {
@@ -32,7 +32,7 @@ export const getRepoWebhooks = createServerFn({ method: "GET" })
 	);
 
 export const saveRepoWebhook = createServerFn({ method: "POST" })
-	.inputValidator(
+	.validator(
 		identityValidator<
 			RepoInput & { hookId: number | null; draft: WebhookDraft }
 		>,
@@ -66,7 +66,7 @@ export const saveRepoWebhook = createServerFn({ method: "POST" })
 	});
 
 export const deleteRepoWebhook = createServerFn({ method: "POST" })
-	.inputValidator(identityValidator<RepoInput & { hookId: number }>)
+	.validator(identityValidator<RepoInput & { hookId: number }>)
 	.handler(
 		({ data }): Promise<SettingsOutcome> =>
 			runSettingsMutation("delete the webhook", (octokit) =>
@@ -79,7 +79,7 @@ export const deleteRepoWebhook = createServerFn({ method: "POST" })
 	);
 
 export const getWebhookDeliveries = createServerFn({ method: "GET" })
-	.inputValidator(identityValidator<RepoInput & { hookId: number }>)
+	.validator(identityValidator<RepoInput & { hookId: number }>)
 	.handler(
 		({ data }): Promise<SettingsRead<WebhookDelivery[]>> =>
 			readSettings("deliveries", async (octokit) => {
@@ -94,7 +94,7 @@ export const getWebhookDeliveries = createServerFn({ method: "GET" })
 	);
 
 export const redeliverWebhookDelivery = createServerFn({ method: "POST" })
-	.inputValidator(
+	.validator(
 		identityValidator<RepoInput & { hookId: number; deliveryId: number }>,
 	)
 	.handler(

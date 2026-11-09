@@ -13,6 +13,7 @@ A fast, design-first GitHub dashboard for developers who want to stay on top of 
 - **PR Diff Viewer** — Review pull request changes with inline comments
 - **Dark Mode** — Full dark mode support out of the box
 - **Fast** — Deployed on Cloudflare Workers at the edge
+- **Self-hostable** — One `void deploy` creates the Worker, D1, KV and R2 in your own Cloudflare account ([docs/self-hosting.md](docs/self-hosting.md))
 
 ## Tech Stack
 
@@ -25,8 +26,8 @@ A fast, design-first GitHub dashboard for developers who want to stay on top of 
 | Auth | Better Auth with GitHub OAuth App + GitHub App |
 | Styling | Tailwind CSS 4 + Radix UI |
 | Icons | Lucide React |
-| Build | Vite 7 + Turborepo |
-| Runtime | Cloudflare Workers |
+| Build | Vite 8 + Turborepo |
+| Runtime | Cloudflare Workers, built and deployed with [Void](https://void.cloud) |
 | Linting | Biome |
 
 ## Getting Started
@@ -53,7 +54,7 @@ To run against real GitHub, follow the steps below.
 
 ### Prerequisites
 
-- [Node.js](https://nodejs.org/) v20+
+- [Node.js](https://nodejs.org/) v24.22+ (pinned in `.node-version`)
 - [pnpm](https://pnpm.io/) v10+
 
 ### 1. Clone and install
@@ -77,7 +78,7 @@ The OAuth App handles user login and broad-scope reads (`repo`, `read:org`, `use
 4. Copy the **Client ID**
 5. Click **Generate a new client secret** and copy it
 
-You'll need both values for your `.dev.vars` file in step 5.
+You'll need both values for your `.env` file in step 5.
 
 ### 3. Create a GitHub App
 
@@ -131,7 +132,7 @@ The GitHub App provides installation tokens for repo-scoped access, webhook deli
    - Click **Generate a new client secret** and copy it
    - Under **Private keys**, click **Generate a private key** — a `.pem` file will download
 
-8. Convert the private key to a single-line format for `.dev.vars`:
+8. Convert the private key to a single-line format for `.env`:
    ```bash
    awk 'NF {printf "%s\\n", $0}' /path/to/downloaded-key.pem
    ```
@@ -149,10 +150,10 @@ The GitHub App provides installation tokens for repo-scoped access, webhook deli
 Copy the example file and fill in the values from steps 2–4:
 
 ```bash
-cp apps/dashboard/.dev.vars.example apps/dashboard/.dev.vars
+cp apps/dashboard/env.example apps/dashboard/.env
 ```
 
-Open `apps/dashboard/.dev.vars` and fill in:
+Open `apps/dashboard/.env` and fill in:
 
 ```
 # From the OAuth App (step 2)
@@ -176,15 +177,7 @@ BETTER_AUTH_URL=http://localhost:3000
 
 > DiffKit also accepts the legacy `GITHUB_CLIENT_ID` and `GITHUB_CLIENT_SECRET` names as a fallback for the OAuth App credentials.
 
-### 6. Configure Wrangler
-
-```bash
-cp apps/dashboard/wrangler.jsonc.example apps/dashboard/wrangler.dev.jsonc
-```
-
-Replace the `YOUR_…` placeholders ([details](docs/local-dev.md#real-github)).
-
-### 7. Start the dev server
+### 6. Start the dev server
 
 ```bash
 pnpm dev
@@ -202,7 +195,7 @@ To receive GitHub webhooks locally, you need a public tunnel:
    ngrok http 3000
    ```
 2. Copy the public URL (e.g. `https://abc123.ngrok-free.app`)
-3. Add it to `apps/dashboard/.dev.vars`:
+3. Add it to `apps/dashboard/.env`:
    ```
    DEV_TUNNEL_URL=https://abc123.ngrok-free.app
    ```
@@ -210,7 +203,7 @@ To receive GitHub webhooks locally, you need a public tunnel:
    ```
    https://abc123.ngrok-free.app/api/webhooks/github
    ```
-5. Generate a **Webhook secret** and set the same value in both GitHub and your `.dev.vars`
+5. Generate a **Webhook secret** and set the same value in both GitHub and your `.env`
 6. Restart the dev server
 
 The dev server uses `DEV_TUNNEL_URL` to allow the tunnel host and configure HMR correctly.
@@ -231,10 +224,10 @@ The dev server uses `DEV_TUNNEL_URL` to allow the tunnel host and configure HMR 
 
 | Command | Description |
 |---------|------------|
-| `pnpm --filter dashboard migrate` | Run D1 migrations (local) |
-| `pnpm --filter dashboard migrate:remote` | Run D1 migrations (remote) |
+| `pnpm --filter dashboard migrate` | Apply D1 migrations to local state (`pnpm dev` does it on start) |
+| `pnpm --filter dashboard migrate:remote` | Apply D1 migrations to your deployed database |
 | `pnpm --filter dashboard test` | Run tests |
-| `pnpm --filter dashboard deploy` | Build and deploy to Cloudflare Workers |
+| `pnpm --filter dashboard deploy` | Build and deploy with `void deploy` ([docs/self-hosting.md](docs/self-hosting.md)) |
 
 ## GitHub App Permissions Reference
 

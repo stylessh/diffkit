@@ -6,7 +6,7 @@ import {
 } from "#/lib/security-headers.server";
 
 // TanStack Start's type only declares (request, env?) but the runtime
-// handler created by @cloudflare/vite-plugin passes (request, env, ctx)
+// handler created by the Cloudflare Vite plugin passes (request, env, ctx)
 // through to the underlying Worker fetch signature.
 type WorkerFetch = (
 	request: Request,
@@ -56,30 +56,5 @@ export default {
 			});
 			return applySecurityHeaders(unhandledErrorResponse(pathname));
 		}
-	},
-
-	async scheduled(
-		controller: ScheduledController,
-		env: { DB: D1Database; GITHUB_CACHE_KV: KVNamespace },
-		ctx: ExecutionContext,
-	): Promise<void> {
-		ctx.waitUntil(
-			Promise.all([
-				import("#/lib/scheduled-maintenance.server"),
-				import("#/lib/health.server"),
-			])
-				.then(
-					async ([{ runScheduledMaintenance }, { recordMaintenanceRun }]) => {
-						const summary = await runScheduledMaintenance(
-							env.DB,
-							controller.scheduledTime,
-						);
-						await recordMaintenanceRun(env.GITHUB_CACHE_KV, summary);
-					},
-				)
-				.catch((error: unknown) => {
-					logRouteError("worker", "scheduled maintenance failed", error);
-				}),
-		);
 	},
 };

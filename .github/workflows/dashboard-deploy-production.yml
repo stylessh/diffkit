@@ -8,9 +8,8 @@ on:
       - "packages/ui/**"
       - "packages/icons/**"
       - "packages/typescript-config/**"
-      - "scripts/generate-wrangler-dashboard-config.mjs"
-      - "scripts/run-d1-migrations.mjs"
       - "scripts/deploy-dashboard.mjs"
+      - ".node-version"
       - ".github/workflows/dashboard-deploy-production.yml"
   workflow_dispatch:
     inputs:
@@ -37,49 +36,43 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: 22
+          node-version-file: .node-version
           cache: pnpm
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Generate Wrangler config
-        run: node scripts/generate-wrangler-dashboard-config.mjs apps/dashboard/wrangler.deploy.json
+      # Production binds its existing resources on every deploy. Without these
+      # Void would create new, empty ones (void.config.ts), so refuse instead.
+      - name: Check production resource pins
         env:
-          WRANGLER_COMPATIBILITY_DATE: ${{ vars.WRANGLER_COMPATIBILITY_DATE }}
-          DASHBOARD_PROD_WORKER_NAME: ${{ secrets.DASHBOARD_PROD_WORKER_NAME }}
-          DASHBOARD_PROD_D1_DATABASE_NAME: ${{ secrets.DASHBOARD_PROD_D1_DATABASE_NAME }}
-          DASHBOARD_PROD_D1_DATABASE_ID: ${{ secrets.DASHBOARD_PROD_D1_DATABASE_ID }}
-          DASHBOARD_PROD_KV_ID: ${{ secrets.DASHBOARD_PROD_KV_ID }}
-          DASHBOARD_PROD_KV_PREVIEW_ID: ${{ secrets.DASHBOARD_PROD_KV_PREVIEW_ID }}
-          DASHBOARD_PROD_R2_BUCKET: ${{ secrets.DASHBOARD_PROD_R2_BUCKET }}
-          DASHBOARD_PROD_R2_PREVIEW_BUCKET: ${{ secrets.DASHBOARD_PROD_R2_PREVIEW_BUCKET }}
-
-      # /api/health reports the serving version, which the health gate matches
-      # against the version just deployed.
-      - name: Add version metadata binding
-        working-directory: apps/dashboard
+          DIFFKIT_D1_DATABASE_NAME: ${{ vars.DIFFKIT_D1_DATABASE_NAME }}
+          DIFFKIT_D1_DATABASE_ID: ${{ vars.DIFFKIT_D1_DATABASE_ID }}
+          DIFFKIT_KV_ID: ${{ vars.DIFFKIT_KV_ID }}
+          DIFFKIT_R2_BUCKET: ${{ vars.DIFFKIT_R2_BUCKET }}
         run: |
-          jq '.version_metadata = { binding: "CF_VERSION_METADATA" }' wrangler.deploy.json > wrangler.deploy.tmp.json
-          mv wrangler.deploy.tmp.json wrangler.deploy.json
+          missing=0
+          for name in DIFFKIT_D1_DATABASE_NAME DIFFKIT_D1_DATABASE_ID DIFFKIT_KV_ID DIFFKIT_R2_BUCKET; do
+            if [ -z "${!name}" ]; then
+              echo "::error::Repository variable $name is not set"
+              missing=1
+            fi
+          done
+          exit $missing
 
-      # @cloudflare/vite-plugin resolves `wrangler.jsonc` during `vite build` (deploy:ci).
-      - name: Stage Wrangler config for Vite
-        working-directory: apps/dashboard
-        run: cp wrangler.deploy.json wrangler.jsonc
-
-      - name: Build Worker
-        working-directory: apps/dashboard
-        run: pnpm run build
-
-      - name: Bookmark D1, migrate, deploy, verify
+      - name: Deploy with Void, verify, roll back on failure
         working-directory: apps/dashboard
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          WORKER_NAME: ${{ secrets.DASHBOARD_PROD_WORKER_NAME }}
-          D1_DATABASE_NAME: ${{ secrets.DASHBOARD_PROD_D1_DATABASE_NAME }}
-          WRANGLER_CONFIG: wrangler.deploy.json
+          CLOUDFLARE_WORKERS_SUBDOMAIN: ${{ vars.CLOUDFLARE_WORKERS_SUBDOMAIN }}
+          DIFFKIT_D1_DATABASE_NAME: ${{ vars.DIFFKIT_D1_DATABASE_NAME }}
+          DIFFKIT_D1_DATABASE_ID: ${{ vars.DIFFKIT_D1_DATABASE_ID }}
+          DIFFKIT_KV_ID: ${{ vars.DIFFKIT_KV_ID }}
+          DIFFKIT_R2_BUCKET: ${{ vars.DIFFKIT_R2_BUCKET }}
+          DIFFKIT_DOMAIN: ${{ vars.DIFFKIT_DOMAIN }}
+          WORKER_NAME: diffkit
+          # `void deploy` runs the Vite build, which needs more than the default heap.
+          NODE_OPTIONS: --max-old-space-size=4096
           HEALTH_GATE: ${{ inputs.health_gate || 'enforce' }}
-          MIGRATION_TIMEOUT_SECONDS: "300"
         run: node ../../scripts/deploy-dashboard.mjs

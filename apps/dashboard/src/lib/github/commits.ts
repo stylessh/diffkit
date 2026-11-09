@@ -76,7 +76,7 @@ async function getRepoCommitResult(
 }
 
 export const getRepoCommit = createServerFn({ method: "GET" })
-	.inputValidator(identityValidator<RepoCommitInput>)
+	.validator(identityValidator<RepoCommitInput>)
 	.handler(async ({ data }): Promise<RepoCommitDetail | null> => {
 		const context = await getGitHubContextForRepository(data);
 		if (!context) {
@@ -150,7 +150,7 @@ function buildCommitSearchQuery(data: RepoCommitsInput, query: string) {
 }
 
 export const getRepoCommits = createServerFn({ method: "GET" })
-	.inputValidator(identityValidator<RepoCommitsInput>)
+	.validator(identityValidator<RepoCommitsInput>)
 	.handler(async ({ data }): Promise<RepoCommitsPage> => {
 		const context = await getGitHubContextForRepository(data);
 		if (!context) return emptyRepoCommitsPage();
@@ -234,7 +234,7 @@ export const getRepoCommits = createServerFn({ method: "GET" })
 	});
 
 export const getRepoRefNames = createServerFn({ method: "GET" })
-	.inputValidator(identityValidator<RepoRefNamesInput>)
+	.validator(identityValidator<RepoRefNamesInput>)
 	.handler(async ({ data }): Promise<RepoRefNames> => {
 		const context = await getGitHubContextForRepository(data);
 		if (!context) return { names: [], truncated: false };
@@ -368,7 +368,7 @@ const REPO_BRANCHES_PAGE_SIZE = 100;
 const REPO_TAGS_PAGE_SIZE = 30;
 
 export const getRepoBranchesList = createServerFn({ method: "GET" })
-	.inputValidator(identityValidator<RepoBranchesListInput>)
+	.validator(identityValidator<RepoBranchesListInput>)
 	.handler(async ({ data }): Promise<RepoBranchesListPage> => {
 		const empty: RepoBranchesListPage = {
 			defaultBranch: null,
@@ -479,7 +479,7 @@ function mapGraphQLTagNode(node: GitHubGraphQLTagNode): RepoTagListItem {
 }
 
 export const getRepoTagsList = createServerFn({ method: "GET" })
-	.inputValidator(identityValidator<RepoTagsListInput>)
+	.validator(identityValidator<RepoTagsListInput>)
 	.handler(async ({ data }): Promise<RepoTagsListPage> => {
 		const empty: RepoTagsListPage = {
 			tags: [],
@@ -568,7 +568,7 @@ type GitHubGraphQLRefSplatResponse = {
  * branch and a tag; the longest existing prefix wins.
  */
 export const resolveRepoRefSplat = createServerFn({ method: "GET" })
-	.inputValidator(identityValidator<RepoRefSplatInput>)
+	.validator(identityValidator<RepoRefSplatInput>)
 	.handler(async ({ data }): Promise<RepoRefSplatResolution> => {
 		const candidates = refPrefixCandidates(data.splat);
 		const fallback = (): RepoRefSplatResolution => ({

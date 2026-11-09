@@ -1,4 +1,4 @@
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync } from "node:fs";
 import path from "node:path";
 import {
   assertPortsFree,
@@ -7,7 +7,6 @@ import {
   DevSetupError,
   dashboardDir,
   runDevScript,
-  runStep,
   warmUpDashboard,
 } from "./dev-env.mjs";
 import { linkWorktreeDevFiles } from "./link-worktree-dev-vars.mjs";
@@ -16,27 +15,19 @@ const NO_GITHUB_HINT =
   "No GitHub app yet? `pnpm dev:demo` runs everything against a local GitHub emulator.";
 
 function assertLocalConfig() {
-  const wranglerConfig = path.join(dashboardDir, "wrangler.dev.jsonc");
-  if (!existsSync(wranglerConfig)) {
+  if (existsSync(path.join(dashboardDir, ".dev.vars"))) {
     throw new DevSetupError(
       [
-        "apps/dashboard/wrangler.dev.jsonc is missing.",
-        "  cp apps/dashboard/wrangler.jsonc.example apps/dashboard/wrangler.dev.jsonc",
-        "and fill in your Cloudflare ids (docs/local-dev.md).",
-        NO_GITHUB_HINT,
+        "apps/dashboard/.dev.vars is the old Wrangler file name; Void reads .env.",
+        "  mv apps/dashboard/.dev.vars apps/dashboard/.env",
       ].join("\n")
     );
   }
-  if (readFileSync(wranglerConfig, "utf8").includes('"YOUR_')) {
-    throw new DevSetupError(
-      `apps/dashboard/wrangler.dev.jsonc still has YOUR_… placeholders. Fill them in (docs/local-dev.md).\n${NO_GITHUB_HINT}`
-    );
-  }
-  if (!existsSync(path.join(dashboardDir, ".dev.vars"))) {
+  if (!existsSync(path.join(dashboardDir, ".env"))) {
     throw new DevSetupError(
       [
-        "apps/dashboard/.dev.vars is missing.",
-        "  cp apps/dashboard/.dev.vars.example apps/dashboard/.dev.vars",
+        "apps/dashboard/.env is missing.",
+        "  cp apps/dashboard/env.example apps/dashboard/.env",
         "and add your GitHub OAuth App and GitHub App credentials (docs/local-dev.md).",
         NO_GITHUB_HINT,
       ].join("\n")
@@ -49,12 +40,6 @@ runDevScript("dev", async ({ log, supervisor }) => {
   await linkWorktreeDevFiles();
   assertLocalConfig();
   await assertPortsFree([{ port: DASHBOARD_PORT, name: "dashboard" }]);
-
-  log("applying local D1 migrations");
-  runStep("Applying D1 migrations", ["run", "migrate:local"], {
-    cwd: dashboardDir,
-    env: { CI: "true" },
-  });
 
   const dashboard = supervisor.start(
     "dashboard",
