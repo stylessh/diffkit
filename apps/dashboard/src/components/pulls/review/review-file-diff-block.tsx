@@ -47,6 +47,7 @@ import {
 } from "#/components/details/comment-body";
 import { CommentMoreMenu } from "#/components/details/comment-more-menu";
 import { AppMarkdown } from "#/components/markdown/app-markdown";
+import { FileTypeIcon } from "#/components/shared/file-type-icon";
 import { formatRelativeTime } from "#/lib/format-relative-time";
 import {
 	replyToReviewComment,
@@ -58,7 +59,6 @@ import {
 	invalidateGitHubEntities,
 	pullEntityKey,
 } from "#/lib/github-query-updates";
-import { FileTypeIcon } from "./review-icons";
 import type {
 	ActiveCommentForm,
 	PendingComment,
@@ -550,7 +550,7 @@ const FileHeader = memo(function FileHeader({
 				title={isCollapsed ? "Expand file" : "Collapse file"}
 				className="relative flex shrink-0 items-center rounded-sm after:absolute after:-inset-1.5"
 			>
-				<FileTypeIcon path={file.filename} />
+				<FileTypeIcon path={file.filename} kind="file" />
 			</button>
 
 			{moved ? (

@@ -1,5 +1,9 @@
-import { GitBranchIcon, GitCommitIcon, PackageIcon } from "@diffkit/icons";
-import { TagIcon } from "#/components/repo/refs/tag-icon";
+import {
+	GitBranchIcon,
+	GitCommitIcon,
+	PackageIcon,
+	TagIcon,
+} from "@diffkit/icons";
 import type { CommandItem } from "./types";
 
 export function getRepoSectionCommands(

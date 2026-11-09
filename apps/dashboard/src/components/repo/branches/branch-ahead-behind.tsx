@@ -1,3 +1,4 @@
+import { Chip } from "@diffkit/ui/components/chip";
 import {
 	Tooltip,
 	TooltipContent,
@@ -18,8 +19,9 @@ function barPercent(count: number) {
 }
 
 /**
- * GitHub-style diverging ahead/behind meter. Owns one compare request, so it
- * should only be mounted for rows that are actually rendered.
+ * GitHub-style diverging ahead/behind meter in a pill: behind on the left,
+ * ahead on the right. Owns one compare request, so mount it only for rows
+ * that are actually rendered.
  */
 export function BranchAheadBehind({
 	owner,
@@ -42,48 +44,41 @@ export function BranchAheadBehind({
 	const comparison = comparisonQuery.data;
 
 	if (comparisonQuery.isPending) {
-		return <SkeletonBox width={96} height={16} radius={4} />;
+		return <SkeletonBox width={96} height={24} radius={12} />;
 	}
-	if (!comparison) {
-		return (
-			<span className="block w-24 text-center text-xs text-muted-foreground">
-				—
-			</span>
-		);
-	}
+	if (!comparison) return null;
+
+	const { aheadBy, behindBy } = comparison;
+	const label = `${behindBy} behind, ${aheadBy} ahead of ${base}`;
+	const summary = `${behindBy} ${behindBy === 1 ? "commit" : "commits"} behind, ${aheadBy} ahead of ${base}`;
 
 	return (
 		<Tooltip>
 			<TooltipTrigger asChild>
-				<div
-					className="flex w-24 flex-col gap-1"
+				<Chip
 					role="img"
-					aria-label={`${comparison.behindBy} behind, ${comparison.aheadBy} ahead of ${base}`}
+					aria-label={label}
+					className="shrink-0 gap-1.5 tabular-nums"
 				>
-					<div className="flex justify-between text-[11px] leading-none font-[450] tabular-nums text-muted-foreground">
-						<span>{comparison.behindBy}</span>
-						<span>{comparison.aheadBy}</span>
-					</div>
-					<div className="flex h-1 items-stretch gap-px">
-						<div className="flex flex-1 justify-end overflow-hidden rounded-l-full bg-pill-neutral">
-							<div
+					<span>{behindBy}</span>
+					<span aria-hidden className="flex h-1 w-12 items-stretch gap-px">
+						<span className="flex flex-1 justify-end overflow-hidden rounded-l-full bg-pill-neutral">
+							<span
 								className="rounded-l-full bg-icon-faint"
-								style={{ width: `${barPercent(comparison.behindBy)}%` }}
+								style={{ width: `${barPercent(behindBy)}%` }}
 							/>
-						</div>
-						<div className="flex flex-1 overflow-hidden rounded-r-full bg-pill-neutral">
-							<div
+						</span>
+						<span className="flex flex-1 overflow-hidden rounded-r-full bg-pill-neutral">
+							<span
 								className="rounded-r-full bg-indigo"
-								style={{ width: `${barPercent(comparison.aheadBy)}%` }}
+								style={{ width: `${barPercent(aheadBy)}%` }}
 							/>
-						</div>
-					</div>
-				</div>
+						</span>
+					</span>
+					<span>{aheadBy}</span>
+				</Chip>
 			</TooltipTrigger>
-			<TooltipContent>
-				{comparison.behindBy} commit{comparison.behindBy === 1 ? "" : "s"}{" "}
-				behind, {comparison.aheadBy} ahead of {base}
-			</TooltipContent>
+			<TooltipContent>{summary}</TooltipContent>
 		</Tooltip>
 	);
 }

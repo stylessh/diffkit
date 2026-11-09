@@ -48,7 +48,6 @@ export {
   Folder01Icon as FolderIcon,
   FolderLibraryIcon,
   Forward01Icon as SkipIcon,
-  GitCommitIcon,
   GitCompareIcon,
   GitForkIcon,
   GitMergeIcon,
@@ -89,7 +88,6 @@ export {
   SidebarLeftIcon as PanelLeftIcon,
   SmileIcon,
   Sorting01Icon,
-  SourceCodeIcon as CodeIcon,
   SquareLock02Icon,
   StopIcon,
   Sun01Icon as SunIcon,
@@ -130,10 +128,14 @@ export {
   ChevronUpIcon,
 } from "./chevron-icons";
 export { CircleXIcon } from "./circle-x-icon";
-export { CodeTabIcon } from "./code-tab-icon";
+export { CodeSimpleIcon, CodeSimpleIcon as CodeIcon } from "./code-simple-icon";
 export { FileEmpty02Icon } from "./file-empty-02-icon";
 export { FullScreenIcon } from "./full-screen-icon";
 export { GitBranchIcon } from "./git-branch-icon";
+export {
+  GitCommitHorizontalIcon,
+  GitCommitHorizontalIcon as GitCommitIcon,
+} from "./git-commit-horizontal-icon";
 export { LayersIcon } from "./layers-icon";
 export { DisplayOptionsIcon, FilterLinesIcon } from "./linear-glyphs";
 export { PasskeyIcon } from "./passkey-icon";
@@ -141,4 +143,5 @@ export { PenIcon } from "./pen-icon";
 export { SearchIcon } from "./search-icon";
 export { SeparatorHorizontalIcon } from "./separator-horizontal-icon";
 export { StarIcon } from "./star-icon";
+export { TagIcon } from "./tag-icon";
 export { WorkflowQueueIcon } from "./workflow-queue-icon";

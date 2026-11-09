@@ -1,4 +1,3 @@
-import { FolderIcon } from "@diffkit/icons";
 import { cn } from "@diffkit/ui/lib/utils";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import {
@@ -9,7 +8,7 @@ import {
 	useState,
 	useSyncExternalStore,
 } from "react";
-import { FileTypeIcon } from "./review-icons";
+import { FileTypeIcon } from "#/components/shared/file-type-icon";
 import type { FileTreeNode } from "./review-types";
 import { encodeFileId } from "./review-utils";
 
@@ -207,11 +206,7 @@ const DirectoryRow = memo(function DirectoryRow({
 			>
 				<path d="M6.22 3.22a.75.75 0 0 1 1.06 0l4.25 4.25a.75.75 0 0 1 0 1.06l-4.25 4.25a.75.75 0 0 1-1.06-1.06L9.94 8 6.22 4.28a.75.75 0 0 1 0-1.06Z" />
 			</svg>
-			<FolderIcon
-				size={14}
-				strokeWidth={2}
-				className="shrink-0 text-muted-foreground"
-			/>
+			<FileTypeIcon path={node.path} kind="directory" size={14} />
 			<span className="truncate">{node.name}</span>
 		</button>
 	);
@@ -244,7 +239,7 @@ const FileTreeLeaf = memo(function FileTreeLeaf({
 			style={{ paddingLeft: `${depth * INDENT + 24}px` }}
 			onClick={() => onFileClick(node.path)}
 		>
-			<FileTypeIcon path={node.path} size={14} className="shrink-0" />
+			<FileTypeIcon path={node.path} kind="file" size={14} />
 			<span
 				className={cn(
 					"min-w-0 truncate",

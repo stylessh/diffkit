@@ -18,7 +18,7 @@ test("the repository tabs, and the pages tucked behind them, show history, branc
 	await expect(
 		page.getByRole("heading", {
 			level: 2,
-			name: "Commits on Tue, Oct 27, 2026",
+			name: "Commits in October 2026",
 		}),
 	).toBeVisible();
 

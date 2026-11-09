@@ -167,10 +167,25 @@ export function RowDiffStat({
 	);
 }
 
-export function RowTime({ children }: { children: React.ReactNode }) {
+/**
+ * The row's trailing time, a fixed-width column so avatars line up. Pass
+ * `dateTime` to render a `<time>`; extra props (a tooltip trigger's) are
+ * forwarded to the element.
+ */
+export function RowTime({
+	className,
+	dateTime,
+	...props
+}: React.ComponentProps<"time">) {
+	const Comp = dateTime ? "time" : "span";
 	return (
-		<span className="min-w-10 shrink-0 text-right text-xs font-[450] whitespace-nowrap tabular-nums text-muted-foreground">
-			{children}
-		</span>
+		<Comp
+			dateTime={dateTime}
+			className={cn(
+				"min-w-10 shrink-0 text-right text-xs font-[450] whitespace-nowrap tabular-nums text-muted-foreground",
+				className,
+			)}
+			{...props}
+		/>
 	);
 }

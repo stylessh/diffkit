@@ -524,6 +524,39 @@
 	--contrib-level-4: oklch(0.78 0.22 150);
 }
 
+/* File type icons: the hues Pierre's trees colours its icon set with. */
+:root {
+	--file-icon-blue: #1a85d4;
+	--file-icon-cyan: #1ca1c7;
+	--file-icon-gray: #84848a;
+	--file-icon-green: #199f43;
+	--file-icon-indigo: #693acf;
+	--file-icon-mauve: #594c5b;
+	--file-icon-orange: #d47628;
+	--file-icon-pink: #d32a61;
+	--file-icon-purple: #a631be;
+	--file-icon-red: #d52c36;
+	--file-icon-teal: #17a5af;
+	--file-icon-vermilion: #d5512f;
+	--file-icon-yellow: #d5a910;
+}
+
+.dark {
+	--file-icon-blue: #69b1ff;
+	--file-icon-cyan: #68cdf2;
+	--file-icon-gray: #adadb1;
+	--file-icon-green: #5ecc71;
+	--file-icon-indigo: #9d6afb;
+	--file-icon-mauve: #79697b;
+	--file-icon-orange: #ffa359;
+	--file-icon-pink: #ff678d;
+	--file-icon-purple: #d568ea;
+	--file-icon-red: #ff6762;
+	--file-icon-teal: #64d1db;
+	--file-icon-vermilion: #ff8c5b;
+	--file-icon-yellow: #ffd452;
+}
+
 /* Skeletons (skullet): tinted from the theme's own text and surface colours so
    every colour theme gets matching bones. */
 :root {

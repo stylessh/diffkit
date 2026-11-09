@@ -3,6 +3,7 @@ import {
 	ChevronDownIcon,
 	GitBranchIcon,
 	PlusSignIcon,
+	TagIcon,
 } from "@diffkit/icons";
 import {
 	Command,
@@ -18,7 +19,6 @@ import {
 } from "@diffkit/ui/components/popover";
 import { cn } from "@diffkit/ui/lib/utils";
 import { useMemo, useState } from "react";
-import { TagIcon } from "#/components/repo/refs/tag-icon";
 import { validateReleaseTag } from "./release-save-utils";
 
 const triggerClass =

@@ -1,7 +1,5 @@
 import {
 	GitBranchIcon,
-	GitCommitIcon,
-	GitCompareIcon,
 	GitMergeIcon,
 	GitPullRequestClosedIcon,
 	GitPullRequestDraftIcon,
@@ -25,9 +23,8 @@ import {
 import { formatRelativeTime } from "#/lib/format-relative-time";
 import type { GitHubQueryScope } from "#/lib/github.query";
 import type { RepoBranchListItem } from "#/lib/github.types";
-import { HairlineBadge, iconButtonClassName } from "../repo-ui";
+import { HairlineBadge } from "../repo-ui";
 import { BranchAheadBehind } from "./branch-ahead-behind";
-import { BranchCreatePullRequest } from "./branch-create-pull-request";
 
 function PullRequestBadge({
 	owner,
@@ -55,7 +52,7 @@ function PullRequestBadge({
 			<TooltipTrigger asChild>
 				<Chip
 					asChild
-					className="tabular-nums transition-colors hover:text-foreground"
+					className="shrink-0 tabular-nums transition-colors hover:text-foreground"
 				>
 					<Link
 						to="/$owner/$repo/pull/$pullId"
@@ -78,21 +75,15 @@ export const BranchRow = memo(function BranchRow({
 	scope,
 	branch,
 	defaultBranch,
-	canCreatePullRequest,
 }: {
 	owner: string;
 	repo: string;
 	scope: GitHubQueryScope;
 	branch: RepoBranchListItem;
 	defaultBranch: string;
-	canCreatePullRequest: boolean;
 }) {
 	const isDefault = branch.name === defaultBranch;
-	const offersCreatePullRequest =
-		canCreatePullRequest && !isDefault && branch.pullRequest?.state !== "OPEN";
 	const commit = branch.commit;
-	const authorLabel = commit?.author?.login ?? commit?.authorName;
-
 	const time = commit?.date
 		? formatRelativeTime(commit.date, undefined, { compact: true })
 		: null;
@@ -119,23 +110,14 @@ export const BranchRow = memo(function BranchRow({
 					</Link>
 					{isDefault ? <HairlineBadge>Default</HairlineBadge> : null}
 				</span>
-				{commit ? (
-					<p className="flex min-w-0 items-center gap-1.5 truncate text-xs font-[450] text-muted-foreground md:ml-auto md:max-w-[40%] md:shrink-0">
-						<span className="truncate">
-							{authorLabel ? (
-								<span className="text-text-header">{authorLabel}</span>
-							) : null}{" "}
-							updated
-							<span className="md:hidden"> {time ?? "at an unknown time"}</span>
-						</span>
+				{time ? (
+					<p className="text-xs tabular-nums text-muted-foreground md:hidden">
+						{time}
 					</p>
 				) : null}
 			</div>
-
-			<div className="relative z-[1] hidden shrink-0 sm:block">
-				{isDefault ? (
-					<span className="block w-24" />
-				) : (
+			<div className="relative z-[1] hidden min-w-0 shrink items-center gap-1 md:flex">
+				{isDefault ? null : (
 					<BranchAheadBehind
 						owner={owner}
 						repo={repo}
@@ -144,73 +126,19 @@ export const BranchRow = memo(function BranchRow({
 						head={branch.name}
 					/>
 				)}
+				<span className="flex min-w-16 shrink-0">
+					{branch.pullRequest ? (
+						<PullRequestBadge
+							owner={owner}
+							repo={repo}
+							pullRequest={branch.pullRequest}
+						/>
+					) : null}
+				</span>
 			</div>
-
-			<div className="relative z-[1] hidden min-w-16 shrink-0 items-center justify-end gap-1.5 md:flex">
-				{branch.pullRequest ? (
-					<PullRequestBadge
-						owner={owner}
-						repo={repo}
-						pullRequest={branch.pullRequest}
-					/>
-				) : null}
-				{offersCreatePullRequest ? (
-					<BranchCreatePullRequest
-						owner={owner}
-						repo={repo}
-						scope={scope}
-						base={defaultBranch}
-						head={branch.name}
-					/>
-				) : null}
-			</div>
-
-			<div className="relative z-[1] flex shrink-0 items-center">
-				<Tooltip>
-					<TooltipTrigger asChild>
-						<Link
-							to="/$owner/$repo/commits/$"
-							params={{ owner, repo, _splat: branch.name }}
-							data-action
-							aria-label={`Commits on ${branch.name}`}
-							className={iconButtonClassName}
-						>
-							<GitCommitIcon size={14} />
-						</Link>
-					</TooltipTrigger>
-					<TooltipContent>Commits</TooltipContent>
-				</Tooltip>
-				<Tooltip>
-					<TooltipTrigger asChild>
-						<Link
-							to="/$owner/$repo/compare/$"
-							params={{
-								owner,
-								repo,
-								_splat: `${defaultBranch}...${branch.name}`,
-							}}
-							data-action
-							aria-label={`Compare ${branch.name} with ${defaultBranch}`}
-							aria-disabled={isDefault}
-							tabIndex={isDefault ? -1 : undefined}
-							className={iconButtonClassName}
-						>
-							<GitCompareIcon size={14} />
-						</Link>
-					</TooltipTrigger>
-					<TooltipContent>Compare</TooltipContent>
-				</Tooltip>
-			</div>
-
-			<span className="hidden shrink-0 items-center gap-2 md:flex">
+			<span className="hidden shrink-0 items-center gap-2 md:ml-3 md:flex">
 				<RowAvatar actor={commit?.author ?? null} />
-				{commit?.date ? (
-					<time dateTime={commit.date}>
-						<RowTime>{time}</RowTime>
-					</time>
-				) : (
-					<RowTime>—</RowTime>
-				)}
+				<RowTime dateTime={commit?.date ?? undefined}>{time ?? "—"}</RowTime>
 			</span>
 		</div>
 	);

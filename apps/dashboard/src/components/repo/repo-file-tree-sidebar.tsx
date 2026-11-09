@@ -1,8 +1,9 @@
-import { ChevronRightIcon, FileIcon, FolderIcon } from "@diffkit/icons";
+import { ChevronRightIcon } from "@diffkit/icons";
 import { Spinner } from "@diffkit/ui/components/spinner";
 import { cn } from "@diffkit/ui/lib/utils";
 import { Link } from "@tanstack/react-router";
 import { memo, useState } from "react";
+import { FileTypeIcon } from "#/components/shared/file-type-icon";
 import { useIsActivePath, useIsAncestorPath } from "#/lib/explorer-path-store";
 import type { GitHubQueryScope } from "#/lib/github.query";
 import type { RepoTreeEntry } from "#/lib/github.types";
@@ -153,11 +154,7 @@ const DirectoryNode = memo(function DirectoryNode({
 					aria-current={isActive ? "page" : undefined}
 					className="flex h-full min-w-0 flex-1 items-center gap-1.5 rounded-sm"
 				>
-					<FolderIcon
-						size={16}
-						strokeWidth={1.8}
-						className="shrink-0 text-muted-foreground"
-					/>
+					<FileTypeIcon path={entry.path} kind="directory" />
 					<span className="truncate">{entry.name}</span>
 				</Link>
 			</div>
@@ -197,11 +194,7 @@ const FileNode = memo(function FileNode({
 			className={cn(treeRowClassName, rowStateClassName(isActive))}
 			style={{ paddingLeft: indent(depth) + 22 }}
 		>
-			<FileIcon
-				size={16}
-				strokeWidth={1.8}
-				className="shrink-0 text-muted-foreground"
-			/>
+			<FileTypeIcon path={entry.path} kind="file" />
 			<span className="truncate">{entry.name}</span>
 		</Link>
 	);

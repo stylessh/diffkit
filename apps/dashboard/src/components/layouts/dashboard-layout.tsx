@@ -1,6 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
 import { getRouteApi, Outlet, useRouter } from "@tanstack/react-router";
-import { motion } from "motion/react";
 import { lazy, Suspense, useEffect } from "react";
 import { AppTopbar, MobileTopbar } from "#/components/shell/app-topbar";
 import {
@@ -16,20 +15,12 @@ import {
 import { useRecordRecentRepo } from "#/lib/shell/use-shell-actions";
 import { useShellShortcuts } from "#/lib/shell/use-shell-shortcuts";
 import { useHasMounted } from "#/lib/use-has-mounted";
-import { useMediaQuery } from "#/lib/use-media-query";
 import { useReviewDraftCount } from "#/lib/use-review-draft-count";
 import {
 	surfaceForbiddenOrgWarnings,
 	surfaceTimeoutWarning,
 } from "#/lib/warning-store";
 import { DashboardBottomBar } from "./dashboard-bottombar";
-import {
-	SIDE_PANEL_WIDTH,
-	SidePanelProvider,
-	SidePanelSlot,
-	SidePanelToggle,
-	useSidePanelSlot,
-} from "./dashboard-side-panel";
 
 const CommandPalette = lazy(() =>
 	import("#/components/navigation/command-palette").then((mod) => ({
@@ -120,46 +111,17 @@ export function DashboardLayout() {
 	const navItems = workspaceNavItems(counts, hasUnread);
 	const viewerLogin = viewerQuery.data?.login;
 
-	const sidePanel = useSidePanelSlot();
-	const isXl = useMediaQuery("(min-width: 1280px)");
-	const showPanel = isXl && sidePanel.hasContent && !sidePanel.collapsed;
-
 	return (
 		<div className="isolate flex h-dvh flex-col bg-shell">
 			<AppTopbar user={user} viewerLogin={viewerLogin} navItems={navItems} />
 			<MobileTopbar user={user} viewerLogin={viewerLogin} />
-			<SidePanelProvider
-				value={{
-					node: sidePanel.node,
-					collapsed: sidePanel.collapsed,
-					hasContent: sidePanel.hasContent,
-					toggle: sidePanel.toggle,
-				}}
-			>
-				<motion.div
-					initial={false}
-					animate={{
-						gridTemplateColumns: showPanel
-							? `minmax(0, 1fr) ${SIDE_PANEL_WIDTH}px`
-							: "minmax(0, 1fr) 0px",
-					}}
-					transition={{ type: "spring", stiffness: 400, damping: 35 }}
-					className="grid flex-1 overflow-hidden md:px-2 md:pt-0.5 md:pb-2"
-				>
-					<div className="relative overflow-hidden bg-main md:rounded-xl md:shadow-main">
-						<div className="h-full">
-							<Outlet />
-						</div>
-						<SidePanelToggle />
+			<div className="flex flex-1 overflow-hidden md:px-2 md:pt-0.5 md:pb-2">
+				<div className="relative min-w-0 flex-1 overflow-hidden bg-main md:rounded-xl md:shadow-main">
+					<div className="h-full">
+						<Outlet />
 					</div>
-
-					<SidePanelSlot
-						slotRef={sidePanel.setNode}
-						collapsed={sidePanel.collapsed}
-						onHasContent={sidePanel.setHasContent}
-					/>
-				</motion.div>
-			</SidePanelProvider>
+				</div>
+			</div>
 			<DashboardBottomBar />
 			<MobileNavBar items={navItems} />
 
