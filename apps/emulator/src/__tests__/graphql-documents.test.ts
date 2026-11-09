@@ -20,6 +20,7 @@ let emulator: DiffkitEmulator;
 let octokit: Octokit;
 const ids = {
 	pullNumber: 0,
+	draftPullNumber: 0,
 	draftPullId: "",
 	issueNumber: 0,
 	threadId: "",
@@ -125,6 +126,7 @@ beforeAll(async () => {
 		throw new Error("seed is missing fixtures the GraphQL tests rely on");
 	}
 	ids.pullNumber = sseHeaders.number;
+	ids.draftPullNumber = draft.number;
 	ids.draftPullId = draft.node_id;
 	ids.issueNumber = issue.number;
 	ids.threadId = encodeNodeId("PullRequestReviewThread", thread.id);
@@ -138,7 +140,7 @@ afterAll(async () => {
 describe("DiffKit GraphQL documents", () => {
 	it("finds every document in the dashboard GitHub modules", () => {
 		// Bump this when DiffKit adds a query, and make sure it runs below.
-		expect(documents.length).toBe(25);
+		expect(documents.length).toBe(26);
 	});
 
 	it.each(
@@ -148,7 +150,9 @@ describe("DiffKit GraphQL documents", () => {
 		),
 	)("%s executes against the seeded emulator", async (_label, document) => {
 		const rendered = document.dynamic
-			? renderDynamicDocument(document)
+			? renderDynamicDocument(document, {
+					pullNumbers: [ids.pullNumber, ids.draftPullNumber],
+				})
 			: { query: document.template, variables: {} };
 		const variables = variablesFor(
 			document.template,

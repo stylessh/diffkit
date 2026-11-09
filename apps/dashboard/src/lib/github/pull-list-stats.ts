@@ -16,15 +16,13 @@ export type PullListStatsResponse = {
  * list fetches them for the whole page in one aliased GraphQL query.
  */
 export function buildPullListStatsQuery(numbers: number[]) {
-	const fields = numbers
-		.map(
-			(number) =>
-				`p${number}: pullRequest(number: ${number}) { number additions deletions comments { totalCount } }`,
-		)
-		.join("\n");
+	const pullAliases = numbers.map(
+		(number) =>
+			`p${number}: pullRequest(number: ${number}) { number additions deletions comments { totalCount } }`,
+	);
 	return `query($owner: String!, $repo: String!) {
 		repository(owner: $owner, name: $repo) {
-			${fields}
+			${pullAliases.join("\n")}
 		}
 	}`;
 }

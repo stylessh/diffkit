@@ -149,7 +149,10 @@ function findTemplate(templates: string[], prefix: string) {
  * Renders a dynamic document with realistic inputs. Throws for unknown
  * substitutions so new dynamic documents get explicit coverage.
  */
-export function renderDynamicDocument(document: ExtractedDocument) {
+export function renderDynamicDocument(
+	document: ExtractedDocument,
+	seeded: { pullNumbers: number[] },
+) {
 	const { templates, constants } = allTemplates();
 	if (document.template.includes("${fields}")) {
 		const field = findTemplate(templates, "p${i}: object(");
@@ -170,6 +173,17 @@ export function renderDynamicDocument(document: ExtractedDocument) {
 			query: renderTemplate(document.template, {
 				aliases: entries.map((entryPath, i) =>
 					renderTemplate(alias, { i, entryPath }),
+				),
+			}),
+			variables: {},
+		};
+	}
+	if (document.template.includes('${pullAliases.join("\\n")}')) {
+		const alias = findTemplate(templates, "p${number}: pullRequest(");
+		return {
+			query: renderTemplate(document.template, {
+				pullAliases: seeded.pullNumbers.map((number) =>
+					renderTemplate(alias, { number }),
 				),
 			}),
 			variables: {},
