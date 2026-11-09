@@ -29,6 +29,13 @@ import {
 	stores,
 } from "./common.ts";
 import { buildUserEvents } from "./events.ts";
+import {
+	baseBlobLookup,
+	DIFF_MAX_FILES,
+	formatGitDiff,
+	loadPullFiles,
+	tooLargeDiffBody,
+} from "./pull-diff.ts";
 import { registerSearchRoute } from "./search.ts";
 
 const AVATAR_COLORS = [
@@ -708,15 +715,16 @@ export function registerRestShims(context: ShimContext) {
 		if (!repo || !pull) {
 			return notFound(c);
 		}
-		const response = await context.internalFetch(
-			`/repos/${repo.full_name}/compare/${pull.base_sha}...${pull.head_sha}`,
-			{ headers: { Authorization: c.req.header("Authorization") ?? "" } },
+		const loaded = await loadPullFiles(
+			context,
+			repo,
+			pull,
+			c.req.header("Authorization") ?? "",
 		);
-		if (!response.ok) {
+		if (!loaded) {
 			return json(c, []);
 		}
-		const comparison = (await response.json()) as { files?: unknown[] };
-		const files = comparison.files ?? [];
+		const { files } = loaded;
 		const perPage = Math.min(100, parseIntParam(c.req.query("per_page")) ?? 30);
 		const page = Math.max(1, parseIntParam(c.req.query("page")) ?? 1);
 		const lastPage = Math.max(1, Math.ceil(files.length / perPage));
@@ -731,6 +739,50 @@ export function registerRestShims(context: ShimContext) {
 			);
 		}
 		return json(c, paginate(c, files));
+	});
+
+	// --- PR diff media type (emulate only serves JSON) --------------------------
+	// Middleware, not a route: a request reaches one route only, and JSON
+	// requests for the same path must still get emulate's handler.
+	app.use("/repos/:owner/:repo/pulls/:pull_number", async (c, next) => {
+		const accept = c.req.header("Accept") ?? "";
+		if (
+			c.req.method !== "GET" ||
+			!/application\/vnd\.github(\.v3)?\.diff/u.test(accept)
+		) {
+			return next();
+		}
+		const { gh } = stores(context);
+		const repo = assertRepo(context, c);
+		const pullNumber = parseIntParam(c.req.param("pull_number"));
+		const pull =
+			repo && pullNumber
+				? gh.pullRequests
+						.findBy("repo_id", repo.id)
+						.find((row) => row.number === pullNumber)
+				: undefined;
+		if (!repo || !pull) {
+			return notFound(c);
+		}
+		const loaded = await loadPullFiles(
+			context,
+			repo,
+			pull,
+			c.req.header("Authorization") ?? "",
+		);
+		if (!loaded) {
+			return notFound(c);
+		}
+		if (loaded.files.length > DIFF_MAX_FILES) {
+			return json(c, tooLargeDiffBody(), 406);
+		}
+		const diff = formatGitDiff(
+			loaded.files,
+			baseBlobLookup(context, repo, loaded.mergeBaseTreeSha),
+		);
+		return c.text(diff, 200, {
+			"Content-Type": "application/vnd.github.diff; charset=utf-8",
+		});
 	});
 
 	// emulate lists every ancestor of the head; GitHub lists only the PR's own.
