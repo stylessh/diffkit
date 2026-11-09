@@ -373,7 +373,6 @@ export const atlas: RepoSpec = {
 			body: "Moves the v1 modules under `packages/legacy`, adds the `-next` packages and rewrites the hot paths.\n\nThis is the big one: about 250 files.",
 			author: "jun-park",
 			at: { d: 2, h: 4 },
-			reviewers: ["nova"],
 		},
 		{
 			head: "chore/vendor-locales",
@@ -381,7 +380,6 @@ export const atlas: RepoSpec = {
 			body: "Checks in all 400 locale bundles so builds stop fetching them.",
 			author: "sam-okafor",
 			at: { d: 1, h: 8 },
-			reviewers: ["nova"],
 		},
 	],
 };

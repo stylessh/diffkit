@@ -86,12 +86,12 @@ test("a pull request shows its review state and checks, and its diff carries rev
 
 	await page.getByRole("link", { name: "Review changes" }).click();
 	await expect(page).toHaveURL(/\/lumen-labs\/beacon\/review\/15$/);
-	await expect(
-		page.getByRole("link", { name: /^sse\.ts \+42 -16/ }),
-	).toBeVisible();
-	await expect(
-		page.getByRole("link", { name: /^README\.md \+2 -1/ }),
-	).toBeVisible();
+	await expect(page.getByRole("treeitem", { name: "sse.ts" })).toContainText(
+		"+42 -16",
+	);
+	await expect(page.getByRole("treeitem", { name: "README.md" })).toContainText(
+		"+2 -1",
+	);
 	await expect(
 		page.getByText("Spread order means callers can override"),
 	).toBeVisible();
