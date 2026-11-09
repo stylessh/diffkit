@@ -66,7 +66,7 @@ export type PullSummary = {
 	author: GitHubActor | null;
 	labels: GitHubLabel[];
 	repository: RepositoryRef;
-	/** Only set where the source carries line counts (GraphQL search); REST list endpoints do not. */
+	/** Set by GraphQL search and the repo pull list; other REST list endpoints do not carry line counts. */
 	additions?: number;
 	deletions?: number;
 	/** Branch the PR merges into. Only set for REST-sourced pulls (repo list, detail). */

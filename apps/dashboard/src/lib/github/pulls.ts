@@ -48,6 +48,11 @@ import {
 	getRepositoryPermissions,
 	mergeRepositoryPermissions,
 } from "./permissions";
+import {
+	applyPullListStats,
+	buildPullListStatsQuery,
+	type PullListStatsResponse,
+} from "./pull-list-stats";
 import { dedupeGitHubRead } from "./request-dedup";
 import {
 	clampPage,
@@ -206,6 +211,7 @@ export type PullsFromRepoInput = {
 	perPage?: number;
 	sort?: PullSort;
 	direction?: "asc" | "desc";
+	withStats?: boolean;
 };
 
 type CheckRunPayload = {
@@ -1351,7 +1357,7 @@ export const getPullsFromRepo = createServerFn({ method: "GET" })
 			return [];
 		}
 
-		return fetchGitHubResource<
+		const pulls = await fetchGitHubResource<
 			Awaited<ReturnType<GitHubClient["rest"]["pulls"]["list"]>>["data"],
 			PullSummary[]
 		>({
@@ -1381,7 +1387,28 @@ export const getPullsFromRepo = createServerFn({ method: "GET" })
 					mapPullSummary(pull, buildRepositoryRef(data.owner, data.repo)),
 				),
 		});
+		if (!data.withStats || pulls.length === 0) return pulls;
+		return withPullListStats(context, data, pulls);
 	});
+
+async function withPullListStats(
+	context: GitHubContext,
+	data: PullsFromRepoInput,
+	pulls: PullSummary[],
+): Promise<PullSummary[]> {
+	const numbers = pulls.map((pull) => pull.number);
+	try {
+		const response = await executeGitHubGraphQL<PullListStatsResponse>(
+			context,
+			`github pull list stats ${data.owner}/${data.repo}`,
+			buildPullListStatsQuery(numbers),
+			{ owner: data.owner, repo: data.repo },
+		);
+		return applyPullListStats(pulls, response);
+	} catch {
+		return pulls;
+	}
+}
 
 export const getPullFromRepo = createServerFn({ method: "GET" })
 	.validator(identityValidator<PullFromRepoInput>)

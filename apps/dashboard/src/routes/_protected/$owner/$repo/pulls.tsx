@@ -68,6 +68,7 @@ function RepoPullsPage() {
 			state: apiState,
 			page: filterState.page,
 			perPage: PER_PAGE,
+			withStats: true,
 		}),
 		enabled: hasMounted,
 		placeholderData: keepPreviousData,
