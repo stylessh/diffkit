@@ -10,7 +10,7 @@ import {
  * `--file-icon-*` tokens.
  */
 
-const ICON_SET = "complete";
+export const FILE_ICON_SET = "complete";
 
 export type FileIconHue =
 	| "blue"
@@ -91,15 +91,18 @@ export type FileIconGlyph = {
 
 const SYMBOL = /<symbol id="([^"]+)" viewBox="([^"]+)">([\s\S]*?)<\/symbol>/g;
 
-const resolver = createFileTreeIconResolver({ set: ICON_SET, colored: true });
+const resolver = createFileTreeIconResolver({
+	set: FILE_ICON_SET,
+	colored: true,
+});
 let symbols: Map<string, { viewBox: string; body: string }> | undefined;
 
 function spriteSymbols() {
 	if (symbols) return symbols;
 	symbols = new Map();
-	for (const [, id, viewBox, body] of getBuiltInSpriteSheet(ICON_SET).matchAll(
-		SYMBOL,
-	)) {
+	for (const [, id, viewBox, body] of getBuiltInSpriteSheet(
+		FILE_ICON_SET,
+	).matchAll(SYMBOL)) {
 		const scoped = body
 			.replace(/\bid="([^"]+)"/g, `id="${id}-$1"`)
 			.replace(/url\(#([^)]+)\)/g, `url(#${id}-$1)`);

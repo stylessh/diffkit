@@ -1274,6 +1274,26 @@ function seedDiscussions(
 }
 
 /** Fills in what emulate leaves at zero and pins `updated_at` to the last activity. */
+async function allPullFiles(
+	emulator: DiffkitEmulator,
+	fullName: string,
+	number: number,
+) {
+	const files: Array<{ additions: number; deletions: number }> = [];
+	for (let page = 1; ; page++) {
+		const batch = (await emulator
+			.fetch(
+				new Request(
+					`${emulator.url}/repos/${fullName}/pulls/${number}/files?per_page=100&page=${page}`,
+					{ headers: { Authorization: `token ${seedTokenFor("nova")}` } },
+				),
+			)
+			.then((response) => response.json())) as typeof files;
+		files.push(...batch);
+		if (batch.length < 100) return files;
+	}
+}
+
 async function finalizePulls(
 	emulator: DiffkitEmulator,
 	gh: GitHubStore,
@@ -1289,19 +1309,7 @@ async function finalizePulls(
 			.findBy("repo_id", state.repoId)
 			.find((row) => row.number === number);
 		if (!pr || !issue) continue;
-		const files = (await emulator
-			.fetch(
-				new Request(
-					`${emulator.url}/repos/${state.fullName}/pulls/${number}/files?per_page=100`,
-					{
-						headers: { Authorization: `token ${seedTokenFor("nova")}` },
-					},
-				),
-			)
-			.then((response) => response.json())) as Array<{
-			additions: number;
-			deletions: number;
-		}>;
+		const files = await allPullFiles(emulator, state.fullName, number);
 		const commits = commitsBetween(gh, state.repoId, pr.base_sha, pr.head_sha);
 		const latestReview = new Map<number, string>();
 		for (const review of gh.reviews.findBy("repo_id", state.repoId)) {

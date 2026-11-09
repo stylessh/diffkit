@@ -18,6 +18,7 @@ import {
 	ViewTabCount,
 	ViewTabs,
 } from "@diffkit/ui/components/view-tabs";
+import { cn } from "@diffkit/ui/lib/utils";
 import type { SelectedLineRange } from "@pierre/diffs";
 import type { DiffLineAnnotation } from "@pierre/diffs/react";
 import {
@@ -27,7 +28,6 @@ import {
 } from "@tanstack/react-query";
 import { getRouteApi, Link, useNavigate } from "@tanstack/react-router";
 import {
-	lazy,
 	memo,
 	Suspense,
 	useCallback,
@@ -37,13 +37,21 @@ import {
 	useState,
 	useSyncExternalStore,
 } from "react";
+import type {
+	DiffCodeViewHandle,
+	DiffReview,
+} from "#/components/diffs/diff-code-view";
+import {
+	LazyDiffCodeView,
+	preloadDiffCodeView,
+} from "#/components/diffs/lazy-diff-code-view";
 import { getPrStateConfig } from "#/components/pulls/detail/pull-detail-header";
 import { PullStackBadge } from "#/components/pulls/stack/pull-stack-badge";
 import { FileSearchCard } from "#/components/shared/file-search-card";
+import { usePullDiffFiles } from "#/lib/diffs/use-pull-diff-files";
 import { submitPullReview } from "#/lib/github.functions";
 import {
 	githubPullFileSummariesQueryOptions,
-	githubPullFilesInfiniteQueryOptions,
 	githubPullPageQueryOptions,
 	githubPullReviewCommentsQueryOptions,
 	githubQueryKeys,
@@ -64,7 +72,6 @@ import {
 import { usePageTitle } from "#/lib/use-page-title";
 import { useRegisterTab } from "#/lib/use-register-tab";
 import { checkPermissionWarning } from "#/lib/warning-store";
-import type { ReviewDiffPaneHandle } from "./review-diff-pane";
 import {
 	DiffCommitList,
 	DiffDisplayOptions,
@@ -75,7 +82,7 @@ import {
 import {
 	type ActiveFileStore,
 	createActiveFileStore,
-	ReviewVirtualizedFileTree,
+	ReviewFileTree,
 } from "./review-file-tree";
 import { ReviewSubmitPopover } from "./review-submit-popover";
 import type {
@@ -83,17 +90,11 @@ import type {
 	PendingComment,
 	ReviewEvent,
 } from "./review-types";
-import { buildFileTree, encodeFileId } from "./review-utils";
+import { encodeFileId } from "./review-utils";
 
 const EMPTY_COMMITS: PullCommit[] = [];
 
 const routeApi = getRouteApi("/_protected/$owner/$repo/review/$pullId");
-const reviewDiffPaneImport = import("./review-diff-pane");
-const ReviewDiffPane = lazy(() =>
-	reviewDiffPaneImport.then((mod) => ({
-		default: mod.ReviewDiffPane,
-	})),
-);
 
 const MD_QUERY = "(min-width: 768px)";
 const mdSubscribe = (cb: () => void) => {
@@ -123,11 +124,10 @@ export function ReviewPage() {
 		() => githubQueryKeys.pulls.fileSummaries(scope, input),
 		[scope, input],
 	);
-	const filesQueryKey = useMemo(
-		() => githubQueryKeys.pulls.files(scope, input),
-		[scope, input],
-	);
-	const diffPaneRef = useRef<ReviewDiffPaneHandle>(null);
+	const diffPaneRef = useRef<DiffCodeViewHandle>(null);
+	useEffect(() => {
+		void preloadDiffCodeView();
+	}, []);
 
 	// Stable store for active file — updates bypass ReviewPage renders entirely
 	const activeFileStore = useRef(createActiveFileStore(null)).current;
@@ -155,25 +155,6 @@ export function ReviewPage() {
 		fileSummariesQuery.fetchNextPage,
 	]);
 
-	const filesQuery = useInfiniteQuery(
-		githubPullFilesInfiniteQueryOptions(scope, input),
-	);
-
-	// Auto-fetch remaining pages of patches in the background so that by the
-	// time the user scrolls deeper into the PR, the data is already there.
-	// Keeps the initial perPage small so the first-visible files render fast,
-	// then streams the rest chunk-by-chunk behind the UI.
-	useEffect(() => {
-		if (filesQuery.hasNextPage && !filesQuery.isFetchingNextPage) {
-			void filesQuery.fetchNextPage();
-		}
-	}, [
-		filesQuery.hasNextPage,
-		filesQuery.isFetchingNextPage,
-		filesQuery.fetchNextPage,
-	]);
-
-	const hasDiffPayload = filesQuery.data !== undefined;
 	const reviewCommentsQuery = useQuery(
 		githubPullReviewCommentsQueryOptions(scope, input),
 	);
@@ -193,18 +174,20 @@ export function ReviewPage() {
 		lastHeadShaRef.current = headSha;
 		if (previousHeadSha && previousHeadSha !== headSha) {
 			void queryClient.invalidateQueries({ queryKey: fileSummariesQueryKey });
-			void queryClient.invalidateQueries({ queryKey: filesQueryKey });
 		}
-	}, [headSha, queryClient, fileSummariesQueryKey, filesQueryKey]);
+	}, [headSha, queryClient, fileSummariesQueryKey]);
 
 	const sidebarFiles = useMemo(
 		() => fileSummariesQuery.data?.pages.flatMap((page) => page.items) ?? [],
 		[fileSummariesQuery.data],
 	);
-	const diffFiles = useMemo(
-		() => filesQuery.data?.pages.flatMap((page) => page.files) ?? [],
-		[filesQuery.data],
-	);
+	const diff = usePullDiffFiles(scope, {
+		owner,
+		repo,
+		pullNumber,
+		headSha,
+		baseRefName: pr?.baseRefName,
+	});
 	const reviewComments = reviewCommentsQuery.data ?? [];
 
 	usePageTitle(pr ? `Review: ${pr.title}` : null);
@@ -505,19 +488,46 @@ export function ReviewPage() {
 		],
 	);
 
-	// Ref-stable onLoadMore — avoids busting ReviewDiffPane memo
-	const filesQueryRef = useRef(filesQuery);
-	filesQueryRef.current = filesQuery;
-	const handleLoadMore = useCallback(() => {
-		const q = filesQueryRef.current;
-		if (q.hasNextPage && !q.isFetchingNextPage) {
-			void q.fetchNextPage();
-		}
-	}, []);
+	const viewerLogin = viewerQuery.data?.login;
+	const review = useMemo(
+		(): DiffReview => ({
+			owner,
+			repo,
+			pullNumber,
+			threadsByFile: annotationsByFile,
+			pendingCommentsByFile,
+			activeCommentForm,
+			selectedLines,
+			repliesByCommentId,
+			threadInfoByCommentId,
+			mentionConfig,
+			viewerLogin,
+			onStartComment: handleStartComment,
+			onCancelComment: handleCancelComment,
+			onAddComment: handleAddComment,
+			onEditComment: handleEditComment,
+		}),
+		[
+			owner,
+			repo,
+			pullNumber,
+			annotationsByFile,
+			pendingCommentsByFile,
+			activeCommentForm,
+			selectedLines,
+			repliesByCommentId,
+			threadInfoByCommentId,
+			mentionConfig,
+			viewerLogin,
+			handleStartComment,
+			handleCancelComment,
+			handleAddComment,
+			handleEditComment,
+		],
+	);
 
 	if (pageQuery.error) throw pageQuery.error;
 	if (fileSummariesQuery.error) throw fileSummariesQuery.error;
-	if (filesQuery.error) throw filesQuery.error;
 	if (reviewCommentsQuery.error) throw reviewCommentsQuery.error;
 
 	if (!pr) {
@@ -532,42 +542,46 @@ export function ReviewPage() {
 	const isStreamingSummaries =
 		fileSummariesQuery.isFetching || fileSummariesQuery.hasNextPage;
 
-	const diffContent = hasDiffPayload ? (
-		<Suspense fallback={<ReviewDiffPanePlaceholder />}>
-			<ReviewDiffPane
-				ref={diffPaneRef}
-				files={diffFiles}
-				totalFileCount={sidebarFileCount}
-				diffStyle={diffStyle}
-				wrapLines={wrapLines}
-				alternateView={
-					diffView === "commits" ? (
-						<DiffCommitList commits={commits} owner={owner} repo={repo} />
-					) : undefined
-				}
-				annotationsByFile={annotationsByFile}
-				repliesByCommentId={repliesByCommentId}
-				owner={owner}
-				repo={repo}
-				pullNumber={pullNumber}
-				pendingCommentsByFile={pendingCommentsByFile}
-				hasNextPage={filesQuery.hasNextPage}
-				isFetchingNextPage={filesQuery.isFetchingNextPage}
-				onLoadMore={handleLoadMore}
-				activeCommentForm={activeCommentForm}
-				selectedLines={selectedLines}
-				onActiveFileChange={handleActiveFileChange}
-				onStartComment={handleStartComment}
-				onCancelComment={handleCancelComment}
-				onAddComment={handleAddComment}
-				onEditComment={handleEditComment}
-				mentionConfig={mentionConfig}
-				viewerLogin={viewerQuery.data?.login}
-				threadInfoByCommentId={threadInfoByCommentId}
-			/>
-		</Suspense>
-	) : (
-		<ReviewDiffPanePlaceholder />
+	const diffFiles = diff.files;
+	const diffContent = (
+		<div className="relative h-full min-h-0">
+			{diffView === "commits" ? (
+				<div className="h-full overflow-auto px-[14px] pt-2 pb-6 max-md:px-2">
+					<DiffCommitList commits={commits} owner={owner} repo={repo} />
+				</div>
+			) : null}
+			{diffFiles.phase === "error" ? (
+				<p className="px-4 py-10 text-center text-[13px] font-[450] text-muted-foreground">
+					{diffFiles.error.message}
+				</p>
+			) : diffFiles.phase === "complete" && diffFiles.files.length === 0 ? (
+				<p className="px-4 py-10 text-center text-[13px] font-[450] text-muted-foreground">
+					No files changed in this pull request.
+				</p>
+			) : diffFiles.phase === "waiting" ? (
+				<ReviewDiffPanePlaceholder />
+			) : (
+				<Suspense fallback={<ReviewDiffPanePlaceholder />}>
+					<LazyDiffCodeView
+						ref={diffPaneRef}
+						revision={diff.revision}
+						files={diffFiles.files}
+						diffStyle={diffStyle}
+						wrapLines={wrapLines}
+						review={review}
+						onActiveFileChange={handleActiveFileChange}
+						className={cn(diffView === "commits" && "hidden")}
+						footer={
+							diffFiles.phase === "streaming" ? (
+								<p className="mt-2 rounded-lg border-[0.5px] border-card-border bg-surface-0 px-4 py-3 text-xs font-[450] text-muted-foreground">
+									Loaded {diffFiles.files.length} of {prChangedFiles} files…
+								</p>
+							) : undefined
+						}
+					/>
+				</Suspense>
+			)}
+		</div>
 	);
 
 	return (
@@ -762,8 +776,6 @@ export const ReviewSidebar = memo(function ReviewSidebar({
 	activeFileStore: ActiveFileStore;
 	onFileClick: (path: string) => void;
 }) {
-	const fileTree = useMemo(() => buildFileTree(sidebarFiles), [sidebarFiles]);
-
 	const searchEntries = useMemo(
 		() =>
 			sidebarFiles.map((f) => ({
@@ -779,15 +791,19 @@ export const ReviewSidebar = memo(function ReviewSidebar({
 		activeFileStore.get,
 	);
 
-	const handleSearchSelect = useCallback(
-		(entry: { path: string }) => {
-			onFileClick(entry.path);
-			const hash = `#${encodeFileId(entry.path)}`;
+	const revealFile = useCallback(
+		(path: string) => {
+			onFileClick(path);
+			const hash = `#${encodeFileId(path)}`;
 			if (window.location.hash !== hash) {
 				history.replaceState(null, "", hash);
 			}
 		},
 		[onFileClick],
+	);
+	const handleSearchSelect = useCallback(
+		(entry: { path: string }) => revealFile(entry.path),
+		[revealFile],
 	);
 
 	return (
@@ -800,10 +816,10 @@ export const ReviewSidebar = memo(function ReviewSidebar({
 				shortcutKey="f"
 			/>
 
-			<ReviewVirtualizedFileTree
-				tree={fileTree}
+			<ReviewFileTree
+				files={sidebarFiles}
 				activeFileStore={activeFileStore}
-				onFileClick={onFileClick}
+				onFileClick={revealFile}
 			/>
 
 			<div className="flex h-9 shrink-0 items-center gap-2 border-t-[0.5px] border-header-rule px-4 text-xs font-[450] text-muted-foreground">

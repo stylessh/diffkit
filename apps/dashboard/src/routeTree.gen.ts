@@ -29,6 +29,7 @@ import { Route as ProtectedOwnerIndexRouteImport } from './routes/_protected/$ow
 import { Route as ProtectedSettingsIndexRouteImport } from './routes/_protected/settings/index'
 import { Route as ProtectedSettingsShortcutsRouteImport } from './routes/_protected/settings/shortcuts'
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
+import { Route as ApiPullsDiffRouteImport } from './routes/api/pulls/diff'
 import { Route as ApiWebhooksGithubRouteImport } from './routes/api/webhooks/github'
 import { Route as ProtectedOwnerRepoIndexRouteImport } from './routes/_protected/$owner/$repo/index'
 import { Route as ProtectedOwnerRepoBranchesRouteImport } from './routes/_protected/$owner/$repo/branches'
@@ -166,6 +167,11 @@ const ProtectedSettingsShortcutsRoute =
 const ApiAuthSplatRoute = ApiAuthSplatRouteImport.update({
   id: '/api/auth/$',
   path: '/api/auth/$',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiPullsDiffRoute = ApiPullsDiffRouteImport.update({
+  id: '/api/pulls/diff',
+  path: '/api/pulls/diff',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiWebhooksGithubRoute = ApiWebhooksGithubRouteImport.update({
@@ -409,6 +415,7 @@ export interface FileRoutesByFullPath {
   '/api/health': typeof ApiHealthRoute
   '/settings/shortcuts': typeof ProtectedSettingsShortcutsRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
+  '/api/pulls/diff': typeof ApiPullsDiffRoute
   '/api/webhooks/github': typeof ApiWebhooksGithubRoute
   '/$owner/': typeof ProtectedOwnerIndexRoute
   '/settings/': typeof ProtectedSettingsIndexRoute
@@ -467,6 +474,7 @@ export interface FileRoutesByTo {
   '/': typeof ProtectedIndexRoute
   '/settings/shortcuts': typeof ProtectedSettingsShortcutsRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
+  '/api/pulls/diff': typeof ApiPullsDiffRoute
   '/api/webhooks/github': typeof ApiWebhooksGithubRoute
   '/$owner': typeof ProtectedOwnerIndexRoute
   '/settings': typeof ProtectedSettingsIndexRoute
@@ -526,6 +534,7 @@ export interface FileRoutesById {
   '/_protected/': typeof ProtectedIndexRoute
   '/_protected/settings/shortcuts': typeof ProtectedSettingsShortcutsRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
+  '/api/pulls/diff': typeof ApiPullsDiffRoute
   '/api/webhooks/github': typeof ApiWebhooksGithubRoute
   '/_protected/$owner/': typeof ProtectedOwnerIndexRoute
   '/_protected/settings/': typeof ProtectedSettingsIndexRoute
@@ -587,6 +596,7 @@ export interface FileRouteTypes {
     | '/api/health'
     | '/settings/shortcuts'
     | '/api/auth/$'
+    | '/api/pulls/diff'
     | '/api/webhooks/github'
     | '/$owner/'
     | '/settings/'
@@ -645,6 +655,7 @@ export interface FileRouteTypes {
     | '/'
     | '/settings/shortcuts'
     | '/api/auth/$'
+    | '/api/pulls/diff'
     | '/api/webhooks/github'
     | '/$owner'
     | '/settings'
@@ -703,6 +714,7 @@ export interface FileRouteTypes {
     | '/_protected/'
     | '/_protected/settings/shortcuts'
     | '/api/auth/$'
+    | '/api/pulls/diff'
     | '/api/webhooks/github'
     | '/_protected/$owner/'
     | '/_protected/settings/'
@@ -755,6 +767,7 @@ export interface RootRouteChildren {
   ApiChangesRoute: typeof ApiChangesRoute
   ApiHealthRoute: typeof ApiHealthRoute
   ApiAuthSplatRoute: typeof ApiAuthSplatRoute
+  ApiPullsDiffRoute: typeof ApiPullsDiffRoute
   ApiWebhooksGithubRoute: typeof ApiWebhooksGithubRoute
   ApiGithubAppAuthorizeRoute: typeof ApiGithubAppAuthorizeRoute
   ApiGithubAppCallbackRoute: typeof ApiGithubAppCallbackRoute
@@ -900,6 +913,13 @@ declare module '@tanstack/react-router' {
       path: '/api/auth/$'
       fullPath: '/api/auth/$'
       preLoaderRoute: typeof ApiAuthSplatRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/pulls/diff': {
+      id: '/api/pulls/diff'
+      path: '/api/pulls/diff'
+      fullPath: '/api/pulls/diff'
+      preLoaderRoute: typeof ApiPullsDiffRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/webhooks/github': {
@@ -1324,6 +1344,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiChangesRoute: ApiChangesRoute,
   ApiHealthRoute: ApiHealthRoute,
   ApiAuthSplatRoute: ApiAuthSplatRoute,
+  ApiPullsDiffRoute: ApiPullsDiffRoute,
   ApiWebhooksGithubRoute: ApiWebhooksGithubRoute,
   ApiGithubAppAuthorizeRoute: ApiGithubAppAuthorizeRoute,
   ApiGithubAppCallbackRoute: ApiGithubAppCallbackRoute,

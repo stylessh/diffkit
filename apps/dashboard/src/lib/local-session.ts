@@ -1,3 +1,4 @@
+import { wipeRawDiffCache } from "./diffs/raw-diff-cache";
 import {
 	getActiveGitHubQueryCacheUserId,
 	wipeGitHubQueryCache,
@@ -14,7 +15,10 @@ export async function clearLocalSession(userId: string | null) {
 	const id = userId ?? getActiveGitHubQueryCacheUserId();
 	clearProtectedRouteCachedAuth();
 	try {
-		await wipeGitHubQueryCache(null, id);
+		await Promise.all([
+			wipeGitHubQueryCache(null, id),
+			id ? wipeRawDiffCache(id) : undefined,
+		]);
 	} catch {
 		// Best effort: a failed wipe must not block signing out.
 	}

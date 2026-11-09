@@ -39,22 +39,11 @@ import { MenuCheck } from "@diffkit/ui/components/menu";
 import { toast } from "@diffkit/ui/components/sonner";
 import { Spinner } from "@diffkit/ui/components/spinner";
 import { StatePill } from "@diffkit/ui/components/state-pill";
-import { quickhubDark, quickhubLight } from "@diffkit/ui/lib/diffs-themes";
 import { cn } from "@diffkit/ui/lib/utils";
-import type { DiffLineAnnotation, PatchDiffProps } from "@pierre/diffs/react";
+import type { DiffLineAnnotation } from "@pierre/diffs/react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
-import { useTheme } from "next-themes";
-import {
-	type ComponentType,
-	type LazyExoticComponent,
-	lazy,
-	Suspense,
-	useCallback,
-	useMemo,
-	useRef,
-	useState,
-} from "react";
+import { Suspense, useCallback, useMemo, useRef, useState } from "react";
 import { Skeleton } from "skullet/react";
 import {
 	CheckStateIcon,
@@ -84,6 +73,7 @@ import {
 	groupTimelineEvents,
 } from "#/components/details/grouped-label-event";
 import { LabelPill } from "#/components/details/label-pill";
+import { LazyReviewCommentPatch } from "#/components/diffs/lazy-diff-code-view";
 import { AppMarkdown } from "#/components/markdown/app-markdown";
 import { useMergeBypass } from "#/components/pulls/detail/use-merge-bypass";
 import { PullStackMergeSection } from "#/components/pulls/stack/pull-stack-section";
@@ -139,29 +129,6 @@ import {
 import { usePrefersNoHover } from "#/lib/use-prefers-no-hover";
 import { checkPermissionWarning } from "#/lib/warning-store";
 import { SAMPLE_PULL_STATUS } from "./pull-detail-samples";
-
-// Lazy-load PatchDiff for review comment diff hunks
-type ActivityPatchDiffProps = PatchDiffProps<PullReviewComment>;
-
-const PatchDiff: LazyExoticComponent<ComponentType<ActivityPatchDiffProps>> =
-	lazy(() =>
-		import.meta.env.SSR
-			? Promise.resolve({
-					default: (() => null) as ComponentType<ActivityPatchDiffProps>,
-				})
-			: import("@pierre/diffs/react").then((mod) => ({
-					default: mod.PatchDiff as ComponentType<ActivityPatchDiffProps>,
-				})),
-	);
-
-let themesRegistered = false;
-if (!import.meta.env.SSR && !themesRegistered) {
-	themesRegistered = true;
-	import("@pierre/diffs").then(({ registerCustomTheme }) => {
-		registerCustomTheme("quickhub-light", () => Promise.resolve(quickhubLight));
-		registerCustomTheme("quickhub-dark", () => Promise.resolve(quickhubDark));
-	});
-}
 
 export function PullDetailActivitySection({
 	comments,
@@ -2858,8 +2825,6 @@ function ReviewCommentBlock({
 	viewerLogin?: string;
 	threadInfo?: { threadId: string; isResolved: boolean };
 }) {
-	const { resolvedTheme } = useTheme();
-	const isDark = resolvedTheme === "dark";
 	const queryClient = useQueryClient();
 	const [replyStatus, setReplyStatus] = useState<"closed" | "open" | "sending">(
 		"closed",
@@ -2875,16 +2840,11 @@ function ReviewCommentBlock({
 	const diffOptions = useMemo(
 		() => ({
 			diffStyle: "unified" as const,
-			theme: {
-				dark: "quickhub-dark" as const,
-				light: "quickhub-light" as const,
-			},
 			lineDiffType: "none" as const,
 			hunkSeparators: "line-info" as const,
 			overflow: "scroll" as const,
 			disableFileHeader: true,
 			unsafeCSS: [
-				`:host { color-scheme: ${isDark ? "dark" : "light"}; }`,
 				`:host { --diffs-font-family: 'Geist Mono Variable', 'SF Mono', ui-monospace, 'Cascadia Code', monospace; }`,
 				`[data-diff] { border: none; border-radius: 0; overflow: hidden; }`,
 				`[data-line-annotation] { font-family: 'Inter Variable', 'Inter', 'Avenir Next', ui-sans-serif, system-ui, sans-serif; }`,
@@ -2892,7 +2852,7 @@ function ReviewCommentBlock({
 				`[data-annotation-content] { background-color: transparent; }`,
 			].join("\n"),
 		}),
-		[isDark],
+		[],
 	);
 
 	const patch = useMemo(() => {
@@ -3126,7 +3086,7 @@ function ReviewCommentBlock({
 			</div>
 			{!isCollapsed && comment.diffHunk && (
 				<Suspense>
-					<PatchDiff
+					<LazyReviewCommentPatch
 						patch={patch}
 						options={diffOptions}
 						lineAnnotations={lineAnnotations}

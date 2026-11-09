@@ -1,20 +1,20 @@
-import { cn } from "@diffkit/ui/lib/utils";
-import { useVirtualizer } from "@tanstack/react-virtual";
+import type {
+	FileTree as FileTreeModel,
+	FileTreeRowDecorationRenderer,
+	GitStatus,
+	GitStatusEntry,
+} from "@pierre/trees";
+import { FileTree, useFileTree } from "@pierre/trees/react";
+import { memo, useEffect, useRef } from "react";
 import {
-	memo,
-	useCallback,
-	useMemo,
-	useRef,
-	useState,
-	useSyncExternalStore,
-} from "react";
-import { FileTypeIcon } from "#/components/shared/file-type-icon";
-import type { FileTreeNode } from "./review-types";
-import { encodeFileId } from "./review-utils";
+	TREE_ICONS,
+	TREE_UNSAFE_CSS,
+} from "#/components/shared/pierre-file-tree";
+import type { PullFileSummary } from "#/lib/github.types";
 
 /**
- * Lightweight store so that only the old-active and new-active file nodes
- * re-render when the active file changes — not the entire tree.
+ * Lightweight store so the active file can change on every scroll tick
+ * without re-rendering the page that owns it.
  */
 export type ActiveFileStore = {
 	get: () => string | null;
@@ -41,223 +41,162 @@ export function createActiveFileStore(
 	};
 }
 
-function useIsActiveFile(store: ActiveFileStore, path: string): boolean {
-	const subscribe = useCallback(
-		(cb: () => void) => store.subscribe(cb),
-		[store],
-	);
-	const getSnapshot = useCallback(() => store.get() === path, [store, path]);
-	return useSyncExternalStore(subscribe, getSnapshot);
-}
+export type ReviewTreeFile = Pick<
+	PullFileSummary,
+	"filename" | "status" | "additions" | "deletions"
+>;
 
 const ROW_HEIGHT = 29;
-const INDENT = 12;
 
-type FlatRow = {
-	node: FileTreeNode;
-	depth: number;
+const GIT_STATUS: Partial<Record<ReviewTreeFile["status"], GitStatus>> = {
+	added: "added",
+	copied: "added",
+	removed: "deleted",
+	renamed: "renamed",
+	modified: "modified",
+	changed: "modified",
 };
 
-function collectFlatRows(
-	nodes: FileTreeNode[],
-	expanded: ReadonlySet<string>,
-	depth: number,
-	out: FlatRow[],
-) {
-	for (const node of nodes) {
-		out.push({ node, depth });
-		if (node.type === "directory" && expanded.has(node.path)) {
-			collectFlatRows(node.children, expanded, depth + 1, out);
-		}
+function gitStatusEntries(files: readonly ReviewTreeFile[]): GitStatusEntry[] {
+	const entries: GitStatusEntry[] = [];
+	for (const file of files) {
+		const status = GIT_STATUS[file.status];
+		if (status) entries.push({ path: file.filename, status });
 	}
+	return entries;
 }
 
-function collectAllDirectoryPaths(
-	nodes: FileTreeNode[],
-	out: Set<string>,
-): Set<string> {
-	for (const node of nodes) {
-		if (node.type === "directory") {
-			out.add(node.path);
-			collectAllDirectoryPaths(node.children, out);
-		}
-	}
-	return out;
-}
-
-export const ReviewVirtualizedFileTree = memo(
-	function ReviewVirtualizedFileTree({
-		tree,
-		activeFileStore,
-		onFileClick,
-	}: {
-		tree: FileTreeNode[];
-		activeFileStore: ActiveFileStore;
-		onFileClick: (path: string) => void;
-	}) {
-		// Default: every directory expanded. Once the user toggles something we
-		// store their explicit override in a state Set.
-		const defaultExpanded = useMemo(
-			() => collectAllDirectoryPaths(tree, new Set<string>()),
-			[tree],
-		);
-		const [explicitExpanded, setExplicitExpanded] =
-			useState<Set<string> | null>(null);
-		const expanded = explicitExpanded ?? defaultExpanded;
-
-		const flatRows = useMemo(() => {
-			const out: FlatRow[] = [];
-			collectFlatRows(tree, expanded, 0, out);
-			return out;
-		}, [tree, expanded]);
-
-		const toggleDirectory = useCallback(
-			(path: string) => {
-				setExplicitExpanded((prev) => {
-					const base = prev ?? defaultExpanded;
-					const next = new Set(base);
-					if (next.has(path)) next.delete(path);
-					else next.add(path);
-					return next;
-				});
-			},
-			[defaultExpanded],
-		);
-
-		const scrollRef = useRef<HTMLDivElement>(null);
-
-		const virtualizer = useVirtualizer({
-			count: flatRows.length,
-			getScrollElement: () => scrollRef.current,
-			estimateSize: () => ROW_HEIGHT,
-			overscan: 12,
-		});
-
-		const items = virtualizer.getVirtualItems();
-		const totalSize = virtualizer.getTotalSize();
-
-		return (
-			<div ref={scrollRef} className="flex-1 overflow-auto px-2 py-1">
-				<div className="relative w-full" style={{ height: `${totalSize}px` }}>
-					{items.map((virtualItem) => {
-						const row = flatRows[virtualItem.index];
-						if (!row) return null;
-						const { node, depth } = row;
-						return (
-							<div
-								key={virtualItem.key}
-								className="absolute inset-x-0 top-0"
-								style={{
-									height: `${virtualItem.size}px`,
-									transform: `translateY(${virtualItem.start}px)`,
-								}}
-							>
-								{node.type === "directory" ? (
-									<DirectoryRow
-										node={node}
-										depth={depth}
-										isOpen={expanded.has(node.path)}
-										onToggle={toggleDirectory}
-									/>
-								) : (
-									<FileTreeLeaf
-										node={node}
-										depth={depth}
-										activeFileStore={activeFileStore}
-										onFileClick={onFileClick}
-									/>
-								)}
-							</div>
-						);
-					})}
-				</div>
-			</div>
-		);
-	},
-);
-
-const DirectoryRow = memo(function DirectoryRow({
-	node,
-	depth,
-	isOpen,
-	onToggle,
-}: {
-	node: FileTreeNode;
-	depth: number;
-	isOpen: boolean;
-	onToggle: (path: string) => void;
-}) {
+function isSameFile(a: ReviewTreeFile, b: ReviewTreeFile) {
 	return (
-		<button
-			type="button"
-			aria-expanded={isOpen}
-			className="flex h-7 w-full items-center gap-1.5 rounded-lg pr-2 text-[13px] font-medium text-text-nav transition-colors hover:bg-nav-hover hover:text-foreground"
-			style={{ paddingLeft: `${depth * INDENT + 6}px` }}
-			onClick={() => onToggle(node.path)}
-		>
-			<svg
-				aria-hidden="true"
-				className={cn(
-					"size-3 shrink-0 text-icon-faint transition-transform",
-					isOpen && "rotate-90",
-				)}
-				viewBox="0 0 16 16"
-				fill="currentColor"
-			>
-				<path d="M6.22 3.22a.75.75 0 0 1 1.06 0l4.25 4.25a.75.75 0 0 1 0 1.06l-4.25 4.25a.75.75 0 0 1-1.06-1.06L9.94 8 6.22 4.28a.75.75 0 0 1 0-1.06Z" />
-			</svg>
-			<FileTypeIcon path={node.path} kind="directory" size={14} />
-			<span className="truncate">{node.name}</span>
-		</button>
+		a.filename === b.filename &&
+		a.status === b.status &&
+		a.additions === b.additions &&
+		a.deletions === b.deletions
 	);
-});
+}
 
-const FileTreeLeaf = memo(function FileTreeLeaf({
-	node,
-	depth,
+/** True when `next` only appends files to `previous` (summaries streaming in). */
+function extendsFiles(
+	previous: readonly ReviewTreeFile[],
+	next: readonly ReviewTreeFile[],
+) {
+	if (next.length < previous.length) return false;
+	for (let index = 0; index < previous.length; index++) {
+		if (!isSameFile(previous[index], next[index])) return false;
+	}
+	return true;
+}
+
+function syncTree(
+	model: FileTreeModel,
+	previous: readonly ReviewTreeFile[],
+	next: readonly ReviewTreeFile[],
+) {
+	if (extendsFiles(previous, next)) {
+		const added = next.slice(previous.length);
+		if (added.length === 0) return;
+		model.batch(added.map((file) => ({ type: "add", path: file.filename })));
+		model.applyGitStatusPatch({ set: gitStatusEntries(added) });
+		return;
+	}
+	model.resetPaths(next.map((file) => file.filename));
+	model.setGitStatus(gitStatusEntries(next));
+}
+
+function lineCounts(file: ReviewTreeFile | undefined) {
+	if (!file) return null;
+	const parts = [
+		file.additions > 0 ? `+${file.additions}` : null,
+		file.deletions > 0 ? `-${file.deletions}` : null,
+	].filter((part) => part !== null);
+	return parts.length > 0 ? { text: parts.join(" ") } : null;
+}
+
+/**
+ * The changed files of a PR or commit, in a virtualized `@pierre/trees` tree.
+ * The highlighted row follows `activeFileStore`; picking a file calls
+ * `onFileClick` with its path.
+ */
+export const ReviewFileTree = memo(function ReviewFileTree({
+	files,
 	activeFileStore,
 	onFileClick,
 }: {
-	node: FileTreeNode;
-	depth: number;
+	files: readonly ReviewTreeFile[];
 	activeFileStore: ActiveFileStore;
 	onFileClick: (path: string) => void;
 }) {
-	const isActive = useIsActiveFile(activeFileStore, node.path);
-	const fileId = encodeFileId(node.path);
+	const syncedFilesRef = useRef(files);
+	const filesByPathRef = useRef(
+		new Map(files.map((file) => [file.filename, file])),
+	);
+	const onFileClickRef = useRef(onFileClick);
+	onFileClickRef.current = onFileClick;
+	const modelRef = useRef<FileTreeModel | null>(null);
+
+	const renderRowDecoration: FileTreeRowDecorationRenderer = ({ item }) =>
+		item.kind === "file"
+			? lineCounts(filesByPathRef.current.get(item.path))
+			: null;
+
+	const showActiveFile = () => {
+		const model = modelRef.current;
+		if (!model) return;
+		const active = activeFileStore.get();
+		for (const path of model.getSelectedPaths()) {
+			if (path !== active) model.getItem(path)?.deselect();
+		}
+		if (active) model.getItem(active)?.select();
+	};
+
+	const initialActiveFile = activeFileStore.get();
+	const { model } = useFileTree({
+		paths: files.map((file) => file.filename),
+		gitStatus: gitStatusEntries(files),
+		initialExpansion: "open",
+		flattenEmptyDirectories: true,
+		initialSelectedPaths: initialActiveFile ? [initialActiveFile] : [],
+		itemHeight: ROW_HEIGHT,
+		icons: TREE_ICONS,
+		unsafeCSS: TREE_UNSAFE_CSS,
+		renderRowDecoration,
+		onSelectionChange: (paths) => {
+			if (paths.length !== 1) return;
+			const [path] = paths;
+			if (path === activeFileStore.get()) return;
+			if (path.endsWith("/")) {
+				// A folder click toggles it; the highlight stays on the active file.
+				queueMicrotask(showActiveFile);
+				return;
+			}
+			onFileClickRef.current(path);
+		},
+	});
+	modelRef.current = model;
+
+	// biome-ignore lint/correctness/useExhaustiveDependencies: showActiveFile reads the model through a ref
+	useEffect(() => {
+		if (syncedFilesRef.current === files) return;
+		filesByPathRef.current = new Map(
+			files.map((file) => [file.filename, file]),
+		);
+		syncTree(model, syncedFilesRef.current, files);
+		syncedFilesRef.current = files;
+		showActiveFile();
+	}, [files, model]);
+
+	// biome-ignore lint/correctness/useExhaustiveDependencies: showActiveFile reads the model through a ref
+	useEffect(() => {
+		showActiveFile();
+		return activeFileStore.subscribe(showActiveFile);
+	}, [activeFileStore, model]);
 
 	return (
-		<a
-			href={`#${fileId}`}
-			aria-current={isActive ? "location" : undefined}
-			className={cn(
-				"flex h-7 w-full items-center gap-1.5 rounded-lg pr-2 text-[13px] font-medium transition-colors",
-				isActive
-					? "bg-nav-selected text-foreground"
-					: "text-text-nav hover:bg-nav-hover hover:text-foreground",
-			)}
-			style={{ paddingLeft: `${depth * INDENT + 24}px` }}
-			onClick={() => onFileClick(node.path)}
-		>
-			<FileTypeIcon path={node.path} kind="file" size={14} />
-			<span
-				className={cn(
-					"min-w-0 truncate",
-					node.status === "removed" && "line-through",
-				)}
-			>
-				{node.name}
-			</span>
-			{(node.additions != null || node.deletions != null) && (
-				<span className="ml-auto flex shrink-0 items-center gap-1 pl-2 text-[11px] font-[450] tabular-nums text-muted-foreground">
-					{node.additions != null && node.additions > 0 && (
-						<span>+{node.additions}</span>
-					)}
-					{node.deletions != null && node.deletions > 0 && (
-						<span>-{node.deletions}</span>
-					)}
-				</span>
-			)}
-		</a>
+		<FileTree
+			model={model}
+			data-tree="review"
+			aria-label="Changed files"
+			className="min-h-0 flex-1 pt-1"
+		/>
 	);
 });

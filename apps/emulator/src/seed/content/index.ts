@@ -1,4 +1,5 @@
 import type { WorkspaceSpec } from "../types.ts";
+import { atlas } from "./atlas.ts";
 import { beacon } from "./beacon.ts";
 import { orbit } from "./orbit.ts";
 import { org, people } from "./people.ts";
@@ -11,7 +12,7 @@ import { dotfiles, handbook, infra } from "./small-repos.ts";
 export const workspace: WorkspaceSpec = {
 	people,
 	org,
-	repos: [beacon, orbit, handbook, infra, dotfiles],
+	repos: [beacon, orbit, handbook, infra, dotfiles, atlas],
 	forks: [{ from: "lumen-labs/beacon", by: "jun-park" }],
 	stars: {
 		nova: ["lumen-labs/beacon", "lumen-labs/orbit", "lumen-labs/handbook"],

@@ -232,8 +232,11 @@ export function ComparePage({
 					{showForm ? "Open a pull request" : "Compare changes"}
 				</PageHeaderTitle>
 			</PageHeader>
-			<div className="min-h-0 flex-1 overflow-y-auto">
-				<div className="flex flex-col gap-4 px-3 pt-3 pb-10 md:px-[14px]">
+			<div className="min-h-0 flex-1 overflow-y-auto" data-diffs-scroll-root="">
+				<div
+					className="flex flex-col gap-4 px-3 pt-3 pb-10 md:px-[14px]"
+					data-diffs-scroll-content=""
+				>
 					<Skeleton loading={target === null} label="Loading branches">
 						{target ? (
 							<CompareBranchBar
@@ -382,6 +385,7 @@ function CompareReady({
 				commits={compare.commits}
 				files={compare.files}
 				filesTruncated={compare.filesTruncated}
+				mergeBaseSha={compare.mergeBaseSha}
 				owner={owner}
 				repo={repo}
 			/>
@@ -647,6 +651,7 @@ function CompareDiffSample({ owner, repo }: { owner: string; repo: string }) {
 		<CompareDiffView
 			commits={SAMPLE_COMPARE_COMMITS}
 			files={SAMPLE_COMPARE_FILES}
+			mergeBaseSha="sample"
 			owner={owner}
 			repo={repo}
 		/>

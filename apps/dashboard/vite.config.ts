@@ -131,6 +131,8 @@ export function createHighlighterCoreSync() {
 	return mockHighlighter;
 }
 export const getSingletonHighlighterCore = createHighlighterCore;
+export const createCssVariablesTheme = () => ({});
+export const normalizeTheme = (theme) => theme;
 export function makeSingletonHighlighterCore(fn) {
 	return (opts) => fn(opts);
 }
@@ -146,6 +148,10 @@ export function isNoneTheme(theme) {
 export function isSpecialTheme(theme) {
 	return isNoneTheme(theme);
 }`;
+
+	const TEXTMATE_STUB = `
+export const INITIAL = {};
+export const EncodedTokenMetadata = {};`;
 
 	const LANG_STUB = "export default [];";
 	const THEME_STUB = "export default Object.freeze({});";
@@ -172,6 +178,9 @@ export function isSpecialTheme(theme) {
 			) {
 				return CORE_STUB;
 			}
+			if (source === "shiki/textmate") {
+				return TEXTMATE_STUB;
+			}
 			if (source.startsWith("@shikijs/langs/")) {
 				return LANG_STUB;
 			}
@@ -179,6 +188,24 @@ export function isSpecialTheme(theme) {
 				return THEME_STUB;
 			}
 			return DEFAULT_STUB;
+		},
+	};
+}
+
+// @pierre/diffs resolves Shiki grammars through `shiki/langs`, which maps every
+// grammar Shiki ships. Shiki is only the fallback highlighter (no WebAssembly),
+// so point it at the trimmed bundle the markdown renderer already uses.
+function shikiTrimmedLanguages(): import("vite").Plugin {
+	const trimmed = fileURLToPath(
+		new URL("./src/lib/diffs/shiki-langs.ts", dashboardRoot),
+	);
+	return {
+		name: "shiki-trimmed-languages",
+		enforce: "pre",
+		resolveId(source) {
+			if (source === "shiki/langs" && this.environment?.name === "client") {
+				return trimmed;
+			}
 		},
 	};
 }
@@ -308,6 +335,7 @@ const config = defineConfig(({ command }) => {
 			devtools(),
 			hugeiconsDeepImports(),
 			shikiSSRStub(),
+			shikiTrimmedLanguages(),
 			betterAuthDialectStub(),
 			// Unit tests mock `cloudflare:workers` and run without workerd.
 			...(process.env.VITEST

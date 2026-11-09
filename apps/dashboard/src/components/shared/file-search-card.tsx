@@ -58,6 +58,29 @@ const spring = {
 	bounce: 0.05,
 };
 
+/**
+ * Memoised so the card can re-render on every active-file change while the
+ * diff scrolls without the shared-layout glyph re-measuring the layout.
+ */
+const SearchGlyph = memo(function SearchGlyph({
+	isExpanded,
+}: {
+	isExpanded: boolean;
+}) {
+	return (
+		<motion.span
+			layoutId="sidebar-search-icon"
+			transition={spring}
+			className={cn(
+				"absolute text-muted-foreground transition-[left] duration-150 ease-out",
+				isExpanded ? "left-3.5" : "left-2.5",
+			)}
+		>
+			<SearchIcon size={14} />
+		</motion.span>
+	);
+});
+
 export type FileSearchCardProps = {
 	entries: FileSearchEntry[];
 	onSelect: (entry: FileSearchResult) => void;
@@ -195,16 +218,7 @@ export const FileSearchCard = memo(function FileSearchCard({
 						isExpanded ? "px-1" : "px-0",
 					)}
 				>
-					<motion.span
-						layoutId="sidebar-search-icon"
-						transition={spring}
-						className={cn(
-							"absolute text-muted-foreground transition-[left] duration-150 ease-out",
-							isExpanded ? "left-3.5" : "left-2.5",
-						)}
-					>
-						<SearchIcon size={14} />
-					</motion.span>
+					<SearchGlyph isExpanded={isExpanded} />
 					<input
 						ref={inputRef}
 						type="text"
