@@ -2,16 +2,12 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const startFetch = vi.hoisted(() => vi.fn());
 const handleCommentMediaUpload = vi.hoisted(() => vi.fn());
-const runScheduledMaintenance = vi.hoisted(() => vi.fn());
 
 vi.mock("@tanstack/react-start/server-entry", () => ({
 	default: { fetch: startFetch },
 }));
 vi.mock("#/lib/comment-media-upload.handler", () => ({
 	handleCommentMediaUpload,
-}));
-vi.mock("#/lib/scheduled-maintenance.server", () => ({
-	runScheduledMaintenance,
 }));
 
 const { default: worker } = await import("./entry-worker");
@@ -62,24 +58,5 @@ describe("entry worker fetch", () => {
 		expect(String(vi.mocked(console.error).mock.calls[0][0])).not.toContain(
 			"SECRET",
 		);
-	});
-});
-
-describe("entry worker scheduled", () => {
-	it("never rejects, so a failing cron cannot take the Worker down", async () => {
-		runScheduledMaintenance.mockRejectedValue(new Error("D1 unavailable"));
-		const pending: Promise<unknown>[] = [];
-		const context = {
-			waitUntil: (promise: Promise<unknown>) => pending.push(promise),
-		} as unknown as ExecutionContext;
-
-		await worker.scheduled(
-			{ scheduledTime: 1234 } as ScheduledController,
-			{ DB: {} as D1Database, GITHUB_CACHE_KV: {} as KVNamespace },
-			context,
-		);
-
-		await expect(Promise.all(pending)).resolves.toBeDefined();
-		expect(console.error).toHaveBeenCalled();
 	});
 });

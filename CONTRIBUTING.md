@@ -8,7 +8,7 @@ Follow the [Getting Started](README.md#getting-started) section in the README to
 
 For UI work you can skip all of that: `pnpm dev:demo` runs DiffKit against a local GitHub emulator with seeded data (see [docs/local-demo-mode.md](docs/local-demo-mode.md)). If you change a GraphQL query, run `pnpm --filter @diffkit/emulator test`; it executes every query in `apps/dashboard/src/lib/github/` against the emulator and tells you which fields the shim still needs.
 
-For webhook testing during local development, use an ngrok tunnel (or similar) and set `DEV_TUNNEL_URL` in your `.dev.vars`.
+For webhook testing during local development, use an ngrok tunnel (or similar) and set `DEV_TUNNEL_URL` in your `.env`.
 
 ## Project Architecture
 
@@ -25,7 +25,7 @@ diffkit/
 │       │   └── routes/     # File-based routes (TanStack Router)
 │       │       ├── api/    # API routes (auth callbacks, webhooks)
 │       │       └── _protected/ # Auth-gated routes
-│       └── drizzle/        # SQL migration files
+│       └── db/migrations/  # SQL migration files
 ├── extensions/
 │   └── diffkit-redirect/   # Browser extension (GitHub → DiffKit redirects)
 ├── packages/
@@ -41,7 +41,7 @@ diffkit/
 - **TanStack Start** — Full-stack React 19 framework on Cloudflare Workers
 - **TanStack Router** — File-based routing in `apps/dashboard/src/routes/`
 - **TanStack Query** — Server state management and caching
-- **Drizzle ORM** — Database schema and migrations in `apps/dashboard/src/db/` and `apps/dashboard/drizzle/`
+- **Drizzle ORM** — Database schema and migrations in `apps/dashboard/src/db/` and `apps/dashboard/db/migrations/`
 - **Better Auth** — Authentication with a GitHub OAuth App, plus GitHub App user and installation tokens for installed repos
 - **Cloudflare D1** — SQLite database at the edge (auth data, cache control state)
 - **Cloudflare KV** — Hot payload cache for GitHub API responses (`GITHUB_CACHE_KV` binding)
@@ -62,7 +62,7 @@ Auth callbacks:
 - GitHub App user authorization: `/api/github/app/callback`
 - GitHub App setup URL: `/setup` (with **Redirect on update** enabled)
 
-Environment variables are documented in `apps/dashboard/.dev.vars.example`. Do not commit real `.dev.vars` values or private keys. If a private key is exposed, revoke it in GitHub App settings and generate a replacement.
+Environment variables are declared in `apps/dashboard/env.ts` and documented in `apps/dashboard/env.example`. Do not commit real `.env` values or private keys. If a private key is exposed, revoke it in GitHub App settings and generate a replacement.
 
 ### Data Fetching & Revalidation
 
@@ -90,14 +90,14 @@ Shared components go in `packages/ui/src/components/`. App-specific components g
 
 ### Database Migrations
 
-Migration files live in `apps/dashboard/drizzle/`. To run migrations:
+Migration files live in `apps/dashboard/db/migrations/`. `pnpm dev` applies new ones to local D1 on start, and `void deploy` applies them to the deployed database. To run them by hand:
 
 ```bash
-pnpm --filter dashboard migrate        # Local D1
+pnpm --filter dashboard migrate         # Local D1
 pnpm --filter dashboard migrate:remote  # Remote D1
 ```
 
-If you add a new table or column, create a new numbered SQL file in `apps/dashboard/drizzle/`.
+If you add a new table or column, create a new numbered SQL file in `apps/dashboard/db/migrations/` and add its entry to `meta/_journal.json`; Void refuses to deploy files the journal does not list. A file that drops or renames data needs `-- void:allow-destructive` as its first line.
 
 ## Workflow
 

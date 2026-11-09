@@ -57,29 +57,4 @@ export default {
 			return applySecurityHeaders(unhandledErrorResponse(pathname));
 		}
 	},
-
-	async scheduled(
-		controller: ScheduledController,
-		env: { DB: D1Database; GITHUB_CACHE_KV: KVNamespace },
-		ctx: ExecutionContext,
-	): Promise<void> {
-		ctx.waitUntil(
-			Promise.all([
-				import("#/lib/scheduled-maintenance.server"),
-				import("#/lib/health.server"),
-			])
-				.then(
-					async ([{ runScheduledMaintenance }, { recordMaintenanceRun }]) => {
-						const summary = await runScheduledMaintenance(
-							env.DB,
-							controller.scheduledTime,
-						);
-						await recordMaintenanceRun(env.GITHUB_CACHE_KV, summary);
-					},
-				)
-				.catch((error: unknown) => {
-					logRouteError("worker", "scheduled maintenance failed", error);
-				}),
-		);
-	},
 };
