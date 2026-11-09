@@ -82,7 +82,7 @@ import {
 import {
 	type ActiveFileStore,
 	createActiveFileStore,
-	ReviewVirtualizedFileTree,
+	ReviewFileTree,
 } from "./review-file-tree";
 import { ReviewSubmitPopover } from "./review-submit-popover";
 import type {
@@ -90,7 +90,7 @@ import type {
 	PendingComment,
 	ReviewEvent,
 } from "./review-types";
-import { buildFileTree, encodeFileId } from "./review-utils";
+import { encodeFileId } from "./review-utils";
 
 const EMPTY_COMMITS: PullCommit[] = [];
 
@@ -776,8 +776,6 @@ export const ReviewSidebar = memo(function ReviewSidebar({
 	activeFileStore: ActiveFileStore;
 	onFileClick: (path: string) => void;
 }) {
-	const fileTree = useMemo(() => buildFileTree(sidebarFiles), [sidebarFiles]);
-
 	const searchEntries = useMemo(
 		() =>
 			sidebarFiles.map((f) => ({
@@ -793,15 +791,19 @@ export const ReviewSidebar = memo(function ReviewSidebar({
 		activeFileStore.get,
 	);
 
-	const handleSearchSelect = useCallback(
-		(entry: { path: string }) => {
-			onFileClick(entry.path);
-			const hash = `#${encodeFileId(entry.path)}`;
+	const revealFile = useCallback(
+		(path: string) => {
+			onFileClick(path);
+			const hash = `#${encodeFileId(path)}`;
 			if (window.location.hash !== hash) {
 				history.replaceState(null, "", hash);
 			}
 		},
 		[onFileClick],
+	);
+	const handleSearchSelect = useCallback(
+		(entry: { path: string }) => revealFile(entry.path),
+		[revealFile],
 	);
 
 	return (
@@ -814,10 +816,10 @@ export const ReviewSidebar = memo(function ReviewSidebar({
 				shortcutKey="f"
 			/>
 
-			<ReviewVirtualizedFileTree
-				tree={fileTree}
+			<ReviewFileTree
+				files={sidebarFiles}
 				activeFileStore={activeFileStore}
-				onFileClick={onFileClick}
+				onFileClick={revealFile}
 			/>
 
 			<div className="flex h-9 shrink-0 items-center gap-2 border-t-[0.5px] border-header-rule px-4 text-xs font-[450] text-muted-foreground">

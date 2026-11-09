@@ -1093,3 +1093,68 @@ diffs-container {
 .dark .markdown-alert-caution {
 	--alert-color: oklch(0.7 0.2 25);
 }
+
+/* @pierre/trees — outer styles on the host beat its :host defaults, and custom
+   properties inherit into its shadow root, so trees follow `.dark` and the
+   colour themes without re-rendering. */
+file-tree-container {
+	color-scheme: light;
+	--trees-font-family-override: var(--font-sans);
+	--trees-font-size-override: 13px;
+	--trees-bg-override: var(--ln-main);
+	--trees-fg-muted-override: var(--ln-text-muted);
+	--trees-border-radius-override: var(--radius-md);
+	--trees-padding-inline-override: 8px;
+	--trees-item-margin-x-override: 0px;
+	--trees-item-row-gap-override: 6px;
+	--trees-icon-nudge-override: 0px;
+	--trees-focus-ring-color-override: var(--ln-focus);
+	--trees-selected-focused-border-color-override: transparent;
+	--trees-scrollbar-thumb-override: var(--ln-icon-faint);
+	--trees-git-added-color-override: var(--ln-added);
+	--trees-git-deleted-color-override: var(--ln-removed);
+	--trees-git-modified-color-override: currentColor;
+	--trees-git-renamed-color-override: currentColor;
+	--trees-icon-blue: var(--file-icon-blue);
+	--trees-icon-cyan: var(--file-icon-cyan);
+	--trees-icon-gray: var(--file-icon-gray);
+	--trees-icon-green: var(--file-icon-green);
+	--trees-icon-indigo: var(--file-icon-indigo);
+	--trees-icon-mauve: var(--file-icon-mauve);
+	--trees-icon-orange: var(--file-icon-orange);
+	--trees-icon-pink: var(--file-icon-pink);
+	--trees-icon-purple: var(--file-icon-purple);
+	--trees-icon-red: var(--file-icon-red);
+	--trees-icon-teal: var(--file-icon-teal);
+	--trees-icon-vermilion: var(--file-icon-vermilion);
+	--trees-icon-yellow: var(--file-icon-yellow);
+	--tree-folder-fg: var(--muted-foreground);
+	--tree-hover-fg: var(--foreground);
+}
+
+.dark file-tree-container {
+	color-scheme: dark;
+}
+
+file-tree-container[data-tree="review"] {
+	--trees-fg-override: var(--ln-text-nav);
+	--trees-font-weight-regular-override: 500;
+	--trees-border-radius-override: var(--radius-lg);
+	--trees-bg-muted-override: var(--ln-nav-hover);
+	--trees-selected-bg-override: var(--ln-nav-selected);
+	--trees-selected-fg-override: var(--foreground);
+	--tree-file-icon-size: 14px;
+	--tree-chevron-fg: var(--ln-icon-faint);
+	--tree-row-gap: 1px;
+}
+
+file-tree-container[data-tree="explorer"] {
+	--trees-fg-override: var(--ln-text-header);
+	--trees-font-weight-regular-override: 450;
+	--trees-bg-muted-override: var(--ln-item-hover);
+	--trees-selected-bg-override: var(--ln-item-hover);
+	--trees-selected-fg-override: var(--foreground);
+	--tree-file-icon-size: 16px;
+	--tree-chevron-fg: var(--muted-foreground);
+	--tree-chevron-lane: 16px;
+}

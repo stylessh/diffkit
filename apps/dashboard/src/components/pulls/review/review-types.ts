@@ -1,4 +1,4 @@
-import type { PullFile, PullReviewComment } from "#/lib/github.types";
+import type { PullReviewComment } from "#/lib/github.types";
 
 export type PendingComment = {
 	path: string;
@@ -16,13 +16,3 @@ export type ReviewAnnotation =
 	| { kind: "pending"; comment: PendingComment }
 	| { kind: "draft"; form: ActiveCommentForm };
 export type ReviewEvent = "APPROVE" | "REQUEST_CHANGES" | "COMMENT";
-
-export type FileTreeNode = {
-	name: string;
-	path: string;
-	type: "file" | "directory";
-	status?: PullFile["status"];
-	additions?: number;
-	deletions?: number;
-	children: FileTreeNode[];
-};
