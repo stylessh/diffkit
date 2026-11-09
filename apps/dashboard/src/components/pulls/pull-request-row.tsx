@@ -15,6 +15,7 @@ import {
 	rowAccessibleName,
 } from "#/components/shared/list-row";
 import { HighlightedText } from "#/components/shared/search-highlight";
+import { useIsSkeletonSample } from "#/components/shared/skeleton-sample";
 import { formatRelativeTime } from "#/lib/format-relative-time";
 import type { PullSummary } from "#/lib/github.types";
 import { getPrStateConfig } from "#/lib/pr-state";
@@ -30,8 +31,9 @@ export const PullRequestRow = memo(function PullRequestRow({
 	const { icon: Icon, color } = getPrStateConfig(pr);
 	const href = `/${pr.repository.owner}/${pr.repository.name}/pull/${pr.number}`;
 	const router = useRouter();
+	const isSample = useIsSkeletonSample();
 	const preloadDetail = () => {
-		void preloadRouteOnce(router, href);
+		if (!isSample) void preloadRouteOnce(router, href);
 	};
 	const time = formatRelativeTime(pr.updatedAt, undefined, { compact: true });
 

@@ -1,10 +1,13 @@
 import { GitHubLogo } from "@diffkit/icons";
 import { Button } from "@diffkit/ui/components/button";
+import { Chip } from "@diffkit/ui/components/chip";
 import { Logo } from "@diffkit/ui/components/logo";
 import { createFileRoute, redirect } from "@tanstack/react-router";
+import { ProductPreview } from "#/components/landing/product-preview";
 import { getGitHubSignInMode, getSession } from "#/lib/auth.functions";
 import { signInWithGitHub } from "#/lib/auth-actions";
 import { normalizeAuthRedirect } from "#/lib/auth-redirect";
+import { getRepositoryStars } from "#/lib/repository-stars.functions";
 import {
 	buildSeo,
 	buildSoftwareApplicationSchema,
@@ -20,7 +23,13 @@ export const Route = createFileRoute("/login")({
 		const session = await getSession();
 		if (session) throw redirect({ href: search.redirect });
 	},
-	loader: async () => ({ signInMode: await getGitHubSignInMode() }),
+	loader: async () => {
+		const [signInMode, stars] = await Promise.all([
+			getGitHubSignInMode(),
+			getRepositoryStars(),
+		]);
+		return { signInMode, stars };
+	},
 	head: () => {
 		const seo = buildSeo({
 			path: "/login",
@@ -47,78 +56,78 @@ export const Route = createFileRoute("/login")({
 	component: LoginPage,
 });
 
+const starCount = new Intl.NumberFormat("en", {
+	notation: "compact",
+	maximumFractionDigits: 1,
+});
+
 function LoginPage() {
 	const { redirect } = Route.useSearch();
-	const { signInMode } = Route.useLoaderData();
+	const { signInMode, stars } = Route.useLoaderData();
+	const signIn = () => {
+		void signInWithGitHub({ redirect, mode: signInMode });
+	};
 
 	return (
-		<main className="isolate min-h-dvh bg-background">
-			<div className="grid min-h-dvh lg:grid-cols-[35fr_65fr]">
-				<section className="flex min-h-dvh bg-background px-6 py-8 sm:px-10 sm:py-10 lg:px-16 lg:py-12 xl:px-20">
-					<div className="mx-auto flex w-full max-w-xs flex-1 flex-col justify-between gap-10">
-						<div className="flex items-center gap-3">
-							<Logo
-								className="size-9 text-foreground"
-								variant={import.meta.env.DEV ? "dev" : "default"}
-							/>
-							<div>
-								<p className="text-base font-medium text-foreground sm:text-sm">
-									DiffKit
-								</p>
-								<p className="text-base text-muted-foreground sm:text-sm">
-									Beta version
-								</p>
-							</div>
-						</div>
+		<main className="isolate flex min-h-dvh flex-col bg-background [--page-width:1080px]">
+			<header className="sticky top-0 z-10 border-b-[0.5px] border-header-rule bg-background/80 backdrop-blur-xl">
+				<div className="enter-0 mx-auto flex h-14 w-full max-w-(--page-width) items-center gap-2 px-5 sm:px-8">
+					<Logo
+						className="size-6 text-foreground"
+						variant={import.meta.env.DEV ? "dev" : "default"}
+					/>
+					<span className="text-[15px] font-semibold tracking-tight text-foreground">
+						{siteConfig.name}
+					</span>
+					<Chip className="ml-1">Beta</Chip>
+					<nav aria-label="Site" className="ml-auto flex items-center gap-1.5">
+						<a
+							href={siteConfig.githubRepositoryUrl}
+							target="_blank"
+							rel="noreferrer"
+							aria-label={
+								stars === null
+									? undefined
+									: `${siteConfig.name} on GitHub, ${stars} stars`
+							}
+							className="flex h-7 items-center gap-1.5 rounded-md px-2.5 text-[13px] font-medium text-text-nav transition-colors hover:bg-nav-hover hover:text-foreground"
+						>
+							<GitHubLogo className="size-3.5" />
+							{stars === null ? (
+								"GitHub"
+							) : (
+								<span className="tabular-nums">
+									{starCount.format(stars).toLowerCase()}
+								</span>
+							)}
+						</a>
+						<Button variant="outline" size="sm" onClick={signIn}>
+							Sign in
+						</Button>
+					</nav>
+				</div>
+			</header>
 
-						<div className="space-y-6">
-							<div>
-								<h1 className="w-full text-3xl font-semibold tracking-tight text-balance text-foreground sm:text-2xl">
-									Review your GitHub work in one place
-								</h1>
-							</div>
+			<section className="mx-auto flex w-full max-w-(--page-width) flex-col items-start gap-5 px-5 pt-20 pb-8 sm:px-8 sm:pt-24 lg:flex-row lg:items-end lg:justify-between lg:gap-16 lg:pt-30">
+				<h1 className="text-[28px] leading-[1.06] font-[550] tracking-[-0.03em] text-balance text-foreground sm:text-[34px] lg:text-[40px]">
+					<span className="enter-1 block">Your GitHub pull requests,</span>
+					<span className="enter-2 block">issues and reviews in one place</span>
+				</h1>
+				<Button
+					variant="outline"
+					size="lg"
+					iconLeft={<GitHubLogo />}
+					className="enter-3 h-10 rounded-lg bg-tab-selected px-4 text-sm shadow-tab-selected"
+					onClick={signIn}
+				>
+					Continue with GitHub
+				</Button>
+			</section>
 
-							<form
-								className="space-y-3"
-								onSubmit={(event) => {
-									event.preventDefault();
-									void signInWithGitHub({ redirect, mode: signInMode });
-								}}
-							>
-								<Button
-									type="submit"
-									size="lg"
-									iconLeft={<GitHubLogo />}
-									className="h-11 w-full rounded-lg text-base sm:h-9 sm:text-[13px]"
-								>
-									Continue with GitHub
-								</Button>
-							</form>
-						</div>
-
-						<div className="flex items-center gap-2 text-base text-muted-foreground sm:text-sm">
-							<span
-								aria-hidden="true"
-								className="size-1.5 rounded-full bg-border"
-							/>
-							<p>
-								{signInMode === "emulator"
-									? "Local demo: pick “nova” in the emulator. No GitHub account needed."
-									: "Your GitHub activity, one dashboard away."}
-							</p>
-						</div>
-					</div>
-				</section>
-
-				<section className="hidden min-h-dvh items-center overflow-hidden bg-background py-4 pl-4 lg:flex lg:py-6 lg:pl-6 xl:py-8 xl:pl-8">
-					<div className="[-webkit-mask-image:linear-gradient(to_right,black_0,black_80%,transparent_100%)] [mask-image:linear-gradient(to_right,black_0,black_80%,transparent_100%)] flex w-[114%] shrink-0 translate-x-20 items-center justify-center rounded-[2rem] bg-background p-6 shadow-[0_24px_80px_-48px_rgba(15,23,42,0.3)] dark:shadow-none xl:translate-x-32">
-						<img
-							src="/login-preview.png"
-							alt="DiffKit dashboard preview"
-							className="aspect-[16/10] w-full max-w-[56rem] rounded-xl border-[0.5px] border-border object-cover object-left-top shadow-[0_18px_40px_-34px_rgba(15,23,42,0.25)] dark:shadow-none xl:max-w-[64rem]"
-						/>
-					</div>
-				</section>
+			<div className="relative -mt-2 min-h-80 flex-1 overflow-hidden mask-b-from-65%">
+				<div className="absolute inset-x-0 top-2 bottom-0 mx-auto w-full max-w-[calc(var(--page-width)*1.1)] px-5 sm:px-8">
+					<ProductPreview className="enter-4 h-full min-h-[760px] [--enter-distance:32px]" />
+				</div>
 			</div>
 		</main>
 	);
