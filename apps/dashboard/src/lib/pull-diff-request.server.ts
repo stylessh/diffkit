@@ -22,7 +22,7 @@ export type PullDiffRequestDeps = {
 		| null;
 };
 
-const NAME_PATTERN = /^[A-Za-z0-9_.-]{1,100}$/u;
+const NAME_PATTERN = /^(?!\.{1,2}$)[A-Za-z0-9_.-]{1,100}$/u;
 const NUMBER_PATTERN = /^[1-9][0-9]{0,9}$/u;
 
 export function parsePullDiffParams(url: URL): PullDiffParams | null {

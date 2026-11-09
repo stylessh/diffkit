@@ -14,19 +14,21 @@ export function CompareDiffView({
 	commits,
 	files,
 	filesTruncated = false,
+	mergeBaseSha,
 	owner,
 	repo,
 }: {
 	commits: PullCommit[];
 	files: PullFile[];
 	filesTruncated?: boolean;
+	mergeBaseSha: string;
 	owner: string;
 	repo: string;
 }) {
 	const [diffStyle, setDiffStyle] = useState<DiffStyle>("split");
 	const [view, setView] = useState<DiffView>("files");
 	const [wrapLines, setWrapLines] = useState(false);
-	const revision = `${owner}/${repo}:compare:${commits.at(-1)?.sha ?? ""}`;
+	const revision = `${owner}/${repo}:compare:${mergeBaseSha}...${commits.at(-1)?.sha ?? ""}`;
 	const diffFiles = useMemo(
 		() => pullFilesToDiffFiles(files, revision),
 		[files, revision],

@@ -385,6 +385,7 @@ function CompareReady({
 				commits={compare.commits}
 				files={compare.files}
 				filesTruncated={compare.filesTruncated}
+				mergeBaseSha={compare.mergeBaseSha}
 				owner={owner}
 				repo={repo}
 			/>
@@ -650,6 +651,7 @@ function CompareDiffSample({ owner, repo }: { owner: string; repo: string }) {
 		<CompareDiffView
 			commits={SAMPLE_COMPARE_COMMITS}
 			files={SAMPLE_COMPARE_FILES}
+			mergeBaseSha="sample"
 			owner={owner}
 			repo={repo}
 		/>

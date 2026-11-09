@@ -174,6 +174,7 @@ export const ReviewFileTree = memo(function ReviewFileTree({
 	});
 	modelRef.current = model;
 
+	// biome-ignore lint/correctness/useExhaustiveDependencies: showActiveFile reads the model through a ref
 	useEffect(() => {
 		if (syncedFilesRef.current === files) return;
 		filesByPathRef.current = new Map(
@@ -181,6 +182,7 @@ export const ReviewFileTree = memo(function ReviewFileTree({
 		);
 		syncTree(model, syncedFilesRef.current, files);
 		syncedFilesRef.current = files;
+		showActiveFile();
 	}, [files, model]);
 
 	// biome-ignore lint/correctness/useExhaustiveDependencies: showActiveFile reads the model through a ref

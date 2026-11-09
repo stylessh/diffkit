@@ -1039,6 +1039,8 @@ export type CompareDetail = {
 	behindBy: number;
 	status: "ahead" | "behind" | "diverged" | "identical";
 	totalCommits: number;
+	/** The commit the head is diffed against; moves when the base advances. */
+	mergeBaseSha: string;
 	commits: PullCommit[];
 	files: PullFile[];
 	/** True when the file list hit GitHub's 300-file cap for this endpoint. */
@@ -1059,7 +1061,7 @@ export const getCompareDetail = createServerFn({ method: "GET" })
 		try {
 			return await dedupeGitHubRead<CompareDetail>({
 				userId: context.session.user.id,
-				resource: "repo.compareDetail.v2",
+				resource: "repo.compareDetail.v3",
 				params: data,
 				fetcher: async () => {
 					const first =
@@ -1105,6 +1107,7 @@ export const getCompareDetail = createServerFn({ method: "GET" })
 						behindBy: first.data.behind_by,
 						status: first.data.status as CompareDetail["status"],
 						totalCommits,
+						mergeBaseSha: first.data.merge_base_commit.sha,
 						commits: commitsRaw.map((c) => ({
 							sha: c.sha,
 							message: c.commit.message,

@@ -1,5 +1,5 @@
 /**
- * The path the repo explorer shows. Set during render by the explorer layout
+ * The path the repo explorer shows. Set by the explorer layout before paint
  * and read imperatively by the file tree, which selects and reveals it without
  * re-rendering.
  */

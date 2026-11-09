@@ -19,7 +19,7 @@ export type ExplorerContext = {
 export type ExplorerDirectories = {
 	/** `undefined` until the directory has been asked for. */
 	listing: (dir: string) => DirectoryListing | undefined;
-	/** Fetches a directory GitHub's recursive tree could not answer, or retries one that failed. */
+	/** Lists a directory unless the complete recursive tree answers it; a failed one is retried. */
 	load: (dir: string) => void;
 	/** Every known path, directories with a trailing slash, parents first. */
 	paths: readonly string[];

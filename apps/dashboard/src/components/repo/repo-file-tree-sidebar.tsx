@@ -216,8 +216,8 @@ function ExplorerFileTree({
 		});
 	}, [model]);
 
-	// Opening a folder the recursive tree could not answer lists it, and
-	// reopening one that failed tries again.
+	// Opening a folder lists it unless the recursive tree already answered it,
+	// and reopening one that failed tries again.
 	useEffect(() => {
 		let expanded = new Set<string>();
 		const loadExpanded = () => {
@@ -227,12 +227,7 @@ function ExplorerFileTree({
 					continue;
 				}
 				nowExpanded.add(id);
-				const dir = id.slice(0, -1);
-				const status = directoriesRef.current.listing(dir)?.status;
-				const reopenedAfterError = status === "error" && !expanded.has(id);
-				if (status === undefined || reopenedAfterError) {
-					directoriesRef.current.load(dir);
-				}
+				if (!expanded.has(id)) directoriesRef.current.load(id.slice(0, -1));
 			}
 			expanded = nowExpanded;
 		};

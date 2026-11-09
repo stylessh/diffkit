@@ -10,7 +10,12 @@ import {
 	ResizablePanelGroup,
 } from "@diffkit/ui/components/resizable";
 import { Link } from "@tanstack/react-router";
-import { type ReactNode, useState, useSyncExternalStore } from "react";
+import {
+	type ReactNode,
+	useLayoutEffect,
+	useState,
+	useSyncExternalStore,
+} from "react";
 import { Skeleton, SkeletonBox } from "skullet/react";
 import { SkeletonSample } from "#/components/shared/skeleton-sample";
 import { type CodeView, isCommitSha } from "#/lib/code-browsing/code-location";
@@ -67,7 +72,7 @@ export function RepoExplorerLayout({
 	const [drawerOpen, setDrawerOpen] = useState(false);
 	const { owner, repo: repoName, ref, path } = location;
 
-	setExplorerPath(path);
+	useLayoutEffect(() => setExplorerPath(path), [path]);
 
 	useRegisterTab({
 		type: "repo",

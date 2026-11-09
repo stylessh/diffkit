@@ -95,10 +95,13 @@ describe("handlePullDiffRequest", () => {
 		);
 		expect(signedOut.status).toBe(401);
 
-		const malformed = await handlePullDiffRequest(
-			get("owner=a/b&repo=atlas&number=1"),
-			deps({}),
-		);
-		expect(malformed.status).toBe(400);
+		for (const query of [
+			"owner=a/b&repo=atlas&number=1",
+			"owner=..&repo=atlas&number=1",
+			"owner=lumen-labs&repo=.&number=1",
+		]) {
+			const malformed = await handlePullDiffRequest(get(query), deps({}));
+			expect(malformed.status).toBe(400);
+		}
 	});
 });
