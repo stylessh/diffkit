@@ -40,7 +40,7 @@ export const SHIKI_BUNDLED_LANGS = [
 
 export type ShikiBundledLang = (typeof SHIKI_BUNDLED_LANGS)[number];
 
-const LANG_IMPORTS = {
+export const shikiBundledLanguages = {
 	javascript: () => import("@shikijs/langs/javascript"),
 	typescript: () => import("@shikijs/langs/typescript"),
 	jsx: () => import("@shikijs/langs/jsx"),
@@ -81,7 +81,7 @@ export type MarkdownHighlighter = Awaited<
 export function createMarkdownHighlighter(): Promise<MarkdownHighlighter> {
 	return createHighlighterCore({
 		themes: [diffkitLight, diffkitDark],
-		langs: SHIKI_BUNDLED_LANGS.map((id) => LANG_IMPORTS[id]),
+		langs: SHIKI_BUNDLED_LANGS.map((id) => shikiBundledLanguages[id]),
 		engine: createJavaScriptRegexEngine(),
 	});
 }

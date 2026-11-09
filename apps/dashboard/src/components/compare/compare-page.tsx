@@ -232,8 +232,11 @@ export function ComparePage({
 					{showForm ? "Open a pull request" : "Compare changes"}
 				</PageHeaderTitle>
 			</PageHeader>
-			<div className="min-h-0 flex-1 overflow-y-auto">
-				<div className="flex flex-col gap-4 px-3 pt-3 pb-10 md:px-[14px]">
+			<div className="min-h-0 flex-1 overflow-y-auto" data-diffs-scroll-root="">
+				<div
+					className="flex flex-col gap-4 px-3 pt-3 pb-10 md:px-[14px]"
+					data-diffs-scroll-content=""
+				>
 					<Skeleton loading={target === null} label="Loading branches">
 						{target ? (
 							<CompareBranchBar

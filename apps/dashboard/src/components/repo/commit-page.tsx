@@ -15,7 +15,6 @@ import { Spinner } from "@diffkit/ui/components/spinner";
 import { useQuery } from "@tanstack/react-query";
 import { getRouteApi, Link } from "@tanstack/react-router";
 import {
-	lazy,
 	memo,
 	Suspense,
 	useCallback,
@@ -24,15 +23,17 @@ import {
 	useState,
 	useSyncExternalStore,
 } from "react";
+import type { DiffCodeViewHandle } from "#/components/diffs/diff-code-view";
+import { LazyDiffCodeView } from "#/components/diffs/lazy-diff-code-view";
 import { createActiveFileStore } from "#/components/pulls/review/review-file-tree";
 import { ReviewSidebar } from "#/components/pulls/review/review-page";
+import { pullFilesToDiffFiles } from "#/lib/diffs/diff-files";
 import {
 	type GitHubQueryScope,
 	githubRepoCommitQueryOptions,
 } from "#/lib/github.query";
 import type { PullFileSummary, RepoCommitDetail } from "#/lib/github.types";
 import { useRegisterTab } from "#/lib/use-register-tab";
-import type { CommitDiffPaneHandle } from "./commit-diff-pane";
 import { RepoHeader } from "./repo-header";
 import { RepoCrumb } from "./repo-page-header";
 import {
@@ -58,11 +59,6 @@ function useIsDesktop() {
 	return useSyncExternalStore(mdSubscribe, getMdSnapshot, getMdServerSnapshot);
 }
 
-const commitDiffPaneImport = import("./commit-diff-pane");
-const CommitDiffPane = lazy(() =>
-	commitDiffPaneImport.then((mod) => ({ default: mod.CommitDiffPane })),
-);
-
 function CommitDiffPanePlaceholder() {
 	return <div className="h-full" />;
 }
@@ -78,7 +74,7 @@ export function CommitPage() {
 	const [diffStyle, setDiffStyle] = useState<"unified" | "split">("unified");
 	const [fileSheetOpen, setFileSheetOpen] = useState(false);
 	const activeFileStore = useRef(createActiveFileStore(null)).current;
-	const diffPaneRef = useRef<CommitDiffPaneHandle>(null);
+	const diffPaneRef = useRef<DiffCodeViewHandle>(null);
 
 	const commitQuery = useQuery(
 		githubRepoCommitQueryOptions(scope, { owner, repo, sha }),
@@ -97,6 +93,12 @@ export function CommitPage() {
 				previousFilename: f.previousFilename,
 			})) ?? [],
 		[commit?.files],
+	);
+
+	const revision = `${owner}/${repo}@${commit?.sha ?? sha}`;
+	const diffFiles = useMemo(
+		() => (commit ? pullFilesToDiffFiles(commit.files, revision) : []),
+		[commit, revision],
 	);
 
 	const diffStats = useMemo(() => {
@@ -197,12 +199,20 @@ export function CommitPage() {
 
 	const diffContent = (
 		<Suspense fallback={<CommitDiffPanePlaceholder />}>
-			<CommitDiffPane
-				ref={diffPaneRef}
-				files={commit.files}
-				diffStyle={diffStyle}
-				onActiveFileChange={handleActiveFileChange}
-			/>
+			{diffFiles.length === 0 ? (
+				<div className="flex h-full items-center justify-center py-20 text-sm text-muted-foreground">
+					No files changed in this commit.
+				</div>
+			) : (
+				<LazyDiffCodeView
+					ref={diffPaneRef}
+					revision={revision}
+					files={diffFiles}
+					diffStyle={diffStyle}
+					wrapLines={false}
+					onActiveFileChange={handleActiveFileChange}
+				/>
+			)}
 		</Suspense>
 	);
 

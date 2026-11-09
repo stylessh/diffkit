@@ -922,6 +922,28 @@ svg[data-icon="search"]:only-child {
 	}
 }
 
+:root {
+	--syntax-comment: #666666;
+	--syntax-keyword: #c41562;
+	--syntax-string: #107d32;
+	--syntax-constant: #005ff2;
+	--syntax-function: #7d00cc;
+	--syntax-parameter: #aa4d00;
+	--syntax-type: #005ff2;
+	--syntax-plain: #171717;
+}
+
+.dark {
+	--syntax-comment: #a1a1a1;
+	--syntax-keyword: #ff4d8d;
+	--syntax-string: #00ca50;
+	--syntax-constant: #47a8ff;
+	--syntax-function: #c472fb;
+	--syntax-parameter: #ff9300;
+	--syntax-type: #47a8ff;
+	--syntax-plain: #ededed;
+}
+
 /* @pierre/diffs — use our monospace font */
 [data-diffs],
 diffs-container {
