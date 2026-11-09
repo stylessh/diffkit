@@ -44,7 +44,7 @@ export const getViewerOrganizations = createServerFn({ method: "GET" }).handler(
 );
 
 export const getOrgSettings = createServerFn({ method: "GET" })
-	.inputValidator(identityValidator<OrgInput>)
+	.validator(identityValidator<OrgInput>)
 	.handler(
 		({ data }): Promise<SettingsRead<OrgSettings>> =>
 			readSettings("organization", async (octokit) => {
@@ -54,7 +54,7 @@ export const getOrgSettings = createServerFn({ method: "GET" })
 	);
 
 export const getOrgViewerRole = createServerFn({ method: "GET" })
-	.inputValidator(identityValidator<OrgInput>)
+	.validator(identityValidator<OrgInput>)
 	.handler(
 		({ data }): Promise<SettingsRead<OrgRole | null>> =>
 			readSettings("membership", async (octokit) => {
@@ -68,7 +68,7 @@ export const getOrgViewerRole = createServerFn({ method: "GET" })
 	);
 
 export const updateOrgSettings = createServerFn({ method: "POST" })
-	.inputValidator(
+	.validator(
 		identityValidator<OrgInput & { changes: Partial<OrgProfileDraft> }>,
 	)
 	.handler(
@@ -82,7 +82,7 @@ export const updateOrgSettings = createServerFn({ method: "POST" })
 	);
 
 export const getOrgMembers = createServerFn({ method: "GET" })
-	.inputValidator(identityValidator<OrgInput>)
+	.validator(identityValidator<OrgInput>)
 	.handler(
 		({ data }): Promise<SettingsRead<OrgMembers>> =>
 			readSettings("members", async (octokit) => {
@@ -113,9 +113,7 @@ export const getOrgMembers = createServerFn({ method: "GET" })
 	);
 
 export const setOrgMemberRole = createServerFn({ method: "POST" })
-	.inputValidator(
-		identityValidator<OrgInput & { login: string; role: OrgRole }>,
-	)
+	.validator(identityValidator<OrgInput & { login: string; role: OrgRole }>)
 	.handler(
 		({ data }): Promise<SettingsOutcome> =>
 			runSettingsMutation("change the role", (octokit) =>
@@ -128,7 +126,7 @@ export const setOrgMemberRole = createServerFn({ method: "POST" })
 	);
 
 export const removeOrgMember = createServerFn({ method: "POST" })
-	.inputValidator(identityValidator<OrgInput & { login: string }>)
+	.validator(identityValidator<OrgInput & { login: string }>)
 	.handler(
 		({ data }): Promise<SettingsOutcome> =>
 			runSettingsMutation("remove the member", (octokit) =>
@@ -140,9 +138,7 @@ export const removeOrgMember = createServerFn({ method: "POST" })
 	);
 
 export const inviteOrgMember = createServerFn({ method: "POST" })
-	.inputValidator(
-		identityValidator<OrgInput & { invitee: Invitee; role: OrgRole }>,
-	)
+	.validator(identityValidator<OrgInput & { invitee: Invitee; role: OrgRole }>)
 	.handler(
 		({ data }): Promise<SettingsOutcome> =>
 			runSettingsMutation("send the invitation", async (octokit) => {
@@ -167,7 +163,7 @@ export const inviteOrgMember = createServerFn({ method: "POST" })
 	);
 
 export const cancelOrgInvitation = createServerFn({ method: "POST" })
-	.inputValidator(identityValidator<OrgInput & { invitationId: number }>)
+	.validator(identityValidator<OrgInput & { invitationId: number }>)
 	.handler(
 		({ data }): Promise<SettingsOutcome> =>
 			runSettingsMutation("cancel the invitation", (octokit) =>
@@ -179,7 +175,7 @@ export const cancelOrgInvitation = createServerFn({ method: "POST" })
 	);
 
 export const getOrgTeamList = createServerFn({ method: "GET" })
-	.inputValidator(identityValidator<OrgInput>)
+	.validator(identityValidator<OrgInput>)
 	.handler(
 		({ data }): Promise<SettingsRead<OrgTeamSummary[]>> =>
 			readSettings("teams", async (octokit) => {
@@ -192,7 +188,7 @@ export const getOrgTeamList = createServerFn({ method: "GET" })
 	);
 
 export const saveOrgTeam = createServerFn({ method: "POST" })
-	.inputValidator(
+	.validator(
 		identityValidator<
 			OrgInput & { currentSlug: string | null; draft: OrgTeamDraft }
 		>,
@@ -217,7 +213,7 @@ export const saveOrgTeam = createServerFn({ method: "POST" })
 	});
 
 export const deleteOrgTeam = createServerFn({ method: "POST" })
-	.inputValidator(identityValidator<OrgInput & { teamSlug: string }>)
+	.validator(identityValidator<OrgInput & { teamSlug: string }>)
 	.handler(
 		({ data }): Promise<SettingsOutcome> =>
 			runSettingsMutation("delete the team", (octokit) =>
@@ -229,7 +225,7 @@ export const deleteOrgTeam = createServerFn({ method: "POST" })
 	);
 
 export const getOrgTeamMembers = createServerFn({ method: "GET" })
-	.inputValidator(identityValidator<OrgInput & { teamSlug: string }>)
+	.validator(identityValidator<OrgInput & { teamSlug: string }>)
 	.handler(
 		({ data }): Promise<SettingsRead<OrgTeamMember[]>> =>
 			readSettings("team members", async (octokit) => {
@@ -250,7 +246,7 @@ export const getOrgTeamMembers = createServerFn({ method: "GET" })
 	);
 
 export const setOrgTeamMember = createServerFn({ method: "POST" })
-	.inputValidator(
+	.validator(
 		identityValidator<
 			OrgInput & { teamSlug: string; login: string; role: TeamRole }
 		>,
@@ -268,9 +264,7 @@ export const setOrgTeamMember = createServerFn({ method: "POST" })
 	);
 
 export const removeOrgTeamMember = createServerFn({ method: "POST" })
-	.inputValidator(
-		identityValidator<OrgInput & { teamSlug: string; login: string }>,
-	)
+	.validator(identityValidator<OrgInput & { teamSlug: string; login: string }>)
 	.handler(
 		({ data }): Promise<SettingsOutcome> =>
 			runSettingsMutation("remove the team member", (octokit) =>

@@ -1,5 +1,6 @@
-import { rmSync } from "node:fs";
+import { readFileSync, rmSync } from "node:fs";
 import path from "node:path";
+import { parseEnv } from "node:util";
 import {
   assertPortsFree,
   assertToolchain,
@@ -8,7 +9,6 @@ import {
   dashboardDir,
   emulatorDir,
   runDevScript,
-  runStep,
   waitForResponse,
   warmUpDashboard,
 } from "./dev-env.mjs";
@@ -16,6 +16,10 @@ import {
 const EMULATOR_PORT = 4001;
 const EMULATOR_URL = `http://localhost:${EMULATOR_PORT}`;
 const demoStatePath = path.join(dashboardDir, ".wrangler/demo-state");
+// Throwaway credentials that only work against the emulator.
+const demoEnv = parseEnv(
+  readFileSync(path.join(emulatorDir, "dashboard.env"), "utf8")
+);
 const reset = process.argv.includes("--reset");
 
 async function waitForSeededEmulator(emulator) {
@@ -45,27 +49,6 @@ runDevScript("dev:demo", async ({ log, supervisor }) => {
     rmSync(demoStatePath, { recursive: true, force: true });
   }
 
-  log("applying D1 migrations to the demo database");
-  runStep(
-    "Applying demo D1 migrations",
-    [
-      "exec",
-      "wrangler",
-      "d1",
-      "migrations",
-      "apply",
-      "DB",
-      "--local",
-      "-c",
-      "wrangler.demo.jsonc",
-      "--env",
-      "demo",
-      "--persist-to",
-      demoStatePath,
-    ],
-    { cwd: dashboardDir, env: { CI: "true" } }
-  );
-
   log(`starting GitHub emulator on ${EMULATOR_URL}`);
   const emulator = supervisor.start(
     "emulator",
@@ -80,7 +63,7 @@ runDevScript("dev:demo", async ({ log, supervisor }) => {
     "dashboard",
     "33",
     ["exec", "vite", "dev", "--port", String(DASHBOARD_PORT), "--strictPort"],
-    { cwd: dashboardDir, env: { CLOUDFLARE_ENV: "demo" } }
+    { cwd: dashboardDir, env: { ...demoEnv, DIFFKIT_DEMO: "1" } }
   );
   await warmUpDashboard(log, dashboard);
   log('sign in: "Continue with GitHub", then pick "nova" in the emulator');

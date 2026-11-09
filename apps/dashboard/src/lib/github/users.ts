@@ -17,7 +17,7 @@ import { identityValidator } from "./validators";
 export type UserProfileInput = { username: string };
 
 export const getUserProfile = createServerFn({ method: "GET" })
-	.inputValidator(identityValidator<UserProfileInput>)
+	.validator(identityValidator<UserProfileInput>)
 	.handler(async ({ data }): Promise<GitHubUserProfile | null> => {
 		const context = await getGitHubContext();
 		if (!context) {
@@ -54,7 +54,7 @@ export const getUserProfile = createServerFn({ method: "GET" })
 	});
 
 export const getUserContributions = createServerFn({ method: "GET" })
-	.inputValidator(identityValidator<UserProfileInput>)
+	.validator(identityValidator<UserProfileInput>)
 	.handler(async ({ data }): Promise<GitHubContributionCalendar | null> => {
 		const context = await getGitHubContext();
 		if (!context) {
@@ -134,7 +134,7 @@ export const getUserContributions = createServerFn({ method: "GET" })
 	});
 
 export const getUserPinnedRepos = createServerFn({ method: "GET" })
-	.inputValidator(identityValidator<UserProfileInput>)
+	.validator(identityValidator<UserProfileInput>)
 	.handler(async ({ data }): Promise<PinnedRepo[]> => {
 		const context = await getGitHubContext();
 		if (!context) {
@@ -236,7 +236,7 @@ type UserActivityInput = {
 };
 
 export const getUserActivity = createServerFn({ method: "GET" })
-	.inputValidator(identityValidator<UserActivityInput>)
+	.validator(identityValidator<UserActivityInput>)
 	.handler(async ({ data }): Promise<UserActivityEvent[]> => {
 		const context = await getGitHubContext();
 		if (!context) {

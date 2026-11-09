@@ -132,8 +132,12 @@ function cleanErrorMessage(msg: string): string | null {
 	return cleaned || null;
 }
 
-export function DashboardErrorScreen({ error, reset }: ErrorComponentProps) {
+export function DashboardErrorScreen({
+	error: thrown,
+	reset,
+}: ErrorComponentProps) {
 	const router = useRouter();
+	const error = thrown instanceof Error ? thrown : new Error(String(thrown));
 	const {
 		icon: Icon,
 		iconClassName,

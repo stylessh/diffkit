@@ -29,22 +29,11 @@ GitHub App:
 - Webhook URL: `/api/webhooks/github`
 - Used for installation discovery and app-scoped repo access.
 
-Copy `.dev.vars.example` to `.dev.vars` and fill in the real values. GitHub commonly downloads a PKCS#1 private key with `BEGIN RSA PRIVATE KEY`; the dashboard normalizes it for Octokit at runtime. Never commit `.dev.vars` or private keys.
+Copy `env.example` to `.env` and fill in the real values; `env.ts` lists every value the Worker reads. GitHub commonly downloads a PKCS#1 private key with `BEGIN RSA PRIVATE KEY`; the dashboard normalizes it for Octokit at runtime. Never commit `.env` or private keys.
 
-## Cloudflare Wrangler Configuration
+## Cloudflare
 
-See [docs/local-dev.md](../../docs/local-dev.md) for the full local setup, including demo mode.
-
-Copy `wrangler.jsonc.example` to **`wrangler.dev.jsonc`** (gitignored). `pnpm dev` and local D1 migrations use that file so local bindings stay separate from deploy config. For a local production build or `wrangler deploy` without `--config`, you can also maintain **`wrangler.jsonc`** (gitignored).
-
-Fill in the Cloudflare-specific values:
-
-- `account_id`
-- `d1_databases[].database_id`
-- `kv_namespaces[].id` and `kv_namespaces[].preview_id`
-- `r2_buckets[].bucket_name` and `r2_buckets[].preview_bucket_name`
-
-Keep the `DB`, `GITHUB_CACHE_KV`, and `COMMENT_MEDIA` names aligned with the codebase. Deployments are manual and use `pnpm run deploy`.
+[Void](https://void.cloud) builds, runs and deploys the Worker. `void.config.ts` declares the bindings (`DB`, `GITHUB_CACHE_KV`, `COMMENT_MEDIA`), the cron trigger and the compatibility settings; `pnpm dev` runs them locally and applies the migrations in `db/migrations`. See [docs/local-dev.md](../../docs/local-dev.md) for local setup, including demo mode, and [docs/self-hosting.md](../../docs/self-hosting.md) to deploy your own instance.
 
 # Building For Production
 

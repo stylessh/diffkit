@@ -79,7 +79,7 @@ async function nullWhenInaccessible<T>(read: () => Promise<T>) {
  * the issues endpoint with a `pull_request` field.
  */
 export const getItemReference = createServerFn({ method: "GET" })
-	.inputValidator(identityValidator<ItemReferenceInput>)
+	.validator(identityValidator<ItemReferenceInput>)
 	.handler(async ({ data }): Promise<ItemReference | null> => {
 		const context = await getGitHubContextForRepository(data);
 		if (!context) return null;
@@ -101,7 +101,7 @@ export const getItemReference = createServerFn({ method: "GET" })
 	});
 
 export const getCommitReference = createServerFn({ method: "GET" })
-	.inputValidator(identityValidator<CommitReferenceInput>)
+	.validator(identityValidator<CommitReferenceInput>)
 	.handler(async ({ data }): Promise<CommitReference | null> => {
 		const context = await getGitHubContextForRepository(data);
 		if (!context) return null;

@@ -159,7 +159,7 @@ async function safeCommandPaletteSearch<T>({
 }
 
 export const searchCommandPaletteGitHub = createServerFn({ method: "GET" })
-	.inputValidator(identityValidator<CommandPaletteSearchInput>)
+	.validator(identityValidator<CommandPaletteSearchInput>)
 	.handler(async ({ data }): Promise<CommandPaletteSearchResult> => {
 		const query = normalizeCommandPaletteSearchQuery(data.query);
 		if (query.length < 2) {
@@ -259,7 +259,7 @@ export const getMyPulls = createServerFn({ method: "GET" }).handler(
 );
 
 export const getPullsFromUser = createServerFn({ method: "GET" })
-	.inputValidator(identityValidator<PullsFromUserInput>)
+	.validator(identityValidator<PullsFromUserInput>)
 	.handler(async ({ data }): Promise<PullSummary[]> => {
 		const context = await getGitHubContext();
 		if (!context) {
@@ -323,7 +323,7 @@ export const getMyIssues = createServerFn({ method: "GET" }).handler(
 );
 
 export const getIssuesFromUser = createServerFn({ method: "GET" })
-	.inputValidator(identityValidator<IssuesFromUserInput>)
+	.validator(identityValidator<IssuesFromUserInput>)
 	.handler(async ({ data }): Promise<IssueSummary[]> => {
 		const context = await getGitHubContext();
 		if (!context) {

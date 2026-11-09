@@ -283,7 +283,7 @@ export function registerRestShims(context: ShimContext) {
 	);
 
 	// Demo mode only: the dashboard fetches the demo App's key from here so no
-	// private key has to be committed to .dev.vars.demo.
+	// private key has to be committed to dashboard.env.
 	app.get("/_diffkit/demo-app-private-key", (c) => {
 		const { gh } = stores(context);
 		const app = gh.apps

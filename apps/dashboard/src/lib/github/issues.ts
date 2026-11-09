@@ -426,7 +426,7 @@ async function getIssuePageDataResult(
 }
 
 export const getIssuesFromRepo = createServerFn({ method: "GET" })
-	.inputValidator(identityValidator<IssuesFromRepoInput>)
+	.validator(identityValidator<IssuesFromRepoInput>)
 	.handler(async ({ data }): Promise<IssueSummary[]> => {
 		const context = await getGitHubContextForRepository(data);
 		if (!context) {
@@ -470,7 +470,7 @@ export const getIssuesFromRepo = createServerFn({ method: "GET" })
 	});
 
 export const getIssueFromRepo = createServerFn({ method: "GET" })
-	.inputValidator(identityValidator<IssueFromRepoInput>)
+	.validator(identityValidator<IssueFromRepoInput>)
 	.handler(async ({ data }): Promise<IssueDetail | null> => {
 		const context = await getGitHubContextForRepository(data);
 		if (!context) {
@@ -481,7 +481,7 @@ export const getIssueFromRepo = createServerFn({ method: "GET" })
 	});
 
 export const getIssueComments = createServerFn({ method: "GET" })
-	.inputValidator(identityValidator<IssueFromRepoInput>)
+	.validator(identityValidator<IssueFromRepoInput>)
 	.handler(async ({ data }): Promise<IssueComment[]> => {
 		const context = await getGitHubContextForRepository(data);
 		if (!context) {
@@ -492,7 +492,7 @@ export const getIssueComments = createServerFn({ method: "GET" })
 	});
 
 export const getIssuePageData = createServerFn({ method: "GET" })
-	.inputValidator(identityValidator<IssueFromRepoInput>)
+	.validator(identityValidator<IssueFromRepoInput>)
 	.handler(async ({ data }): Promise<IssuePageData | null> => {
 		const context = await getGitHubContextForRepository(data);
 		if (!context) {
@@ -512,7 +512,7 @@ type UpdateIssueStateInput = {
 };
 
 export const updateIssueState = createServerFn({ method: "POST" })
-	.inputValidator(identityValidator<UpdateIssueStateInput>)
+	.validator(identityValidator<UpdateIssueStateInput>)
 	.handler(async ({ data }): Promise<MutationResult> => {
 		const context = await getGitHubUserContextForRepository(data);
 		if (!context) {
@@ -553,7 +553,7 @@ export type CreateIssueResult =
 	| { ok: false; error: string; installUrl?: string };
 
 export const createIssue = createServerFn({ method: "POST" })
-	.inputValidator(identityValidator<CreateIssueInput>)
+	.validator(identityValidator<CreateIssueInput>)
 	.handler(async ({ data }): Promise<CreateIssueResult> => {
 		const context = await getGitHubUserContextForRepository(data);
 		if (!context) {

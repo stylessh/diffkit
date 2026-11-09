@@ -42,7 +42,7 @@ type GitTreeData = Awaited<
 const EMPTY_TREE: RepoGitTree = { sha: null, truncated: false, entries: [] };
 
 export const getRepoGitTree = createServerFn({ method: "GET" })
-	.inputValidator(identityValidator<RepoCodeInput>)
+	.validator(identityValidator<RepoCodeInput>)
 	.handler(async ({ data }): Promise<RepoGitTree> => {
 		const context = await getGitHubContextForRepository(data);
 		if (!context) return EMPTY_TREE;
@@ -108,7 +108,7 @@ function mapContents(content: ContentsData, path: string): RepoBlob {
 }
 
 export const getRepoBlob = createServerFn({ method: "GET" })
-	.inputValidator(identityValidator<RepoCodePathInput>)
+	.validator(identityValidator<RepoCodePathInput>)
 	.handler(async ({ data }): Promise<RepoBlob> => {
 		const context = await getGitHubContextForRepository(data);
 		if (!context) return { kind: "missing" };
@@ -174,7 +174,7 @@ const BLAME_QUERY = `query($owner: String!, $repo: String!, $ref: String!, $path
 }`;
 
 export const getRepoBlame = createServerFn({ method: "GET" })
-	.inputValidator(identityValidator<RepoCodePathInput>)
+	.validator(identityValidator<RepoCodePathInput>)
 	.handler(async ({ data }): Promise<RepoBlame> => {
 		const context = await getGitHubContextForRepository(data);
 		if (!context) return { status: "missing" };
@@ -227,7 +227,7 @@ function isRateLimited(error: RequestError) {
 }
 
 export const searchRepoCode = createServerFn({ method: "GET" })
-	.inputValidator(identityValidator<RepoCodeSearchInput>)
+	.validator(identityValidator<RepoCodeSearchInput>)
 	.handler(async ({ data }): Promise<RepoCodeSearch> => {
 		const query = data.query.trim();
 		if (!query) return { status: "invalid", message: "Enter a search term." };

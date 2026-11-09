@@ -14,7 +14,7 @@ import {
 import { identityValidator } from "./validators";
 
 export const getCommentPage = createServerFn({ method: "GET" })
-	.inputValidator(identityValidator<CommentPageInput>)
+	.validator(identityValidator<CommentPageInput>)
 	.handler(async ({ data }) => {
 		const context = await getGitHubContextForRepository(data);
 		if (!context) {
@@ -32,7 +32,7 @@ type TimelineEventPageInput = {
 };
 
 export const getTimelineEventPage = createServerFn({ method: "GET" })
-	.inputValidator(identityValidator<TimelineEventPageInput>)
+	.validator(identityValidator<TimelineEventPageInput>)
 	.handler(async ({ data }) => {
 		const context = await getGitHubContextForRepository(data);
 		if (!context) {
@@ -50,7 +50,7 @@ export type CreateCommentInput = {
 };
 
 export const createComment = createServerFn({ method: "POST" })
-	.inputValidator(identityValidator<CreateCommentInput>)
+	.validator(identityValidator<CreateCommentInput>)
 	.handler(async ({ data }): Promise<MutationResult> => {
 		const context = await getGitHubUserContextForRepository(data);
 		if (!context) {
@@ -108,7 +108,7 @@ function restReactionContentToGraphQL(content: CommentReactionContent): string {
 }
 
 export const toggleIssueCommentReaction = createServerFn({ method: "POST" })
-	.inputValidator(identityValidator<ToggleIssueCommentReactionInput>)
+	.validator(identityValidator<ToggleIssueCommentReactionInput>)
 	.handler(async ({ data }): Promise<MutationResult> => {
 		const context = await getGitHubUserContextForRepository(data);
 		if (!context) {
@@ -160,7 +160,7 @@ export type EditCommentInput = {
 };
 
 export const editComment = createServerFn({ method: "POST" })
-	.inputValidator(identityValidator<EditCommentInput>)
+	.validator(identityValidator<EditCommentInput>)
 	.handler(async ({ data }): Promise<MutationResult> => {
 		const context = await getGitHubUserContextForRepository(data);
 		if (!context) {
@@ -187,7 +187,7 @@ export type DeleteCommentInput = {
 };
 
 export const deleteComment = createServerFn({ method: "POST" })
-	.inputValidator(identityValidator<DeleteCommentInput>)
+	.validator(identityValidator<DeleteCommentInput>)
 	.handler(async ({ data }): Promise<MutationResult> => {
 		const context = await getGitHubUserContextForRepository(data);
 		if (!context) {
@@ -214,7 +214,7 @@ export type EditReviewCommentInput = {
 };
 
 export const editReviewComment = createServerFn({ method: "POST" })
-	.inputValidator(identityValidator<EditReviewCommentInput>)
+	.validator(identityValidator<EditReviewCommentInput>)
 	.handler(async ({ data }): Promise<MutationResult> => {
 		const context = await getGitHubUserContextForRepository(data);
 		if (!context) {
@@ -241,7 +241,7 @@ export type DeleteReviewCommentInput = {
 };
 
 export const deleteReviewComment = createServerFn({ method: "POST" })
-	.inputValidator(identityValidator<DeleteReviewCommentInput>)
+	.validator(identityValidator<DeleteReviewCommentInput>)
 	.handler(async ({ data }): Promise<MutationResult> => {
 		const context = await getGitHubUserContextForRepository(data);
 		if (!context) {
@@ -268,7 +268,7 @@ export type MinimizeCommentInput = {
 };
 
 export const minimizeComment = createServerFn({ method: "POST" })
-	.inputValidator(identityValidator<MinimizeCommentInput>)
+	.validator(identityValidator<MinimizeCommentInput>)
 	.handler(async ({ data }): Promise<MutationResult> => {
 		const context = await getGitHubUserContextForRepository(data);
 		if (!context) {

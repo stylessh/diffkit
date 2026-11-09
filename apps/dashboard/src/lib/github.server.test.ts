@@ -7,7 +7,9 @@ const octokitInstances: Array<{
 	log: { warn: ReturnType<typeof vi.fn>; info: ReturnType<typeof vi.fn> };
 	options: Record<string, unknown>;
 }> = [];
-const octokitConstructor = vi.fn((options: Record<string, unknown>) => {
+const octokitConstructor = vi.fn(function Octokit(
+	options: Record<string, unknown>,
+) {
 	const instance = {
 		hookBefore: vi.fn(),
 		hookAfter: vi.fn(),
@@ -115,9 +117,9 @@ describe("getGitHubClient", () => {
 				error: vi.fn(),
 			},
 		};
-		appConstructor.mockImplementationOnce(() => ({
-			octokit: appOctokit,
-		}));
+		appConstructor.mockImplementationOnce(function App() {
+			return { octokit: appOctokit };
+		});
 		const { getGitHubInstallationClient } = await import("./github.server");
 
 		await getGitHubInstallationClient(987);
@@ -163,16 +165,18 @@ describe("getGitHubClient", () => {
 			token: `installation-token-${appAuth.mock.calls.length}`,
 			expiresAt: new Date(Date.now() + 60 * 60 * 1000).toISOString(),
 		}));
-		appConstructor.mockImplementation(() => ({
-			octokit: {
-				auth: appAuth,
-				hook: {
-					after: vi.fn(),
-					before: vi.fn(),
-					error: vi.fn(),
+		appConstructor.mockImplementation(function App() {
+			return {
+				octokit: {
+					auth: appAuth,
+					hook: {
+						after: vi.fn(),
+						before: vi.fn(),
+						error: vi.fn(),
+					},
 				},
-			},
-		}));
+			};
+		});
 		const { getGitHubInstallationClient, invalidateGitHubInstallationToken } =
 			await import("./github.server");
 

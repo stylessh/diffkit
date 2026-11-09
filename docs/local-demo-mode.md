@@ -15,7 +15,7 @@ Open <http://localhost:3000>, click **Continue with GitHub**, pick **Nova Reyes
 ## How it works
 
 ```
-browser ──▶ dashboard (vite dev, CLOUDFLARE_ENV=demo, :3000)
+browser ──▶ dashboard (vite dev, DIFFKIT_DEMO=1, :3000)
                │  GITHUB_EMULATOR_URL=http://localhost:4001
                ▼
            apps/emulator (:4001)
@@ -88,19 +88,20 @@ It throws in production builds (`import.meta.env.PROD`) and for non-localhost
 URLs. Unset, nothing changes.
 
 `pnpm dev:demo` (`scripts/dev-demo.mjs`) checks that ports 3000 and 4001 are
-free, applies D1 migrations to `apps/dashboard/.wrangler/demo-state`, starts the
-emulator, waits for `/_diffkit/health`, runs the dashboard with
-`CLOUDFLARE_ENV=demo` and makes the first request to `/login`. If any step or
+free, starts the emulator, waits for `/_diffkit/health`, runs the dashboard with
+`DIFFKIT_DEMO=1` and makes the first request to `/login`. If any step or
 process fails, everything it started is stopped. See
 [local-dev.md](local-dev.md#when-something-is-off) for the error messages.
-`CLOUDFLARE_ENV=demo` selects the `demo` environment in the committed
-`wrangler.demo.jsonc` (local D1/KV/R2 only) and makes Wrangler load the
-committed `.dev.vars.demo` **instead of** your `.dev.vars`, which is never read
-or touched.
+`DIFFKIT_DEMO=1` keeps D1/KV/R2 state in `apps/dashboard/.wrangler/demo-state`,
+apart from your normal dev state, and the dashboard applies D1 migrations there
+on start. The script passes the committed `apps/emulator/dashboard.env` to the
+dashboard through the shell, which takes precedence over your
+`apps/dashboard/.env`; that file is never read for anything else or touched.
 
-`.dev.vars.demo` holds throwaway credentials, including a demo-only GitHub App
-private key; they only work against the local emulator. A test keeps them in
-sync with `apps/emulator/src/seed/identity.ts`.
+`apps/emulator/dashboard.env` holds throwaway credentials that only work
+against the local emulator. The demo GitHub App's private key is not in it: the
+emulator generates one on first run and the dashboard fetches it. A test keeps
+the file in sync with `apps/emulator/src/seed/identity.ts`.
 
 ## What is not emulated
 

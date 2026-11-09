@@ -25,7 +25,7 @@ export type RepoLabelsInput = {
 };
 
 export const getRepoLabels = createServerFn({ method: "GET" })
-	.inputValidator(identityValidator<RepoLabelsInput>)
+	.validator(identityValidator<RepoLabelsInput>)
 	.handler(async ({ data }): Promise<GitHubLabel[]> => {
 		const context = await getGitHubContextForRepository(data);
 		if (!context) {
@@ -58,7 +58,7 @@ export const getRepoLabels = createServerFn({ method: "GET" })
 	});
 
 export const setIssueLabels = createServerFn({ method: "POST" })
-	.inputValidator(identityValidator<SetLabelsInput>)
+	.validator(identityValidator<SetLabelsInput>)
 	.handler(async ({ data }): Promise<boolean> => {
 		const context = await getGitHubUserContextForRepository(data);
 		if (!context) {
@@ -79,7 +79,7 @@ export const setIssueLabels = createServerFn({ method: "POST" })
 	});
 
 export const createRepoLabel = createServerFn({ method: "POST" })
-	.inputValidator(identityValidator<CreateLabelInput>)
+	.validator(identityValidator<CreateLabelInput>)
 	.handler(async ({ data }): Promise<GitHubLabel | null> => {
 		const context = await getGitHubUserContextForRepository(data);
 		if (!context) {
@@ -109,7 +109,7 @@ export type SaveRepoLabelInput = RepoLabelsInput & {
 };
 
 export const saveRepoLabel = createServerFn({ method: "POST" })
-	.inputValidator(identityValidator<SaveRepoLabelInput>)
+	.validator(identityValidator<SaveRepoLabelInput>)
 	.handler(({ data }): Promise<SettingsOutcome> => {
 		const problem = validateLabelDraft(data.draft, []);
 		if (problem) return Promise.resolve({ ok: false, error: problem });
@@ -130,7 +130,7 @@ export const saveRepoLabel = createServerFn({ method: "POST" })
 	});
 
 export const deleteRepoLabel = createServerFn({ method: "POST" })
-	.inputValidator(identityValidator<RepoLabelsInput & { name: string }>)
+	.validator(identityValidator<RepoLabelsInput & { name: string }>)
 	.handler(
 		({ data }): Promise<SettingsOutcome> =>
 			runSettingsMutation("delete the label", (octokit) =>

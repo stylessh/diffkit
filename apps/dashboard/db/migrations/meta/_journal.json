@@ -1,0 +1,62 @@
+{
+	"version": "7",
+	"dialect": "sqlite",
+	"entries": [
+		{
+			"idx": 0,
+			"version": "6",
+			"when": 1775573905989,
+			"tag": "0000_pretty_the_call",
+			"breakpoints": true
+		},
+		{
+			"idx": 1,
+			"version": "6",
+			"when": 1775606872196,
+			"tag": "0001_outstanding_blizzard",
+			"breakpoints": true
+		},
+		{
+			"idx": 2,
+			"version": "6",
+			"when": 1775744621000,
+			"tag": "0002_github_revalidation_signal",
+			"breakpoints": true
+		},
+		{
+			"idx": 3,
+			"version": "6",
+			"when": 1775850863000,
+			"tag": "0003_github_cache_namespace",
+			"breakpoints": true
+		},
+		{
+			"idx": 4,
+			"version": "6",
+			"when": 1777152852000,
+			"tag": "0004_github_webhook_event",
+			"breakpoints": true
+		},
+		{
+			"idx": 5,
+			"version": "6",
+			"when": 1777172720000,
+			"tag": "0005_user_forbidden_org",
+			"breakpoints": true
+		},
+		{
+			"idx": 6,
+			"version": "6",
+			"when": 1794114830000,
+			"tag": "0006_github_change",
+			"breakpoints": true
+		},
+		{
+			"idx": 7,
+			"version": "6",
+			"when": 1794144023000,
+			"tag": "0007_drop_legacy_cache_tables",
+			"breakpoints": true
+		}
+	]
+}

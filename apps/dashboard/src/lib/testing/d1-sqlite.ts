@@ -11,7 +11,7 @@ export function createTestD1(migrations: string[] = []) {
 	const sqlite = new DatabaseSync(":memory:");
 	for (const file of migrations) {
 		const sql = readFileSync(
-			new URL(`../../../drizzle/${file}`, import.meta.url),
+			new URL(`../../../db/migrations/${file}`, import.meta.url),
 			"utf8",
 		);
 		for (const statement of sql.split("--> statement-breakpoint")) {

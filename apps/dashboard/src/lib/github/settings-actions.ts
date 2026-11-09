@@ -24,7 +24,7 @@ function invalid(error: string): Promise<SettingsOutcome> {
 }
 
 export const getRepoActionsSecrets = createServerFn({ method: "GET" })
-	.inputValidator(identityValidator<RepoInput>)
+	.validator(identityValidator<RepoInput>)
 	.handler(
 		({ data }): Promise<SettingsRead<RepoActionsSecret[]>> =>
 			readSettings("secrets", async (octokit) => {
@@ -37,7 +37,7 @@ export const getRepoActionsSecrets = createServerFn({ method: "GET" })
 	);
 
 export const getRepoActionsVariables = createServerFn({ method: "GET" })
-	.inputValidator(identityValidator<RepoInput>)
+	.validator(identityValidator<RepoInput>)
 	.handler(
 		({ data }): Promise<SettingsRead<RepoActionsVariable[]>> =>
 			readSettings("variables", async (octokit) => {
@@ -50,7 +50,7 @@ export const getRepoActionsVariables = createServerFn({ method: "GET" })
 	);
 
 export const saveRepoActionsSecret = createServerFn({ method: "POST" })
-	.inputValidator(identityValidator<ValueInput>)
+	.validator(identityValidator<ValueInput>)
 	.handler(({ data }): Promise<SettingsOutcome> => {
 		const problem =
 			validateActionsName(data.name, []) ??
@@ -73,7 +73,7 @@ export const saveRepoActionsSecret = createServerFn({ method: "POST" })
 	});
 
 export const deleteRepoActionsSecret = createServerFn({ method: "POST" })
-	.inputValidator(identityValidator<NamedInput>)
+	.validator(identityValidator<NamedInput>)
 	.handler(
 		({ data }): Promise<SettingsOutcome> =>
 			runSettingsMutation("delete the secret", (octokit) =>
@@ -86,7 +86,7 @@ export const deleteRepoActionsSecret = createServerFn({ method: "POST" })
 	);
 
 export const saveRepoActionsVariable = createServerFn({ method: "POST" })
-	.inputValidator(identityValidator<ValueInput & { mode: "create" | "update" }>)
+	.validator(identityValidator<ValueInput & { mode: "create" | "update" }>)
 	.handler(({ data }): Promise<SettingsOutcome> => {
 		const problem =
 			validateActionsName(data.name, []) ??
@@ -106,7 +106,7 @@ export const saveRepoActionsVariable = createServerFn({ method: "POST" })
 	});
 
 export const deleteRepoActionsVariable = createServerFn({ method: "POST" })
-	.inputValidator(identityValidator<NamedInput>)
+	.validator(identityValidator<NamedInput>)
 	.handler(
 		({ data }): Promise<SettingsOutcome> =>
 			runSettingsMutation("delete the variable", (octokit) =>

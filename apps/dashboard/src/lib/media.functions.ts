@@ -72,7 +72,7 @@ function validateFinalizeCommentMediaInput(
 }
 
 export const finalizeCommentMediaUpload = createServerFn({ method: "POST" })
-	.inputValidator(validateFinalizeCommentMediaInput)
+	.validator(validateFinalizeCommentMediaInput)
 	.handler(async ({ data }): Promise<FinalizeCommentMediaResult> => {
 		const session = await getRequestSession();
 		if (!session) {

@@ -106,7 +106,7 @@ async function listRepoReleasesRaw(
 }
 
 export const getRepoReleases = createServerFn({ method: "GET" })
-	.inputValidator(identityValidator<RepoReleasesInput>)
+	.validator(identityValidator<RepoReleasesInput>)
 	.handler(async ({ data }): Promise<RepoReleasesPage> => {
 		// User token: draft releases are only listed to callers with push access.
 		const context = await getGitHubUserContextForRepository(data);
@@ -139,7 +139,7 @@ export const getRepoReleases = createServerFn({ method: "GET" })
 	});
 
 export const getRepoRelease = createServerFn({ method: "GET" })
-	.inputValidator(identityValidator<RepoReleaseInput>)
+	.validator(identityValidator<RepoReleaseInput>)
 	.handler(async ({ data }): Promise<RepoRelease | null> => {
 		// User token: draft releases are only listed to callers with push access.
 		const context = await getGitHubUserContextForRepository(data);
@@ -214,7 +214,7 @@ function toReleaseMutationError(
 }
 
 export const createRepoRelease = createServerFn({ method: "POST" })
-	.inputValidator(identityValidator<SaveRepoReleaseInput>)
+	.validator(identityValidator<SaveRepoReleaseInput>)
 	.handler(async ({ data }): Promise<SaveRepoReleaseResult> => {
 		const context = await getGitHubUserContextForRepository(data);
 		if (!context) return { ok: false, error: "Not authenticated" };
@@ -238,7 +238,7 @@ export const createRepoRelease = createServerFn({ method: "POST" })
 	});
 
 export const updateRepoRelease = createServerFn({ method: "POST" })
-	.inputValidator(identityValidator<UpdateRepoReleaseInput>)
+	.validator(identityValidator<UpdateRepoReleaseInput>)
 	.handler(async ({ data }): Promise<SaveRepoReleaseResult> => {
 		const context = await getGitHubUserContextForRepository(data);
 		if (!context) return { ok: false, error: "Not authenticated" };
@@ -263,7 +263,7 @@ export const updateRepoRelease = createServerFn({ method: "POST" })
 	});
 
 export const deleteRepoRelease = createServerFn({ method: "POST" })
-	.inputValidator(
+	.validator(
 		identityValidator<{ owner: string; repo: string; releaseId: number }>,
 	)
 	.handler(async ({ data }): Promise<MutationResult> => {
@@ -284,7 +284,7 @@ export const deleteRepoRelease = createServerFn({ method: "POST" })
 
 /** Asks GitHub to draft release notes. Read-only despite being a POST upstream. */
 export const generateRepoReleaseNotes = createServerFn({ method: "POST" })
-	.inputValidator(identityValidator<GenerateReleaseNotesInput>)
+	.validator(identityValidator<GenerateReleaseNotesInput>)
 	.handler(async ({ data }): Promise<GenerateReleaseNotesResult> => {
 		const context = await getGitHubUserContextForRepository(data);
 		if (!context) return { ok: false, error: "Not authenticated" };

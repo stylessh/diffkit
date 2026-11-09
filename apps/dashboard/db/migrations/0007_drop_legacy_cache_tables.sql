@@ -1,3 +1,4 @@
+-- void:allow-destructive
 -- Drop the cache-era tables removed from the schema in #193 (see
 -- docs/platform-plan.md, "Incidents"). Only apply after the throttled
 -- production purge has emptied them: dropping a multi-GB table in one

@@ -1,14 +1,11 @@
 // When this repo is opened through Git worktrees, only the main checkout usually
-// keeps the real `.dev.vars` and `wrangler.dev.jsonc`. This script links those files
-// into each worktree so every workspace sees the same local config during development.
+// keeps the real `.env`. This script links it into each worktree so every
+// workspace sees the same local credentials during development.
 import { execSync } from "node:child_process";
 import fs from "node:fs/promises";
 import path from "node:path";
 
-const PRIMARY_WORKTREE_LINK_PATHS = [
-  "apps/dashboard/.dev.vars",
-  "apps/dashboard/wrangler.dev.jsonc",
-];
+const PRIMARY_WORKTREE_LINK_PATHS = ["apps/dashboard/.env"];
 
 function safeExec(command, cwd) {
   return execSync(command, { cwd, stdio: ["ignore", "pipe", "pipe"] })

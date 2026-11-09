@@ -1344,7 +1344,7 @@ async function getPullPageDataResult(
 }
 
 export const getPullsFromRepo = createServerFn({ method: "GET" })
-	.inputValidator(identityValidator<PullsFromRepoInput>)
+	.validator(identityValidator<PullsFromRepoInput>)
 	.handler(async ({ data }): Promise<PullSummary[]> => {
 		const context = await getGitHubContextForRepository(data);
 		if (!context) {
@@ -1384,7 +1384,7 @@ export const getPullsFromRepo = createServerFn({ method: "GET" })
 	});
 
 export const getPullFromRepo = createServerFn({ method: "GET" })
-	.inputValidator(identityValidator<PullFromRepoInput>)
+	.validator(identityValidator<PullFromRepoInput>)
 	.handler(async ({ data }): Promise<PullDetail | null> => {
 		const context = await getGitHubContextForRepository(data);
 		if (!context) {
@@ -1395,7 +1395,7 @@ export const getPullFromRepo = createServerFn({ method: "GET" })
 	});
 
 export const getPullComments = createServerFn({ method: "GET" })
-	.inputValidator(identityValidator<PullFromRepoInput>)
+	.validator(identityValidator<PullFromRepoInput>)
 	.handler(async ({ data }): Promise<PullComment[]> => {
 		const context = await getGitHubContextForRepository(data);
 		if (!context) {
@@ -1406,7 +1406,7 @@ export const getPullComments = createServerFn({ method: "GET" })
 	});
 
 export const getPullStatus = createServerFn({ method: "GET" })
-	.inputValidator(identityValidator<PullFromRepoInput>)
+	.validator(identityValidator<PullFromRepoInput>)
 	.handler(async ({ data }): Promise<PullStatus | null> => {
 		const context = await getGitHubContextForRepository(data);
 		if (!context) {
@@ -1417,7 +1417,7 @@ export const getPullStatus = createServerFn({ method: "GET" })
 	});
 
 export const getPullPageData = createServerFn({ method: "GET" })
-	.inputValidator(identityValidator<PullFromRepoInput>)
+	.validator(identityValidator<PullFromRepoInput>)
 	.handler(async ({ data }): Promise<PullPageData | null> => {
 		const context = await getGitHubContextForRepository(data);
 		if (!context) {
@@ -1430,7 +1430,7 @@ export const getPullPageData = createServerFn({ method: "GET" })
 type UpdatePullBodyInput = PullFromRepoInput & { body: string };
 
 export const updatePullBody = createServerFn({ method: "POST" })
-	.inputValidator(identityValidator<UpdatePullBodyInput>)
+	.validator(identityValidator<UpdatePullBodyInput>)
 	.handler(async ({ data }): Promise<boolean> => {
 		const context = await getGitHubUserContextForRepository(data);
 		if (!context) {
@@ -1455,7 +1455,7 @@ type UpdatePullStateInput = PullFromRepoInput & {
 };
 
 export const updatePullState = createServerFn({ method: "POST" })
-	.inputValidator(identityValidator<UpdatePullStateInput>)
+	.validator(identityValidator<UpdatePullStateInput>)
 	.handler(async ({ data }): Promise<MutationResult> => {
 		const context = await getGitHubUserContextForRepository(data);
 		if (!context) {
@@ -1479,7 +1479,7 @@ export const updatePullState = createServerFn({ method: "POST" })
 	});
 
 export const updatePullBranch = createServerFn({ method: "POST" })
-	.inputValidator(identityValidator<PullFromRepoInput>)
+	.validator(identityValidator<PullFromRepoInput>)
 	.handler(async ({ data }): Promise<MutationResult> => {
 		const context = await getGitHubUserContextForRepository(data);
 		if (!context) {
@@ -1506,7 +1506,7 @@ export type MergePullInput = PullFromRepoInput & {
 };
 
 export const mergePullRequest = createServerFn({ method: "POST" })
-	.inputValidator(identityValidator<MergePullInput>)
+	.validator(identityValidator<MergePullInput>)
 	.handler(async ({ data }): Promise<MutationResult> => {
 		const context = await getGitHubUserContextForRepository(data);
 		if (!context) {
@@ -1534,7 +1534,7 @@ export type ReadyForReviewInput = PullFromRepoInput & {
 };
 
 export const markPullReadyForReview = createServerFn({ method: "POST" })
-	.inputValidator(identityValidator<ReadyForReviewInput>)
+	.validator(identityValidator<ReadyForReviewInput>)
 	.handler(async ({ data }): Promise<MutationResult> => {
 		const context = await getGitHubUserContextForRepository(data);
 		if (!context) {
@@ -1557,7 +1557,7 @@ export const markPullReadyForReview = createServerFn({ method: "POST" })
 	});
 
 export const deleteBranch = createServerFn({ method: "POST" })
-	.inputValidator(
+	.validator(
 		identityValidator<{
 			owner: string;
 			repo: string;
@@ -1598,7 +1598,7 @@ export type RerunChecksResult =
 	| MutationFailure;
 
 export const rerunChecks = createServerFn({ method: "POST" })
-	.inputValidator(identityValidator<RerunChecksInput>)
+	.validator(identityValidator<RerunChecksInput>)
 	.handler(async ({ data }): Promise<RerunChecksResult> => {
 		const context = await getGitHubUserContextForRepository(data);
 		if (!context) {
@@ -1759,7 +1759,7 @@ export type ApproveWorkflowRunsResult =
 	| MutationFailure;
 
 export const approveWorkflowRuns = createServerFn({ method: "POST" })
-	.inputValidator(identityValidator<ApproveWorkflowRunsInput>)
+	.validator(identityValidator<ApproveWorkflowRunsInput>)
 	.handler(async ({ data }): Promise<ApproveWorkflowRunsResult> => {
 		const context = await getGitHubUserContextForRepository(data);
 		if (!context) {
@@ -1974,7 +1974,7 @@ async function getPullFileSummariesResult(
 }
 
 export const getPullFileSummaries = createServerFn({ method: "GET" })
-	.inputValidator(identityValidator<PullFileSummariesPageInput>)
+	.validator(identityValidator<PullFileSummariesPageInput>)
 	.handler(async ({ data }): Promise<PullFileSummariesPage> => {
 		const context = await getGitHubContextForRepository(data);
 		if (!context) {
@@ -1985,7 +1985,7 @@ export const getPullFileSummaries = createServerFn({ method: "GET" })
 	});
 
 export const getPullFiles = createServerFn({ method: "GET" })
-	.inputValidator(identityValidator<PullFilesPageInput>)
+	.validator(identityValidator<PullFilesPageInput>)
 	.handler(async ({ data }): Promise<PullFilesPage> => {
 		const context = await getGitHubContextForRepository(data);
 		if (!context) {
@@ -2015,7 +2015,7 @@ export type CreatePullRequestResult =
 	| { ok: false; error: string; installUrl?: string };
 
 export const createPullRequest = createServerFn({ method: "POST" })
-	.inputValidator(identityValidator<CreatePullRequestInput>)
+	.validator(identityValidator<CreatePullRequestInput>)
 	.handler(async ({ data }): Promise<CreatePullRequestResult> => {
 		const context = await getGitHubUserContextForRepository(data);
 		if (!context) {

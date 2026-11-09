@@ -18,8 +18,9 @@ pnpm --filter @diffkit/e2e test:e2e:ui                        # Playwright UI mo
 
 1. Starts `apps/emulator/src/e2e.ts`: the demo workspace, in memory, seeded
    once. It exposes `POST /_diffkit/e2e/checkpoint` and `/_diffkit/e2e/reset`.
-2. Wipes `apps/dashboard/.wrangler/demo-state`, applies D1 migrations and starts
-   `vite dev` with `CLOUDFLARE_ENV=demo`.
+2. Wipes `apps/dashboard/.wrangler/demo-state` and starts `vite dev` with
+   `DIFFKIT_DEMO=1` and the values in `apps/emulator/dashboard.env`; the
+   dashboard applies D1 migrations on start.
 3. `support/global-setup.ts` signs in as `nova` through the emulator's account
    picker, saves `apps/e2e/.auth/nova.json`, visits the routes the specs use so
    the dev server compiles them before the specs race, and checkpoints the
@@ -28,7 +29,7 @@ pnpm --filter @diffkit/e2e test:e2e:ui                        # Playwright UI mo
 Both servers are started by Playwright's `webServer` and stopped when the run
 ends. A run never reuses servers that are already listening: it fails fast if
 the ports are taken, so stop `pnpm dev:demo` first. Ports come from
-`apps/dashboard/.dev.vars.demo` (`BETTER_AUTH_URL`, `GITHUB_EMULATOR_URL`);
+`apps/emulator/dashboard.env` (`BETTER_AUTH_URL`, `GITHUB_EMULATOR_URL`);
 that file is the single source of truth.
 
 Running the suite deletes the demo D1 state used by `pnpm dev:demo`

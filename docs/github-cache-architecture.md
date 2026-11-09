@@ -52,7 +52,7 @@ Relevant tables:
 The namespace table is created by:
 
 ```text
-apps/dashboard/drizzle/0003_github_cache_namespace.sql
+apps/dashboard/db/migrations/0003_github_cache_namespace.sql
 ```
 
 D1 remains authoritative for cache invalidation because it gives us durable,
@@ -73,7 +73,7 @@ GITHUB_CACHE_KV
 It is configured in:
 
 ```text
-apps/dashboard/wrangler.jsonc
+apps/dashboard/void.config.ts
 ```
 
 Each KV entry stores the same envelope shape as the legacy D1 response cache:
