@@ -14,7 +14,7 @@ type RepoTreeInput = {
 };
 
 export const getRepoTree = createServerFn({ method: "GET" })
-	.inputValidator(identityValidator<RepoTreeInput>)
+	.validator(identityValidator<RepoTreeInput>)
 	.handler(async ({ data }): Promise<RepoTreeEntry[]> => {
 		const context = await getGitHubContextForRepository(data);
 		if (!context) return [];
@@ -69,7 +69,7 @@ type FileLastCommitInput = {
 };
 
 export const getFileLastCommit = createServerFn({ method: "GET" })
-	.inputValidator(identityValidator<FileLastCommitInput>)
+	.validator(identityValidator<FileLastCommitInput>)
 	.handler(async ({ data }): Promise<FileLastCommit | null> => {
 		const context = await getGitHubContextForRepository(data);
 		if (!context) return null;
@@ -117,7 +117,7 @@ type RefHeadCommitInput = {
 };
 
 export const getRefHeadCommit = createServerFn({ method: "GET" })
-	.inputValidator(identityValidator<RefHeadCommitInput>)
+	.validator(identityValidator<RefHeadCommitInput>)
 	.handler(async ({ data }): Promise<FileLastCommit | null> => {
 		const context = await getGitHubContextForRepository(data);
 		if (!context) return null;
@@ -169,7 +169,7 @@ type TreeEntryCommitsInput = {
 type TreeEntryCommitsResult = Record<string, FileLastCommit | null>;
 
 export const getTreeEntryCommits = createServerFn({ method: "GET" })
-	.inputValidator(identityValidator<TreeEntryCommitsInput>)
+	.validator(identityValidator<TreeEntryCommitsInput>)
 	.handler(async ({ data }): Promise<TreeEntryCommitsResult> => {
 		const context = await getGitHubContextForRepository(data);
 		if (!context) return {};

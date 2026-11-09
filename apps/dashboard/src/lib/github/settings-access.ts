@@ -16,7 +16,7 @@ import { identityValidator } from "./validators";
 type RepoInput = { owner: string; repo: string };
 
 export const getRepoAccess = createServerFn({ method: "GET" })
-	.inputValidator(identityValidator<RepoInput>)
+	.validator(identityValidator<RepoInput>)
 	.handler(
 		({ data }): Promise<SettingsRead<RepoAccess>> =>
 			readSettings("collaborators", async (octokit) => {
@@ -66,7 +66,7 @@ export const getRepoAccess = createServerFn({ method: "GET" })
 	);
 
 export const setRepoCollaboratorRole = createServerFn({ method: "POST" })
-	.inputValidator(
+	.validator(
 		identityValidator<
 			RepoInput & { login: string; role: RepoRole; invitationId: number | null }
 		>,
@@ -91,7 +91,7 @@ export const setRepoCollaboratorRole = createServerFn({ method: "POST" })
 	);
 
 export const removeRepoCollaborator = createServerFn({ method: "POST" })
-	.inputValidator(
+	.validator(
 		identityValidator<
 			RepoInput & { login: string; invitationId: number | null }
 		>,
@@ -114,7 +114,7 @@ export const removeRepoCollaborator = createServerFn({ method: "POST" })
 	);
 
 export const setRepoTeamRole = createServerFn({ method: "POST" })
-	.inputValidator(
+	.validator(
 		identityValidator<RepoInput & { teamSlug: string; role: RepoRole }>,
 	)
 	.handler(
@@ -131,7 +131,7 @@ export const setRepoTeamRole = createServerFn({ method: "POST" })
 	);
 
 export const removeRepoTeam = createServerFn({ method: "POST" })
-	.inputValidator(identityValidator<RepoInput & { teamSlug: string }>)
+	.validator(identityValidator<RepoInput & { teamSlug: string }>)
 	.handler(
 		({ data }): Promise<SettingsOutcome> =>
 			runSettingsMutation("remove team access", (octokit) =>

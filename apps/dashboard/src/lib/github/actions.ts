@@ -156,7 +156,7 @@ function mapWorkflowRun(
 }
 
 export const getWorkflowRunsForRepo = createServerFn({ method: "GET" })
-	.inputValidator(identityValidator<WorkflowRunsFromRepoInput>)
+	.validator(identityValidator<WorkflowRunsFromRepoInput>)
 	.handler(async ({ data }): Promise<WorkflowRun[]> => {
 		const context = await getGitHubContextForRepository(data);
 		if (!context) {
@@ -206,7 +206,7 @@ export const getWorkflowRunsForRepo = createServerFn({ method: "GET" })
 	});
 
 export const getWorkflowRun = createServerFn({ method: "GET" })
-	.inputValidator(identityValidator<WorkflowRunInput>)
+	.validator(identityValidator<WorkflowRunInput>)
 	.handler(async ({ data }): Promise<WorkflowRun | null> => {
 		const context = await getGitHubContextForRepository(data);
 		if (!context) {
@@ -250,7 +250,7 @@ export const getWorkflowRun = createServerFn({ method: "GET" })
 	});
 
 export const listWorkflowRunJobs = createServerFn({ method: "GET" })
-	.inputValidator(identityValidator<WorkflowRunInput>)
+	.validator(identityValidator<WorkflowRunInput>)
 	.handler(async ({ data }): Promise<WorkflowRunJob[]> => {
 		const context = await getGitHubContextForRepository(data);
 		if (!context) {
@@ -292,7 +292,7 @@ export const listWorkflowRunJobs = createServerFn({ method: "GET" })
 	});
 
 export const listWorkflowRunArtifacts = createServerFn({ method: "GET" })
-	.inputValidator(identityValidator<WorkflowRunInput>)
+	.validator(identityValidator<WorkflowRunInput>)
 	.handler(async ({ data }): Promise<WorkflowRunArtifact[]> => {
 		const context = await getGitHubContextForRepository(data);
 		if (!context) {
@@ -334,7 +334,7 @@ export const listWorkflowRunArtifacts = createServerFn({ method: "GET" })
 	});
 
 export const rerunWorkflowRun = createServerFn({ method: "POST" })
-	.inputValidator(identityValidator<WorkflowRunInput>)
+	.validator(identityValidator<WorkflowRunInput>)
 	.handler(async ({ data }): Promise<MutationResult> => {
 		const context = await getGitHubUserContextForRepository(data);
 		if (!context) {
@@ -354,7 +354,7 @@ export const rerunWorkflowRun = createServerFn({ method: "POST" })
 	});
 
 export const rerunFailedWorkflowJobs = createServerFn({ method: "POST" })
-	.inputValidator(identityValidator<WorkflowRunInput>)
+	.validator(identityValidator<WorkflowRunInput>)
 	.handler(async ({ data }): Promise<MutationResult> => {
 		const context = await getGitHubUserContextForRepository(data);
 		if (!context) {
@@ -415,7 +415,7 @@ function parseWorkflowDefinition(yamlText: string): WorkflowDefinition | null {
 }
 
 export const getWorkflowDefinition = createServerFn({ method: "GET" })
-	.inputValidator(identityValidator<WorkflowDefinitionInput>)
+	.validator(identityValidator<WorkflowDefinitionInput>)
 	.handler(async ({ data }): Promise<WorkflowDefinition | null> => {
 		const context = await getGitHubContextForRepository(data);
 		if (!context) return null;
@@ -468,7 +468,7 @@ function decodeLogsPayload(data: unknown): string {
 }
 
 export const getWorkflowJobLogs = createServerFn({ method: "GET" })
-	.inputValidator(identityValidator<WorkflowJobLogsInput>)
+	.validator(identityValidator<WorkflowJobLogsInput>)
 	.handler(async ({ data }): Promise<WorkflowJobLogs | null> => {
 		const repoInput = { owner: data.owner, repo: data.repo };
 		const tag = `[getWorkflowJobLogs ${data.owner}/${data.repo}#${data.jobId}]`;
@@ -760,7 +760,7 @@ async function fetchWorkflowRunLogsBundle(
 }
 
 export const getWorkflowRunLogsBundle = createServerFn({ method: "GET" })
-	.inputValidator(identityValidator<WorkflowRunLogsBundleInput>)
+	.validator(identityValidator<WorkflowRunLogsBundleInput>)
 	.handler(async ({ data }): Promise<WorkflowRunLogsBundle | null> => {
 		const context = await getGitHubContextForRepository(data);
 		if (!context) {

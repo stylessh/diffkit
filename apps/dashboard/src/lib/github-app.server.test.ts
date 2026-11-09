@@ -1,5 +1,5 @@
 import { drizzle } from "drizzle-orm/d1";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import * as schema from "../db/schema";
 import { createTestD1 } from "./testing/d1-sqlite";
 
@@ -204,6 +204,10 @@ describe("GitHub App user tokens", () => {
 		fetchMock.mockReset();
 		vi.stubGlobal("fetch", fetchMock);
 		vi.spyOn(console, "error").mockImplementation(() => undefined);
+	});
+
+	afterEach(() => {
+		vi.restoreAllMocks();
 	});
 
 	it("returns a token that is not about to expire without calling GitHub", async () => {

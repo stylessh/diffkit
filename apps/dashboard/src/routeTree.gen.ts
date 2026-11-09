@@ -9,78 +9,72 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as TermsRouteImport } from './routes/terms'
-import { Route as SetupRouteImport } from './routes/setup'
-import { Route as PrivacyRouteImport } from './routes/privacy'
-import { Route as LoginRouteImport } from './routes/login'
-import { Route as ProtectedRouteImport } from './routes/_protected'
 import { Route as SplatRouteImport } from './routes/$'
+import { Route as ProtectedRouteImport } from './routes/_protected'
+import { Route as LoginRouteImport } from './routes/login'
+import { Route as PrivacyRouteImport } from './routes/privacy'
+import { Route as SetupRouteImport } from './routes/setup'
+import { Route as TermsRouteImport } from './routes/terms'
 import { Route as ProtectedIndexRouteImport } from './routes/_protected/index'
-import { Route as ApiHealthRouteImport } from './routes/api/health'
-import { Route as ApiChangesRouteImport } from './routes/api/changes'
-import { Route as ProtectedSettingsRouteImport } from './routes/_protected/settings'
-import { Route as ProtectedReviewsRouteImport } from './routes/_protected/reviews'
-import { Route as ProtectedReposRouteImport } from './routes/_protected/repos'
-import { Route as ProtectedPullsRouteImport } from './routes/_protected/pulls'
-import { Route as ProtectedIssuesRouteImport } from './routes/_protected/issues'
-import { Route as ProtectedInboxRouteImport } from './routes/_protected/inbox'
 import { Route as ProtectedDraftsRouteImport } from './routes/_protected/drafts'
-import { Route as ProtectedSettingsIndexRouteImport } from './routes/_protected/settings/index'
+import { Route as ProtectedInboxRouteImport } from './routes/_protected/inbox'
+import { Route as ProtectedIssuesRouteImport } from './routes/_protected/issues'
+import { Route as ProtectedPullsRouteImport } from './routes/_protected/pulls'
+import { Route as ProtectedReposRouteImport } from './routes/_protected/repos'
+import { Route as ProtectedReviewsRouteImport } from './routes/_protected/reviews'
+import { Route as ProtectedSettingsRouteImport } from './routes/_protected/settings'
+import { Route as ApiChangesRouteImport } from './routes/api/changes'
+import { Route as ApiHealthRouteImport } from './routes/api/health'
 import { Route as ProtectedOwnerIndexRouteImport } from './routes/_protected/$owner/index'
-import { Route as ApiWebhooksGithubRouteImport } from './routes/api/webhooks/github'
-import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
+import { Route as ProtectedSettingsIndexRouteImport } from './routes/_protected/settings/index'
 import { Route as ProtectedSettingsShortcutsRouteImport } from './routes/_protected/settings/shortcuts'
+import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
+import { Route as ApiWebhooksGithubRouteImport } from './routes/api/webhooks/github'
 import { Route as ProtectedOwnerRepoIndexRouteImport } from './routes/_protected/$owner/$repo/index'
-import { Route as ApiGithubAppCallbackRouteImport } from './routes/api/github/app/callback'
-import { Route as ApiGithubAppAuthorizeRouteImport } from './routes/api/github/app/authorize'
-import { Route as ProtectedOrgsOrgSettingsRouteImport } from './routes/_protected/orgs/$org/settings'
-import { Route as ProtectedOwnerRepoTagsRouteImport } from './routes/_protected/$owner/$repo/tags'
-import { Route as ProtectedOwnerRepoSettingsRouteImport } from './routes/_protected/$owner/$repo/settings'
-import { Route as ProtectedOwnerRepoSearchRouteImport } from './routes/_protected/$owner/$repo/search'
-import { Route as ProtectedOwnerRepoPullsRouteImport } from './routes/_protected/$owner/$repo/pulls'
 import { Route as ProtectedOwnerRepoBranchesRouteImport } from './routes/_protected/$owner/$repo/branches'
-import { Route as ProtectedOrgsOrgSettingsIndexRouteImport } from './routes/_protected/orgs/$org/settings/index'
-import { Route as ProtectedOwnerRepoSettingsIndexRouteImport } from './routes/_protected/$owner/$repo/settings/index'
-import { Route as ProtectedOwnerRepoReleasesIndexRouteImport } from './routes/_protected/$owner/$repo/releases.index'
-import { Route as ProtectedOwnerRepoIssuesIndexRouteImport } from './routes/_protected/$owner/$repo/issues.index'
-import { Route as ProtectedOwnerRepoCommitsIndexRouteImport } from './routes/_protected/$owner/$repo/commits.index'
+import { Route as ProtectedOwnerRepoPullsRouteImport } from './routes/_protected/$owner/$repo/pulls'
+import { Route as ProtectedOwnerRepoSearchRouteImport } from './routes/_protected/$owner/$repo/search'
+import { Route as ProtectedOwnerRepoSettingsRouteImport } from './routes/_protected/$owner/$repo/settings'
+import { Route as ProtectedOwnerRepoTagsRouteImport } from './routes/_protected/$owner/$repo/tags'
+import { Route as ProtectedOrgsOrgSettingsRouteImport } from './routes/_protected/orgs/$org/settings'
+import { Route as ApiGithubAppAuthorizeRouteImport } from './routes/api/github/app/authorize'
+import { Route as ApiGithubAppCallbackRouteImport } from './routes/api/github/app/callback'
 import { Route as ProtectedOwnerRepoActionsIndexRouteImport } from './routes/_protected/$owner/$repo/actions.index'
-import { Route as ProtectedOrgsOrgSettingsTeamsRouteImport } from './routes/_protected/orgs/$org/settings/teams'
-import { Route as ProtectedOrgsOrgSettingsMembersRouteImport } from './routes/_protected/orgs/$org/settings/members'
-import { Route as ProtectedOwnerRepoTreeSplatRouteImport } from './routes/_protected/$owner/$repo/tree.$'
-import { Route as ProtectedOwnerRepoSettingsWebhooksRouteImport } from './routes/_protected/$owner/$repo/settings/webhooks'
-import { Route as ProtectedOwnerRepoSettingsLabelsRouteImport } from './routes/_protected/$owner/$repo/settings/labels'
-import { Route as ProtectedOwnerRepoSettingsBranchesRouteImport } from './routes/_protected/$owner/$repo/settings/branches'
-import { Route as ProtectedOwnerRepoSettingsActionsRouteImport } from './routes/_protected/$owner/$repo/settings/actions'
-import { Route as ProtectedOwnerRepoSettingsAccessRouteImport } from './routes/_protected/$owner/$repo/settings/access'
-import { Route as ProtectedOwnerRepoReviewPullIdRouteImport } from './routes/_protected/$owner/$repo/review.$pullId'
-import { Route as ProtectedOwnerRepoReleasesNewRouteImport } from './routes/_protected/$owner/$repo/releases.new'
-import { Route as ProtectedOwnerRepoReleasesTagRouteImport } from './routes/_protected/$owner/$repo/releases.$tag'
-import { Route as ProtectedOwnerRepoPullPullIdRouteImport } from './routes/_protected/$owner/$repo/pull.$pullId'
-import { Route as ProtectedOwnerRepoIssuesNewRouteImport } from './routes/_protected/$owner/$repo/issues.new'
-import { Route as ProtectedOwnerRepoIssuesIssueIdRouteImport } from './routes/_protected/$owner/$repo/issues.$issueId'
-import { Route as ProtectedOwnerRepoCompareSplatRouteImport } from './routes/_protected/$owner/$repo/compare.$'
-import { Route as ProtectedOwnerRepoCommitsSplatRouteImport } from './routes/_protected/$owner/$repo/commits.$'
-import { Route as ProtectedOwnerRepoCommitShaRouteImport } from './routes/_protected/$owner/$repo/commit.$sha'
-import { Route as ProtectedOwnerRepoBlobSplatRouteImport } from './routes/_protected/$owner/$repo/blob.$'
 import { Route as ProtectedOwnerRepoBlameSplatRouteImport } from './routes/_protected/$owner/$repo/blame.$'
-import { Route as ProtectedOwnerRepoReleasesTagEditRouteImport } from './routes/_protected/$owner/$repo/releases.$tag_.edit'
+import { Route as ProtectedOwnerRepoBlobSplatRouteImport } from './routes/_protected/$owner/$repo/blob.$'
+import { Route as ProtectedOwnerRepoCommitShaRouteImport } from './routes/_protected/$owner/$repo/commit.$sha'
+import { Route as ProtectedOwnerRepoCommitsIndexRouteImport } from './routes/_protected/$owner/$repo/commits.index'
+import { Route as ProtectedOwnerRepoCommitsSplatRouteImport } from './routes/_protected/$owner/$repo/commits.$'
+import { Route as ProtectedOwnerRepoCompareSplatRouteImport } from './routes/_protected/$owner/$repo/compare.$'
+import { Route as ProtectedOwnerRepoIssuesIndexRouteImport } from './routes/_protected/$owner/$repo/issues.index'
+import { Route as ProtectedOwnerRepoIssuesIssueIdRouteImport } from './routes/_protected/$owner/$repo/issues.$issueId'
+import { Route as ProtectedOwnerRepoIssuesNewRouteImport } from './routes/_protected/$owner/$repo/issues.new'
+import { Route as ProtectedOwnerRepoPullPullIdRouteImport } from './routes/_protected/$owner/$repo/pull.$pullId'
+import { Route as ProtectedOwnerRepoReleasesIndexRouteImport } from './routes/_protected/$owner/$repo/releases.index'
+import { Route as ProtectedOwnerRepoReleasesTagRouteImport } from './routes/_protected/$owner/$repo/releases.$tag'
+import { Route as ProtectedOwnerRepoReleasesNewRouteImport } from './routes/_protected/$owner/$repo/releases.new'
+import { Route as ProtectedOwnerRepoReviewPullIdRouteImport } from './routes/_protected/$owner/$repo/review.$pullId'
+import { Route as ProtectedOwnerRepoSettingsIndexRouteImport } from './routes/_protected/$owner/$repo/settings/index'
+import { Route as ProtectedOwnerRepoSettingsAccessRouteImport } from './routes/_protected/$owner/$repo/settings/access'
+import { Route as ProtectedOwnerRepoSettingsActionsRouteImport } from './routes/_protected/$owner/$repo/settings/actions'
+import { Route as ProtectedOwnerRepoSettingsBranchesRouteImport } from './routes/_protected/$owner/$repo/settings/branches'
+import { Route as ProtectedOwnerRepoSettingsLabelsRouteImport } from './routes/_protected/$owner/$repo/settings/labels'
+import { Route as ProtectedOwnerRepoSettingsWebhooksRouteImport } from './routes/_protected/$owner/$repo/settings/webhooks'
+import { Route as ProtectedOwnerRepoTreeSplatRouteImport } from './routes/_protected/$owner/$repo/tree.$'
+import { Route as ProtectedOrgsOrgSettingsIndexRouteImport } from './routes/_protected/orgs/$org/settings/index'
+import { Route as ProtectedOrgsOrgSettingsMembersRouteImport } from './routes/_protected/orgs/$org/settings/members'
+import { Route as ProtectedOrgsOrgSettingsTeamsRouteImport } from './routes/_protected/orgs/$org/settings/teams'
 import { Route as ProtectedOwnerRepoActionsRunsRunIdRouteImport } from './routes/_protected/$owner/$repo/actions.runs.$runId'
+import { Route as ProtectedOwnerRepoReleasesTagEditRouteImport } from './routes/_protected/$owner/$repo/releases.$tag_.edit'
 import { Route as ProtectedOwnerRepoActionsRunsRunIdJobJobIdRouteImport } from './routes/_protected/$owner/$repo/actions.runs.$runId_.job.$jobId'
 
-const TermsRoute = TermsRouteImport.update({
-  id: '/terms',
-  path: '/terms',
+const SplatRoute = SplatRouteImport.update({
+  id: '/$',
+  path: '/$',
   getParentRoute: () => rootRouteImport,
 } as any)
-const SetupRoute = SetupRouteImport.update({
-  id: '/setup',
-  path: '/setup',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const PrivacyRoute = PrivacyRouteImport.update({
-  id: '/privacy',
-  path: '/privacy',
+const ProtectedRoute = ProtectedRouteImport.update({
+  id: '/_protected',
   getParentRoute: () => rootRouteImport,
 } as any)
 const LoginRoute = LoginRouteImport.update({
@@ -88,13 +82,19 @@ const LoginRoute = LoginRouteImport.update({
   path: '/login',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ProtectedRoute = ProtectedRouteImport.update({
-  id: '/_protected',
+const PrivacyRoute = PrivacyRouteImport.update({
+  id: '/privacy',
+  path: '/privacy',
   getParentRoute: () => rootRouteImport,
 } as any)
-const SplatRoute = SplatRouteImport.update({
-  id: '/$',
-  path: '/$',
+const SetupRoute = SetupRouteImport.update({
+  id: '/setup',
+  path: '/setup',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const TermsRoute = TermsRouteImport.update({
+  id: '/terms',
+  path: '/terms',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ProtectedIndexRoute = ProtectedIndexRouteImport.update({
@@ -102,39 +102,9 @@ const ProtectedIndexRoute = ProtectedIndexRouteImport.update({
   path: '/',
   getParentRoute: () => ProtectedRoute,
 } as any)
-const ApiHealthRoute = ApiHealthRouteImport.update({
-  id: '/api/health',
-  path: '/api/health',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ApiChangesRoute = ApiChangesRouteImport.update({
-  id: '/api/changes',
-  path: '/api/changes',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ProtectedSettingsRoute = ProtectedSettingsRouteImport.update({
-  id: '/settings',
-  path: '/settings',
-  getParentRoute: () => ProtectedRoute,
-} as any)
-const ProtectedReviewsRoute = ProtectedReviewsRouteImport.update({
-  id: '/reviews',
-  path: '/reviews',
-  getParentRoute: () => ProtectedRoute,
-} as any)
-const ProtectedReposRoute = ProtectedReposRouteImport.update({
-  id: '/repos',
-  path: '/repos',
-  getParentRoute: () => ProtectedRoute,
-} as any)
-const ProtectedPullsRoute = ProtectedPullsRouteImport.update({
-  id: '/pulls',
-  path: '/pulls',
-  getParentRoute: () => ProtectedRoute,
-} as any)
-const ProtectedIssuesRoute = ProtectedIssuesRouteImport.update({
-  id: '/issues',
-  path: '/issues',
+const ProtectedDraftsRoute = ProtectedDraftsRouteImport.update({
+  id: '/drafts',
+  path: '/drafts',
   getParentRoute: () => ProtectedRoute,
 } as any)
 const ProtectedInboxRoute = ProtectedInboxRouteImport.update({
@@ -142,9 +112,44 @@ const ProtectedInboxRoute = ProtectedInboxRouteImport.update({
   path: '/inbox',
   getParentRoute: () => ProtectedRoute,
 } as any)
-const ProtectedDraftsRoute = ProtectedDraftsRouteImport.update({
-  id: '/drafts',
-  path: '/drafts',
+const ProtectedIssuesRoute = ProtectedIssuesRouteImport.update({
+  id: '/issues',
+  path: '/issues',
+  getParentRoute: () => ProtectedRoute,
+} as any)
+const ProtectedPullsRoute = ProtectedPullsRouteImport.update({
+  id: '/pulls',
+  path: '/pulls',
+  getParentRoute: () => ProtectedRoute,
+} as any)
+const ProtectedReposRoute = ProtectedReposRouteImport.update({
+  id: '/repos',
+  path: '/repos',
+  getParentRoute: () => ProtectedRoute,
+} as any)
+const ProtectedReviewsRoute = ProtectedReviewsRouteImport.update({
+  id: '/reviews',
+  path: '/reviews',
+  getParentRoute: () => ProtectedRoute,
+} as any)
+const ProtectedSettingsRoute = ProtectedSettingsRouteImport.update({
+  id: '/settings',
+  path: '/settings',
+  getParentRoute: () => ProtectedRoute,
+} as any)
+const ApiChangesRoute = ApiChangesRouteImport.update({
+  id: '/api/changes',
+  path: '/api/changes',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiHealthRoute = ApiHealthRouteImport.update({
+  id: '/api/health',
+  path: '/api/health',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ProtectedOwnerIndexRoute = ProtectedOwnerIndexRouteImport.update({
+  id: '/$owner/',
+  path: '/$owner/',
   getParentRoute: () => ProtectedRoute,
 } as any)
 const ProtectedSettingsIndexRoute = ProtectedSettingsIndexRouteImport.update({
@@ -152,68 +157,25 @@ const ProtectedSettingsIndexRoute = ProtectedSettingsIndexRouteImport.update({
   path: '/',
   getParentRoute: () => ProtectedSettingsRoute,
 } as any)
-const ProtectedOwnerIndexRoute = ProtectedOwnerIndexRouteImport.update({
-  id: '/$owner/',
-  path: '/$owner/',
-  getParentRoute: () => ProtectedRoute,
-} as any)
-const ApiWebhooksGithubRoute = ApiWebhooksGithubRouteImport.update({
-  id: '/api/webhooks/github',
-  path: '/api/webhooks/github',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ApiAuthSplatRoute = ApiAuthSplatRouteImport.update({
-  id: '/api/auth/$',
-  path: '/api/auth/$',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const ProtectedSettingsShortcutsRoute =
   ProtectedSettingsShortcutsRouteImport.update({
     id: '/shortcuts',
     path: '/shortcuts',
     getParentRoute: () => ProtectedSettingsRoute,
   } as any)
+const ApiAuthSplatRoute = ApiAuthSplatRouteImport.update({
+  id: '/api/auth/$',
+  path: '/api/auth/$',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiWebhooksGithubRoute = ApiWebhooksGithubRouteImport.update({
+  id: '/api/webhooks/github',
+  path: '/api/webhooks/github',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ProtectedOwnerRepoIndexRoute = ProtectedOwnerRepoIndexRouteImport.update({
   id: '/$owner/$repo/',
   path: '/$owner/$repo/',
-  getParentRoute: () => ProtectedRoute,
-} as any)
-const ApiGithubAppCallbackRoute = ApiGithubAppCallbackRouteImport.update({
-  id: '/api/github/app/callback',
-  path: '/api/github/app/callback',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ApiGithubAppAuthorizeRoute = ApiGithubAppAuthorizeRouteImport.update({
-  id: '/api/github/app/authorize',
-  path: '/api/github/app/authorize',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ProtectedOrgsOrgSettingsRoute =
-  ProtectedOrgsOrgSettingsRouteImport.update({
-    id: '/orgs/$org/settings',
-    path: '/orgs/$org/settings',
-    getParentRoute: () => ProtectedRoute,
-  } as any)
-const ProtectedOwnerRepoTagsRoute = ProtectedOwnerRepoTagsRouteImport.update({
-  id: '/$owner/$repo/tags',
-  path: '/$owner/$repo/tags',
-  getParentRoute: () => ProtectedRoute,
-} as any)
-const ProtectedOwnerRepoSettingsRoute =
-  ProtectedOwnerRepoSettingsRouteImport.update({
-    id: '/$owner/$repo/settings',
-    path: '/$owner/$repo/settings',
-    getParentRoute: () => ProtectedRoute,
-  } as any)
-const ProtectedOwnerRepoSearchRoute =
-  ProtectedOwnerRepoSearchRouteImport.update({
-    id: '/$owner/$repo/search',
-    path: '/$owner/$repo/search',
-    getParentRoute: () => ProtectedRoute,
-  } as any)
-const ProtectedOwnerRepoPullsRoute = ProtectedOwnerRepoPullsRouteImport.update({
-  id: '/$owner/$repo/pulls',
-  path: '/$owner/$repo/pulls',
   getParentRoute: () => ProtectedRoute,
 } as any)
 const ProtectedOwnerRepoBranchesRoute =
@@ -222,148 +184,48 @@ const ProtectedOwnerRepoBranchesRoute =
     path: '/$owner/$repo/branches',
     getParentRoute: () => ProtectedRoute,
   } as any)
-const ProtectedOrgsOrgSettingsIndexRoute =
-  ProtectedOrgsOrgSettingsIndexRouteImport.update({
-    id: '/',
-    path: '/',
-    getParentRoute: () => ProtectedOrgsOrgSettingsRoute,
-  } as any)
-const ProtectedOwnerRepoSettingsIndexRoute =
-  ProtectedOwnerRepoSettingsIndexRouteImport.update({
-    id: '/',
-    path: '/',
-    getParentRoute: () => ProtectedOwnerRepoSettingsRoute,
-  } as any)
-const ProtectedOwnerRepoReleasesIndexRoute =
-  ProtectedOwnerRepoReleasesIndexRouteImport.update({
-    id: '/$owner/$repo/releases/',
-    path: '/$owner/$repo/releases/',
+const ProtectedOwnerRepoPullsRoute = ProtectedOwnerRepoPullsRouteImport.update({
+  id: '/$owner/$repo/pulls',
+  path: '/$owner/$repo/pulls',
+  getParentRoute: () => ProtectedRoute,
+} as any)
+const ProtectedOwnerRepoSearchRoute =
+  ProtectedOwnerRepoSearchRouteImport.update({
+    id: '/$owner/$repo/search',
+    path: '/$owner/$repo/search',
     getParentRoute: () => ProtectedRoute,
   } as any)
-const ProtectedOwnerRepoIssuesIndexRoute =
-  ProtectedOwnerRepoIssuesIndexRouteImport.update({
-    id: '/$owner/$repo/issues/',
-    path: '/$owner/$repo/issues/',
+const ProtectedOwnerRepoSettingsRoute =
+  ProtectedOwnerRepoSettingsRouteImport.update({
+    id: '/$owner/$repo/settings',
+    path: '/$owner/$repo/settings',
     getParentRoute: () => ProtectedRoute,
   } as any)
-const ProtectedOwnerRepoCommitsIndexRoute =
-  ProtectedOwnerRepoCommitsIndexRouteImport.update({
-    id: '/$owner/$repo/commits/',
-    path: '/$owner/$repo/commits/',
+const ProtectedOwnerRepoTagsRoute = ProtectedOwnerRepoTagsRouteImport.update({
+  id: '/$owner/$repo/tags',
+  path: '/$owner/$repo/tags',
+  getParentRoute: () => ProtectedRoute,
+} as any)
+const ProtectedOrgsOrgSettingsRoute =
+  ProtectedOrgsOrgSettingsRouteImport.update({
+    id: '/orgs/$org/settings',
+    path: '/orgs/$org/settings',
     getParentRoute: () => ProtectedRoute,
   } as any)
+const ApiGithubAppAuthorizeRoute = ApiGithubAppAuthorizeRouteImport.update({
+  id: '/api/github/app/authorize',
+  path: '/api/github/app/authorize',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiGithubAppCallbackRoute = ApiGithubAppCallbackRouteImport.update({
+  id: '/api/github/app/callback',
+  path: '/api/github/app/callback',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ProtectedOwnerRepoActionsIndexRoute =
   ProtectedOwnerRepoActionsIndexRouteImport.update({
     id: '/$owner/$repo/actions/',
     path: '/$owner/$repo/actions/',
-    getParentRoute: () => ProtectedRoute,
-  } as any)
-const ProtectedOrgsOrgSettingsTeamsRoute =
-  ProtectedOrgsOrgSettingsTeamsRouteImport.update({
-    id: '/teams',
-    path: '/teams',
-    getParentRoute: () => ProtectedOrgsOrgSettingsRoute,
-  } as any)
-const ProtectedOrgsOrgSettingsMembersRoute =
-  ProtectedOrgsOrgSettingsMembersRouteImport.update({
-    id: '/members',
-    path: '/members',
-    getParentRoute: () => ProtectedOrgsOrgSettingsRoute,
-  } as any)
-const ProtectedOwnerRepoTreeSplatRoute =
-  ProtectedOwnerRepoTreeSplatRouteImport.update({
-    id: '/$owner/$repo/tree/$',
-    path: '/$owner/$repo/tree/$',
-    getParentRoute: () => ProtectedRoute,
-  } as any)
-const ProtectedOwnerRepoSettingsWebhooksRoute =
-  ProtectedOwnerRepoSettingsWebhooksRouteImport.update({
-    id: '/webhooks',
-    path: '/webhooks',
-    getParentRoute: () => ProtectedOwnerRepoSettingsRoute,
-  } as any)
-const ProtectedOwnerRepoSettingsLabelsRoute =
-  ProtectedOwnerRepoSettingsLabelsRouteImport.update({
-    id: '/labels',
-    path: '/labels',
-    getParentRoute: () => ProtectedOwnerRepoSettingsRoute,
-  } as any)
-const ProtectedOwnerRepoSettingsBranchesRoute =
-  ProtectedOwnerRepoSettingsBranchesRouteImport.update({
-    id: '/branches',
-    path: '/branches',
-    getParentRoute: () => ProtectedOwnerRepoSettingsRoute,
-  } as any)
-const ProtectedOwnerRepoSettingsActionsRoute =
-  ProtectedOwnerRepoSettingsActionsRouteImport.update({
-    id: '/actions',
-    path: '/actions',
-    getParentRoute: () => ProtectedOwnerRepoSettingsRoute,
-  } as any)
-const ProtectedOwnerRepoSettingsAccessRoute =
-  ProtectedOwnerRepoSettingsAccessRouteImport.update({
-    id: '/access',
-    path: '/access',
-    getParentRoute: () => ProtectedOwnerRepoSettingsRoute,
-  } as any)
-const ProtectedOwnerRepoReviewPullIdRoute =
-  ProtectedOwnerRepoReviewPullIdRouteImport.update({
-    id: '/$owner/$repo/review/$pullId',
-    path: '/$owner/$repo/review/$pullId',
-    getParentRoute: () => ProtectedRoute,
-  } as any)
-const ProtectedOwnerRepoReleasesNewRoute =
-  ProtectedOwnerRepoReleasesNewRouteImport.update({
-    id: '/$owner/$repo/releases/new',
-    path: '/$owner/$repo/releases/new',
-    getParentRoute: () => ProtectedRoute,
-  } as any)
-const ProtectedOwnerRepoReleasesTagRoute =
-  ProtectedOwnerRepoReleasesTagRouteImport.update({
-    id: '/$owner/$repo/releases/$tag',
-    path: '/$owner/$repo/releases/$tag',
-    getParentRoute: () => ProtectedRoute,
-  } as any)
-const ProtectedOwnerRepoPullPullIdRoute =
-  ProtectedOwnerRepoPullPullIdRouteImport.update({
-    id: '/$owner/$repo/pull/$pullId',
-    path: '/$owner/$repo/pull/$pullId',
-    getParentRoute: () => ProtectedRoute,
-  } as any)
-const ProtectedOwnerRepoIssuesNewRoute =
-  ProtectedOwnerRepoIssuesNewRouteImport.update({
-    id: '/$owner/$repo/issues/new',
-    path: '/$owner/$repo/issues/new',
-    getParentRoute: () => ProtectedRoute,
-  } as any)
-const ProtectedOwnerRepoIssuesIssueIdRoute =
-  ProtectedOwnerRepoIssuesIssueIdRouteImport.update({
-    id: '/$owner/$repo/issues/$issueId',
-    path: '/$owner/$repo/issues/$issueId',
-    getParentRoute: () => ProtectedRoute,
-  } as any)
-const ProtectedOwnerRepoCompareSplatRoute =
-  ProtectedOwnerRepoCompareSplatRouteImport.update({
-    id: '/$owner/$repo/compare/$',
-    path: '/$owner/$repo/compare/$',
-    getParentRoute: () => ProtectedRoute,
-  } as any)
-const ProtectedOwnerRepoCommitsSplatRoute =
-  ProtectedOwnerRepoCommitsSplatRouteImport.update({
-    id: '/$owner/$repo/commits/$',
-    path: '/$owner/$repo/commits/$',
-    getParentRoute: () => ProtectedRoute,
-  } as any)
-const ProtectedOwnerRepoCommitShaRoute =
-  ProtectedOwnerRepoCommitShaRouteImport.update({
-    id: '/$owner/$repo/commit/$sha',
-    path: '/$owner/$repo/commit/$sha',
-    getParentRoute: () => ProtectedRoute,
-  } as any)
-const ProtectedOwnerRepoBlobSplatRoute =
-  ProtectedOwnerRepoBlobSplatRouteImport.update({
-    id: '/$owner/$repo/blob/$',
-    path: '/$owner/$repo/blob/$',
     getParentRoute: () => ProtectedRoute,
   } as any)
 const ProtectedOwnerRepoBlameSplatRoute =
@@ -372,16 +234,154 @@ const ProtectedOwnerRepoBlameSplatRoute =
     path: '/$owner/$repo/blame/$',
     getParentRoute: () => ProtectedRoute,
   } as any)
-const ProtectedOwnerRepoReleasesTagEditRoute =
-  ProtectedOwnerRepoReleasesTagEditRouteImport.update({
-    id: '/$owner/$repo/releases/$tag_/edit',
-    path: '/$owner/$repo/releases/$tag/edit',
+const ProtectedOwnerRepoBlobSplatRoute =
+  ProtectedOwnerRepoBlobSplatRouteImport.update({
+    id: '/$owner/$repo/blob/$',
+    path: '/$owner/$repo/blob/$',
     getParentRoute: () => ProtectedRoute,
+  } as any)
+const ProtectedOwnerRepoCommitShaRoute =
+  ProtectedOwnerRepoCommitShaRouteImport.update({
+    id: '/$owner/$repo/commit/$sha',
+    path: '/$owner/$repo/commit/$sha',
+    getParentRoute: () => ProtectedRoute,
+  } as any)
+const ProtectedOwnerRepoCommitsIndexRoute =
+  ProtectedOwnerRepoCommitsIndexRouteImport.update({
+    id: '/$owner/$repo/commits/',
+    path: '/$owner/$repo/commits/',
+    getParentRoute: () => ProtectedRoute,
+  } as any)
+const ProtectedOwnerRepoCommitsSplatRoute =
+  ProtectedOwnerRepoCommitsSplatRouteImport.update({
+    id: '/$owner/$repo/commits/$',
+    path: '/$owner/$repo/commits/$',
+    getParentRoute: () => ProtectedRoute,
+  } as any)
+const ProtectedOwnerRepoCompareSplatRoute =
+  ProtectedOwnerRepoCompareSplatRouteImport.update({
+    id: '/$owner/$repo/compare/$',
+    path: '/$owner/$repo/compare/$',
+    getParentRoute: () => ProtectedRoute,
+  } as any)
+const ProtectedOwnerRepoIssuesIndexRoute =
+  ProtectedOwnerRepoIssuesIndexRouteImport.update({
+    id: '/$owner/$repo/issues/',
+    path: '/$owner/$repo/issues/',
+    getParentRoute: () => ProtectedRoute,
+  } as any)
+const ProtectedOwnerRepoIssuesIssueIdRoute =
+  ProtectedOwnerRepoIssuesIssueIdRouteImport.update({
+    id: '/$owner/$repo/issues/$issueId',
+    path: '/$owner/$repo/issues/$issueId',
+    getParentRoute: () => ProtectedRoute,
+  } as any)
+const ProtectedOwnerRepoIssuesNewRoute =
+  ProtectedOwnerRepoIssuesNewRouteImport.update({
+    id: '/$owner/$repo/issues/new',
+    path: '/$owner/$repo/issues/new',
+    getParentRoute: () => ProtectedRoute,
+  } as any)
+const ProtectedOwnerRepoPullPullIdRoute =
+  ProtectedOwnerRepoPullPullIdRouteImport.update({
+    id: '/$owner/$repo/pull/$pullId',
+    path: '/$owner/$repo/pull/$pullId',
+    getParentRoute: () => ProtectedRoute,
+  } as any)
+const ProtectedOwnerRepoReleasesIndexRoute =
+  ProtectedOwnerRepoReleasesIndexRouteImport.update({
+    id: '/$owner/$repo/releases/',
+    path: '/$owner/$repo/releases/',
+    getParentRoute: () => ProtectedRoute,
+  } as any)
+const ProtectedOwnerRepoReleasesTagRoute =
+  ProtectedOwnerRepoReleasesTagRouteImport.update({
+    id: '/$owner/$repo/releases/$tag',
+    path: '/$owner/$repo/releases/$tag',
+    getParentRoute: () => ProtectedRoute,
+  } as any)
+const ProtectedOwnerRepoReleasesNewRoute =
+  ProtectedOwnerRepoReleasesNewRouteImport.update({
+    id: '/$owner/$repo/releases/new',
+    path: '/$owner/$repo/releases/new',
+    getParentRoute: () => ProtectedRoute,
+  } as any)
+const ProtectedOwnerRepoReviewPullIdRoute =
+  ProtectedOwnerRepoReviewPullIdRouteImport.update({
+    id: '/$owner/$repo/review/$pullId',
+    path: '/$owner/$repo/review/$pullId',
+    getParentRoute: () => ProtectedRoute,
+  } as any)
+const ProtectedOwnerRepoSettingsIndexRoute =
+  ProtectedOwnerRepoSettingsIndexRouteImport.update({
+    id: '/',
+    path: '/',
+    getParentRoute: () => ProtectedOwnerRepoSettingsRoute,
+  } as any)
+const ProtectedOwnerRepoSettingsAccessRoute =
+  ProtectedOwnerRepoSettingsAccessRouteImport.update({
+    id: '/access',
+    path: '/access',
+    getParentRoute: () => ProtectedOwnerRepoSettingsRoute,
+  } as any)
+const ProtectedOwnerRepoSettingsActionsRoute =
+  ProtectedOwnerRepoSettingsActionsRouteImport.update({
+    id: '/actions',
+    path: '/actions',
+    getParentRoute: () => ProtectedOwnerRepoSettingsRoute,
+  } as any)
+const ProtectedOwnerRepoSettingsBranchesRoute =
+  ProtectedOwnerRepoSettingsBranchesRouteImport.update({
+    id: '/branches',
+    path: '/branches',
+    getParentRoute: () => ProtectedOwnerRepoSettingsRoute,
+  } as any)
+const ProtectedOwnerRepoSettingsLabelsRoute =
+  ProtectedOwnerRepoSettingsLabelsRouteImport.update({
+    id: '/labels',
+    path: '/labels',
+    getParentRoute: () => ProtectedOwnerRepoSettingsRoute,
+  } as any)
+const ProtectedOwnerRepoSettingsWebhooksRoute =
+  ProtectedOwnerRepoSettingsWebhooksRouteImport.update({
+    id: '/webhooks',
+    path: '/webhooks',
+    getParentRoute: () => ProtectedOwnerRepoSettingsRoute,
+  } as any)
+const ProtectedOwnerRepoTreeSplatRoute =
+  ProtectedOwnerRepoTreeSplatRouteImport.update({
+    id: '/$owner/$repo/tree/$',
+    path: '/$owner/$repo/tree/$',
+    getParentRoute: () => ProtectedRoute,
+  } as any)
+const ProtectedOrgsOrgSettingsIndexRoute =
+  ProtectedOrgsOrgSettingsIndexRouteImport.update({
+    id: '/',
+    path: '/',
+    getParentRoute: () => ProtectedOrgsOrgSettingsRoute,
+  } as any)
+const ProtectedOrgsOrgSettingsMembersRoute =
+  ProtectedOrgsOrgSettingsMembersRouteImport.update({
+    id: '/members',
+    path: '/members',
+    getParentRoute: () => ProtectedOrgsOrgSettingsRoute,
+  } as any)
+const ProtectedOrgsOrgSettingsTeamsRoute =
+  ProtectedOrgsOrgSettingsTeamsRouteImport.update({
+    id: '/teams',
+    path: '/teams',
+    getParentRoute: () => ProtectedOrgsOrgSettingsRoute,
   } as any)
 const ProtectedOwnerRepoActionsRunsRunIdRoute =
   ProtectedOwnerRepoActionsRunsRunIdRouteImport.update({
     id: '/$owner/$repo/actions/runs/$runId',
     path: '/$owner/$repo/actions/runs/$runId',
+    getParentRoute: () => ProtectedRoute,
+  } as any)
+const ProtectedOwnerRepoReleasesTagEditRoute =
+  ProtectedOwnerRepoReleasesTagEditRouteImport.update({
+    id: '/$owner/$repo/releases/$tag_/edit',
+    path: '/$owner/$repo/releases/$tag/edit',
     getParentRoute: () => ProtectedRoute,
   } as any)
 const ProtectedOwnerRepoActionsRunsRunIdJobJobIdRoute =
@@ -762,32 +762,11 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/terms': {
-      id: '/terms'
-      path: '/terms'
-      fullPath: '/terms'
-      preLoaderRoute: typeof TermsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/setup': {
-      id: '/setup'
-      path: '/setup'
-      fullPath: '/setup'
-      preLoaderRoute: typeof SetupRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/privacy': {
-      id: '/privacy'
-      path: '/privacy'
-      fullPath: '/privacy'
-      preLoaderRoute: typeof PrivacyRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/login': {
-      id: '/login'
-      path: '/login'
-      fullPath: '/login'
-      preLoaderRoute: typeof LoginRouteImport
+    '/$': {
+      id: '/$'
+      path: '/$'
+      fullPath: '/$'
+      preLoaderRoute: typeof SplatRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/_protected': {
@@ -797,11 +776,32 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ProtectedRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/$': {
-      id: '/$'
-      path: '/$'
-      fullPath: '/$'
-      preLoaderRoute: typeof SplatRouteImport
+    '/login': {
+      id: '/login'
+      path: '/login'
+      fullPath: '/login'
+      preLoaderRoute: typeof LoginRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/privacy': {
+      id: '/privacy'
+      path: '/privacy'
+      fullPath: '/privacy'
+      preLoaderRoute: typeof PrivacyRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/setup': {
+      id: '/setup'
+      path: '/setup'
+      fullPath: '/setup'
+      preLoaderRoute: typeof SetupRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/terms': {
+      id: '/terms'
+      path: '/terms'
+      fullPath: '/terms'
+      preLoaderRoute: typeof TermsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/_protected/': {
@@ -811,53 +811,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ProtectedIndexRouteImport
       parentRoute: typeof ProtectedRoute
     }
-    '/api/health': {
-      id: '/api/health'
-      path: '/api/health'
-      fullPath: '/api/health'
-      preLoaderRoute: typeof ApiHealthRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/changes': {
-      id: '/api/changes'
-      path: '/api/changes'
-      fullPath: '/api/changes'
-      preLoaderRoute: typeof ApiChangesRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/_protected/settings': {
-      id: '/_protected/settings'
-      path: '/settings'
-      fullPath: '/settings'
-      preLoaderRoute: typeof ProtectedSettingsRouteImport
-      parentRoute: typeof ProtectedRoute
-    }
-    '/_protected/reviews': {
-      id: '/_protected/reviews'
-      path: '/reviews'
-      fullPath: '/reviews'
-      preLoaderRoute: typeof ProtectedReviewsRouteImport
-      parentRoute: typeof ProtectedRoute
-    }
-    '/_protected/repos': {
-      id: '/_protected/repos'
-      path: '/repos'
-      fullPath: '/repos'
-      preLoaderRoute: typeof ProtectedReposRouteImport
-      parentRoute: typeof ProtectedRoute
-    }
-    '/_protected/pulls': {
-      id: '/_protected/pulls'
-      path: '/pulls'
-      fullPath: '/pulls'
-      preLoaderRoute: typeof ProtectedPullsRouteImport
-      parentRoute: typeof ProtectedRoute
-    }
-    '/_protected/issues': {
-      id: '/_protected/issues'
-      path: '/issues'
-      fullPath: '/issues'
-      preLoaderRoute: typeof ProtectedIssuesRouteImport
+    '/_protected/drafts': {
+      id: '/_protected/drafts'
+      path: '/drafts'
+      fullPath: '/drafts'
+      preLoaderRoute: typeof ProtectedDraftsRouteImport
       parentRoute: typeof ProtectedRoute
     }
     '/_protected/inbox': {
@@ -867,11 +825,60 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ProtectedInboxRouteImport
       parentRoute: typeof ProtectedRoute
     }
-    '/_protected/drafts': {
-      id: '/_protected/drafts'
-      path: '/drafts'
-      fullPath: '/drafts'
-      preLoaderRoute: typeof ProtectedDraftsRouteImport
+    '/_protected/issues': {
+      id: '/_protected/issues'
+      path: '/issues'
+      fullPath: '/issues'
+      preLoaderRoute: typeof ProtectedIssuesRouteImport
+      parentRoute: typeof ProtectedRoute
+    }
+    '/_protected/pulls': {
+      id: '/_protected/pulls'
+      path: '/pulls'
+      fullPath: '/pulls'
+      preLoaderRoute: typeof ProtectedPullsRouteImport
+      parentRoute: typeof ProtectedRoute
+    }
+    '/_protected/repos': {
+      id: '/_protected/repos'
+      path: '/repos'
+      fullPath: '/repos'
+      preLoaderRoute: typeof ProtectedReposRouteImport
+      parentRoute: typeof ProtectedRoute
+    }
+    '/_protected/reviews': {
+      id: '/_protected/reviews'
+      path: '/reviews'
+      fullPath: '/reviews'
+      preLoaderRoute: typeof ProtectedReviewsRouteImport
+      parentRoute: typeof ProtectedRoute
+    }
+    '/_protected/settings': {
+      id: '/_protected/settings'
+      path: '/settings'
+      fullPath: '/settings'
+      preLoaderRoute: typeof ProtectedSettingsRouteImport
+      parentRoute: typeof ProtectedRoute
+    }
+    '/api/changes': {
+      id: '/api/changes'
+      path: '/api/changes'
+      fullPath: '/api/changes'
+      preLoaderRoute: typeof ApiChangesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/health': {
+      id: '/api/health'
+      path: '/api/health'
+      fullPath: '/api/health'
+      preLoaderRoute: typeof ApiHealthRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/_protected/$owner/': {
+      id: '/_protected/$owner/'
+      path: '/$owner'
+      fullPath: '/$owner/'
+      preLoaderRoute: typeof ProtectedOwnerIndexRouteImport
       parentRoute: typeof ProtectedRoute
     }
     '/_protected/settings/': {
@@ -881,19 +888,12 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ProtectedSettingsIndexRouteImport
       parentRoute: typeof ProtectedSettingsRoute
     }
-    '/_protected/$owner/': {
-      id: '/_protected/$owner/'
-      path: '/$owner'
-      fullPath: '/$owner/'
-      preLoaderRoute: typeof ProtectedOwnerIndexRouteImport
-      parentRoute: typeof ProtectedRoute
-    }
-    '/api/webhooks/github': {
-      id: '/api/webhooks/github'
-      path: '/api/webhooks/github'
-      fullPath: '/api/webhooks/github'
-      preLoaderRoute: typeof ApiWebhooksGithubRouteImport
-      parentRoute: typeof rootRouteImport
+    '/_protected/settings/shortcuts': {
+      id: '/_protected/settings/shortcuts'
+      path: '/shortcuts'
+      fullPath: '/settings/shortcuts'
+      preLoaderRoute: typeof ProtectedSettingsShortcutsRouteImport
+      parentRoute: typeof ProtectedSettingsRoute
     }
     '/api/auth/$': {
       id: '/api/auth/$'
@@ -902,67 +902,18 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiAuthSplatRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/_protected/settings/shortcuts': {
-      id: '/_protected/settings/shortcuts'
-      path: '/shortcuts'
-      fullPath: '/settings/shortcuts'
-      preLoaderRoute: typeof ProtectedSettingsShortcutsRouteImport
-      parentRoute: typeof ProtectedSettingsRoute
+    '/api/webhooks/github': {
+      id: '/api/webhooks/github'
+      path: '/api/webhooks/github'
+      fullPath: '/api/webhooks/github'
+      preLoaderRoute: typeof ApiWebhooksGithubRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/_protected/$owner/$repo/': {
       id: '/_protected/$owner/$repo/'
       path: '/$owner/$repo'
       fullPath: '/$owner/$repo/'
       preLoaderRoute: typeof ProtectedOwnerRepoIndexRouteImport
-      parentRoute: typeof ProtectedRoute
-    }
-    '/api/github/app/callback': {
-      id: '/api/github/app/callback'
-      path: '/api/github/app/callback'
-      fullPath: '/api/github/app/callback'
-      preLoaderRoute: typeof ApiGithubAppCallbackRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/github/app/authorize': {
-      id: '/api/github/app/authorize'
-      path: '/api/github/app/authorize'
-      fullPath: '/api/github/app/authorize'
-      preLoaderRoute: typeof ApiGithubAppAuthorizeRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/_protected/orgs/$org/settings': {
-      id: '/_protected/orgs/$org/settings'
-      path: '/orgs/$org/settings'
-      fullPath: '/orgs/$org/settings'
-      preLoaderRoute: typeof ProtectedOrgsOrgSettingsRouteImport
-      parentRoute: typeof ProtectedRoute
-    }
-    '/_protected/$owner/$repo/tags': {
-      id: '/_protected/$owner/$repo/tags'
-      path: '/$owner/$repo/tags'
-      fullPath: '/$owner/$repo/tags'
-      preLoaderRoute: typeof ProtectedOwnerRepoTagsRouteImport
-      parentRoute: typeof ProtectedRoute
-    }
-    '/_protected/$owner/$repo/settings': {
-      id: '/_protected/$owner/$repo/settings'
-      path: '/$owner/$repo/settings'
-      fullPath: '/$owner/$repo/settings'
-      preLoaderRoute: typeof ProtectedOwnerRepoSettingsRouteImport
-      parentRoute: typeof ProtectedRoute
-    }
-    '/_protected/$owner/$repo/search': {
-      id: '/_protected/$owner/$repo/search'
-      path: '/$owner/$repo/search'
-      fullPath: '/$owner/$repo/search'
-      preLoaderRoute: typeof ProtectedOwnerRepoSearchRouteImport
-      parentRoute: typeof ProtectedRoute
-    }
-    '/_protected/$owner/$repo/pulls': {
-      id: '/_protected/$owner/$repo/pulls'
-      path: '/$owner/$repo/pulls'
-      fullPath: '/$owner/$repo/pulls'
-      preLoaderRoute: typeof ProtectedOwnerRepoPullsRouteImport
       parentRoute: typeof ProtectedRoute
     }
     '/_protected/$owner/$repo/branches': {
@@ -972,172 +923,60 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ProtectedOwnerRepoBranchesRouteImport
       parentRoute: typeof ProtectedRoute
     }
-    '/_protected/orgs/$org/settings/': {
-      id: '/_protected/orgs/$org/settings/'
-      path: '/'
-      fullPath: '/orgs/$org/settings/'
-      preLoaderRoute: typeof ProtectedOrgsOrgSettingsIndexRouteImport
-      parentRoute: typeof ProtectedOrgsOrgSettingsRoute
-    }
-    '/_protected/$owner/$repo/settings/': {
-      id: '/_protected/$owner/$repo/settings/'
-      path: '/'
-      fullPath: '/$owner/$repo/settings/'
-      preLoaderRoute: typeof ProtectedOwnerRepoSettingsIndexRouteImport
-      parentRoute: typeof ProtectedOwnerRepoSettingsRoute
-    }
-    '/_protected/$owner/$repo/releases/': {
-      id: '/_protected/$owner/$repo/releases/'
-      path: '/$owner/$repo/releases'
-      fullPath: '/$owner/$repo/releases/'
-      preLoaderRoute: typeof ProtectedOwnerRepoReleasesIndexRouteImport
+    '/_protected/$owner/$repo/pulls': {
+      id: '/_protected/$owner/$repo/pulls'
+      path: '/$owner/$repo/pulls'
+      fullPath: '/$owner/$repo/pulls'
+      preLoaderRoute: typeof ProtectedOwnerRepoPullsRouteImport
       parentRoute: typeof ProtectedRoute
     }
-    '/_protected/$owner/$repo/issues/': {
-      id: '/_protected/$owner/$repo/issues/'
-      path: '/$owner/$repo/issues'
-      fullPath: '/$owner/$repo/issues/'
-      preLoaderRoute: typeof ProtectedOwnerRepoIssuesIndexRouteImport
+    '/_protected/$owner/$repo/search': {
+      id: '/_protected/$owner/$repo/search'
+      path: '/$owner/$repo/search'
+      fullPath: '/$owner/$repo/search'
+      preLoaderRoute: typeof ProtectedOwnerRepoSearchRouteImport
       parentRoute: typeof ProtectedRoute
     }
-    '/_protected/$owner/$repo/commits/': {
-      id: '/_protected/$owner/$repo/commits/'
-      path: '/$owner/$repo/commits'
-      fullPath: '/$owner/$repo/commits/'
-      preLoaderRoute: typeof ProtectedOwnerRepoCommitsIndexRouteImport
+    '/_protected/$owner/$repo/settings': {
+      id: '/_protected/$owner/$repo/settings'
+      path: '/$owner/$repo/settings'
+      fullPath: '/$owner/$repo/settings'
+      preLoaderRoute: typeof ProtectedOwnerRepoSettingsRouteImport
       parentRoute: typeof ProtectedRoute
+    }
+    '/_protected/$owner/$repo/tags': {
+      id: '/_protected/$owner/$repo/tags'
+      path: '/$owner/$repo/tags'
+      fullPath: '/$owner/$repo/tags'
+      preLoaderRoute: typeof ProtectedOwnerRepoTagsRouteImport
+      parentRoute: typeof ProtectedRoute
+    }
+    '/_protected/orgs/$org/settings': {
+      id: '/_protected/orgs/$org/settings'
+      path: '/orgs/$org/settings'
+      fullPath: '/orgs/$org/settings'
+      preLoaderRoute: typeof ProtectedOrgsOrgSettingsRouteImport
+      parentRoute: typeof ProtectedRoute
+    }
+    '/api/github/app/authorize': {
+      id: '/api/github/app/authorize'
+      path: '/api/github/app/authorize'
+      fullPath: '/api/github/app/authorize'
+      preLoaderRoute: typeof ApiGithubAppAuthorizeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/github/app/callback': {
+      id: '/api/github/app/callback'
+      path: '/api/github/app/callback'
+      fullPath: '/api/github/app/callback'
+      preLoaderRoute: typeof ApiGithubAppCallbackRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/_protected/$owner/$repo/actions/': {
       id: '/_protected/$owner/$repo/actions/'
       path: '/$owner/$repo/actions'
       fullPath: '/$owner/$repo/actions/'
       preLoaderRoute: typeof ProtectedOwnerRepoActionsIndexRouteImport
-      parentRoute: typeof ProtectedRoute
-    }
-    '/_protected/orgs/$org/settings/teams': {
-      id: '/_protected/orgs/$org/settings/teams'
-      path: '/teams'
-      fullPath: '/orgs/$org/settings/teams'
-      preLoaderRoute: typeof ProtectedOrgsOrgSettingsTeamsRouteImport
-      parentRoute: typeof ProtectedOrgsOrgSettingsRoute
-    }
-    '/_protected/orgs/$org/settings/members': {
-      id: '/_protected/orgs/$org/settings/members'
-      path: '/members'
-      fullPath: '/orgs/$org/settings/members'
-      preLoaderRoute: typeof ProtectedOrgsOrgSettingsMembersRouteImport
-      parentRoute: typeof ProtectedOrgsOrgSettingsRoute
-    }
-    '/_protected/$owner/$repo/tree/$': {
-      id: '/_protected/$owner/$repo/tree/$'
-      path: '/$owner/$repo/tree/$'
-      fullPath: '/$owner/$repo/tree/$'
-      preLoaderRoute: typeof ProtectedOwnerRepoTreeSplatRouteImport
-      parentRoute: typeof ProtectedRoute
-    }
-    '/_protected/$owner/$repo/settings/webhooks': {
-      id: '/_protected/$owner/$repo/settings/webhooks'
-      path: '/webhooks'
-      fullPath: '/$owner/$repo/settings/webhooks'
-      preLoaderRoute: typeof ProtectedOwnerRepoSettingsWebhooksRouteImport
-      parentRoute: typeof ProtectedOwnerRepoSettingsRoute
-    }
-    '/_protected/$owner/$repo/settings/labels': {
-      id: '/_protected/$owner/$repo/settings/labels'
-      path: '/labels'
-      fullPath: '/$owner/$repo/settings/labels'
-      preLoaderRoute: typeof ProtectedOwnerRepoSettingsLabelsRouteImport
-      parentRoute: typeof ProtectedOwnerRepoSettingsRoute
-    }
-    '/_protected/$owner/$repo/settings/branches': {
-      id: '/_protected/$owner/$repo/settings/branches'
-      path: '/branches'
-      fullPath: '/$owner/$repo/settings/branches'
-      preLoaderRoute: typeof ProtectedOwnerRepoSettingsBranchesRouteImport
-      parentRoute: typeof ProtectedOwnerRepoSettingsRoute
-    }
-    '/_protected/$owner/$repo/settings/actions': {
-      id: '/_protected/$owner/$repo/settings/actions'
-      path: '/actions'
-      fullPath: '/$owner/$repo/settings/actions'
-      preLoaderRoute: typeof ProtectedOwnerRepoSettingsActionsRouteImport
-      parentRoute: typeof ProtectedOwnerRepoSettingsRoute
-    }
-    '/_protected/$owner/$repo/settings/access': {
-      id: '/_protected/$owner/$repo/settings/access'
-      path: '/access'
-      fullPath: '/$owner/$repo/settings/access'
-      preLoaderRoute: typeof ProtectedOwnerRepoSettingsAccessRouteImport
-      parentRoute: typeof ProtectedOwnerRepoSettingsRoute
-    }
-    '/_protected/$owner/$repo/review/$pullId': {
-      id: '/_protected/$owner/$repo/review/$pullId'
-      path: '/$owner/$repo/review/$pullId'
-      fullPath: '/$owner/$repo/review/$pullId'
-      preLoaderRoute: typeof ProtectedOwnerRepoReviewPullIdRouteImport
-      parentRoute: typeof ProtectedRoute
-    }
-    '/_protected/$owner/$repo/releases/new': {
-      id: '/_protected/$owner/$repo/releases/new'
-      path: '/$owner/$repo/releases/new'
-      fullPath: '/$owner/$repo/releases/new'
-      preLoaderRoute: typeof ProtectedOwnerRepoReleasesNewRouteImport
-      parentRoute: typeof ProtectedRoute
-    }
-    '/_protected/$owner/$repo/releases/$tag': {
-      id: '/_protected/$owner/$repo/releases/$tag'
-      path: '/$owner/$repo/releases/$tag'
-      fullPath: '/$owner/$repo/releases/$tag'
-      preLoaderRoute: typeof ProtectedOwnerRepoReleasesTagRouteImport
-      parentRoute: typeof ProtectedRoute
-    }
-    '/_protected/$owner/$repo/pull/$pullId': {
-      id: '/_protected/$owner/$repo/pull/$pullId'
-      path: '/$owner/$repo/pull/$pullId'
-      fullPath: '/$owner/$repo/pull/$pullId'
-      preLoaderRoute: typeof ProtectedOwnerRepoPullPullIdRouteImport
-      parentRoute: typeof ProtectedRoute
-    }
-    '/_protected/$owner/$repo/issues/new': {
-      id: '/_protected/$owner/$repo/issues/new'
-      path: '/$owner/$repo/issues/new'
-      fullPath: '/$owner/$repo/issues/new'
-      preLoaderRoute: typeof ProtectedOwnerRepoIssuesNewRouteImport
-      parentRoute: typeof ProtectedRoute
-    }
-    '/_protected/$owner/$repo/issues/$issueId': {
-      id: '/_protected/$owner/$repo/issues/$issueId'
-      path: '/$owner/$repo/issues/$issueId'
-      fullPath: '/$owner/$repo/issues/$issueId'
-      preLoaderRoute: typeof ProtectedOwnerRepoIssuesIssueIdRouteImport
-      parentRoute: typeof ProtectedRoute
-    }
-    '/_protected/$owner/$repo/compare/$': {
-      id: '/_protected/$owner/$repo/compare/$'
-      path: '/$owner/$repo/compare/$'
-      fullPath: '/$owner/$repo/compare/$'
-      preLoaderRoute: typeof ProtectedOwnerRepoCompareSplatRouteImport
-      parentRoute: typeof ProtectedRoute
-    }
-    '/_protected/$owner/$repo/commits/$': {
-      id: '/_protected/$owner/$repo/commits/$'
-      path: '/$owner/$repo/commits/$'
-      fullPath: '/$owner/$repo/commits/$'
-      preLoaderRoute: typeof ProtectedOwnerRepoCommitsSplatRouteImport
-      parentRoute: typeof ProtectedRoute
-    }
-    '/_protected/$owner/$repo/commit/$sha': {
-      id: '/_protected/$owner/$repo/commit/$sha'
-      path: '/$owner/$repo/commit/$sha'
-      fullPath: '/$owner/$repo/commit/$sha'
-      preLoaderRoute: typeof ProtectedOwnerRepoCommitShaRouteImport
-      parentRoute: typeof ProtectedRoute
-    }
-    '/_protected/$owner/$repo/blob/$': {
-      id: '/_protected/$owner/$repo/blob/$'
-      path: '/$owner/$repo/blob/$'
-      fullPath: '/$owner/$repo/blob/$'
-      preLoaderRoute: typeof ProtectedOwnerRepoBlobSplatRouteImport
       parentRoute: typeof ProtectedRoute
     }
     '/_protected/$owner/$repo/blame/$': {
@@ -1147,18 +986,179 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ProtectedOwnerRepoBlameSplatRouteImport
       parentRoute: typeof ProtectedRoute
     }
-    '/_protected/$owner/$repo/releases/$tag_/edit': {
-      id: '/_protected/$owner/$repo/releases/$tag_/edit'
-      path: '/$owner/$repo/releases/$tag/edit'
-      fullPath: '/$owner/$repo/releases/$tag/edit'
-      preLoaderRoute: typeof ProtectedOwnerRepoReleasesTagEditRouteImport
+    '/_protected/$owner/$repo/blob/$': {
+      id: '/_protected/$owner/$repo/blob/$'
+      path: '/$owner/$repo/blob/$'
+      fullPath: '/$owner/$repo/blob/$'
+      preLoaderRoute: typeof ProtectedOwnerRepoBlobSplatRouteImport
       parentRoute: typeof ProtectedRoute
+    }
+    '/_protected/$owner/$repo/commit/$sha': {
+      id: '/_protected/$owner/$repo/commit/$sha'
+      path: '/$owner/$repo/commit/$sha'
+      fullPath: '/$owner/$repo/commit/$sha'
+      preLoaderRoute: typeof ProtectedOwnerRepoCommitShaRouteImport
+      parentRoute: typeof ProtectedRoute
+    }
+    '/_protected/$owner/$repo/commits/': {
+      id: '/_protected/$owner/$repo/commits/'
+      path: '/$owner/$repo/commits'
+      fullPath: '/$owner/$repo/commits/'
+      preLoaderRoute: typeof ProtectedOwnerRepoCommitsIndexRouteImport
+      parentRoute: typeof ProtectedRoute
+    }
+    '/_protected/$owner/$repo/commits/$': {
+      id: '/_protected/$owner/$repo/commits/$'
+      path: '/$owner/$repo/commits/$'
+      fullPath: '/$owner/$repo/commits/$'
+      preLoaderRoute: typeof ProtectedOwnerRepoCommitsSplatRouteImport
+      parentRoute: typeof ProtectedRoute
+    }
+    '/_protected/$owner/$repo/compare/$': {
+      id: '/_protected/$owner/$repo/compare/$'
+      path: '/$owner/$repo/compare/$'
+      fullPath: '/$owner/$repo/compare/$'
+      preLoaderRoute: typeof ProtectedOwnerRepoCompareSplatRouteImport
+      parentRoute: typeof ProtectedRoute
+    }
+    '/_protected/$owner/$repo/issues/': {
+      id: '/_protected/$owner/$repo/issues/'
+      path: '/$owner/$repo/issues'
+      fullPath: '/$owner/$repo/issues/'
+      preLoaderRoute: typeof ProtectedOwnerRepoIssuesIndexRouteImport
+      parentRoute: typeof ProtectedRoute
+    }
+    '/_protected/$owner/$repo/issues/$issueId': {
+      id: '/_protected/$owner/$repo/issues/$issueId'
+      path: '/$owner/$repo/issues/$issueId'
+      fullPath: '/$owner/$repo/issues/$issueId'
+      preLoaderRoute: typeof ProtectedOwnerRepoIssuesIssueIdRouteImport
+      parentRoute: typeof ProtectedRoute
+    }
+    '/_protected/$owner/$repo/issues/new': {
+      id: '/_protected/$owner/$repo/issues/new'
+      path: '/$owner/$repo/issues/new'
+      fullPath: '/$owner/$repo/issues/new'
+      preLoaderRoute: typeof ProtectedOwnerRepoIssuesNewRouteImport
+      parentRoute: typeof ProtectedRoute
+    }
+    '/_protected/$owner/$repo/pull/$pullId': {
+      id: '/_protected/$owner/$repo/pull/$pullId'
+      path: '/$owner/$repo/pull/$pullId'
+      fullPath: '/$owner/$repo/pull/$pullId'
+      preLoaderRoute: typeof ProtectedOwnerRepoPullPullIdRouteImport
+      parentRoute: typeof ProtectedRoute
+    }
+    '/_protected/$owner/$repo/releases/': {
+      id: '/_protected/$owner/$repo/releases/'
+      path: '/$owner/$repo/releases'
+      fullPath: '/$owner/$repo/releases/'
+      preLoaderRoute: typeof ProtectedOwnerRepoReleasesIndexRouteImport
+      parentRoute: typeof ProtectedRoute
+    }
+    '/_protected/$owner/$repo/releases/$tag': {
+      id: '/_protected/$owner/$repo/releases/$tag'
+      path: '/$owner/$repo/releases/$tag'
+      fullPath: '/$owner/$repo/releases/$tag'
+      preLoaderRoute: typeof ProtectedOwnerRepoReleasesTagRouteImport
+      parentRoute: typeof ProtectedRoute
+    }
+    '/_protected/$owner/$repo/releases/new': {
+      id: '/_protected/$owner/$repo/releases/new'
+      path: '/$owner/$repo/releases/new'
+      fullPath: '/$owner/$repo/releases/new'
+      preLoaderRoute: typeof ProtectedOwnerRepoReleasesNewRouteImport
+      parentRoute: typeof ProtectedRoute
+    }
+    '/_protected/$owner/$repo/review/$pullId': {
+      id: '/_protected/$owner/$repo/review/$pullId'
+      path: '/$owner/$repo/review/$pullId'
+      fullPath: '/$owner/$repo/review/$pullId'
+      preLoaderRoute: typeof ProtectedOwnerRepoReviewPullIdRouteImport
+      parentRoute: typeof ProtectedRoute
+    }
+    '/_protected/$owner/$repo/settings/': {
+      id: '/_protected/$owner/$repo/settings/'
+      path: '/'
+      fullPath: '/$owner/$repo/settings/'
+      preLoaderRoute: typeof ProtectedOwnerRepoSettingsIndexRouteImport
+      parentRoute: typeof ProtectedOwnerRepoSettingsRoute
+    }
+    '/_protected/$owner/$repo/settings/access': {
+      id: '/_protected/$owner/$repo/settings/access'
+      path: '/access'
+      fullPath: '/$owner/$repo/settings/access'
+      preLoaderRoute: typeof ProtectedOwnerRepoSettingsAccessRouteImport
+      parentRoute: typeof ProtectedOwnerRepoSettingsRoute
+    }
+    '/_protected/$owner/$repo/settings/actions': {
+      id: '/_protected/$owner/$repo/settings/actions'
+      path: '/actions'
+      fullPath: '/$owner/$repo/settings/actions'
+      preLoaderRoute: typeof ProtectedOwnerRepoSettingsActionsRouteImport
+      parentRoute: typeof ProtectedOwnerRepoSettingsRoute
+    }
+    '/_protected/$owner/$repo/settings/branches': {
+      id: '/_protected/$owner/$repo/settings/branches'
+      path: '/branches'
+      fullPath: '/$owner/$repo/settings/branches'
+      preLoaderRoute: typeof ProtectedOwnerRepoSettingsBranchesRouteImport
+      parentRoute: typeof ProtectedOwnerRepoSettingsRoute
+    }
+    '/_protected/$owner/$repo/settings/labels': {
+      id: '/_protected/$owner/$repo/settings/labels'
+      path: '/labels'
+      fullPath: '/$owner/$repo/settings/labels'
+      preLoaderRoute: typeof ProtectedOwnerRepoSettingsLabelsRouteImport
+      parentRoute: typeof ProtectedOwnerRepoSettingsRoute
+    }
+    '/_protected/$owner/$repo/settings/webhooks': {
+      id: '/_protected/$owner/$repo/settings/webhooks'
+      path: '/webhooks'
+      fullPath: '/$owner/$repo/settings/webhooks'
+      preLoaderRoute: typeof ProtectedOwnerRepoSettingsWebhooksRouteImport
+      parentRoute: typeof ProtectedOwnerRepoSettingsRoute
+    }
+    '/_protected/$owner/$repo/tree/$': {
+      id: '/_protected/$owner/$repo/tree/$'
+      path: '/$owner/$repo/tree/$'
+      fullPath: '/$owner/$repo/tree/$'
+      preLoaderRoute: typeof ProtectedOwnerRepoTreeSplatRouteImport
+      parentRoute: typeof ProtectedRoute
+    }
+    '/_protected/orgs/$org/settings/': {
+      id: '/_protected/orgs/$org/settings/'
+      path: '/'
+      fullPath: '/orgs/$org/settings/'
+      preLoaderRoute: typeof ProtectedOrgsOrgSettingsIndexRouteImport
+      parentRoute: typeof ProtectedOrgsOrgSettingsRoute
+    }
+    '/_protected/orgs/$org/settings/members': {
+      id: '/_protected/orgs/$org/settings/members'
+      path: '/members'
+      fullPath: '/orgs/$org/settings/members'
+      preLoaderRoute: typeof ProtectedOrgsOrgSettingsMembersRouteImport
+      parentRoute: typeof ProtectedOrgsOrgSettingsRoute
+    }
+    '/_protected/orgs/$org/settings/teams': {
+      id: '/_protected/orgs/$org/settings/teams'
+      path: '/teams'
+      fullPath: '/orgs/$org/settings/teams'
+      preLoaderRoute: typeof ProtectedOrgsOrgSettingsTeamsRouteImport
+      parentRoute: typeof ProtectedOrgsOrgSettingsRoute
     }
     '/_protected/$owner/$repo/actions/runs/$runId': {
       id: '/_protected/$owner/$repo/actions/runs/$runId'
       path: '/$owner/$repo/actions/runs/$runId'
       fullPath: '/$owner/$repo/actions/runs/$runId'
       preLoaderRoute: typeof ProtectedOwnerRepoActionsRunsRunIdRouteImport
+      parentRoute: typeof ProtectedRoute
+    }
+    '/_protected/$owner/$repo/releases/$tag_/edit': {
+      id: '/_protected/$owner/$repo/releases/$tag_/edit'
+      path: '/$owner/$repo/releases/$tag/edit'
+      fullPath: '/$owner/$repo/releases/$tag/edit'
+      preLoaderRoute: typeof ProtectedOwnerRepoReleasesTagEditRouteImport
       parentRoute: typeof ProtectedRoute
     }
     '/_protected/$owner/$repo/actions/runs/$runId_/job/$jobId': {

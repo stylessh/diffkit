@@ -14,7 +14,7 @@ type RepoInput = { owner: string; repo: string };
 const DETAIL_LIMIT = 20;
 
 export const getRepoRulesets = createServerFn({ method: "GET" })
-	.inputValidator(identityValidator<RepoInput>)
+	.validator(identityValidator<RepoInput>)
 	.handler(
 		({ data }): Promise<SettingsRead<RepoRuleset[]>> =>
 			readSettings("rulesets", async (octokit) => {
@@ -35,7 +35,7 @@ export const getRepoRulesets = createServerFn({ method: "GET" })
 	);
 
 export const getRepoBranchProtections = createServerFn({ method: "GET" })
-	.inputValidator(identityValidator<RepoInput>)
+	.validator(identityValidator<RepoInput>)
 	.handler(
 		({ data }): Promise<SettingsRead<BranchProtection[]>> =>
 			readSettings("branch protections", async (octokit) => {

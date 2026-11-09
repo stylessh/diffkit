@@ -425,7 +425,7 @@ async function getPullReviewCommentsResult(
 }
 
 export const getPullReviewComments = createServerFn({ method: "GET" })
-	.inputValidator(identityValidator<PullFromRepoInput>)
+	.validator(identityValidator<PullFromRepoInput>)
 	.handler(async ({ data }): Promise<PullReviewComment[]> => {
 		const context = await getGitHubContextForRepository(data);
 		if (!context) {
@@ -455,7 +455,7 @@ type GraphQLReviewThreadsResponse = {
 };
 
 export const getReviewThreadStatuses = createServerFn({ method: "GET" })
-	.inputValidator(identityValidator<PullFromRepoInput>)
+	.validator(identityValidator<PullFromRepoInput>)
 	.handler(async ({ data }): Promise<ReviewThreadInfo[]> => {
 		const context = await getGitHubContextForRepository(data);
 		if (!context) return [];
@@ -521,7 +521,7 @@ export type ResolveThreadInput = {
 };
 
 export const resolveReviewThread = createServerFn({ method: "POST" })
-	.inputValidator(identityValidator<ResolveThreadInput>)
+	.validator(identityValidator<ResolveThreadInput>)
 	.handler(async ({ data }): Promise<MutationResult> => {
 		const context = await getGitHubUserContextForRepository(data);
 		if (!context) {
@@ -544,7 +544,7 @@ export const resolveReviewThread = createServerFn({ method: "POST" })
 	});
 
 export const unresolveReviewThread = createServerFn({ method: "POST" })
-	.inputValidator(identityValidator<ResolveThreadInput>)
+	.validator(identityValidator<ResolveThreadInput>)
 	.handler(async ({ data }): Promise<MutationResult> => {
 		const context = await getGitHubUserContextForRepository(data);
 		if (!context) {
@@ -567,7 +567,7 @@ export const unresolveReviewThread = createServerFn({ method: "POST" })
 	});
 
 export const submitPullReview = createServerFn({ method: "POST" })
-	.inputValidator(identityValidator<SubmitReviewInput>)
+	.validator(identityValidator<SubmitReviewInput>)
 	.handler(async ({ data }): Promise<boolean> => {
 		const context = await getGitHubUserContextForRepository(data);
 		if (!context) {
@@ -600,7 +600,7 @@ export const submitPullReview = createServerFn({ method: "POST" })
 	});
 
 export const createReviewComment = createServerFn({ method: "POST" })
-	.inputValidator(identityValidator<CreateReviewCommentInput>)
+	.validator(identityValidator<CreateReviewCommentInput>)
 	.handler(async ({ data }): Promise<PullReviewComment | null> => {
 		const context = await getGitHubUserContextForRepository(data);
 		if (!context) {
@@ -650,7 +650,7 @@ export const createReviewComment = createServerFn({ method: "POST" })
 	});
 
 export const replyToReviewComment = createServerFn({ method: "POST" })
-	.inputValidator(identityValidator<ReplyToReviewCommentInput>)
+	.validator(identityValidator<ReplyToReviewCommentInput>)
 	.handler(async ({ data }): Promise<PullReviewComment | null> => {
 		const context = await getGitHubUserContextForRepository(data);
 		if (!context) {
@@ -703,7 +703,7 @@ export type RepoCollaboratorsInput = {
 };
 
 export const getRepoCollaborators = createServerFn({ method: "GET" })
-	.inputValidator(identityValidator<RepoCollaboratorsInput>)
+	.validator(identityValidator<RepoCollaboratorsInput>)
 	.handler(async ({ data }): Promise<RepoCollaborator[]> => {
 		const context = await getGitHubContextForRepository(data);
 		if (!context) {
@@ -765,7 +765,7 @@ export type OrgTeamsInput = {
 };
 
 export const getOrgTeams = createServerFn({ method: "GET" })
-	.inputValidator(identityValidator<OrgTeamsInput>)
+	.validator(identityValidator<OrgTeamsInput>)
 	.handler(async ({ data }): Promise<OrgTeam[]> => {
 		const context = await getGitHubContextForOwner(data.org);
 		if (!context) {
@@ -809,7 +809,7 @@ export const getOrgTeams = createServerFn({ method: "GET" })
 	});
 
 export const requestPullReviewers = createServerFn({ method: "POST" })
-	.inputValidator(identityValidator<RequestReviewersInput>)
+	.validator(identityValidator<RequestReviewersInput>)
 	.handler(async ({ data }): Promise<MutationResult> => {
 		const context = await getGitHubUserContextForRepository(data);
 		if (!context) {
@@ -831,7 +831,7 @@ export const requestPullReviewers = createServerFn({ method: "POST" })
 	});
 
 export const removeReviewRequest = createServerFn({ method: "POST" })
-	.inputValidator(identityValidator<RequestReviewersInput>)
+	.validator(identityValidator<RequestReviewersInput>)
 	.handler(async ({ data }): Promise<MutationResult> => {
 		const context = await getGitHubUserContextForRepository(data);
 		if (!context) {
@@ -861,7 +861,7 @@ export type DismissReviewInput = {
 };
 
 export const dismissPullReview = createServerFn({ method: "POST" })
-	.inputValidator(identityValidator<DismissReviewInput>)
+	.validator(identityValidator<DismissReviewInput>)
 	.handler(async ({ data }): Promise<MutationResult> => {
 		const context = await getGitHubUserContextForRepository(data);
 		if (!context) {
@@ -1000,7 +1000,7 @@ function isValidReviewId(value: unknown): value is number {
 
 /** Submit the viewer's existing pending review (instead of creating a new one). */
 export const submitPendingReview = createServerFn({ method: "POST" })
-	.inputValidator(identityValidator<SubmitPendingReviewInput>)
+	.validator(identityValidator<SubmitPendingReviewInput>)
 	.handler(async ({ data }): Promise<MutationResult> => {
 		if (
 			!isValidReviewId(data.reviewId) ||
@@ -1031,7 +1031,7 @@ export const submitPendingReview = createServerFn({ method: "POST" })
 
 /** Delete the viewer's pending review and all of its draft comments. */
 export const deletePendingReview = createServerFn({ method: "POST" })
-	.inputValidator(identityValidator<DeletePendingReviewInput>)
+	.validator(identityValidator<DeletePendingReviewInput>)
 	.handler(async ({ data }): Promise<MutationResult> => {
 		if (!isValidReviewId(data.reviewId)) {
 			return { ok: false, error: "Invalid review" };

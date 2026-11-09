@@ -27,7 +27,7 @@ async function load() {
 	vi.doMock("cloudflare:workers", () => ({ env: { GITHUB_CACHE_KV: kv } }));
 	vi.doMock("octokit", () => {
 		const Octokit = Object.assign(
-			vi.fn((options: { auth: unknown }) => {
+			vi.fn(function Octokit(options: { auth: unknown }) {
 				octokitAuths.push(options.auth);
 				return { hook: { before: vi.fn(), after: vi.fn(), error: vi.fn() } };
 			}),
@@ -35,12 +35,14 @@ async function load() {
 		);
 		return {
 			Octokit,
-			App: vi.fn(() => ({
-				octokit: {
-					auth: appAuth,
-					hook: { before: vi.fn(), after: vi.fn(), error: vi.fn() },
-				},
-			})),
+			App: vi.fn(function App() {
+				return {
+					octokit: {
+						auth: appAuth,
+						hook: { before: vi.fn(), after: vi.fn(), error: vi.fn() },
+					},
+				};
+			}),
 		};
 	});
 	vi.doMock("./github-app.server", () => ({

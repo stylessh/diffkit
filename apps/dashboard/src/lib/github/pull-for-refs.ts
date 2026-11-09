@@ -14,7 +14,7 @@ export type OpenPullForRefsInput = {
 export type OpenPullForRefs = { number: number } | null;
 
 export const getOpenPullForRefs = createServerFn({ method: "GET" })
-	.inputValidator(identityValidator<OpenPullForRefsInput>)
+	.validator(identityValidator<OpenPullForRefsInput>)
 	.handler(async ({ data }): Promise<OpenPullForRefs> => {
 		const context = await getGitHubContextForRepository(data);
 		if (!context) return null;
