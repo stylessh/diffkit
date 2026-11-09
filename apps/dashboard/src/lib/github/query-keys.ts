@@ -63,6 +63,7 @@ export type PullsFromRepoQueryInput = {
 	perPage?: number;
 	sort?: PullSort;
 	direction?: "asc" | "desc";
+	withStats?: boolean;
 };
 
 export type PullFromRepoQueryInput = {

@@ -47,7 +47,7 @@ export function RowStateIcon({
 
 export function RowNumber({ number }: { number: number }) {
 	return (
-		<span className="hidden w-[42px] shrink-0 text-[13px] font-[450] whitespace-nowrap tabular-nums text-muted-foreground md:inline">
+		<span className="hidden min-w-[42px] shrink-0 pr-2 text-[13px] font-[450] whitespace-nowrap tabular-nums text-muted-foreground md:inline">
 			#{number}
 		</span>
 	);

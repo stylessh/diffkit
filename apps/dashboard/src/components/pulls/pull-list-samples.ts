@@ -26,7 +26,7 @@ const SAMPLES: [title: string, labels: GitHubLabel[], comments: number][] = [
 	["Tidy up the settings page copy", [], 0],
 ];
 
-/** A screenful of repo pull request rows; REST lists carry no line counts. */
+/** A screenful of repo pull request rows. */
 export const SAMPLE_PULLS: PullSummary[] = SAMPLES.map(
 	([title, labels, comments], index) => ({
 		id: index,
@@ -39,6 +39,8 @@ export const SAMPLE_PULLS: PullSummary[] = SAMPLES.map(
 		closedAt: null,
 		mergedAt: null,
 		comments,
+		additions: 40 + ((index * 137) % 900),
+		deletions: (index * 53) % 120,
 		url: "",
 		author: {
 			login: "octocat",
