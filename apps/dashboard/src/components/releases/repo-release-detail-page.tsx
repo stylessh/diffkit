@@ -2,7 +2,7 @@ import { PackageIcon } from "@diffkit/icons";
 import { PageHeaderTitle } from "@diffkit/ui/components/page-header";
 import { useQuery } from "@tanstack/react-query";
 import { Link, useNavigate } from "@tanstack/react-router";
-import { DashboardContentLoading } from "#/components/layouts/dashboard-content-loading";
+import { Skeleton } from "skullet/react";
 import { RepoCrumb, RepoPageHeader } from "#/components/repo/repo-page-header";
 import { pillButtonClassName, RepoEmptyState } from "#/components/repo/repo-ui";
 import {
@@ -13,6 +13,7 @@ import {
 import { useHasMounted } from "#/lib/use-has-mounted";
 import { useRegisterTab } from "#/lib/use-register-tab";
 import { ReleaseCard } from "./release-card";
+import { SAMPLE_RELEASES } from "./release-samples";
 
 export function RepoReleaseDetailPage({
 	owner,
@@ -36,6 +37,7 @@ export function RepoReleaseDetailPage({
 		enabled: hasMounted,
 	});
 	const release = releaseQuery.data;
+	const showSkeleton = !hasMounted || releaseQuery.isPending;
 
 	useRegisterTab(
 		release
@@ -73,56 +75,63 @@ export function RepoReleaseDetailPage({
 			bodyClassName="px-0"
 		>
 			<div className="mx-auto flex w-full max-w-[780px] flex-col px-4 pt-6 md:px-[46px]">
-				{!hasMounted || releaseQuery.isPending ? (
-					<div className="flex flex-1 items-center justify-center py-24">
-						<DashboardContentLoading />
-					</div>
-				) : releaseQuery.isError ? (
-					<RepoEmptyState
-						icon={<PackageIcon />}
-						title="Couldn't load this release"
-						action={
-							<button
-								type="button"
-								onClick={() => void releaseQuery.refetch()}
-								className={pillButtonClassName}
-							>
-								Try again
-							</button>
-						}
-					/>
-				) : !release ? (
-					<RepoEmptyState
-						icon={<PackageIcon />}
-						title={`No release for ${tag}`}
-						action={
-							<Link
-								to="/$owner/$repo/tree/$"
-								params={{ owner, repo, _splat: tag }}
-								className={pillButtonClassName}
-							>
-								Browse the tag
-							</Link>
-						}
-					>
-						It may have been deleted, or the tag has no release yet.
-					</RepoEmptyState>
-				) : (
-					<ReleaseCard
-						owner={owner}
-						repo={repo}
-						scope={scope}
-						release={release}
-						variant="detail"
-						canPush={permissionQuery.data?.canPush ?? false}
-						onDeleted={() =>
-							void navigate({
-								to: "/$owner/$repo/releases",
-								params: { owner, repo },
-							})
-						}
-					/>
-				)}
+				<Skeleton loading={showSkeleton} label="Loading release">
+					{showSkeleton ? (
+						<ReleaseCard
+							owner={owner}
+							repo={repo}
+							scope={scope}
+							release={SAMPLE_RELEASES[0]}
+							variant="detail"
+							canPush={false}
+						/>
+					) : releaseQuery.isError ? (
+						<RepoEmptyState
+							icon={<PackageIcon />}
+							title="Couldn't load this release"
+							action={
+								<button
+									type="button"
+									onClick={() => void releaseQuery.refetch()}
+									className={pillButtonClassName}
+								>
+									Try again
+								</button>
+							}
+						/>
+					) : !release ? (
+						<RepoEmptyState
+							icon={<PackageIcon />}
+							title={`No release for ${tag}`}
+							action={
+								<Link
+									to="/$owner/$repo/tree/$"
+									params={{ owner, repo, _splat: tag }}
+									className={pillButtonClassName}
+								>
+									Browse the tag
+								</Link>
+							}
+						>
+							It may have been deleted, or the tag has no release yet.
+						</RepoEmptyState>
+					) : (
+						<ReleaseCard
+							owner={owner}
+							repo={repo}
+							scope={scope}
+							release={release}
+							variant="detail"
+							canPush={permissionQuery.data?.canPush ?? false}
+							onDeleted={() =>
+								void navigate({
+									to: "/$owner/$repo/releases",
+									params: { owner, repo },
+								})
+							}
+						/>
+					)}
+				</Skeleton>
 			</div>
 		</RepoPageHeader>
 	);

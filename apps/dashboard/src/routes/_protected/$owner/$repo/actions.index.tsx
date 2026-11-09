@@ -1,6 +1,7 @@
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
 import { useMemo } from "react";
+import { Skeleton } from "skullet/react";
 import {
 	apiFilterValues,
 	applyListView,
@@ -11,11 +12,11 @@ import {
 	useListFilters,
 	workflowRunSortOptions,
 } from "#/components/filters";
-import { DashboardContentLoading } from "#/components/layouts/dashboard-content-loading";
 import { Pagination } from "#/components/pagination";
 import { RepoPageHeader } from "#/components/repo/repo-page-header";
 import { ListEmpty } from "#/components/shared/list-page";
 import { WorkflowRunRow } from "#/components/workflows/workflow-run-row";
+import { SAMPLE_WORKFLOW_RUNS } from "#/components/workflows/workflow-samples";
 import {
 	githubRepoBranchesQueryOptions,
 	githubRepoOverviewQueryOptions,
@@ -160,24 +161,23 @@ function RepoActionsPage() {
 		() => applyListView(filterableRuns, filterState),
 		[filterableRuns, filterState],
 	);
+	const showSkeleton = !hasMounted || (query.isPending && !query.data);
 
 	return (
-		<>
-			<RepoPageHeader
-				owner={owner}
-				repo={repo}
-				scope={scope}
-				active="actions"
-				filters={{
-					state: filterState,
-					items: filterableRuns,
-					searchPlaceholder: "Search workflow runs…",
-				}}
-			>
-				{query.isLoading ? (
-					<div className="flex flex-1 items-center justify-center">
-						<DashboardContentLoading />
-					</div>
+		<RepoPageHeader
+			owner={owner}
+			repo={repo}
+			scope={scope}
+			active="actions"
+			filters={{
+				state: filterState,
+				items: filterableRuns,
+				searchPlaceholder: "Search workflow runs…",
+			}}
+		>
+			<Skeleton loading={showSkeleton} label="Loading workflow runs">
+				{showSkeleton ? (
+					<RunList runs={SAMPLE_WORKFLOW_RUNS} owner={owner} repo={repo} />
 				) : (
 					<div className="flex flex-col">
 						{filtered.length === 0 ? (
@@ -187,26 +187,46 @@ function RepoActionsPage() {
 									: "No workflow runs yet."}
 							</ListEmpty>
 						) : null}
-						{filtered.map((item) => (
-							<div
-								key={item.run.id}
-								style={{
-									contentVisibility: "auto",
-									containIntrinsicSize: "auto 44px",
-								}}
-							>
-								<WorkflowRunRow run={item.run} owner={owner} repo={repo} />
-							</div>
-						))}
+						<RunList
+							runs={filtered.map((item) => item.run)}
+							owner={owner}
+							repo={repo}
+						/>
 					</div>
 				)}
+			</Skeleton>
 
-				<Pagination
-					page={filterState.page}
-					hasNextPage={hasNextPage}
-					onPageChange={filterState.setPage}
-				/>
-			</RepoPageHeader>
-		</>
+			<Pagination
+				page={filterState.page}
+				hasNextPage={hasNextPage}
+				onPageChange={filterState.setPage}
+			/>
+		</RepoPageHeader>
+	);
+}
+
+function RunList({
+	runs,
+	owner,
+	repo,
+}: {
+	runs: WorkflowRun[];
+	owner: string;
+	repo: string;
+}) {
+	return (
+		<div className="flex flex-col">
+			{runs.map((run) => (
+				<div
+					key={run.id}
+					style={{
+						contentVisibility: "auto",
+						containIntrinsicSize: "auto 44px",
+					}}
+				>
+					<WorkflowRunRow run={run} owner={owner} repo={repo} />
+				</div>
+			))}
+		</div>
 	);
 }

@@ -11,7 +11,6 @@ import {
 	ResizablePanel,
 	ResizablePanelGroup,
 } from "@diffkit/ui/components/resizable";
-import { Spinner } from "@diffkit/ui/components/spinner";
 import { useQuery } from "@tanstack/react-query";
 import { getRouteApi, Link } from "@tanstack/react-router";
 import {
@@ -23,6 +22,7 @@ import {
 	useState,
 	useSyncExternalStore,
 } from "react";
+import { Skeleton } from "skullet/react";
 import type { DiffCodeViewHandle } from "#/components/diffs/diff-code-view";
 import { LazyDiffCodeView } from "#/components/diffs/lazy-diff-code-view";
 import { createActiveFileStore } from "#/components/pulls/review/review-file-tree";
@@ -34,6 +34,7 @@ import {
 } from "#/lib/github.query";
 import type { PullFileSummary, RepoCommitDetail } from "#/lib/github.types";
 import { useRegisterTab } from "#/lib/use-register-tab";
+import { SAMPLE_COMMIT_DETAIL } from "./commits/commit-samples";
 import { RepoHeader } from "./repo-header";
 import { RepoCrumb } from "./repo-page-header";
 import {
@@ -81,18 +82,20 @@ export function CommitPage() {
 	);
 
 	const commit = commitQuery.data;
+	const isLoading = commitQuery.isPending;
+	const shownCommit = commit ?? SAMPLE_COMMIT_DETAIL;
 
 	const sidebarFiles = useMemo<PullFileSummary[]>(
 		() =>
-			commit?.files.map((f) => ({
+			shownCommit.files.map((f) => ({
 				filename: f.filename,
 				status: f.status,
 				additions: f.additions,
 				deletions: f.deletions,
 				changes: f.changes,
 				previousFilename: f.previousFilename,
-			})) ?? [],
-		[commit?.files],
+			})),
+		[shownCommit.files],
 	);
 
 	const revision = `${owner}/${repo}@${commit?.sha ?? sha}`;
@@ -101,16 +104,17 @@ export function CommitPage() {
 		[commit, revision],
 	);
 
-	const diffStats = useMemo(() => {
-		if (!commit) return { totalAdditions: 0, totalDeletions: 0 };
-		return commit.files.reduce(
-			(acc, file) => ({
-				totalAdditions: acc.totalAdditions + file.additions,
-				totalDeletions: acc.totalDeletions + file.deletions,
-			}),
-			{ totalAdditions: 0, totalDeletions: 0 },
-		);
-	}, [commit]);
+	const diffStats = useMemo(
+		() =>
+			shownCommit.files.reduce(
+				(acc, file) => ({
+					totalAdditions: acc.totalAdditions + file.additions,
+					totalDeletions: acc.totalDeletions + file.deletions,
+				}),
+				{ totalAdditions: 0, totalDeletions: 0 },
+			),
+		[shownCommit.files],
+	);
 
 	useRegisterTab(
 		commit
@@ -148,31 +152,7 @@ export function CommitPage() {
 		</RepoCrumb>
 	);
 
-	if (commitQuery.isPending) {
-		return (
-			<div className="flex h-full min-h-0 flex-col">
-				<RepoHeader
-					owner={owner}
-					repo={repo}
-					scope={scope}
-					active="commits"
-					trail={
-						<>
-							{commitsCrumb}
-							<PageHeaderTitle asChild>
-								<span className="font-mono">{sha.slice(0, 7)}</span>
-							</PageHeaderTitle>
-						</>
-					}
-				/>
-				<div className="flex flex-1 items-center justify-center border-t-[0.5px] border-header-rule">
-					<Spinner size={18} className="text-muted-foreground" />
-				</div>
-			</div>
-		);
-	}
-
-	if (!commit) {
+	if (!isLoading && !commit) {
 		return (
 			<div className="flex h-full min-h-0 flex-col">
 				<RepoHeader owner={owner} repo={repo} scope={scope} active="commits" />
@@ -197,7 +177,9 @@ export function CommitPage() {
 
 	const sidebarFileCount = sidebarFiles.length;
 
-	const diffContent = (
+	const diffContent = isLoading ? (
+		<CommitDiffPanePlaceholder />
+	) : (
 		<Suspense fallback={<CommitDiffPanePlaceholder />}>
 			{diffFiles.length === 0 ? (
 				<div className="flex h-full items-center justify-center py-20 text-sm text-muted-foreground">
@@ -216,7 +198,7 @@ export function CommitPage() {
 		</Suspense>
 	);
 
-	const titleLine = commit.message.split("\n")[0];
+	const titleLine = shownCommit.message.split("\n")[0];
 
 	return (
 		<div className="flex h-full min-h-0 flex-col">
@@ -229,27 +211,33 @@ export function CommitPage() {
 					<>
 						{commitsCrumb}
 						<PageHeaderTitle asChild>
-							<span title={titleLine}>
-								<span className="shrink-0 font-mono text-muted-foreground">
-									{commit.sha.slice(0, 7)}
+							{isLoading ? (
+								<span className="font-mono">{sha.slice(0, 7)}</span>
+							) : (
+								<span title={titleLine}>
+									<span className="shrink-0 font-mono text-muted-foreground">
+										{shownCommit.sha.slice(0, 7)}
+									</span>
+									<span className="truncate">{titleLine}</span>
 								</span>
-								<span className="truncate">{titleLine}</span>
-							</span>
+							)}
 						</PageHeaderTitle>
 					</>
 				}
 			/>
-			<CommitToolbar
-				owner={owner}
-				repo={repo}
-				commit={commit}
-				sidebarFileCount={sidebarFileCount}
-				diffStats={diffStats}
-				diffStyle={diffStyle}
-				onSetDiffStyle={setDiffStyle}
-				onOpenFileSheet={() => setFileSheetOpen(true)}
-				isDesktop={isDesktop}
-			/>
+			<Skeleton loading={isLoading} label="Loading commit">
+				<CommitToolbar
+					owner={owner}
+					repo={repo}
+					commit={shownCommit}
+					sidebarFileCount={sidebarFileCount}
+					diffStats={diffStats}
+					diffStyle={diffStyle}
+					onSetDiffStyle={setDiffStyle}
+					onOpenFileSheet={() => setFileSheetOpen(true)}
+					isDesktop={isDesktop}
+				/>
+			</Skeleton>
 
 			{isDesktop ? (
 				<ResizablePanelGroup
@@ -257,12 +245,18 @@ export function CommitPage() {
 					className="flex-1 border-t-[0.5px] border-header-rule"
 				>
 					<ResizablePanel defaultSize={20} minSize={12} maxSize={40}>
-						<ReviewSidebar
-							sidebarFiles={sidebarFiles}
-							sidebarFileCount={sidebarFileCount}
-							activeFileStore={activeFileStore}
-							onFileClick={scrollToFile}
-						/>
+						<Skeleton
+							loading={isLoading}
+							label="Loading files"
+							className="h-full"
+						>
+							<ReviewSidebar
+								sidebarFiles={sidebarFiles}
+								sidebarFileCount={sidebarFileCount}
+								activeFileStore={activeFileStore}
+								onFileClick={scrollToFile}
+							/>
+						</Skeleton>
 					</ResizablePanel>
 
 					<ResizableHandle className="w-[0.5px] bg-header-rule" />

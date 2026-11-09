@@ -1,6 +1,7 @@
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
 import { useMemo } from "react";
+import { Skeleton } from "skullet/react";
 import {
 	apiFilterValues,
 	applyListView,
@@ -8,8 +9,8 @@ import {
 	repoPullFilterDefs,
 	useListFilters,
 } from "#/components/filters";
-import { DashboardContentLoading } from "#/components/layouts/dashboard-content-loading";
 import { Pagination } from "#/components/pagination";
+import { SAMPLE_PULLS } from "#/components/pulls/pull-list-samples";
 import {
 	GroupStacksToggle,
 	StackedPullList,
@@ -81,27 +82,30 @@ function RepoPullsPage() {
 	);
 
 	const [groupStacks, setGroupStacks] = useGroupStacks();
+	const showSkeleton = !hasMounted || (query.isPending && !query.data);
 
 	return (
-		<>
-			<RepoPageHeader
-				owner={owner}
-				repo={repo}
-				scope={scope}
-				active="pulls"
-				tabActions={
-					<GroupStacksToggle value={groupStacks} onChange={setGroupStacks} />
-				}
-				filters={{
-					state: filterState,
-					items: pulls,
-					searchPlaceholder: "Search pull requests…",
-				}}
-			>
-				{query.isLoading ? (
-					<div className="flex flex-1 items-center justify-center">
-						<DashboardContentLoading />
-					</div>
+		<RepoPageHeader
+			owner={owner}
+			repo={repo}
+			scope={scope}
+			active="pulls"
+			tabActions={
+				<GroupStacksToggle value={groupStacks} onChange={setGroupStacks} />
+			}
+			filters={{
+				state: filterState,
+				items: pulls,
+				searchPlaceholder: "Search pull requests…",
+			}}
+		>
+			<Skeleton loading={showSkeleton} label="Loading pull requests">
+				{showSkeleton ? (
+					<StackedPullList
+						pulls={SAMPLE_PULLS}
+						allPulls={SAMPLE_PULLS}
+						groupStacks={false}
+					/>
 				) : (
 					<div className="flex flex-col">
 						{filtered.length === 0 ? (
@@ -118,13 +122,13 @@ function RepoPullsPage() {
 						/>
 					</div>
 				)}
+			</Skeleton>
 
-				<Pagination
-					page={filterState.page}
-					hasNextPage={hasNextPage}
-					onPageChange={filterState.setPage}
-				/>
-			</RepoPageHeader>
-		</>
+			<Pagination
+				page={filterState.page}
+				hasNextPage={hasNextPage}
+				onPageChange={filterState.setPage}
+			/>
+		</RepoPageHeader>
 	);
 }

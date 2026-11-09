@@ -1,5 +1,9 @@
 import type { CommitGroup } from "#/lib/commit-groups";
-import type { RepoCommitSummary } from "#/lib/github.types";
+import type {
+	PullFile,
+	RepoCommitDetail,
+	RepoCommitSummary,
+} from "#/lib/github.types";
 
 const sampleCommit = (
 	sha: string,
@@ -49,3 +53,33 @@ export const SAMPLE_COMMIT_GROUPS: CommitGroup<RepoCommitSummary>[] =
 			);
 		}),
 	}));
+
+const sampleFile = (
+	filename: string,
+	additions: number,
+	deletions: number,
+): PullFile => ({
+	sha: null,
+	filename,
+	status: "modified",
+	additions,
+	deletions,
+	changes: additions + deletions,
+	patch: null,
+	previousFilename: null,
+});
+
+export const SAMPLE_COMMIT_DETAIL: RepoCommitDetail = {
+	sha: "0000000000000000000000000000000000000000",
+	message: "Render suggested changes inline with the diff hunk",
+	date: new Date().toISOString(),
+	author: null,
+	files: [
+		sampleFile("src/components/review/diff-hunk.tsx", 48, 12),
+		sampleFile("src/components/review/review-sidebar.tsx", 9, 9),
+		sampleFile("src/components/review/suggestion-block.tsx", 64, 0),
+		sampleFile("src/lib/patch.ts", 16, 4),
+		sampleFile("src/lib/suggestions.ts", 31, 2),
+		sampleFile("test/patch.test.ts", 22, 0),
+	],
+};
