@@ -1,6 +1,7 @@
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
 import { useMemo } from "react";
+import { Skeleton } from "skullet/react";
 import {
 	apiFilterValues,
 	applyListView,
@@ -8,12 +9,13 @@ import {
 	repoIssueFilterDefs,
 	useListFilters,
 } from "#/components/filters";
+import { SAMPLE_ISSUES } from "#/components/issues/issue-list-samples";
 import { IssueRow } from "#/components/issues/issue-row";
-import { DashboardContentLoading } from "#/components/layouts/dashboard-content-loading";
 import { Pagination } from "#/components/pagination";
 import { RepoPageHeader } from "#/components/repo/repo-page-header";
 import { ListEmpty } from "#/components/shared/list-page";
 import { githubIssuesFromRepoQueryOptions } from "#/lib/github.query";
+import type { IssueSummary } from "#/lib/github.types";
 import { buildSeo, formatPageTitle } from "#/lib/seo";
 import { useHasMounted } from "#/lib/use-has-mounted";
 
@@ -76,24 +78,23 @@ function RepoIssuesPage() {
 		() => applyListView(issues, filterState),
 		[issues, filterState],
 	);
+	const showSkeleton = !hasMounted || (query.isPending && !query.data);
 
 	return (
-		<>
-			<RepoPageHeader
-				owner={owner}
-				repo={repo}
-				scope={scope}
-				active="issues"
-				filters={{
-					state: filterState,
-					items: issues,
-					searchPlaceholder: "Search issues…",
-				}}
-			>
-				{query.isLoading ? (
-					<div className="flex flex-1 items-center justify-center">
-						<DashboardContentLoading />
-					</div>
+		<RepoPageHeader
+			owner={owner}
+			repo={repo}
+			scope={scope}
+			active="issues"
+			filters={{
+				state: filterState,
+				items: issues,
+				searchPlaceholder: "Search issues…",
+			}}
+		>
+			<Skeleton loading={showSkeleton} label="Loading issues">
+				{showSkeleton ? (
+					<IssueList issues={SAMPLE_ISSUES} />
 				) : (
 					<div className="flex flex-col">
 						{filtered.length === 0 ? (
@@ -103,26 +104,34 @@ function RepoIssuesPage() {
 									: "No issues yet."}
 							</ListEmpty>
 						) : null}
-						{filtered.map((issue) => (
-							<div
-								key={issue.id}
-								style={{
-									contentVisibility: "auto",
-									containIntrinsicSize: "auto 52px",
-								}}
-							>
-								<IssueRow issue={issue} showRepository={false} />
-							</div>
-						))}
+						<IssueList issues={filtered} />
 					</div>
 				)}
+			</Skeleton>
 
-				<Pagination
-					page={filterState.page}
-					hasNextPage={hasNextPage}
-					onPageChange={filterState.setPage}
-				/>
-			</RepoPageHeader>
-		</>
+			<Pagination
+				page={filterState.page}
+				hasNextPage={hasNextPage}
+				onPageChange={filterState.setPage}
+			/>
+		</RepoPageHeader>
+	);
+}
+
+function IssueList({ issues }: { issues: IssueSummary[] }) {
+	return (
+		<div className="flex flex-col">
+			{issues.map((issue) => (
+				<div
+					key={issue.id}
+					style={{
+						contentVisibility: "auto",
+						containIntrinsicSize: "auto 52px",
+					}}
+				>
+					<IssueRow issue={issue} showRepository={false} />
+				</div>
+			))}
+		</div>
 	);
 }

@@ -1,3 +1,4 @@
+import { SAMPLE_AVATAR_URL } from "#/components/shared/skeleton-sample";
 import type {
 	WorkflowRun,
 	WorkflowRunJob,
@@ -83,3 +84,48 @@ export const SAMPLE_WORKFLOW_JOBS: WorkflowRunJob[] = [
 	SAMPLE_WORKFLOW_JOB,
 	sampleJob(3, "Build"),
 ];
+
+const SAMPLE_RUN_TITLES: [title: string, event: string, branch: string][] = [
+	[
+		"Update dependency versions across the workspace",
+		"pull_request",
+		"chore/update-dependencies",
+	],
+	["Add keyboard shortcuts to the review sidebar", "push", "main"],
+	["Fix flaky timeline test", "pull_request", "fix/flaky-timeline"],
+	["Nightly", "schedule", "main"],
+	[
+		"Render suggested changes inline",
+		"pull_request",
+		"feature/inline-suggestions",
+	],
+	["Release v2.4.0", "release", "v2.4.0"],
+	["Retry webhook deliveries with backoff", "push", "main"],
+	["Deploy preview", "workflow_dispatch", "feature/settings-layout"],
+	["Cache directory listings per ref", "pull_request", "perf/tree-cache"],
+	["Tidy up the settings page copy", "push", "main"],
+	[
+		"Show ahead and behind counts on branches",
+		"pull_request",
+		"feature/branch-meter",
+	],
+	["Document the release process", "push", "main"],
+];
+
+/** A screenful of repo workflow run rows. */
+export const SAMPLE_WORKFLOW_RUNS: WorkflowRun[] = SAMPLE_RUN_TITLES.map(
+	([displayTitle, event, headBranch], index) => ({
+		...SAMPLE_WORKFLOW_RUN,
+		id: index,
+		displayTitle,
+		event,
+		headBranch,
+		runNumber: SAMPLE_WORKFLOW_RUN.runNumber - index,
+		actor: {
+			login: "octocat",
+			avatarUrl: SAMPLE_AVATAR_URL,
+			url: "",
+			type: "User",
+		},
+	}),
+);
