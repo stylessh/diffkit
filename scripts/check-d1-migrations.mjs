@@ -12,8 +12,8 @@ import { parseArgs } from "node:util";
 
 const REPO_ROOT = resolve(import.meta.dirname, "..");
 const DASHBOARD_DIR = join(REPO_ROOT, "apps/dashboard");
-const MIGRATIONS_DIR = join(DASHBOARD_DIR, "drizzle");
-const MIGRATIONS_PATH = "apps/dashboard/drizzle/";
+const MIGRATIONS_DIR = join(DASHBOARD_DIR, "db/migrations");
+const MIGRATIONS_PATH = "apps/dashboard/db/migrations/";
 
 const DESTRUCTIVE_MARKER = /migration-destructive:\s*approved/i;
 const EDIT_MARKER = /migration-edit:\s*approved/i;

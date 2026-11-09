@@ -6,7 +6,7 @@ import {
 } from "#/lib/security-headers.server";
 
 // TanStack Start's type only declares (request, env?) but the runtime
-// handler created by @cloudflare/vite-plugin passes (request, env, ctx)
+// handler created by the Cloudflare Vite plugin passes (request, env, ctx)
 // through to the underlying Worker fetch signature.
 type WorkerFetch = (
 	request: Request,

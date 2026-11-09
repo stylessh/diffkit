@@ -22,7 +22,7 @@
     "ultracite": "^7.4.3"
   },
   "engines": {
-    "node": ">=22"
+    "node": ">=24.22"
   },
   "packageManager": "pnpm@10.15.0",
   "pnpm": {

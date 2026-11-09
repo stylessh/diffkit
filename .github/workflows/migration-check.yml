@@ -4,7 +4,7 @@ on:
   pull_request:
     types: [opened, synchronize, reopened, edited]
     paths:
-      - "apps/dashboard/drizzle/**"
+      - "apps/dashboard/db/migrations/**"
       - "apps/dashboard/src/db/**"
       - "apps/dashboard/drizzle.config.ts"
       - "scripts/check-d1-migrations.mjs"
@@ -31,7 +31,7 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: 22
+          node-version-file: .node-version
           cache: pnpm
 
       - name: Install dependencies

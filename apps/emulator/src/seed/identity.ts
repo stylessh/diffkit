@@ -2,7 +2,7 @@
  * Fixed identities for the local demo workspace.
  *
  * Every value here is a throwaway credential that only works against the local
- * emulator. `apps/dashboard/.dev.vars.demo` mirrors them, and a test keeps the
+ * emulator. `apps/emulator/dashboard.env` mirrors them, and a test keeps the
  * two files in sync.
  */
 import { generateKeyPairSync } from "node:crypto";

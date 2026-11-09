@@ -15,14 +15,11 @@
 		"lint": "biome lint",
 		"check": "biome check",
 		"check-types": "tsc --noEmit",
-		"migrate": "pnpm run migrate:local",
-		"migrate:local": "node --experimental-strip-types ../../scripts/run-d1-migrations.mjs DB --local",
-		"migrate:remote": "node --experimental-strip-types ../../scripts/run-d1-migrations.mjs DB --remote",
-		"deploy": "pnpm run build && wrangler deploy",
-		"deploy:ci": "pnpm run build && wrangler deploy"
+		"migrate": "void db migrate",
+		"migrate:remote": "void db migrate --remote",
+		"deploy": "void deploy --platform cloudflare"
 	},
 	"dependencies": {
-		"@cloudflare/vite-plugin": "^1.67.0",
 		"@diffkit/icons": "workspace:*",
 		"@diffkit/ui": "workspace:*",
 		"@noble/ciphers": "^2.1.1",
@@ -77,6 +74,7 @@
 		"vite": "^8.3.6",
 		"vite-tsconfig-paths": "^6.1.1",
 		"vitest": "^4.1.12",
+		"void": "1.7.0",
 		"wrangler": "^4.158.0"
 	}
 }

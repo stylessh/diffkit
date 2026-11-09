@@ -204,10 +204,10 @@ describe("webhooks", () => {
 	});
 });
 
-describe(".dev.vars.demo", () => {
+describe("dashboard.env", () => {
 	it("matches the emulator's seeded credentials", () => {
 		const text = readFileSync(
-			new URL("../../../dashboard/.dev.vars.demo", import.meta.url),
+			new URL("../../dashboard.env", import.meta.url),
 			"utf8",
 		);
 		const vars = Object.fromEntries(

@@ -24,9 +24,9 @@ function createLogger(tag) {
 
 export function assertToolchain() {
   const [major, minor] = process.versions.node.split(".").map(Number);
-  if (major < 22 || (major === 22 && minor < 6)) {
+  if (major < 24 || (major === 24 && minor < 22)) {
     throw new DevSetupError(
-      `Node ${process.versions.node} is too old. DiffKit needs Node 22.6 or newer (the emulator runs TypeScript with --experimental-strip-types).`
+      `Node ${process.versions.node} is too old. DiffKit needs Node 24.22 or newer (Void's minimum; .node-version pins it).`
     );
   }
   if (!existsSync(path.join(dashboardDir, "node_modules/.bin/vite"))) {

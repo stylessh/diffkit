@@ -35,7 +35,7 @@ let emulatorAppPrivateKey: Promise<string | null> | null = null;
 
 /**
  * Demo mode only: the emulator generates the demo GitHub App's key on first
- * run, so `.dev.vars.demo` does not have to carry a private key.
+ * run, so `apps/emulator/dashboard.env` does not have to carry a private key.
  */
 export function getGitHubEmulatorAppPrivateKey(): Promise<string | null> {
 	const emulatorUrl = getGitHubEmulatorUrl();
