@@ -14,6 +14,7 @@ import { resolveGitHubMarkdownAssetUrl } from "#/components/repo/repo-markdown-f
 import { formatRelativeTime } from "#/lib/format-relative-time";
 import type { GitHubQueryScope } from "#/lib/github.query";
 import type { RepoRelease } from "#/lib/github.types";
+import { plainExcerpt } from "#/lib/plain-excerpt";
 import { ReleaseAssets } from "./release-assets";
 import { ReleaseCardActions } from "./release-card-actions";
 import {
@@ -328,19 +329,6 @@ const DOT_TONE: Record<ReleaseStatusBadge | "published", string> = {
 	draft: "bg-icon-faint ring-icon-faint/25",
 	published: "bg-icon-faint ring-transparent",
 };
-
-/** Markdown's marks dropped, for a one-line excerpt of folded notes. */
-function plainExcerpt(body: string) {
-	return body
-		.replace(/<!--[\s\S]*?-->/g, " ")
-		.replace(/```[\s\S]*?```/g, " ")
-		.replace(/!?\[([^\]]*)\]\([^)]*\)/g, "$1")
-		.replace(/^#+\s.*$/gm, " ")
-		.replace(/^\s*(?:[-*+]|\d+\.)\s+/gm, " ")
-		.replace(/[*_`>|]+/g, " ")
-		.replace(/\s+/g, " ")
-		.trim();
-}
 
 /**
  * One release in the changelog timeline: its date in the gutter, a dot on the

@@ -1,664 +1,381 @@
 import {
+	ChevronRightIcon,
 	CircleIcon,
-	CodeIcon,
 	CommentIcon,
-	GitBranchIcon,
 	GitCommitIcon,
-	GitPullRequestIcon,
+	GitForkIcon,
 	IssuesIcon,
+	ReviewsIcon,
 	StarIcon,
 } from "@diffkit/icons";
+import { LineCounts } from "@diffkit/ui/components/detail-layout";
 import { cn } from "@diffkit/ui/lib/utils";
+import { Link } from "@tanstack/react-router";
+import { useState } from "react";
+import { TagIcon } from "#/components/repo/refs/tag-icon";
 import { formatRelativeTime } from "#/lib/format-relative-time";
 import type { UserActivityEvent } from "#/lib/github.types";
+import { plainExcerpt } from "#/lib/plain-excerpt";
 import { getPrStateConfig } from "#/lib/pr-state";
+import {
+	type ActivityItem,
+	buildActivityMonths,
+	type CommitRepo,
+} from "#/lib/user-activity-feed";
 
-type MonthGroup = {
-	label: string;
-	items: FeedItem[];
-};
+const ICON = { size: 14, strokeWidth: 2 } as const;
 
-type FeedItem =
-	| { kind: "event"; event: UserActivityEvent }
-	| { kind: "commits"; summary: CommitsSummary }
-	| {
-			kind: "prs";
-			highlighted: UserActivityEvent[];
-			summary: PrSummary | null;
-	  };
-
-type CommitsSummary = {
-	totalCommits: number;
-	repos: Array<{ name: string; url: string; commits: number }>;
-};
-
-type PrSummary = {
-	totalPrs: number;
-	repos: Array<{
-		name: string;
-		url: string;
-		open: number;
-		merged: number;
-		closed: number;
-	}>;
-};
-
-function buildMonthGroups(events: UserActivityEvent[]): MonthGroup[] {
-	const sorted = [...events].sort(
-		(a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
-	);
-
-	const groupMap = new Map<string, UserActivityEvent[]>();
-
-	for (const event of sorted) {
-		const date = new Date(event.createdAt);
-		const key = `${date.getFullYear()}-${String(date.getMonth()).padStart(2, "0")}`;
-
-		let group = groupMap.get(key);
-		if (!group) {
-			group = [];
-			groupMap.set(key, group);
-		}
-		group.push(event);
-	}
-
-	return Array.from(groupMap.entries()).map(([, groupEvents]) => {
-		const filtered = groupEvents.filter(
-			(e) => e.type !== "CreateEvent" && e.type !== "DeleteEvent",
-		);
-		const pushEvents = filtered.filter((e) => e.type === "PushEvent");
-		const prEvents = filtered.filter((e) => e.type === "PullRequestEvent");
-		const otherEvents = filtered.filter(
-			(e) => e.type !== "PushEvent" && e.type !== "PullRequestEvent",
-		);
-
-		const items: FeedItem[] = otherEvents.map((event) => ({
-			kind: "event",
-			event,
-		}));
-
-		if (pushEvents.length > 0) {
-			const repoMap = new Map<
-				string,
-				{ name: string; url: string; commits: number }
-			>();
-			let totalCommits = 0;
-
-			for (const push of pushEvents) {
-				const commitCount = push.commits?.length ?? 1;
-				totalCommits += commitCount;
-				const existing = repoMap.get(push.repo.name);
-				if (existing) {
-					existing.commits += commitCount;
-				} else {
-					repoMap.set(push.repo.name, {
-						name: push.repo.name,
-						url: push.repo.url,
-						commits: commitCount,
-					});
-				}
-			}
-
-			const repos = Array.from(repoMap.values()).sort(
-				(a, b) => b.commits - a.commits,
-			);
-
-			items.unshift({
-				kind: "commits",
-				summary: {
-					totalCommits,
-					repos,
-				},
-			});
-		}
-
-		if (prEvents.length > 0) {
-			// Deduplicate PR events by PR number — keep the latest event per PR
-			// so we reflect the most recent state (e.g. merged > closed > opened)
-			const prByKey = new Map<string, UserActivityEvent>();
-			for (const pr of prEvents) {
-				const key = `${pr.repo.name}#${pr.prDetail?.number ?? pr.id}`;
-				const existing = prByKey.get(key);
-				if (
-					!existing ||
-					new Date(pr.createdAt) > new Date(existing.createdAt)
-				) {
-					prByKey.set(key, pr);
-				}
-			}
-			const uniquePrs = Array.from(prByKey.values()).sort(
-				(a, b) =>
-					new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
-			);
-
-			const highlighted = uniquePrs.slice(0, 3);
-			const rest = uniquePrs.slice(3);
-
-			let summary: PrSummary | null = null;
-			if (rest.length > 0) {
-				const repoMap = new Map<
-					string,
-					{
-						name: string;
-						url: string;
-						open: number;
-						merged: number;
-						closed: number;
-					}
-				>();
-
-				for (const pr of rest) {
-					const state = pr.prDetail?.state ?? "open";
-					const existing = repoMap.get(pr.repo.name);
-					if (existing) {
-						if (state === "merged") existing.merged++;
-						else if (state === "closed") existing.closed++;
-						else existing.open++;
-					} else {
-						repoMap.set(pr.repo.name, {
-							name: pr.repo.name,
-							url: pr.repo.url,
-							open: state === "open" ? 1 : 0,
-							merged: state === "merged" ? 1 : 0,
-							closed: state === "closed" ? 1 : 0,
-						});
-					}
-				}
-
-				summary = {
-					totalPrs: rest.length,
-					repos: Array.from(repoMap.values()).sort(
-						(a, b) =>
-							b.open + b.merged + b.closed - (a.open + a.merged + a.closed),
-					),
-				};
-			}
-
-			items.unshift({
-				kind: "prs",
-				highlighted,
-				summary,
-			});
-		}
-
-		return {
-			label: new Date(groupEvents[0].createdAt).toLocaleDateString("en-US", {
-				month: "long",
-				year: "numeric",
-			}),
-			items,
-		};
-	});
+function splitRepo(fullName: string) {
+	const [owner = "", repo = ""] = fullName.split("/");
+	return { owner, repo };
 }
 
+function capitalize(word: string | null) {
+	return word ? word.charAt(0).toUpperCase() + word.slice(1) : "";
+}
+
+const titleLinkClassName =
+	"min-w-0 truncate font-medium text-foreground decoration-muted-foreground/40 underline-offset-2 hover:underline";
+
+/**
+ * The profile's recent activity: months as quiet headings, then one line per
+ * thing that happened, on a guide rail. Detail stays a click away: titles
+ * open the pull request or issue, and a month's commits unfold per repository.
+ */
 export function UserActivityFeed({ events }: { events: UserActivityEvent[] }) {
-	if (events.length === 0) {
+	const months = buildActivityMonths(events);
+
+	if (months.length === 0) {
 		return (
-			<p className="py-6 text-center text-sm text-muted-foreground">
+			<p className="py-6 text-[13px] text-muted-foreground">
 				No recent activity.
 			</p>
 		);
 	}
 
-	const groups = buildMonthGroups(events);
-
 	return (
-		<div
-			className={cn(
-				"relative flex flex-col px-3",
-				"before:absolute before:left-[21px] before:top-0 before:h-full before:w-px",
-				"before:bg-gradient-to-b before:from-border before:via-border before:to-transparent",
-			)}
-		>
-			{groups.map((group, groupIdx) => (
-				<div key={group.label}>
-					<div
-						className={cn(
-							"relative z-10 pl-5",
-							groupIdx === 0 ? "pt-4 pb-2" : "pt-5 pb-2",
-						)}
-					>
-						<span className="inline-block rounded-full border-[0.5px] border-border bg-surface-1 px-2.5 py-0.5 text-[11px] font-medium text-muted-foreground">
-							{group.label}
-						</span>
-					</div>
-					{group.items.map((item) => {
-						if (item.kind === "commits") {
-							return (
-								<CommitsSummaryRow
-									key="commits-summary"
-									summary={item.summary}
-								/>
-							);
-						}
-						if (item.kind === "prs") {
-							return (
-								<PrGroupRow
-									key="prs-group"
-									highlighted={item.highlighted}
-									summary={item.summary}
-								/>
-							);
-						}
-						return <ActivityEventRow key={item.event.id} event={item.event} />;
-					})}
-				</div>
+		<div className="flex flex-col gap-5">
+			{months.map((month) => (
+				<section key={month.key} aria-label={month.label}>
+					<h3 className="mb-1 pl-7 text-xs font-medium text-muted-foreground">
+						{month.label}
+					</h3>
+					<ol className="relative before:absolute before:top-3 before:bottom-3 before:left-[7.5px] before:w-px before:bg-activity-line/50">
+						{month.items.map((item) => (
+							<ActivityLine key={item.key} item={item} />
+						))}
+					</ol>
+				</section>
 			))}
 		</div>
 	);
 }
 
-function CommitsSummaryRow({ summary }: { summary: CommitsSummary }) {
+function ActivityLine({ item }: { item: ActivityItem }) {
+	if (item.kind === "commits") return <CommitsLine item={item} />;
+	if (item.kind === "pull") return <PullLine event={item.event} />;
+	return <EventLine event={item.event} />;
+}
+
+/** A row's frame: the rail icon, the sentence, then what sits on the right. */
+function Line({
+	icon,
+	children,
+	meta,
+	time,
+	below,
+}: {
+	icon: React.ReactNode;
+	children: React.ReactNode;
+	meta?: React.ReactNode;
+	time: string;
+	below?: React.ReactNode;
+}) {
 	return (
-		<div className="flex items-start gap-3 py-2">
-			<div className="relative z-10 flex size-5 shrink-0 items-center justify-center rounded-full border-[0.5px] border-border bg-card">
-				<GitCommitIcon
+		<li className="relative flex flex-col">
+			<div className="flex h-9 min-w-0 items-center gap-3 text-[13px]">
+				<span className="relative flex size-4 shrink-0 items-center justify-center rounded-full bg-background ring-4 ring-background">
+					{icon}
+				</span>
+				<span className="flex min-w-0 flex-1 items-center gap-1.5">
+					{children}
+				</span>
+				{meta ? (
+					<span className="hidden shrink-0 items-center gap-3 text-xs text-muted-foreground sm:flex">
+						{meta}
+					</span>
+				) : null}
+				<time
+					dateTime={time}
+					className="w-16 shrink-0 whitespace-nowrap text-right text-xs tabular-nums text-muted-foreground"
+				>
+					{formatRelativeTime(time)}
+				</time>
+			</div>
+			{below}
+		</li>
+	);
+}
+
+function Verb({ children }: { children: React.ReactNode }) {
+	return <span className="shrink-0 text-muted-foreground">{children}</span>;
+}
+
+function RepoMeta({ name }: { name: string }) {
+	return <span className="max-w-44 truncate">{name}</span>;
+}
+
+function PullLine({ event }: { event: UserActivityEvent }) {
+	const pr = event.prDetail;
+	const { owner, repo } = splitRepo(event.repo.name);
+	const state = pr ? getPrStateConfig(pr) : null;
+	const StateIcon = state?.icon;
+	const verb =
+		state?.label === "Merged"
+			? "Merged"
+			: state?.label === "Closed"
+				? "Closed"
+				: capitalize(event.action) || "Opened";
+	const title = event.title ?? (pr ? `#${pr.number}` : "a pull request");
+
+	return (
+		<Line
+			time={event.createdAt}
+			icon={
+				StateIcon ? (
+					<StateIcon {...ICON} className={state.color} />
+				) : (
+					<CircleIcon {...ICON} className="text-muted-foreground" />
+				)
+			}
+			meta={
+				<>
+					{pr && (pr.additions > 0 || pr.deletions > 0) ? (
+						<LineCounts additions={pr.additions} deletions={pr.deletions} />
+					) : null}
+					<RepoMeta name={event.repo.name} />
+				</>
+			}
+		>
+			<Verb>{verb}</Verb>
+			{pr && owner && repo ? (
+				<Link
+					to="/$owner/$repo/pull/$pullId"
+					params={{ owner, repo, pullId: String(pr.number) }}
+					className={titleLinkClassName}
+				>
+					{title}
+				</Link>
+			) : (
+				<span className="min-w-0 truncate font-medium text-foreground">
+					{title}
+				</span>
+			)}
+		</Line>
+	);
+}
+
+function CommitsLine({
+	item,
+}: {
+	item: Extract<ActivityItem, { kind: "commits" }>;
+}) {
+	const [open, setOpen] = useState(false);
+	const listId = `activity-commits-${item.at}`;
+	const repoCount = item.repos.length;
+
+	return (
+		<Line
+			time={item.at}
+			icon={<GitCommitIcon {...ICON} className="text-muted-foreground" />}
+			below={open ? <CommitRepos id={listId} repos={item.repos} /> : null}
+		>
+			<button
+				type="button"
+				aria-expanded={open}
+				aria-controls={listId}
+				onClick={() => setOpen((value) => !value)}
+				className="-mx-1.5 flex min-w-0 items-center gap-1.5 rounded-md px-1.5 py-1 transition-colors hover:bg-ghost-hover"
+			>
+				<Verb>Pushed</Verb>
+				<span className="shrink-0 font-medium text-foreground tabular-nums">
+					{item.total} {item.total === 1 ? "commit" : "commits"}
+				</span>
+				<span className="truncate text-muted-foreground">
+					to {repoCount} {repoCount === 1 ? "repository" : "repositories"}
+				</span>
+				<ChevronRightIcon
 					size={12}
 					strokeWidth={2}
-					className="size-3 text-muted-foreground"
-				/>
-			</div>
-			<div className="flex min-w-0 flex-1 flex-col gap-1.5 pt-px">
-				<span className="text-[13px] text-muted-foreground">
-					Created{" "}
-					<span className="font-medium text-foreground">
-						{summary.totalCommits} commit
-						{summary.totalCommits !== 1 ? "s" : ""}
-					</span>{" "}
-					in{" "}
-					<span className="font-medium text-foreground">
-						{summary.repos.length} repositor
-						{summary.repos.length !== 1 ? "ies" : "y"}
-					</span>
-				</span>
-				<div className="flex flex-col gap-0.5">
-					{summary.repos.map((repo) => (
-						<div key={repo.name} className="flex items-center gap-2 text-xs">
-							<a
-								href={repo.url}
-								target="_blank"
-								rel="noopener noreferrer"
-								className="text-foreground hover:underline"
-							>
-								{repo.name}
-							</a>
-							<span className="text-muted-foreground">
-								{repo.commits} commit{repo.commits !== 1 ? "s" : ""}
-							</span>
-						</div>
-					))}
-				</div>
-			</div>
-		</div>
-	);
-}
-
-function PrGroupRow({
-	highlighted,
-	summary,
-}: {
-	highlighted: UserActivityEvent[];
-	summary: PrSummary | null;
-}) {
-	return (
-		<div className="flex flex-col gap-2 py-2">
-			{highlighted.map((event) => (
-				<ActivityEventRow key={event.id} event={event} />
-			))}
-			{summary && (
-				<div className="flex items-start gap-3 py-2">
-					<div className="relative z-10 flex size-5 shrink-0 items-center justify-center rounded-full border-[0.5px] border-border bg-card">
-						<GitPullRequestIcon
-							size={12}
-							strokeWidth={2}
-							className="size-3 text-muted-foreground"
-						/>
-					</div>
-					<div className="flex min-w-0 flex-1 flex-col gap-1.5 pt-px">
-						<span className="text-[13px] text-muted-foreground">
-							Opened{" "}
-							<span className="font-medium text-foreground">
-								{summary.totalPrs} other pull request
-								{summary.totalPrs !== 1 ? "s" : ""}
-							</span>{" "}
-							in{" "}
-							<span className="font-medium text-foreground">
-								{summary.repos.length} repositor
-								{summary.repos.length !== 1 ? "ies" : "y"}
-							</span>
-						</span>
-						<div className="flex flex-col gap-0.5">
-							{summary.repos.map((repo) => (
-								<div
-									key={repo.name}
-									className="flex items-center gap-2 text-xs"
-								>
-									<a
-										href={repo.url}
-										target="_blank"
-										rel="noopener noreferrer"
-										className="text-foreground hover:underline"
-									>
-										{repo.name}
-									</a>
-									<div className="flex items-center gap-1.5 text-[11px]">
-										{repo.closed > 0 && (
-											<span className="text-danger">{repo.closed} closed</span>
-										)}
-										{repo.merged > 0 && (
-											<span className="text-merged">{repo.merged} merged</span>
-										)}
-										{repo.open > 0 && (
-											<span className="text-success">{repo.open} open</span>
-										)}
-									</div>
-								</div>
-							))}
-						</div>
-					</div>
-				</div>
-			)}
-		</div>
-	);
-}
-
-function ActivityEventRow({ event }: { event: UserActivityEvent }) {
-	const icon = getEventIcon(event);
-	const description = getEventDescription(event);
-	const hasCard = event.prDetail || event.issueDetail;
-
-	return (
-		<div className="flex items-start gap-3 py-2">
-			<div className="relative z-10 flex size-5 shrink-0 items-center justify-center rounded-full border-[0.5px] border-border bg-card">
-				{icon}
-			</div>
-			<div className="flex min-w-0 flex-1 flex-col gap-1 pt-px">
-				<div className="flex items-baseline justify-between gap-2">
-					<span className="text-[13px] text-muted-foreground">
-						{description}
-					</span>
-					<span className="shrink-0 text-xs text-muted-foreground">
-						{formatRelativeTime(event.createdAt)}
-					</span>
-				</div>
-				{event.prDetail && (
-					<PrCard pr={event.prDetail} title={event.title} repo={event.repo} />
-				)}
-				{event.issueDetail && (
-					<IssueCard
-						issue={event.issueDetail}
-						title={event.title}
-						repo={event.repo}
-					/>
-				)}
-				{!hasCard && event.commentBody && (
-					<p className="line-clamp-2 text-xs text-muted-foreground/80">
-						{event.commentBody}
-					</p>
-				)}
-			</div>
-		</div>
-	);
-}
-
-function PrCard({
-	pr,
-	title,
-	repo,
-}: {
-	pr: NonNullable<UserActivityEvent["prDetail"]>;
-	title: string | null;
-	repo: { name: string; url: string };
-}) {
-	// Build internal link: repo.name is "owner/repo"
-	const [owner, repoName] = repo.name.split("/");
-	const href =
-		owner && repoName ? `/${owner}/${repoName}/pull/${pr.number}` : pr.url;
-	const hasDiff = pr.additions > 0 || pr.deletions > 0;
-	const stateConfig = getPrStateConfig(pr);
-	const StateIcon = stateConfig.icon;
-
-	return (
-		<a
-			href={href}
-			className="flex flex-col gap-2.5 rounded-lg bg-surface-1 p-3"
-		>
-			<div className="flex items-center gap-1.5 min-w-0">
-				<StateIcon
-					size={13}
-					strokeWidth={2}
-					className={cn("shrink-0", stateConfig.color)}
-				/>
-				<span className="truncate text-xs font-medium text-foreground">
-					{title ?? `#${pr.number}`}
-				</span>
-				{pr.isDraft && (
-					<span className="shrink-0 rounded-full border-[0.5px] border-border px-1.5 py-px text-[10px] text-muted-foreground">
-						Draft
-					</span>
-				)}
-			</div>
-			{pr.body && (
-				<p className="line-clamp-2 text-xs text-muted-foreground leading-relaxed">
-					{pr.body}
-				</p>
-			)}
-			{pr.labels.length > 0 && (
-				<div className="flex flex-wrap gap-1">
-					{pr.labels.map((label) => (
-						<span
-							key={label.name}
-							className="rounded-full px-1.5 py-px text-[10px] font-medium"
-							style={{
-								backgroundColor: `#${label.color}20`,
-								color: `#${label.color}`,
-							}}
-						>
-							{label.name}
-						</span>
-					))}
-				</div>
-			)}
-			<div className="flex items-center gap-3 text-[11px] text-muted-foreground">
-				{hasDiff && (
-					<>
-						<span className="text-success">
-							+{pr.additions.toLocaleString()}
-						</span>
-						<span className="text-danger">
-							-{pr.deletions.toLocaleString()}
-						</span>
-					</>
-				)}
-				{pr.changedFiles > 0 && (
-					<span>
-						{pr.changedFiles} file{pr.changedFiles !== 1 ? "s" : ""}
-					</span>
-				)}
-				{pr.comments > 0 && (
-					<span className="flex items-center gap-1">
-						<CommentIcon size={11} strokeWidth={2} />
-						{pr.comments}
-					</span>
-				)}
-			</div>
-			{pr.headRef && pr.baseRef && pr.state !== "closed" && (
-				<div className="mt-auto flex min-w-0 items-center gap-1 text-[11px] text-muted-foreground">
-					<span className="min-w-0 shrink truncate rounded bg-surface-2 px-1.5 py-0.5 font-mono text-[11px] font-[550]">
-						{pr.headRef}
-					</span>
-					<span className="shrink-0">→</span>
-					<span className="shrink-0 rounded bg-surface-2 px-1.5 py-0.5 font-mono text-[11px] font-[550]">
-						{pr.baseRef}
-					</span>
-				</div>
-			)}
-		</a>
-	);
-}
-
-function IssueCard({
-	issue,
-	title,
-	repo,
-}: {
-	issue: NonNullable<UserActivityEvent["issueDetail"]>;
-	title: string | null;
-	repo: { name: string; url: string };
-}) {
-	const [owner, repoName] = repo.name.split("/");
-	const href =
-		owner && repoName
-			? `/${owner}/${repoName}/issues/${issue.number}`
-			: issue.url;
-
-	return (
-		<a
-			href={href}
-			className="flex flex-col gap-2.5 rounded-lg bg-surface-1 p-3"
-		>
-			<div className="flex items-center gap-1.5 min-w-0">
-				<IssuesIcon
-					size={13}
-					strokeWidth={2}
 					className={cn(
-						"shrink-0",
-						issue.state === "open" ? "text-success" : "text-merged",
+						"shrink-0 text-muted-foreground transition-transform duration-150",
+						open && "rotate-90",
 					)}
 				/>
-				<span className="truncate text-xs font-medium text-foreground">
-					{title ?? `#${issue.number}`}
-				</span>
-			</div>
-			{issue.body && (
-				<p className="line-clamp-2 text-xs text-muted-foreground leading-relaxed">
-					{issue.body}
-				</p>
-			)}
-			{issue.comments > 0 && (
-				<div className="flex items-center gap-1 text-[11px] text-muted-foreground">
-					<CommentIcon size={11} strokeWidth={2} />
-					{issue.comments}
-				</div>
-			)}
-		</a>
+			</button>
+		</Line>
 	);
 }
 
-function getEventIcon(event: UserActivityEvent) {
-	const cls = "size-3 text-muted-foreground";
-	const sw = 2;
-
-	switch (event.type) {
-		case "PushEvent":
-			return <GitCommitIcon size={12} strokeWidth={sw} className={cls} />;
-		case "CreateEvent":
-		case "DeleteEvent":
-			return <GitBranchIcon size={12} strokeWidth={sw} className={cls} />;
-		case "PullRequestEvent":
-		case "PullRequestReviewEvent":
-			return <GitPullRequestIcon size={12} strokeWidth={sw} className={cls} />;
-		case "IssuesEvent":
-			return <IssuesIcon size={12} strokeWidth={sw} className={cls} />;
-		case "IssueCommentEvent":
-			return <CommentIcon size={12} strokeWidth={sw} className={cls} />;
-		case "WatchEvent":
-			return <StarIcon size={12} strokeWidth={sw} className={cls} />;
-		case "ForkEvent":
-			return <CodeIcon size={12} strokeWidth={sw} className={cls} />;
-		case "ReleaseEvent":
-			return <CircleIcon size={12} strokeWidth={sw} className={cls} />;
-		default:
-			return <CircleIcon size={12} strokeWidth={sw} className={cls} />;
-	}
-}
-
-function getEventDescription(event: UserActivityEvent) {
-	const repo = (
-		<a
-			href={event.repo.url}
-			target="_blank"
-			rel="noopener noreferrer"
-			className="font-medium text-foreground hover:underline"
-		>
-			{event.repo.name}
-		</a>
+function CommitRepos({ id, repos }: { id: string; repos: CommitRepo[] }) {
+	return (
+		<ul id={id} className="mb-1.5 flex flex-col pl-7">
+			{repos.map((repo) => {
+				const { owner, repo: name } = splitRepo(repo.name);
+				return (
+					<li
+						key={repo.name}
+						className="flex h-7 items-center gap-2 text-[13px]"
+					>
+						{owner && name ? (
+							<Link
+								to="/$owner/$repo"
+								params={{ owner, repo: name }}
+								className={cn(titleLinkClassName, "font-normal")}
+							>
+								{repo.name}
+							</Link>
+						) : (
+							<span className="truncate">{repo.name}</span>
+						)}
+						<span className="shrink-0 text-xs tabular-nums text-muted-foreground">
+							{repo.commits} {repo.commits === 1 ? "commit" : "commits"}
+						</span>
+					</li>
+				);
+			})}
+		</ul>
 	);
+}
+
+function EventLine({ event }: { event: UserActivityEvent }) {
+	const { owner, repo } = splitRepo(event.repo.name);
+	const repoLink =
+		owner && repo ? (
+			<Link
+				to="/$owner/$repo"
+				params={{ owner, repo }}
+				className={titleLinkClassName}
+			>
+				{event.repo.name}
+			</Link>
+		) : (
+			<span className="truncate font-medium">{event.repo.name}</span>
+		);
+	const issue = event.issueDetail;
+	const issueLink =
+		issue && owner && repo ? (
+			<Link
+				to="/$owner/$repo/issues/$issueId"
+				params={{ owner, repo, issueId: String(issue.number) }}
+				className={titleLinkClassName}
+			>
+				{event.title ?? `#${issue.number}`}
+			</Link>
+		) : (
+			<span className="min-w-0 truncate font-medium text-foreground">
+				{event.title}
+			</span>
+		);
+	const muted = "text-muted-foreground";
+	const excerpt = event.commentBody ? plainExcerpt(event.commentBody) : "";
 
 	switch (event.type) {
-		case "CreateEvent":
-			if (event.refType === "repository") {
-				return <>Created repository {repo}</>;
-			}
-			return (
-				<>
-					Created {event.refType}{" "}
-					<span className="font-medium text-foreground">{event.ref}</span> in{" "}
-					{repo}
-				</>
-			);
-		case "DeleteEvent":
-			return (
-				<>
-					Deleted {event.refType}{" "}
-					<span className="font-medium text-foreground">{event.ref}</span> in{" "}
-					{repo}
-				</>
-			);
-		case "PullRequestEvent":
-			return (
-				<>
-					{capitalizeFirst(event.action)} PR{" "}
-					<span className="font-medium text-foreground">{event.title}</span> in{" "}
-					{repo}
-				</>
-			);
-		case "PullRequestReviewEvent":
-			return (
-				<>
-					Reviewed PR{" "}
-					<span className="font-medium text-foreground">{event.title}</span> in{" "}
-					{repo}
-				</>
-			);
 		case "IssuesEvent":
 			return (
-				<>
-					{capitalizeFirst(event.action)} issue{" "}
-					<span className="font-medium text-foreground">{event.title}</span> in{" "}
-					{repo}
-				</>
+				<Line
+					time={event.createdAt}
+					icon={
+						<IssuesIcon
+							{...ICON}
+							className={
+								issue?.state === "closed" ? "text-merged" : "text-success"
+							}
+						/>
+					}
+					meta={<RepoMeta name={event.repo.name} />}
+				>
+					<Verb>{capitalize(event.action)}</Verb>
+					{issueLink}
+				</Line>
 			);
 		case "IssueCommentEvent":
 			return (
-				<>
-					Commented on{" "}
-					<span className="font-medium text-foreground">{event.title}</span> in{" "}
-					{repo}
-				</>
+				<Line
+					time={event.createdAt}
+					icon={<CommentIcon {...ICON} className={muted} />}
+					meta={<RepoMeta name={event.repo.name} />}
+					below={
+						excerpt ? (
+							<p className="-mt-1.5 mb-1.5 truncate pl-7 text-[13px] text-muted-foreground">
+								{excerpt}
+							</p>
+						) : null
+					}
+				>
+					<Verb>Commented on</Verb>
+					{issueLink}
+				</Line>
+			);
+		case "PullRequestReviewEvent":
+			return (
+				<Line
+					time={event.createdAt}
+					icon={<ReviewsIcon {...ICON} className={muted} />}
+					meta={<RepoMeta name={event.repo.name} />}
+				>
+					<Verb>Reviewed</Verb>
+					<span className="min-w-0 truncate font-medium text-foreground">
+						{event.title}
+					</span>
+				</Line>
 			);
 		case "WatchEvent":
-			return <>Starred {repo}</>;
+			return (
+				<Line
+					time={event.createdAt}
+					icon={<StarIcon {...ICON} className={muted} />}
+				>
+					<Verb>Starred</Verb>
+					{repoLink}
+				</Line>
+			);
 		case "ForkEvent":
-			return <>Forked {repo}</>;
+			return (
+				<Line
+					time={event.createdAt}
+					icon={<GitForkIcon {...ICON} className={muted} />}
+				>
+					<Verb>Forked</Verb>
+					{repoLink}
+				</Line>
+			);
 		case "ReleaseEvent":
 			return (
-				<>
-					{capitalizeFirst(event.action)} release{" "}
-					<span className="font-medium text-foreground">{event.title}</span> in{" "}
-					{repo}
-				</>
+				<Line
+					time={event.createdAt}
+					icon={<TagIcon size={14} className={muted} />}
+					meta={<RepoMeta name={event.repo.name} />}
+				>
+					<Verb>{capitalize(event.action) || "Published"}</Verb>
+					<span className="min-w-0 truncate font-medium text-foreground">
+						{event.title}
+					</span>
+				</Line>
 			);
 		default:
 			return (
-				<>
-					{event.type.replace("Event", "")} in {repo}
-				</>
+				<Line
+					time={event.createdAt}
+					icon={<CircleIcon {...ICON} className={muted} />}
+				>
+					<Verb>
+						{event.type
+							.replace(/Event$/, "")
+							.replace(/([a-z])([A-Z])/g, "$1 $2")}
+					</Verb>
+					{repoLink}
+				</Line>
 			);
 	}
-}
-
-function capitalizeFirst(str: string | null): string {
-	if (!str) return "";
-	return str.charAt(0).toUpperCase() + str.slice(1);
 }

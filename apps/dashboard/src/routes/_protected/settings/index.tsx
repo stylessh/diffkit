@@ -13,6 +13,13 @@ import { useTheme } from "next-themes";
 import { useEffect, useMemo, useState } from "react";
 import { ViewerOrganizations } from "#/components/org/settings/viewer-orgs-section";
 import { signOutToLogin } from "#/lib/auth-actions";
+import {
+	COLOR_THEMES,
+	type ColorScheme,
+	type ColorTheme,
+	setColorTheme,
+	useColorTheme,
+} from "#/lib/color-themes";
 import { isDiffKitExtensionPresent } from "#/lib/diffkit-extension-detect";
 import { getExtensionStoreInstallUrl } from "#/lib/extension-store-url";
 import { useHasMounted } from "#/lib/use-has-mounted";
@@ -50,6 +57,8 @@ function GeneralSettingsPage() {
 				description="Choose how DiffKit looks to you."
 			>
 				<ThemePicker />
+				<ColorThemePicker scheme="light" />
+				<ColorThemePicker scheme="dark" />
 			</SettingsSection>
 
 			<SettingsSection
@@ -173,6 +182,122 @@ function ThemePicker() {
 					</button>
 				);
 			})}
+		</div>
+	);
+}
+
+const SCHEME_LABEL: Record<ColorScheme, string> = {
+	light: "Light theme",
+	dark: "Dark theme",
+};
+
+/** One theme per scheme: the palette used whenever that scheme is showing. */
+function ColorThemePicker({ scheme }: { scheme: ColorScheme }) {
+	const selected = useColorTheme(scheme);
+	const hasMounted = useHasMounted();
+
+	return (
+		<fieldset className="flex flex-col gap-2.5">
+			<legend className="mb-2.5 text-[13px] font-medium text-muted-foreground">
+				{SCHEME_LABEL[scheme]}
+			</legend>
+			<div className="grid grid-cols-3 gap-2 sm:grid-cols-5">
+				{COLOR_THEMES.map((theme) => {
+					const isActive = hasMounted && selected === theme.id;
+					return (
+						<label
+							key={theme.id}
+							className={cn(
+								"flex min-w-0 cursor-pointer flex-col gap-2 rounded-xl border-2 bg-surface-1 p-2 transition-colors has-[:focus-visible]:border-ring",
+								isActive
+									? "border-primary"
+									: "border-transparent hover:border-border",
+							)}
+						>
+							<input
+								type="radio"
+								name={`color-theme-${scheme}`}
+								value={theme.id}
+								checked={isActive}
+								onChange={() => setColorTheme(scheme, theme.id)}
+								className="sr-only"
+							/>
+							<ThemeSwatchPreview theme={theme} scheme={scheme} />
+							<span className="flex flex-col px-0.5">
+								<span
+									className={cn(
+										"text-[13px]",
+										isActive
+											? "font-medium text-foreground"
+											: "text-muted-foreground",
+									)}
+								>
+									{theme.label}
+								</span>
+								<span className="truncate text-xs text-muted-foreground">
+									{theme.description}
+								</span>
+							</span>
+						</label>
+					);
+				})}
+			</div>
+		</fieldset>
+	);
+}
+
+/** The layout miniature in a theme's own colours, independent of the active theme. */
+function ThemeSwatchPreview({
+	theme,
+	scheme,
+}: {
+	theme: ColorTheme;
+	scheme: ColorScheme;
+}) {
+	const swatch = theme.swatches[scheme];
+	return (
+		<div
+			aria-hidden
+			className="flex h-14 w-full flex-col overflow-hidden rounded-lg"
+			style={{ background: swatch.shell }}
+		>
+			<div className="flex items-center gap-1 px-1.5 py-1">
+				<div
+					className="size-2 shrink-0 rounded-full"
+					style={{ background: swatch.text, opacity: 0.6 }}
+				/>
+				<div
+					className="h-1.5 w-5 rounded-sm"
+					style={{ background: swatch.row }}
+				/>
+				<div
+					className="h-1.5 w-4 rounded-sm"
+					style={{ background: swatch.row, opacity: 0.6 }}
+				/>
+			</div>
+			<div
+				className="mx-1 mb-1 flex flex-1 flex-col gap-[3px] rounded-md p-1.5"
+				style={{ background: swatch.main }}
+			>
+				<div
+					className="h-1 w-6 rounded-sm"
+					style={{ background: swatch.text, opacity: 0.5 }}
+				/>
+				<div
+					className="h-1.5 w-full rounded-sm"
+					style={{ background: swatch.row }}
+				/>
+				<div className="flex items-center gap-1">
+					<div
+						className="h-1.5 flex-1 rounded-sm"
+						style={{ background: swatch.row }}
+					/>
+					<div
+						className="h-1.5 w-4 rounded-sm"
+						style={{ background: swatch.accent }}
+					/>
+				</div>
+			</div>
 		</div>
 	);
 }
