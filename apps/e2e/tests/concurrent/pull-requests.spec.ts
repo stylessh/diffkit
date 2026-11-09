@@ -79,10 +79,17 @@ test("a pull request shows its review state and checks, and its diff carries rev
 		page.getByRole("link", { name: /codecov\/patch — 61\.5% of diff hit/ }),
 	).toBeVisible();
 
+	// By role: the outgoing skeleton's sample labels are still in the DOM, inert.
 	const sidebar = page.getByRole("complementary");
-	await expect(sidebar.getByText("enhancement")).toBeVisible();
-	await expect(sidebar.getByText("transport")).toBeVisible();
-	await expect(sidebar.getByText("nova", { exact: true })).toBeVisible();
+	await expect(
+		sidebar.getByRole("button", { name: "enhancement" }),
+	).toBeVisible();
+	await expect(
+		sidebar.getByRole("button", { name: "transport" }),
+	).toBeVisible();
+	await expect(
+		sidebar.getByRole("button", { name: "nova", exact: true }),
+	).toBeVisible();
 
 	await page.getByRole("link", { name: "Review changes" }).click();
 	await expect(page).toHaveURL(/\/lumen-labs\/beacon\/review\/15$/);

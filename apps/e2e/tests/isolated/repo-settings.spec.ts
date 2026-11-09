@@ -42,7 +42,11 @@ test("labels are created and deleted from settings", async ({ page }) => {
 	await page.getByRole("textbox", { name: "Name" }).fill("needs-triage");
 	await page.getByRole("button", { name: "Create label" }).click();
 
-	await expect(page.getByText("needs-triage", { exact: true })).toBeVisible();
+	// The editor previews the name while saving; only the saved row can delete it.
+	const deleteLabel = page.getByRole("button", {
+		name: "Delete label needs-triage",
+	});
+	await expect(deleteLabel).toBeVisible();
 	const created = await emulator.rest<Label[]>(
 		"nova",
 		"GET",
@@ -50,7 +54,7 @@ test("labels are created and deleted from settings", async ({ page }) => {
 	);
 	expect(created.map((label) => label.name)).toContain("needs-triage");
 
-	await page.getByRole("button", { name: "Delete label needs-triage" }).click();
+	await deleteLabel.click();
 	await page.getByRole("button", { name: "Delete", exact: true }).click();
 
 	await expect(page.getByText("needs-triage", { exact: true })).toHaveCount(0);
