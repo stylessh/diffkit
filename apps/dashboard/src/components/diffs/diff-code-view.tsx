@@ -90,6 +90,11 @@ const ITEM_METRICS = {
 	lineHeight: 20,
 };
 const ACTIVE_FILE_PROBE = 0.1;
+/** Opt-in while tuning ITEM_METRICS against our CSS; it costs a layout read per item. */
+const VALIDATE_ITEM_HEIGHTS =
+	import.meta.env.DEV &&
+	typeof localStorage !== "undefined" &&
+	localStorage.getItem("diffkit:validate-diff-heights") === "1";
 const NO_ANNOTATIONS: Annotation[] = [];
 
 const ReviewContext = createContext<DiffReview | null>(null);
@@ -375,7 +380,7 @@ function DiffCodeViewSurface({
 	const setViewed = useStableCallback((path: string, viewed: boolean) => {
 		viewedStore.set(path, viewed);
 		const item = viewerRef.current?.getItem(path);
-		if (item && item.collapsed !== viewed) toggleCollapsed(path);
+		if (item && (item.collapsed === true) !== viewed) toggleCollapsed(path);
 	});
 
 	const trackActiveFile = useStableCallback((scrollTop: number) => {
@@ -436,7 +441,7 @@ function DiffCodeViewSurface({
 				startComment(range, context.item.id);
 			},
 			unsafeCSS: DIFF_SURFACE_CSS,
-			__devOnlyValidateItemHeights: import.meta.env.DEV,
+			__devOnlyValidateItemHeights: VALIDATE_ITEM_HEIGHTS,
 		}),
 		[runtime, themeType, diffStyle, wrapLines, reviewable, startComment],
 	);
