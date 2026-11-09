@@ -173,9 +173,7 @@ export type {
 } from "./github/reviews";
 export {
 	createReviewComment,
-	deletePendingReview,
 	dismissPullReview,
-	getMyReviewDrafts,
 	getOrgTeams,
 	getPullReviewComments,
 	getRepoCollaborators,
@@ -184,7 +182,6 @@ export {
 	replyToReviewComment,
 	requestPullReviewers,
 	resolveReviewThread,
-	submitPendingReview,
 	submitPullReview,
 	unresolveReviewThread,
 } from "./github/reviews";

@@ -15,7 +15,6 @@ import {
 	getItemReference,
 	getMyIssues,
 	getMyPulls,
-	getMyReviewDrafts,
 	getNotifications,
 	getOpenPullForRefs,
 	getOrgTeams,
@@ -930,19 +929,6 @@ export function githubRepoRefSplatQueryOptions(
 		queryFn: () => resolveRepoRefSplat({ data: input }),
 		staleTime: githubCachePolicy.repoMeta.staleTimeMs,
 		gcTime: githubCachePolicy.repoMeta.gcTimeMs,
-	});
-}
-
-/**
- * Viewer's pending (unsubmitted) reviews. Deliberately not persisted: draft
- * comment bodies are private, unsent content and the list is cheap to rebuild.
- */
-export function githubReviewDraftsQueryOptions(scope: GitHubQueryScope) {
-	return queryOptions({
-		queryKey: githubQueryKeys.reviewDrafts.mine(scope),
-		queryFn: () => getMyReviewDrafts(),
-		staleTime: githubCachePolicy.mine.staleTimeMs,
-		gcTime: githubCachePolicy.mine.gcTimeMs,
 	});
 }
 

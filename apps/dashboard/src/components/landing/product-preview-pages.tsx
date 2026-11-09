@@ -4,7 +4,6 @@ import {
 	IssuesIcon,
 	ReviewsIcon,
 } from "@diffkit/icons";
-import { ReviewDraftsEmptyState } from "#/components/drafts/review-drafts-page";
 import { InboxList } from "#/components/inbox/inbox-list";
 import { InboxPreview } from "#/components/inbox/inbox-preview";
 import { IssueRow } from "#/components/issues/issue-row";
@@ -67,14 +66,6 @@ function IssuesPage({ issues }: Pick<PreviewWorkspace, "issues">) {
 					))}
 				</ListGroup>
 			))}
-		</ListPage>
-	);
-}
-
-function DraftsPage() {
-	return (
-		<ListPage title="Drafts" count={0} className="overflow-hidden">
-			<ReviewDraftsEmptyState />
 		</ListPage>
 	);
 }
@@ -165,7 +156,5 @@ export default function ProductPreviewPage({
 			return <ReviewsPage pulls={workspace.pulls} />;
 		case "issues":
 			return <IssuesPage issues={workspace.issues} />;
-		case "drafts":
-			return <DraftsPage />;
 	}
 }

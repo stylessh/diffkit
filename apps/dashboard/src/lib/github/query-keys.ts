@@ -138,7 +138,7 @@ export const QUERY_SCHEMA_VERSION = 1;
 /**
  * Query groups that are never written to the persisted client cache. Every
  * other `["github", userId, ...]` query persists. Entries are
- * `[group]` or `[group, name]`, matching `queryKey[2]` and `queryKey[3]`.
+ * `[group, name]`, matching `queryKey[2]` and `queryKey[3]`.
  */
 export const githubQueryPersistOptOut = [
 	// Large blobs: PR patches, file contents, commit and compare diffs, logs.
@@ -148,17 +148,13 @@ export const githubQueryPersistOptOut = [
 	["repo", "compareDetail"],
 	["actions", "workflowJobLogs"],
 	["actions", "workflowRunLogsBundle"],
-	// Private, unsent content: pending review comment bodies.
-	["reviewDrafts"],
 	// Transient, per-keystroke results.
 	["search", "commandPalette"],
 	["code", "search"],
 	// Payload URLs often embed tokens.
 	["repoSettings", "webhooks"],
 	["repoSettings", "webhookDeliveries"],
-] as const satisfies ReadonlyArray<
-	readonly [string] | readonly [string, string]
->;
+] as const satisfies ReadonlyArray<readonly [string, string]>;
 
 export function isGitHubQueryKeyPersistable(queryKey: readonly unknown[]) {
 	if (queryKey[0] !== "github" || typeof queryKey[1] !== "string") {
@@ -166,10 +162,8 @@ export function isGitHubQueryKeyPersistable(queryKey: readonly unknown[]) {
 	}
 	const group = queryKey[2];
 	const name = queryKey[3];
-	return !githubQueryPersistOptOut.some((entry) =>
-		entry.length === 1
-			? entry[0] === group
-			: entry[0] === group && entry[1] === name,
+	return !githubQueryPersistOptOut.some(
+		([optOutGroup, optOutName]) => optOutGroup === group && optOutName === name,
 	);
 }
 
@@ -430,10 +424,6 @@ export const githubQueryKeys = {
 			scope: GitHubQueryScope,
 			input: { owner: string; repo: string; sha: string },
 		) => ["github", scope.userId, "references", "commit", input] as const,
-	},
-	reviewDrafts: {
-		mine: (scope: GitHubQueryScope) =>
-			["github", scope.userId, "reviewDrafts", "mine"] as const,
 	},
 	repoSettings: {
 		general: (scope: GitHubQueryScope, input: RepoSettingsInput) =>

@@ -1,5 +1,4 @@
 import {
-	GitPullRequestDraftIcon,
 	GitPullRequestIcon,
 	HomeIcon,
 	InboxIcon,
@@ -18,7 +17,6 @@ export type ShellCounts = {
 	pulls?: number;
 	issues?: number;
 	reviews?: number;
-	drafts?: number;
 };
 
 type NavIcon = ComponentType<{
@@ -90,14 +88,6 @@ export function workspaceNavItems(
 			icon: IssuesIcon,
 			keys: ["G", "I"],
 			badge: countBadge(counts.issues),
-		},
-		{
-			to: "/drafts",
-			label: "Drafts",
-			shortLabel: "Drafts",
-			icon: GitPullRequestDraftIcon,
-			keys: ["G", "D"],
-			badge: countBadge(counts.drafts),
 		},
 	];
 }

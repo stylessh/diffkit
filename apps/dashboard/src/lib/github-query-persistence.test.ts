@@ -72,7 +72,7 @@ describe("isGitHubQueryKeyPersistable", () => {
 		).toBe(true);
 	});
 
-	it("opts out patches, file contents, logs, drafts and non-GitHub keys", () => {
+	it("opts out patches, file contents, logs and non-GitHub keys", () => {
 		expect(
 			isGitHubQueryKeyPersistable(githubQueryKeys.pulls.files(scope, pull)),
 		).toBe(false);
@@ -87,9 +87,6 @@ describe("isGitHubQueryKeyPersistable", () => {
 					runId: 1,
 				}),
 			),
-		).toBe(false);
-		expect(
-			isGitHubQueryKeyPersistable(githubQueryKeys.reviewDrafts.mine(scope)),
 		).toBe(false);
 		expect(isGitHubQueryKeyPersistable(["other", "u"])).toBe(false);
 	});

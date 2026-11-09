@@ -2,7 +2,6 @@ import { getGitHubStore } from "@emulators/github";
 import { type OperationDefinitionNode, parse } from "graphql";
 import { Octokit } from "octokit";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { buildPendingReviewsQuery } from "../../../dashboard/src/lib/review-drafts.ts";
 import { workspace } from "../seed/content/index.ts";
 import { seedTokenFor } from "../seed/identity.ts";
 import { seedWorkspace } from "../seed/seed-workspace.ts";
@@ -165,31 +164,6 @@ describe("DiffKit GraphQL documents", () => {
 		);
 		expect(data).toBeTruthy();
 		expect(Object.keys(data).length).toBeGreaterThan(0);
-	});
-
-	it("review drafts batch (aliases + fragment) finds the viewer's pending review", async () => {
-		const { query, variables } = buildPendingReviewsQuery(
-			[
-				{ owner: "lumen-labs", repo: "beacon", number: ids.pullNumber },
-				{ owner: "lumen-labs", repo: "beacon", number: 1 },
-			],
-			"nova",
-		);
-		const data = await octokit.graphql<
-			Record<
-				string,
-				{
-					pullRequest: {
-						reviews: { nodes: Array<{ comments: { totalCount: number } }> };
-					} | null;
-				}
-			>
-		>(query, variables);
-		const first = Object.values(data).find(
-			(value) => value && "pullRequest" in value,
-		);
-		expect(first?.pullRequest?.reviews.nodes).toHaveLength(1);
-		expect(first?.pullRequest?.reviews.nodes[0].comments.totalCount).toBe(2);
 	});
 });
 

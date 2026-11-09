@@ -1,12 +1,6 @@
 import type { PullSummary } from "#/lib/github.types";
 
-export type PreviewPage =
-	| "overview"
-	| "inbox"
-	| "pulls"
-	| "reviews"
-	| "issues"
-	| "drafts";
+export type PreviewPage = "overview" | "inbox" | "pulls" | "reviews" | "issues";
 
 export type PreviewView =
 	| { kind: "page"; page: PreviewPage }
@@ -18,7 +12,6 @@ const PAGE_BY_PATH: Record<string, PreviewPage> = {
 	"/pulls": "pulls",
 	"/reviews": "reviews",
 	"/issues": "issues",
-	"/drafts": "drafts",
 };
 
 /** Where an app link leads inside the preview; `null` for anything it has no sample of. */
