@@ -123,7 +123,7 @@ export function CommentReplyForm({
 					type="button"
 					onClick={() => void handleSend()}
 					disabled={!value.trim() || isSending || hasPendingUploads}
-					className="flex h-7 items-center gap-1.5 rounded-md bg-indigo px-3 text-xs font-medium text-indigo-foreground shadow-[0_1px_1px_0_lch(0_0_0/0.12),0_3px_6px_-2px_lch(0_0_0/0.12)] transition-colors hover:bg-indigo/90 disabled:opacity-50"
+					className="flex h-7 items-center gap-1.5 rounded-md bg-indigo px-3 text-xs font-medium text-indigo-foreground shadow-solid transition-colors hover:bg-indigo/90 disabled:opacity-50"
 				>
 					{isSending ? (
 						<Spinner className="size-3" />

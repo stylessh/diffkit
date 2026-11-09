@@ -2,34 +2,64 @@ import { Slot, Slottable } from "@radix-ui/react-slot";
 import type * as React from "react";
 
 import { cn } from "../lib/utils";
+import { ScrollFade } from "./scroll-fade";
+
+// Below lg the page is one scroller, so the column scrollers stand down: no
+// overflow of their own and no edge mask.
+const COLUMN_SCROLLER =
+	"max-lg:overflow-visible max-lg:[mask-image:none]! max-lg:[-webkit-mask-image:none]! lg:min-h-0";
 
 function DetailLayout({
 	className,
 	children,
 	panel,
 	panelLabel = "Properties",
+	toolbar,
 	...props
 }: React.ComponentProps<"div"> & {
 	panel: React.ReactNode;
 	panelLabel?: string;
+	toolbar?: React.ReactNode;
 }) {
 	return (
 		<div
-			className={cn("min-h-0 flex-1 overflow-y-auto", className)}
+			className={cn(
+				"flex min-h-0 flex-1 flex-col max-lg:overflow-y-auto lg:grid lg:grid-cols-[minmax(0,1fr)_21rem] lg:grid-rows-[auto_minmax(0,1fr)]",
+				className,
+			)}
 			data-slot="detail-layout"
 			{...props}
 		>
-			<div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_minmax(17rem,34.7%)]">
+			{toolbar ? (
+				<div className="z-10 shrink-0 bg-main max-lg:sticky max-lg:top-0 lg:col-start-1 lg:row-start-1">
+					{toolbar}
+				</div>
+			) : null}
+			<ScrollFade
+				className={cn("min-w-0 lg:col-start-1 lg:row-start-2", COLUMN_SCROLLER)}
+				fade={32}
+				orientation="vertical"
+			>
 				<div className="mx-auto flex w-full min-w-0 max-w-[780px] flex-col gap-8 px-4 pt-14 pb-16 md:px-[46px]">
 					{children}
 				</div>
-				<aside
-					aria-label={panelLabel}
-					className="min-w-0 self-start px-4 pt-2 pb-10 md:px-[46px] lg:sticky lg:top-0 lg:-ml-2 lg:pt-[46px] lg:pr-3 lg:pl-2"
+			</ScrollFade>
+			<aside
+				aria-label={panelLabel}
+				className="min-w-0 border-header-rule lg:col-start-2 lg:row-span-2 lg:row-start-1 lg:flex lg:min-h-0 lg:flex-col lg:border-l"
+			>
+				<ScrollFade
+					className={cn(
+						"flex flex-col px-4 pt-2 pb-10 md:px-[46px] lg:flex-1 lg:px-6",
+						toolbar ? "lg:pt-25" : "lg:pt-14",
+						COLUMN_SCROLLER,
+					)}
+					fade={32}
+					orientation="vertical"
 				>
-					<div className="flex max-w-80 flex-col">{panel}</div>
-				</aside>
-			</div>
+					{panel}
+				</ScrollFade>
+			</aside>
 		</div>
 	);
 }

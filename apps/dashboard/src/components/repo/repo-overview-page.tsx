@@ -16,7 +16,7 @@ import { CodeExplorerToolbar } from "./code-explorer-toolbar";
 import { FileTree } from "./file-tree";
 import { LatestCommitBar } from "./latest-commit-bar";
 import { RecentPushBanner } from "./recent-push-banner";
-import { RepoHeader } from "./repo-header";
+import { RepoHeader, RepoHeaderNav } from "./repo-header";
 import { RepoMarkdownFiles } from "./repo-markdown-files";
 import { SAMPLE_TREE_ENTRIES, sampleRepoOverview } from "./repo-samples";
 import { RepoSidebar } from "./repo-sidebar";
@@ -88,8 +88,22 @@ export function RepoOverviewPage({
 
 	return (
 		<div className="flex h-full min-h-0 flex-col">
-			<RepoHeader owner={owner} repo={repo} scope={scope} active="code" />
+			<RepoHeader
+				owner={owner}
+				repo={repo}
+				scope={scope}
+				active="code"
+				withNav={false}
+			/>
 			<DetailLayout
+				toolbar={
+					<RepoHeaderNav
+						owner={owner}
+						repo={repo}
+						scope={scope}
+						active="code"
+					/>
+				}
 				panel={
 					<Skeleton loading={!repoData}>
 						{repoData ? (

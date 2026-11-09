@@ -1522,7 +1522,7 @@ function MergeFooter({
 						id="merge-commit-title"
 						value={commitTitle}
 						onChange={(e) => setCommitTitle(e.target.value)}
-						className="flex h-9 w-full rounded-md border-[0.5px] bg-transparent px-3 py-1 text-sm shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-1 focus-visible:-outline-offset-1 focus-visible:outline-ring"
+						className="flex h-9 w-full rounded-md bg-transparent px-3 py-1 text-sm shadow-card transition-colors placeholder:text-muted-foreground focus-visible:outline-1 focus-visible:-outline-offset-1 focus-visible:outline-ring"
 					/>
 				</div>
 				<div className="flex flex-col gap-1.5">
@@ -1535,7 +1535,7 @@ function MergeFooter({
 						onChange={(e) => setCommitDescription(e.target.value)}
 						placeholder="Add an optional extended description..."
 						rows={3}
-						className="flex w-full rounded-md border-[0.5px] bg-transparent px-3 py-2 text-sm shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-1 focus-visible:-outline-offset-1 focus-visible:outline-ring resize-none"
+						className="flex w-full rounded-md bg-transparent px-3 py-2 text-sm shadow-card transition-colors placeholder:text-muted-foreground focus-visible:outline-1 focus-visible:-outline-offset-1 focus-visible:outline-ring resize-none"
 					/>
 				</div>
 				<div className="flex items-center gap-2">
@@ -1576,7 +1576,7 @@ function MergeFooter({
 						? "Merging is blocked until the required checks and reviews pass."
 						: "Ready to merge"}
 				</p>
-				<div className="flex shrink-0 overflow-hidden rounded-md shadow-[0_1px_1px_0_lch(0_0_0/0.12),0_3px_6px_-2px_lch(0_0_0/0.12)]">
+				<div className="flex shrink-0 overflow-hidden rounded-md shadow-solid">
 					<button
 						type="button"
 						disabled={isDisabled}
@@ -2992,7 +2992,7 @@ function ReviewCommentBlock({
 										type="button"
 										onClick={() => void handleReply()}
 										disabled={!replyBody.trim() || isSending}
-										className="flex h-7 items-center gap-1.5 rounded-md bg-indigo px-3 text-xs font-medium text-indigo-foreground shadow-[0_1px_1px_0_lch(0_0_0/0.12),0_3px_6px_-2px_lch(0_0_0/0.12)] transition-colors hover:bg-indigo/90 disabled:opacity-50"
+										className="flex h-7 items-center gap-1.5 rounded-md bg-indigo px-3 text-xs font-medium text-indigo-foreground shadow-solid transition-colors hover:bg-indigo/90 disabled:opacity-50"
 									>
 										{isSending ? (
 											<Spinner className="size-3" />

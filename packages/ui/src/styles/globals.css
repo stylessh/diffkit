@@ -13,10 +13,12 @@
 /*
  * Design tokens
  * -------------
- * The kit follows Linear's look: minimal, neutral grays, hairline (0.5px) rings
- * instead of borders, two-layer low-alpha drop shadows, and a main pane that floats
- * as an inset card over a slightly darker shell. Values are measured from Linear's
- * live app (see `--ln-*` below); everything else is derived from them.
+ * Neutral grays measured from Linear's live app (see `--ln-*` below), dressed in
+ * frosted glass instead of Linear's hairline rings: chips, buttons, selects and
+ * tabs sit on the surface with a soft inner light rim and a blurred 1px halo
+ * (`--glass-*`), never a crisp 0.5px outline. Solid CTAs get an edge a shade
+ * darker than their fill and a faint lit top line.
+ * Cards and the main pane keep the hairline ring and low two-layer drop.
  *
  * Layers, outermost first:
  *   1. `--ln-*`     raw Linear-derived values (light in :root, dark in .dark).
@@ -129,7 +131,7 @@
 		lch(0 0 0 / 0.02) 0 3px 6px -2px, lch(0 0 0 / 0.04) 0 1px 1px 0;
 	/* The hairline under a page header's first row */
 	--ln-header-rule: color-mix(in oklch, var(--neutral-12) 88%, white);
-	--ln-group: color-mix(in oklch, var(--neutral-12) 39%, white);
+	--ln-group: color-mix(in oklch, var(--neutral-12) 70%, white);
 	--ln-row-hover: var(--ln-group);
 	--ln-row-selected: lch(0 0 0 / 0.06);
 	--ln-nav-hover: color-mix(in oklch, var(--neutral-11) 10%, var(--neutral-12));
@@ -140,28 +142,38 @@
 	);
 	--ln-checkbox: color-mix(in oklch, var(--neutral-8) 61%, var(--neutral-9));
 
-	/* Pill buttons: a fill, a 0.5px ring and a two-layer low-alpha drop */
-	--ln-button: color-mix(in oklch, var(--neutral-12) 9%, white);
-	--ln-button-hover: color-mix(in oklch, var(--neutral-12) 39%, white);
-	--ln-button-ring:
-		lch(0 0 0 / 0.09) 0 0 0 0.5px, lch(0 0 0 / 0.02) 0 3px 6px -2px,
-		lch(0 0 0 / 0.04) 0 1px 1px 0;
-	--ln-tab-selected: color-mix(in oklch, var(--neutral-12) 62%, white);
-	--ln-tab-selected-ring: lch(0 0 0 / 0.09) 0 0 0 0.5px;
+	--glass-edge: lch(100 0 0 / 0.9);
+	--glass-rim: lch(100 0 0 / 0.7);
+	--glass-halo: lch(0 0 0 / 0.15) 0 0 1px 0, lch(0 0 0 / 0.03) 0 1px 2px 0;
+	--glass-control: var(--glass-chip);
+	--glass-well:
+		inset 0 1px 2px 0 lch(0 0 0 / 0.05), inset 0 0 0 1px lch(0 0 0 / 0.04);
+	--glass-chip: inset 0 0 0 1px var(--glass-rim), var(--glass-halo);
+	--glass-solid:
+		inset 0 1px 0 0 lch(100 0 0 / 0.22), inset 0 0 0 1px lch(0 0 0 / 0.07),
+		var(--glass-halo);
+
+	--ln-button: var(--ln-main);
+	--ln-button-hover: var(--ln-group);
+	--ln-button-ring: var(--glass-control);
+	--ln-tab-selected: var(--ln-card);
+	--ln-tab-selected-ring:
+		inset 0 0 0 1px var(--glass-rim), lch(0 0 0 / 0.14) 0 0 1px 0,
+		lch(0 0 0 / 0.06) 0 1px 2px 0;
 	--ln-ring-color: lch(0 0 0 / 0.09);
 	--ln-ghost-hover: lch(0 0 0 / 0.05);
 	--ln-menu-hover: lch(0 0 0 / 0.045);
 	--ln-item-hover: lch(0 0 0 / 0.05);
 	--ln-go-fill: lch(0 0 0 / 0.03);
 	--ln-send: lch(100 0 0);
-	--ln-send-ring: lch(0 0 0 / 0.1) 0 0 0 0.5px, lch(0 0 0 / 0.06) 0 0.5px 1px 0;
+	--ln-send-ring: var(--glass-control);
 
 	/* Overlays */
 	--ln-popover: lch(100 0 0);
 	--ln-popover-border: var(--neutral-12);
 	--ln-popover-shadow:
-		lch(0 0 0 / 0.02) 0 6px 18px 0, lch(0 0 0 / 0.04) 0 3px 9px 0,
-		lch(0 0 0 / 0.04) 0 1px 1px 0;
+		lch(0 0 0 / 0.1) 0 0 1px 0, lch(0 0 0 / 0.08) 0 2px 6px -2px,
+		lch(0 0 0 / 0.06) 0 8px 16px -8px;
 	--ln-tooltip: var(--ln-popover);
 	--ln-tooltip-border: var(--ln-popover-border);
 	--ln-key-border: lch(0 0 0 / 0.1);
@@ -275,28 +287,33 @@
 	--ln-nav-selected: var(--neutral-3);
 	--ln-checkbox: color-mix(in oklch, var(--neutral-7) 92%, var(--neutral-8));
 
-	--ln-button: color-mix(in oklch, var(--neutral-2) 53%, var(--neutral-3));
-	--ln-button-hover: color-mix(
-		in oklch,
-		var(--neutral-2) 10%,
-		var(--neutral-3)
-	);
-	--ln-button-ring:
-		lch(100 0 0 / 0.137) 0 0 0 0.5px, lch(0 0 0 / 0.3) 0 0.5px 1px 1px;
-	--ln-tab-selected: color-mix(
-		in oklch,
-		var(--neutral-3) 45%,
-		var(--neutral-4)
-	);
-	--ln-tab-selected-ring: lch(100 0 0 / 0.137) 0 0 0 0.5px;
+	--glass-edge: lch(100 0 0 / 0.11);
+	--glass-rim: lch(100 0 0 / 0.035);
+	--glass-halo: lch(0 0 0 / 0.35) 0 0 1px 0;
+	--glass-well:
+		inset 0 1px 2px 0 lch(0 0 0 / 0.3), inset 0 0 0 1px lch(100 0 0 / 0.04);
+	--glass-chip:
+		inset 0 1px 0 0 lch(100 0 0 / 0.035), inset 0 0 0 1px var(--glass-rim),
+		var(--glass-halo);
+	--glass-solid:
+		inset 0 1px 0 0 lch(100 0 0 / 0.16), inset 0 0 0 1px lch(0 0 0 / 0.14),
+		var(--glass-halo);
+
+	--ln-button: var(--ln-main);
+	--ln-button-hover: var(--ln-group);
+	--glass-control: var(--glass-chip);
+	--ln-button-ring: var(--glass-control);
+	--ln-tab-selected: color-mix(in oklch, var(--ln-main), white 9%);
+	--ln-tab-selected-ring:
+		inset 0 1px 0 0 lch(100 0 0 / 0.07), inset 0 0 0 1px lch(100 0 0 / 0.045),
+		var(--glass-halo), lch(0 0 0 / 0.25) 0 1px 2px 0;
 	--ln-ring-color: lch(100 0 0 / 0.137);
 	--ln-ghost-hover: lch(100 0 0 / 0.06);
 	--ln-menu-hover: lch(100 0 0 / 0.078);
 	--ln-item-hover: lch(100 0 0 / 0.074);
 	--ln-go-fill: lch(100 0 0 / 0.038);
 	--ln-send: var(--neutral-3);
-	--ln-send-ring:
-		lch(100 0 0 / 0.143) 0 0 0 0.5px, lch(0 0 0 / 0.3) 0 0.5px 1px 1px;
+	--ln-send-ring: var(--glass-control);
 
 	--ln-popover: color-mix(in oklch, var(--neutral-2) 14%, var(--neutral-3));
 	--ln-popover-border: color-mix(
@@ -422,13 +439,10 @@
 	--ln-main: lch(98 0.5 287.27);
 	--ln-main-border: lch(89.84 0 282);
 	--ln-header-rule: lch(93.4 0 0);
-	--ln-group: lch(96.89 0 0);
+	--ln-group: color-mix(in oklch, var(--ln-sidebar) 60%, var(--ln-main));
 	--ln-nav-hover: lch(92.7 0 0);
 	--ln-nav-selected: lch(90.94 0 0);
 	--ln-checkbox: lch(52.04 0 282);
-	--ln-button: lch(99.31 0 0);
-	--ln-button-hover: lch(96.89 0 0);
-	--ln-tab-selected: lch(95.15 0 0);
 	--ln-send: lch(100 0 282);
 	--ln-popover: lch(100 0 282);
 	--ln-popover-border: lch(91.9 0 282);
@@ -468,9 +482,6 @@
 	--ln-nav-hover: lch(9.5 1 272);
 	--ln-nav-selected: lch(13.845 1.3 272);
 	--ln-checkbox: lch(38 1 272);
-	--ln-button: lch(10.149 0.689 272);
-	--ln-button-hover: lch(13 0.8 272);
-	--ln-tab-selected: lch(16.706 0.979 272);
 	--ln-send: lch(13.861 1.139 272);
 	--ln-popover: lch(12.72 0.85 272);
 	--ln-popover-border: lch(25.68 1.93 272);
@@ -767,17 +778,18 @@
 	--color-composer-send: var(--ln-composer-send);
 	--color-main-border: var(--ln-main-border);
 
-	/* Contained shadows: hairline 0.5px ring + low-alpha drops */
-	--shadow-ring: 0 0 0 0.5px var(--ln-ring-color);
+	--shadow-ring: var(--glass-chip);
 	--shadow-button: var(--ln-button-ring);
+	--shadow-solid: var(--glass-solid);
 	--shadow-tab-selected: var(--ln-tab-selected-ring);
-	--shadow-field: 0 0 0 0.5px var(--ln-chip-border);
-	--shadow-chip: inset 0 0 0 0.5px var(--ln-chip-border);
+	--shadow-field: var(--glass-well);
+	--shadow-chip: var(--glass-chip);
 	--shadow-key: inset 0 0 0 0.5px var(--ln-key-border);
 	--shadow-main: 0 0 0 0.5px var(--ln-main-border), var(--ln-main-shadow);
 	--shadow-card: 0 0 0 0.5px var(--ln-card-border), var(--ln-main-shadow);
 	--shadow-popover:
-		0 0 0 0.5px var(--ln-popover-border), var(--ln-popover-shadow);
+		inset 0 1px 0 0 var(--glass-edge), inset 0 0 0 1px var(--glass-rim),
+		var(--ln-popover-shadow);
 	--shadow-send: var(--ln-send-ring);
 	--shadow-tooltip:
 		0 0 0 0.5px var(--ln-tooltip-border), var(--ln-popover-shadow);

@@ -21,8 +21,12 @@ export function DetailPageLayout({
 		<div className="flex h-full min-h-0 flex-col">
 			{header}
 			{/* A page without view tabs keeps their row's height, so its content starts where a tabbed page's does. */}
-			{tabs ?? <div aria-hidden className="h-11 shrink-0" />}
-			<DetailLayout panel={sidebar}>{main}</DetailLayout>
+			<DetailLayout
+				panel={sidebar}
+				toolbar={tabs ?? <div aria-hidden className="h-11 shrink-0" />}
+			>
+				{main}
+			</DetailLayout>
 		</div>
 	);
 }
