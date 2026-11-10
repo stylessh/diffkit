@@ -1,4 +1,5 @@
 import { debug } from "../debug";
+import { readIdentityThroughMemory } from "./identity-memory";
 import { dedupeGitHubRead } from "./request-dedup";
 import {
 	GITHUB_MIN_OPERATION_TIMEOUT_MS,
@@ -251,12 +252,17 @@ export async function listPaginatedGitHubItems<TItem>({
 export async function getViewer(
 	context: GitHubContext,
 ): Promise<AuthenticatedUser> {
-	return fetchGitHubResource<AuthenticatedUser, AuthenticatedUser>({
-		context,
+	return readIdentityThroughMemory<AuthenticatedUser>({
+		userId: context.session.user.id,
 		resource: "viewer",
-		params: null,
-		request: () => context.octokit.rest.users.getAuthenticated({}),
-		mapData: (viewer) => viewer,
+		load: async () => {
+			const response = await withGitHubOperationTimeout(
+				"github viewer",
+				GITHUB_OPERATION_TIMEOUT_MS,
+				() => context.octokit.rest.users.getAuthenticated({}),
+			);
+			return response.data;
+		},
 	});
 }
 

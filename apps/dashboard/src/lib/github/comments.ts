@@ -5,6 +5,7 @@ import {
 	getGitHubContextForRepository,
 	getGitHubUserContextForRepository,
 } from "./installations";
+import { mutateRepository } from "./mutations";
 import { type MutationResult, toMutationError } from "./shared";
 import {
 	type CommentPageInput,
@@ -161,24 +162,17 @@ export type EditCommentInput = {
 
 export const editComment = createServerFn({ method: "POST" })
 	.validator(identityValidator<EditCommentInput>)
-	.handler(async ({ data }): Promise<MutationResult> => {
-		const context = await getGitHubUserContextForRepository(data);
-		if (!context) {
-			return { ok: false, error: "Not authenticated" };
-		}
-
-		try {
-			await context.octokit.rest.issues.updateComment({
-				owner: data.owner,
-				repo: data.repo,
-				comment_id: data.commentId,
-				body: data.body,
-			});
-			return { ok: true };
-		} catch (error) {
-			return toMutationError("edit comment", error);
-		}
-	});
+	.handler(
+		({ data }): Promise<MutationResult> =>
+			mutateRepository(data, "edit comment", (context) =>
+				context.octokit.rest.issues.updateComment({
+					owner: data.owner,
+					repo: data.repo,
+					comment_id: data.commentId,
+					body: data.body,
+				}),
+			),
+	);
 
 export type DeleteCommentInput = {
 	owner: string;
@@ -188,23 +182,16 @@ export type DeleteCommentInput = {
 
 export const deleteComment = createServerFn({ method: "POST" })
 	.validator(identityValidator<DeleteCommentInput>)
-	.handler(async ({ data }): Promise<MutationResult> => {
-		const context = await getGitHubUserContextForRepository(data);
-		if (!context) {
-			return { ok: false, error: "Not authenticated" };
-		}
-
-		try {
-			await context.octokit.rest.issues.deleteComment({
-				owner: data.owner,
-				repo: data.repo,
-				comment_id: data.commentId,
-			});
-			return { ok: true };
-		} catch (error) {
-			return toMutationError("delete comment", error);
-		}
-	});
+	.handler(
+		({ data }): Promise<MutationResult> =>
+			mutateRepository(data, "delete comment", (context) =>
+				context.octokit.rest.issues.deleteComment({
+					owner: data.owner,
+					repo: data.repo,
+					comment_id: data.commentId,
+				}),
+			),
+	);
 
 export type EditReviewCommentInput = {
 	owner: string;
@@ -215,24 +202,17 @@ export type EditReviewCommentInput = {
 
 export const editReviewComment = createServerFn({ method: "POST" })
 	.validator(identityValidator<EditReviewCommentInput>)
-	.handler(async ({ data }): Promise<MutationResult> => {
-		const context = await getGitHubUserContextForRepository(data);
-		if (!context) {
-			return { ok: false, error: "Not authenticated" };
-		}
-
-		try {
-			await context.octokit.rest.pulls.updateReviewComment({
-				owner: data.owner,
-				repo: data.repo,
-				comment_id: data.commentId,
-				body: data.body,
-			});
-			return { ok: true };
-		} catch (error) {
-			return toMutationError("edit review comment", error);
-		}
-	});
+	.handler(
+		({ data }): Promise<MutationResult> =>
+			mutateRepository(data, "edit review comment", (context) =>
+				context.octokit.rest.pulls.updateReviewComment({
+					owner: data.owner,
+					repo: data.repo,
+					comment_id: data.commentId,
+					body: data.body,
+				}),
+			),
+	);
 
 export type DeleteReviewCommentInput = {
 	owner: string;
@@ -242,23 +222,16 @@ export type DeleteReviewCommentInput = {
 
 export const deleteReviewComment = createServerFn({ method: "POST" })
 	.validator(identityValidator<DeleteReviewCommentInput>)
-	.handler(async ({ data }): Promise<MutationResult> => {
-		const context = await getGitHubUserContextForRepository(data);
-		if (!context) {
-			return { ok: false, error: "Not authenticated" };
-		}
-
-		try {
-			await context.octokit.rest.pulls.deleteReviewComment({
-				owner: data.owner,
-				repo: data.repo,
-				comment_id: data.commentId,
-			});
-			return { ok: true };
-		} catch (error) {
-			return toMutationError("delete review comment", error);
-		}
-	});
+	.handler(
+		({ data }): Promise<MutationResult> =>
+			mutateRepository(data, "delete review comment", (context) =>
+				context.octokit.rest.pulls.deleteReviewComment({
+					owner: data.owner,
+					repo: data.repo,
+					comment_id: data.commentId,
+				}),
+			),
+	);
 
 export type MinimizeCommentInput = {
 	owner: string;

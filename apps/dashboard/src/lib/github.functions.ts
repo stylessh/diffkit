@@ -5,9 +5,14 @@
  * functions, types and client-safe helpers. TanStack Start strips handler
  * bodies from client and SSR-caller builds, but an exported helper survives
  * and drags its server-only imports (cloudflare:workers, D1) along. Shared
- * server code lives in the helper modules (client, installations, mappers,
- * shared, my-search, timeline, permissions), which are imported only from
- * handler bodies.
+ * server code lives in helper modules that are imported only from handler
+ * bodies: the request plumbing (client, installations, identity-memory,
+ * request-dedup, mutations, mappers, shared, permissions) and the reads
+ * behind one server function each (pull-status, pull-page-data, my-search,
+ * notification-reads, reviewer-candidates, timeline, …).
+ *
+ * Keep the directory flat: the emulator's GraphQL document test reads every
+ * module directly inside ./github/.
  */
 
 export type {
@@ -30,6 +35,7 @@ export {
 	rerunWorkflowRun,
 	workflowZipJobName,
 } from "./github/actions";
+export { deduplicateCheckRuns, isFailedCheckRun } from "./github/check-runs";
 export {
 	getFileLastCommit,
 	getRefHeadCommit,
@@ -114,7 +120,6 @@ export type {
 export {
 	approveWorkflowRuns,
 	createPullRequest,
-	deduplicateCheckRuns,
 	deleteBranch,
 	getPullComments,
 	getPullFileSummaries,
@@ -123,7 +128,6 @@ export {
 	getPullPageData,
 	getPullStatus,
 	getPullsFromRepo,
-	isFailedCheckRun,
 	markPullReadyForReview,
 	mergePullRequest,
 	rerunChecks,
@@ -142,45 +146,54 @@ export {
 } from "./github/releases";
 export type {
 	CompareDetail,
+	RecentPushableBranch,
+} from "./github/repo-branches";
+export {
+	getBranchComparison,
+	getCompareDetail,
+	getRecentPushableBranch,
+	getRepoBranches,
+} from "./github/repo-branches";
+export {
+	getRepoContributors,
+	getRepoDiscussions,
+	getRepoParticipationStats,
+} from "./github/repo-insights";
+export {
+	getRepoOverview,
+	getRepoViewerPermission,
+} from "./github/repo-overview";
+export type { RepoTemplateKind } from "./github/repo-templates";
+export { getRepoTemplate } from "./github/repo-templates";
+export type {
 	ForkRepoInput,
 	ForkRepoResult,
-	RecentPushableBranch,
-	RepoTemplateKind,
 	SetRepoStarredInput,
 } from "./github/repos";
 export {
 	forkRepository,
-	getBranchComparison,
-	getCompareDetail,
 	getProfileRepos,
-	getRecentPushableBranch,
-	getRepoBranches,
-	getRepoContributors,
-	getRepoDiscussions,
-	getRepoOverview,
-	getRepoParticipationStats,
 	getReposHub,
-	getRepoTemplate,
-	getRepoViewerPermission,
 	getUserRepos,
 	setRepoStarred,
 } from "./github/repos";
 export type {
-	DismissReviewInput,
 	OrgTeamsInput,
 	RepoCollaboratorsInput,
-	ResolveThreadInput,
-} from "./github/reviews";
+} from "./github/review-requests";
+export {
+	getOrgTeams,
+	getRepoCollaborators,
+	removeReviewRequest,
+	requestPullReviewers,
+} from "./github/review-requests";
+export type { DismissReviewInput, ResolveThreadInput } from "./github/reviews";
 export {
 	createReviewComment,
 	dismissPullReview,
-	getOrgTeams,
 	getPullReviewComments,
-	getRepoCollaborators,
 	getReviewThreadStatuses,
-	removeReviewRequest,
 	replyToReviewComment,
-	requestPullReviewers,
 	resolveReviewThread,
 	submitPullReview,
 	unresolveReviewThread,
