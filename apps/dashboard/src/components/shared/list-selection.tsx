@@ -90,9 +90,11 @@ export function ListSelectionScope({
 			shortcut: { key: "x" },
 			enabled: shortcutsEnabled,
 			onTrigger: () => {
+				// Hover first: a clicked checkbox keeps focus after the pointer moves on.
 				const row =
-					document.activeElement?.closest<HTMLElement>(ROW_SELECTOR) ??
-					rootRef.current?.querySelector<HTMLElement>(`${ROW_SELECTOR}:hover`);
+					rootRef.current?.querySelector<HTMLElement>(
+						`${ROW_SELECTOR}:hover`,
+					) ?? document.activeElement?.closest<HTMLElement>(ROW_SELECTOR);
 				if (row && rootRef.current?.contains(row)) scope.select(row, false);
 			},
 		},
