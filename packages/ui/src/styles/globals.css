@@ -142,15 +142,23 @@
 	);
 	--ln-checkbox: color-mix(in oklch, var(--neutral-8) 61%, var(--neutral-9));
 
-	--glass-edge: lch(100 0 0 / 0.9);
-	--glass-rim: lch(100 0 0 / 0.7);
-	--glass-halo: lch(0 0 0 / 0.15) 0 0 1px 0, lch(0 0 0 / 0.03) 0 1px 2px 0;
+	/* Glass takes its light and its shadow from the theme, never pure white or
+	   black, so tinted themes keep their hue in every rim and edge. */
+	--glass-light: var(--ln-card);
+	--glass-shade: color-mix(in oklch, var(--ln-text), black 60%);
+	--glass-edge: color-mix(in oklch, var(--glass-light) 90%, transparent);
+	--glass-rim: color-mix(in oklch, var(--glass-light) 70%, transparent);
+	--glass-halo:
+		color-mix(in oklch, var(--glass-shade) 15%, transparent) 0 0 1px 0,
+		color-mix(in oklch, var(--glass-shade) 3%, transparent) 0 1px 2px 0;
 	--glass-control: var(--glass-chip);
 	--glass-well:
-		inset 0 1px 2px 0 lch(0 0 0 / 0.05), inset 0 0 0 1px lch(0 0 0 / 0.04);
+		inset 0 1px 2px 0 color-mix(in oklch, var(--glass-shade) 5%, transparent),
+		inset 0 0 0 1px color-mix(in oklch, var(--glass-shade) 4%, transparent);
 	--glass-chip: inset 0 0 0 1px var(--glass-rim), var(--glass-halo);
 	--glass-solid:
-		inset 0 1px 0 0 lch(100 0 0 / 0.22), inset 0 0 0 1px lch(0 0 0 / 0.07),
+		inset 0 1px 0 0 color-mix(in oklch, var(--glass-light) 22%, transparent),
+		inset 0 0 0 1px color-mix(in oklch, var(--glass-shade) 7%, transparent),
 		var(--glass-halo);
 
 	--ln-button: var(--ln-main);
@@ -158,8 +166,9 @@
 	--ln-button-ring: var(--glass-control);
 	--ln-tab-selected: var(--ln-card);
 	--ln-tab-selected-ring:
-		inset 0 0 0 1px var(--glass-rim), lch(0 0 0 / 0.14) 0 0 1px 0,
-		lch(0 0 0 / 0.06) 0 1px 2px 0;
+		inset 0 0 0 1px var(--glass-rim),
+		color-mix(in oklch, var(--glass-shade) 14%, transparent) 0 0 1px 0,
+		color-mix(in oklch, var(--glass-shade) 6%, transparent) 0 1px 2px 0;
 	--ln-ring-color: lch(0 0 0 / 0.09);
 	--ln-ghost-hover: lch(0 0 0 / 0.05);
 	--ln-menu-hover: lch(0 0 0 / 0.045);
@@ -281,26 +290,36 @@
 	--ln-nav-selected: var(--neutral-3);
 	--ln-checkbox: color-mix(in oklch, var(--neutral-7) 92%, var(--neutral-8));
 
-	--glass-edge: lch(100 0 0 / 0.11);
-	--glass-rim: lch(100 0 0 / 0.035);
-	--glass-halo: lch(0 0 0 / 0.35) 0 0 1px 0;
+	/* The light-mode glass mirrored: a fill a step above the surface, a barely-there
+	   light rim (light catches far more on a dark surface), and a soft blurred
+	   edge just darker than the surface. */
+	--glass-light: var(--ln-text-strong);
+	--glass-shade: color-mix(in oklch, var(--ln-sidebar), black 60%);
+	--glass-edge: color-mix(in oklch, var(--glass-light) 6%, transparent);
+	--glass-rim: color-mix(in oklch, var(--glass-light) 1.8%, transparent);
+	--glass-halo:
+		color-mix(in oklch, var(--glass-shade) 60%, transparent) 0 0 1px 0,
+		color-mix(in oklch, var(--glass-shade) 14%, transparent) 0 1px 2px 0;
 	--glass-well:
-		inset 0 1px 2px 0 lch(0 0 0 / 0.3), inset 0 0 0 1px lch(100 0 0 / 0.04);
+		inset 0 1px 2px 0 color-mix(in oklch, var(--glass-shade) 12%, transparent),
+		inset 0 0 0 1px color-mix(in oklch, var(--glass-light) 2.5%, transparent);
 	--glass-chip:
-		inset 0 1px 0 0 lch(100 0 0 / 0.035), inset 0 0 0 1px var(--glass-rim),
-		var(--glass-halo);
+		inset 0 1px 0 0 color-mix(in oklch, var(--glass-light) 2.5%, transparent),
+		inset 0 0 0 1px var(--glass-rim), var(--glass-halo);
 	--glass-solid:
-		inset 0 1px 0 0 lch(100 0 0 / 0.16), inset 0 0 0 1px lch(0 0 0 / 0.14),
+		inset 0 1px 0 0 color-mix(in oklch, var(--glass-light) 10%, transparent),
+		inset 0 0 0 1px color-mix(in oklch, var(--glass-shade) 12%, transparent),
 		var(--glass-halo);
 
-	--ln-button: var(--ln-main);
-	--ln-button-hover: var(--ln-group);
+	--ln-button: color-mix(in oklch, var(--ln-main), var(--glass-light) 3.5%);
+	--ln-button-hover: color-mix(in oklch, var(--ln-main), var(--glass-light) 6%);
 	--glass-control: var(--glass-chip);
 	--ln-button-ring: var(--glass-control);
-	--ln-tab-selected: color-mix(in oklch, var(--ln-main), white 9%);
+	--ln-chip: var(--ln-button);
+	--ln-tab-selected: color-mix(in oklch, var(--ln-main), var(--glass-light) 7%);
 	--ln-tab-selected-ring:
-		inset 0 1px 0 0 lch(100 0 0 / 0.07), inset 0 0 0 1px lch(100 0 0 / 0.045),
-		var(--glass-halo), lch(0 0 0 / 0.25) 0 1px 2px 0;
+		inset 0 1px 0 0 color-mix(in oklch, var(--glass-light) 3%, transparent),
+		inset 0 0 0 1px var(--glass-rim), var(--glass-halo);
 	--ln-ring-color: lch(100 0 0 / 0.137);
 	--ln-ghost-hover: lch(100 0 0 / 0.06);
 	--ln-menu-hover: lch(100 0 0 / 0.078);
@@ -790,6 +809,16 @@
 		@apply bg-background text-foreground;
 	}
 
+	/* Inside the app shell only its own panes scroll. iOS sizes `100vh` to the
+	   toolbar-less viewport, so an unlocked document is taller than the shell and
+	   a drag on a fixed bar scrolls or bounces the page under it. */
+	html:has([data-app-shell]),
+	html:has([data-app-shell]) body {
+		height: 100%;
+		overflow: hidden;
+		overscroll-behavior: none;
+	}
+
 	code,
 	.font-mono {
 		font-weight: 450;
@@ -1142,6 +1171,11 @@ file-tree-container {
 
 .dark file-tree-container {
 	color-scheme: dark;
+}
+
+/* Inside a drawer the tree sits on the drawer's surface, not the page's. */
+[data-slot="drawer-content"] file-tree-container {
+	--trees-bg-override: var(--ln-popover);
 }
 
 file-tree-container[data-tree="review"] {

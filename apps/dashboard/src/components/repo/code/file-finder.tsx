@@ -30,6 +30,9 @@ type FileFinderProps = {
 	owner: string;
 	repo: string;
 	currentRef: string;
+	/** Lets another control open the finder, e.g. the phone action bar. */
+	open?: boolean;
+	onOpenChange?: (open: boolean) => void;
 };
 
 export function FileFinder({
@@ -37,8 +40,12 @@ export function FileFinder({
 	owner,
 	repo,
 	currentRef,
+	open: openProp,
+	onOpenChange,
 }: FileFinderProps) {
-	const [open, setOpen] = useState(false);
+	const [openState, setOpenState] = useState(false);
+	const open = openProp ?? openState;
+	const setOpen = onOpenChange ?? setOpenState;
 	useGlobalShortcuts([
 		{ shortcut: { key: "t" }, onTrigger: () => setOpen(true) },
 	]);

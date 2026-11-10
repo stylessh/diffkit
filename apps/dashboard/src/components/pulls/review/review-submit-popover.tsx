@@ -67,10 +67,12 @@ export function ReviewSubmitPopover({
 	pendingCount,
 	isSubmitting,
 	onSubmit,
+	triggerClassName,
 }: {
 	pendingCount: number;
 	isSubmitting: boolean;
 	onSubmit: (body: string, event: ReviewEvent) => Promise<boolean>;
+	triggerClassName?: string;
 }) {
 	const [body, setBody] = useState("");
 	const [event, setEvent] = useState<ReviewEvent>("COMMENT");
@@ -97,7 +99,10 @@ export function ReviewSubmitPopover({
 		<button
 			type="button"
 			onClick={isDesktop ? undefined : () => setIsOpen(true)}
-			className="flex h-7 shrink-0 items-center gap-1.5 rounded-md bg-indigo px-3 text-xs font-medium text-indigo-foreground shadow-solid transition-colors hover:bg-indigo/90"
+			className={cn(
+				"flex h-7 shrink-0 items-center gap-1.5 rounded-md bg-indigo px-3 text-xs font-medium text-indigo-foreground shadow-solid transition-colors hover:bg-indigo/90",
+				triggerClassName,
+			)}
 		>
 			Submit review
 			{pendingBadge}

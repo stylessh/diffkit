@@ -43,6 +43,7 @@ import {
 	removePullFromOpenViews,
 } from "#/lib/github-query-updates";
 import { checkPermissionWarning } from "#/lib/warning-store";
+import { useRegisterCommentTarget } from "./comment-target";
 
 /**
  * Spacing for an event followed by another event, and the 0.5px thread joining
@@ -105,6 +106,8 @@ export function DetailCommentBox({
 	const hasPendingUploads = pendingUploads > 0;
 
 	const isSample = useIsSkeletonSample();
+	const boxRef = useRef<HTMLDivElement>(null);
+	useRegisterCommentTarget(boxRef, !isSample);
 	const viewerQuery = useQuery({
 		...githubViewerQueryOptions(scope),
 		enabled: !isSample,
@@ -265,7 +268,7 @@ export function DetailCommentBox({
 	};
 
 	return (
-		<div className="-mx-[8.5px] flex flex-col">
+		<div ref={boxRef} className="-mx-[8.5px] flex flex-col">
 			<MarkdownEditor
 				ref={editorRef}
 				scrollAnchorRef={commentActionsRef}

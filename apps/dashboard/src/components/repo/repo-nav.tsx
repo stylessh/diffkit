@@ -108,7 +108,12 @@ export function RepoNav({
 			{inBar.map((item) => {
 				const count = countOf(item);
 				return (
-					<ViewTab key={item.key} asChild active={item.key === active}>
+					<ViewTab
+						key={item.key}
+						asChild
+						active={item.key === active}
+						className="max-sm:hidden"
+					>
 						<Link
 							to={item.to}
 							params={{ owner, repo }}
@@ -126,7 +131,7 @@ export function RepoNav({
 				<DropdownMenuTrigger asChild>
 					<ViewTab
 						aria-label="More repository pages"
-						className="px-2 data-[state=open]:bg-button-hover data-[state=open]:text-foreground"
+						className="px-2 data-[state=open]:bg-button-hover data-[state=open]:text-foreground max-sm:hidden"
 					>
 						<ChevronDownIcon size={14} strokeWidth={2} />
 					</ViewTab>
@@ -163,6 +168,69 @@ export function RepoNav({
 						))}
 				</DropdownMenuContent>
 			</DropdownMenu>
+			<RepoSectionSwitcher
+				owner={owner}
+				repo={repo}
+				items={items}
+				current={items.find((item) => item.key === active)}
+				countOf={countOf}
+			/>
 		</ViewTabs>
+	);
+}
+
+// On phones the tab row has no room, so it collapses into one trigger naming
+// the current section, with every section in its menu.
+function RepoSectionSwitcher({
+	owner,
+	repo,
+	items,
+	current,
+	countOf,
+}: {
+	owner: string;
+	repo: string;
+	items: RepoNavItem[];
+	current?: RepoNavItem;
+	countOf: (item: RepoNavItem) => number | null;
+}) {
+	const currentCount = current ? countOf(current) : null;
+	return (
+		<DropdownMenu modal={false}>
+			<DropdownMenuTrigger asChild>
+				<ViewTab
+					active
+					aria-label={`Repository section: ${current?.label ?? "Code"}`}
+					className="sm:hidden"
+				>
+					{current?.label ?? "Code"}
+					{currentCount != null && currentCount > 0 ? (
+						<ViewTabCount>{formatCount(currentCount)}</ViewTabCount>
+					) : null}
+					<ChevronDownIcon size={14} strokeWidth={2} />
+				</ViewTab>
+			</DropdownMenuTrigger>
+			<DropdownMenuContent align="start" className="w-56">
+				{items.map((item) => {
+					const count = countOf(item);
+					return (
+						<DropdownMenuItem key={item.key} asChild>
+							<Link
+								to={item.to}
+								params={{ owner, repo }}
+								aria-current={item.key === current?.key ? "page" : undefined}
+							>
+								<span className="flex-1">{item.label}</span>
+								{count != null && count > 0 ? (
+									<span className="text-xs tabular-nums text-muted-foreground">
+										{formatCount(count)}
+									</span>
+								) : null}
+							</Link>
+						</DropdownMenuItem>
+					);
+				})}
+			</DropdownMenuContent>
+		</DropdownMenu>
 	);
 }

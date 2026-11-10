@@ -1,6 +1,6 @@
 "use client";
 
-import { PanelLeftIcon } from "@diffkit/icons";
+import { LayoutAlignLeftIcon } from "@diffkit/icons";
 import { Slot } from "@radix-ui/react-slot";
 import type { VariantProps } from "class-variance-authority";
 import { cva } from "class-variance-authority";
@@ -267,7 +267,7 @@ function SidebarTrigger({
 			data-slot="sidebar-trigger"
 			variant="ghost"
 			size="icon"
-			iconLeft={<PanelLeftIcon />}
+			iconLeft={<LayoutAlignLeftIcon />}
 			className={cn("h-7 w-7", className)}
 			onClick={(event) => {
 				onClick?.(event);

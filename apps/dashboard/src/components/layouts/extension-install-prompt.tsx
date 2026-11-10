@@ -59,9 +59,8 @@ export function ExtensionInstallPrompt() {
 
 	return (
 		<div
-			className={
-				"flex min-h-8 w-fit max-w-full items-center gap-2 rounded-lg bg-popover py-1 pr-1 pl-2.5 text-xs text-text-header shadow-popover"
-			}
+			// Phones have no extension store, so the offer waits for a desktop.
+			className="hidden min-h-8 w-fit max-w-full items-center gap-2 rounded-lg bg-popover py-1 pr-1 pl-2.5 text-xs text-text-header shadow-popover md:flex"
 		>
 			<Logo className="size-4 shrink-0" aria-hidden />
 			<span className="min-w-0 flex-1">

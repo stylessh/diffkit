@@ -109,11 +109,11 @@ export function DashboardLayout() {
 	const viewerLogin = viewerQuery.data?.login;
 
 	return (
-		<div className="isolate flex h-dvh flex-col bg-shell">
+		<div className="isolate flex h-dvh flex-col bg-shell" data-app-shell>
 			<AppTopbar user={user} viewerLogin={viewerLogin} navItems={navItems} />
 			<MobileTopbar user={user} viewerLogin={viewerLogin} />
-			<div className="flex flex-1 overflow-hidden md:px-2 md:pt-0.5 md:pb-2">
-				<div className="relative min-w-0 flex-1 overflow-hidden bg-main md:rounded-xl md:shadow-main">
+			<div className="flex flex-1 overflow-hidden pt-px md:px-2 md:pt-0.5 md:pb-2">
+				<div className="relative min-w-0 flex-1 overflow-hidden rounded-t-xl bg-main shadow-main md:rounded-xl">
 					<div className="h-full">
 						<Outlet />
 					</div>

@@ -27,12 +27,19 @@ export function CodePathHeader({
 	location,
 	view,
 	leading,
+	finderOpen,
+	onFinderOpenChange,
+	compact = false,
 }: {
 	scope: GitHubQueryScope;
 	repo: RepoOverview;
 	location: BlobLocation;
 	view: CodeView;
 	leading?: ReactNode;
+	finderOpen?: boolean;
+	onFinderOpenChange?: (open: boolean) => void;
+	/** On phones the finder and code search live in the floating action bar. */
+	compact?: boolean;
 }) {
 	const navigate = useNavigate();
 	const { owner, repo: repoName, ref, path } = location;
@@ -57,12 +64,19 @@ export function CodePathHeader({
 				onSelect={switchRef}
 			/>
 			<PathBreadcrumb location={location} />
-			<div className="ml-auto flex shrink-0 items-center gap-1">
+			<div
+				className={cn(
+					"ml-auto flex shrink-0 items-center gap-1",
+					compact && "max-md:hidden",
+				)}
+			>
 				<FileFinder
 					scope={scope}
 					owner={owner}
 					repo={repoName}
 					currentRef={ref}
+					open={finderOpen}
+					onOpenChange={onFinderOpenChange}
 				/>
 				<Tooltip>
 					<TooltipTrigger asChild>

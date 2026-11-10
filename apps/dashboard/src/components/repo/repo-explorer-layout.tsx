@@ -1,15 +1,26 @@
-import { FolderIcon, PanelLeftIcon } from "@diffkit/icons";
+import {
+	CodeIcon,
+	FolderIcon,
+	LayoutAlignBottomIcon,
+	SearchIcon,
+} from "@diffkit/icons";
 import {
 	Drawer,
 	DrawerContent,
+	DrawerNoDrag,
 	DrawerTitle,
 } from "@diffkit/ui/components/drawer";
+import {
+	MobileActionBar,
+	MobileActionButton,
+	MobileActionGroup,
+} from "@diffkit/ui/components/mobile-action-bar";
 import {
 	ResizableHandle,
 	ResizablePanel,
 	ResizablePanelGroup,
 } from "@diffkit/ui/components/resizable";
-import { Link } from "@tanstack/react-router";
+import { Link, useNavigate } from "@tanstack/react-router";
 import {
 	type ReactNode,
 	useLayoutEffect,
@@ -37,7 +48,7 @@ import { FolderView } from "./folder-view";
 import { RepoFileTreeSidebar } from "./repo-file-tree-sidebar";
 import { RepoHeader } from "./repo-header";
 import { SAMPLE_TREE_ENTRIES } from "./repo-samples";
-import { iconButtonClassName, RepoCard, RepoEmptyState } from "./repo-ui";
+import { RepoCard, RepoEmptyState } from "./repo-ui";
 
 const DESKTOP_QUERY = "(min-width: 768px)";
 
@@ -70,6 +81,8 @@ export function RepoExplorerLayout({
 }: ExplorerProps) {
 	const isDesktop = useIsDesktop();
 	const [drawerOpen, setDrawerOpen] = useState(false);
+	const [finderOpen, setFinderOpen] = useState(false);
+	const navigate = useNavigate();
 	const { owner, repo: repoName, ref, path } = location;
 
 	useLayoutEffect(() => setExplorerPath(path), [path]);
@@ -99,20 +112,11 @@ export function RepoExplorerLayout({
 				repo={repo}
 				location={location}
 				view={view}
-				leading={
-					isDesktop ? null : (
-						<button
-							type="button"
-							onClick={() => setDrawerOpen(true)}
-							className={iconButtonClassName}
-							aria-label="Open file tree"
-						>
-							<PanelLeftIcon size={16} strokeWidth={2} />
-						</button>
-					)
-				}
+				finderOpen={finderOpen}
+				onFinderOpenChange={setFinderOpen}
+				compact
 			/>
-			<div className="mx-auto flex max-w-[1080px] flex-col gap-3 px-3 pt-3 pb-16 md:px-6 md:pt-4">
+			<div className="mx-auto flex max-w-[1080px] flex-col gap-3 px-3 pt-3 pb-20 md:px-6 md:pt-4 md:pb-16">
 				{ref !== repo.defaultBranch && !isCommitSha(ref) ? (
 					<BranchComparisonBanner
 						owner={owner}
@@ -133,7 +137,7 @@ export function RepoExplorerLayout({
 	);
 
 	return (
-		<div className="flex h-full min-h-0 flex-col">
+		<div className="relative flex h-full min-h-0 flex-col">
 			<RepoHeader owner={owner} repo={repoName} scope={scope} active="code" />
 			<div className="flex min-h-0 flex-1 border-t-[0.5px] border-header-rule">
 				{isDesktop ? (
@@ -148,11 +152,38 @@ export function RepoExplorerLayout({
 					<>
 						<div className="min-w-0 flex-1 overflow-hidden">{content}</div>
 						<Drawer open={drawerOpen} onOpenChange={setDrawerOpen}>
-							<DrawerContent className="max-h-[70dvh]">
+							<DrawerContent className="h-[70dvh]">
 								<DrawerTitle className="sr-only">File tree</DrawerTitle>
-								{sidebar}
+								<DrawerNoDrag>{sidebar}</DrawerNoDrag>
 							</DrawerContent>
 						</Drawer>
+						<MobileActionBar label="Code actions">
+							<MobileActionGroup>
+								<MobileActionButton
+									icon={<LayoutAlignBottomIcon size={15} strokeWidth={2} />}
+									onClick={() => setDrawerOpen(true)}
+								>
+									Files
+								</MobileActionButton>
+								<MobileActionButton
+									icon={<SearchIcon size={15} strokeWidth={2} />}
+									onClick={() => setFinderOpen(true)}
+								>
+									Find file
+								</MobileActionButton>
+								<MobileActionButton
+									icon={<CodeIcon size={15} strokeWidth={2} />}
+									onClick={() =>
+										void navigate({
+											to: "/$owner/$repo/search",
+											params: { owner, repo: repoName },
+										})
+									}
+								>
+									Search code
+								</MobileActionButton>
+							</MobileActionGroup>
+						</MobileActionBar>
 					</>
 				)}
 			</div>

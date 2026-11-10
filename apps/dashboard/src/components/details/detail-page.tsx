@@ -1,4 +1,8 @@
+import { CommentIcon } from "@diffkit/icons";
 import { DetailLayout } from "@diffkit/ui/components/detail-layout";
+import { mobilePrimaryActionClassName } from "@diffkit/ui/components/mobile-action-bar";
+import { cn } from "@diffkit/ui/lib/utils";
+import { CommentTargetProvider, useCommentTarget } from "./comment-target";
 
 type DetailHeaderIcon = React.ComponentType<{
 	size?: number;
@@ -17,6 +21,7 @@ export function DetailPageLayout({
 	header?: React.ReactNode;
 	tabs?: React.ReactNode;
 }) {
+	const [focusComment, registerComment] = useCommentTarget();
 	return (
 		<div className="flex h-full min-h-0 flex-col">
 			{header}
@@ -24,10 +29,27 @@ export function DetailPageLayout({
 			<DetailLayout
 				panel={sidebar}
 				toolbar={
-					tabs ?? <div aria-hidden className="h-11 shrink-0 max-lg:hidden" />
+					tabs ?? <div aria-hidden className="h-11 shrink-0 max-md:hidden" />
+				}
+				mobileActions={
+					focusComment ? (
+						<button
+							type="button"
+							onClick={focusComment}
+							className={cn(
+								mobilePrimaryActionClassName,
+								"flex items-center gap-1.5 bg-indigo font-medium text-indigo-foreground active:bg-indigo/90",
+							)}
+						>
+							<CommentIcon size={15} strokeWidth={2} />
+							Comment
+						</button>
+					) : null
 				}
 			>
-				{main}
+				<CommentTargetProvider register={registerComment}>
+					{main}
+				</CommentTargetProvider>
 			</DetailLayout>
 		</div>
 	);

@@ -1,3 +1,4 @@
+import { MOBILE_ACTION_BAR_CLEARANCE } from "@diffkit/ui/components/mobile-action-bar";
 import { cn } from "@diffkit/ui/lib/utils";
 import type { ReactNode, RefObject } from "react";
 import {
@@ -5,6 +6,7 @@ import {
 	ListActions,
 	type ListFiltersConfig,
 } from "#/components/filters/list-toolbar";
+import { MobileListActions } from "#/components/filters/mobile-list-actions";
 import { RepoHeader } from "#/components/repo/repo-header";
 import type { RepoNavKey } from "#/components/repo/repo-nav";
 import { SearchQueryProvider } from "#/components/shared/search-highlight";
@@ -38,7 +40,7 @@ export function RepoPageHeader({
 	children: ReactNode;
 }) {
 	return (
-		<div className="flex h-full min-h-0 flex-col">
+		<div className="relative flex h-full min-h-0 flex-col">
 			<RepoHeader
 				owner={owner}
 				repo={repo}
@@ -49,7 +51,11 @@ export function RepoPageHeader({
 					tabActions || filters ? (
 						<>
 							{tabActions}
-							{filters ? <ListActions {...filters} /> : null}
+							{filters ? (
+								<span className="flex max-md:hidden">
+									<ListActions {...filters} />
+								</span>
+							) : null}
 						</>
 					) : undefined
 				}
@@ -61,6 +67,7 @@ export function RepoPageHeader({
 					ref={scrollRef}
 					className={cn(
 						"min-h-0 flex-1 overflow-y-auto px-2 pt-2 pb-10",
+						filters && MOBILE_ACTION_BAR_CLEARANCE,
 						bodyClassName,
 					)}
 				>
@@ -71,6 +78,7 @@ export function RepoPageHeader({
 					</SearchQueryProvider>
 				</div>
 			</div>
+			{filters ? <MobileListActions {...filters} /> : null}
 		</div>
 	);
 }

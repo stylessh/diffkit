@@ -43,7 +43,7 @@ import type { ListFilterState } from "./use-list-filters";
 
 export type FilterOptions = Map<string, FilterOption[]>;
 
-function useFilterOptions(
+export function useFilterOptions(
 	defs: FilterDefinition[],
 	items: FilterableItem[],
 ): FilterOptions {

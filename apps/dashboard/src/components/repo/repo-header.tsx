@@ -4,6 +4,7 @@ import {
 	PageHeaderCrumb,
 	PageHeaderTitle,
 } from "@diffkit/ui/components/page-header";
+import { cn } from "@diffkit/ui/lib/utils";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import type { ReactNode } from "react";
@@ -118,13 +119,16 @@ export function RepoHeader({
 			<PageHeader
 				actions={
 					repoData ? (
-						<RepoStarForkActions repo={repoData} scope={scope} />
+						// A deep page's crumbs need the whole row on phones.
+						<span className={cn("flex", trail && "max-md:hidden")}>
+							<RepoStarForkActions repo={repoData} scope={scope} />
+						</span>
 					) : null
 				}
 			>
 				{trail ? (
 					<>
-						<PageHeaderCrumb asChild>
+						<PageHeaderCrumb asChild className="max-md:hidden">
 							<Link to="/$owner/$repo" params={{ owner, repo }}>
 								{repoIcon}
 								<span className="truncate">
