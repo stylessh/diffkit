@@ -1,11 +1,12 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { GenericRoutePending } from "#/components/layouts/dashboard-content-loading";
 import { PullDetailPage } from "#/components/pulls/detail/pull-detail-page";
 import {
 	githubPullPageQueryOptions,
 	githubViewerQueryOptions,
 } from "#/lib/github.query";
 import { findPullSummaryInLists } from "#/lib/github-query-updates";
-import { buildSeo, formatPageTitle } from "#/lib/seo";
+import { privatePageSeo } from "#/routes/-private-page-seo";
 
 export const Route = createFileRoute("/_protected/$owner/$repo/pull/$pullId")({
 	ssr: false,
@@ -45,13 +46,10 @@ export const Route = createFileRoute("/_protected/$owner/$repo/pull/$pullId")({
 		};
 	},
 	head: ({ match, params }) =>
-		buildSeo({
-			path: match.pathname,
-			title: formatPageTitle(
-				match.loaderData?.prTitle ?? `PR #${params.pullId}`,
-			),
+		privatePageSeo(match, {
+			title: match.loaderData?.prTitle ?? `PR #${params.pullId}`,
 			description: `Private pull request #${params.pullId} in ${params.owner}/${params.repo}.`,
-			robots: "noindex",
 		}),
+	pendingComponent: GenericRoutePending,
 	component: PullDetailPage,
 });

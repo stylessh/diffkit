@@ -17,19 +17,18 @@ import { RepoPageHeader } from "#/components/repo/repo-page-header";
 import { ListEmpty } from "#/components/shared/list-page";
 import { githubIssuesFromRepoQueryOptions } from "#/lib/github.query";
 import type { IssueSummary } from "#/lib/github.types";
-import { buildSeo, formatPageTitle } from "#/lib/seo";
+import { useGitHubQueryScope } from "#/lib/use-github-query-scope";
 import { useHasMounted } from "#/lib/use-has-mounted";
+import { privatePageSeo } from "#/routes/-private-page-seo";
 
 const PER_PAGE = 30;
 
 export const Route = createFileRoute("/_protected/$owner/$repo/issues/")({
 	ssr: false,
 	head: ({ match, params }) =>
-		buildSeo({
-			path: match.pathname,
-			title: formatPageTitle(`Issues · ${params.owner}/${params.repo}`),
+		privatePageSeo(match, {
+			title: `Issues · ${params.owner}/${params.repo}`,
 			description: `Issues for ${params.owner}/${params.repo}.`,
-			robots: "noindex",
 		}),
 	component: RepoIssuesPage,
 });
@@ -45,9 +44,8 @@ function deriveApiState(statusValues: Set<string>): "open" | "closed" | "all" {
 }
 
 function RepoIssuesPage() {
-	const { user } = Route.useRouteContext();
 	const { owner, repo } = Route.useParams();
-	const scope = { userId: user.id };
+	const scope = useGitHubQueryScope();
 	const hasMounted = useHasMounted();
 
 	const filterState = useListFilters({

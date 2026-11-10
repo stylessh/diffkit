@@ -10,7 +10,8 @@ import {
 	Outlet,
 	useMatches,
 } from "@tanstack/react-router";
-import { buildSeo, formatPageTitle, PRIVATE_ROUTE_HEADERS } from "#/lib/seo";
+import { PRIVATE_ROUTE_HEADERS } from "#/lib/seo";
+import { privatePageSeo } from "#/routes/-private-page-seo";
 
 const settingsNav = [
 	{ to: "/settings", label: "General" },
@@ -20,11 +21,9 @@ const settingsNav = [
 export const Route = createFileRoute("/_protected/settings")({
 	headers: () => PRIVATE_ROUTE_HEADERS,
 	head: ({ match }) =>
-		buildSeo({
-			path: match.pathname,
-			title: formatPageTitle("Settings"),
+		privatePageSeo(match, {
+			title: "Settings",
 			description: "Configure your DiffKit preferences.",
-			robots: "noindex",
 		}),
 	component: SettingsLayout,
 });

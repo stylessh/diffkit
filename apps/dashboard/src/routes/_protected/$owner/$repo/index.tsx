@@ -1,5 +1,4 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useMemo } from "react";
 import { RepoOverviewPage } from "#/components/repo/repo-overview-page";
 import {
 	githubRepoBlobQueryOptions,
@@ -7,7 +6,8 @@ import {
 	githubRepoOverviewQueryOptions,
 	githubViewerQueryOptions,
 } from "#/lib/github.query";
-import { buildSeo, formatPageTitle } from "#/lib/seo";
+import { useGitHubQueryScope } from "#/lib/use-github-query-scope";
+import { privatePageSeo } from "#/routes/-private-page-seo";
 
 export const Route = createFileRoute("/_protected/$owner/$repo/")({
 	ssr: false,
@@ -54,18 +54,15 @@ export const Route = createFileRoute("/_protected/$owner/$repo/")({
 		}
 	},
 	head: ({ match, params }) =>
-		buildSeo({
-			path: match.pathname,
-			title: formatPageTitle(`${params.owner}/${params.repo}`),
+		privatePageSeo(match, {
+			title: `${params.owner}/${params.repo}`,
 			description: `Repository overview for ${params.owner}/${params.repo}.`,
-			robots: "noindex",
 		}),
 	component: RepoOverviewRoute,
 });
 
 function RepoOverviewRoute() {
-	const { user } = Route.useRouteContext();
 	const { owner, repo } = Route.useParams();
-	const scope = useMemo(() => ({ userId: user.id }), [user.id]);
+	const scope = useGitHubQueryScope();
 	return <RepoOverviewPage owner={owner} repo={repo} scope={scope} />;
 }

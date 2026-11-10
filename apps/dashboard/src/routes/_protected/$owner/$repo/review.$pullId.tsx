@@ -1,11 +1,12 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { GenericRoutePending } from "#/components/layouts/dashboard-content-loading";
 import { ReviewPage } from "#/components/pulls/review/review-page";
 import {
 	githubPullFileSummariesQueryOptions,
 	githubPullFilesInfiniteQueryOptions,
 	githubPullPageQueryOptions,
 } from "#/lib/github.query";
-import { buildSeo, formatPageTitle } from "#/lib/seo";
+import { privatePageSeo } from "#/routes/-private-page-seo";
 
 export const Route = createFileRoute("/_protected/$owner/$repo/review/$pullId")(
 	{
@@ -35,16 +36,13 @@ export const Route = createFileRoute("/_protected/$owner/$repo/review/$pullId")(
 			};
 		},
 		head: ({ match, params }) =>
-			buildSeo({
-				path: match.pathname,
-				title: formatPageTitle(
-					match.loaderData?.prTitle
-						? `Review: ${match.loaderData.prTitle}`
-						: `Review PR #${params.pullId}`,
-				),
+			privatePageSeo(match, {
+				title: match.loaderData?.prTitle
+					? `Review: ${match.loaderData.prTitle}`
+					: `Review PR #${params.pullId}`,
 				description: `Private code review workspace for pull request #${params.pullId} in ${params.owner}/${params.repo}.`,
-				robots: "noindex",
 			}),
+		pendingComponent: GenericRoutePending,
 		component: ReviewPage,
 	},
 );

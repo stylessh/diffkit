@@ -1,13 +1,12 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useMemo } from "react";
-import { DashboardContentLoading } from "#/components/layouts/dashboard-content-loading";
 import { ReleaseFormPage } from "#/components/releases/release-form-page";
 import {
 	githubRepoOverviewQueryOptions,
 	githubRepoReleaseQueryOptions,
 	githubRepoViewerPermissionQueryOptions,
 } from "#/lib/github.query";
-import { buildSeo, formatPageTitle } from "#/lib/seo";
+import { useGitHubQueryScope } from "#/lib/use-github-query-scope";
+import { privatePageSeo } from "#/routes/-private-page-seo";
 
 export const Route = createFileRoute(
 	"/_protected/$owner/$repo/releases/$tag_/edit",
@@ -27,22 +26,16 @@ export const Route = createFileRoute(
 		);
 	},
 	head: ({ match, params }) =>
-		buildSeo({
-			path: match.pathname,
-			title: formatPageTitle(
-				`Edit release ${params.tag} · ${params.owner}/${params.repo}`,
-			),
+		privatePageSeo(match, {
+			title: `Edit release ${params.tag} · ${params.owner}/${params.repo}`,
 			description: `Edit release ${params.tag} of ${params.owner}/${params.repo}.`,
-			robots: "noindex",
 		}),
-	pendingComponent: DashboardContentLoading,
 	component: EditReleaseRoute,
 });
 
 function EditReleaseRoute() {
-	const { user } = Route.useRouteContext();
 	const { owner, repo, tag } = Route.useParams();
-	const scope = useMemo(() => ({ userId: user.id }), [user.id]);
+	const scope = useGitHubQueryScope();
 	return (
 		<ReleaseFormPage owner={owner} repo={repo} scope={scope} editTag={tag} />
 	);

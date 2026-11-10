@@ -18,7 +18,6 @@ import {
 	useListFilters,
 } from "#/components/filters";
 import { readRememberedView } from "#/components/filters/filter-cookie";
-import { DashboardContentLoading } from "#/components/layouts/dashboard-content-loading";
 import { RepositoryRow } from "#/components/repo/repository-row";
 import { ListEmpty, ListPage } from "#/components/shared/list-page";
 import {
@@ -33,8 +32,10 @@ import {
 	safeRepoListPage,
 } from "#/lib/repo-list-page";
 import { buildReposHubPrefetchInput } from "#/lib/repos-hub-filter";
-import { buildSeo, formatPageTitle } from "#/lib/seo";
 import { useDebouncedValue } from "#/lib/use-debounced-value";
+import { useGitHubQueryScope } from "#/lib/use-github-query-scope";
+import { RepositoryRowsSkeleton } from "#/routes/_protected/-repository-rows-skeleton";
+import { privatePageSeo } from "#/routes/-private-page-seo";
 
 export const Route = createFileRoute("/_protected/repos")({
 	ssr: false,
@@ -74,13 +75,10 @@ export const Route = createFileRoute("/_protected/repos")({
 		);
 		void context.queryClient.prefetchQuery(githubUserReposQueryOptions(scope));
 	},
-	pendingComponent: DashboardContentLoading,
 	head: ({ match }) =>
-		buildSeo({
-			path: match.pathname,
-			title: formatPageTitle("Repositories"),
+		privatePageSeo(match, {
+			title: "Repositories",
 			description: "Your GitHub repositories in Diffkit.",
-			robots: "noindex",
 		}),
 	component: RepositoriesPage,
 });
@@ -154,8 +152,7 @@ const repositorySortOptions: SortOption[] = [
 const NO_ITEMS: RepositoryFilterItem[] = [];
 
 function RepositoriesPage() {
-	const { user } = Route.useRouteContext();
-	const scope = useMemo(() => ({ userId: user.id }), [user.id]);
+	const scope = useGitHubQueryScope();
 	const [page, setPage] = useQueryState("page", repoListPageQueryParser);
 
 	const filterState = useListFilters({
@@ -218,10 +215,6 @@ function RepositoriesPage() {
 
 	if (hubQuery.error) throw hubQuery.error;
 
-	if (!hubQuery.data && hubQuery.isPending) {
-		return <DashboardContentLoading />;
-	}
-
 	const hub = hubQuery.data;
 	const totals = hub?.totals ?? { all: 0, public: 0, private: 0 };
 	const displayedRepos = hub?.repos ?? [];
@@ -229,7 +222,7 @@ function RepositoriesPage() {
 	return (
 		<ListPage
 			title="Repositories"
-			count={totals.all}
+			count={hub ? totals.all : undefined}
 			className="overflow-stable"
 			filters={{
 				state: filterState,
@@ -237,7 +230,9 @@ function RepositoriesPage() {
 				searchPlaceholder: "Search repositories…",
 			}}
 		>
-			{totals.all === 0 ? (
+			{!hub ? (
+				<RepositoryRowsSkeleton />
+			) : totals.all === 0 ? (
 				<ListEmpty>No repositories found.</ListEmpty>
 			) : matchingCount === 0 ? (
 				<ListEmpty>No repositories match these filters.</ListEmpty>

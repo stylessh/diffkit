@@ -1,20 +1,24 @@
 import { ReviewsIcon } from "@diffkit/icons";
 import { useQuery } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
-import { useMemo, useRef } from "react";
+import { useRef } from "react";
+import { Skeleton } from "skullet/react";
 import {
 	applyListView,
 	pullFilterDefs,
 	pullSortOptions,
 	useListFilters,
 } from "#/components/filters";
-import { DashboardContentLoading } from "#/components/layouts/dashboard-content-loading";
 import { PullBulkSelection } from "#/components/pulls/pull-bulk-selection";
+import { SAMPLE_PULLS } from "#/components/pulls/pull-list-samples";
 import { PullRequestRow } from "#/components/pulls/pull-request-row";
 import { ListEmpty, ListGroup, ListPage } from "#/components/shared/list-page";
+import { SkeletonSample } from "#/components/shared/skeleton-sample";
 import { githubMyPullsQueryOptions } from "#/lib/github.query";
-import { buildSeo, formatPageTitle } from "#/lib/seo";
+import type { PullSummary } from "#/lib/github.types";
+import { useGitHubQueryScope } from "#/lib/use-github-query-scope";
 import { useHasMounted } from "#/lib/use-has-mounted";
+import { privatePageSeo } from "#/routes/-private-page-seo";
 
 export const Route = createFileRoute("/_protected/reviews")({
 	ssr: false,
@@ -22,32 +26,26 @@ export const Route = createFileRoute("/_protected/reviews")({
 		const scope = { userId: context.user.id };
 		void context.queryClient.prefetchQuery(githubMyPullsQueryOptions(scope));
 	},
-	pendingComponent: DashboardContentLoading,
 	head: ({ match }) =>
-		buildSeo({
-			path: match.pathname,
-			title: formatPageTitle("GitHub code reviews"),
+		privatePageSeo(match, {
+			title: "GitHub code reviews",
 			description:
 				"Private review queue for pull requests requesting your feedback, with fast access to diffs and discussion.",
-			robots: "noindex",
 		}),
 	component: ReviewsPage,
 });
 
+const NO_REVIEWS: PullSummary[] = [];
+
 function ReviewsPage() {
-	const { user } = Route.useRouteContext();
-	const scope = useMemo(() => ({ userId: user.id }), [user.id]);
+	const scope = useGitHubQueryScope();
 	const hasMounted = useHasMounted();
 	const scrollContainerRef = useRef<HTMLDivElement>(null);
 	const query = useQuery({
 		...githubMyPullsQueryOptions(scope),
 		enabled: hasMounted,
 	});
-
-	const rawReviews = useMemo(
-		() => query.data?.reviewRequested ?? [],
-		[query.data],
-	);
+	const requested = query.data?.reviewRequested;
 
 	const filterState = useListFilters({
 		listId: "reviews",
@@ -57,21 +55,26 @@ function ReviewsPage() {
 	});
 
 	if (query.error) throw query.error;
-	if (query.data) {
-		const reviews = applyListView(rawReviews, filterState);
 
-		return (
-			<ListPage
-				title="Reviews"
-				count={reviews.length}
-				scrollRef={scrollContainerRef}
-				filters={{
-					state: filterState,
-					items: rawReviews,
-					searchPlaceholder: "Search reviews…",
-				}}
-			>
-				{reviews.length === 0 ? (
+	const reviews = applyListView(requested ?? NO_REVIEWS, filterState);
+
+	return (
+		<ListPage
+			title="Reviews"
+			count={requested ? reviews.length : undefined}
+			scrollRef={scrollContainerRef}
+			filters={{
+				state: filterState,
+				items: requested ?? NO_REVIEWS,
+				searchPlaceholder: "Search reviews…",
+			}}
+		>
+			<Skeleton loading={!requested} label="Loading reviews">
+				{!requested ? (
+					<SkeletonSample>
+						<ReviewGroup pulls={SAMPLE_PULLS} />
+					</SkeletonSample>
+				) : reviews.length === 0 ? (
 					<ListEmpty>
 						{filterState.activeFilters.length > 0 || filterState.searchQuery
 							? "No reviews match your filters."
@@ -79,19 +82,20 @@ function ReviewsPage() {
 					</ListEmpty>
 				) : (
 					<PullBulkSelection pulls={reviews} scope={scope}>
-						<ListGroup
-							icon={ReviewsIcon}
-							title="Review requested"
-							count={reviews.length}
-						>
-							{reviews.map((pr) => (
-								<PullRequestRow key={pr.id} pr={pr} />
-							))}
-						</ListGroup>
+						<ReviewGroup pulls={reviews} />
 					</PullBulkSelection>
 				)}
-			</ListPage>
-		);
-	}
-	return <DashboardContentLoading />;
+			</Skeleton>
+		</ListPage>
+	);
+}
+
+function ReviewGroup({ pulls }: { pulls: PullSummary[] }) {
+	return (
+		<ListGroup icon={ReviewsIcon} title="Review requested" count={pulls.length}>
+			{pulls.map((pull) => (
+				<PullRequestRow key={pull.id} pr={pull} />
+			))}
+		</ListGroup>
+	);
 }

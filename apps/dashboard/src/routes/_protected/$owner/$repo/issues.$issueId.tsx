@@ -1,8 +1,9 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { IssueDetailPage } from "#/components/issues/detail/issue-detail-page";
+import { GenericRoutePending } from "#/components/layouts/dashboard-content-loading";
 import { githubIssuePageQueryOptions } from "#/lib/github.query";
 import { findIssueSummaryInLists } from "#/lib/github-query-updates";
-import { buildSeo, formatPageTitle } from "#/lib/seo";
+import { privatePageSeo } from "#/routes/-private-page-seo";
 
 export const Route = createFileRoute(
 	"/_protected/$owner/$repo/issues/$issueId",
@@ -42,13 +43,10 @@ export const Route = createFileRoute(
 		};
 	},
 	head: ({ match, params }) =>
-		buildSeo({
-			path: match.pathname,
-			title: formatPageTitle(
-				match.loaderData?.issueTitle ?? `Issue #${params.issueId}`,
-			),
+		privatePageSeo(match, {
+			title: match.loaderData?.issueTitle ?? `Issue #${params.issueId}`,
 			description: `Private GitHub issue #${params.issueId} in ${params.owner}/${params.repo}.`,
-			robots: "noindex",
 		}),
+	pendingComponent: GenericRoutePending,
 	component: IssueDetailPage,
 });

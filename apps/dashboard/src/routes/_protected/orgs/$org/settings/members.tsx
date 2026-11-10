@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useMemo } from "react";
 import { OrgMembersSettings } from "#/components/org/settings/org-members-settings";
 import { githubOrgMembersQueryOptions } from "#/lib/github.query";
+import { useGitHubQueryScope } from "#/lib/use-github-query-scope";
 
 export const Route = createFileRoute("/_protected/orgs/$org/settings/members")({
 	loader: ({ context, params }) => {
@@ -14,8 +14,7 @@ export const Route = createFileRoute("/_protected/orgs/$org/settings/members")({
 });
 
 function OrgMembersRoute() {
-	const { user } = Route.useRouteContext();
 	const { org } = Route.useParams();
-	const scope = useMemo(() => ({ userId: user.id }), [user.id]);
+	const scope = useGitHubQueryScope();
 	return <OrgMembersSettings org={org} scope={scope} />;
 }

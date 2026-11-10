@@ -17,10 +17,16 @@ import { Tabs, TabsList, TabsTrigger } from "@diffkit/ui/components/tabs";
 import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
 import { parseAsStringLiteral, useQueryState } from "nuqs";
-import { type ReactNode, useEffect, useMemo, useRef } from "react";
+import {
+	lazy,
+	type ReactNode,
+	Suspense,
+	useEffect,
+	useMemo,
+	useRef,
+} from "react";
 import { Skeleton, SkeletonBox } from "skullet/react";
 import { DetailActivityHeader } from "#/components/details/detail-activity";
-import { ContributionGraph } from "#/components/profile/contribution-graph";
 import { PinnedRepoCard } from "#/components/profile/pinned-repo-card";
 import { UserActivityFeed } from "#/components/profile/user-activity-feed";
 import { RepositoryRow } from "#/components/repo/repository-row";
@@ -39,8 +45,21 @@ import {
 	safeRepoListPage,
 	sliceReposForPage,
 } from "#/lib/repo-list-page";
-import { buildSeo, formatPageTitle } from "#/lib/seo";
+import { useGitHubQueryScope } from "#/lib/use-github-query-scope";
 import { useHasMounted } from "#/lib/use-has-mounted";
+import { RepositoryRowsSkeleton } from "#/routes/_protected/-repository-rows-skeleton";
+import { privatePageSeo } from "#/routes/-private-page-seo";
+
+/**
+ * Loaded on demand: the graph's number animation defines a custom element
+ * while its module loads, which the worker cannot do when it renders this
+ * page's cold state.
+ */
+const ContributionGraph = lazy(() =>
+	import("#/components/profile/contribution-graph").then((module) => ({
+		default: module.ContributionGraph,
+	})),
+);
 
 export const Route = createFileRoute("/_protected/$owner/")({
 	ssr: false,
@@ -58,11 +77,9 @@ export const Route = createFileRoute("/_protected/$owner/")({
 		);
 	},
 	head: ({ match, params }) =>
-		buildSeo({
-			path: match.pathname,
-			title: formatPageTitle(`@${params.owner}`),
+		privatePageSeo(match, {
+			title: `@${params.owner}`,
 			description: `GitHub profile for ${params.owner}.`,
-			robots: "noindex",
 		}),
 	component: ProfilePage,
 });
@@ -91,8 +108,7 @@ const SAMPLE_PROFILE: GitHubUserProfile = {
 
 function ProfilePage() {
 	const { owner } = Route.useParams();
-	const { user } = Route.useRouteContext();
-	const scope = { userId: user.id };
+	const scope = useGitHubQueryScope();
 	const hasMounted = useHasMounted();
 	const [tabSearchParam, setTabSearchParam] = useQueryState(
 		"tab",
@@ -196,10 +212,12 @@ function ProfilePage() {
 			{/* Banner — contribution graph with aurora overlay */}
 			<div className="relative h-48 overflow-hidden sm:h-56">
 				{contributions ? (
-					<ContributionGraph
-						calendar={contributions}
-						className="absolute inset-0"
-					/>
+					<Suspense>
+						<ContributionGraph
+							calendar={contributions}
+							className="absolute inset-0"
+						/>
+					</Suspense>
 				) : null}
 			</div>
 
@@ -285,9 +303,9 @@ function ProfilePage() {
 					{profile && profileTab === "repos" ? (
 						<section className="-mx-[max(0rem,calc((100vw-100%)/2))] flex flex-col pt-20">
 							<div className="mx-auto w-full max-w-4xl px-3 md:px-6">
-								{profileReposQuery.isLoading ? (
-									<div className="flex justify-center py-12">
-										<Spinner className="size-6 text-muted-foreground" />
+								{profileReposQuery.isPending ? (
+									<div className="overflow-hidden rounded-xl border-[0.5px] border-border bg-surface-1">
+										<RepositoryRowsSkeleton rowClassName="h-[72px]" />
 									</div>
 								) : !profileReposQuery.data ||
 									profileReposQuery.data.length === 0 ? (

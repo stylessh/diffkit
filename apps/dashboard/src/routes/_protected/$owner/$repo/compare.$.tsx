@@ -1,5 +1,4 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useMemo } from "react";
 import { ComparePage } from "#/components/compare/compare-page";
 import { parseCompareSplat, pullHeadFilter } from "#/lib/compare-ref";
 import {
@@ -10,7 +9,8 @@ import {
 	githubRepoViewerPermissionQueryOptions,
 	githubViewerQueryOptions,
 } from "#/lib/github.query";
-import { buildSeo, formatPageTitle } from "#/lib/seo";
+import { useGitHubQueryScope } from "#/lib/use-github-query-scope";
+import { privatePageSeo } from "#/routes/-private-page-seo";
 
 type CompareSearch = {
 	expand?: 1;
@@ -60,22 +60,19 @@ export const Route = createFileRoute("/_protected/$owner/$repo/compare/$")({
 		const subject = head
 			? `Compare ${base ? `${base}...` : ""}${head}`
 			: "Compare changes";
-		return buildSeo({
-			path: match.pathname,
-			title: formatPageTitle(`${subject} — ${params.owner}/${params.repo}`),
+		return privatePageSeo(match, {
+			title: `${subject} — ${params.owner}/${params.repo}`,
 			description: `Compare changes and open a pull request in ${params.owner}/${params.repo}.`,
-			robots: "noindex",
 		});
 	},
 	component: CompareRoute,
 });
 
 function CompareRoute() {
-	const { user } = Route.useRouteContext();
 	const { owner, repo } = Route.useParams();
 	const refs = Route.useLoaderData();
 	const { expand } = Route.useSearch();
-	const scope = useMemo(() => ({ userId: user.id }), [user.id]);
+	const scope = useGitHubQueryScope();
 
 	return (
 		<ComparePage
