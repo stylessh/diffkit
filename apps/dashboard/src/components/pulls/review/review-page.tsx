@@ -18,7 +18,6 @@ import {
 	ViewTabCount,
 	ViewTabs,
 } from "@diffkit/ui/components/view-tabs";
-import { cn } from "@diffkit/ui/lib/utils";
 import type { SelectedLineRange } from "@pierre/diffs";
 import type { DiffLineAnnotation } from "@pierre/diffs/react";
 import {
@@ -72,12 +71,11 @@ import {
 import { usePageTitle } from "#/lib/use-page-title";
 import { useRegisterTab } from "#/lib/use-register-tab";
 import { checkPermissionWarning } from "#/lib/warning-store";
+import { ReviewCommitList } from "./review-commit-list";
 import {
-	DiffCommitList,
 	DiffDisplayOptions,
 	type DiffStyle,
 	type DiffView,
-	DiffViewSwitch,
 } from "./review-diff-toolbar";
 import {
 	type ActiveFileStore,
@@ -91,6 +89,10 @@ import type {
 	ReviewEvent,
 } from "./review-types";
 import { encodeFileId } from "./review-utils";
+import {
+	createViewedFilesStore,
+	type ViewedFilesStore,
+} from "./viewed-files-store";
 
 const EMPTY_COMMITS: PullCommit[] = [];
 
@@ -189,6 +191,8 @@ export function ReviewPage() {
 		baseRefName: pr?.baseRefName,
 	});
 	const reviewComments = reviewCommentsQuery.data ?? [];
+	// biome-ignore lint/correctness/useExhaustiveDependencies: a new head commit starts the viewed ticks over
+	const viewedFiles = useMemo(() => createViewedFilesStore(), [diff.revision]);
 
 	usePageTitle(pr ? `Review: ${pr.title}` : null);
 
@@ -502,6 +506,7 @@ export function ReviewPage() {
 			threadInfoByCommentId,
 			mentionConfig,
 			viewerLogin,
+			viewedFiles,
 			onStartComment: handleStartComment,
 			onCancelComment: handleCancelComment,
 			onAddComment: handleAddComment,
@@ -519,6 +524,7 @@ export function ReviewPage() {
 			threadInfoByCommentId,
 			mentionConfig,
 			viewerLogin,
+			viewedFiles,
 			handleStartComment,
 			handleCancelComment,
 			handleAddComment,
@@ -545,11 +551,6 @@ export function ReviewPage() {
 	const diffFiles = diff.files;
 	const diffContent = (
 		<div className="relative h-full min-h-0">
-			{diffView === "commits" ? (
-				<div className="h-full overflow-auto px-[14px] pt-2 pb-6 max-md:px-2">
-					<DiffCommitList commits={commits} owner={owner} repo={repo} />
-				</div>
-			) : null}
 			{diffFiles.phase === "error" ? (
 				<p className="px-4 py-10 text-center text-[13px] font-[450] text-muted-foreground">
 					{diffFiles.error.message}
@@ -570,10 +571,9 @@ export function ReviewPage() {
 						wrapLines={wrapLines}
 						review={review}
 						onActiveFileChange={handleActiveFileChange}
-						className={cn(diffView === "commits" && "hidden")}
 						footer={
 							diffFiles.phase === "streaming" ? (
-								<p className="mt-2 rounded-lg border-[0.5px] border-card-border bg-surface-0 px-4 py-3 text-xs font-[450] text-muted-foreground">
+								<p className="px-4 py-3 text-xs font-[450] text-muted-foreground">
 									Loaded {diffFiles.files.length} of {prChangedFiles} files…
 								</p>
 							) : undefined
@@ -584,69 +584,80 @@ export function ReviewPage() {
 		</div>
 	);
 
+	const toolbar = (
+		<ReviewTabs
+			stack={<PullStackBadge owner={owner} repo={repo} pr={pr} />}
+			owner={owner}
+			repo={repo}
+			pullId={pullId}
+			changedFiles={prChangedFiles}
+			additions={pr.additions}
+			deletions={pr.deletions}
+			diffStyle={diffStyle}
+			onSetDiffStyle={setDiffStyle}
+			wrapLines={wrapLines}
+			onWrapLinesChange={setWrapLines}
+			pendingCount={pendingComments.length}
+			isSubmitting={isSubmitting}
+			onSubmitReview={handleSubmitReview}
+			onOpenChanges={() => setFileSheetOpen(true)}
+			isDesktop={isDesktop}
+		/>
+	);
+	const changesPanel = (
+		<ReviewChangesPanel
+			view={diffView}
+			onViewChange={setDiffView}
+			fileCount={prChangedFiles}
+			commitCount={pr.commits}
+			commits={<ReviewCommitList commits={commits} owner={owner} repo={repo} />}
+			files={
+				<ReviewSidebar
+					sidebarFiles={sidebarFiles}
+					sidebarFileCount={sidebarFileCount}
+					isStreamingSummaries={isStreamingSummaries}
+					activeFileStore={activeFileStore}
+					viewedFiles={viewedFiles}
+					onFileClick={scrollToFile}
+				/>
+			}
+		/>
+	);
+
+	if (!isDesktop) {
+		return (
+			<div className="flex h-full min-h-0 flex-col">
+				{toolbar}
+				<div className="min-h-0 flex-1 overflow-hidden border-t-[0.5px] border-header-rule">
+					{diffContent}
+				</div>
+				<Drawer open={fileSheetOpen} onOpenChange={setFileSheetOpen}>
+					<DrawerContent className="h-[70dvh]">
+						<DrawerTitle className="sr-only">Changes</DrawerTitle>
+						{changesPanel}
+					</DrawerContent>
+				</Drawer>
+			</div>
+		);
+	}
+
 	return (
-		<div className="flex h-full min-h-0 flex-col">
-			<ReviewTabs
-				stack={<PullStackBadge owner={owner} repo={repo} pr={pr} />}
-				owner={owner}
-				repo={repo}
-				pullId={pullId}
-				changedFiles={prChangedFiles}
-				commitCount={pr.commits}
-				additions={pr.additions}
-				deletions={pr.deletions}
-				diffView={diffView}
-				onDiffViewChange={setDiffView}
-				diffStyle={diffStyle}
-				onSetDiffStyle={setDiffStyle}
-				wrapLines={wrapLines}
-				onWrapLinesChange={setWrapLines}
-				pendingCount={pendingComments.length}
-				isSubmitting={isSubmitting}
-				onSubmitReview={handleSubmitReview}
-				onOpenFileSheet={() => setFileSheetOpen(true)}
-				isDesktop={isDesktop}
-			/>
-
-			{isDesktop ? (
-				<ResizablePanelGroup
-					direction="horizontal"
-					className="min-h-0 flex-1 border-t-[0.5px] border-header-rule"
-				>
-					<ResizablePanel defaultSize={20} minSize={12} maxSize={40}>
-						<ReviewSidebar
-							sidebarFiles={sidebarFiles}
-							sidebarFileCount={sidebarFileCount}
-							isStreamingSummaries={isStreamingSummaries}
-							activeFileStore={activeFileStore}
-							onFileClick={scrollToFile}
-						/>
-					</ResizablePanel>
-
-					<ResizableHandle />
-
-					<ResizablePanel defaultSize={80}>{diffContent}</ResizablePanel>
-				</ResizablePanelGroup>
-			) : (
-				<>
-					<div className="min-h-0 flex-1 overflow-hidden border-t-[0.5px] border-header-rule">
+		<ResizablePanelGroup direction="horizontal" className="h-full min-h-0">
+			<ResizablePanel defaultSize={77}>
+				<div className="flex h-full min-h-0 flex-col">
+					{toolbar}
+					<div className="min-h-0 flex-1 border-t-[0.5px] border-header-rule">
 						{diffContent}
 					</div>
-					<Drawer open={fileSheetOpen} onOpenChange={setFileSheetOpen}>
-						<DrawerContent className="max-h-[70dvh]">
-							<DrawerTitle className="sr-only">Files</DrawerTitle>
-							<ReviewSidebar
-								sidebarFiles={sidebarFiles}
-								sidebarFileCount={sidebarFileCount}
-								isStreamingSummaries={isStreamingSummaries}
-								activeFileStore={activeFileStore}
-								onFileClick={scrollToFile}
-							/>
-						</DrawerContent>
-					</Drawer>
-				</>
-			)}
-		</div>
+				</div>
+			</ResizablePanel>
+
+			<ResizableHandle />
+
+			<ResizablePanel defaultSize={23} minSize={14} maxSize={40}>
+				{changesPanel}
+			</ResizablePanel>
+		</ResizablePanelGroup>
 	);
 }
 
@@ -659,11 +670,8 @@ const ReviewTabs = memo(function ReviewTabs({
 	repo,
 	pullId,
 	changedFiles,
-	commitCount,
 	additions,
 	deletions,
-	diffView,
-	onDiffViewChange,
 	diffStyle,
 	onSetDiffStyle,
 	wrapLines,
@@ -671,7 +679,7 @@ const ReviewTabs = memo(function ReviewTabs({
 	pendingCount,
 	isSubmitting,
 	onSubmitReview,
-	onOpenFileSheet,
+	onOpenChanges,
 	isDesktop,
 }: {
 	stack: React.ReactNode;
@@ -679,11 +687,8 @@ const ReviewTabs = memo(function ReviewTabs({
 	repo: string;
 	pullId: string;
 	changedFiles: number;
-	commitCount: number;
 	additions: number;
 	deletions: number;
-	diffView: DiffView;
-	onDiffViewChange: (view: DiffView) => void;
 	diffStyle: DiffStyle;
 	onSetDiffStyle: (style: DiffStyle) => void;
 	wrapLines: boolean;
@@ -691,7 +696,7 @@ const ReviewTabs = memo(function ReviewTabs({
 	pendingCount: number;
 	isSubmitting: boolean;
 	onSubmitReview: (body: string, event: ReviewEvent) => Promise<boolean>;
-	onOpenFileSheet: () => void;
+	onOpenChanges: () => void;
 	isDesktop: boolean;
 }) {
 	return (
@@ -700,19 +705,12 @@ const ReviewTabs = memo(function ReviewTabs({
 			actions={
 				<>
 					{stack}
-					<DiffViewSwitch
-						view={diffView}
-						onViewChange={onDiffViewChange}
-						fileCount={changedFiles}
-						commitCount={commitCount}
-					/>
-					<span aria-hidden className="mx-2 h-4 w-[0.5px] bg-header-rule" />
 					{isDesktop ? null : (
 						<PageIconButton
 							raised
 							type="button"
-							onClick={onOpenFileSheet}
-							aria-label="Open file tree"
+							onClick={onOpenChanges}
+							aria-label="Open files and commits"
 						>
 							<PanelLeftIcon size={14} strokeWidth={2} />
 						</PageIconButton>
@@ -759,6 +757,44 @@ const ReviewTabs = memo(function ReviewTabs({
 	);
 });
 
+function ReviewChangesPanel({
+	view,
+	onViewChange,
+	fileCount,
+	commitCount,
+	files,
+	commits,
+}: {
+	view: DiffView;
+	onViewChange: (view: DiffView) => void;
+	fileCount: number;
+	commitCount: number;
+	files: React.ReactNode;
+	commits: React.ReactNode;
+}) {
+	return (
+		<aside aria-label="Changes" className="flex h-full min-h-0 flex-col">
+			<ViewTabs label="Changes" className="px-3">
+				<ViewTab
+					active={view === "files"}
+					onClick={() => onViewChange("files")}
+				>
+					Files
+					<ViewTabCount>{fileCount}</ViewTabCount>
+				</ViewTab>
+				<ViewTab
+					active={view === "commits"}
+					onClick={() => onViewChange("commits")}
+				>
+					Commits
+					<ViewTabCount>{commitCount}</ViewTabCount>
+				</ViewTab>
+			</ViewTabs>
+			<div className="min-h-0 flex-1">{view === "files" ? files : commits}</div>
+		</aside>
+	);
+}
+
 // ---------------------------------------------------------------------------
 // ReviewSidebar — owns file filter state, reads activeFile from store
 // ---------------------------------------------------------------------------
@@ -768,12 +804,14 @@ export const ReviewSidebar = memo(function ReviewSidebar({
 	sidebarFileCount,
 	isStreamingSummaries = false,
 	activeFileStore,
+	viewedFiles,
 	onFileClick,
 }: {
 	sidebarFiles: PullFileSummary[];
 	sidebarFileCount: number;
 	isStreamingSummaries?: boolean;
 	activeFileStore: ActiveFileStore;
+	viewedFiles?: ViewedFilesStore;
 	onFileClick: (path: string) => void;
 }) {
 	const searchEntries = useMemo(
@@ -807,7 +845,7 @@ export const ReviewSidebar = memo(function ReviewSidebar({
 	);
 
 	return (
-		<div className="flex h-full flex-col">
+		<div className="flex h-full min-h-0 flex-col">
 			<FileSearchCard
 				entries={searchEntries}
 				onSelect={handleSearchSelect}
@@ -823,21 +861,64 @@ export const ReviewSidebar = memo(function ReviewSidebar({
 			/>
 
 			<div className="flex h-9 shrink-0 items-center gap-2 border-t-[0.5px] border-header-rule px-4 text-xs font-[450] text-muted-foreground">
-				<span className="tabular-nums">
-					{sidebarFileCount} {sidebarFileCount === 1 ? "file" : "files"}
-					{isStreamingSummaries ? " loaded…" : " changed"}
-				</span>
-				{isStreamingSummaries && (
-					<output
-						aria-label="Loading more files"
-						className="ml-auto inline-block size-2.5 shrink-0 animate-spin rounded-full border-[0.5px] border-muted-foreground/60 border-t-transparent"
-					/>
+				{isStreamingSummaries ? (
+					<>
+						<span className="tabular-nums">
+							{sidebarFileCount} {sidebarFileCount === 1 ? "file" : "files"}{" "}
+							loaded…
+						</span>
+						<output
+							aria-label="Loading more files"
+							className="ml-auto inline-block size-2.5 shrink-0 animate-spin rounded-full border-[0.5px] border-muted-foreground/60 border-t-transparent"
+						/>
+					</>
+				) : viewedFiles ? (
+					<ViewedProgress viewedFiles={viewedFiles} total={sidebarFileCount} />
+				) : (
+					<span className="tabular-nums">
+						{sidebarFileCount} {sidebarFileCount === 1 ? "file" : "files"}{" "}
+						changed
+					</span>
 				)}
 			</div>
 		</div>
 	);
 });
 
+function ViewedProgress({
+	viewedFiles,
+	total,
+}: {
+	viewedFiles: ViewedFilesStore;
+	total: number;
+}) {
+	const viewed = useSyncExternalStore(
+		viewedFiles.subscribe,
+		viewedFiles.count,
+		() => 0,
+	);
+	return (
+		<>
+			<span className="tabular-nums">
+				{viewed} of {total} viewed
+			</span>
+			<span
+				role="progressbar"
+				aria-label="Files viewed"
+				aria-valuemin={0}
+				aria-valuemax={total}
+				aria-valuenow={viewed}
+				className="ml-auto h-1 w-16 shrink-0 overflow-hidden rounded-full bg-pill-neutral"
+			>
+				<span
+					className="block h-full rounded-full bg-pill-ok-text transition-[width] duration-200"
+					style={{ width: total > 0 ? `${(viewed / total) * 100}%` : 0 }}
+				/>
+			</span>
+		</>
+	);
+}
+
 function ReviewDiffPanePlaceholder() {
-	return <div className="h-full overflow-hidden px-[14px] max-md:px-2" />;
+	return <div className="h-full" />;
 }

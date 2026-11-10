@@ -244,11 +244,15 @@ export function CommitPage() {
 					direction="horizontal"
 					className="flex-1 border-t-[0.5px] border-header-rule"
 				>
-					<ResizablePanel defaultSize={20} minSize={12} maxSize={40}>
+					<ResizablePanel defaultSize={77}>{diffContent}</ResizablePanel>
+
+					<ResizableHandle className="w-[0.5px] bg-header-rule" />
+
+					<ResizablePanel defaultSize={23} minSize={14} maxSize={40}>
 						<Skeleton
 							loading={isLoading}
 							label="Loading files"
-							className="h-full"
+							className="h-full [&>div]:h-full"
 						>
 							<ReviewSidebar
 								sidebarFiles={sidebarFiles}
@@ -258,10 +262,6 @@ export function CommitPage() {
 							/>
 						</Skeleton>
 					</ResizablePanel>
-
-					<ResizableHandle className="w-[0.5px] bg-header-rule" />
-
-					<ResizablePanel defaultSize={80}>{diffContent}</ResizablePanel>
 				</ResizablePanelGroup>
 			) : (
 				<>

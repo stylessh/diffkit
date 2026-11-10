@@ -8,7 +8,12 @@ import { useTheme } from "next-themes";
 import { memo, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { encodeFileId } from "#/components/pulls/review/review-utils";
 import type { DiffFile } from "#/lib/diffs/diff-files";
-import { DIFF_SURFACE_CSS } from "#/lib/diffs/diff-surface-css";
+import {
+	DIFF_HUNK_SEPARATOR_HEIGHT,
+	DIFF_LINE_HEIGHT,
+	DIFF_SPACING,
+	DIFF_SURFACE_CSS,
+} from "#/lib/diffs/diff-surface-css";
 import { getDiffsRuntime } from "#/lib/diffs/diffs-runtime";
 import { DiffFileHeader } from "./diff-file-header";
 
@@ -17,10 +22,10 @@ export const DIFF_SCROLL_CONTENT_ATTRIBUTE = "data-diffs-scroll-content";
 
 const METRICS: VirtualFileMetrics = {
 	hunkLineCount: 50,
-	lineHeight: 20,
+	lineHeight: DIFF_LINE_HEIGHT,
 	diffHeaderHeight: 0,
-	hunkSeparatorHeight: 28,
-	spacing: 8,
+	hunkSeparatorHeight: DIFF_HUNK_SEPARATOR_HEIGHT,
+	spacing: DIFF_SPACING,
 };
 
 export type DiffFileListProps = {
@@ -98,7 +103,7 @@ const DiffFileCard = memo(function DiffFileCard({
 				resolvedTheme === "dark" ? ("dark" as const) : ("light" as const),
 			diffStyle,
 			overflow: wrapLines ? ("wrap" as const) : ("scroll" as const),
-			diffIndicators: "none" as const,
+			diffIndicators: "bars" as const,
 			hunkSeparators: "line-info" as const,
 			disableFileHeader: true,
 			unsafeCSS: DIFF_SURFACE_CSS,
@@ -110,7 +115,7 @@ const DiffFileCard = memo(function DiffFileCard({
 		<section
 			id={encodeFileId(file.path)}
 			aria-label={file.path}
-			className="overflow-clip rounded-lg border-[0.5px] border-card-border bg-surface-0"
+			className="overflow-clip rounded-lg border-[0.5px] border-card-border bg-main"
 		>
 			<div className="sticky top-0 z-10">
 				<DiffFileHeader

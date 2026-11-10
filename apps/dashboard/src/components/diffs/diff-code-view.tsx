@@ -37,11 +37,17 @@ import type {
 	ReviewAnnotation,
 } from "#/components/pulls/review/review-types";
 import { encodeFileId } from "#/components/pulls/review/review-utils";
+import type { ViewedFilesStore } from "#/components/pulls/review/viewed-files-store";
 import type { DiffFile } from "#/lib/diffs/diff-files";
-import { DIFF_SURFACE_CSS } from "#/lib/diffs/diff-surface-css";
+import {
+	DIFF_HUNK_SEPARATOR_HEIGHT,
+	DIFF_LINE_HEIGHT,
+	DIFF_SPACING,
+	DIFF_SURFACE_CSS,
+} from "#/lib/diffs/diff-surface-css";
 import { getDiffsRuntime } from "#/lib/diffs/diffs-runtime";
 import type { PullReviewComment } from "#/lib/github.types";
-import { DiffFileHeader } from "./diff-file-header";
+import { DIFF_FILE_HEADER_HEIGHT, DiffFileHeader } from "./diff-file-header";
 
 type Item = CodeViewDiffItem<ReviewAnnotation>;
 type Annotation = DiffLineAnnotation<ReviewAnnotation>;
@@ -61,6 +67,7 @@ export type DiffReview = {
 	>;
 	mentionConfig?: MentionConfig;
 	viewerLogin?: string;
+	viewedFiles: ViewedFilesStore;
 	onStartComment: (path: string, range: SelectedLineRange) => void;
 	onCancelComment: () => void;
 	onAddComment: (comment: PendingComment) => void;
@@ -83,11 +90,12 @@ export type DiffCodeViewProps = {
 	ref?: Ref<DiffCodeViewHandle>;
 };
 
-const LAYOUT = { paddingTop: 8, paddingBottom: 24, gap: 8 };
+const LAYOUT = { paddingTop: 0, paddingBottom: 48, gap: 0 };
 const ITEM_METRICS = {
-	diffHeaderHeight: 36,
-	hunkSeparatorHeight: 28,
-	lineHeight: 20,
+	diffHeaderHeight: DIFF_FILE_HEADER_HEIGHT,
+	hunkSeparatorHeight: DIFF_HUNK_SEPARATOR_HEIGHT,
+	lineHeight: DIFF_LINE_HEIGHT,
+	spacing: DIFF_SPACING,
 };
 const ACTIVE_FILE_PROBE = 0.1;
 /** Opt-in while tuning ITEM_METRICS against our CSS; it costs a layout read per item. */
@@ -98,24 +106,6 @@ const VALIDATE_ITEM_HEIGHTS =
 const NO_ANNOTATIONS: Annotation[] = [];
 
 const ReviewContext = createContext<DiffReview | null>(null);
-
-function createViewedStore() {
-	const viewed = new Set<string>();
-	const listeners = new Set<() => void>();
-	return {
-		has: (path: string) => viewed.has(path),
-		set(path: string, value: boolean) {
-			if (value) viewed.add(path);
-			else viewed.delete(path);
-			for (const listener of listeners) listener();
-		},
-		subscribe(listener: () => void) {
-			listeners.add(listener);
-			return () => listeners.delete(listener);
-		},
-	};
-}
-type ViewedStore = ReturnType<typeof createViewedStore>;
 
 function annotationsForFile(review: DiffReview, path: string): Annotation[] {
 	const threads = review.threadsByFile.get(path);
@@ -214,24 +204,28 @@ function ReviewAnnotationSlot({
 	}
 }
 
+const NO_VIEWED_FILES = {
+	subscribe: () => () => undefined,
+	has: () => false,
+};
+
 function ItemHeader({
 	file,
 	collapsed,
-	viewedStore,
-	reviewable,
+	viewedFiles,
 	onToggleCollapsed,
 	onViewedChange,
 }: {
 	file: DiffFile;
 	collapsed: boolean;
-	viewedStore: ViewedStore;
-	reviewable: boolean;
+	viewedFiles: ViewedFilesStore | undefined;
 	onToggleCollapsed: (path: string) => void;
 	onViewedChange: (path: string, viewed: boolean) => void;
 }) {
+	const store = viewedFiles ?? NO_VIEWED_FILES;
 	const viewed = useSyncExternalStore(
-		viewedStore.subscribe,
-		() => viewedStore.has(file.path),
+		store.subscribe,
+		() => store.has(file.path),
 		() => false,
 	);
 	return (
@@ -239,7 +233,8 @@ function ItemHeader({
 			file={file}
 			isCollapsed={collapsed}
 			onToggleCollapse={() => onToggleCollapsed(file.path)}
-			isViewed={reviewable ? viewed : undefined}
+			className="border-b-[0.5px]"
+			isViewed={viewedFiles ? viewed : undefined}
 			onViewedChange={(value) => onViewedChange(file.path, value)}
 		/>
 	);
@@ -259,7 +254,7 @@ function DiffCodeViewSurface({
 	const runtime = getDiffsRuntime();
 	const viewerRef = useRef<CodeViewHandle<ReviewAnnotation, undefined>>(null);
 	const containerRef = useRef<HTMLDivElement>(null);
-	const [viewedStore] = useState(createViewedStore);
+	const viewedFiles = review?.viewedFiles;
 	const { resolvedTheme } = useTheme();
 
 	const filesById = useRef(new Map<string, DiffFile>()).current;
@@ -382,7 +377,7 @@ function DiffCodeViewSurface({
 	});
 
 	const setViewed = useStableCallback((path: string, viewed: boolean) => {
-		viewedStore.set(path, viewed);
+		viewedFiles?.set(path, viewed);
 		const item = viewerRef.current?.getItem(path);
 		if (item && (item.collapsed === true) !== viewed) toggleCollapsed(path);
 	});
@@ -433,7 +428,7 @@ function DiffCodeViewSurface({
 			themeType,
 			diffStyle,
 			overflow: wrapLines ? "wrap" : "scroll",
-			diffIndicators: "none",
+			diffIndicators: "bars",
 			hunkSeparators: "line-info",
 			lineHoverHighlight: "number",
 			stickyHeaders: true,
@@ -458,8 +453,7 @@ function DiffCodeViewSurface({
 				<ItemHeader
 					file={file}
 					collapsed={item.collapsed === true}
-					viewedStore={viewedStore}
-					reviewable={reviewable}
+					viewedFiles={viewedFiles}
 					onToggleCollapsed={toggleCollapsed}
 					onViewedChange={setViewed}
 				/>
@@ -495,8 +489,8 @@ function DiffCodeViewSurface({
 					renderCodeViewHeader={header ? () => header : undefined}
 					renderCodeViewFooter={footer ? () => footer : undefined}
 					className={cn(
-						"relative h-full min-h-0 min-w-0 overflow-x-clip overflow-y-auto overscroll-contain px-[14px] [contain:strict] [overflow-anchor:none] [will-change:scroll-position] max-md:px-2",
-						"[&_diffs-container]:overflow-clip [&_diffs-container]:rounded-lg [&_diffs-container]:bg-surface-0 [&_diffs-container]:shadow-[0_0_0_0.5px_var(--color-card-border)] [&_diffs-container]:[contain:layout_paint_style]",
+						"relative h-full min-h-0 min-w-0 overflow-x-clip overflow-y-auto overscroll-contain [contain:strict] [overflow-anchor:none] [will-change:scroll-position]",
+						"[&_diffs-container]:overflow-clip [&_diffs-container]:bg-main [&_diffs-container]:[--diff-file-end-rule:var(--color-header-rule)] [&_diffs-container]:[contain:layout_paint_style]",
 						className,
 					)}
 				/>

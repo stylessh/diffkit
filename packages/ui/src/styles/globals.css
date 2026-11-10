@@ -257,17 +257,11 @@
 	--ln-pill-blocked-text: lch(45 73 29);
 	--ln-pill-warning-text: lch(45 60 70);
 
-	--ln-line-added: lch(97.94 3.829 148.469);
-	--ln-line-removed: lch(97.112 3.635 17.957);
-	--ln-word-added: lch(94.733 9.903 148.136);
-	--ln-word-removed: lch(92.62 9.55 18.428);
 	--ln-line-number: color-mix(
 		in oklch,
 		var(--neutral-9) 29%,
 		var(--neutral-10)
 	);
-	--ln-number-added: lch(60 64.37 141.95);
-	--ln-number-removed: lch(50 73 29);
 	--ln-gap: color-mix(in oklch, var(--neutral-12) 56%, white);
 
 	--ln-duration: 140ms;
@@ -403,13 +397,7 @@
 	--ln-pill-blocked-text: lch(72 60 29);
 	--ln-pill-warning-text: lch(84 70 85);
 
-	--ln-line-added: lch(14.102 7.717 153.557);
-	--ln-line-removed: lch(13.958 8.596 15.613);
-	--ln-word-added: lch(20.509 17.212 148.731);
-	--ln-word-removed: lch(22.083 22.163 22.026);
 	--ln-line-number: var(--neutral-7);
-	--ln-number-added: lch(67.2 64.37 141.95);
-	--ln-number-removed: lch(65.2 73 29);
 	--ln-gap: var(--neutral-3);
 }
 
@@ -764,13 +752,7 @@
 	--color-pill-merged-text: var(--ln-pill-merged-text);
 	--color-pill-blocked-text: var(--ln-pill-blocked-text);
 	--color-pill-warning-text: var(--ln-pill-warning-text);
-	--color-line-added: var(--ln-line-added);
-	--color-line-removed: var(--ln-line-removed);
-	--color-word-added: var(--ln-word-added);
-	--color-word-removed: var(--ln-word-removed);
 	--color-line-number: var(--ln-line-number);
-	--color-number-added: var(--ln-number-added);
-	--color-number-removed: var(--ln-number-removed);
 	--color-gap: var(--ln-gap);
 	--color-card-border: var(--ln-card-border);
 	--color-activity-line: var(--ln-activity-line);
@@ -993,12 +975,26 @@ svg[data-icon="search"]:only-child {
 [data-diffs],
 diffs-container {
 	--diffs-font-family: var(--font-mono);
-	--diffs-bg-addition-override: var(--ln-line-added);
-	--diffs-bg-addition-number-override: var(--ln-line-added);
-	--diffs-bg-addition-emphasis-override: var(--ln-word-added);
-	--diffs-bg-deletion-override: var(--ln-line-removed);
-	--diffs-bg-deletion-number-override: var(--ln-line-removed);
-	--diffs-bg-deletion-emphasis-override: var(--ln-word-removed);
+	--diff-row-added: color-mix(in oklab, var(--ln-added) 62%, var(--ln-main));
+	--diff-row-removed: color-mix(
+		in oklab,
+		var(--ln-removed) 55%,
+		var(--ln-main)
+	);
+	--diffs-bg-addition-override: var(--diff-row-added);
+	--diffs-bg-addition-number-override: var(--diff-row-added);
+	--diffs-bg-addition-emphasis-override: color-mix(
+		in oklch,
+		var(--ln-added) 20%,
+		transparent
+	);
+	--diffs-bg-deletion-override: var(--diff-row-removed);
+	--diffs-bg-deletion-number-override: var(--diff-row-removed);
+	--diffs-bg-deletion-emphasis-override: color-mix(
+		in oklch,
+		var(--ln-removed) 18%,
+		transparent
+	);
 	--diffs-addition-color-override: var(--ln-added);
 	--diffs-deletion-color-override: var(--ln-removed);
 	--diffs-fg-number-override: var(--ln-line-number);

@@ -129,25 +129,12 @@ export function PropertyPicker({
 								</button>
 							</PanelPill>
 						))}
-						{selected.length > 0 ? (
-							<PanelAddButton
-								aria-label={addLabel}
-								aria-haspopup="listbox"
-								aria-expanded={expanded}
-								onClick={open}
-							/>
-						) : (
-							<PanelPill asChild muted>
-								<button
-									type="button"
-									aria-haspopup="listbox"
-									aria-expanded={expanded}
-									onClick={open}
-								>
-									{addLabel}
-								</button>
-							</PanelPill>
-						)}
+						<PanelAddButton
+							aria-label={addLabel}
+							aria-haspopup="listbox"
+							aria-expanded={expanded}
+							onClick={open}
+						/>
 					</>
 				}
 			>

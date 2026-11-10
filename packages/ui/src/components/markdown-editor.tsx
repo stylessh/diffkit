@@ -10,6 +10,7 @@ import {
 	useState,
 } from "react";
 import { createPortal } from "react-dom";
+import { useKeyboardFocus } from "../hooks/use-keyboard-focus";
 import { useTextareaContentFieldSizing } from "../hooks/use-textarea-content-field-sizing";
 import { getCaretCoordinates } from "../lib/get-caret-coordinates";
 import { cn } from "../lib/utils";
@@ -48,6 +49,8 @@ export type MarkdownEditorMediaUpload = {
 	onToolbarAttach: () => void;
 };
 
+type FocusHandlers = ReturnType<typeof useKeyboardFocus>[1];
+
 type MarkdownEditorProps = {
 	value: string;
 	onChange: Dispatch<SetStateAction<string>>;
@@ -60,6 +63,10 @@ type MarkdownEditorProps = {
 	media?: MarkdownEditorMediaUpload;
 	scrollAnchorRef?: React.RefObject<HTMLElement | null>;
 	footer?: React.ReactNode;
+	/** Lays a compact composer out as one row: the field, then its footer. */
+	inline?: boolean;
+	/** Drops the editor's own card so it can sit inside another surface. */
+	bare?: boolean;
 };
 
 type MentionState = {
@@ -217,6 +224,8 @@ function CompactWriteSurface({
 	onPaste,
 	placeholder,
 	scrollAnchorRef,
+	inline,
+	focusHandlers,
 }: {
 	value: string;
 	onChange: (next: string) => void;
@@ -225,6 +234,8 @@ function CompactWriteSurface({
 	onPaste?: React.ClipboardEventHandler<HTMLTextAreaElement>;
 	placeholder: string;
 	scrollAnchorRef?: React.RefObject<HTMLElement | null>;
+	inline: boolean;
+	focusHandlers: FocusHandlers;
 }) {
 	const contentSizingOpts = useMemo(
 		() => ({
@@ -247,9 +258,11 @@ function CompactWriteSurface({
 	return (
 		<textarea
 			className={cn(
-				"max-h-[min(85vh,40rem)] min-h-6 w-full resize-none overflow-y-auto bg-transparent px-4 pt-3 pb-1 font-[450] text-[15px] text-text-strong leading-6 outline-none placeholder:font-normal placeholder:text-composer-placeholder focus-visible:outline-none",
+				"max-h-[min(85vh,40rem)] min-h-6 w-full resize-none overflow-y-auto bg-transparent font-[450] text-[15px] text-text-strong leading-6 outline-none placeholder:font-normal placeholder:text-composer-placeholder focus-visible:outline-none",
+				inline ? "block py-2.5 pr-2 pl-4" : "px-4 pt-3 pb-1",
 				contentSizing.sizingClassName,
 			)}
+			{...focusHandlers}
 			onChange={(event) => onChange(event.target.value)}
 			onKeyDown={onKeyDown}
 			onPaste={onPaste}
@@ -279,10 +292,13 @@ export const MarkdownEditor = forwardRef<
 		media: mediaUpload,
 		scrollAnchorRef,
 		footer,
+		inline,
+		bare,
 	},
 	ref,
 ) {
 	const [tab, setTab] = useState<"write" | "preview">("write");
+	const [keyboardFocused, focusHandlers] = useKeyboardFocus();
 	const internalRef = useRef<HTMLTextAreaElement>(null);
 	const editorRef = externalRef || internalRef;
 
@@ -402,12 +418,18 @@ export const MarkdownEditor = forwardRef<
 	}, [value, tab, mentionConfig, detectMention]);
 
 	const rootProps = mediaUpload?.rootProps;
+	const footerAttach = compact ? mediaUpload : undefined;
+	const isInline = Boolean(compact && inline);
 	const rootClassName = cn(
-		"flex flex-col overflow-hidden rounded-lg bg-card transition-[box-shadow]",
-		compact
-			? "min-h-[82px] border-[0.5px] border-border shadow-[var(--ln-main-shadow)]"
-			: "shadow-card",
-		"has-[textarea:focus-visible]:shadow-[0_0_0_1px_var(--ln-focus),var(--ln-main-shadow)]",
+		"flex transition-[box-shadow]",
+		isInline ? "items-end" : "flex-col",
+		compact && !isInline && "min-h-[82px]",
+		!bare &&
+			"overflow-hidden rounded-lg bg-card data-keyboard-focus:shadow-[0_0_0_1px_var(--ln-focus),var(--ln-main-shadow)]",
+		!bare &&
+			(compact
+				? "border-[0.5px] border-border shadow-[var(--ln-main-shadow)]"
+				: "shadow-card"),
 		mediaUpload?.isDragActive && "ring-1 ring-focus ring-inset",
 		rootProps?.className,
 	);
@@ -415,8 +437,8 @@ export const MarkdownEditor = forwardRef<
 	return (
 		<div
 			{...(rootProps ?? {})}
-			className={cn("group/editor", rootClassName, mediaUpload && "relative")}
-			data-filled={value.length > 0 ? "true" : undefined}
+			className={cn(rootClassName, mediaUpload && "relative")}
+			data-keyboard-focus={keyboardFocused ? "" : undefined}
 		>
 			{mediaUpload ? (
 				<input
@@ -425,144 +447,142 @@ export const MarkdownEditor = forwardRef<
 					className="sr-only"
 				/>
 			) : null}
-			{/* Tabs + Toolbar */}
-			<div
-				className={cn(
-					"items-center justify-between px-2 pt-2",
-					compact
-						? "hidden group-focus-within/editor:flex group-data-[filled=true]/editor:flex"
-						: "flex",
-				)}
-			>
-				<div className="flex items-center gap-0.5">
-					<button
-						className={cn(
-							"flex h-6 items-center rounded-md px-2.5 font-medium text-xs transition-colors",
-							tab === "write"
-								? "bg-tab-selected text-foreground shadow-tab-selected"
-								: "text-muted-foreground hover:text-foreground",
-						)}
-						onClick={() => {
-							setTab("write");
-							requestAnimationFrame(() => editorRef.current?.focus());
-						}}
-						type="button"
-					>
-						Write
-					</button>
-					<button
-						className={cn(
-							"flex h-6 items-center rounded-md px-2.5 font-medium text-xs transition-colors",
-							tab === "preview"
-								? "bg-tab-selected text-foreground shadow-tab-selected"
-								: "text-muted-foreground hover:text-foreground",
-						)}
-						onClick={() => setTab("preview")}
-						type="button"
-					>
-						Preview
-					</button>
-				</div>
-
-				<div
-					className={cn(
-						"flex items-center gap-0.5 text-muted-foreground",
-						tab !== "write" && "invisible",
-					)}
-				>
-					<MdToolbarButton
-						label="Heading"
-						onClick={() => insertMarkdown("### ", "", "heading")}
-						shortcut="⌘H"
-					>
-						<path d="M4 12h8M4 4v16M12 4v16M20 8v8" />
-					</MdToolbarButton>
-					<MdToolbarButton
-						label="Bold"
-						onClick={() => insertMarkdown("**", "**", "bold")}
-						shortcut="⌘B"
-					>
-						<path d="M6 4h8a4 4 0 0 1 4 4 4 4 0 0 1-4 4H6zM6 12h9a4 4 0 0 1 4 4 4 4 0 0 1-4 4H6z" />
-					</MdToolbarButton>
-					<MdToolbarButton
-						label="Italic"
-						onClick={() => insertMarkdown("_", "_", "italic")}
-						shortcut="⌘I"
-					>
-						<path d="M10 4h4M8 20h4M15 4l-6 16" />
-					</MdToolbarButton>
-					<span aria-hidden className="mx-1 h-3.5 w-px bg-header-rule" />
-					<MdToolbarButton
-						label="Code"
-						onClick={() => insertMarkdown("`", "`", "code")}
-						shortcut="⌘E"
-					>
-						<path d="M16 18l6-6-6-6M8 6l-6 6 6 6" />
-					</MdToolbarButton>
-					<MdToolbarButton
-						label="Link"
-						onClick={() => insertMarkdown("[", "](url)", "text")}
-						shortcut="⌘K"
-					>
-						<path d="M10 14a3.5 3.5 0 0 0 5 0l4-4a3.5 3.5 0 0 0-5-5l-.5.5" />
-						<path d="M14 10a3.5 3.5 0 0 0-5 0l-4 4a3.5 3.5 0 0 0 5 5l.5-.5" />
-					</MdToolbarButton>
-					{mediaUpload ? (
-						<MdToolbarButton
-							label="Attach images or videos"
-							onClick={mediaUpload.onToolbarAttach}
+			{/* Comment composers stay bare; shortcuts still format. */}
+			{compact ? null : (
+				<div className="flex items-center justify-between px-2 pt-2">
+					<div className="flex items-center gap-0.5">
+						<button
+							className={cn(
+								"flex h-6 items-center rounded-md px-2.5 font-medium text-xs transition-colors",
+								tab === "write"
+									? "bg-tab-selected text-foreground shadow-tab-selected"
+									: "text-muted-foreground hover:text-foreground",
+							)}
+							onClick={() => {
+								setTab("write");
+								requestAnimationFrame(() => editorRef.current?.focus());
+							}}
+							type="button"
 						>
-							<path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48" />
+							Write
+						</button>
+						<button
+							className={cn(
+								"flex h-6 items-center rounded-md px-2.5 font-medium text-xs transition-colors",
+								tab === "preview"
+									? "bg-tab-selected text-foreground shadow-tab-selected"
+									: "text-muted-foreground hover:text-foreground",
+							)}
+							onClick={() => setTab("preview")}
+							type="button"
+						>
+							Preview
+						</button>
+					</div>
+
+					<div
+						className={cn(
+							"flex items-center gap-0.5 text-muted-foreground",
+							tab !== "write" && "invisible",
+						)}
+					>
+						<MdToolbarButton
+							label="Heading"
+							onClick={() => insertMarkdown("### ", "", "heading")}
+							shortcut="⌘H"
+						>
+							<path d="M4 12h8M4 4v16M12 4v16M20 8v8" />
 						</MdToolbarButton>
-					) : null}
-					<MdToolbarButton
-						label="Quote"
-						onClick={() => insertMarkdown("> ", "", "quote")}
-						shortcut="⌘⇧."
-					>
-						<path d="M3 21c3 0 7-1 7-8V5c0-1.25-.756-2.017-2-2H4c-1.25 0-2 .75-2 1.972V11c0 1.25.75 2 2 2 1 0 1 0 1 1v1c0 1-1 2-2 2s-1 .008-1 1.031V21z" />
-						<path d="M15 21c3 0 7-1 7-8V5c0-1.25-.757-2.017-2-2h-4c-1.25 0-2 .75-2 1.972V11c0 1.25.75 2 2 2h.75c0 2.25.25 4-2.75 4v3c0 1 0 1 1 1z" />
-					</MdToolbarButton>
-					<span aria-hidden className="mx-1 h-3.5 w-px bg-header-rule" />
-					<MdToolbarButton
-						label="Unordered list"
-						onClick={() => insertMarkdown("- ", "", "item")}
-						shortcut="⌘⇧8"
-					>
-						<path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01" />
-					</MdToolbarButton>
-					<MdToolbarButton
-						label="Ordered list"
-						onClick={() => insertMarkdown("1. ", "", "item")}
-						shortcut="⌘⇧7"
-					>
-						<path d="M10 6h11M10 12h11M10 18h11M4 6h1v4M3 10h3M4 14.5a.5.5 0 0 1 .5-.5H5a.5.5 0 0 1 .5.5v0a1.5 1.5 0 0 1-1.5 1.5H3.5a.5.5 0 0 0-.5.5v0a.5.5 0 0 0 .5.5H5a.5.5 0 0 1 .5.5v0a1.5 1.5 0 0 1-1.5 1.5H3" />
-					</MdToolbarButton>
-					<MdToolbarButton
-						label="Task list"
-						onClick={() => insertMarkdown("- [ ] ", "", "task")}
-					>
-						<path d="M9 11l3 3L22 4" />
-						<path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11" />
-					</MdToolbarButton>
+						<MdToolbarButton
+							label="Bold"
+							onClick={() => insertMarkdown("**", "**", "bold")}
+							shortcut="⌘B"
+						>
+							<path d="M6 4h8a4 4 0 0 1 4 4 4 4 0 0 1-4 4H6zM6 12h9a4 4 0 0 1 4 4 4 4 0 0 1-4 4H6z" />
+						</MdToolbarButton>
+						<MdToolbarButton
+							label="Italic"
+							onClick={() => insertMarkdown("_", "_", "italic")}
+							shortcut="⌘I"
+						>
+							<path d="M10 4h4M8 20h4M15 4l-6 16" />
+						</MdToolbarButton>
+						<span aria-hidden className="mx-1 h-3.5 w-px bg-header-rule" />
+						<MdToolbarButton
+							label="Code"
+							onClick={() => insertMarkdown("`", "`", "code")}
+							shortcut="⌘E"
+						>
+							<path d="M16 18l6-6-6-6M8 6l-6 6 6 6" />
+						</MdToolbarButton>
+						<MdToolbarButton
+							label="Link"
+							onClick={() => insertMarkdown("[", "](url)", "text")}
+							shortcut="⌘K"
+						>
+							<path d="M10 14a3.5 3.5 0 0 0 5 0l4-4a3.5 3.5 0 0 0-5-5l-.5.5" />
+							<path d="M14 10a3.5 3.5 0 0 0-5 0l-4 4a3.5 3.5 0 0 0 5 5l.5-.5" />
+						</MdToolbarButton>
+						{mediaUpload ? (
+							<MdToolbarButton
+								label="Attach images or videos"
+								onClick={mediaUpload.onToolbarAttach}
+							>
+								<path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48" />
+							</MdToolbarButton>
+						) : null}
+						<MdToolbarButton
+							label="Quote"
+							onClick={() => insertMarkdown("> ", "", "quote")}
+							shortcut="⌘⇧."
+						>
+							<path d="M3 21c3 0 7-1 7-8V5c0-1.25-.756-2.017-2-2H4c-1.25 0-2 .75-2 1.972V11c0 1.25.75 2 2 2 1 0 1 0 1 1v1c0 1-1 2-2 2s-1 .008-1 1.031V21z" />
+							<path d="M15 21c3 0 7-1 7-8V5c0-1.25-.757-2.017-2-2h-4c-1.25 0-2 .75-2 1.972V11c0 1.25.75 2 2 2h.75c0 2.25.25 4-2.75 4v3c0 1 0 1 1 1z" />
+						</MdToolbarButton>
+						<span aria-hidden className="mx-1 h-3.5 w-px bg-header-rule" />
+						<MdToolbarButton
+							label="Unordered list"
+							onClick={() => insertMarkdown("- ", "", "item")}
+							shortcut="⌘⇧8"
+						>
+							<path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01" />
+						</MdToolbarButton>
+						<MdToolbarButton
+							label="Ordered list"
+							onClick={() => insertMarkdown("1. ", "", "item")}
+							shortcut="⌘⇧7"
+						>
+							<path d="M10 6h11M10 12h11M10 18h11M4 6h1v4M3 10h3M4 14.5a.5.5 0 0 1 .5-.5H5a.5.5 0 0 1 .5.5v0a1.5 1.5 0 0 1-1.5 1.5H3.5a.5.5 0 0 0-.5.5v0a.5.5 0 0 0 .5.5H5a.5.5 0 0 1 .5.5v0a1.5 1.5 0 0 1-1.5 1.5H3" />
+						</MdToolbarButton>
+						<MdToolbarButton
+							label="Task list"
+							onClick={() => insertMarkdown("- [ ] ", "", "task")}
+						>
+							<path d="M9 11l3 3L22 4" />
+							<path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11" />
+						</MdToolbarButton>
+					</div>
 				</div>
-			</div>
+			)}
 
 			{/* Editor / Preview */}
 			{tab === "write" ? (
-				<div className="relative">
+				<div className={cn("relative", isInline && "min-w-0 flex-1")}>
 					{compact ? (
 						<CompactWriteSurface
 							editorRef={editorRef}
 							onChange={handleChange}
 							onKeyDown={handleKeyDown}
 							onPaste={onPaste}
+							focusHandlers={focusHandlers}
+							inline={isInline}
 							placeholder={placeholder}
 							scrollAnchorRef={scrollAnchorRef}
 							value={value}
 						/>
 					) : (
 						<HighlightedMarkdownEditor
+							focusHandlers={focusHandlers}
 							onChange={handleChange}
 							onKeyDown={handleKeyDown}
 							onPaste={onPaste}
@@ -584,12 +604,7 @@ export const MarkdownEditor = forwardRef<
 					)}
 				</div>
 			) : (
-				<div
-					className={cn(
-						"px-4 py-3",
-						compact ? "min-h-[120px]" : "min-h-[200px]",
-					)}
-				>
+				<div className="min-h-[200px] px-4 py-3">
 					{value ? (
 						<Markdown className="text-[15px] text-text-strong leading-6">
 							{value}
@@ -601,13 +616,27 @@ export const MarkdownEditor = forwardRef<
 					)}
 				</div>
 			)}
-			{footer ? (
+			{footer || footerAttach ? (
 				<div
 					className={cn(
 						"mt-auto flex items-center justify-end gap-2",
-						compact ? "pt-1 pr-3.5 pb-3" : "px-3 pt-1 pb-3",
+						isInline
+							? "shrink-0 pr-2.5 pb-2.5"
+							: compact
+								? "pt-1 pr-3.5 pb-3 pl-2.5"
+								: "px-3 pt-1 pb-3",
 					)}
 				>
+					{footerAttach ? (
+						<span className="mr-auto flex text-muted-foreground">
+							<MdToolbarButton
+								label="Attach images or videos"
+								onClick={footerAttach.onToolbarAttach}
+							>
+								<path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48" />
+							</MdToolbarButton>
+						</span>
+					) : null}
 					{footer}
 				</div>
 			) : null}
@@ -756,6 +785,7 @@ function HighlightedMarkdownEditor({
 	scrollAnchorRef,
 	onKeyDown,
 	onPaste,
+	focusHandlers,
 }: {
 	value: string;
 	onChange: (value: string) => void;
@@ -764,6 +794,7 @@ function HighlightedMarkdownEditor({
 	scrollAnchorRef?: React.RefObject<HTMLElement | null>;
 	onKeyDown?: React.KeyboardEventHandler<HTMLTextAreaElement>;
 	onPaste?: React.ClipboardEventHandler<HTMLTextAreaElement>;
+	focusHandlers: FocusHandlers;
 }) {
 	const [highlightedHtml, setHighlightedHtml] = useState("");
 	const internalRef = useRef<HTMLTextAreaElement>(null);
@@ -822,6 +853,7 @@ function HighlightedMarkdownEditor({
 					"relative box-border max-h-[1200px] min-h-[640px] w-full resize-y overflow-y-auto whitespace-pre-wrap break-words bg-transparent p-5 font-mono text-sm text-transparent leading-[1.625] caret-foreground outline-none [word-break:break-all] placeholder:text-muted-foreground",
 					fullContentSizing.sizingClassName,
 				)}
+				{...focusHandlers}
 				onChange={(event) => onChange(event.target.value)}
 				onKeyDown={onKeyDown}
 				onPaste={onPaste}

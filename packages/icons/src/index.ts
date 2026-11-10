@@ -33,7 +33,6 @@ export {
   Comment01Icon as CommentIcon,
   ComputerIcon as SystemIcon,
   ComputerIcon,
-  Copy01Icon as CopyIcon,
   CreditCardIcon,
   DashboardSquare01Icon as DashboardIcon,
   Delete01Icon,
@@ -77,7 +76,6 @@ export {
   Notification01Icon as NotificationIcon,
   PackageIcon,
   PauseIcon,
-  PencilEdit01Icon as EditIcon,
   PencilEdit02Icon,
   PinIcon,
   PlayIcon,
@@ -129,6 +127,8 @@ export {
 } from "./chevron-icons";
 export { CircleXIcon } from "./circle-x-icon";
 export { CodeSimpleIcon, CodeSimpleIcon as CodeIcon } from "./code-simple-icon";
+export { CopyIcon } from "./copy-icon";
+export { Edit03Icon, Edit03Icon as EditIcon } from "./edit-03-icon";
 export { FileEmpty02Icon } from "./file-empty-02-icon";
 export { FullScreenIcon } from "./full-screen-icon";
 export { GitBranchIcon } from "./git-branch-icon";
