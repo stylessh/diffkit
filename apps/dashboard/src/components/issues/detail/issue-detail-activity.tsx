@@ -1,328 +1,84 @@
-import {
-	ChevronDownIcon,
-	CircleIcon,
-	CommentIcon,
-	EditIcon,
-	GitPullRequestIcon,
-	IssueClosedCompletedIcon,
-	IssueClosedNotPlannedIcon,
-	IssuesIcon,
-	ReviewsIcon,
-	UserAddIcon,
-} from "@diffkit/icons";
-import { cn } from "@diffkit/ui/lib/utils";
-import { useQueryClient } from "@tanstack/react-query";
-import { useCallback, useMemo, useRef, useState } from "react";
-import {
-	CommentBody,
-	EditedMark,
-	useCommentEditor,
-} from "#/components/details/comment-body";
-import { CommentMoreMenu } from "#/components/details/comment-more-menu";
-import {
-	hasReactions,
-	IssueCommentReactionBar,
-} from "#/components/details/comment-reaction-bar";
-import { CommentReplyForm } from "#/components/details/comment-reply-form";
+import { Fragment, useMemo } from "react";
 import { buildCommentThreads } from "#/components/details/comment-threads";
 import {
 	DetailActivityHeader,
 	DetailCommentBox,
-	eventThreadClassName,
 } from "#/components/details/detail-activity";
+import { CommentThread } from "#/components/details/timeline/comment-thread";
+import { getInvolvedUsers } from "#/components/details/timeline/involved-users";
+import { LoadMoreDivider } from "#/components/details/timeline/load-more-divider";
+import type { TimelineSubject } from "#/components/details/timeline/timeline-event-content";
 import {
-	GroupedIssueStateToggleDescription,
-	GroupedLabelDescription,
-	GroupedReviewRequestDescription,
-	groupTimelineEvents,
-} from "#/components/details/grouped-label-event";
-import { LabelPill } from "#/components/details/label-pill";
-import { formatRelativeTime } from "#/lib/format-relative-time";
-import { getCommentPage, getTimelineEventPage } from "#/lib/github.functions";
+	type CloseReasonSource,
+	TimelineEventGroupRow,
+	TimelineEventRow,
+	TimelineStateToggleGroupRow,
+	timelineStateToggleGroupKey,
+} from "#/components/details/timeline/timeline-event-row";
+import {
+	buildTimeline,
+	commentTimelineItems,
+	eventRunPosition,
+	eventTimelineItems,
+	timelineEventKey,
+} from "#/components/details/timeline/timeline-items";
+import { useStableById } from "#/components/details/timeline/use-stable-by-id";
+import { useWindowedTimeline } from "#/components/details/timeline/use-windowed-timeline";
 import type { GitHubQueryScope } from "#/lib/github.query";
-import type {
-	CommentPagination,
-	EventPagination,
-	GitHubActor,
-	GroupedIssueStateToggleEvent,
-	GroupedLabelEvent,
-	GroupedReviewRequestEvent,
-	IssueComment,
-	IssuePageData,
-	TimelineEvent,
-} from "#/lib/github.types";
-import {
-	mergeIssueStateIntoCloseEvent,
-	parseCloseReason,
-} from "#/lib/timeline-close-reason";
-import { usePrefersNoHover } from "#/lib/use-prefers-no-hover";
+import type { IssueDetail, IssuePageData } from "#/lib/github.types";
 
-const WINDOW_THRESHOLD = 25;
-const EDGE_SIZE = 10;
-const LOAD_MORE_CHUNK = 20;
-
-type IssueTimelineItem =
-	| { type: "comment"; date: string; data: IssueComment }
-	| { type: "event"; date: string; data: TimelineEvent }
-	| { type: "label_group"; date: string; data: GroupedLabelEvent }
-	| {
-			type: "review_request_group";
-			date: string;
-			data: GroupedReviewRequestEvent;
-	  }
-	| {
-			type: "issue_state_toggle_group";
-			date: string;
-			data: GroupedIssueStateToggleEvent;
-	  };
-
-function useWindowedTimeline<T>(
-	items: T[],
-	pagination?: {
-		commentPagination?: CommentPagination;
-		eventPagination?: EventPagination;
-		pageQueryKey: readonly unknown[];
-		owner: string;
-		repo: string;
-		issueNumber: number;
-	},
-) {
-	const queryClient = useQueryClient();
-	const [revealedCount, setRevealedCount] = useState(0);
-	const [isFetchingPage, setIsFetchingPage] = useState(false);
-	const loadedCommentPagesRef = useRef<Set<number>>(new Set());
-	const loadedEventPagesRef = useRef<Set<number>>(new Set());
-	const hasMoreEventsRef = useRef(
-		pagination?.eventPagination?.hasMore ?? false,
-	);
-
-	const totalCommentPages = pagination?.commentPagination
-		? Math.max(
-				1,
-				Math.ceil(
-					pagination.commentPagination.totalCount /
-						pagination.commentPagination.perPage,
-				),
-			)
-		: 1;
-
-	// Sync loaded pages from pagination data
-	if (pagination?.commentPagination) {
-		for (const p of pagination.commentPagination.loadedPages) {
-			loadedCommentPagesRef.current.add(p);
-		}
-	}
-	if (pagination?.eventPagination) {
-		for (const p of pagination.eventPagination.loadedPages) {
-			loadedEventPagesRef.current.add(p);
-		}
-		hasMoreEventsRef.current = pagination.eventPagination.hasMore;
-	}
-
-	const hasUnfetchedCommentPages =
-		totalCommentPages > 1 &&
-		loadedCommentPagesRef.current.size < totalCommentPages;
-	const hasUnfetchedEventPages = hasMoreEventsRef.current;
-	const hasUnfetchedPages = hasUnfetchedCommentPages || hasUnfetchedEventPages;
-
-	const needsWindowing = items.length > WINDOW_THRESHOLD || hasUnfetchedPages;
-
-	const clientHiddenCount = needsWindowing
-		? Math.max(0, items.length - EDGE_SIZE * 2 - revealedCount)
-		: 0;
-
-	const hiddenCount = clientHiddenCount;
-
-	const visibleItems =
-		needsWindowing && clientHiddenCount > 0
-			? [
-					...items.slice(0, EDGE_SIZE + revealedCount),
-					...items.slice(items.length - EDGE_SIZE),
-				]
-			: items;
-
-	const showLoadMore = needsWindowing && (hiddenCount > 0 || hasUnfetchedPages);
-	const loadMoreIndex = showLoadMore ? EDGE_SIZE + revealedCount : -1;
-
-	const loadMore = useCallback(() => {
-		// If we have client-side hidden items, reveal a chunk first
-		if (clientHiddenCount > 0) {
-			setRevealedCount((prev) => prev + LOAD_MORE_CHUNK);
-			return;
-		}
-
-		if (!pagination) return;
-
-		const hasMoreComments = hasUnfetchedCommentPages;
-		const hasMoreEvents = hasUnfetchedEventPages;
-
-		if (!hasMoreComments && !hasMoreEvents) return;
-
-		setIsFetchingPage(true);
-
-		const fetches: Promise<void>[] = [];
-
-		// Fetch next comment page
-		if (hasMoreComments) {
-			let nextPage = -1;
-			for (let p = 2; p < totalCommentPages; p++) {
-				if (!loadedCommentPagesRef.current.has(p)) {
-					nextPage = p;
-					break;
-				}
-			}
-			if (nextPage !== -1) {
-				fetches.push(
-					getCommentPage({
-						data: {
-							owner: pagination.owner,
-							repo: pagination.repo,
-							issueNumber: pagination.issueNumber,
-							page: nextPage,
-						},
-					}).then((result) => {
-						const newComments = result.comments;
-						loadedCommentPagesRef.current.add(nextPage);
-						queryClient.setQueryData(
-							pagination.pageQueryKey,
-							(prev: IssuePageData | undefined) => {
-								if (!prev) return prev;
-								const existingIds = new Set(prev.comments.map((c) => c.id));
-								const uniqueNew = newComments.filter(
-									(c) => !existingIds.has(c.id),
-								);
-								return {
-									...prev,
-									comments: [...prev.comments, ...uniqueNew],
-									commentPagination: {
-										...prev.commentPagination,
-										loadedPages: [...loadedCommentPagesRef.current],
-									},
-								};
-							},
-						);
-					}),
-				);
-			}
-		}
-
-		// Fetch next event page
-		if (hasMoreEvents) {
-			const nextEventPage = Math.max(...loadedEventPagesRef.current, 0) + 1;
-			fetches.push(
-				getTimelineEventPage({
-					data: {
-						owner: pagination.owner,
-						repo: pagination.repo,
-						issueNumber: pagination.issueNumber,
-						page: nextEventPage,
-					},
-				}).then((result) => {
-					loadedEventPagesRef.current.add(nextEventPage);
-					hasMoreEventsRef.current = result.hasMore;
-					queryClient.setQueryData(
-						pagination.pageQueryKey,
-						(prev: IssuePageData | undefined) => {
-							if (!prev) return prev;
-							const existingKeys = new Set(
-								prev.events.map((e) => `${e.event}-${e.id}-${e.createdAt}`),
-							);
-							const uniqueNew = result.events.filter(
-								(e) => !existingKeys.has(`${e.event}-${e.id}-${e.createdAt}`),
-							);
-							return {
-								...prev,
-								events: [...prev.events, ...uniqueNew],
-								eventPagination: {
-									loadedPages: [...loadedEventPagesRef.current],
-									hasMore: result.hasMore,
-								},
-							};
-						},
-					);
-				}),
-			);
-		}
-
-		Promise.all(fetches).finally(() => {
-			setIsFetchingPage(false);
-		});
-	}, [
-		clientHiddenCount,
-		pagination,
-		hasUnfetchedCommentPages,
-		hasUnfetchedEventPages,
-		totalCommentPages,
-		queryClient,
-	]);
-
-	return {
-		visibleItems,
-		hiddenCount,
-		loadMoreIndex,
-		loadMore,
-		isFetchingPage,
-		hasMorePages: hasUnfetchedPages,
-	};
-}
+const ISSUE_SUBJECT: TimelineSubject = { kind: "issue" };
 
 export function IssueDetailActivitySection({
-	comments,
-	events,
-	commentPagination,
-	eventPagination,
+	issue,
+	page,
 	pageQueryKey,
-	isFetching,
 	owner,
 	repo,
 	issueNumber,
 	scope,
-	issueAuthor,
-	issueState,
-	issueClosedAt,
-	issueStateReason,
 	viewerLogin,
 }: {
-	comments?: IssueComment[];
-	events?: TimelineEvent[];
-	commentPagination?: CommentPagination;
-	eventPagination?: EventPagination;
+	issue: IssueDetail;
+	page: IssuePageData;
 	pageQueryKey: readonly unknown[];
-	isFetching: boolean;
 	owner: string;
 	repo: string;
 	issueNumber: number;
 	scope: GitHubQueryScope;
-	issueAuthor: GitHubActor | null;
-	issueState?: "open" | "closed";
-	/** Fallback when timeline omits `state_reason` on the close event */
-	issueClosedAt?: string | null;
-	issueStateReason?: string | null;
 	viewerLogin?: string;
 }) {
-	const { repliesByCommentId, replyIds } = useMemo(
-		() => buildCommentThreads(comments ?? []),
+	const { events } = page;
+	const comments = useStableById(page.comments);
+	const issueState = issue.state === "closed" ? "closed" : "open";
+
+	const commentThreads = useMemo(
+		() => buildCommentThreads(comments),
 		[comments],
 	);
+	const items = useMemo(
+		() =>
+			buildTimeline([
+				...commentTimelineItems(comments, commentThreads.replyIds),
+				...eventTimelineItems(events),
+			]),
+		[comments, commentThreads, events],
+	);
 
-	const allItems = groupTimelineEvents(
-		[
-			...(comments ?? [])
-				.filter((c) => !replyIds.has(c.id))
-				.map((comment) => ({
-					type: "comment" as const,
-					date: comment.createdAt,
-					data: comment,
-				})),
-			...(events ?? []).map((event) => ({
-				type: "event" as const,
-				date: event.createdAt,
-				data: event,
-			})),
-		].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()),
-	) as IssueTimelineItem[];
+	// The timeline can omit why an issue was closed; the issue itself knows.
+	const closeReasonSource = useMemo<CloseReasonSource>(
+		() => ({
+			issueState,
+			issueClosedAt: issue.closedAt,
+			issueStateReason: issue.stateReason,
+		}),
+		[issueState, issue.closedAt, issue.stateReason],
+	);
 
-	const totalCount = (comments?.length ?? 0) + (events?.length ?? 0);
+	const involvedUsers = useMemo(
+		() => getInvolvedUsers([issue.author], comments),
+		[issue.author, comments],
+	);
 
 	const {
 		visibleItems,
@@ -331,9 +87,9 @@ export function IssueDetailActivitySection({
 		loadMoreIndex,
 		loadMore,
 		isFetchingPage,
-	} = useWindowedTimeline(allItems, {
-		commentPagination,
-		eventPagination,
+	} = useWindowedTimeline(items, {
+		commentPagination: page.commentPagination,
+		eventPagination: page.eventPagination,
 		pageQueryKey,
 		owner,
 		repo,
@@ -344,266 +100,82 @@ export function IssueDetailActivitySection({
 		<div className="flex flex-col">
 			<DetailActivityHeader
 				title="Activity"
-				count={comments ? totalCount : undefined}
+				count={comments.length + events.length}
 			/>
 
-			{isFetching && !comments && (
-				<div className="flex items-center justify-center py-8">
-					<svg
-						className="size-4 animate-spin text-muted-foreground"
-						viewBox="0 0 16 16"
-						fill="none"
-						aria-hidden="true"
-					>
-						<circle
-							cx="8"
-							cy="8"
-							r="6.5"
-							stroke="currentColor"
-							strokeWidth="2"
-							opacity="0.25"
-						/>
-						<path
-							d="M14.5 8a6.5 6.5 0 0 0-6.5-6.5"
-							stroke="currentColor"
-							strokeWidth="2"
-							strokeLinecap="round"
-						/>
-					</svg>
-				</div>
-			)}
-
-			{visibleItems.length === 0 && comments && (
+			{visibleItems.length === 0 ? (
 				<p className="py-4 text-sm text-muted-foreground">No activity yet.</p>
-			)}
-
-			{visibleItems.length > 0 && (
+			) : (
 				<div className="relative flex flex-col">
 					{visibleItems.map((item, index) => {
-						const previousType =
-							index > 0 ? visibleItems[index - 1].type : null;
-						const nextType =
-							index < visibleItems.length - 1
-								? visibleItems[index + 1].type
-								: null;
-						const eventLikeTypes = new Set([
-							"event",
-							"label_group",
-							"review_request_group",
-							"issue_state_toggle_group",
-						]);
-						const isEventLike = eventLikeTypes.has(item.type);
-						const prevIsEventLike =
-							previousType !== null && eventLikeTypes.has(previousType);
-						const nextIsEventLike =
-							nextType !== null && eventLikeTypes.has(nextType);
-						const isConsecutiveEvent = isEventLike && prevIsEventLike;
-						const isLastInEventRun = isEventLike && !nextIsEventLike;
-
+						const position = eventRunPosition(visibleItems, index);
 						const row = (() => {
-							if (item.type === "comment") {
-								const comment = item.data;
-								const replies = repliesByCommentId.get(comment.id);
-								return (
-									<IssueCommentWithThread
-										key={`comment-${comment.id}`}
-										comment={comment}
-										replies={replies}
-										isFirst={index === 0}
-										owner={owner}
-										repo={repo}
-										issueNumber={issueNumber}
-										scope={scope}
-										viewerLogin={viewerLogin}
-									/>
-								);
-							}
-
-							if (
-								item.type === "label_group" ||
-								item.type === "review_request_group"
-							) {
-								const group = item.data;
-								const hasActorAvatar = group.actor?.avatarUrl;
-								const icon =
-									item.type === "label_group" ? (
-										<svg
-											viewBox="0 0 16 16"
-											className="size-3 text-muted-foreground"
-											fill="currentColor"
-											aria-hidden="true"
-										>
-											<path d="M2.5 7.775V3a.5.5 0 0 1 .5-.5h4.775a.75.75 0 0 1 .53.22l5.92 5.92a.75.75 0 0 1 0 1.06l-4.775 4.775a.75.75 0 0 1-1.06 0l-5.92-5.92a.75.75 0 0 1-.22-.53zM5 5.5a.5.5 0 1 0 1 0 .5.5 0 0 0-1 0z" />
-										</svg>
-									) : (
-										<ReviewsIcon
-											size={12}
-											strokeWidth={2}
-											className="text-muted-foreground"
-										/>
-									);
-								return (
-									<div
-										key={`${item.type}-${group.createdAt}`}
-										className={cn(
-											"relative flex items-start gap-[11.5px]",
-											index === 0
-												? "pt-5"
-												: isConsecutiveEvent
-													? "pt-1"
-													: "pt-5",
-											isLastInEventRun ? "pb-5" : eventThreadClassName,
-										)}
-									>
-										{hasActorAvatar ? (
-											<img
-												src={group.actor?.avatarUrl}
-												alt={group.actor?.login}
-												className="ml-[10px] mt-[3px] size-3.5 shrink-0 self-start rounded-full ring-[0.5px] ring-chip-border"
+							switch (item.type) {
+								case "comment":
+									return {
+										key: `comment-${item.data.id}`,
+										element: (
+											<CommentThread
+												comment={item.data}
+												replies={commentThreads.repliesByCommentId.get(
+													item.data.id,
+												)}
+												isFirst={position.isFirst}
+												owner={owner}
+												repo={repo}
+												issueNumber={issueNumber}
+												scope={scope}
+												viewerLogin={viewerLogin}
 											/>
-										) : (
-											<div className="ml-[10px] mt-[3px] flex size-3.5 shrink-0 items-center justify-center self-start text-muted-foreground [&_svg]:size-3.5">
-												{icon}
-											</div>
-										)}
-										<span className="min-w-0 text-xs leading-5 font-[450] text-muted-foreground">
-											{item.type === "label_group" ? (
-												<GroupedLabelDescription
-													group={item.data as GroupedLabelEvent}
-												/>
-											) : (
-												<GroupedReviewRequestDescription
-													group={item.data as GroupedReviewRequestEvent}
-												/>
-											)}
-										</span>
-										<span className="-ml-[7.5px] shrink-0 text-xs leading-5 font-[450] tabular-nums text-muted-foreground before:mr-1 before:content-['·']">
-											{formatRelativeTime(group.createdAt)}
-										</span>
-									</div>
-								);
-							}
-
-							if (item.type === "issue_state_toggle_group") {
-								const group = item.data as GroupedIssueStateToggleEvent;
-								const hasActorAvatar = group.actor?.avatarUrl;
-								const mergedForIcon = group.events.map((e) =>
-									e.event === "closed"
-										? mergeIssueStateIntoCloseEvent(e, {
-												issueState,
-												issueClosedAt,
-												issueStateReason,
-											})
-										: e,
-								);
-								const lastEvent = mergedForIcon[mergedForIcon.length - 1];
-								const icon = lastEvent ? getIssueEventIcon(lastEvent) : null;
-								const toggleKey = group.events.map((e) => e.id).join("-");
-								return (
-									<div
-										key={`issue_state_toggle_group-${toggleKey}-${group.createdAt}`}
-										className={cn(
-											"relative flex items-start gap-[11.5px]",
-											index === 0
-												? "pt-5"
-												: isConsecutiveEvent
-													? "pt-1"
-													: "pt-5",
-											isLastInEventRun ? "pb-5" : eventThreadClassName,
-										)}
-									>
-										{hasActorAvatar ? (
-											<img
-												src={group.actor?.avatarUrl}
-												alt={group.actor?.login}
-												className="ml-[10px] mt-[3px] size-3.5 shrink-0 self-start rounded-full ring-[0.5px] ring-chip-border"
-											/>
-										) : (
-											<div className="ml-[10px] mt-[3px] flex size-3.5 shrink-0 items-center justify-center self-start text-muted-foreground [&_svg]:size-3.5">
-												{icon}
-											</div>
-										)}
-										<span className="min-w-0 text-xs leading-5 font-[450] text-muted-foreground">
-											<GroupedIssueStateToggleDescription
-												group={group}
+										),
+									};
+								case "label_group":
+								case "review_request_group":
+									return {
+										key: `${item.type}-${item.data.createdAt}`,
+										element: (
+											<TimelineEventGroupRow group={item} {...position} />
+										),
+									};
+								case "issue_state_toggle_group":
+									return {
+										key: timelineStateToggleGroupKey(item.data),
+										element: (
+											<TimelineStateToggleGroupRow
+												group={item.data}
 												subject="issue"
-												mergeCloseReason={(e) =>
-													e.event === "closed"
-														? mergeIssueStateIntoCloseEvent(e, {
-																issueState,
-																issueClosedAt,
-																issueStateReason,
-															})
-														: e
-												}
+												closeReasonSource={closeReasonSource}
+												{...position}
 											/>
-										</span>
-										<span className="-ml-[7.5px] shrink-0 text-xs leading-5 font-[450] tabular-nums text-muted-foreground before:mr-1 before:content-['·']">
-											{formatRelativeTime(group.createdAt)}
-										</span>
-									</div>
-								);
+										),
+									};
+								case "event":
+									return {
+										key: timelineEventKey(item.data),
+										element: (
+											<TimelineEventRow
+												event={item.data}
+												subject={ISSUE_SUBJECT}
+												closeReasonSource={closeReasonSource}
+												{...position}
+											/>
+										),
+									};
 							}
-
-							const event = mergeIssueStateIntoCloseEvent(item.data, {
-								issueState,
-								issueClosedAt,
-								issueStateReason,
-							});
-							const icon = getIssueEventIcon(event);
-							const description = getIssueEventDescription(event);
-							const isCrossRef =
-								event.event === "cross-referenced" ||
-								event.event === "referenced";
-							const hasActorAvatar = !isCrossRef && event.actor?.avatarUrl;
-
-							if (!description) return null;
-
-							return (
-								<div
-									key={`event-${event.event}-${event.id}-${event.createdAt}`}
-									className={cn(
-										"relative flex items-start gap-[11.5px]",
-										index === 0 ? "pt-5" : isConsecutiveEvent ? "pt-1" : "pt-5",
-										isLastInEventRun ? "pb-5" : eventThreadClassName,
-									)}
-								>
-									{hasActorAvatar ? (
-										<img
-											src={event.actor?.avatarUrl}
-											alt={event.actor?.login}
-											className="ml-[10px] mt-[3px] size-3.5 shrink-0 self-start rounded-full ring-[0.5px] ring-chip-border"
-										/>
-									) : (
-										<div className="ml-[10px] mt-[3px] flex size-3.5 shrink-0 items-center justify-center self-start text-muted-foreground [&_svg]:size-3.5">
-											{icon}
-										</div>
-									)}
-									<span className="min-w-0 text-xs leading-5 font-[450] text-muted-foreground">
-										{description}
-									</span>
-									{event.createdAt && (
-										<span className="-ml-[7.5px] shrink-0 text-xs leading-5 font-[450] tabular-nums text-muted-foreground before:mr-1 before:content-['·']">
-											{formatRelativeTime(event.createdAt)}
-										</span>
-									)}
-								</div>
-							);
 						})();
 
 						return (
-							<>
+							<Fragment key={row.key}>
 								{index === loadMoreIndex && (
 									<LoadMoreDivider
-										key="load-more"
 										hiddenCount={hiddenCount}
 										hasMorePages={hasMorePages}
-										isPending={isFetchingPage}
+										isFetchingPage={isFetchingPage}
 										onLoadMore={loadMore}
 									/>
 								)}
-								{row}
-							</>
+								{row.element}
+							</Fragment>
 						);
 					})}
 				</div>
@@ -615,566 +187,10 @@ export function IssueDetailActivitySection({
 					repo={repo}
 					issueNumber={issueNumber}
 					scope={scope}
-					involvedUsers={getInvolvedUsers(issueAuthor, comments)}
-					stateToggle={
-						issueState ? { kind: "issue", state: issueState } : undefined
-					}
+					involvedUsers={involvedUsers}
+					stateToggle={{ kind: "issue", state: issueState }}
 				/>
 			</div>
 		</div>
 	);
-}
-
-function IssueCommentBubble({
-	comment,
-	owner,
-	repo,
-	issueNumber,
-	scope,
-	viewerLogin,
-	onReply,
-}: {
-	comment: IssueComment;
-	owner: string;
-	repo: string;
-	issueNumber: number;
-	scope: GitHubQueryScope;
-	viewerLogin?: string;
-	onReply?: () => void;
-}) {
-	const [commentActive, setCommentActive] = useState(false);
-	const editor = useCommentEditor({
-		kind: "issue",
-		owner: owner,
-		repo: repo,
-		number: issueNumber,
-		commentId: comment.id,
-	});
-	const prefersNoHover = usePrefersNoHover();
-
-	return (
-		<div
-			className="group/comment relative flex flex-col gap-[6.5px] px-[16.5px] pt-[13.5px] pb-3"
-			onPointerEnter={() => setCommentActive(true)}
-			onPointerLeave={() => setCommentActive(false)}
-			onFocusCapture={() => setCommentActive(true)}
-			onBlurCapture={(e) => {
-				if (!e.currentTarget.contains(e.relatedTarget as Node | null)) {
-					setCommentActive(false);
-				}
-			}}
-		>
-			<div className="flex h-[19px] items-center gap-[9px]">
-				{comment.author ? (
-					<img
-						src={comment.author.avatarUrl}
-						alt={comment.author.login}
-						className="size-[18px] rounded-full ring-[0.5px] ring-chip-border"
-					/>
-				) : (
-					<div className="size-[18px] rounded-full bg-group" />
-				)}
-				<span className="text-[13px] font-medium text-foreground">
-					{comment.author?.login ?? "Unknown"}
-				</span>
-				<span className="-ml-0.5 text-[13px] font-[450] text-muted-foreground">
-					{formatRelativeTime(comment.createdAt)}
-				</span>
-				<EditedMark editedAt={comment.editedAt} />
-				<div className="ml-auto flex items-center gap-1">
-					{comment.graphqlId && !hasReactions(comment.reactions) ? (
-						<IssueCommentReactionBar
-							className="opacity-0 transition-opacity group-hover/comment:opacity-100 focus-within:opacity-100"
-							revealZeroCount={commentActive || prefersNoHover}
-							viewerLogin={viewerLogin}
-							owner={owner}
-							repo={repo}
-							issueNumber={issueNumber}
-							commentId={comment.id}
-							commentGraphqlId={comment.graphqlId}
-							scope={scope}
-							reactions={comment.reactions}
-						/>
-					) : null}
-					{onReply && (
-						<button
-							type="button"
-							onClick={onReply}
-							aria-label="Reply"
-							className="flex size-7 items-center justify-center rounded-md text-text-header opacity-0 transition-opacity hover:bg-ghost-hover group-hover/comment:opacity-100 focus-visible:opacity-100"
-						>
-							<CommentIcon size={14} strokeWidth={2} />
-						</button>
-					)}
-					<CommentMoreMenu
-						commentId={comment.id}
-						body={comment.body}
-						owner={owner}
-						repo={repo}
-						number={issueNumber}
-						commentType="issue"
-						editor={editor}
-						isAuthor={
-							viewerLogin != null && comment.author?.login === viewerLogin
-						}
-					/>
-				</div>
-			</div>
-			<div className={cn("relative", "pl-[27px]")}>
-				<CommentBody
-					editor={editor}
-					body={comment.body}
-					owner={owner}
-					repo={repo}
-					className="text-[15px] leading-6 text-text-strong"
-				/>
-				{comment.graphqlId && hasReactions(comment.reactions) ? (
-					<IssueCommentReactionBar
-						className="mt-2.5"
-						revealZeroCount={commentActive || prefersNoHover}
-						viewerLogin={viewerLogin}
-						owner={owner}
-						repo={repo}
-						issueNumber={issueNumber}
-						commentId={comment.id}
-						commentGraphqlId={comment.graphqlId}
-						scope={scope}
-						reactions={comment.reactions}
-					/>
-				) : null}
-			</div>
-		</div>
-	);
-}
-
-function IssueCommentWithThread({
-	comment,
-	replies,
-	isFirst,
-	owner,
-	repo,
-	issueNumber,
-	scope,
-	viewerLogin,
-}: {
-	comment: IssueComment;
-	replies?: IssueComment[];
-	isFirst: boolean;
-	owner: string;
-	repo: string;
-	issueNumber: number;
-	scope: GitHubQueryScope;
-	viewerLogin?: string;
-}) {
-	const [showReplyForm, setShowReplyForm] = useState(false);
-	const hasReplies = replies && replies.length > 0;
-
-	return (
-		<div
-			className={cn(
-				"relative -mx-[8.5px] my-2 flex flex-col rounded-lg border-[0.5px] border-border bg-card shadow-[var(--ln-main-shadow)]",
-				isFirst && "mt-0",
-			)}
-		>
-			<IssueCommentBubble
-				comment={comment}
-				owner={owner}
-				repo={repo}
-				issueNumber={issueNumber}
-				scope={scope}
-				viewerLogin={viewerLogin}
-				onReply={() => setShowReplyForm(true)}
-			/>
-
-			{hasReplies && (
-				<div className="flex flex-col divide-y-[0.5px] divide-header-rule border-t-[0.5px] border-header-rule">
-					{replies.map((reply) => (
-						<IssueCommentBubble
-							key={reply.id}
-							comment={reply}
-							owner={owner}
-							repo={repo}
-							issueNumber={issueNumber}
-							scope={scope}
-							viewerLogin={viewerLogin}
-							onReply={() => setShowReplyForm(true)}
-						/>
-					))}
-				</div>
-			)}
-
-			{showReplyForm && (
-				<div className="border-t-[0.5px] border-header-rule px-3 py-3">
-					<CommentReplyForm
-						owner={owner}
-						repo={repo}
-						issueNumber={issueNumber}
-						parentAuthor={comment.author?.login ?? "Unknown"}
-						parentBody={comment.body}
-						parentCommentId={comment.id}
-						onClose={() => setShowReplyForm(false)}
-					/>
-				</div>
-			)}
-		</div>
-	);
-}
-
-function getInvolvedUsers(
-	issueAuthor: GitHubActor | null,
-	comments?: IssueComment[],
-): GitHubActor[] {
-	const seen = new Set<string>();
-	const users: GitHubActor[] = [];
-
-	const add = (actor: GitHubActor | null | undefined) => {
-		if (!actor || seen.has(actor.login)) return;
-		seen.add(actor.login);
-		users.push(actor);
-	};
-
-	// Issue author first
-	add(issueAuthor);
-
-	// Commenters (most recent first)
-	if (comments) {
-		for (let i = comments.length - 1; i >= 0; i--) {
-			add(comments[i].author);
-		}
-	}
-
-	return users;
-}
-
-// ── Load more divider ───────────────────────────────────────────────
-
-function LoadMoreDivider({
-	hiddenCount,
-	hasMorePages,
-	isPending,
-	onLoadMore,
-}: {
-	hiddenCount: number;
-	hasMorePages?: boolean;
-	isPending?: boolean;
-	onLoadMore: () => void;
-}) {
-	const label =
-		hiddenCount > 0
-			? `${hiddenCount}${hasMorePages ? "+" : ""} more ${hiddenCount === 1 && !hasMorePages ? "item" : "items"}`
-			: "Load more";
-
-	return (
-		<div className="flex items-center gap-3 py-3">
-			<div className="h-px flex-1 bg-border" />
-			<button
-				type="button"
-				onClick={onLoadMore}
-				disabled={isPending}
-				className={cn(
-					"flex shrink-0 items-center gap-1.5 rounded-md border-[0.5px] border-border bg-surface-1 px-3 py-1 text-xs text-muted-foreground transition-colors",
-					isPending
-						? "cursor-not-allowed opacity-60"
-						: "hover:bg-ghost-hover hover:text-foreground",
-				)}
-			>
-				{isPending ? (
-					<svg
-						className="size-3 animate-spin"
-						viewBox="0 0 16 16"
-						fill="none"
-						aria-hidden="true"
-					>
-						<circle
-							cx="8"
-							cy="8"
-							r="6.5"
-							stroke="currentColor"
-							strokeWidth="2"
-							opacity="0.25"
-						/>
-						<path
-							d="M14.5 8a6.5 6.5 0 0 0-6.5-6.5"
-							stroke="currentColor"
-							strokeWidth="2"
-							strokeLinecap="round"
-						/>
-					</svg>
-				) : (
-					<ChevronDownIcon size={12} strokeWidth={2} />
-				)}
-				{label}
-			</button>
-			<div className="h-px flex-1 bg-border" />
-		</div>
-	);
-}
-
-// ── Event rendering helpers ─────────────────────────────────────────
-
-function getIssueEventIcon(event: TimelineEvent) {
-	switch (event.event) {
-		case "labeled":
-		case "unlabeled":
-			return (
-				<svg
-					viewBox="0 0 16 16"
-					className="size-3 text-muted-foreground"
-					fill="currentColor"
-					aria-hidden="true"
-				>
-					<path d="M2.5 7.775V3a.5.5 0 0 1 .5-.5h4.775a.75.75 0 0 1 .53.22l5.92 5.92a.75.75 0 0 1 0 1.06l-4.775 4.775a.75.75 0 0 1-1.06 0l-5.92-5.92a.75.75 0 0 1-.22-.53zM5 5.5a.5.5 0 1 0 1 0 .5.5 0 0 0-1 0z" />
-				</svg>
-			);
-		case "assigned":
-		case "unassigned":
-			return (
-				<UserAddIcon
-					size={12}
-					strokeWidth={2}
-					className="text-muted-foreground"
-				/>
-			);
-		case "renamed":
-			return (
-				<EditIcon size={12} strokeWidth={2} className="text-muted-foreground" />
-			);
-		case "closed": {
-			const kind = parseCloseReason(event.stateReason);
-			if (kind === "completed") {
-				return (
-					<IssueClosedCompletedIcon
-						size={12}
-						strokeWidth={2}
-						className="text-merged"
-					/>
-				);
-			}
-			if (kind === "not_planned") {
-				return (
-					<IssueClosedNotPlannedIcon
-						size={12}
-						strokeWidth={2}
-						className="text-muted-foreground"
-					/>
-				);
-			}
-			return <IssuesIcon size={12} strokeWidth={2} className="text-merged" />;
-		}
-		case "reopened":
-			return <IssuesIcon size={12} strokeWidth={2} className="text-success" />;
-		case "cross-referenced":
-		case "referenced":
-			return (
-				<GitPullRequestIcon
-					size={12}
-					strokeWidth={2}
-					className="text-muted-foreground"
-				/>
-			);
-		case "milestoned":
-		case "demilestoned":
-			return (
-				<svg
-					viewBox="0 0 16 16"
-					className="size-3 text-muted-foreground"
-					fill="currentColor"
-					aria-hidden="true"
-				>
-					<path d="M8 0a8 8 0 1 1 0 16A8 8 0 0 1 8 0zm1.5 4.5h-3v7h1.5v-2h1.5a2 2 0 1 0 0-4zm0 1.5a.5.5 0 1 1 0 1H8V6z" />
-				</svg>
-			);
-		case "review_requested":
-		case "review_request_removed":
-			return (
-				<ReviewsIcon
-					size={12}
-					strokeWidth={2}
-					className="text-muted-foreground"
-				/>
-			);
-		default:
-			return (
-				<CircleIcon
-					size={12}
-					strokeWidth={2}
-					className="text-muted-foreground"
-				/>
-			);
-	}
-}
-
-function ActorMention({
-	actor,
-	hideAvatar,
-}: {
-	actor: { login: string; avatarUrl?: string } | null | undefined;
-	hideAvatar?: boolean;
-}) {
-	const login = actor?.login ?? "someone";
-	return (
-		<span className="inline-flex items-center gap-1 font-medium text-foreground">
-			{!hideAvatar && actor?.avatarUrl && (
-				<img
-					src={actor.avatarUrl}
-					alt={login}
-					className="inline-block size-3.5 rounded-full border-[0.5px] border-border align-text-bottom"
-				/>
-			)}
-			{login}
-		</span>
-	);
-}
-
-function getIssueEventDescription(event: TimelineEvent): React.ReactNode {
-	const reviewer =
-		event.requestedReviewer ??
-		(event.requestedTeam ? { login: event.requestedTeam.name } : null);
-
-	switch (event.event) {
-		case "labeled":
-			return (
-				<span className="flex items-center gap-1.5 flex-wrap">
-					<ActorMention actor={event.actor} hideAvatar />
-					{" added "}
-					{event.label && (
-						<LabelPill
-							name={event.label.name}
-							color={event.label.color}
-							size="sm"
-						/>
-					)}
-				</span>
-			);
-		case "unlabeled":
-			return (
-				<span className="flex items-center gap-1.5 flex-wrap">
-					<ActorMention actor={event.actor} hideAvatar />
-					{" removed "}
-					{event.label && (
-						<LabelPill
-							name={event.label.name}
-							color={event.label.color}
-							size="sm"
-						/>
-					)}
-				</span>
-			);
-		case "assigned":
-			return (
-				<span className="inline-flex items-center gap-1 flex-wrap">
-					<ActorMention actor={event.actor} hideAvatar />
-					{" assigned "}
-					<ActorMention actor={event.assignee} />
-				</span>
-			);
-		case "unassigned":
-			return (
-				<span className="inline-flex items-center gap-1 flex-wrap">
-					<ActorMention actor={event.actor} hideAvatar />
-					{" unassigned "}
-					<ActorMention actor={event.assignee} />
-				</span>
-			);
-		case "renamed":
-			return (
-				<span className="inline-flex items-center gap-1 flex-wrap">
-					<ActorMention actor={event.actor} hideAvatar />
-					{" changed the title from "}
-					<span className="line-through">{event.rename?.from}</span>
-					{" to "}
-					<span className="font-medium text-foreground">
-						{event.rename?.to}
-					</span>
-				</span>
-			);
-		case "closed": {
-			const kind = parseCloseReason(event.stateReason);
-			return (
-				<span className="inline-flex items-center gap-1 flex-wrap">
-					<ActorMention actor={event.actor} hideAvatar />
-					{" closed this"}
-					{kind === "completed" && (
-						<>
-							{" as "}
-							<span className="font-medium text-merged">completed</span>
-						</>
-					)}
-					{kind === "not_planned" && (
-						<>
-							{" as "}
-							<span className="font-medium text-muted-foreground">
-								not planned
-							</span>
-						</>
-					)}
-				</span>
-			);
-		}
-		case "reopened":
-			return (
-				<span className="inline-flex items-center gap-1 flex-wrap">
-					<ActorMention actor={event.actor} hideAvatar />
-					<span className="font-medium text-success">reopened</span>
-					{" this issue"}
-				</span>
-			);
-		case "cross-referenced":
-		case "referenced": {
-			if (!event.source) return null;
-			const prefix = event.source.type === "pull_request" ? "PR" : "Issue";
-			return (
-				<span className="inline-flex items-center gap-1 flex-wrap">
-					<ActorMention actor={event.actor} />
-					{" mentioned this in "}
-					<span className="font-medium text-foreground">
-						{event.source.repository
-							? `${event.source.repository}#${event.source.number}`
-							: `${prefix} #${event.source.number}`}
-					</span>
-					<span className="text-muted-foreground">{event.source.title}</span>
-				</span>
-			);
-		}
-		case "milestoned":
-			return (
-				<span className="inline-flex items-center gap-1 flex-wrap">
-					<ActorMention actor={event.actor} hideAvatar />
-					{" added this to the "}
-					<span className="font-medium text-foreground">
-						{event.milestone?.title}
-					</span>
-					{" milestone"}
-				</span>
-			);
-		case "demilestoned":
-			return (
-				<span className="inline-flex items-center gap-1 flex-wrap">
-					<ActorMention actor={event.actor} hideAvatar />
-					{" removed this from the "}
-					<span className="font-medium text-foreground">
-						{event.milestone?.title}
-					</span>
-					{" milestone"}
-				</span>
-			);
-		case "review_requested":
-			return (
-				<span className="inline-flex items-center gap-1 flex-wrap">
-					<ActorMention actor={event.actor} hideAvatar />
-					{" requested review from "}
-					<ActorMention actor={reviewer} />
-				</span>
-			);
-		case "review_request_removed":
-			return (
-				<span className="inline-flex items-center gap-1 flex-wrap">
-					<ActorMention actor={event.actor} hideAvatar />
-					{" removed review request for "}
-					<ActorMention actor={reviewer} />
-				</span>
-			);
-		default:
-			return null;
-	}
 }

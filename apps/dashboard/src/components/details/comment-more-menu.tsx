@@ -57,7 +57,9 @@ function useCanModerate(owner: string, repo: string, isAuthor: boolean) {
 		...githubRepoViewerPermissionQueryOptions(scope, { owner, repo }),
 		enabled: !isAuthor && !isSample,
 	});
-	return isAuthor || permission.data?.canPush === true;
+	// Read on every render so the query only notifies when the permission itself changes.
+	const canPush = permission.data?.canPush === true;
+	return isAuthor || canPush;
 }
 
 export function CommentMoreMenu({

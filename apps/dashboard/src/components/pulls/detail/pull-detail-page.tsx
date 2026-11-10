@@ -42,6 +42,7 @@ import {
 } from "./pull-detail-header";
 import { SAMPLE_PULL, SAMPLE_PULL_PAGE } from "./pull-detail-samples";
 import { PullDetailSidebar } from "./pull-detail-sidebar";
+import type { ReviewThreadInfo } from "./review-comments/review-comment-thread";
 
 const routeApi = getRouteApi("/_protected/$owner/$repo/pull/$pullId");
 
@@ -104,7 +105,7 @@ export function PullDetailContent({
 	});
 
 	const threadInfoByCommentId = useMemo(() => {
-		const map = new Map<number, { threadId: string; isResolved: boolean }>();
+		const map = new Map<number, ReviewThreadInfo>();
 		for (const t of threadStatusesQuery.data ?? []) {
 			map.set(t.firstCommentId, {
 				threadId: t.threadId,
@@ -192,7 +193,6 @@ export function PullDetailContent({
 								page={page}
 								reviewComments={reviewCommentsQuery.data}
 								threadInfoByCommentId={threadInfoByCommentId}
-								isFetching={pageQuery.isFetching}
 							/>
 						) : (
 							<SkeletonSample>
@@ -200,7 +200,6 @@ export function PullDetailContent({
 									{...bodyProps}
 									pr={SAMPLE_PULL}
 									page={SAMPLE_PULL_PAGE}
-									isFetching={false}
 								/>
 							</SkeletonSample>
 						)}
@@ -281,7 +280,6 @@ export function PullDetailBody({
 	page,
 	reviewComments,
 	threadInfoByCommentId,
-	isFetching,
 }: {
 	owner: string;
 	repo: string;
@@ -292,11 +290,9 @@ export function PullDetailBody({
 	pr: PullDetail;
 	page: PullPageData;
 	reviewComments?: PullReviewComment[];
-	threadInfoByCommentId?: ReadonlyMap<
-		number,
-		{ threadId: string; isResolved: boolean }
-	>;
-	isFetching: boolean;
+	threadInfoByCommentId?: ReadonlyMap<number, ReviewThreadInfo>;
+	/** Unused: the body paints whatever is cached and never shows a fetch in progress. */
+	isFetching?: boolean;
 }) {
 	return (
 		<div className="flex flex-col gap-8">
@@ -315,22 +311,16 @@ export function PullDetailBody({
 			) : null}
 
 			<PullDetailActivitySection
-				comments={page.comments}
-				commits={page.commits}
-				events={page.events}
-				reviewComments={reviewComments}
-				commentPagination={page.commentPagination}
-				eventPagination={page.eventPagination}
-				pageQueryKey={pageQueryKey}
-				isFetching={isFetching}
 				pr={pr}
+				page={page}
+				reviewComments={reviewComments}
+				threadInfoByCommentId={threadInfoByCommentId}
+				pageQueryKey={pageQueryKey}
 				owner={owner}
 				repo={repo}
 				pullNumber={pullNumber}
 				scope={scope}
-				headRefDeleted={page.headRefDeleted}
 				viewerLogin={viewerLogin}
-				threadInfoByCommentId={threadInfoByCommentId}
 			/>
 		</div>
 	);

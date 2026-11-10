@@ -1,6 +1,7 @@
 import { cn } from "@diffkit/ui/lib/utils";
 import { Fragment, type ReactNode } from "react";
 import { LabelPill } from "#/components/details/label-pill";
+import { ActorMention } from "#/components/details/timeline/actor-mention";
 import type {
 	GitHubActor,
 	GroupedIssueStateToggleEvent,
@@ -202,7 +203,7 @@ export function GroupedLabelDescription({
 }) {
 	return (
 		<span className="flex flex-wrap items-center gap-1.5">
-			<ActorMention actor={group.actor} />
+			<ActorMention actor={group.actor} hideAvatar />
 			{group.added.length > 0 && (
 				<>
 					{" added "}
@@ -242,14 +243,14 @@ export function GroupedReviewRequestDescription({
 }) {
 	return (
 		<span className="inline-flex flex-wrap items-center gap-1">
-			<ActorMention actor={group.actor} />
+			<ActorMention actor={group.actor} hideAvatar />
 			{group.requested.length > 0 && (
 				<>
 					{" requested review from "}
 					{group.requested.map((reviewer, i) => (
 						<span key={reviewer.login}>
 							{i > 0 && ", "}
-							<ActorMention actor={reviewer} />
+							<ActorMention actor={reviewer} hideAvatar />
 						</span>
 					))}
 				</>
@@ -261,7 +262,7 @@ export function GroupedReviewRequestDescription({
 					{group.removed.map((reviewer, i) => (
 						<span key={reviewer.login}>
 							{i > 0 && ", "}
-							<ActorMention actor={reviewer} />
+							<ActorMention actor={reviewer} hideAvatar />
 						</span>
 					))}
 				</>
@@ -331,7 +332,7 @@ export function GroupedIssueStateToggleDescription({
 
 	return (
 		<span className="inline-flex flex-wrap items-baseline gap-x-0">
-			<ActorMention actor={group.actor} />{" "}
+			<ActorMention actor={group.actor} hideAvatar />{" "}
 			{segments.map((seg, idx) => (
 				<Fragment
 					key={`${group.events[idx]?.id ?? "x"}-${group.events[idx]?.event ?? idx}`}
@@ -340,19 +341,6 @@ export function GroupedIssueStateToggleDescription({
 					{seg}
 				</Fragment>
 			))}
-		</span>
-	);
-}
-
-function ActorMention({
-	actor,
-}: {
-	actor: GitHubActor | { login: string } | null | undefined;
-}) {
-	const login = actor?.login ?? "someone";
-	return (
-		<span className="inline-flex items-center gap-1 font-medium text-foreground">
-			{login}
 		</span>
 	);
 }
