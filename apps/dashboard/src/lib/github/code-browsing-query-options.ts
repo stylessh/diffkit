@@ -6,7 +6,7 @@ import type {
 	RepoCodePathInput,
 	RepoCodeSearchInput,
 } from "../code-browsing/types";
-import { githubCachePolicy } from "../github-cache-policy";
+import { githubCachePolicy, githubCacheTimes } from "../github-cache-policy";
 import {
 	getRepoBlame,
 	getRepoBlob,
@@ -52,7 +52,7 @@ export function githubRepoBlobQueryOptions(
 		queryKey: codeBrowsingQueryKeys.blob(scope, input),
 		queryFn: () => getRepoBlob({ data: input }),
 		staleTime: contentStaleTime(input.ref),
-		gcTime: githubCachePolicy.detail.gcTimeMs,
+		gcTime: githubCachePolicy.blob.gcTimeMs,
 	});
 }
 
@@ -76,8 +76,7 @@ export function githubRepoCodeSearchQueryOptions(
 	return queryOptions({
 		queryKey: codeBrowsingQueryKeys.search(scope, input),
 		queryFn: () => searchRepoCode({ data: input }),
-		staleTime: githubCachePolicy.repoMeta.staleTimeMs,
-		gcTime: githubCachePolicy.list.gcTimeMs,
+		...githubCacheTimes("repoMeta"),
 		retry: false,
 		refetchOnWindowFocus: false,
 		enabled: input.query.trim().length > 0,

@@ -160,6 +160,11 @@ export function toMutationError(
 	return { ok: false, error: `Failed to ${action}: Unknown error` };
 }
 
+export type RepositoryInput = {
+	owner: string;
+	repo: string;
+};
+
 export type PullFromRepoInput = {
 	owner: string;
 	repo: string;

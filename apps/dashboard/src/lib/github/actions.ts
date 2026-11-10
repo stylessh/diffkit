@@ -21,6 +21,7 @@ import {
 	getGitHubUserContextForRepository,
 } from "./installations";
 import { mapActor } from "./mappers";
+import { mutateRepository } from "./mutations";
 import {
 	getRepositoryPermissions,
 	mergeRepositoryPermissions,
@@ -32,7 +33,6 @@ import {
 	GITHUB_OPERATION_TIMEOUT_MS,
 	type GitHubClient,
 	type MutationResult,
-	toMutationError,
 } from "./shared";
 import { identityValidator } from "./validators";
 
@@ -335,43 +335,29 @@ export const listWorkflowRunArtifacts = createServerFn({ method: "GET" })
 
 export const rerunWorkflowRun = createServerFn({ method: "POST" })
 	.validator(identityValidator<WorkflowRunInput>)
-	.handler(async ({ data }): Promise<MutationResult> => {
-		const context = await getGitHubUserContextForRepository(data);
-		if (!context) {
-			return { ok: false, error: "Not authenticated" };
-		}
-
-		try {
-			await context.octokit.rest.actions.reRunWorkflow({
-				owner: data.owner,
-				repo: data.repo,
-				run_id: data.runId,
-			});
-			return { ok: true };
-		} catch (error) {
-			return toMutationError("rerun workflow run", error);
-		}
-	});
+	.handler(
+		({ data }): Promise<MutationResult> =>
+			mutateRepository(data, "rerun workflow run", (context) =>
+				context.octokit.rest.actions.reRunWorkflow({
+					owner: data.owner,
+					repo: data.repo,
+					run_id: data.runId,
+				}),
+			),
+	);
 
 export const rerunFailedWorkflowJobs = createServerFn({ method: "POST" })
 	.validator(identityValidator<WorkflowRunInput>)
-	.handler(async ({ data }): Promise<MutationResult> => {
-		const context = await getGitHubUserContextForRepository(data);
-		if (!context) {
-			return { ok: false, error: "Not authenticated" };
-		}
-
-		try {
-			await context.octokit.rest.actions.reRunWorkflowFailedJobs({
-				owner: data.owner,
-				repo: data.repo,
-				run_id: data.runId,
-			});
-			return { ok: true };
-		} catch (error) {
-			return toMutationError("rerun failed workflow jobs", error);
-		}
-	});
+	.handler(
+		({ data }): Promise<MutationResult> =>
+			mutateRepository(data, "rerun failed workflow jobs", (context) =>
+				context.octokit.rest.actions.reRunWorkflowFailedJobs({
+					owner: data.owner,
+					repo: data.repo,
+					run_id: data.runId,
+				}),
+			),
+	);
 
 export type WorkflowDefinitionInput = {
 	owner: string;

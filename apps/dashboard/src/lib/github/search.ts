@@ -21,11 +21,8 @@ import {
 	getInstallationAccessIndex,
 } from "./installations";
 import { buildRepositoryRef, mapIssueSummary, mapPullSummary } from "./mappers";
-import {
-	buildUserSearchQuery,
-	getMyIssuesResult,
-	getMyPullsResult,
-} from "./my-search";
+import { getMyIssuesResult, getMyPullsResult } from "./my-search";
+import { buildUserSearchQuery } from "./search-query";
 import {
 	clampPage,
 	clampPerPage,

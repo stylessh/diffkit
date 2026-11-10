@@ -320,10 +320,24 @@ export const githubQueryKeys = {
 			["github", scope.userId, "issues", "comments", input] as const,
 	},
 	notifications: {
+		/**
+		 * Defaults are written into the key so `{}` and `{ all: false }`, which
+		 * the server answers identically, share one cache entry.
+		 */
 		list: (
 			scope: GitHubQueryScope,
 			input: { all?: boolean; participating?: boolean },
-		) => ["github", scope.userId, "notifications", "list", input] as const,
+		) =>
+			[
+				"github",
+				scope.userId,
+				"notifications",
+				"list",
+				{
+					all: input.all ?? false,
+					...(input.participating ? { participating: true } : {}),
+				},
+			] as const,
 	},
 	actions: {
 		runsList: (

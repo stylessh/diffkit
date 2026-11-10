@@ -13,14 +13,19 @@ import {
 	getOrCreateCachedContext,
 	listPaginatedGitHubItems,
 } from "./client";
+import {
+	forgetIdentityRead,
+	readIdentityThroughMemory,
+	rememberIdentityRead,
+} from "./identity-memory";
 import { dedupeGitHubRead } from "./request-dedup";
-import type { RepoCollaboratorsInput } from "./reviews";
 import {
 	type GitHubClient,
 	type GitHubContext,
 	type GitHubInstallationAccountPayload,
 	type GitHubInstallationRepositoriesPayload,
 	normalizeLogin,
+	type RepositoryInput,
 } from "./shared";
 
 type GitHubUserInstallationPayload = {
@@ -38,6 +43,10 @@ type GitHubUserInstallationsPayload = {
 	total_count?: number;
 	installations?: GitHubUserInstallationPayload[];
 };
+
+type InstallationRepositoryPayload = NonNullable<
+	GitHubInstallationRepositoriesPayload["repositories"]
+>[number];
 
 type GitHubAuthenticatedOrgPayload = {
 	id?: number;
@@ -80,6 +89,49 @@ function mapGitHubAppInstallations(
 	});
 }
 
+const USER_INSTALLATIONS_PAGE_SIZE = 100;
+const ROUTING_INSTALLATIONS_RESOURCE = "installations";
+
+async function listUserInstallations(
+	appUserOctokit: GitHubClient,
+): Promise<GitHubAppInstallation[]> {
+	const rawInstallations = await listPaginatedGitHubItems({
+		request: (page) =>
+			appUserOctokit.request("GET /user/installations", {
+				per_page: USER_INSTALLATIONS_PAGE_SIZE,
+				page,
+			}),
+		getItems: (payload) =>
+			(payload as GitHubUserInstallationsPayload).installations ?? [],
+		label: "github user installations",
+		pageSize: USER_INSTALLATIONS_PAGE_SIZE,
+	});
+	const installations = mapGitHubAppInstallations({
+		installations: rawInstallations,
+	});
+	debug("github-access", "loaded app installations", {
+		count: installations.length,
+		owners: installations.map((i) => i.account.login),
+	});
+	return installations;
+}
+
+/**
+ * Remembering "no installations" would send a user who just installed the
+ * app through their OAuth token until the entry expired.
+ */
+function rememberRoutingInstallations(
+	userId: string,
+	installations: GitHubAppInstallation[],
+) {
+	if (installations.length > 0) {
+		rememberIdentityRead(userId, ROUTING_INSTALLATIONS_RESOURCE, installations);
+	} else {
+		forgetIdentityRead(userId, ROUTING_INSTALLATIONS_RESOURCE);
+	}
+}
+
+/** Always asks GitHub: this is what the access screens and filters show. */
 export async function getGitHubAppUserInstallations(userId: string): Promise<{
 	installations: GitHubAppInstallation[];
 	/** `true` when the app-user token is configured and the API responded. */
@@ -99,45 +151,41 @@ export async function getGitHubAppUserInstallations(userId: string): Promise<{
 
 	// The app-user token exists, so failures from here on are transient:
 	// propagate them to the caller instead of failing open.
-	const PAGE_SIZE = 100;
-	const firstResponse = await appUserOctokit.request(
-		"GET /user/installations",
-		{ per_page: PAGE_SIZE },
-	);
-	const firstPayload = firstResponse.data as GitHubUserInstallationsPayload;
-	const firstPage = firstPayload.installations ?? [];
-	const allRawInstallations = [...firstPage];
-
-	if (firstPage.length >= PAGE_SIZE) {
-		let page = 2;
-		while (true) {
-			const response = await appUserOctokit.request("GET /user/installations", {
-				per_page: PAGE_SIZE,
-				page,
-			});
-			const payload = response.data as GitHubUserInstallationsPayload;
-			const pageItems = payload.installations ?? [];
-			allRawInstallations.push(...pageItems);
-
-			if (pageItems.length < PAGE_SIZE) {
-				break;
-			}
-			page += 1;
-		}
-	}
-
-	const installations = mapGitHubAppInstallations({
-		installations: allRawInstallations,
-	});
-	debug("github-access", "loaded app installations", {
-		count: installations.length,
-		owners: installations.map((i) => i.account.login),
-	});
+	const installations = await listUserInstallations(appUserOctokit);
+	rememberRoutingInstallations(userId, installations);
 	return {
 		installations,
 		installationsAvailable: true,
 		appUserOctokit,
 	};
+}
+
+/**
+ * Installations as of at most `IDENTITY_MEMORY_TTL_MS` ago, for choosing
+ * which token a read goes through and which repositories the lists show. A
+ * stale answer degrades safely: a new installation is read with the OAuth
+ * token as before it existed, and a removed one fails its token mint and
+ * falls back to OAuth.
+ */
+export async function getRoutingInstallations(
+	userId: string,
+): Promise<GitHubAppInstallation[]> {
+	return readIdentityThroughMemory<GitHubAppInstallation[]>({
+		userId,
+		resource: ROUTING_INSTALLATIONS_RESOURCE,
+		shouldRemember: (installations) => installations.length > 0,
+		load: async () => {
+			const { getGitHubAppUserClientByUserId } = await import(
+				"../auth-runtime"
+			);
+			const appUserOctokit = await getGitHubAppUserClientByUserId(userId);
+			if (!appUserOctokit) {
+				debug("github-access", "no app user client, skipping installations");
+				return [];
+			}
+			return listUserInstallations(appUserOctokit);
+		},
+	});
 }
 
 export async function getGitHubAuthenticatedOrganizations(
@@ -177,136 +225,100 @@ type SerializableInstallationAccessIndex = {
 	selectedRepos: string[];
 };
 
+function installationRepositoryFullName(
+	repository: InstallationRepositoryPayload,
+) {
+	const fullName =
+		repository.full_name ??
+		(repository.owner?.login && repository.name
+			? `${repository.owner.login}/${repository.name}`
+			: null);
+	return fullName?.toLowerCase() ?? null;
+}
+
+/** Needs the app-user client: the endpoint rejects OAuth tokens. */
+export async function listInstallationRepositories(
+	appUserOctokit: GitHubClient,
+	installationId: number,
+): Promise<InstallationRepositoryPayload[]> {
+	return listPaginatedGitHubItems({
+		request: (page) =>
+			appUserOctokit.rest.apps.listInstallationReposForAuthenticatedUser({
+				installation_id: installationId,
+				page,
+				per_page: 100,
+			}),
+		getItems: (payload) =>
+			(payload as GitHubInstallationRepositoriesPayload).repositories ?? [],
+		label: `installation repos ${installationId}`,
+	});
+}
+
+async function buildInstallationAccessIndex(
+	userId: string,
+): Promise<SerializableInstallationAccessIndex> {
+	const { getGitHubAppUserClientByUserId } = await import("../auth-runtime");
+	const appUserOctokit = await getGitHubAppUserClientByUserId(userId);
+	if (!appUserOctokit) {
+		debug(
+			"installation-access",
+			"app-user token unavailable, index not available (fail-open)",
+		);
+		return { available: false, allAccessOwners: [], selectedRepos: [] };
+	}
+
+	const installations = (await getRoutingInstallations(userId)).filter(
+		(installation) => !installation.suspendedAt,
+	);
+	const allAccessOwners = installations
+		.filter((installation) => installation.repositorySelection === "all")
+		.map((installation) => installation.account.login.toLowerCase());
+	const selectedRepoLists = await Promise.all(
+		installations
+			.filter((installation) => installation.repositorySelection === "selected")
+			.map(async (installation) => {
+				try {
+					const repositories = await listInstallationRepositories(
+						appUserOctokit,
+						installation.id,
+					);
+					return repositories.flatMap(
+						(repository) => installationRepositoryFullName(repository) ?? [],
+					);
+				} catch (error) {
+					console.error(
+						`[installation-access] failed to list repos for installation ${installation.id}`,
+						error,
+					);
+					return [];
+				}
+			}),
+	);
+
+	return {
+		available: true,
+		allAccessOwners,
+		selectedRepos: selectedRepoLists.flat(),
+	};
+}
+
 export async function getInstallationAccessIndex(
 	context: GitHubContext,
 ): Promise<GitHubInstallationAccessIndex> {
+	const userId = context.session.user.id;
 	try {
 		const serializable =
 			await dedupeGitHubRead<SerializableInstallationAccessIndex>({
-				userId: context.session.user.id,
+				userId,
 				resource: "installationAccess",
 				params: null,
-				fetcher: async () => {
-					debug("installation-access", "fetching access index (cache miss)");
-					const { installations, installationsAvailable, appUserOctokit } =
-						await getGitHubAppUserInstallations(context.session.user.id);
-
-					if (!installationsAvailable) {
-						debug(
-							"installation-access",
-							"app-user token unavailable, index not available (fail-open)",
-						);
-						return {
-							available: false,
-							allAccessOwners: [],
-							selectedRepos: [],
-						};
-					}
-
-					debug("installation-access", "processing installations", {
-						count: installations.length,
-						owners: installations.map((i) => i.account.login),
-					});
-
-					const allAccessOwners: string[] = [];
-					const selectedRepos: string[] = [];
-
-					for (const installation of installations) {
-						if (installation.suspendedAt) {
-							debug("installation-access", "skipping suspended installation", {
-								owner: installation.account.login,
-								installationId: installation.id,
-							});
-							continue;
-						}
-
-						const ownerLogin = installation.account.login.toLowerCase();
-
-						if (installation.repositorySelection === "all") {
-							debug(
-								"installation-access",
-								`owner "${ownerLogin}" has "all" repo access`,
-							);
-							allAccessOwners.push(ownerLogin);
-							continue;
-						}
-
-						if (installation.repositorySelection === "selected") {
-							if (!appUserOctokit) {
-								continue;
-							}
-
-							try {
-								// Use the app-user client (not the OAuth client) —
-								// this endpoint requires a GitHub App user-to-server token.
-								const repos = await listPaginatedGitHubItems({
-									request: (page) =>
-										appUserOctokit.rest.apps.listInstallationReposForAuthenticatedUser(
-											{
-												installation_id: installation.id,
-												page,
-												per_page: 100,
-											},
-										),
-									getItems: (payload) =>
-										((payload as GitHubInstallationRepositoriesPayload)
-											.repositories ?? []) as NonNullable<
-											GitHubInstallationRepositoriesPayload["repositories"]
-										>,
-									label: `installation-access repos ${installation.id}`,
-								});
-
-								const repoNames: string[] = [];
-								for (const repo of repos) {
-									const fullName =
-										repo.full_name ??
-										(repo.owner?.login && repo.name
-											? `${repo.owner.login}/${repo.name}`
-											: null);
-									if (fullName) {
-										const normalized = fullName.toLowerCase();
-										selectedRepos.push(normalized);
-										repoNames.push(normalized);
-									}
-								}
-
-								debug(
-									"installation-access",
-									`owner "${ownerLogin}" has "selected" repo access`,
-									{
-										installationId: installation.id,
-										repoCount: repoNames.length,
-										repos: repoNames,
-									},
-								);
-							} catch (error) {
-								console.error(
-									`[installation-access] failed to list repos for installation ${installation.id}`,
-									error,
-								);
-							}
-						}
-					}
-
-					debug("installation-access", "access index built", {
-						allAccessOwners,
-						selectedRepoCount: selectedRepos.length,
-						selectedRepos,
-					});
-
-					return {
-						available: true,
-						allAccessOwners,
-						selectedRepos,
-					};
-				},
+				fetcher: () => buildInstallationAccessIndex(userId),
 			});
 
 		debug("installation-access", "resolved access index", {
 			available: serializable.available,
 			allAccessOwners: serializable.allAccessOwners,
 			selectedRepoCount: serializable.selectedRepos.length,
-			selectedRepos: serializable.selectedRepos,
 		});
 
 		return {
@@ -317,10 +329,6 @@ export async function getInstallationAccessIndex(
 	} catch (error) {
 		// Transient failure (network, 500): fail open so one bad request doesn't
 		// hide every private repo from the user.
-		debug(
-			"installation-access",
-			"transient error building access index, failing open",
-		);
 		console.error("[installation-access] failed to build access index", error);
 		return emptyInstallationAccessIndex();
 	}
@@ -378,11 +386,8 @@ export async function getGitHubContextForOwner(owner: string) {
 			return null;
 		}
 
-		const { installations } = await getGitHubAppUserInstallations(
-			context.session.user.id,
-		);
 		const installation = findGitHubAppInstallationForOwner(
-			installations,
+			await getRoutingInstallations(context.session.user.id),
 			owner,
 		);
 		if (!installation) {
@@ -420,11 +425,8 @@ export async function getGitHubContextForRepository(input: {
 				return null;
 			}
 
-			const { installations } = await getGitHubAppUserInstallations(
-				context.session.user.id,
-			);
 			const installation = findGitHubAppInstallationForOwner(
-				installations,
+				await getRoutingInstallations(context.session.user.id),
 				input.owner,
 			);
 			if (!installation) {
@@ -475,7 +477,7 @@ export async function getGitHubContextForRepository(input: {
 async function appInstallationHasRepositoryAccess(
 	context: GitHubContext,
 	installation: GitHubAppInstallation,
-	params: RepoCollaboratorsInput,
+	params: RepositoryInput,
 ) {
 	if (installation.repositorySelection === "all") {
 		return true;
@@ -494,20 +496,10 @@ async function appInstallationHasRepositoryAccess(
 			return false;
 		}
 
-		const repositories = await listPaginatedGitHubItems({
-			request: (page) =>
-				appUserOctokit.rest.apps.listInstallationReposForAuthenticatedUser({
-					installation_id: installation.id,
-					page,
-					per_page: 100,
-				}),
-			getItems: (payload) =>
-				((payload as GitHubInstallationRepositoriesPayload).repositories ??
-					[]) as NonNullable<
-					GitHubInstallationRepositoriesPayload["repositories"]
-				>,
-		});
-
+		const repositories = await listInstallationRepositories(
+			appUserOctokit,
+			installation.id,
+		);
 		return repositories.some((repository) =>
 			repositoryMatchesInstallationRepository(repository, params),
 		);
@@ -553,11 +545,8 @@ async function getGitHubUserContextForOwner(owner: string) {
 				return context;
 			}
 
-			const { installations } = await getGitHubAppUserInstallations(
-				context.session.user.id,
-			);
 			const installation = findGitHubAppInstallationForOwner(
-				installations,
+				await getRoutingInstallations(context.session.user.id),
 				owner,
 			);
 			if (!installation) {
@@ -593,10 +582,8 @@ export async function getGitHubUserContextForRepository(input: {
 }
 
 export function repositoryMatchesInstallationRepository(
-	repository: NonNullable<
-		GitHubInstallationRepositoriesPayload["repositories"]
-	>[number],
-	params: RepoCollaboratorsInput,
+	repository: InstallationRepositoryPayload,
+	params: RepositoryInput,
 ) {
 	const fullName = repository.full_name?.toLowerCase();
 	if (fullName === `${params.owner}/${params.repo}`.toLowerCase()) {
