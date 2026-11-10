@@ -1,5 +1,6 @@
-import { GitHubLogo } from "@diffkit/icons";
+import { AlertCircleIcon, GitHubLogo } from "@diffkit/icons";
 import { Button } from "@diffkit/ui/components/button";
+import { Callout, CalloutContent } from "@diffkit/ui/components/callout";
 import { Chip } from "@diffkit/ui/components/chip";
 import { Logo } from "@diffkit/ui/components/logo";
 import { createFileRoute, redirect } from "@tanstack/react-router";
@@ -13,11 +14,17 @@ import {
 	buildSoftwareApplicationSchema,
 	formatPageTitle,
 } from "#/lib/seo";
+import {
+	parseSignInError,
+	type SignInError,
+	signInErrorMessages,
+} from "#/lib/sign-in-error";
 import { siteConfig } from "#/lib/site-config";
 
 export const Route = createFileRoute("/login")({
-	validateSearch: (search) => ({
+	validateSearch: (search): { redirect: string; error?: SignInError } => ({
 		redirect: normalizeAuthRedirect(search.redirect),
+		error: parseSignInError(search.error),
 	}),
 	beforeLoad: async ({ search }) => {
 		const session = await getSession();
@@ -62,7 +69,7 @@ const starCount = new Intl.NumberFormat("en", {
 });
 
 function LoginPage() {
-	const { redirect } = Route.useSearch();
+	const { redirect, error } = Route.useSearch();
 	const { signInMode, stars } = Route.useLoaderData();
 	const signIn = () => {
 		void signInWithGitHub({ redirect, mode: signInMode });
@@ -113,15 +120,25 @@ function LoginPage() {
 					<span className="enter-1 block">Your GitHub pull requests,</span>
 					<span className="enter-2 block">issues and reviews in one place</span>
 				</h1>
-				<Button
-					variant="outline"
-					size="lg"
-					iconLeft={<GitHubLogo />}
-					className="enter-3 h-10 rounded-lg bg-tab-selected px-4 text-sm shadow-tab-selected"
-					onClick={signIn}
-				>
-					Continue with GitHub
-				</Button>
+				<div className="enter-3 flex flex-col items-start gap-3 lg:items-end">
+					{error ? (
+						<Callout variant="destructive" role="alert">
+							<CalloutContent>
+								<AlertCircleIcon size={14} strokeWidth={2} />
+								{signInErrorMessages[error]}
+							</CalloutContent>
+						</Callout>
+					) : null}
+					<Button
+						variant="outline"
+						size="lg"
+						iconLeft={<GitHubLogo />}
+						className="h-10 rounded-lg bg-tab-selected px-4 text-sm shadow-tab-selected"
+						onClick={signIn}
+					>
+						Continue with GitHub
+					</Button>
+				</div>
 			</section>
 
 			<div className="relative -mt-2 min-h-80 flex-1 overflow-hidden mask-b-from-65%">
