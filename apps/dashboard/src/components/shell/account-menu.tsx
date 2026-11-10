@@ -30,6 +30,7 @@ import {
 import { cn } from "@diffkit/ui/lib/utils";
 import { Link } from "@tanstack/react-router";
 import { useTheme } from "next-themes";
+import { memo } from "react";
 import { signOutToLogin } from "#/lib/auth-actions";
 
 export type ShellUser = {
@@ -97,7 +98,7 @@ function ThemeSwitch() {
 	);
 }
 
-export function AccountMenu({
+export const AccountMenu = memo(function AccountMenu({
 	user,
 	viewerLogin,
 }: {
@@ -211,4 +212,4 @@ export function AccountMenu({
 			</DropdownMenuContent>
 		</DropdownMenu>
 	);
-}
+});

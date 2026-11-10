@@ -38,7 +38,7 @@ import {
 	type OrgRole,
 	parseInvitee,
 } from "#/lib/settings/org";
-import { useOrgSettingsAccess } from "./org-settings-frame";
+import { useCanManageOrg } from "./org-settings-frame";
 import { SAMPLE_ORG_MEMBERS } from "./org-settings-samples";
 
 type OrgProps = { org: string; scope: GitHubQueryScope };
@@ -52,8 +52,7 @@ type Composer = "closed" | "open";
 
 export function OrgMembersSettings({ org, scope }: OrgProps) {
 	const query = useQuery(githubOrgMembersQueryOptions(scope, { org }));
-	const access = useOrgSettingsAccess(scope, org);
-	const canManage = access.status === "member" && access.capabilities.manage;
+	const canManage = useCanManageOrg(scope, org);
 
 	return (
 		<>

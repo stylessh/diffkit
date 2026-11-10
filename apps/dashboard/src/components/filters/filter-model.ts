@@ -159,7 +159,7 @@ function searchTerms(item: FilterableItem) {
 	return terms.map((term) => term.toLowerCase());
 }
 
-export function matchesSearch(item: FilterableItem, query: string) {
+function matchesSearch(item: FilterableItem, query: string) {
 	const needle = query.trim().toLowerCase();
 	if (!needle) return true;
 	const terms = searchTerms(item);
@@ -170,7 +170,7 @@ export function matchesSearch(item: FilterableItem, query: string) {
 	return terms.some((term) => term.includes(needle));
 }
 
-export function matchesFilters(
+function matchesFilters(
 	item: FilterableItem,
 	filters: ActiveFilter[],
 	defs: FilterDefinition[],

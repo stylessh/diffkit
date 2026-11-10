@@ -6,7 +6,7 @@ const MAX_AGE = 60 * 60 * 24 * 365;
 /** The last filters and sort of one list, in their URL form. */
 export type RememberedView = { filters?: string; sort?: string };
 
-export type RememberedViews = Record<string, RememberedView>;
+type RememberedViews = Record<string, RememberedView>;
 
 function asRememberedView(value: unknown): RememberedView | null {
 	if (typeof value !== "object" || value === null) return null;

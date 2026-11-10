@@ -11,6 +11,7 @@ import {
 	type BulkItemSummary,
 	BulkSelection,
 } from "#/components/shared/bulk-selection";
+import { itemSelectionKey } from "#/components/shared/list-row";
 import type { CountNoun } from "#/lib/bulk-actions";
 import {
 	type MutationResult,
@@ -28,7 +29,6 @@ import {
 import { getPrStateConfig } from "#/lib/pr-state";
 import { useLocalStorageState } from "#/lib/use-local-storage-state";
 import { checkPermissionWarning } from "#/lib/warning-store";
-import { pullSelectionKey } from "./pull-request-row";
 
 const PULL_NOUN: CountNoun = { one: "pull request", other: "pull requests" };
 
@@ -205,7 +205,7 @@ export function PullBulkSelection({
 	return (
 		<BulkSelection
 			items={pulls}
-			getKey={pullSelectionKey}
+			getKey={itemSelectionKey}
 			noun={PULL_NOUN}
 			actions={actions}
 			describe={describePull}

@@ -8,8 +8,10 @@ import {
 import { cn } from "@diffkit/ui/lib/utils";
 import {
 	type ComponentType,
+	memo,
 	type ReactNode,
 	type RefObject,
+	useCallback,
 	useState,
 } from "react";
 import {
@@ -103,6 +105,7 @@ export function ListGroup({
 	children: ReactNode;
 }) {
 	const [open, setOpen] = useState(defaultOpen);
+	const toggle = useCallback(() => setOpen((value) => !value), []);
 	if (count === 0) return null;
 
 	return (
@@ -111,19 +114,46 @@ export function ListGroup({
 			aria-label={label ?? title}
 			style={{ contentVisibility: "auto", containIntrinsicSize: "auto 44px" }}
 		>
-			<GroupHeader
-				className="sticky top-0 z-10"
-				icon={Icon ? <Icon size={14} strokeWidth={2} /> : undefined}
+			<ListGroupHeader
+				icon={Icon}
 				title={title}
 				label={label}
 				count={count}
 				open={open}
-				onToggle={() => setOpen((value) => !value)}
+				onToggle={toggle}
 			/>
 			{open ? <div className="flex flex-col py-0.5">{children}</div> : null}
 		</section>
 	);
 }
+
+const ListGroupHeader = memo(function ListGroupHeader({
+	icon: Icon,
+	title,
+	label,
+	count,
+	open,
+	onToggle,
+}: {
+	icon?: ListIcon;
+	title: string;
+	label?: string;
+	count: number;
+	open: boolean;
+	onToggle: () => void;
+}) {
+	return (
+		<GroupHeader
+			className="sticky top-0 z-10"
+			icon={Icon ? <Icon size={14} strokeWidth={2} /> : undefined}
+			title={title}
+			label={label}
+			count={count}
+			open={open}
+			onToggle={onToggle}
+		/>
+	);
+});
 
 export function ListEmpty({ children }: { children: ReactNode }) {
 	return (

@@ -33,7 +33,7 @@ type OrgSettingsAccess =
 	| { status: "member"; capabilities: OrgSettingsCapabilities }
 	| { status: "outsider" };
 
-export function useOrgSettingsAccess(
+function useOrgSettingsAccess(
 	scope: GitHubQueryScope,
 	org: string,
 ): OrgSettingsAccess {
@@ -47,6 +47,11 @@ export function useOrgSettingsAccess(
 		status: "member",
 		capabilities: orgSettingsCapabilities(result.data),
 	};
+}
+
+export function useCanManageOrg(scope: GitHubQueryScope, org: string) {
+	const access = useOrgSettingsAccess(scope, org);
+	return access.status === "member" && access.capabilities.manage;
 }
 
 export function OrgSettingsFrame({

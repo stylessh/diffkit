@@ -9,7 +9,7 @@ import {
 } from "@diffkit/ui/components/command";
 import { useQuery } from "@tanstack/react-query";
 import { getRouteApi } from "@tanstack/react-router";
-import { useMemo, useState } from "react";
+import { memo, useMemo, useState } from "react";
 import { githubUserReposQueryOptions } from "#/lib/github.query";
 import type { UserRepoSummary } from "#/lib/github.types";
 import {
@@ -140,7 +140,7 @@ function RepoRow({
 	);
 }
 
-export function RepoPickerDialog() {
+export const RepoPickerDialog = memo(function RepoPickerDialog() {
 	const overlay = useShellOverlay();
 	const { user } = routeApi.useRouteContext();
 	const workspace = useWorkspaceRepos(user.id);
@@ -234,4 +234,4 @@ export function RepoPickerDialog() {
 			</CommandList>
 		</CommandDialog>
 	);
-}
+});

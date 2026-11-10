@@ -68,116 +68,112 @@ export function RepoReleasesPage({
 	});
 
 	return (
-		<>
-			<RepoPageHeader
-				owner={owner}
-				repo={repo}
-				scope={scope}
-				active="releases"
-				tabActions={
-					<>
+		<RepoPageHeader
+			owner={owner}
+			repo={repo}
+			scope={scope}
+			active="releases"
+			tabActions={
+				<>
+					<Link
+						to="/$owner/$repo/tags"
+						params={{ owner, repo }}
+						className={cn(ghostPillClassName, "max-lg:hidden")}
+					>
+						<TagIcon size={14} strokeWidth={2} />
+						Tags
+					</Link>
+					{canPush ? (
 						<Link
-							to="/$owner/$repo/tags"
+							to="/$owner/$repo/releases/new"
 							params={{ owner, repo }}
-							className={cn(ghostPillClassName, "max-lg:hidden")}
+							className={cn(pillButtonClassName, "text-foreground")}
 						>
-							<TagIcon size={14} strokeWidth={2} />
-							Tags
+							<PlusSignIcon size={14} strokeWidth={2} />
+							New release
 						</Link>
-						{canPush ? (
-							<Link
-								to="/$owner/$repo/releases/new"
-								params={{ owner, repo }}
-								className={cn(pillButtonClassName, "text-foreground")}
-							>
-								<PlusSignIcon size={14} strokeWidth={2} />
-								New release
-							</Link>
-						) : null}
-					</>
-				}
-				bodyClassName="px-0"
-			>
-				<div className="mx-auto flex w-full max-w-[940px] flex-col gap-4 px-4 pt-4 md:px-6">
-					<Skeleton loading={isLoading} label="Loading releases">
-						{isLoading ? (
-							<div className="flex flex-col pt-4">
-								{SAMPLE_RELEASES.map((release, index) => (
-									<ReleaseCard
-										key={release.id}
-										defaultOpen={index === 0 && page === 1}
-										owner={owner}
-										repo={repo}
-										scope={scope}
-										release={release}
-										canPush={false}
-									/>
-								))}
-							</div>
-						) : releasesQuery.isError ? (
-							<RepoEmptyState
-								icon={<PackageIcon />}
-								title="Couldn't load releases"
-								action={
-									<button
-										type="button"
-										onClick={() => void releasesQuery.refetch()}
-										className={pillButtonClassName}
+					) : null}
+				</>
+			}
+			bodyClassName="px-0"
+		>
+			<div className="mx-auto flex w-full max-w-[940px] flex-col gap-4 px-4 pt-4 md:px-6">
+				<Skeleton loading={isLoading} label="Loading releases">
+					{isLoading ? (
+						<div className="flex flex-col pt-4">
+							{SAMPLE_RELEASES.map((release, index) => (
+								<ReleaseCard
+									key={release.id}
+									defaultOpen={index === 0 && page === 1}
+									owner={owner}
+									repo={repo}
+									scope={scope}
+									release={release}
+									canPush={false}
+								/>
+							))}
+						</div>
+					) : releasesQuery.isError ? (
+						<RepoEmptyState
+							icon={<PackageIcon />}
+							title="Couldn't load releases"
+							action={
+								<button
+									type="button"
+									onClick={() => void releasesQuery.refetch()}
+									className={pillButtonClassName}
+								>
+									Try again
+								</button>
+							}
+						/>
+					) : releases.length === 0 ? (
+						<RepoEmptyState
+							icon={<PackageIcon />}
+							title={
+								page > 1 ? "No more releases" : "There aren't any releases here"
+							}
+							action={
+								canPush && page === 1 ? (
+									<Link
+										to="/$owner/$repo/releases/new"
+										params={{ owner, repo }}
+										className={cn(pillButtonClassName, "text-foreground")}
 									>
-										Try again
-									</button>
-								}
-							/>
-						) : releases.length === 0 ? (
-							<RepoEmptyState
-								icon={<PackageIcon />}
-								title={
-									page > 1
-										? "No more releases"
-										: "There aren't any releases here"
-								}
-								action={
-									canPush && page === 1 ? (
-										<Link
-											to="/$owner/$repo/releases/new"
-											params={{ owner, repo }}
-											className={cn(pillButtonClassName, "text-foreground")}
-										>
-											Create a new release
-										</Link>
-									) : undefined
-								}
-							>
-								Releases package software with release notes and binaries for
-								people to download.
-							</RepoEmptyState>
-						) : (
-							<div
-								className="flex flex-col pt-4 transition-opacity"
-								style={{ opacity: releasesQuery.isPlaceholderData ? 0.6 : 1 }}
-							>
-								{releases.map((release, index) => (
-									<ReleaseCard
-										key={release.id}
-										defaultOpen={index === 0 && page === 1}
-										owner={owner}
-										repo={repo}
-										scope={scope}
-										release={release}
-										canPush={canPush}
-									/>
-								))}
-							</div>
-						)}
-					</Skeleton>
+										Create a new release
+									</Link>
+								) : undefined
+							}
+						>
+							Releases package software with release notes and binaries for
+							people to download.
+						</RepoEmptyState>
+					) : (
+						<div
+							className="flex flex-col pt-4 transition-opacity"
+							style={{ opacity: releasesQuery.isPlaceholderData ? 0.6 : 1 }}
+						>
+							{releases.map((release, index) => (
+								<ReleaseCard
+									key={release.id}
+									defaultOpen={index === 0 && page === 1}
+									owner={owner}
+									repo={repo}
+									scope={scope}
+									release={release}
+									canPush={canPush}
+								/>
+							))}
+						</div>
+					)}
+				</Skeleton>
 
-					<Pagination
-						page={page}
-						hasNextPage={releasesQuery.data?.hasNextPage ?? false}
-						onPageChange={(next) => void setPage(next === 1 ? null : next)}
-					/>
-				</div>
-			</RepoPageHeader>
-		</>
+				<Pagination
+					page={page}
+					hasNextPage={releasesQuery.data?.hasNextPage ?? false}
+					onPageChange={(next) => void setPage(next === 1 ? null : next)}
+				/>
+			</div>
+		</RepoPageHeader>
 	);
 }

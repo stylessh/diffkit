@@ -33,7 +33,7 @@ import {
 	orgDraftFromSettings,
 	validateOrgDraft,
 } from "#/lib/settings/org";
-import { useOrgSettingsAccess } from "./org-settings-frame";
+import { useCanManageOrg } from "./org-settings-frame";
 import { SAMPLE_ORG_SETTINGS } from "./org-settings-samples";
 
 type TextField = "name" | "description" | "email" | "blog" | "location";
@@ -59,8 +59,7 @@ export function OrgGeneralSettings({
 	scope: GitHubQueryScope;
 }) {
 	const query = useQuery(githubOrgSettingsQueryOptions(scope, { org }));
-	const access = useOrgSettingsAccess(scope, org);
-	const canManage = access.status === "member" && access.capabilities.manage;
+	const canManage = useCanManageOrg(scope, org);
 
 	return (
 		<>

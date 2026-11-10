@@ -4,14 +4,15 @@ import {
 	DropdownMenuContent,
 	DropdownMenuTrigger,
 } from "@diffkit/ui/components/dropdown-menu";
+import { memo } from "react";
 import {
 	type ActiveFilter,
 	type FilterDefinition,
+	type FilterOperator,
 	type FilterOption,
 	operatorLabel,
 } from "./filter-model";
 import { FilterValueOptions } from "./filter-value-options";
-import type { ListFilterState } from "./use-list-filters";
 
 const segmentClassName =
 	"flex items-center gap-1.5 px-1.5 transition-colors hover:bg-button-hover hover:text-foreground data-[state=open]:bg-button-hover";
@@ -53,16 +54,20 @@ function ValueSummary({ selected }: { selected: FilterOption[] }) {
 	);
 }
 
-export function FilterPill({
+export const FilterPill = memo(function FilterPill({
 	filter,
 	definition,
 	options,
-	state,
+	setOperator,
+	toggleValue,
+	removeFilter,
 }: {
 	filter: ActiveFilter;
 	definition: FilterDefinition;
 	options: FilterOption[];
-	state: ListFilterState;
+	setOperator: (fieldId: string, operator: FilterOperator) => void;
+	toggleValue: (fieldId: string, value: string) => void;
+	removeFilter: (fieldId: string) => void;
 }) {
 	const byValue = new Map(options.map((option) => [option.value, option]));
 	const selected = [...filter.values].map(
@@ -85,7 +90,7 @@ export function FilterPill({
 				<button
 					type="button"
 					onClick={() =>
-						state.setOperator(
+						setOperator(
 							filter.fieldId,
 							filter.operator === "is" ? "is-not" : "is",
 						)
@@ -113,13 +118,13 @@ export function FilterPill({
 						definition={definition}
 						options={options}
 						selected={filter.values}
-						onToggle={(value) => state.toggleValue(filter.fieldId, value)}
+						onToggle={(value) => toggleValue(filter.fieldId, value)}
 					/>
 				</DropdownMenuContent>
 			</DropdownMenu>
 			<button
 				type="button"
-				onClick={() => state.removeFilter(filter.fieldId)}
+				onClick={() => removeFilter(filter.fieldId)}
 				aria-label={`Remove ${definition.label} filter`}
 				className="flex shrink-0 items-center border-l-[0.5px] border-header-rule px-1.5 transition-colors hover:bg-button-hover hover:text-foreground"
 			>
@@ -127,4 +132,4 @@ export function FilterPill({
 			</button>
 		</fieldset>
 	);
-}
+});
