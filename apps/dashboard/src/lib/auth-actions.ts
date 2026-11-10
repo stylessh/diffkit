@@ -1,6 +1,7 @@
 import { createClientOnlyFn } from "@tanstack/react-start";
 import { normalizeAuthRedirect } from "./auth-redirect";
 import { buildGitHubAppAuthorizePath } from "./github-access";
+import { buildSignInErrorURL } from "./sign-in-error";
 
 export type GitHubSignInMode = "social" | "emulator";
 
@@ -19,6 +20,7 @@ export const signInWithGitHub = createClientOnlyFn(
 		clearProtectedRouteCachedAuth();
 
 		const callbackURL = normalizeAuthRedirect(redirect);
+		const errorCallbackURL = buildSignInErrorURL(callbackURL);
 		if (mode === "emulator") {
 			// Demo mode: chain straight into the GitHub App authorization so the
 			// app-user token exists before the setup gate. The emulator skips its
@@ -29,6 +31,7 @@ export const signInWithGitHub = createClientOnlyFn(
 				body: JSON.stringify({
 					providerId: "github",
 					callbackURL: buildGitHubAppAuthorizePath(callbackURL),
+					errorCallbackURL,
 				}),
 			});
 			const { url } = (await response.json().catch(() => ({}))) as {
@@ -46,6 +49,7 @@ export const signInWithGitHub = createClientOnlyFn(
 		return signIn.social({
 			provider: "github",
 			callbackURL,
+			errorCallbackURL,
 		});
 	},
 );
