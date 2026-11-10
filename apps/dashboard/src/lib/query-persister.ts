@@ -1,12 +1,10 @@
-import type {
-	PersistedClient,
-	Persister,
-} from "@tanstack/react-query-persist-client";
+import type { DehydratedState } from "@tanstack/react-query";
 import {
 	clear,
 	createStore,
 	delMany,
-	entries,
+	getMany,
+	promisifyRequest,
 	set,
 	setMany,
 	type UseStore,
@@ -15,11 +13,14 @@ import {
 /**
  * IndexedDB-backed React Query persister.
  *
- * Unlike `@tanstack/query-async-storage-persister`, which serializes the whole
- * cache into one string on every write, this stores one IndexedDB record per
- * query. A write only touches queries whose `dataUpdatedAt` changed since the
- * last write, so the cost of a save is proportional to what changed, not to the
- * size of the cache.
+ * One IndexedDB record per query. A write only touches queries whose
+ * `dataUpdatedAt` changed since the last write, so the cost of a save is
+ * proportional to what changed, not to the size of the cache.
+ *
+ * Reading a record deserializes it on the main thread (about 3 ms per MB), so
+ * a restore comes in two parts. `restoreRecent` reads only the most recently
+ * updated queries, up to `recentBytes`, and is cheap enough to await before
+ * first paint. `restoreRest` pages through everything else afterwards.
  *
  * Retention is independent of React Query's in-memory `gcTime`: a query that
  * was garbage-collected from memory stays on disk until it is evicted by the
@@ -30,10 +31,10 @@ import {
  * failed write is dropped; neither surfaces as an error to the app.
  */
 
-type DehydratedQuery = PersistedClient["clientState"]["queries"][number];
+export type DehydratedQuery = DehydratedState["queries"][number];
 
 type StoredQuery = DehydratedQuery & {
-	/** Estimated serialized size in bytes, used for the budget. */
+	/** Estimated serialized size in bytes, used for the budgets. */
 	size: number;
 };
 
@@ -46,6 +47,21 @@ type IndexEntry = {
 	size: number;
 };
 
+/**
+ * What this tab knows about the database. `recent` covers the queries
+ * `restoreRecent` read, plus anything written since; only `complete` knows
+ * every record, which the byte budget needs.
+ */
+type DiskIndex =
+	| { coverage: "unread" }
+	| {
+			coverage: "recent" | "complete";
+			entries: Map<string, IndexEntry>;
+			hasMeta: boolean;
+	  };
+
+type ReadDiskIndex = Exclude<DiskIndex, { coverage: "unread" }>;
+
 export type IdbQueryPersisterOptions = {
 	/** IndexedDB database name. Use one per user so accounts never mix. */
 	dbName: string;
@@ -55,6 +71,8 @@ export type IdbQueryPersisterOptions = {
 	maxBytes: number;
 	/** Single entries larger than this are never stored. */
 	maxEntryBytes?: number;
+	/** Byte budget of the queries `restoreRecent` reads. */
+	recentBytes?: number;
 	/** Entries whose data is older than this are dropped on restore. */
 	maxAgeMs: number;
 	/** Extra predicate on top of "successful query with data". */
@@ -63,15 +81,24 @@ export type IdbQueryPersisterOptions = {
 	onError?: (error: unknown, operation: string) => void;
 };
 
-export type IdbQueryPersister = Persister & {
+export type IdbQueryPersister = {
+	/** Writes the queries whose data changed since the last save. */
+	persist: (queries: DehydratedQuery[]) => Promise<void>;
+	/** The most recently updated queries, newest first. */
+	restoreRecent: () => Promise<DehydratedQuery[]>;
+	/** Every query `restoreRecent` left out, delivered a page at a time. */
+	restoreRest: (deliver: (queries: DehydratedQuery[]) => void) => Promise<void>;
 	/** Drops every stored query (keeps the database). */
 	clear: () => Promise<void>;
-	/** Current estimated total bytes on disk. */
+	/** Estimated total bytes of the stored queries this tab has indexed. */
 	getStoredBytes: () => number;
 };
 
 const META_KEY = "__diffkit_query_cache_meta__";
+/** Hashes of the most recently updated queries: what `restoreRecent` reads. */
+const RECENT_KEY = "__diffkit_query_cache_recent__";
 const STORE_NAME = "queries";
+const PAGE_SIZE = 50;
 
 const sizeCache = new WeakMap<object, number>();
 
@@ -102,7 +129,17 @@ export function estimateQueryDataSize(data: unknown): number {
 }
 
 function isQueryRecordKey(key: IDBValidKey): key is string {
-	return typeof key === "string" && key !== META_KEY;
+	return typeof key === "string" && key !== META_KEY && key !== RECENT_KEY;
+}
+
+function newestFirst(entries: Map<string, IndexEntry>) {
+	return [...entries.entries()].sort(
+		(a, b) => b[1].dataUpdatedAt - a[1].dataUpdatedAt,
+	);
+}
+
+function toQuery({ size: _size, ...query }: StoredQuery): DehydratedQuery {
+	return query;
 }
 
 export function createIdbQueryPersister(
@@ -113,6 +150,7 @@ export function createIdbQueryPersister(
 		buster,
 		maxBytes,
 		maxEntryBytes = Math.floor(maxBytes / 5),
+		recentBytes = maxBytes,
 		maxAgeMs,
 		shouldPersistQuery,
 		now = Date.now,
@@ -127,17 +165,15 @@ export function createIdbQueryPersister(
 		return store;
 	};
 
-	/** queryHash → what is on disk. Loaded once, then kept in sync. */
-	let index: Map<string, IndexEntry> | null = null;
-	let indexPromise: Promise<Map<string, IndexEntry>> | null = null;
+	let disk: DiskIndex = { coverage: "unread" };
 	/**
 	 * Entries evicted (or too large) at a given `dataUpdatedAt`. They are not
 	 * re-written until their data changes, otherwise a query that is still in
 	 * memory would be re-added and evicted on every save.
 	 */
 	const skipped = new Map<string, number>();
-	let metaWritten = false;
-	/** Serializes writes so a slow save never interleaves with the next one. */
+	let writtenRecentKeys: string[] = [];
+	/** Serializes storage work so a slow save never interleaves with the next one. */
 	let queue: Promise<unknown> = Promise.resolve();
 
 	const report = (error: unknown, operation: string) => {
@@ -153,37 +189,141 @@ export function createIdbQueryPersister(
 		return run;
 	};
 
-	const loadIndex = async (): Promise<Map<string, IndexEntry>> => {
-		if (index) {
-			return index;
+	const wipe = async (): Promise<ReadDiskIndex> => {
+		const empty: ReadDiskIndex = {
+			coverage: "complete",
+			entries: new Map(),
+			hasMeta: false,
+		};
+		disk = empty;
+		skipped.clear();
+		writtenRecentKeys = [];
+		try {
+			await clear(getStore());
+		} catch (error) {
+			report(error, "clear");
 		}
-		if (!indexPromise) {
-			indexPromise = (async () => {
-				const next = new Map<string, IndexEntry>();
-				try {
-					const all = await entries<IDBValidKey, StoredQuery | StoredMeta>(
-						getStore(),
-					);
-					for (const [key, value] of all) {
-						if (key === META_KEY) {
-							metaWritten = (value as StoredMeta).buster === buster;
-							continue;
-						}
-						if (!isQueryRecordKey(key)) continue;
-						const record = value as StoredQuery;
-						next.set(key, {
-							dataUpdatedAt: record.state.dataUpdatedAt,
-							size: record.size,
-						});
+		return empty;
+	};
+
+	const isExpired = (record: StoredQuery) =>
+		record.state.dataUpdatedAt < now() - maxAgeMs;
+
+	const readPage = (after: IDBValidKey | null) =>
+		getStore()("readonly", (objectStore) => {
+			const range =
+				after === null ? undefined : IDBKeyRange.lowerBound(after, true);
+			return Promise.all([
+				promisifyRequest(objectStore.getAllKeys(range, PAGE_SIZE)),
+				promisifyRequest<Array<StoredQuery | StoredMeta | string[]>>(
+					objectStore.getAll(range, PAGE_SIZE),
+				),
+			]);
+		});
+
+	const readRest = async (
+		known: ReadDiskIndex,
+		deliver: (queries: DehydratedQuery[]) => void,
+	): Promise<ReadDiskIndex> => {
+		if (known.coverage === "complete") return known;
+		const { entries } = known;
+		const expired: string[] = [];
+		try {
+			let after: IDBValidKey | null = null;
+			for (;;) {
+				const [keys, values] = await readPage(after);
+				const queries: DehydratedQuery[] = [];
+				keys.forEach((key, position) => {
+					if (!isQueryRecordKey(key) || entries.has(key)) return;
+					const record = values[position] as StoredQuery;
+					if (isExpired(record)) {
+						expired.push(key);
+						return;
 					}
-				} catch (error) {
-					report(error, "loadIndex");
-				}
-				index = next;
-				return next;
-			})();
+					entries.set(key, {
+						dataUpdatedAt: record.state.dataUpdatedAt,
+						size: record.size,
+					});
+					queries.push(toQuery(record));
+				});
+				if (queries.length > 0) deliver(queries);
+				if (keys.length < PAGE_SIZE) break;
+				after = keys[keys.length - 1];
+			}
+		} catch (error) {
+			report(error, "restoreRest");
 		}
-		return indexPromise;
+		if (expired.length > 0) {
+			try {
+				await delMany(expired, getStore());
+			} catch (error) {
+				report(error, "delMany");
+			}
+		}
+		disk = { ...known, coverage: "complete" };
+		return disk;
+	};
+
+	const openDisk = async (): Promise<{
+		index: ReadDiskIndex;
+		queries: DehydratedQuery[];
+	}> => {
+		let meta: StoredMeta | undefined;
+		let recentKeys: string[] | undefined;
+		try {
+			[meta, recentKeys] = (await getMany(
+				[META_KEY, RECENT_KEY],
+				getStore(),
+			)) as [StoredMeta | undefined, string[] | undefined];
+		} catch (error) {
+			report(error, "restore");
+		}
+		// Records under another buster, or without metadata, are not ours to read.
+		if (meta?.buster !== buster) {
+			return { index: await wipe(), queries: [] };
+		}
+
+		const entries = new Map<string, IndexEntry>();
+		const recent: ReadDiskIndex = {
+			coverage: "recent",
+			entries,
+			hasMeta: true,
+		};
+		disk = recent;
+		if (!recentKeys) {
+			const queries: DehydratedQuery[] = [];
+			const index = await readRest(recent, (page) => queries.push(...page));
+			return { index, queries };
+		}
+
+		writtenRecentKeys = recentKeys;
+		let records: Array<StoredQuery | undefined> = [];
+		try {
+			records = await getMany(recentKeys, getStore());
+		} catch (error) {
+			report(error, "restore");
+		}
+		const queries: DehydratedQuery[] = [];
+		for (const record of records) {
+			if (!record || isExpired(record)) continue;
+			entries.set(record.queryHash, {
+				dataUpdatedAt: record.state.dataUpdatedAt,
+				size: record.size,
+			});
+			queries.push(toQuery(record));
+		}
+		return { index: recent, queries };
+	};
+
+	const readRecent = async () => (await openDisk()).queries;
+
+	const readEverything = async (
+		deliver: (queries: DehydratedQuery[]) => void,
+	): Promise<ReadDiskIndex> => {
+		if (disk.coverage !== "unread") return readRest(disk, deliver);
+		const { index, queries } = await openDisk();
+		if (queries.length > 0) deliver(queries);
+		return readRest(index, deliver);
 	};
 
 	const isPersistable = (query: DehydratedQuery) =>
@@ -191,7 +331,10 @@ export function createIdbQueryPersister(
 		query.state.data != null &&
 		(shouldPersistQuery ? shouldPersistQuery(query) : true);
 
-	const writeEntries = async (records: [string, StoredQuery][]) => {
+	const writeEntries = async (
+		entries: Map<string, IndexEntry>,
+		records: [string, StoredQuery][],
+	) => {
 		if (records.length === 0) return;
 		try {
 			await setMany(records, getStore());
@@ -205,22 +348,46 @@ export function createIdbQueryPersister(
 				await set(key, record, getStore());
 			} catch (error) {
 				report(error, "set");
-				index?.delete(key);
+				entries.delete(key);
 				skipped.set(key, record.state.dataUpdatedAt);
 			}
 		}
 	};
 
-	const persist = async (client: PersistedClient) => {
-		const current = await loadIndex();
+	const writeRecentKeys = async (entries: Map<string, IndexEntry>) => {
+		const recentKeys: string[] = [];
+		let bytes = 0;
+		for (const [queryHash, entry] of newestFirst(entries)) {
+			bytes += entry.size;
+			if (bytes > recentBytes) break;
+			recentKeys.push(queryHash);
+		}
+		if (
+			recentKeys.length === writtenRecentKeys.length &&
+			recentKeys.every((key, position) => key === writtenRecentKeys[position])
+		) {
+			return;
+		}
+		try {
+			await set(RECENT_KEY, recentKeys, getStore());
+			writtenRecentKeys = recentKeys;
+		} catch (error) {
+			report(error, "writeRecent");
+		}
+	};
+
+	const persist = async (queries: DehydratedQuery[]) => {
+		const current =
+			disk.coverage === "unread" ? await readEverything(() => undefined) : disk;
+		const { entries } = current;
 		const writes: [string, StoredQuery][] = [];
 		const deletes: string[] = [];
 
-		for (const query of client.clientState.queries) {
+		for (const query of queries) {
 			if (!isPersistable(query)) continue;
 			const { queryHash } = query;
 			const { dataUpdatedAt } = query.state;
-			const onDisk = current.get(queryHash);
+			const onDisk = entries.get(queryHash);
 			if (onDisk && onDisk.dataUpdatedAt === dataUpdatedAt) continue;
 			if (skipped.get(queryHash) === dataUpdatedAt) continue;
 
@@ -228,7 +395,7 @@ export function createIdbQueryPersister(
 			if (size > maxEntryBytes) {
 				skipped.set(queryHash, dataUpdatedAt);
 				if (onDisk) {
-					current.delete(queryHash);
+					entries.delete(queryHash);
 					deletes.push(queryHash);
 				}
 				continue;
@@ -237,45 +404,38 @@ export function createIdbQueryPersister(
 			skipped.delete(queryHash);
 			const { promise: _promise, ...rest } = query;
 			writes.push([queryHash, { ...rest, size }]);
-			current.set(queryHash, { dataUpdatedAt, size });
+			entries.set(queryHash, { dataUpdatedAt, size });
 		}
 
-		// Least-recently-updated eviction down to the budget.
-		let total = 0;
-		for (const entry of current.values()) total += entry.size;
-		if (total > maxBytes) {
-			const byAge = [...current.entries()].sort(
-				(a, b) => a[1].dataUpdatedAt - b[1].dataUpdatedAt,
-			);
-			for (const [queryHash, entry] of byAge) {
+		// Least-recently-updated eviction down to the budget, once every record
+		// on disk is counted.
+		if (current.coverage === "complete") {
+			let total = 0;
+			for (const entry of entries.values()) total += entry.size;
+			for (const [queryHash, entry] of newestFirst(entries).reverse()) {
 				if (total <= maxBytes) break;
 				total -= entry.size;
-				current.delete(queryHash);
+				entries.delete(queryHash);
 				skipped.set(queryHash, entry.dataUpdatedAt);
 				deletes.push(queryHash);
 			}
 		}
 
-		const writeKeys = new Set(writes.map(([key]) => key));
-		const evictedWrites = deletes.filter((key) => writeKeys.has(key));
-		const finalWrites =
-			evictedWrites.length > 0
-				? writes.filter(([key]) => !evictedWrites.includes(key))
-				: writes;
+		const evicted = new Set(deletes);
+		const finalWrites = writes.filter(([key]) => !evicted.has(key));
 
-		if (!metaWritten) {
+		if (!current.hasMeta) {
 			try {
 				await set(META_KEY, { buster } satisfies StoredMeta, getStore());
-				metaWritten = true;
+				current.hasMeta = true;
 			} catch (error) {
 				report(error, "writeMeta");
-				// Nothing was written: reload the index from disk next time.
-				index = null;
-				indexPromise = null;
+				// Nothing was written: read the database again next time.
+				disk = { coverage: "unread" };
 				return;
 			}
 		}
-		await writeEntries(finalWrites);
+		await writeEntries(entries, finalWrites);
 		if (deletes.length > 0) {
 			try {
 				await delMany(deletes, getStore());
@@ -283,87 +443,19 @@ export function createIdbQueryPersister(
 				report(error, "delMany");
 			}
 		}
-	};
-
-	const restore = async (): Promise<PersistedClient | undefined> => {
-		let all: [IDBValidKey, StoredQuery | StoredMeta][];
-		try {
-			all = await entries(getStore());
-		} catch (error) {
-			report(error, "restore");
-			index = new Map();
-			return undefined;
-		}
-
-		let meta: StoredMeta | undefined;
-		const records: StoredQuery[] = [];
-		for (const [key, value] of all) {
-			if (key === META_KEY) {
-				meta = value as StoredMeta;
-			} else if (isQueryRecordKey(key)) {
-				records.push(value as StoredQuery);
-			}
-		}
-
-		if (!meta) {
-			index = new Map();
-			if (records.length > 0) {
-				// Records without metadata are from an unknown writer: drop them.
-				await wipe();
-			}
-			return undefined;
-		}
-
-		const cutoff = now() - maxAgeMs;
-		const next = new Map<string, IndexEntry>();
-		const expired: string[] = [];
-		const queries: DehydratedQuery[] = [];
-		for (const record of records) {
-			if (record.state.dataUpdatedAt < cutoff) {
-				expired.push(record.queryHash);
-				continue;
-			}
-			next.set(record.queryHash, {
-				dataUpdatedAt: record.state.dataUpdatedAt,
-				size: record.size,
-			});
-			const { size: _size, ...query } = record;
-			queries.push(query);
-		}
-		index = next;
-		metaWritten = meta.buster === buster;
-		if (expired.length > 0) {
-			void enqueue(() => delMany(expired, getStore()));
-		}
-
-		return {
-			// Per-entry ages are enforced above; the client as a whole is fresh.
-			timestamp: now(),
-			buster: meta.buster,
-			clientState: { queries, mutations: [] },
-		};
-	};
-
-	const wipe = async () => {
-		index = new Map();
-		indexPromise = null;
-		skipped.clear();
-		metaWritten = false;
-		try {
-			await clear(getStore());
-		} catch (error) {
-			report(error, "clear");
-		}
+		await writeRecentKeys(entries);
 	};
 
 	return {
-		persistClient: (client) => enqueue(() => persist(client)),
-		restoreClient: () => enqueue(restore).then((client) => client ?? undefined),
-		removeClient: () => enqueue(wipe).then(() => undefined),
+		persist: (queries) => enqueue(() => persist(queries)).then(() => undefined),
+		restoreRecent: () => enqueue(readRecent).then((queries) => queries ?? []),
+		restoreRest: (deliver) =>
+			enqueue(() => readEverything(deliver)).then(() => undefined),
 		clear: () => enqueue(wipe).then(() => undefined),
 		getStoredBytes: () => {
+			if (disk.coverage === "unread") return 0;
 			let total = 0;
-			for (const entry of index?.values() ?? []) total += entry.size;
+			for (const entry of disk.entries.values()) total += entry.size;
 			return total;
 		},
 	};

@@ -104,9 +104,12 @@ export function DashboardLayout() {
 
 	useShellShortcuts({ userId: user.id });
 
-	const hasUnread = (notificationsQuery.data?.notifications?.length ?? 0) > 0;
+	// The restored cache already holds these on the first client render, which
+	// the server-rendered shell does not; reading them then fails hydration.
+	const hasUnread =
+		hasMounted && (notificationsQuery.data?.notifications?.length ?? 0) > 0;
 	const navItems = workspaceNavItems(counts, hasUnread);
-	const viewerLogin = viewerQuery.data?.login;
+	const viewerLogin = hasMounted ? viewerQuery.data?.login : undefined;
 
 	return (
 		<div className="isolate flex h-dvh flex-col bg-shell" data-app-shell>
