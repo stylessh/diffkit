@@ -1,5 +1,7 @@
 import { GitBranchIcon } from "@diffkit/icons";
 import { Link } from "@tanstack/react-router";
+import { Skeleton } from "skullet/react";
+import { SAMPLE_BRANCHES } from "#/components/repo/branches/branch-samples";
 import { cardRowClassName, RepoCard } from "#/components/repo/repo-ui";
 import { sortBranchesByRecency } from "#/lib/branch-sections";
 import { formatCompareSplat } from "#/lib/compare-ref";
@@ -23,23 +25,27 @@ export function CompareRecentBranches({
 		branches.items.filter((branch) => branch.name !== base),
 	).slice(0, SHOWN_BRANCHES);
 
-	if (recent.length === 0) {
+	const isLoading = branches.loading && recent.length === 0;
+
+	if (recent.length === 0 && !isLoading) {
 		return (
 			<p className="px-4 py-10 text-center text-[13px] font-[450] text-muted-foreground">
-				{branches.loading
-					? "Loading branches…"
-					: `There are no other branches to compare with ${base}.`}
+				There are no other branches to compare with {base}.
 			</p>
 		);
 	}
 
 	return (
-		<div className="flex flex-col gap-2">
+		<Skeleton
+			loading={isLoading}
+			label="Loading branches"
+			className="flex flex-col gap-2"
+		>
 			<h2 className="px-1 text-[13px] font-[450] text-muted-foreground">
 				Choose a branch to compare with {base}
 			</h2>
 			<RepoCard>
-				{recent.map((branch) => (
+				{(isLoading ? SAMPLE_BRANCHES : recent).map((branch) => (
 					<Link
 						key={branch.name}
 						to="/$owner/$repo/compare/$"
@@ -66,6 +72,6 @@ export function CompareRecentBranches({
 					</Link>
 				))}
 			</RepoCard>
-		</div>
+		</Skeleton>
 	);
 }

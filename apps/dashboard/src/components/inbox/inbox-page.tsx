@@ -1,7 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { getRouteApi, useNavigate } from "@tanstack/react-router";
 import { useCallback, useMemo, useState } from "react";
-import { DashboardContentLoading } from "#/components/layouts/dashboard-content-loading";
 import { githubNotificationsQueryOptions } from "#/lib/github.query";
 import type { NotificationItem } from "#/lib/github.types";
 import {
@@ -61,7 +60,6 @@ function useInboxItems(
 			? unread.data.notifications.filter((item) => item.unread).length
 			: null,
 		error: active.error,
-		isRefreshing: active.isFetching && active.data !== undefined,
 		isReady: hasMounted && (filter === "saved" || active.data !== undefined),
 	};
 }
@@ -177,7 +175,6 @@ export function InboxPage() {
 	}, []);
 
 	if (inbox.error) throw inbox.error;
-	if (!inbox.isReady) return <DashboardContentLoading />;
 
 	return (
 		<div className="flex h-full min-h-0">
@@ -195,7 +192,7 @@ export function InboxPage() {
 				onToggleGroup={toggleGroup}
 				selectedId={selectedId}
 				savedIds={savedIds}
-				isRefreshing={inbox.isRefreshing}
+				isLoading={!inbox.isReady}
 				onSelect={select}
 				onMarkRead={(item) => void actions.markRead(item)}
 				onMarkDone={markDone}

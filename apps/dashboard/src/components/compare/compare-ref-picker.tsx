@@ -15,6 +15,7 @@ import {
 import { cn } from "@diffkit/ui/lib/utils";
 import { useMemo, useState } from "react";
 import { pillButtonClassName } from "#/components/repo/repo-ui";
+import { PickerSkeletonRows } from "#/components/shared/picker-skeleton-rows";
 import { sortBranchesByRecency } from "#/lib/branch-sections";
 import { isQualifiedRef } from "#/lib/compare-ref";
 import { formatRelativeTime } from "#/lib/format-relative-time";
@@ -122,9 +123,7 @@ export function CompareRefPicker({
 						placeholder="Find a branch or type owner:branch…"
 					/>
 					<CommandList>
-						<CommandEmpty>
-							{loading ? "Loading…" : "No branches found."}
-						</CommandEmpty>
+						{loading ? null : <CommandEmpty>No branches found.</CommandEmpty>}
 						{isQualifiedRef(search) ? (
 							<CommandItem
 								forceMount
@@ -157,6 +156,7 @@ export function CompareRefPicker({
 								{others.map(branchItem)}
 							</CommandGroup>
 						) : null}
+						{loading ? <PickerSkeletonRows label="Loading branches" /> : null}
 					</CommandList>
 				</Command>
 				{truncated ? (

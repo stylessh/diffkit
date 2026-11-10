@@ -24,6 +24,7 @@ import {
 	PanelPickerEmpty,
 } from "#/components/details/panel-picker";
 import { LabelsSection } from "#/components/issues/labels-section";
+import { PickerSkeletonRows } from "#/components/shared/picker-skeleton-rows";
 import {
 	removeReviewRequest,
 	requestPullReviewers,
@@ -457,7 +458,11 @@ function ReviewersSection({
 				anchor={reviewerRows}
 			>
 				{isLoading ? (
-					<PanelPickerEmpty>Loading…</PanelPickerEmpty>
+					<PickerSkeletonRows
+						label="Loading reviewers"
+						leading="avatar"
+						rowClassName={menuRowClassName}
+					/>
 				) : flatItems.length === 0 ? (
 					<PanelPickerEmpty>
 						{search ? `No one matches “${search}”` : "No one to request"}

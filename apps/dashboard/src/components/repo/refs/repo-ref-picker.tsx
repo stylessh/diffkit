@@ -20,6 +20,7 @@ import { cn } from "@diffkit/ui/lib/utils";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import { useCallback, useMemo, useState } from "react";
+import { PickerSkeletonRows } from "#/components/shared/picker-skeleton-rows";
 import {
 	type GitHubQueryScope,
 	githubRepoRefNamesQueryOptions,
@@ -144,13 +145,11 @@ export function RepoRefPicker({
 						placeholder={kind === "branches" ? "Find a branch…" : "Find a tag…"}
 					/>
 					<CommandList>
-						<CommandEmpty>
-							{activeQuery.isLoading
-								? "Loading…"
-								: kind === "branches"
-									? "No branches found."
-									: "No tags found."}
-						</CommandEmpty>
+						{activeQuery.isPending ? null : (
+							<CommandEmpty>
+								{kind === "branches" ? "No branches found." : "No tags found."}
+							</CommandEmpty>
+						)}
 						{names.map((name) => (
 							<CommandItem
 								key={name}
@@ -175,6 +174,9 @@ export function RepoRefPicker({
 								) : null}
 							</CommandItem>
 						))}
+						{activeQuery.isPending ? (
+							<PickerSkeletonRows label={`Loading ${kind}`} />
+						) : null}
 					</CommandList>
 				</Command>
 				<div className="flex items-center justify-between border-t-[0.5px] border-popover-border px-3 py-2 text-xs">

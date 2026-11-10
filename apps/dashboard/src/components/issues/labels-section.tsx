@@ -10,6 +10,7 @@ import {
 	PanelPicker,
 	PanelPickerEmpty,
 } from "#/components/details/panel-picker";
+import { PickerSkeletonRows } from "#/components/shared/picker-skeleton-rows";
 import { createRepoLabel, setIssueLabels } from "#/lib/github.functions";
 import {
 	type GitHubQueryScope,
@@ -257,8 +258,11 @@ export function LabelsSection({
 					</div>
 				}
 			>
-				{repoLabelsQuery.isLoading ? (
-					<PanelPickerEmpty>Loading…</PanelPickerEmpty>
+				{repoLabelsQuery.isPending ? (
+					<PickerSkeletonRows
+						label="Loading labels"
+						rowClassName={menuRowClassName}
+					/>
 				) : (
 					<>
 						{filtered.map((label, i) => {

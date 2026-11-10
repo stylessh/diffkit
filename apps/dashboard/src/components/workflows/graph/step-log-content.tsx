@@ -1,8 +1,43 @@
 import { ChevronDownIcon, ChevronRightIcon } from "@diffkit/icons";
-import { Spinner } from "@diffkit/ui/components/spinner";
 import { cn } from "@diffkit/ui/lib/utils";
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Skeleton } from "skullet/react";
+import { SAMPLE_STEP_LOG_ENTRIES } from "../workflow-samples";
 import { countEntryLines, type LogEntry } from "./parse-step-log";
+
+export type StepLogFetchStatus = "loading" | "error" | "unavailable" | "ready";
+
+export function stepLogFetchStatus(query: {
+	isPending: boolean;
+	isError: boolean;
+	data: { notAvailable: boolean } | null | undefined;
+}): StepLogFetchStatus {
+	if (query.isPending) return "loading";
+	if (query.isError) return "error";
+	return query.data?.notAvailable ? "unavailable" : "ready";
+}
+
+type StepLogView = "logs" | "loading" | "error" | "unavailable" | "empty";
+
+function resolveStepLogView(
+	fetchStatus: StepLogFetchStatus,
+	hasLogs: boolean,
+): StepLogView {
+	if (fetchStatus === "unavailable") return "unavailable";
+	if (hasLogs) return "logs";
+	return fetchStatus === "ready" ? "empty" : fetchStatus;
+}
+
+const STATUS_MESSAGES = {
+	error: "Failed to load logs. Try refreshing.",
+	unavailable:
+		"Logs are not available yet. They become available once the job starts or after completion.",
+	empty: "No log output for this step yet.",
+} as const;
+
+const SAMPLE_LINE_NO_WIDTH = "2ch";
+const NO_COLLAPSED_GROUPS: Set<string> = new Set();
+const noop = () => {};
 
 function collectGroupIds(entries: LogEntry[], out: Set<string>): void {
 	for (const entry of entries) {
@@ -16,19 +51,13 @@ function collectGroupIds(entries: LogEntry[], out: Set<string>): void {
 export function StepLogContent({
 	entries,
 	totalLineCount,
-	isLoading,
-	isError = false,
-	notAvailable,
-	hasLogs,
+	fetchStatus,
 	isStepLive,
 	scrollable = true,
 }: {
 	entries: LogEntry[];
 	totalLineCount: number;
-	isLoading: boolean;
-	isError?: boolean;
-	notAvailable: boolean;
-	hasLogs: boolean;
+	fetchStatus: StepLogFetchStatus;
 	isStepLive: boolean;
 	scrollable?: boolean;
 }) {
@@ -80,40 +109,40 @@ export function StepLogContent({
 		[totalLineCount],
 	);
 
-	const statusClass = scrollable
-		? "flex flex-1 items-center justify-center text-muted-foreground text-xs"
-		: "flex items-center justify-center px-4 py-8 text-muted-foreground text-xs";
+	const view = resolveStepLogView(fetchStatus, entries.length > 0);
+	const logClassName =
+		"bg-background px-3 py-2 font-mono text-[11px] leading-5";
 
-	if (isLoading && !hasLogs) {
+	if (view === "loading") {
 		return (
-			<div className={statusClass}>
-				<Spinner className="mr-2 size-3.5" />
-				Loading logs…
-			</div>
+			<Skeleton
+				loading
+				label="Loading logs"
+				className={scrollable ? "min-h-0 flex-1 overflow-hidden" : undefined}
+			>
+				<div className={logClassName}>
+					<EntryList
+						entries={SAMPLE_STEP_LOG_ENTRIES}
+						depth={0}
+						counter={{ value: 0 }}
+						collapsed={NO_COLLAPSED_GROUPS}
+						onToggle={noop}
+						lineNoWidth={SAMPLE_LINE_NO_WIDTH}
+					/>
+				</div>
+			</Skeleton>
 		);
 	}
 
-	if (isError && !hasLogs) {
+	if (view !== "logs") {
 		return (
-			<div className={cn(statusClass, "text-center")}>
-				Failed to load logs. Try refreshing.
-			</div>
-		);
-	}
-
-	if (notAvailable) {
-		return (
-			<div className={cn(statusClass, "text-center")}>
-				Logs are not available yet. They become available once the job starts or
-				after completion.
-			</div>
-		);
-	}
-
-	if (!hasLogs) {
-		return (
-			<div className={cn(statusClass, "text-center")}>
-				No log output for this step yet.
+			<div
+				className={cn(
+					"flex items-center justify-center text-center text-muted-foreground text-xs",
+					scrollable ? "flex-1" : "px-4 py-8",
+				)}
+			>
+				{STATUS_MESSAGES[view]}
 			</div>
 		);
 	}
@@ -122,10 +151,7 @@ export function StepLogContent({
 	return (
 		<div
 			ref={scrollRef}
-			className={cn(
-				"bg-background px-3 py-2 font-mono text-[11px] leading-5",
-				scrollable && "nowheel flex-1 overflow-auto",
-			)}
+			className={cn(logClassName, scrollable && "nowheel flex-1 overflow-auto")}
 		>
 			<EntryList
 				entries={entries}

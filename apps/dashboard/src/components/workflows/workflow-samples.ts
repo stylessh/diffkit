@@ -4,6 +4,7 @@ import type {
 	WorkflowRunJob,
 	WorkflowRunStep,
 } from "#/lib/github.types";
+import type { LogEntry } from "./graph/parse-step-log";
 
 const sampleStep = (
 	number: number,
@@ -129,3 +130,14 @@ export const SAMPLE_WORKFLOW_RUNS: WorkflowRun[] = SAMPLE_RUN_TITLES.map(
 		},
 	}),
 );
+
+export const SAMPLE_STEP_LOG_ENTRIES: LogEntry[] = [
+	"Run pnpm install --frozen-lockfile",
+	"Lockfile is up to date, resolution step is skipped",
+	"Progress: resolved 1, reused 0, downloaded 0, added 0",
+	"Packages: +1482",
+	"Progress: resolved 1482, reused 1479, downloaded 3, added 1482, done",
+	"Done in 12.4s",
+	"Run pnpm check-types",
+	"Tasks: 6 successful, 6 total",
+].map((text) => ({ kind: "line", ts: null, text }));

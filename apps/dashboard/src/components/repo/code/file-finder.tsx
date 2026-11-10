@@ -16,6 +16,7 @@ import { cn } from "@diffkit/ui/lib/utils";
 import { useNavigate } from "@tanstack/react-router";
 import { useDeferredValue, useMemo, useState } from "react";
 import { FileTypeIcon } from "#/components/shared/file-type-icon";
+import { PickerSkeletonRows } from "#/components/shared/picker-skeleton-rows";
 import { type FileSearchEntry, searchFiles } from "#/lib/fuzzy-file-search";
 import type { GitHubQueryScope } from "#/lib/github.query";
 import { useGlobalShortcuts } from "#/lib/shortcuts";
@@ -157,13 +158,15 @@ function FileFinderDialog({
 					className="h-11"
 				/>
 				<CommandList className="max-h-[min(420px,60dvh)] p-1">
-					<CommandEmpty>
-						{indexQuery.status === "pending"
-							? "Loading files…"
-							: indexQuery.status === "error"
+					{indexQuery.status === "pending" ? (
+						<PickerSkeletonRows label="Loading files" rows={6} />
+					) : (
+						<CommandEmpty>
+							{indexQuery.status === "error"
 								? "Couldn't load the file list."
 								: "No matching files."}
-					</CommandEmpty>
+						</CommandEmpty>
+					)}
 					{results.map((entry) => (
 						<CommandItem
 							key={entry.path}

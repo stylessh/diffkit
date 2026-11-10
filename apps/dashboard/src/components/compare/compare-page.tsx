@@ -21,6 +21,7 @@ import {
 import { Link, useRouter } from "@tanstack/react-router";
 import { type ReactNode, useMemo, useReducer, useState } from "react";
 import { Skeleton } from "skullet/react";
+import { MentionSkeletonRows } from "#/components/shared/picker-skeleton-rows";
 import { SkeletonSample } from "#/components/shared/skeleton-sample";
 import {
 	type CompareRefs,
@@ -434,8 +435,12 @@ function PullRequestComposer({
 				avatarUrl: collaborator.avatarUrl,
 			}),
 		);
-		return { candidates, isLoading: collaboratorsQuery.isLoading };
-	}, [collaboratorsQuery.data, collaboratorsQuery.isLoading]);
+		return {
+			candidates,
+			isLoading: collaboratorsQuery.isPending,
+			loadingPlaceholder: <MentionSkeletonRows />,
+		};
+	}, [collaboratorsQuery.data, collaboratorsQuery.isPending]);
 
 	const titleSuggestion = suggestPullRequestTitle(compare.commits, head);
 	const bodyTemplate = templateQuery.data ?? "";
