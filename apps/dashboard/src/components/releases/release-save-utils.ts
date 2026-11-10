@@ -13,7 +13,7 @@ const RELEASE_TAG_REGEX =
 	// biome-ignore lint/suspicious/noControlCharactersInRegex: rejecting control characters is the point
 	/^(?!\/)(?!.*\/\/)(?!.*\/$)(?!.*\.\.)(?!.*@\{)(?!.*\.lock(?:\/|$))(?!.*\/\.)(?!\.)[^\x00-\x20\x7f~^:?*[\\]+(?<!\.)$/;
 
-export const RELEASE_TAG_FORMAT_MESSAGE =
+const RELEASE_TAG_FORMAT_MESSAGE =
 	"Tags can't contain spaces, ~ ^ : ? * [ \\, or '..', and can't start or end with '/' or '.'";
 
 export function validateReleaseTag(tag: string): string | null {

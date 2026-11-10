@@ -5,13 +5,18 @@ import {
 	TooltipContent,
 	TooltipTrigger,
 } from "@diffkit/ui/components/tooltip";
+import { memo } from "react";
 import { modKeyLabel } from "#/lib/shell/mod-key";
 import { openCommandPalette } from "#/lib/shell/shell-overlay";
 import { AccountMenu, type ShellUser } from "./account-menu";
 import { CreateMenu } from "./create-menu";
 import { type NavItem, TopbarNav } from "./workspace-nav";
 
-function SearchTrigger({ modKey }: { modKey: string }) {
+const SearchTrigger = memo(function SearchTrigger({
+	modKey,
+}: {
+	modKey: string;
+}) {
 	const keys = [modKey, "K"];
 	return (
 		<Tooltip>
@@ -32,7 +37,7 @@ function SearchTrigger({ modKey }: { modKey: string }) {
 			<TooltipContent keys={keys}>Search</TooltipContent>
 		</Tooltip>
 	);
-}
+});
 
 export function AppTopbar({
 	user,

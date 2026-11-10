@@ -28,7 +28,7 @@ function asRun(item: FilterableItem): WorkflowRunFilterable {
 	return item as WorkflowRunFilterable;
 }
 
-export type RunStatusValue =
+type RunStatusValue =
 	| "queued"
 	| "in_progress"
 	| "success"
@@ -36,7 +36,7 @@ export type RunStatusValue =
 	| "cancelled"
 	| "skipped";
 
-export function runStatus(item: {
+function runStatus(item: {
 	status: string;
 	conclusion: string | null;
 }): RunStatusValue {

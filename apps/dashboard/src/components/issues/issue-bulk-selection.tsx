@@ -11,6 +11,7 @@ import {
 	type BulkItemSummary,
 	BulkSelection,
 } from "#/components/shared/bulk-selection";
+import { itemSelectionKey } from "#/components/shared/list-row";
 import type { CountNoun } from "#/lib/bulk-actions";
 import { type MutationResult, updateIssueState } from "#/lib/github.functions";
 import type { GitHubQueryScope } from "#/lib/github.query";
@@ -21,7 +22,7 @@ import {
 	removeIssueFromOpenViews,
 } from "#/lib/github-query-updates";
 import { checkPermissionWarning } from "#/lib/warning-store";
-import { issueSelectionKey } from "./issue-row";
+import { issueStateColor } from "./issue-row";
 
 const ISSUE_NOUN: CountNoun = { one: "issue", other: "issues" };
 
@@ -41,14 +42,14 @@ function issueRef(issue: IssueSummary) {
 }
 
 function describeIssue(issue: IssueSummary): BulkItemSummary {
-	const { Icon, color } =
+	const Icon =
 		issue.state !== "closed"
-			? { Icon: IssuesIcon, color: "text-state-open" }
+			? IssuesIcon
 			: issue.stateReason === "not_planned"
-				? { Icon: IssueClosedNotPlannedIcon, color: "text-state-draft" }
-				: { Icon: IssueClosedCompletedIcon, color: "text-state-merged" };
+				? IssueClosedNotPlannedIcon
+				: IssueClosedCompletedIcon;
 	return {
-		icon: <Icon size={14} strokeWidth={2} className={color} />,
+		icon: <Icon size={14} strokeWidth={2} className={issueStateColor(issue)} />,
 		number: issue.number,
 		title: issue.title,
 		detail: issue.repository.fullName,
@@ -143,7 +144,7 @@ export function IssueBulkSelection({
 	return (
 		<BulkSelection
 			items={issues}
-			getKey={issueSelectionKey}
+			getKey={itemSelectionKey}
 			noun={ISSUE_NOUN}
 			actions={actions}
 			describe={describeIssue}

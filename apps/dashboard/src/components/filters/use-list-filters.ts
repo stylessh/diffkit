@@ -17,7 +17,7 @@ import {
 	withValueToggled,
 } from "./filter-model";
 
-export const listViewParsers = {
+const listViewParsers = {
 	q: parseAsString
 		.withDefault("")
 		.withOptions({ history: "replace", throttleMs: 150 }),
@@ -153,22 +153,42 @@ export function useListFilters({
 		[setParams],
 	);
 
-	return {
-		listId,
-		searchQuery: params.q,
-		setSearchQuery,
-		activeFilters,
-		toggleValue,
-		setOperator,
-		removeFilter,
-		clearAllFilters,
-		sortId,
-		setSortId,
-		filterDefs,
-		sortOptions,
-		page: params.page,
-		setPage,
-	};
+	const searchQuery = params.q;
+	const page = params.page;
+	return useMemo(
+		() => ({
+			listId,
+			searchQuery,
+			setSearchQuery,
+			activeFilters,
+			toggleValue,
+			setOperator,
+			removeFilter,
+			clearAllFilters,
+			sortId,
+			setSortId,
+			filterDefs,
+			sortOptions,
+			page,
+			setPage,
+		}),
+		[
+			listId,
+			searchQuery,
+			setSearchQuery,
+			activeFilters,
+			toggleValue,
+			setOperator,
+			removeFilter,
+			clearAllFilters,
+			sortId,
+			setSortId,
+			filterDefs,
+			sortOptions,
+			page,
+			setPage,
+		],
+	);
 }
 
 export type ListFilterState = ReturnType<typeof useListFilters>;

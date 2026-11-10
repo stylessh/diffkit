@@ -17,9 +17,13 @@ import {
 	useRef,
 	useState,
 } from "react";
-import { DashboardContentLoading } from "#/components/layouts/dashboard-content-loading";
+import { Skeleton } from "skullet/react";
 import { RepoCrumb, RepoPageHeader } from "#/components/repo/repo-page-header";
-import { RepoEmptyState } from "#/components/repo/repo-ui";
+import { pillButtonClassName, RepoEmptyState } from "#/components/repo/repo-ui";
+import {
+	SkeletonSample,
+	useIsSkeletonSample,
+} from "#/components/shared/skeleton-sample";
 import {
 	createRepoRelease,
 	generateRepoReleaseNotes,
@@ -96,6 +100,9 @@ export function ReleaseFormPage({
 
 	const repoData = overviewQuery.data;
 	const permission = permissionQuery.data;
+	const failed = [overviewQuery, permissionQuery, releaseQuery].filter(
+		(query) => query.isError && query.data === undefined,
+	);
 	const loading =
 		!hasMounted ||
 		!repoData ||
@@ -103,11 +110,35 @@ export function ReleaseFormPage({
 		(Boolean(editTag) && releaseQuery.isPending);
 
 	let content: React.ReactNode;
-	if (loading) {
+	if (failed.length > 0) {
 		content = (
-			<div className="flex flex-1 items-center justify-center py-24">
-				<DashboardContentLoading />
-			</div>
+			<RepoEmptyState
+				icon={<PackageIcon />}
+				title="Couldn't load this release form"
+				action={
+					<button
+						type="button"
+						onClick={() => {
+							for (const query of failed) void query.refetch();
+						}}
+						className={pillButtonClassName}
+					>
+						Try again
+					</button>
+				}
+			/>
+		);
+	} else if (loading) {
+		content = (
+			<SkeletonSample>
+				<ReleaseForm
+					owner={owner}
+					repo={repo}
+					scope={scope}
+					defaultBranch="main"
+					release={null}
+				/>
+			</SkeletonSample>
 		);
 	} else if (!permission.canPush) {
 		content = (
@@ -177,11 +208,21 @@ export function ReleaseFormPage({
 				<h1 className="text-[22px] leading-8 font-semibold text-foreground">
 					{title}
 				</h1>
-				{content}
+				<Skeleton
+					loading={loading && failed.length === 0}
+					label="Loading release form"
+				>
+					{content}
+				</Skeleton>
 			</div>
 		</RepoPageHeader>
 	);
 }
+
+type Submission =
+	| { status: "idle" }
+	| { status: "saving"; intent: ReleaseSaveIntent }
+	| { status: "failed"; error: string };
 
 function FieldHint({ children }: { children: React.ReactNode }) {
 	return <p className="text-xs text-muted-foreground">{children}</p>;
@@ -223,8 +264,7 @@ function ReleaseForm({
 			: initial;
 	});
 	const [errors, setErrors] = useState<ReleaseFormErrors>({});
-	const [submitError, setSubmitError] = useState<string | null>(null);
-	const [saving, setSaving] = useState<ReleaseSaveIntent | null>(null);
+	const [submission, setSubmission] = useState<Submission>({ status: "idle" });
 	const [generating, setGenerating] = useState(false);
 	// Latest form for async callbacks (generated notes land after edits).
 	const formRef = useRef(form);
@@ -232,21 +272,25 @@ function ReleaseForm({
 		formRef.current = form;
 	}, [form]);
 
-	const tagsQuery = useQuery(
-		githubRepoRefNamesQueryOptions(scope, { owner, repo, kind: "tags" }),
-	);
-	const branchesQuery = useQuery(
-		githubRepoRefNamesQueryOptions(scope, { owner, repo, kind: "branches" }),
-	);
+	const isSample = useIsSkeletonSample();
+	const tagsQuery = useQuery({
+		...githubRepoRefNamesQueryOptions(scope, { owner, repo, kind: "tags" }),
+		enabled: !isSample,
+	});
+	const branchesQuery = useQuery({
+		...githubRepoRefNamesQueryOptions(scope, { owner, repo, kind: "branches" }),
+		enabled: !isSample,
+	});
 	// Hint only: the newest releases tell us which tags are already taken.
-	const releasesQuery = useQuery(
-		githubRepoReleasesQueryOptions(scope, {
+	const releasesQuery = useQuery({
+		...githubRepoReleasesQueryOptions(scope, {
 			owner,
 			repo,
 			page: 1,
 			perPage: REPO_RELEASES_PER_PAGE,
 		}),
-	);
+		enabled: !isSample,
+	});
 
 	const tagNames = tagsQuery.data?.names ?? [];
 	const tagName = form.tagName.trim();
@@ -331,8 +375,7 @@ function ReleaseForm({
 		setErrors(nextErrors);
 		if (Object.values(nextErrors).some(Boolean)) return;
 
-		setSubmitError(null);
-		setSaving(intent);
+		setSubmission({ status: "saving", intent });
 		try {
 			const payload = buildReleaseSavePayload({
 				owner,
@@ -347,7 +390,7 @@ function ReleaseForm({
 					? await updateRepoRelease({ data: payload })
 					: await createRepoRelease({ data: payload });
 			if (!result.ok) {
-				setSubmitError(result.error);
+				setSubmission({ status: "failed", error: result.error });
 				return;
 			}
 
@@ -370,18 +413,22 @@ function ReleaseForm({
 						? `Updated ${saved.tagName}`
 						: `Published ${saved.tagName}`,
 			);
+			setSubmission({ status: "idle" });
 			void navigate({
 				to: "/$owner/$repo/releases/$tag",
 				params: { owner, repo, tag: saved.tagName },
 			});
 		} catch {
-			setSubmitError("Something went wrong while saving. Please try again.");
-		} finally {
-			setSaving(null);
+			setSubmission({
+				status: "failed",
+				error: "Something went wrong while saving. Please try again.",
+			});
 		}
 	};
 
-	const busy = saving != null;
+	const busy = submission.status === "saving";
+	const savingIntent =
+		submission.status === "saving" ? submission.intent : null;
 	const latestDisabled = form.prerelease;
 
 	return (
@@ -533,12 +580,12 @@ function ReleaseForm({
 				</div>
 			</section>
 
-			{submitError ? (
+			{submission.status === "failed" ? (
 				<div
 					role="alert"
 					className="rounded-lg bg-pill-blocked px-4 py-3 text-[13px] text-pill-blocked-text"
 				>
-					{submitError}
+					{submission.error}
 				</div>
 			) : null}
 
@@ -571,12 +618,12 @@ function ReleaseForm({
 							disabled={busy}
 							onClick={() => void handleSave("draft")}
 						>
-							{saving === "draft" ? <Spinner size={14} /> : null}
+							{savingIntent === "draft" ? <Spinner size={14} /> : null}
 							Save draft
 						</Button>
 					)}
 					<Button type="submit" disabled={busy}>
-						{saving === "publish" ? <Spinner size={14} /> : null}
+						{savingIntent === "publish" ? <Spinner size={14} /> : null}
 						{isPublished ? "Update release" : "Publish release"}
 					</Button>
 				</div>

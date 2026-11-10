@@ -81,7 +81,7 @@ const SearchGlyph = memo(function SearchGlyph({
 	);
 });
 
-export type FileSearchCardProps = {
+type FileSearchCardProps = {
 	entries: FileSearchEntry[];
 	onSelect: (entry: FileSearchResult) => void;
 	placeholder?: string;

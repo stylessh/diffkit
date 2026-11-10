@@ -1,7 +1,9 @@
 import { CommentIcon, RepoIcon } from "@diffkit/icons";
 import { Chip } from "@diffkit/ui/components/chip";
 import { cn } from "@diffkit/ui/lib/utils";
+import type { ReactNode } from "react";
 import type { GitHubActor, GitHubLabel } from "#/lib/github.types";
+import { HighlightedText } from "./search-highlight";
 
 export const listRowClassName = cn(
 	"group/row relative isolate flex items-start gap-3 px-3 py-2.5 text-left outline-none",
@@ -32,7 +34,7 @@ export function RowStateIcon({
 	children,
 }: {
 	className?: string;
-	children: React.ReactNode;
+	children: ReactNode;
 }) {
 	return (
 		<span
@@ -188,5 +190,79 @@ export function RowTime({
 			)}
 			{...props}
 		/>
+	);
+}
+
+type ListedItem = {
+	title: string;
+	number: number;
+	comments: number;
+	labels: GitHubLabel[];
+	author: GitHubActor | null;
+	repository: { fullName: string; ownerAvatarUrl?: string };
+};
+
+export function itemSelectionKey(
+	item: Pick<ListedItem, "number" | "repository">,
+) {
+	return `${item.repository.fullName}#${item.number}`;
+}
+
+/** The title, anything set beside it, and on phones the line that stands in for the hidden columns. */
+export function RowSummary({
+	item,
+	time,
+	children,
+}: {
+	item: Pick<ListedItem, "title" | "number" | "repository">;
+	time: string;
+	children?: ReactNode;
+}) {
+	return (
+		<div className="flex min-w-0 flex-1 flex-col gap-1 md:flex-row md:items-center md:gap-2">
+			<p
+				title={item.title}
+				className="text-[13px] font-medium text-foreground md:truncate"
+			>
+				<HighlightedText text={item.title} />
+			</p>
+			{children}
+			<p className="flex min-w-0 items-center gap-1 truncate text-xs text-muted-foreground md:hidden">
+				<span className="truncate">{item.repository.fullName}</span>
+				<span className="tabular-nums">#{item.number}</span>
+				<span aria-hidden>·</span>
+				<span className="tabular-nums">{time}</span>
+			</p>
+		</div>
+	);
+}
+
+/** The pills and the aligned author and time columns at the row's end. */
+export function RowDetails({
+	item,
+	showRepository,
+	time,
+}: {
+	item: ListedItem;
+	showRepository: boolean;
+	time: string;
+}) {
+	return (
+		<>
+			<div className="hidden min-w-0 shrink items-center gap-1 md:flex">
+				<RowLabels labels={item.labels} />
+				{showRepository ? (
+					<RepoChip
+						fullName={item.repository.fullName}
+						ownerAvatarUrl={item.repository.ownerAvatarUrl}
+					/>
+				) : null}
+				<CommentsChip count={item.comments} />
+			</div>
+			<span className="hidden shrink-0 items-center gap-2 md:ml-3 md:flex">
+				<RowAvatar actor={item.author} />
+				<RowTime>{time}</RowTime>
+			</span>
+		</>
 	);
 }

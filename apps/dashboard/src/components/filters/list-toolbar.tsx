@@ -25,17 +25,19 @@ import {
 import { cn } from "@diffkit/ui/lib/utils";
 import {
 	type KeyboardEvent,
+	memo,
 	type ReactNode,
-	useMemo,
 	useRef,
 	useState,
 } from "react";
 import { useShellOverlay } from "#/lib/shell/shell-overlay";
 import { useGlobalShortcuts } from "#/lib/shortcuts";
 import type {
+	ActiveFilter,
 	FilterableItem,
 	FilterDefinition,
 	FilterOption,
+	SortOption,
 } from "./filter-model";
 import { FilterPill } from "./filter-pill";
 import { FilterValueOptions, focusFirstMenuItem } from "./filter-value-options";
@@ -43,14 +45,42 @@ import type { ListFilterState } from "./use-list-filters";
 
 export type FilterOptions = Map<string, FilterOption[]>;
 
-export function useFilterOptions(
+const optionsByItems = new WeakMap<
+	FilterableItem[],
+	WeakMap<FilterDefinition[], FilterOptions>
+>();
+
+/** The header, the pills and the phone drawers all ask for the same list's options; they are extracted once per items array. */
+export function filterOptionsFor(
 	defs: FilterDefinition[],
 	items: FilterableItem[],
 ): FilterOptions {
-	return useMemo(
-		() => new Map(defs.map((def) => [def.id, def.extractOptions(items)])),
-		[defs, items],
-	);
+	let byDefs = optionsByItems.get(items);
+	if (!byDefs) {
+		byDefs = new WeakMap();
+		optionsByItems.set(items, byDefs);
+	}
+	let options = byDefs.get(defs);
+	if (!options) {
+		options = new Map(defs.map((def) => [def.id, def.extractOptions(items)]));
+		byDefs.set(defs, options);
+	}
+	return options;
+}
+
+const searchInputClassName =
+	"h-full min-w-0 flex-1 bg-transparent text-[13px] font-[450] text-foreground outline-none placeholder:text-muted-foreground [&::-webkit-search-cancel-button]:hidden";
+
+function clearThenLeaveOnEscape(
+	value: string,
+	onChange: (value: string) => void,
+) {
+	return (event: KeyboardEvent<HTMLInputElement>) => {
+		if (event.key !== "Escape") return;
+		event.preventDefault();
+		if (value) onChange("");
+		else event.currentTarget.blur();
+	};
 }
 
 /** The list's search input; `/` focuses it and Esc clears it, then leaves it. */
@@ -72,12 +102,6 @@ export function ToolbarSearchField({
 			onTrigger: () => inputRef.current?.focus(),
 		},
 	]);
-	const onKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
-		if (event.key !== "Escape") return;
-		event.preventDefault();
-		if (value) onChange("");
-		else event.currentTarget.blur();
-	};
 	return (
 		<div className="flex h-9 min-w-0 flex-1 items-center gap-2 text-muted-foreground">
 			<SearchIcon size={14} strokeWidth={2} className="shrink-0" />
@@ -86,11 +110,11 @@ export function ToolbarSearchField({
 				type="search"
 				value={value}
 				onChange={(event) => onChange(event.target.value)}
-				onKeyDown={onKeyDown}
+				onKeyDown={clearThenLeaveOnEscape(value, onChange)}
 				placeholder={placeholder}
 				aria-label={placeholder}
 				aria-keyshortcuts="/"
-				className="h-full min-w-0 flex-1 bg-transparent text-[13px] font-[450] text-foreground outline-none placeholder:text-muted-foreground [&::-webkit-search-cancel-button]:hidden"
+				className={searchInputClassName}
 			/>
 			{value ? (
 				<button
@@ -146,24 +170,28 @@ function focusOnMount(input: HTMLInputElement | null) {
 	if (input) requestAnimationFrame(() => input.focus());
 }
 
-function FilterMenu({
-	state,
+const FilterMenu = memo(function FilterMenu({
+	filterDefs,
+	activeFilters,
+	toggleValue,
 	options,
 	open,
 	onOpenChange,
 }: {
-	state: ListFilterState;
+	filterDefs: FilterDefinition[];
+	activeFilters: ActiveFilter[];
+	toggleValue: (fieldId: string, value: string) => void;
 	options: FilterOptions;
 	open: boolean;
 	onOpenChange: (open: boolean) => void;
 }) {
 	const [query, setQuery] = useState("");
 	const needle = query.trim().toLowerCase();
-	const fields = state.filterDefs.filter((def) =>
+	const fields = filterDefs.filter((def) =>
 		def.label.toLowerCase().includes(needle),
 	);
 	const selectedCounts = new Map(
-		state.activeFilters.map((filter) => [filter.fieldId, filter.values.size]),
+		activeFilters.map((filter) => [filter.fieldId, filter.values.size]),
 	);
 
 	return (
@@ -182,9 +210,7 @@ function FilterMenu({
 							raised
 							aria-label="Filter"
 							aria-keyshortcuts="F"
-							className={cn(
-								state.activeFilters.length > 0 && "text-foreground",
-							)}
+							className={cn(activeFilters.length > 0 && "text-foreground")}
 						>
 							<FilterIcon size={14} strokeWidth={2} />
 						</PageIconButton>
@@ -225,11 +251,10 @@ function FilterMenu({
 									definition={def}
 									options={options.get(def.id) ?? []}
 									selected={
-										state.activeFilters.find(
-											(filter) => filter.fieldId === def.id,
-										)?.values
+										activeFilters.find((filter) => filter.fieldId === def.id)
+											?.values
 									}
-									onToggle={(value) => state.toggleValue(def.id, value)}
+									onToggle={(value) => toggleValue(def.id, value)}
 									focusSearchOnContentFocus
 								/>
 							</DropdownMenuSubContent>
@@ -244,12 +269,18 @@ function FilterMenu({
 			</DropdownMenuContent>
 		</DropdownMenu>
 	);
-}
+});
 
-function SortMenu({ state }: { state: ListFilterState }) {
-	const current = state.sortOptions.find(
-		(option) => option.id === state.sortId,
-	);
+const SortMenu = memo(function SortMenu({
+	sortOptions,
+	sortId,
+	setSortId,
+}: {
+	sortOptions: SortOption[];
+	sortId: string;
+	setSortId: (sortId: string) => void;
+}) {
+	const current = sortOptions.find((option) => option.id === sortId);
 	const label = `Sort: ${current?.label ?? "Default"}`;
 	return (
 		<DropdownMenu modal={false}>
@@ -265,11 +296,8 @@ function SortMenu({ state }: { state: ListFilterState }) {
 			</Tooltip>
 			<DropdownMenuContent align="end" className="w-52">
 				<DropdownMenuLabel>Sort by</DropdownMenuLabel>
-				<DropdownMenuRadioGroup
-					value={state.sortId}
-					onValueChange={state.setSortId}
-				>
-					{state.sortOptions.map((option) => (
+				<DropdownMenuRadioGroup value={sortId} onValueChange={setSortId}>
+					{sortOptions.map((option) => (
 						<DropdownMenuRadioItem key={option.id} value={option.id}>
 							{option.label}
 						</DropdownMenuRadioItem>
@@ -278,7 +306,7 @@ function SortMenu({ state }: { state: ListFilterState }) {
 			</DropdownMenuContent>
 		</DropdownMenu>
 	);
-}
+});
 
 /**
  * The list's search behind an icon: `/` or a click opens it, Esc clears it and
@@ -325,12 +353,6 @@ function ToolbarSearchToggle({
 		);
 	}
 
-	const onKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
-		if (event.key !== "Escape") return;
-		event.preventDefault();
-		if (value) onChange("");
-		else event.currentTarget.blur();
-	};
 	return (
 		<div className="flex h-7 w-56 items-center gap-1.5 rounded-md bg-button pr-1 pl-2 text-muted-foreground shadow-button max-md:w-40">
 			<SearchIcon size={13} strokeWidth={2} className="shrink-0" />
@@ -341,12 +363,12 @@ function ToolbarSearchToggle({
 				type="search"
 				value={value}
 				onChange={(event) => onChange(event.target.value)}
-				onKeyDown={onKeyDown}
+				onKeyDown={clearThenLeaveOnEscape(value, onChange)}
 				onBlur={() => setEditing(false)}
 				placeholder={placeholder}
 				aria-label={placeholder}
 				aria-keyshortcuts="/"
-				className="h-full min-w-0 flex-1 bg-transparent text-[13px] font-[450] text-foreground outline-none placeholder:text-muted-foreground [&::-webkit-search-cancel-button]:hidden"
+				className={searchInputClassName}
 			/>
 			{value ? (
 				<button
@@ -366,6 +388,8 @@ function ToolbarSearchToggle({
 	);
 }
 
+const NO_OPTIONS: FilterOption[] = [];
+
 export type ListFiltersConfig = {
 	state: ListFilterState;
 	items: FilterableItem[];
@@ -379,7 +403,6 @@ export function ListActions({
 	searchPlaceholder,
 }: ListFiltersConfig) {
 	const [filterMenuOpen, setFilterMenuOpen] = useState(false);
-	const options = useFilterOptions(state.filterDefs, items);
 	const shellIdle = useShellOverlay().kind === "none";
 
 	useGlobalShortcuts([
@@ -399,13 +422,21 @@ export function ListActions({
 			/>
 			{state.filterDefs.length > 0 ? (
 				<FilterMenu
-					state={state}
-					options={options}
+					filterDefs={state.filterDefs}
+					activeFilters={state.activeFilters}
+					toggleValue={state.toggleValue}
+					options={filterOptionsFor(state.filterDefs, items)}
 					open={filterMenuOpen}
 					onOpenChange={setFilterMenuOpen}
 				/>
 			) : null}
-			{state.sortOptions.length > 1 ? <SortMenu state={state} /> : null}
+			{state.sortOptions.length > 1 ? (
+				<SortMenu
+					sortOptions={state.sortOptions}
+					sortId={state.sortId}
+					setSortId={state.setSortId}
+				/>
+			) : null}
 		</div>
 	);
 }
@@ -415,8 +446,8 @@ export function ActiveFilters({
 	state,
 	items,
 }: Pick<ListFiltersConfig, "state" | "items">) {
-	const options = useFilterOptions(state.filterDefs, items);
 	if (state.activeFilters.length === 0) return null;
+	const options = filterOptionsFor(state.filterDefs, items);
 	return (
 		<fieldset
 			aria-label="Active filters"
@@ -432,8 +463,10 @@ export function ActiveFilters({
 						key={filter.fieldId}
 						filter={filter}
 						definition={definition}
-						options={options.get(filter.fieldId) ?? []}
-						state={state}
+						options={options.get(filter.fieldId) ?? NO_OPTIONS}
+						setOperator={state.setOperator}
+						toggleValue={state.toggleValue}
+						removeFilter={state.removeFilter}
 					/>
 				);
 			})}

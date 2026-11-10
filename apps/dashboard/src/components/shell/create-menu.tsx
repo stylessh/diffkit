@@ -13,6 +13,7 @@ import {
 	TooltipContent,
 	TooltipTrigger,
 } from "@diffkit/ui/components/tooltip";
+import { memo } from "react";
 import { CREATE_ACTIONS } from "#/lib/shell/create-actions";
 import {
 	useCurrentRepo,
@@ -20,7 +21,11 @@ import {
 } from "#/lib/shell/use-shell-actions";
 import { repoFullName } from "#/lib/shell/workspace-repos";
 
-export function CreateMenu({ align = "end" }: { align?: "start" | "end" }) {
+export const CreateMenu = memo(function CreateMenu({
+	align = "end",
+}: {
+	align?: "start" | "end";
+}) {
 	const currentRepo = useCurrentRepo();
 	const startCreateAction = useStartCreateAction();
 
@@ -53,4 +58,4 @@ export function CreateMenu({ align = "end" }: { align?: "start" | "end" }) {
 			</DropdownMenuContent>
 		</DropdownMenu>
 	);
-}
+});

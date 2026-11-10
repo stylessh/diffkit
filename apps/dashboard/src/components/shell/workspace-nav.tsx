@@ -11,7 +11,7 @@ import {
 	TooltipTrigger,
 } from "@diffkit/ui/components/tooltip";
 import { Link } from "@tanstack/react-router";
-import type { ComponentType } from "react";
+import { type ComponentType, memo } from "react";
 
 export type ShellCounts = {
 	pulls?: number;
@@ -86,6 +86,22 @@ export function workspaceNavItems(
 	];
 }
 
+function sameBadge(a: NavBadge, b: NavBadge) {
+	if (a.kind === "count" && b.kind === "count") return a.value === b.value;
+	return a.kind === b.kind;
+}
+
+/** The layout rebuilds the items on every render, so they are compared by what the nav shows. */
+function sameNav(a: { items: NavItem[] }, b: { items: NavItem[] }) {
+	return (
+		a.items.length === b.items.length &&
+		a.items.every((item, index) => {
+			const other = b.items[index];
+			return item.to === other.to && sameBadge(item.badge, other.badge);
+		})
+	);
+}
+
 function accessibleName(item: NavItem) {
 	switch (item.badge.kind) {
 		case "count":
@@ -117,7 +133,11 @@ function TopbarBadge({ badge }: { badge: NavBadge }) {
 	}
 }
 
-export function TopbarNav({ items }: { items: NavItem[] }) {
+export const TopbarNav = memo(function TopbarNav({
+	items,
+}: {
+	items: NavItem[];
+}) {
 	return (
 		<div className="flex min-w-0 items-center gap-0.5">
 			{items.map((item) => (
@@ -141,9 +161,13 @@ export function TopbarNav({ items }: { items: NavItem[] }) {
 			))}
 		</div>
 	);
-}
+}, sameNav);
 
-export function MobileNavBar({ items }: { items: NavItem[] }) {
+export const MobileNavBar = memo(function MobileNavBar({
+	items,
+}: {
+	items: NavItem[];
+}) {
 	return (
 		<nav
 			aria-label="Workspace"
@@ -177,4 +201,4 @@ export function MobileNavBar({ items }: { items: NavItem[] }) {
 			))}
 		</nav>
 	);
-}
+}, sameNav);

@@ -18,12 +18,28 @@ import {
 	MobileActionGroup,
 } from "@diffkit/ui/components/mobile-action-bar";
 import { cn } from "@diffkit/ui/lib/utils";
-import { type ComponentProps, type ReactNode, useState } from "react";
-import type { FilterDefinition, FilterOption } from "./filter-model";
+import {
+	type ComponentProps,
+	memo,
+	type ReactNode,
+	useCallback,
+	useState,
+} from "react";
+import type {
+	ActiveFilter,
+	FilterDefinition,
+	FilterOption,
+	SortOption,
+} from "./filter-model";
 import { withSelectedOptions } from "./filter-value-options";
-import { type ListFiltersConfig, useFilterOptions } from "./list-toolbar";
+import {
+	type FilterOptions,
+	filterOptionsFor,
+	type ListFiltersConfig,
+} from "./list-toolbar";
 
-type OpenDrawer = "search" | "filter" | "sort" | null;
+type DrawerName = "search" | "filter" | "sort";
+type OpenDrawer = DrawerName | "none";
 
 /** A list's Search, Filter and Sort on phones: one pill above the bottom nav, each opening a drawer. */
 export function MobileListActions({
@@ -31,16 +47,8 @@ export function MobileListActions({
 	items,
 	searchPlaceholder,
 }: ListFiltersConfig) {
-	const [open, setOpen] = useState<OpenDrawer>(null);
-	const options = useFilterOptions(state.filterDefs, items);
-	const close = () => setOpen(null);
-	const drawerProps = (which: Exclude<OpenDrawer, null>) => ({
-		open: open === which,
-		onOpenChange: (next: boolean) => setOpen(next ? which : null),
-	});
-	const currentSort = state.sortOptions.find(
-		(option) => option.id === state.sortId,
-	);
+	const [open, setOpen] = useState<OpenDrawer>("none");
+	const close = useCallback(() => setOpen("none"), []);
 
 	return (
 		<>
@@ -74,100 +82,182 @@ export function MobileListActions({
 				</MobileActionGroup>
 			</MobileActionBar>
 
-			<Drawer {...drawerProps("search")}>
-				<DrawerContent aria-describedby={undefined}>
-					<DrawerHeading>Search</DrawerHeading>
-					<form
-						className="px-4 pb-5"
-						onSubmit={(event) => {
-							event.preventDefault();
-							close();
-						}}
-					>
-						<div className="flex h-10 items-center gap-2 rounded-lg bg-surface-0 px-3 text-muted-foreground shadow-field">
-							<SearchIcon size={15} strokeWidth={2} className="shrink-0" />
-							<input
-								// biome-ignore lint/a11y/noAutofocus: the drawer only opens because the person asked to search
-								autoFocus
-								type="search"
-								enterKeyHint="search"
-								value={state.searchQuery}
-								onChange={(event) => state.setSearchQuery(event.target.value)}
-								placeholder={searchPlaceholder}
-								aria-label={searchPlaceholder}
-								className="h-full min-w-0 flex-1 bg-transparent text-[15px] font-[450] text-foreground outline-none placeholder:text-muted-foreground [&::-webkit-search-cancel-button]:hidden"
-							/>
-							{state.searchQuery ? (
-								<button
-									type="button"
-									aria-label="Clear search"
-									onClick={() => state.setSearchQuery("")}
-									className="flex size-7 shrink-0 items-center justify-center rounded-md active:bg-ghost-hover"
-								>
-									<CloseIcon size={14} />
-								</button>
-							) : null}
-						</div>
-					</form>
-				</DrawerContent>
-			</Drawer>
-
-			<Drawer {...drawerProps("filter")}>
-				<DrawerContent aria-describedby={undefined}>
-					<FilterDrawerBody state={state} options={options} onDone={close} />
-				</DrawerContent>
-			</Drawer>
-
-			<Drawer {...drawerProps("sort")}>
-				<DrawerContent aria-describedby={undefined}>
-					<DrawerHeading>Sort by</DrawerHeading>
-					<div className="px-2 pb-4">
-						{state.sortOptions.map((option) => (
-							<DrawerRow
-								key={option.id}
-								aria-pressed={option.id === currentSort?.id}
-								onClick={() => {
-									state.setSortId(option.id);
-									close();
-								}}
-								trailing={
-									option.id === currentSort?.id ? (
-										<CheckIcon size={16} strokeWidth={2} />
-									) : null
-								}
-							>
-								{option.label}
-							</DrawerRow>
-						))}
-					</div>
-				</DrawerContent>
-			</Drawer>
+			<SearchDrawer
+				open={open === "search"}
+				onClose={close}
+				value={state.searchQuery}
+				onChange={state.setSearchQuery}
+				placeholder={searchPlaceholder}
+			/>
+			<FilterDrawer
+				open={open === "filter"}
+				onClose={close}
+				filterDefs={state.filterDefs}
+				activeFilters={state.activeFilters}
+				options={filterOptionsFor(state.filterDefs, items)}
+				toggleValue={state.toggleValue}
+				clearAllFilters={state.clearAllFilters}
+			/>
+			<SortDrawer
+				open={open === "sort"}
+				onClose={close}
+				sortOptions={state.sortOptions}
+				sortId={state.sortId}
+				setSortId={state.setSortId}
+			/>
 		</>
 	);
 }
 
+type DrawerProps = { open: boolean; onClose: () => void };
+
+function ActionDrawer({
+	open,
+	onClose,
+	children,
+}: DrawerProps & { children: ReactNode }) {
+	return (
+		<Drawer
+			open={open}
+			onOpenChange={(next) => {
+				if (!next) onClose();
+			}}
+		>
+			<DrawerContent aria-describedby={undefined}>{children}</DrawerContent>
+		</Drawer>
+	);
+}
+
+function SearchDrawer({
+	open,
+	onClose,
+	value,
+	onChange,
+	placeholder,
+}: DrawerProps & {
+	value: string;
+	onChange: (value: string) => void;
+	placeholder: string;
+}) {
+	return (
+		<ActionDrawer open={open} onClose={onClose}>
+			<DrawerHeading>Search</DrawerHeading>
+			<form
+				className="px-4 pb-5"
+				onSubmit={(event) => {
+					event.preventDefault();
+					onClose();
+				}}
+			>
+				<div className="flex h-10 items-center gap-2 rounded-lg bg-surface-0 px-3 text-muted-foreground shadow-field">
+					<SearchIcon size={15} strokeWidth={2} className="shrink-0" />
+					<input
+						// biome-ignore lint/a11y/noAutofocus: the drawer only opens because the person asked to search
+						autoFocus
+						type="search"
+						enterKeyHint="search"
+						value={value}
+						onChange={(event) => onChange(event.target.value)}
+						placeholder={placeholder}
+						aria-label={placeholder}
+						className="h-full min-w-0 flex-1 bg-transparent text-[15px] font-[450] text-foreground outline-none placeholder:text-muted-foreground [&::-webkit-search-cancel-button]:hidden"
+					/>
+					{value ? (
+						<button
+							type="button"
+							aria-label="Clear search"
+							onClick={() => onChange("")}
+							className="flex size-7 shrink-0 items-center justify-center rounded-md active:bg-ghost-hover"
+						>
+							<CloseIcon size={14} />
+						</button>
+					) : null}
+				</div>
+			</form>
+		</ActionDrawer>
+	);
+}
+
+const SortDrawer = memo(function SortDrawer({
+	open,
+	onClose,
+	sortOptions,
+	sortId,
+	setSortId,
+}: DrawerProps & {
+	sortOptions: SortOption[];
+	sortId: string;
+	setSortId: (sortId: string) => void;
+}) {
+	return (
+		<ActionDrawer open={open} onClose={onClose}>
+			<DrawerHeading>Sort by</DrawerHeading>
+			<div className="px-2 pb-4">
+				{sortOptions.map((option) => (
+					<DrawerRow
+						key={option.id}
+						aria-pressed={option.id === sortId}
+						onClick={() => {
+							setSortId(option.id);
+							onClose();
+						}}
+						trailing={
+							option.id === sortId ? (
+								<CheckIcon size={16} strokeWidth={2} />
+							) : null
+						}
+					>
+						{option.label}
+					</DrawerRow>
+				))}
+			</div>
+		</ActionDrawer>
+	);
+});
+
+type FilterDrawerProps = {
+	filterDefs: FilterDefinition[];
+	activeFilters: ActiveFilter[];
+	options: FilterOptions;
+	toggleValue: (fieldId: string, value: string) => void;
+	clearAllFilters: () => void;
+};
+
+const FilterDrawer = memo(function FilterDrawer({
+	open,
+	onClose,
+	...body
+}: DrawerProps & FilterDrawerProps) {
+	return (
+		<ActionDrawer open={open} onClose={onClose}>
+			<FilterDrawerBody {...body} onDone={onClose} />
+		</ActionDrawer>
+	);
+});
+
+const NOTHING_SELECTED: Set<string> = new Set();
+
 /** Fields first; picking one swaps the drawer to that field's values. */
 function FilterDrawerBody({
-	state,
+	filterDefs,
+	activeFilters,
 	options,
+	toggleValue,
+	clearAllFilters,
 	onDone,
-}: {
-	state: ListFiltersConfig["state"];
-	options: Map<string, FilterOption[]>;
-	onDone: () => void;
-}) {
+}: FilterDrawerProps & { onDone: () => void }) {
 	const [fieldId, setFieldId] = useState<string | null>(null);
-	const field = state.filterDefs.find((def) => def.id === fieldId);
+	const field = filterDefs.find((def) => def.id === fieldId);
 	const selectedOf = (id: string) =>
-		state.activeFilters.find((filter) => filter.fieldId === id)?.values;
+		activeFilters.find((filter) => filter.fieldId === id)?.values;
 
 	if (field) {
 		return (
 			<FilterValues
 				definition={field}
 				options={options.get(field.id) ?? []}
-				selected={selectedOf(field.id) ?? new Set()}
-				onToggle={(value) => state.toggleValue(field.id, value)}
+				selected={selectedOf(field.id) ?? NOTHING_SELECTED}
+				onToggle={(value) => toggleValue(field.id, value)}
 				onBack={() => setFieldId(null)}
 			/>
 		);
@@ -177,11 +267,11 @@ function FilterDrawerBody({
 		<>
 			<div className="flex items-center justify-between pr-2">
 				<DrawerHeading>Filter</DrawerHeading>
-				{state.activeFilters.length > 0 ? (
+				{activeFilters.length > 0 ? (
 					<button
 						type="button"
 						onClick={() => {
-							state.clearAllFilters();
+							clearAllFilters();
 							onDone();
 						}}
 						className="mb-2 h-8 rounded-lg px-3 text-[13px] font-medium text-muted-foreground active:bg-ghost-hover"
@@ -191,7 +281,7 @@ function FilterDrawerBody({
 				) : null}
 			</div>
 			<div className="px-2 pb-4">
-				{state.filterDefs.map((def) => {
+				{filterDefs.map((def) => {
 					const count = selectedOf(def.id)?.size ?? 0;
 					return (
 						<DrawerRow

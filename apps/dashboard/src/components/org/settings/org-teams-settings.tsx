@@ -41,7 +41,7 @@ import {
 	type TeamRole,
 	validateOrgTeamDraft,
 } from "#/lib/settings/org";
-import { useOrgSettingsAccess } from "./org-settings-frame";
+import { useCanManageOrg } from "./org-settings-frame";
 import {
 	SAMPLE_ORG_TEAM_MEMBERS,
 	SAMPLE_ORG_TEAMS,
@@ -67,8 +67,7 @@ const TEAM_ROLE_OPTIONS: { value: TeamRole; label: string }[] = [
 
 export function OrgTeamsSettings({ org, scope }: OrgProps) {
 	const query = useQuery(githubOrgTeamListQueryOptions(scope, { org }));
-	const access = useOrgSettingsAccess(scope, org);
-	const canManage = access.status === "member" && access.capabilities.manage;
+	const canManage = useCanManageOrg(scope, org);
 	const [panel, setPanel] = useState<Panel>({ kind: "none" });
 
 	return (

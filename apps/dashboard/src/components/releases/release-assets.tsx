@@ -52,10 +52,6 @@ function releaseAssetRows(
 	return rows;
 }
 
-export function releaseAssetCount(release: RepoRelease) {
-	return release.assets.length + (release.isDraft ? 0 : 2);
-}
-
 /** Uploaded assets (with size and download count) plus GitHub's source archives. */
 export function ReleaseAssets({
 	owner,
