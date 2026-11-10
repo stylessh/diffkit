@@ -2,13 +2,14 @@ import { LayoutAlignBottomIcon } from "@diffkit/icons";
 import { Slot, Slottable } from "@radix-ui/react-slot";
 import * as React from "react";
 import { cn } from "../lib/utils";
-import { Drawer, DrawerContent, DrawerTitle } from "./drawer";
 import {
 	MobileActionBar,
 	MobileActionButton,
 	MobileActionGroup,
 } from "./mobile-action-bar";
 import { ScrollFade } from "./scroll-fade";
+
+const DetailPanelDrawer = React.lazy(() => import("./detail-panel-drawer"));
 
 // Below md the page is one scroller and the panel moves into a drawer opened
 // from the floating action bar, so the content column's scroller stands down:
@@ -32,6 +33,8 @@ function DetailLayout({
 	mobileActions?: React.ReactNode;
 }) {
 	const [panelOpen, setPanelOpen] = React.useState(false);
+	// Stays true after the first open so the closing drawer can animate out.
+	const [panelEverOpened, setPanelEverOpened] = React.useState(false);
 	return (
 		<div
 			className={cn(
@@ -74,21 +77,27 @@ function DetailLayout({
 				<MobileActionGroup>
 					<MobileActionButton
 						icon={<LayoutAlignBottomIcon size={15} strokeWidth={2} />}
-						onClick={() => setPanelOpen(true)}
+						onClick={() => {
+							setPanelEverOpened(true);
+							setPanelOpen(true);
+						}}
 					>
 						Details
 					</MobileActionButton>
 				</MobileActionGroup>
 				{mobileActions}
 			</MobileActionBar>
-			<Drawer open={panelOpen} onOpenChange={setPanelOpen}>
-				<DrawerContent aria-describedby={undefined}>
-					<DrawerTitle className="sr-only">{panelLabel}</DrawerTitle>
-					<div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-5 pt-2 pb-6">
+			{panelEverOpened ? (
+				<React.Suspense fallback={null}>
+					<DetailPanelDrawer
+						open={panelOpen}
+						onOpenChange={setPanelOpen}
+						label={panelLabel}
+					>
 						{panel}
-					</div>
-				</DrawerContent>
-			</Drawer>
+					</DetailPanelDrawer>
+				</React.Suspense>
+			) : null}
 		</div>
 	);
 }
