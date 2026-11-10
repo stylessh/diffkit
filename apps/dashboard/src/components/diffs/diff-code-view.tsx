@@ -13,7 +13,6 @@ import {
 	useStableCallback,
 	WorkerPoolContext,
 } from "@pierre/diffs/react";
-import { useTheme } from "next-themes";
 import {
 	createContext,
 	type ReactNode,
@@ -31,21 +30,26 @@ import {
 	PendingCommentBubble,
 	ReviewCommentThread,
 } from "#/components/pulls/review/review-comment-annotations";
-import type {
-	ActiveCommentForm,
-	PendingComment,
-	ReviewAnnotation,
+import {
+	annotationSide,
+	isMultiLineComment,
+	type PendingComment,
+	type ReviewAnnotation,
+	type ReviewComposing,
+	type ReviewThreadState,
 } from "#/components/pulls/review/review-types";
-import { encodeFileId } from "#/components/pulls/review/review-utils";
 import type { ViewedFilesStore } from "#/components/pulls/review/viewed-files-store";
-import type { DiffFile } from "#/lib/diffs/diff-files";
+import { type DiffFile, diffFileAnchorId } from "#/lib/diffs/diff-files";
 import {
 	DIFF_HUNK_SEPARATOR_HEIGHT,
 	DIFF_LINE_HEIGHT,
 	DIFF_SPACING,
-	DIFF_SURFACE_CSS,
 } from "#/lib/diffs/diff-surface-css";
 import { getDiffsRuntime } from "#/lib/diffs/diffs-runtime";
+import {
+	type DiffStyle,
+	useDiffSurfaceOptions,
+} from "#/lib/diffs/use-diff-options";
 import type { PullReviewComment } from "#/lib/github.types";
 import { DIFF_FILE_HEADER_HEIGHT, DiffFileHeader } from "./diff-file-header";
 
@@ -58,13 +62,9 @@ export type DiffReview = {
 	pullNumber: number;
 	threadsByFile: ReadonlyMap<string, DiffLineAnnotation<PullReviewComment>[]>;
 	pendingCommentsByFile: ReadonlyMap<string, PendingComment[]>;
-	activeCommentForm: ActiveCommentForm | null;
-	selectedLines: SelectedLineRange | null;
+	composing: ReviewComposing | null;
 	repliesByCommentId: ReadonlyMap<number, PullReviewComment[]>;
-	threadInfoByCommentId?: ReadonlyMap<
-		number,
-		{ threadId: string; isResolved: boolean }
-	>;
+	threadInfoByCommentId?: ReadonlyMap<number, ReviewThreadState>;
 	mentionConfig?: MentionConfig;
 	viewerLogin?: string;
 	viewedFiles: ViewedFilesStore;
@@ -80,7 +80,7 @@ export type DiffCodeViewHandle = {
 
 export type DiffCodeViewProps = {
 	files: readonly DiffFile[];
-	diffStyle: "unified" | "split";
+	diffStyle: DiffStyle;
 	wrapLines: boolean;
 	review?: DiffReview;
 	onActiveFileChange?: (path: string) => void;
@@ -111,7 +111,7 @@ function annotationsForFile(review: DiffReview, path: string): Annotation[] {
 	const threads = review.threadsByFile.get(path);
 	const pending = review.pendingCommentsByFile.get(path);
 	const form =
-		review.activeCommentForm?.path === path ? review.activeCommentForm : null;
+		review.composing?.form.path === path ? review.composing.form : null;
 	if (!threads && !pending && !form) return NO_ANNOTATIONS;
 	const annotations: Annotation[] = [];
 	for (const thread of threads ?? []) {
@@ -123,14 +123,14 @@ function annotationsForFile(review: DiffReview, path: string): Annotation[] {
 	}
 	for (const comment of pending ?? []) {
 		annotations.push({
-			side: comment.side === "LEFT" ? "deletions" : "additions",
+			side: annotationSide(comment.side),
 			lineNumber: comment.line,
 			metadata: { kind: "pending", comment },
 		});
 	}
 	if (form) {
 		annotations.push({
-			side: form.side === "LEFT" ? "deletions" : "additions",
+			side: annotationSide(form.side),
 			lineNumber: form.line,
 			metadata: { kind: "draft", form },
 		});
@@ -192,7 +192,7 @@ function ReviewAnnotationSlot({
 			const { form } = metadata;
 			return (
 				<InlineCommentForm
-					isMultiLine={form.startLine != null && form.startLine !== form.line}
+					isMultiLine={isMultiLineComment(form)}
 					startLine={form.startLine}
 					endLine={form.line}
 					onSubmit={(body) => review.onAddComment({ ...form, path, body })}
@@ -255,7 +255,6 @@ function DiffCodeViewSurface({
 	const viewerRef = useRef<CodeViewHandle<ReviewAnnotation, undefined>>(null);
 	const containerRef = useRef<HTMLDivElement>(null);
 	const viewedFiles = review?.viewedFiles;
-	const { resolvedTheme } = useTheme();
 
 	const filesById = useRef(new Map<string, DiffFile>()).current;
 	const idByHash = useRef(new Map<string, string>()).current;
@@ -267,7 +266,7 @@ function DiffCodeViewSurface({
 
 	const createItem = (file: DiffFile): Item => {
 		filesById.set(file.path, file);
-		idByHash.set(encodeFileId(file.path), file.path);
+		idByHash.set(diffFileAnchorId(file.path), file.path);
 		const annotations = review
 			? annotationsForFile(review, file.path)
 			: NO_ANNOTATIONS;
@@ -299,7 +298,7 @@ function DiffCodeViewSurface({
 	const scrollToFile = useStableCallback((path: string) => {
 		const viewer = viewerRef.current;
 		if (!viewer?.getItem(path)) {
-			pendingReveal.current = encodeFileId(path);
+			pendingReveal.current = diffFileAnchorId(path);
 			return;
 		}
 		pendingReveal.current = null;
@@ -307,7 +306,7 @@ function DiffCodeViewSurface({
 			item.collapsed = false;
 		});
 		viewer.scrollTo({ type: "item", id: path, align: "start" });
-		const hash = `#${encodeFileId(path)}`;
+		const hash = `#${diffFileAnchorId(path)}`;
 		if (window.location.hash !== hash) history.replaceState(null, "", hash);
 		activeFile.current = path;
 		onActiveFileChange?.(path);
@@ -338,17 +337,19 @@ function DiffCodeViewSurface({
 		}
 	});
 
-	const selectionPath = review?.activeCommentForm?.path;
-	const selectedRange = review?.selectedLines ?? null;
+	const composing = review?.composing ?? null;
 	useEffect(() => {
 		const viewer = viewerRef.current;
 		if (!viewer) return;
-		if (selectionPath && selectedRange) {
-			viewer.setSelectedLines({ id: selectionPath, range: selectedRange });
+		if (composing) {
+			viewer.setSelectedLines({
+				id: composing.form.path,
+				range: composing.range,
+			});
 		} else {
 			viewer.clearSelectedLines();
 		}
-	}, [selectionPath, selectedRange]);
+	}, [composing]);
 
 	useEffect(() => {
 		const revealHash = () => {
@@ -420,16 +421,10 @@ function DiffCodeViewSurface({
 	);
 
 	const reviewable = review !== undefined;
-	const themeType = resolvedTheme === "dark" ? "dark" : "light";
+	const surface = useDiffSurfaceOptions({ diffStyle, wrapLines });
 	const options = useMemo(
 		(): CodeViewOptions<ReviewAnnotation, undefined> => ({
-			theme: runtime.themes,
-			preferredHighlighter: runtime.highlighter,
-			themeType,
-			diffStyle,
-			overflow: wrapLines ? "wrap" : "scroll",
-			diffIndicators: "bars",
-			hunkSeparators: "line-info",
+			...surface,
 			lineHoverHighlight: "number",
 			stickyHeaders: true,
 			layout: LAYOUT,
@@ -439,10 +434,9 @@ function DiffCodeViewSurface({
 			onGutterUtilityClick(range, context) {
 				startComment(range, context.item.id);
 			},
-			unsafeCSS: DIFF_SURFACE_CSS,
 			__devOnlyValidateItemHeights: VALIDATE_ITEM_HEIGHTS,
 		}),
-		[runtime, themeType, diffStyle, wrapLines, reviewable, startComment],
+		[surface, reviewable, startComment],
 	);
 
 	const renderHeader = useStableCallback(

@@ -6,6 +6,7 @@ import type {
 } from "@pierre/trees";
 import { FileTree, useFileTree } from "@pierre/trees/react";
 import { memo, useEffect, useRef } from "react";
+import { Skeleton, SkeletonBox } from "skullet/react";
 import {
 	TREE_ICONS,
 	TREE_UNSAFE_CSS,
@@ -200,3 +201,58 @@ export const ReviewFileTree = memo(function ReviewFileTree({
 		/>
 	);
 });
+
+function sampleRows(files: readonly ReviewTreeFile[]) {
+	const rows: { key: string; depth: 0 | 1; label: string; counts?: string }[] =
+		[];
+	let openFolder: string | null = null;
+	for (const file of files) {
+		const at = file.filename.lastIndexOf("/");
+		const folder = file.filename.slice(0, at);
+		if (folder !== openFolder) {
+			openFolder = folder;
+			rows.push({ key: `${folder}/`, depth: 0, label: folder });
+		}
+		rows.push({
+			key: file.filename,
+			depth: 1,
+			label: file.filename.slice(at + 1),
+			counts: lineCounts(file)?.text,
+		});
+	}
+	return rows;
+}
+
+/**
+ * The tree draws inside a shadow root, where a measured skeleton cannot see
+ * it, so a cold load shows rows of the same height in its place.
+ */
+export function ReviewFileTreeSkeleton({
+	files,
+}: {
+	files: readonly ReviewTreeFile[];
+}) {
+	return (
+		<Skeleton
+			loading
+			label="Loading files"
+			className="min-h-0 flex-1 overflow-hidden pt-1"
+		>
+			{sampleRows(files).map((row) => (
+				<div
+					key={row.key}
+					className="flex items-center gap-2 pr-4 text-[13px]"
+					style={{ height: ROW_HEIGHT, paddingLeft: 16 + row.depth * 24 }}
+				>
+					<SkeletonBox width={16} height={16} radius={4} />
+					<span className="min-w-0 truncate">{row.label}</span>
+					{row.counts ? (
+						<span className="ml-auto shrink-0 font-mono text-[11px]">
+							{row.counts}
+						</span>
+					) : null}
+				</div>
+			))}
+		</Skeleton>
+	);
+}

@@ -6,7 +6,7 @@ import {
 import { toast } from "@diffkit/ui/components/sonner";
 import { Spinner } from "@diffkit/ui/components/spinner";
 import { cn } from "@diffkit/ui/lib/utils";
-import { useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import {
 	type Dispatch,
 	type ReactNode,
@@ -33,7 +33,11 @@ import {
 	invalidateGitHubEntities,
 	pullEntityKey,
 } from "#/lib/github-query-updates";
-import type { PendingComment } from "./review-types";
+import {
+	isMultiLineComment,
+	type PendingComment,
+	type ReviewThreadState,
+} from "./review-types";
 
 const ANNOTATION_FRAME = "my-2.5 mr-4 ml-2 max-w-[46rem]";
 const CARD =
@@ -253,63 +257,46 @@ export function ReviewCommentThread({
 	repo: string;
 	pullNumber: number;
 	viewerLogin?: string;
-	threadInfo?: { threadId: string; isResolved: boolean };
+	threadInfo?: ReviewThreadState;
 }) {
 	const queryClient = useQueryClient();
 	const [replyBody, setReplyBody] = useState("");
-	const [isSending, setIsSending] = useState(false);
-	const [isResolving, setIsResolving] = useState(false);
+	const refreshPull = () =>
+		void invalidateGitHubEntities(queryClient, null, [
+			pullEntityKey({ owner, repo, pullNumber }),
+		]);
 
-	const handleReply = async () => {
-		if (!replyBody.trim()) return;
-		setIsSending(true);
-		try {
-			const result = await replyToReviewComment({
-				data: {
-					owner,
-					repo,
-					pullNumber,
-					commentId: comment.id,
-					body: replyBody.trim(),
-				},
-			});
-			if (result) {
-				setReplyBody("");
-				void invalidateGitHubEntities(queryClient, null, [
-					pullEntityKey({ owner, repo, pullNumber }),
-				]);
-			} else {
+	const reply = useMutation({
+		mutationFn: (body: string) =>
+			replyToReviewComment({
+				data: { owner, repo, pullNumber, commentId: comment.id, body },
+			}),
+		onSuccess(sent) {
+			if (!sent) {
 				toast.error("Failed to send reply");
+				return;
 			}
-		} catch {
-			toast.error("Failed to send reply");
-		} finally {
-			setIsSending(false);
-		}
-	};
+			setReplyBody("");
+			refreshPull();
+		},
+		onError: () => toast.error("Failed to send reply"),
+	});
 
-	const handleResolve = async () => {
-		if (!threadInfo) return;
-		setIsResolving(true);
-		try {
-			const fn = threadInfo.isResolved
-				? unresolveReviewThread
-				: resolveReviewThread;
-			const result = await fn({
-				data: { owner, repo, threadId: threadInfo.threadId },
-			});
-			if (result.ok) {
-				void invalidateGitHubEntities(queryClient, null, [
-					pullEntityKey({ owner, repo, pullNumber }),
-				]);
-			} else {
-				toast.error(result.error);
-			}
-		} catch {
-			toast.error("Failed to update thread");
-		} finally {
-			setIsResolving(false);
-		}
+	const toggleResolved = useMutation({
+		mutationFn: ({ threadId, isResolved }: ReviewThreadState) =>
+			(isResolved ? unresolveReviewThread : resolveReviewThread)({
+				data: { owner, repo, threadId },
+			}),
+		onSuccess(result) {
+			if (result.ok) refreshPull();
+			else toast.error(result.error);
+		},
+		onError: () => toast.error("Failed to update thread"),
+	});
+
+	const sendReply = () => {
+		const body = replyBody.trim();
+		if (body) reply.mutate(body);
 	};
 
 	return (
@@ -353,17 +340,17 @@ export function ReviewCommentThread({
 					onChange={setReplyBody}
 					placeholder="Write a reply..."
 					submitLabel="Reply"
-					isSubmitting={isSending}
-					onSubmit={() => void handleReply()}
+					isSubmitting={reply.isPending}
+					onSubmit={sendReply}
 					actions={
 						threadInfo ? (
 							<button
 								type="button"
-								onClick={() => void handleResolve()}
-								disabled={isResolving}
+								onClick={() => toggleResolved.mutate(threadInfo)}
+								disabled={toggleResolved.isPending}
 								className={GHOST_BUTTON}
 							>
-								{isResolving ? (
+								{toggleResolved.isPending ? (
 									<Spinner className="size-3" />
 								) : (
 									<CheckIcon size={12} strokeWidth={2} />
@@ -379,6 +366,35 @@ export function ReviewCommentThread({
 	);
 }
 
+function PendingCommentEditor({
+	comment,
+	onSave,
+	onCancel,
+	mentionConfig,
+}: {
+	comment: PendingComment;
+	onSave: (body: string) => void;
+	onCancel: () => void;
+	mentionConfig?: MentionConfig;
+}) {
+	const [draft, setDraft] = useState(comment.body);
+	return (
+		<div className={ANNOTATION_FRAME}>
+			<AnnotationComposer
+				autoFocus
+				value={draft}
+				onChange={setDraft}
+				placeholder="Leave a comment..."
+				submitLabel="Update comment"
+				dismissOnBlur={draft === comment.body}
+				onSubmit={() => onSave(draft.trim())}
+				onCancel={onCancel}
+				mentionConfig={mentionConfig}
+			/>
+		</div>
+	);
+}
+
 export function PendingCommentBubble({
 	comment,
 	onEdit,
@@ -388,32 +404,19 @@ export function PendingCommentBubble({
 	onEdit: (original: PendingComment, newBody: string) => void;
 	mentionConfig?: MentionConfig;
 }) {
-	const isMultiLine =
-		comment.startLine != null && comment.startLine !== comment.line;
 	const [isEditing, setIsEditing] = useState(false);
-	const [draft, setDraft] = useState(comment.body);
 
 	if (isEditing) {
 		return (
-			<div className={ANNOTATION_FRAME}>
-				<AnnotationComposer
-					autoFocus
-					value={draft}
-					onChange={setDraft}
-					placeholder="Leave a comment..."
-					submitLabel="Update comment"
-					dismissOnBlur={draft === comment.body}
-					onSubmit={() => {
-						onEdit(comment, draft.trim());
-						setIsEditing(false);
-					}}
-					onCancel={() => {
-						setDraft(comment.body);
-						setIsEditing(false);
-					}}
-					mentionConfig={mentionConfig}
-				/>
-			</div>
+			<PendingCommentEditor
+				comment={comment}
+				onSave={(body) => {
+					onEdit(comment, body);
+					setIsEditing(false);
+				}}
+				onCancel={() => setIsEditing(false)}
+				mentionConfig={mentionConfig}
+			/>
 		);
 	}
 
@@ -426,7 +429,7 @@ export function PendingCommentBubble({
 					<CommentIcon size={11} strokeWidth={2} />
 					Pending
 				</span>
-				{isMultiLine ? (
+				{isMultiLineComment(comment) ? (
 					<span className="text-xs font-[450] text-muted-foreground">
 						Lines {comment.startLine}–{comment.line}
 					</span>

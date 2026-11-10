@@ -4,17 +4,18 @@ import {
 	VirtualizerContext,
 	WorkerPoolContext,
 } from "@pierre/diffs/react";
-import { useTheme } from "next-themes";
 import { memo, useLayoutEffect, useMemo, useRef, useState } from "react";
-import { encodeFileId } from "#/components/pulls/review/review-utils";
-import type { DiffFile } from "#/lib/diffs/diff-files";
+import { type DiffFile, diffFileAnchorId } from "#/lib/diffs/diff-files";
 import {
 	DIFF_HUNK_SEPARATOR_HEIGHT,
 	DIFF_LINE_HEIGHT,
 	DIFF_SPACING,
-	DIFF_SURFACE_CSS,
 } from "#/lib/diffs/diff-surface-css";
 import { getDiffsRuntime } from "#/lib/diffs/diffs-runtime";
+import {
+	type DiffStyle,
+	useDiffSurfaceOptions,
+} from "#/lib/diffs/use-diff-options";
 import { DiffFileHeader } from "./diff-file-header";
 
 export const DIFF_SCROLL_ROOT_ATTRIBUTE = "data-diffs-scroll-root";
@@ -30,7 +31,7 @@ const METRICS: VirtualFileMetrics = {
 
 export type DiffFileListProps = {
 	files: readonly DiffFile[];
-	diffStyle: "unified" | "split";
+	diffStyle: DiffStyle;
 	wrapLines: boolean;
 };
 
@@ -88,32 +89,19 @@ const DiffFileCard = memo(function DiffFileCard({
 	wrapLines,
 }: {
 	file: DiffFile;
-	diffStyle: "unified" | "split";
+	diffStyle: DiffStyle;
 	wrapLines: boolean;
 }) {
-	const runtime = getDiffsRuntime();
-	const { resolvedTheme } = useTheme();
 	const [collapsed, setCollapsed] = useState(file.status === "removed");
-	const hasContent = file.fileDiff.hunks.length > 0;
+	const surface = useDiffSurfaceOptions({ diffStyle, wrapLines });
 	const options = useMemo(
-		() => ({
-			theme: runtime.themes,
-			preferredHighlighter: runtime.highlighter,
-			themeType:
-				resolvedTheme === "dark" ? ("dark" as const) : ("light" as const),
-			diffStyle,
-			overflow: wrapLines ? ("wrap" as const) : ("scroll" as const),
-			diffIndicators: "bars" as const,
-			hunkSeparators: "line-info" as const,
-			disableFileHeader: true,
-			unsafeCSS: DIFF_SURFACE_CSS,
-		}),
-		[runtime, resolvedTheme, diffStyle, wrapLines],
+		() => ({ ...surface, disableFileHeader: true }),
+		[surface],
 	);
 
 	return (
 		<section
-			id={encodeFileId(file.path)}
+			id={diffFileAnchorId(file.path)}
 			aria-label={file.path}
 			className="overflow-clip rounded-lg border-[0.5px] border-card-border bg-main"
 		>
@@ -125,7 +113,7 @@ const DiffFileCard = memo(function DiffFileCard({
 					onViewedChange={() => undefined}
 				/>
 			</div>
-			{collapsed || !hasContent ? null : (
+			{collapsed || file.content !== "hunks" ? null : (
 				<FileDiff
 					fileDiff={file.fileDiff}
 					options={options}

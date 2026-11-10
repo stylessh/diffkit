@@ -37,6 +37,12 @@ export function createGitDiffSplitter() {
 	};
 }
 
+export function* splitGitDiff(text: string): Generator<string> {
+	const splitter = createGitDiffSplitter();
+	yield* splitter.push(text);
+	yield* splitter.finish();
+}
+
 export async function* readGitDiffFiles(
 	body: ReadableStream<Uint8Array>,
 	signal: AbortSignal,

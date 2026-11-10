@@ -7,15 +7,29 @@ import type { PullFile } from "#/lib/github.types";
 
 export type DiffFileStatus = "added" | "removed" | "modified" | "renamed";
 
-/** One file of a diff as the viewer and the file header see it. */
-export type DiffFile = {
+export type DiffFileContent = "hunks" | "pure-rename" | "none";
+
+/** What a file header shows; enough to draw one without the parsed diff. */
+export type DiffFileSummary = {
 	path: string;
 	previousPath: string | null;
 	status: DiffFileStatus;
 	additions: number;
 	deletions: number;
-	fileDiff: FileDiffMetadata;
+	content: DiffFileContent;
 };
+
+/** One file of a diff as the viewer sees it. */
+export type DiffFile = DiffFileSummary & { fileDiff: FileDiffMetadata };
+
+export function diffFileAnchorId(path: string): string {
+	return `diff-${path.replaceAll("/", "-").replaceAll(".", "-")}`;
+}
+
+function contentOf(fileDiff: FileDiffMetadata): DiffFileContent {
+	if (fileDiff.hunks.length > 0) return "hunks";
+	return fileDiff.type === "rename-pure" ? "pure-rename" : "none";
+}
 
 const STATUS_BY_CHANGE_TYPE: Record<ChangeTypes, DiffFileStatus> = {
 	new: "added",
@@ -41,6 +55,7 @@ export function toDiffFile(fileDiff: FileDiffMetadata): DiffFile {
 		status: STATUS_BY_CHANGE_TYPE[fileDiff.type],
 		additions,
 		deletions,
+		content: contentOf(fileDiff),
 		fileDiff,
 	};
 }

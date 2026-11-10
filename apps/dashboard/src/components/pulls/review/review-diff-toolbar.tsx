@@ -14,12 +14,13 @@ import { Switch } from "@diffkit/ui/components/switch";
 import { cn } from "@diffkit/ui/lib/utils";
 import { Link } from "@tanstack/react-router";
 import { type ReactNode, useId } from "react";
+import type { DiffStyle } from "#/lib/diffs/use-diff-options";
 import { formatRelativeTime } from "#/lib/format-relative-time";
 import type { PullCommit } from "#/lib/github.types";
 import { SplitDiffGlyph, UnifiedDiffGlyph } from "./review-icons";
 
+export type { DiffStyle };
 export type DiffView = "files" | "commits";
-export type DiffStyle = "unified" | "split";
 
 export function DiffToolbar({
 	view,
