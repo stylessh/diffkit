@@ -1,6 +1,5 @@
-import { FileIcon, GitCommitIcon } from "@diffkit/icons";
+import { GitCommitIcon } from "@diffkit/icons";
 import {
-	LineCounts,
 	PanelAddButton,
 	PanelGoButton,
 	PanelPill,
@@ -422,31 +421,17 @@ function ReviewersSection({
 					</PanelGoButton>
 				</div>
 			))}
-			{!hasReviewers ? (
-				isOpen ? (
-					<PanelPill asChild muted>
-						<button
-							type="button"
-							aria-haspopup="listbox"
-							aria-expanded={pickerOpen}
-							onMouseEnter={prefetchReviewers}
-							onClick={openPicker}
-						>
-							Request reviewers
-						</button>
-					</PanelPill>
-				) : (
-					<PanelPill muted>No reviewers</PanelPill>
-				)
-			) : isOpen ? (
+			{isOpen ? (
 				<PanelAddButton
-					aria-label="Add reviewer"
+					aria-label="Request reviewers"
 					aria-haspopup="listbox"
 					aria-expanded={pickerOpen}
 					onMouseEnter={prefetchReviewers}
 					onClick={openPicker}
 				/>
-			) : null}
+			) : hasReviewers ? null : (
+				<PanelPill muted>No reviewers</PanelPill>
+			)}
 		</>
 	);
 
@@ -568,12 +553,6 @@ function PullPropertiesSection({
 				icon={<StateIcon size={14} strokeWidth={2} className={state.color} />}
 			>
 				{state.label}
-			</PanelRow>
-			<PanelRow muted icon={<FileIcon size={14} strokeWidth={2} />}>
-				<span className="tabular-nums">
-					{pr.changedFiles} {pr.changedFiles === 1 ? "file" : "files"}
-				</span>
-				<LineCounts additions={pr.additions} deletions={pr.deletions} />
 			</PanelRow>
 			<PanelRow muted icon={<GitCommitIcon size={14} strokeWidth={2} />}>
 				<span className="tabular-nums">

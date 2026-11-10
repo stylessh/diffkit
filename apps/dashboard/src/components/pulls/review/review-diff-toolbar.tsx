@@ -91,45 +91,6 @@ export function DiffToolbar({
 	);
 }
 
-/** Files or commits, as a compact segmented switch for the review page's tab row. */
-export function DiffViewSwitch({
-	view,
-	onViewChange,
-	fileCount,
-	commitCount,
-}: {
-	view: DiffView;
-	onViewChange: (view: DiffView) => void;
-	fileCount: number;
-	commitCount: number;
-}) {
-	const option = (id: DiffView, label: string, count: number) => (
-		<button
-			type="button"
-			aria-pressed={view === id}
-			onClick={() => onViewChange(id)}
-			className={cn(
-				"flex h-6 items-center gap-1.5 rounded-[5px] px-2 text-xs font-medium transition-colors",
-				view === id
-					? "bg-tab-selected text-foreground shadow-tab-selected"
-					: "text-muted-foreground hover:text-foreground",
-			)}
-		>
-			{label}
-			<span className="tabular-nums text-icon-faint">{count}</span>
-		</button>
-	);
-	return (
-		<fieldset
-			aria-label="Show"
-			className="m-0 flex h-7 min-w-0 items-center gap-0.5 rounded-md border-0 bg-group p-0.5"
-		>
-			{option("files", "Files", fileCount)}
-			{option("commits", "Commits", commitCount)}
-		</fieldset>
-	);
-}
-
 function DiffToolbarTab({
 	active,
 	onClick,

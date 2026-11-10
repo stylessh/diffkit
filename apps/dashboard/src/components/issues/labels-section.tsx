@@ -1,7 +1,6 @@
 import { PlusSignIcon } from "@diffkit/icons";
 import {
 	PanelAddButton,
-	PanelPill,
 	PanelSection,
 } from "@diffkit/ui/components/detail-layout";
 import { MenuRowEnd, menuRowClassName } from "@diffkit/ui/components/menu";
@@ -224,52 +223,38 @@ export function LabelsSection({
 				placeholder="Change labels…"
 				listRef={listRef}
 				anchor={
-					currentLabels.length > 0 ? (
-						<div className="flex flex-wrap items-center gap-1.5">
-							{currentLabels.map((label) => (
-								<button
-									key={label.name}
-									type="button"
-									aria-haspopup="listbox"
-									aria-expanded={pickerOpen}
-									onMouseEnter={prefetchLabels}
-									onClick={openPicker}
-									className="inline-flex h-6 max-w-full items-center gap-1.5 rounded-full bg-chip px-2 text-xs font-[450] text-text-header shadow-chip transition-colors hover:bg-row-hover"
-								>
-									<span
-										aria-hidden
-										className="flex size-2 shrink-0 items-center justify-center"
-									>
-										<span
-											className="size-1.5 rounded-full"
-											style={{ backgroundColor: `#${label.color}` }}
-										/>
-									</span>
-									<span className="truncate">{label.name}</span>
-								</button>
-							))}
-							<PanelAddButton
-								aria-label="Add label"
-								aria-haspopup="listbox"
-								aria-expanded={pickerOpen}
-								onMouseEnter={prefetchLabels}
-								onClick={openPicker}
-								className="ml-0"
-							/>
-						</div>
-					) : (
-						<PanelPill asChild muted>
+					<div className="flex flex-wrap items-center gap-1.5">
+						{currentLabels.map((label) => (
 							<button
+								key={label.name}
 								type="button"
 								aria-haspopup="listbox"
 								aria-expanded={pickerOpen}
 								onMouseEnter={prefetchLabels}
 								onClick={openPicker}
+								className="inline-flex h-6 max-w-full items-center gap-1.5 rounded-full bg-chip px-2 text-xs font-[450] text-text-header shadow-chip transition-colors hover:bg-row-hover"
 							>
-								Add labels
+								<span
+									aria-hidden
+									className="flex size-2 shrink-0 items-center justify-center"
+								>
+									<span
+										className="size-1.5 rounded-full"
+										style={{ backgroundColor: `#${label.color}` }}
+									/>
+								</span>
+								<span className="truncate">{label.name}</span>
 							</button>
-						</PanelPill>
-					)
+						))}
+						<PanelAddButton
+							aria-label="Add labels"
+							aria-haspopup="listbox"
+							aria-expanded={pickerOpen}
+							onMouseEnter={prefetchLabels}
+							onClick={openPicker}
+							className={currentLabels.length > 0 ? "ml-0" : undefined}
+						/>
+					</div>
 				}
 			>
 				{repoLabelsQuery.isLoading ? (

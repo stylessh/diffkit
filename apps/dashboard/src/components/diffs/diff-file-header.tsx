@@ -18,17 +18,40 @@ import { memo, useCallback, useState } from "react";
 import { FileTypeIcon } from "#/components/shared/file-type-icon";
 import type { DiffFile, DiffFileStatus } from "#/lib/diffs/diff-files";
 
+/** The virtualized code view sizes rows from this; it must equal `h-10`. */
+export const DIFF_FILE_HEADER_HEIGHT = 40;
+
 const CHANGE_LABEL: Partial<
 	Record<DiffFileStatus, { label: string; tone: string }>
 > = {
-	added: { label: "New", tone: "text-added" },
-	removed: { label: "Deleted", tone: "text-removed" },
-	renamed: { label: "Renamed", tone: "text-muted-foreground" },
+	added: { label: "New", tone: "bg-pill-ok text-pill-ok-text" },
+	removed: { label: "Deleted", tone: "bg-pill-blocked text-pill-blocked-text" },
+	renamed: { label: "Renamed", tone: "bg-pill-neutral text-muted-foreground" },
 };
 
 function splitPath(path: string) {
 	const at = path.lastIndexOf("/");
 	return { name: path.slice(at + 1), dir: path.slice(0, at + 1) };
+}
+
+function ChangeRatio({
+	additions,
+	deletions,
+}: {
+	additions: number;
+	deletions: number;
+}) {
+	const total = additions + deletions;
+	if (total === 0) return null;
+	return (
+		<span
+			aria-hidden
+			className="flex h-1 w-9 shrink-0 gap-px overflow-hidden rounded-full max-sm:hidden"
+		>
+			<span className="bg-added" style={{ flexGrow: additions }} />
+			<span className="bg-removed" style={{ flexGrow: deletions }} />
+		</span>
+	);
 }
 
 export const DiffFileHeader = memo(function DiffFileHeader({
@@ -37,12 +60,14 @@ export const DiffFileHeader = memo(function DiffFileHeader({
 	onToggleCollapse,
 	isViewed,
 	onViewedChange,
+	className,
 }: {
 	file: DiffFile;
 	isCollapsed: boolean;
 	onToggleCollapse: () => void;
 	isViewed?: boolean;
 	onViewedChange: (viewed: boolean) => void;
+	className?: string;
 }) {
 	const [copied, setCopied] = useState(false);
 	const { name, dir } = splitPath(file.path);
@@ -65,8 +90,9 @@ export const DiffFileHeader = memo(function DiffFileHeader({
 	return (
 		<div
 			className={cn(
-				"flex h-9 items-center gap-2 bg-surface-0 pr-2 pl-4 text-xs leading-4 font-[450] select-none",
-				!isCollapsed && "border-b-[0.5px] border-card-border",
+				"flex h-10 items-center gap-2 border-header-rule bg-main pr-2 pl-2 text-xs leading-4 font-[450] select-none",
+				!isCollapsed && "border-b-[0.5px]",
+				className,
 			)}
 		>
 			<button
@@ -77,41 +103,56 @@ export const DiffFileHeader = memo(function DiffFileHeader({
 					isCollapsed ? "Expand file contents" : "Collapse file contents"
 				}
 				title={isCollapsed ? "Expand file" : "Collapse file"}
-				className="relative flex shrink-0 items-center rounded-sm after:absolute after:-inset-1.5"
+				className="flex size-6 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-ghost-hover hover:text-foreground"
 			>
-				<FileTypeIcon path={file.path} />
+				<ChevronDownIcon
+					size={14}
+					strokeWidth={2}
+					className={cn(
+						"transition-transform duration-150",
+						isCollapsed && "-rotate-90",
+					)}
+				/>
 			</button>
+			<FileTypeIcon path={file.path} />
 
-			{moved ? (
-				<>
-					<span
-						className={cn(
-							"min-w-0 shrink truncate text-muted-foreground select-text",
-							moved.name !== name && "line-through",
-						)}
-					>
-						{moved.name !== name ? moved.name : moved.dir}
-					</span>
-					<span aria-hidden className="shrink-0 text-icon-faint">
-						→
-					</span>
-				</>
-			) : null}
-			<span
-				className={cn(
-					"max-w-[60%] shrink-0 truncate select-text",
-					file.status === "removed"
-						? "text-muted-foreground line-through"
-						: "text-foreground",
-				)}
-			>
-				{name}
-			</span>
-			<span className="min-w-0 truncate text-muted-foreground select-text max-sm:hidden">
-				{dir}
+			<span className="flex min-w-0 shrink items-center font-mono text-[12px] select-text">
+				{moved ? (
+					<>
+						<span
+							className={cn(
+								"min-w-0 shrink truncate text-muted-foreground",
+								moved.name !== name && "line-through",
+							)}
+						>
+							{moved.name !== name ? moved.name : moved.dir}
+						</span>
+						<span aria-hidden className="mx-1.5 shrink-0 text-icon-faint">
+							→
+						</span>
+					</>
+				) : null}
+				<span className="min-w-0 shrink-[99] truncate text-muted-foreground max-sm:hidden">
+					{dir}
+				</span>
+				<span
+					className={cn(
+						"min-w-0 truncate font-medium",
+						file.status === "removed"
+							? "text-muted-foreground line-through"
+							: "text-foreground",
+					)}
+				>
+					{name}
+				</span>
 			</span>
 			{change ? (
-				<span className={cn("shrink-0 font-medium", change.tone)}>
+				<span
+					className={cn(
+						"flex h-[18px] shrink-0 items-center rounded-full px-1.5 text-[11px] font-medium",
+						change.tone,
+					)}
+				>
 					{change.label}
 				</span>
 			) : null}
@@ -120,7 +161,7 @@ export const DiffFileHeader = memo(function DiffFileHeader({
 				onClick={copyPath}
 				aria-label={copied ? "Copied file path" : "Copy file path"}
 				title="Copy file path"
-				className="relative flex shrink-0 text-muted-foreground transition-colors after:absolute after:-inset-1.5 hover:text-foreground"
+				className="relative flex shrink-0 text-icon-faint transition-colors after:absolute after:-inset-1.5 hover:text-foreground"
 			>
 				{copied ? (
 					<CheckIcon size={12} strokeWidth={2.5} />
@@ -135,19 +176,38 @@ export const DiffFileHeader = memo(function DiffFileHeader({
 					{emptyLabel}
 				</span>
 			) : null}
+			<ChangeRatio additions={file.additions} deletions={file.deletions} />
 			<LineCounts
 				additions={file.additions}
 				deletions={file.deletions}
-				className="text-xs"
+				className="font-mono text-[11.5px]"
 			/>
 			{isViewed !== undefined ? (
-				<label className="ml-3 flex h-6 shrink-0 cursor-pointer items-center gap-2 rounded-md px-2 text-muted-foreground transition-colors hover:bg-ghost-hover hover:text-foreground">
+				<label
+					className={cn(
+						"relative ml-2 flex h-6 shrink-0 items-center gap-1.5 rounded-full pr-2.5 pl-1.5 font-medium transition-colors has-[:focus-visible]:outline-1 has-[:focus-visible]:outline-ring",
+						isViewed
+							? "bg-pill-ok text-pill-ok-text"
+							: "bg-chip text-muted-foreground shadow-chip hover:text-foreground",
+					)}
+				>
 					<input
 						type="checkbox"
 						checked={isViewed}
 						onChange={(e) => onViewedChange(e.target.checked)}
-						className="size-3.5 cursor-pointer accent-focus"
+						className="absolute inset-0 size-full cursor-pointer opacity-0"
 					/>
+					<span
+						aria-hidden
+						className={cn(
+							"flex size-3.5 items-center justify-center rounded-full",
+							isViewed
+								? "bg-pill-ok-text text-main"
+								: "border border-icon-faint",
+						)}
+					>
+						{isViewed ? <CheckIcon size={10} strokeWidth={3} /> : null}
+					</span>
 					<span className="max-sm:sr-only">Viewed</span>
 				</label>
 			) : null}

@@ -1,12 +1,20 @@
-import { CheckIcon, CommentIcon, EditIcon } from "@diffkit/icons";
+import { ArrowUpIcon, CheckIcon, CommentIcon, EditIcon } from "@diffkit/icons";
 import {
 	MarkdownEditor,
 	type MentionConfig,
 } from "@diffkit/ui/components/markdown-editor";
 import { toast } from "@diffkit/ui/components/sonner";
 import { Spinner } from "@diffkit/ui/components/spinner";
+import { cn } from "@diffkit/ui/lib/utils";
 import { useQueryClient } from "@tanstack/react-query";
-import { useEffect, useRef, useState } from "react";
+import {
+	type Dispatch,
+	type ReactNode,
+	type SetStateAction,
+	useEffect,
+	useRef,
+	useState,
+} from "react";
 import {
 	CommentBody,
 	EditedMark,
@@ -27,6 +35,104 @@ import {
 } from "#/lib/github-query-updates";
 import type { PendingComment } from "./review-types";
 
+const ANNOTATION_FRAME = "my-2.5 mr-4 ml-2 max-w-[46rem]";
+const CARD =
+	"rounded-lg border-[0.5px] border-border bg-card shadow-[var(--ln-main-shadow)]";
+const BODY_TEXT = "text-[15px] leading-6 text-text-strong";
+const GHOST_BUTTON =
+	"flex h-6 items-center gap-1.5 rounded-md px-2 text-xs font-medium text-text-header transition-colors hover:bg-ghost-hover disabled:pointer-events-none disabled:opacity-45";
+
+/**
+ * One row that grows with its text. The arrow or mod+Enter sends; Escape
+ * cancels, and so does leaving the field while `dismissOnBlur` holds.
+ */
+function AnnotationComposer({
+	value,
+	onChange,
+	placeholder,
+	submitLabel,
+	isSubmitting = false,
+	autoFocus = false,
+	dismissOnBlur = false,
+	onSubmit,
+	onCancel,
+	actions,
+	mentionConfig,
+	bare,
+}: {
+	value: string;
+	onChange: Dispatch<SetStateAction<string>>;
+	placeholder: string;
+	submitLabel: string;
+	isSubmitting?: boolean;
+	autoFocus?: boolean;
+	dismissOnBlur?: boolean;
+	onSubmit: () => void;
+	onCancel?: () => void;
+	actions?: ReactNode;
+	mentionConfig?: MentionConfig;
+	bare?: boolean;
+}) {
+	const textareaRef = useRef<HTMLTextAreaElement>(null);
+	const canSubmit = value.trim().length > 0 && !isSubmitting;
+
+	useEffect(() => {
+		const field = textareaRef.current;
+		if (!autoFocus || !field) return;
+		field.focus();
+		field.setSelectionRange(field.value.length, field.value.length);
+	}, [autoFocus]);
+
+	return (
+		// biome-ignore lint/a11y/noStaticElementInteractions: watches focus leaving the composer, not an interaction of its own
+		<div
+			onBlur={(event) => {
+				// Switching windows blurs the field too; that is not leaving it.
+				if (!dismissOnBlur || !document.hasFocus()) return;
+				if (event.currentTarget.contains(event.relatedTarget)) return;
+				onCancel?.();
+			}}
+		>
+			<MarkdownEditor
+				value={value}
+				onChange={onChange}
+				placeholder={placeholder}
+				compact
+				inline
+				mentions={mentionConfig}
+				textareaRef={textareaRef}
+				bare={bare}
+				onKeyDown={(event) => {
+					if (event.key === "Escape") onCancel?.();
+					if (event.key === "Enter" && (event.metaKey || event.ctrlKey)) {
+						event.preventDefault();
+						if (canSubmit) onSubmit();
+					}
+				}}
+				footer={
+					<>
+						{actions}
+						<button
+							type="button"
+							aria-label={submitLabel}
+							title={submitLabel}
+							onClick={onSubmit}
+							disabled={!canSubmit}
+							className="flex size-6 shrink-0 items-center justify-center rounded-full bg-composer-send text-text-header transition-colors enabled:hover:text-foreground disabled:text-muted-foreground"
+						>
+							{isSubmitting ? (
+								<Spinner size={12} />
+							) : (
+								<ArrowUpIcon size={14} strokeWidth={2} />
+							)}
+						</button>
+					</>
+				}
+			/>
+		</div>
+	);
+}
+
 export function InlineCommentForm({
 	isMultiLine,
 	startLine,
@@ -43,46 +149,24 @@ export function InlineCommentForm({
 	mentionConfig?: MentionConfig;
 }) {
 	const [body, setBody] = useState("");
-	const textareaRef = useRef<HTMLTextAreaElement>(null);
-
-	useEffect(() => {
-		textareaRef.current?.focus();
-	}, []);
 
 	return (
-		<div className="my-3 mr-4 flex flex-col gap-2 max-md:ml-3">
-			{isMultiLine && startLine != null && endLine != null && (
-				<div className="text-xs font-[450] text-muted-foreground">
-					Commenting on lines {startLine}–{endLine}
-				</div>
-			)}
-			<MarkdownEditor
+		<div className={ANNOTATION_FRAME}>
+			<AnnotationComposer
+				autoFocus
 				value={body}
 				onChange={setBody}
-				placeholder="Leave a comment..."
-				compact
-				mentions={mentionConfig}
-				textareaRef={textareaRef}
+				placeholder={
+					isMultiLine && startLine != null && endLine != null
+						? `Comment on lines ${startLine}–${endLine}...`
+						: "Leave a comment..."
+				}
+				submitLabel="Add comment"
+				dismissOnBlur={body.trim() === ""}
+				onSubmit={() => onSubmit(body.trim())}
+				onCancel={onCancel}
+				mentionConfig={mentionConfig}
 			/>
-			<div className="flex items-center justify-end gap-1.5">
-				<button
-					type="button"
-					onClick={onCancel}
-					className="h-7 rounded-md px-2.5 text-xs font-medium text-text-header transition-colors hover:bg-ghost-hover"
-				>
-					Cancel
-				</button>
-				<button
-					type="button"
-					onClick={() => {
-						if (body.trim()) onSubmit(body.trim());
-					}}
-					disabled={!body.trim()}
-					className="flex h-7 items-center gap-1.5 rounded-md bg-button px-3 text-xs font-medium text-foreground shadow-button transition-colors hover:bg-button-hover disabled:pointer-events-none disabled:opacity-45"
-				>
-					Add comment
-				</button>
-			</div>
 		</div>
 	);
 }
@@ -108,21 +192,21 @@ function ReviewCommentBubble({
 		commentId: comment.id,
 	});
 	return (
-		<div className="group/comment relative flex flex-col gap-1.5 px-4 py-3">
-			<div className="flex h-6 items-center">
+		<div className="group/comment relative flex flex-col gap-1.5 px-4 py-2.5">
+			<div className="flex h-[19px] items-center gap-[9px]">
 				{comment.author ? (
 					<img
 						src={comment.author.avatarUrl}
 						alt={comment.author.login}
-						className="size-[18px] rounded-full"
+						className="size-[18px] rounded-full ring-[0.5px] ring-chip-border"
 					/>
 				) : (
-					<div className="size-[18px] rounded-full bg-pill-neutral" />
+					<div className="size-[18px] rounded-full bg-group" />
 				)}
-				<span className="ml-[9px] text-[13px] font-medium text-foreground">
+				<span className="text-[13px] font-medium text-foreground">
 					{comment.author?.login ?? "Unknown"}
 				</span>
-				<span className="ml-2 text-[13px] font-[450] text-icon-faint">
+				<span className="-ml-0.5 text-[13px] font-[450] text-muted-foreground">
 					{formatRelativeTime(comment.createdAt)}
 				</span>
 				<EditedMark editedAt={comment.editedAt} />
@@ -147,7 +231,7 @@ function ReviewCommentBubble({
 					body={comment.body}
 					owner={owner}
 					repo={repo}
-					className="text-text-strong"
+					className={BODY_TEXT}
 				/>
 			</div>
 		</div>
@@ -172,17 +256,13 @@ export function ReviewCommentThread({
 	threadInfo?: { threadId: string; isResolved: boolean };
 }) {
 	const queryClient = useQueryClient();
-	const [replyStatus, setReplyStatus] = useState<"closed" | "open" | "sending">(
-		"closed",
-	);
-	const showReplyForm = replyStatus !== "closed";
-	const isSending = replyStatus === "sending";
 	const [replyBody, setReplyBody] = useState("");
+	const [isSending, setIsSending] = useState(false);
 	const [isResolving, setIsResolving] = useState(false);
 
 	const handleReply = async () => {
 		if (!replyBody.trim()) return;
-		setReplyStatus("sending");
+		setIsSending(true);
 		try {
 			const result = await replyToReviewComment({
 				data: {
@@ -195,17 +275,16 @@ export function ReviewCommentThread({
 			});
 			if (result) {
 				setReplyBody("");
-				setReplyStatus("closed");
 				void invalidateGitHubEntities(queryClient, null, [
 					pullEntityKey({ owner, repo, pullNumber }),
 				]);
 			} else {
 				toast.error("Failed to send reply");
-				setReplyStatus("open");
 			}
 		} catch {
 			toast.error("Failed to send reply");
-			setReplyStatus("open");
+		} finally {
+			setIsSending(false);
 		}
 	};
 
@@ -234,81 +313,55 @@ export function ReviewCommentThread({
 	};
 
 	return (
-		<div className="my-3 mr-4 divide-y-[0.5px] divide-card-border overflow-hidden rounded-lg border-[0.5px] border-card-border bg-surface-0 max-md:ml-3">
-			{threadInfo?.isResolved && (
-				<div className="flex h-9 items-center gap-1.5 px-4 text-xs font-medium text-pill-ok-text">
-					<CheckIcon size={12} strokeWidth={2} />
-					Resolved
-				</div>
+		<div
+			className={cn(
+				ANNOTATION_FRAME,
+				CARD,
+				"overflow-hidden has-[[data-thread-reply]_[data-keyboard-focus]]:shadow-[0_0_0_1px_var(--ln-focus),var(--ln-main-shadow)]",
 			)}
-			<ReviewCommentBubble
-				comment={comment}
-				owner={owner}
-				repo={repo}
-				pullNumber={pullNumber}
-				viewerLogin={viewerLogin}
-			/>
-			{replies?.map((reply) => (
+		>
+			<div className="py-1">
+				{threadInfo?.isResolved && (
+					<div className="flex px-4 pt-2.5">
+						<span className="inline-flex h-5 items-center gap-1 rounded-full bg-pill-ok px-2 text-[11px] font-medium text-pill-ok-text">
+							<CheckIcon size={11} strokeWidth={2.5} />
+							Resolved
+						</span>
+					</div>
+				)}
 				<ReviewCommentBubble
-					key={reply.id}
-					comment={reply}
+					comment={comment}
 					owner={owner}
 					repo={repo}
 					pullNumber={pullNumber}
 					viewerLogin={viewerLogin}
 				/>
-			))}
-			<div className="flex min-h-10 items-center gap-2 px-4 py-2">
-				{showReplyForm ? (
-					<div className="flex w-full flex-col gap-2">
-						<MarkdownEditor
-							value={replyBody}
-							onChange={setReplyBody}
-							placeholder="Write a reply..."
-							compact
-						/>
-						<div className="flex items-center justify-end gap-1.5">
-							<button
-								type="button"
-								onClick={() => {
-									setReplyStatus("closed");
-									setReplyBody("");
-								}}
-								className="h-7 rounded-md px-2.5 text-xs font-medium text-text-header transition-colors hover:bg-ghost-hover"
-							>
-								Cancel
-							</button>
-							<button
-								type="button"
-								onClick={() => void handleReply()}
-								disabled={!replyBody.trim() || isSending}
-								className="flex h-7 items-center gap-1.5 rounded-md bg-button px-3 text-xs font-medium text-foreground shadow-button transition-colors hover:bg-button-hover disabled:pointer-events-none disabled:opacity-45"
-							>
-								{isSending ? (
-									<Spinner className="size-3" />
-								) : (
-									<CommentIcon size={12} strokeWidth={2} />
-								)}
-								Reply
-							</button>
-						</div>
-					</div>
-				) : (
-					<>
-						<button
-							type="button"
-							onClick={() => setReplyStatus("open")}
-							className="-ml-2 flex h-6 items-center gap-1.5 rounded-md px-2 text-xs font-medium text-muted-foreground transition-colors hover:bg-ghost-hover hover:text-foreground"
-						>
-							<CommentIcon size={12} strokeWidth={2} />
-							Reply
-						</button>
-						{threadInfo && (
+				{replies?.map((reply) => (
+					<ReviewCommentBubble
+						key={reply.id}
+						comment={reply}
+						owner={owner}
+						repo={repo}
+						pullNumber={pullNumber}
+						viewerLogin={viewerLogin}
+					/>
+				))}
+			</div>
+			<div data-thread-reply className="border-t-[0.5px] border-border">
+				<AnnotationComposer
+					value={replyBody}
+					onChange={setReplyBody}
+					placeholder="Write a reply..."
+					submitLabel="Reply"
+					isSubmitting={isSending}
+					onSubmit={() => void handleReply()}
+					actions={
+						threadInfo ? (
 							<button
 								type="button"
 								onClick={() => void handleResolve()}
 								disabled={isResolving}
-								className="-mr-2 ml-auto flex h-6 items-center gap-1.5 rounded-md px-2 text-xs font-medium text-muted-foreground transition-colors hover:bg-ghost-hover hover:text-foreground disabled:opacity-45"
+								className={GHOST_BUTTON}
 							>
 								{isResolving ? (
 									<Spinner className="size-3" />
@@ -317,9 +370,10 @@ export function ReviewCommentThread({
 								)}
 								{threadInfo.isResolved ? "Unresolve" : "Resolve"}
 							</button>
-						)}
-					</>
-				)}
+						) : null
+					}
+					bare
+				/>
 			</div>
 		</div>
 	);
@@ -341,65 +395,52 @@ export function PendingCommentBubble({
 
 	if (isEditing) {
 		return (
-			<div className="my-3 mr-4 flex flex-col gap-2 max-md:ml-3">
-				<MarkdownEditor
+			<div className={ANNOTATION_FRAME}>
+				<AnnotationComposer
+					autoFocus
 					value={draft}
 					onChange={setDraft}
 					placeholder="Leave a comment..."
-					compact
-					mentions={mentionConfig}
+					submitLabel="Update comment"
+					dismissOnBlur={draft === comment.body}
+					onSubmit={() => {
+						onEdit(comment, draft.trim());
+						setIsEditing(false);
+					}}
+					onCancel={() => {
+						setDraft(comment.body);
+						setIsEditing(false);
+					}}
+					mentionConfig={mentionConfig}
 				/>
-				<div className="flex items-center justify-end gap-1.5">
-					<button
-						type="button"
-						onClick={() => {
-							setDraft(comment.body);
-							setIsEditing(false);
-						}}
-						className="h-7 rounded-md px-2.5 text-xs font-medium text-text-header transition-colors hover:bg-ghost-hover"
-					>
-						Cancel
-					</button>
-					<button
-						type="button"
-						onClick={() => {
-							if (draft.trim()) {
-								onEdit(comment, draft.trim());
-								setIsEditing(false);
-							}
-						}}
-						disabled={!draft.trim()}
-						className="flex h-7 items-center gap-1.5 rounded-md bg-button px-3 text-xs font-medium text-foreground shadow-button transition-colors hover:bg-button-hover disabled:pointer-events-none disabled:opacity-45"
-					>
-						Update
-					</button>
-				</div>
 			</div>
 		);
 	}
 
 	return (
-		<div className="my-3 mr-4 flex flex-col gap-1.5 rounded-lg border-[0.5px] border-dashed border-chip-border bg-surface-0 px-4 py-3 max-md:ml-3">
-			<div className="flex h-6 items-center gap-1.5">
-				<CommentIcon
-					size={12}
-					strokeWidth={2}
-					className="text-muted-foreground"
-				/>
-				<span className="text-xs font-medium text-muted-foreground">
+		<div
+			className={cn(ANNOTATION_FRAME, CARD, "flex flex-col gap-1.5 px-4 py-3")}
+		>
+			<div className="flex h-5 items-center gap-2">
+				<span className="inline-flex h-5 items-center gap-1 rounded-full bg-pill-warning px-2 text-[11px] font-medium text-pill-warning-text">
+					<CommentIcon size={11} strokeWidth={2} />
 					Pending
-					{isMultiLine ? ` · lines ${comment.startLine}–${comment.line}` : ""}
 				</span>
+				{isMultiLine ? (
+					<span className="text-xs font-[450] text-muted-foreground">
+						Lines {comment.startLine}–{comment.line}
+					</span>
+				) : null}
 				<button
 					type="button"
 					onClick={() => setIsEditing(true)}
 					aria-label="Edit pending comment"
-					className="-mr-1 ml-auto flex size-6 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-ghost-hover hover:text-foreground"
+					className="-mr-1.5 ml-auto flex size-6 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-ghost-hover hover:text-foreground"
 				>
 					<EditIcon size={12} strokeWidth={2} />
 				</button>
 			</div>
-			<AppMarkdown className="text-text-strong">{comment.body}</AppMarkdown>
+			<AppMarkdown className={BODY_TEXT}>{comment.body}</AppMarkdown>
 		</div>
 	);
 }
