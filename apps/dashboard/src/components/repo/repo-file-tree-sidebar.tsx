@@ -1,4 +1,3 @@
-import { Spinner } from "@diffkit/ui/components/spinner";
 import type {
 	FileTreeBatchOperation,
 	FileTree as FileTreeModel,
@@ -7,6 +6,7 @@ import type {
 import { FileTree, useFileTree } from "@pierre/trees/react";
 import { useNavigate, useRouter } from "@tanstack/react-router";
 import { memo, type ReactNode, useEffect, useRef } from "react";
+import { Skeleton, SkeletonBox } from "skullet/react";
 import {
 	refreshTreeRows,
 	TREE_ICONS,
@@ -18,6 +18,7 @@ import {
 	getExplorerPath,
 	subscribeExplorerPath,
 } from "#/lib/explorer-path-store";
+import { SAMPLE_TREE_ENTRIES } from "./repo-samples";
 import {
 	type ExplorerContext,
 	type ExplorerDirectories,
@@ -48,12 +49,7 @@ function ExplorerTree({ context }: { context: ExplorerContext }) {
 	switch (root?.status) {
 		case undefined:
 		case "loading":
-			return (
-				<TreeStatusRow>
-					<Spinner className="size-3" />
-					Loading…
-				</TreeStatusRow>
-			);
+			return <ExplorerTreeSkeleton />;
 		case "error":
 		case "missing":
 			return <TreeStatusRow>Couldn't load files</TreeStatusRow>;
@@ -69,6 +65,49 @@ function TreeStatusRow({ children }: { children: ReactNode }) {
 		</p>
 	);
 }
+
+function ExplorerTreeSkeleton() {
+	return (
+		<Skeleton loading label="Loading files">
+			{SAMPLE_TREE_ENTRIES.map((entry) => (
+				<div
+					key={entry.path}
+					className="flex items-center gap-1.5 pl-7 text-[13px] font-[450]"
+					style={{ height: TREE_ROW_HEIGHT }}
+				>
+					<SkeletonBox width={16} height={16} radius={4} className="shrink-0" />
+					<span className="truncate">{entry.name}</span>
+				</div>
+			))}
+		</Skeleton>
+	);
+}
+
+const LOADING_FOLDER_TITLE = "Loading folder";
+
+/**
+ * A folder that is still listing shows a skeleton bar in its decoration lane.
+ * The tree renders in a shadow root, so the bar is styled here, from the same
+ * theme tokens skullet draws with.
+ */
+const EXPLORER_TREE_CSS = `${TREE_UNSAFE_CSS}
+[data-item-section='decoration'] > span[title='${LOADING_FOLDER_TITLE}'] {
+	display: block;
+	width: 36px;
+	height: 8px;
+	border-radius: 4px;
+	background: var(--skullet-base);
+	animation: explorer-folder-loading 1.2s ease-in-out infinite;
+}
+@keyframes explorer-folder-loading {
+	50% { opacity: 0.45; }
+}
+@media (prefers-reduced-motion: reduce) {
+	[data-item-section='decoration'] > span[title='${LOADING_FOLDER_TITLE}'] {
+		animation: none;
+	}
+}
+`;
 
 type TreePath = { kind: "file" | "dir"; path: string };
 
@@ -165,7 +204,7 @@ function ExplorerFileTree({
 		const listing = directoriesRef.current.listing(toTreePath(item.path).path);
 		switch (listing?.status) {
 			case "loading":
-				return { text: "Loading…" };
+				return { text: "", title: LOADING_FOLDER_TITLE };
 			case "error":
 				return { text: "Couldn't load" };
 			default:
@@ -180,7 +219,7 @@ function ExplorerFileTree({
 		initialExpandedPaths: revealIds(current),
 		itemHeight: TREE_ROW_HEIGHT,
 		icons: TREE_ICONS,
-		unsafeCSS: TREE_UNSAFE_CSS,
+		unsafeCSS: EXPLORER_TREE_CSS,
 		renderRowDecoration,
 		onSelectionChange: (ids) => {
 			if (ids.length !== 1) return;

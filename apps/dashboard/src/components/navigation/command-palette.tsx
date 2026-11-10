@@ -15,7 +15,6 @@ import {
 } from "@diffkit/ui/components/dialog";
 import { Kbd } from "@diffkit/ui/components/menu";
 import { ScrollFade } from "@diffkit/ui/components/scroll-fade";
-import { Spinner } from "@diffkit/ui/components/spinner";
 import { cn } from "@diffkit/ui/lib/utils";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { getRouteApi, useRouter } from "@tanstack/react-router";
@@ -29,6 +28,7 @@ import {
 	useRef,
 	useState,
 } from "react";
+import { PickerSkeletonRows } from "#/components/shared/picker-skeleton-rows";
 import type { CommandItem } from "#/lib/command-palette/types";
 import {
 	cacheSearchResults,
@@ -275,7 +275,6 @@ export function CommandPalette() {
 							kinds={kinds}
 							active={activeKind}
 							onPick={pickKind}
-							searching={searching}
 						/>
 					) : null}
 					<CommandList
@@ -371,13 +370,11 @@ function KindBar({
 	kinds,
 	active,
 	onPick,
-	searching,
 }: {
 	count: number;
 	kinds: Map<string, number>;
 	active: string | null;
 	onPick: (kind: string | null) => void;
-	searching: boolean;
 }) {
 	const strip = useRef<HTMLDivElement>(null);
 	// biome-ignore lint/correctness/useExhaustiveDependencies: runs when the pick changes
@@ -404,9 +401,8 @@ function KindBar({
 	);
 	return (
 		<div className="flex items-center gap-2 pb-2 pl-5">
-			<span className="flex shrink-0 items-center gap-1.5 text-xs tabular-nums text-muted-foreground">
+			<span className="shrink-0 text-xs tabular-nums text-muted-foreground">
 				{count} {count === 1 ? "result" : "results"}
-				{searching ? <Spinner size={12} /> : null}
 			</span>
 			<ScrollFade
 				ref={strip}
@@ -423,9 +419,12 @@ function Empty({ search, searching }: { search: string; searching: boolean }) {
 	const query = search.trim();
 	if (searching) {
 		return (
-			<div className="flex items-center justify-center gap-2 py-10 text-xs text-muted-foreground">
-				<Spinner size={14} /> Searching GitHub…
-			</div>
+			<PickerSkeletonRows
+				label="Searching GitHub"
+				rows={5}
+				rowClassName="flex h-10 items-center gap-3 px-3 text-[13px]"
+				className="pt-2"
+			/>
 		);
 	}
 	return (

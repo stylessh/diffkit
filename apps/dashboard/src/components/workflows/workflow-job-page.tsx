@@ -5,7 +5,7 @@ import {
 	RefreshCwIcon,
 } from "@diffkit/icons";
 import { Spinner } from "@diffkit/ui/components/spinner";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { getRouteApi, Link } from "@tanstack/react-router";
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Skeleton } from "skullet/react";
@@ -20,7 +20,6 @@ import {
 	useIsSkeletonSample,
 } from "#/components/shared/skeleton-sample";
 import {
-	githubQueryKeys,
 	githubViewerQueryOptions,
 	githubWorkflowJobLogsQueryOptions,
 	githubWorkflowRunJobsQueryOptions,
@@ -40,8 +39,13 @@ import {
 	parseStepLogContent,
 	splitLogLines,
 } from "./graph/parse-step-log";
-import { StepLogContent } from "./graph/step-log-content";
+import {
+	StepLogContent,
+	type StepLogFetchStatus,
+	stepLogFetchStatus,
+} from "./graph/step-log-content";
 import { getStepHashId } from "./step-hash";
+import { useManualRefresh } from "./use-manual-refresh";
 import { WorkflowRunHeader } from "./workflow-run-header";
 import { WorkflowRunSidebar } from "./workflow-run-sidebar";
 import { SAMPLE_WORKFLOW_JOB, SAMPLE_WORKFLOW_RUN } from "./workflow-samples";
@@ -130,6 +134,8 @@ export function WorkflowJobPage() {
 	if (runQuery.error) throw runQuery.error;
 	const run = runQuery.data;
 	const jobs = jobsQuery.data ?? [];
+	const activeLogsQuery = isRunCompleted ? bundleQuery : logsQuery;
+	const isJobLoading = jobsQuery.isPending && !jobsQuery.data;
 
 	return (
 		<DetailPageLayout
@@ -144,43 +150,28 @@ export function WorkflowJobPage() {
 								pullRequestNumber={run.pullRequests[0]?.number ?? null}
 								scope={scope}
 							/>
-							<JobContainer
-								job={job}
-								isJobLoading={jobsQuery.isLoading}
-								rawLogs={logsQuery.data?.logs ?? null}
-								bundleStepLogs={bundleStepLogs}
-								notAvailable={
-									isRunCompleted
-										? bundleQuery.data?.notAvailable === true
-										: logsQuery.data?.notAvailable === true
-								}
-								isLogsLoading={
-									isRunCompleted ? bundleQuery.isLoading : logsQuery.isLoading
-								}
-								isLogsError={
-									isRunCompleted ? bundleQuery.isError : logsQuery.isError
-								}
-								isLogsFetching={
-									isRunCompleted ? bundleQuery.isFetching : logsQuery.isFetching
-								}
-								onRefresh={() => {
-									if (isRunCompleted) {
-										void bundleQuery.refetch();
-									} else {
-										void logsQuery.refetch();
-									}
-								}}
-								isRunCompleted={isRunCompleted}
-								owner={owner}
-								repo={repo}
-								runId={runIdNum}
-								jobId={jobIdNum}
-								scope={scope}
-							/>
+							<Skeleton loading={isJobLoading} label="Loading job">
+								{isJobLoading ? (
+									<SampleJobCard owner={owner} repo={repo} runId={runIdNum} />
+								) : job ? (
+									<JobCard
+										job={job}
+										rawLogs={logsQuery.data?.logs ?? null}
+										bundleStepLogs={bundleStepLogs}
+										logsFetchStatus={stepLogFetchStatus(activeLogsQuery)}
+										onRefresh={activeLogsQuery.refetch}
+										owner={owner}
+										repo={repo}
+										runId={runIdNum}
+									/>
+								) : (
+									<JobNotFound />
+								)}
+							</Skeleton>
 						</div>
 					) : (
-						<SkeletonSample>
-							<div className="flex flex-col gap-8">
+						<div className="flex flex-col gap-8">
+							<SkeletonSample>
 								<WorkflowRunHeader
 									owner={owner}
 									repo={repo}
@@ -188,25 +179,9 @@ export function WorkflowJobPage() {
 									pullRequestNumber={null}
 									scope={scope}
 								/>
-								<JobContainer
-									job={SAMPLE_WORKFLOW_JOB}
-									isJobLoading={false}
-									rawLogs={null}
-									bundleStepLogs={null}
-									notAvailable={false}
-									isLogsLoading={false}
-									isLogsError={false}
-									isLogsFetching={false}
-									onRefresh={() => {}}
-									isRunCompleted
-									owner={owner}
-									repo={repo}
-									runId={runIdNum}
-									jobId={jobIdNum}
-									scope={scope}
-								/>
-							</div>
-						</SkeletonSample>
+							</SkeletonSample>
+							<SampleJobCard owner={owner} repo={repo} runId={runIdNum} />
+						</div>
 					)}
 				</Skeleton>
 			}
@@ -224,99 +199,71 @@ export function WorkflowJobPage() {
 	);
 }
 
-function JobContainer({
-	job,
-	isJobLoading,
-	rawLogs,
-	bundleStepLogs,
-	notAvailable,
-	isLogsLoading,
-	isLogsError,
-	isLogsFetching,
-	onRefresh,
-	isRunCompleted,
+const refreshNothing = () => Promise.resolve();
+
+function SampleJobCard({
 	owner,
 	repo,
 	runId,
-	jobId,
-	scope,
 }: {
-	job: WorkflowRunJob | null;
-	isJobLoading: boolean;
-	rawLogs: string | null;
-	bundleStepLogs: Record<number, string> | null;
-	notAvailable: boolean;
-	isLogsLoading: boolean;
-	isLogsError: boolean;
-	isLogsFetching: boolean;
-	onRefresh: () => void;
-	isRunCompleted: boolean;
 	owner: string;
 	repo: string;
 	runId: number;
-	jobId: number;
-	scope: { userId: string };
 }) {
-	const queryClient = useQueryClient();
-	const handleInvalidateAll = useCallback(() => {
-		if (isRunCompleted) {
-			void queryClient.invalidateQueries({
-				queryKey: githubQueryKeys.actions.workflowRunLogsBundle(scope, {
-					owner,
-					repo,
-					runId,
-				}),
-			});
-		} else {
-			void queryClient.invalidateQueries({
-				queryKey: githubQueryKeys.actions.workflowJobLogs(scope, {
-					owner,
-					repo,
-					jobId,
-				}),
-			});
-		}
-		onRefresh();
-	}, [
-		queryClient,
-		scope,
-		owner,
-		repo,
-		runId,
-		jobId,
-		onRefresh,
-		isRunCompleted,
-	]);
+	return (
+		<SkeletonSample>
+			<JobCard
+				job={SAMPLE_WORKFLOW_JOB}
+				rawLogs={null}
+				bundleStepLogs={null}
+				logsFetchStatus="ready"
+				onRefresh={refreshNothing}
+				owner={owner}
+				repo={repo}
+				runId={runId}
+			/>
+		</SkeletonSample>
+	);
+}
 
+function JobNotFound() {
+	return (
+		<div className="overflow-hidden rounded-xl border-[0.5px] bg-surface-1">
+			<div className="flex items-center justify-center px-4 py-16 text-muted-foreground text-sm">
+				Job not found.
+			</div>
+		</div>
+	);
+}
+
+function JobCard({
+	job,
+	rawLogs,
+	bundleStepLogs,
+	logsFetchStatus,
+	onRefresh,
+	owner,
+	repo,
+	runId,
+}: {
+	job: WorkflowRunJob;
+	rawLogs: string | null;
+	bundleStepLogs: Record<number, string> | null;
+	logsFetchStatus: StepLogFetchStatus;
+	onRefresh: () => Promise<unknown>;
+	owner: string;
+	repo: string;
+	runId: number;
+}) {
+	const { refresh, isRefreshing } = useManualRefresh(onRefresh);
 	const logLines = useMemo(
 		() => (rawLogs ? splitLogLines(rawLogs) : null),
 		[rawLogs],
 	);
 
-	if (!job) {
-		return (
-			<div className="overflow-hidden rounded-xl border-[0.5px] bg-surface-1">
-				<div className="flex items-center justify-center px-4 py-16 text-muted-foreground text-sm">
-					{isJobLoading ? (
-						<>
-							<Spinner className="mr-2 size-4" />
-							Loading job…
-						</>
-					) : (
-						"Job not found."
-					)}
-				</div>
-			</div>
-		);
-	}
-
 	return (
 		<div className="overflow-hidden rounded-xl border-[0.5px] bg-surface-1">
-			<JobHeader
-				job={job}
-				isLogsFetching={isLogsFetching}
-				onRefresh={handleInvalidateAll}
-			/>
+			<JobHeader job={job} isRefreshing={isRefreshing} onRefresh={refresh} />
 			<div className="flex flex-col">
 				{job.steps.length === 0 ? (
 					<div className="px-4 py-6 text-muted-foreground text-xs">
@@ -329,9 +276,7 @@ function JobContainer({
 							step={step}
 							stepLogText={bundleStepLogs?.[step.number] ?? null}
 							logLines={logLines}
-							notAvailable={notAvailable}
-							isLogsLoading={isLogsLoading}
-							isLogsError={isLogsError}
+							logsFetchStatus={logsFetchStatus}
 						/>
 					))
 				)}
@@ -343,11 +288,11 @@ function JobContainer({
 
 function JobHeader({
 	job,
-	isLogsFetching,
+	isRefreshing,
 	onRefresh,
 }: {
 	job: WorkflowRunJob;
-	isLogsFetching: boolean;
+	isRefreshing: boolean;
 	onRefresh: () => void;
 }) {
 	return (
@@ -363,11 +308,11 @@ function JobHeader({
 				<button
 					type="button"
 					onClick={onRefresh}
-					disabled={isLogsFetching}
+					disabled={isRefreshing}
 					className="rounded-md p-1.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground disabled:opacity-50"
 					aria-label="Refresh logs"
 				>
-					{isLogsFetching ? (
+					{isRefreshing ? (
 						<Spinner className="size-3.5" />
 					) : (
 						<RefreshCwIcon size={14} strokeWidth={2} />
@@ -443,18 +388,14 @@ const JobStepRow = memo(function JobStepRow({
 	step,
 	stepLogText,
 	logLines,
-	notAvailable,
-	isLogsLoading,
-	isLogsError,
+	logsFetchStatus,
 }: {
 	step: WorkflowRunStep;
 	/** Authoritative per-step content from the run-level zip, when available. */
 	stepLogText: string | null;
 	/** Per-job text fallback (used when the bundle isn't available — typically in-progress runs). */
 	logLines: string[] | null;
-	notAvailable: boolean;
-	isLogsLoading: boolean;
-	isLogsError: boolean;
+	logsFetchStatus: StepLogFetchStatus;
 }) {
 	const isSample = useIsSkeletonSample();
 	const hashId = getStepHashId(step.name, step.number);
@@ -511,7 +452,6 @@ const JobStepRow = memo(function JobStepRow({
 		conclusion: step.conclusion,
 	});
 	const isStepLive = step.status !== "completed";
-	const hasLogs = entries.length > 0;
 
 	return (
 		<div
@@ -548,10 +488,7 @@ const JobStepRow = memo(function JobStepRow({
 					<StepLogContent
 						entries={entries}
 						totalLineCount={totalLineCount}
-						isLoading={isLogsLoading}
-						isError={isLogsError}
-						notAvailable={notAvailable}
-						hasLogs={hasLogs}
+						fetchStatus={logsFetchStatus}
 						isStepLive={isStepLive}
 						scrollable={false}
 					/>

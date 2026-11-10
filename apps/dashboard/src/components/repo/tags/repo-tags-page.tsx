@@ -1,7 +1,6 @@
 import { GitCommitIcon, PackageIcon, TagIcon } from "@diffkit/icons";
 import { Chip } from "@diffkit/ui/components/chip";
 import { GroupHeader } from "@diffkit/ui/components/group-header";
-import { Spinner } from "@diffkit/ui/components/spinner";
 import { cn } from "@diffkit/ui/lib/utils";
 import {
 	keepPreviousData,
@@ -158,6 +157,17 @@ export function RepoTagsPage({
 				)}
 			</Skeleton>
 
+			{tagsQuery.isFetchingNextPage ? (
+				<Skeleton loading label="Loading more tags">
+					<TagRows
+						tags={SAMPLE_TAGS}
+						owner={owner}
+						repo={repo}
+						releasesByTag={NO_RELEASES}
+					/>
+				</Skeleton>
+			) : null}
+
 			{tagsQuery.hasNextPage ? (
 				<div className="mt-6 flex justify-center">
 					<button
@@ -166,7 +176,6 @@ export function RepoTagsPage({
 						disabled={tagsQuery.isFetchingNextPage}
 						onClick={() => void tagsQuery.fetchNextPage()}
 					>
-						{tagsQuery.isFetchingNextPage ? <Spinner size={14} /> : null}
 						Load more tags
 					</button>
 				</div>
@@ -199,28 +208,52 @@ function TagList({
 				title="Tags"
 				count={totalCount}
 			/>
-			<ol
-				className="flex flex-col py-0.5 transition-opacity"
-				style={{ opacity: dimmed ? 0.6 : 1 }}
-			>
-				{tags.map((tag) => (
-					<li
-						key={tag.name}
-						style={{
-							contentVisibility: "auto",
-							containIntrinsicSize: "auto 44px",
-						}}
-					>
-						<TagRow
-							owner={owner}
-							repo={repo}
-							tag={tag}
-							release={releasesByTag.get(tag.name) ?? null}
-						/>
-					</li>
-				))}
-			</ol>
+			<TagRows
+				tags={tags}
+				owner={owner}
+				repo={repo}
+				releasesByTag={releasesByTag}
+				dimmed={dimmed}
+			/>
 		</section>
+	);
+}
+
+function TagRows({
+	tags,
+	owner,
+	repo,
+	releasesByTag,
+	dimmed = false,
+}: {
+	tags: RepoTagListItem[];
+	owner: string;
+	repo: string;
+	releasesByTag: ReadonlyMap<string, RepoRelease>;
+	dimmed?: boolean;
+}) {
+	return (
+		<ol
+			className="flex flex-col py-0.5 transition-opacity"
+			style={{ opacity: dimmed ? 0.6 : 1 }}
+		>
+			{tags.map((tag) => (
+				<li
+					key={tag.name}
+					style={{
+						contentVisibility: "auto",
+						containIntrinsicSize: "auto 44px",
+					}}
+				>
+					<TagRow
+						owner={owner}
+						repo={repo}
+						tag={tag}
+						release={releasesByTag.get(tag.name) ?? null}
+					/>
+				</li>
+			))}
+		</ol>
 	);
 }
 

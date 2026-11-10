@@ -19,6 +19,7 @@ import {
 	PanelPicker,
 	PanelPickerEmpty,
 } from "#/components/details/panel-picker";
+import { PickerSkeletonRows } from "#/components/shared/picker-skeleton-rows";
 
 export type PickerOption = {
 	key: string;
@@ -139,7 +140,10 @@ export function PropertyPicker({
 				}
 			>
 				{loading ? (
-					<PanelPickerEmpty>Loading…</PanelPickerEmpty>
+					<PickerSkeletonRows
+						label={`Loading ${label.toLowerCase()}`}
+						rowClassName={menuRowClassName}
+					/>
 				) : visible.length === 0 ? (
 					<PanelPickerEmpty>
 						{search.trim() ? `No match for “${search.trim()}”` : emptyLabel}

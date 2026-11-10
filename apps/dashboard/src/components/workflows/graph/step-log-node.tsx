@@ -1,6 +1,6 @@
 import { ExternalLinkIcon, RefreshCwIcon, XIcon } from "@diffkit/icons";
 import { Spinner } from "@diffkit/ui/components/spinner";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import {
 	Handle,
@@ -14,11 +14,9 @@ import {
 	CheckStateIcon,
 	getCheckState,
 } from "#/components/checks/check-state-icon";
-import {
-	githubQueryKeys,
-	githubWorkflowJobLogsQueryOptions,
-} from "#/lib/github.query";
+import { githubWorkflowJobLogsQueryOptions } from "#/lib/github.query";
 import { getStepHashId } from "../step-hash";
+import { useManualRefresh } from "../use-manual-refresh";
 import {
 	NODE_HANDLE_CLASS,
 	STEP_LOG_HEIGHT,
@@ -31,7 +29,7 @@ import {
 	extractStepLog,
 	type LogEntry,
 } from "./parse-step-log";
-import { StepLogContent } from "./step-log-content";
+import { StepLogContent, stepLogFetchStatus } from "./step-log-content";
 import { getStepLogNodeId, useStepLogActions } from "./step-log-context";
 import type { StepLogNodeData } from "./types";
 
@@ -40,7 +38,6 @@ export function StepLogNode({
 }: NodeProps<Node<StepLogNodeData, "stepLog">>) {
 	const { scope, owner, repo, runId } = useGraphConfig();
 	const { close } = useStepLogActions();
-	const queryClient = useQueryClient();
 	const isJobLive = data.jobStatus !== "completed";
 	const isStepLive = data.stepStatus !== "completed";
 
@@ -70,19 +67,8 @@ export function StepLogNode({
 	});
 
 	const nodeId = getStepLogNodeId(data.jobId, data.stepNumber);
-	const notAvailable = logsQuery.data?.notAvailable === true;
-	const hasLogs = entries.length > 0;
 	const isHovered = useIsNodeHovered(nodeId);
-
-	const handleRefresh = () => {
-		void queryClient.invalidateQueries({
-			queryKey: githubQueryKeys.actions.workflowJobLogs(scope, {
-				owner,
-				repo,
-				jobId: data.jobId,
-			}),
-		});
-	};
+	const { refresh, isRefreshing } = useManualRefresh(logsQuery.refetch);
 
 	const [size, setSize] = useState({
 		width: STEP_LOG_WIDTH,
@@ -158,12 +144,12 @@ export function StepLogNode({
 					</Link>
 					<button
 						type="button"
-						onClick={handleRefresh}
-						disabled={logsQuery.isFetching}
+						onClick={refresh}
+						disabled={isRefreshing}
 						className="rounded-md p-1 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground disabled:opacity-50"
 						aria-label="Refresh logs"
 					>
-						{logsQuery.isFetching ? (
+						{isRefreshing ? (
 							<Spinner className="size-3.5" />
 						) : (
 							<RefreshCwIcon size={13} strokeWidth={2} />
@@ -181,10 +167,7 @@ export function StepLogNode({
 				<StepLogContent
 					entries={entries}
 					totalLineCount={totalLineCount}
-					isLoading={logsQuery.isLoading}
-					isError={logsQuery.isError}
-					notAvailable={notAvailable}
-					hasLogs={hasLogs}
+					fetchStatus={stepLogFetchStatus(logsQuery)}
 					isStepLive={isStepLive}
 				/>
 			</div>

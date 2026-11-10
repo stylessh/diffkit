@@ -1,27 +1,17 @@
-import {
-	CheckIcon,
-	CloseIcon,
-	IssuesIcon,
-	PlusSignIcon,
-	SearchIcon,
-} from "@diffkit/icons";
+import { CloseIcon, IssuesIcon } from "@diffkit/icons";
 import { Button } from "@diffkit/ui/components/button";
 import {
 	MarkdownEditor,
 	type MentionCandidate,
 } from "@diffkit/ui/components/markdown-editor";
 import { PageHeaderTitle } from "@diffkit/ui/components/page-header";
-import {
-	Popover,
-	PopoverContent,
-	PopoverTrigger,
-} from "@diffkit/ui/components/popover";
 import { Spinner } from "@diffkit/ui/components/spinner";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { getRouteApi, Link, useRouter } from "@tanstack/react-router";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { DetailSidebar } from "#/components/details/detail-sidebar";
 import { RepoCrumb, RepoPageHeader } from "#/components/repo/repo-page-header";
+import { MentionSkeletonRows } from "#/components/shared/picker-skeleton-rows";
 import { createIssue } from "#/lib/github.functions";
 import {
 	type GitHubQueryScope,
@@ -34,6 +24,9 @@ import {
 	invalidateGitHubEntities,
 	issueEntityKey,
 } from "#/lib/github-query-updates";
+import { SidebarPicker, type SidebarPickerLeading } from "./sidebar-picker";
+
+const NO_COLLABORATORS: RepoCollaborator[] = [];
 
 const routeApi = getRouteApi("/_protected/$owner/$repo/issues/new");
 
@@ -103,9 +96,10 @@ function NewIssueForm({
 	const mentionConfig = useMemo(
 		() => ({
 			candidates: mentionCandidates,
-			isLoading: collaboratorsQuery.isLoading,
+			isLoading: collaboratorsQuery.isPending,
+			loadingPlaceholder: <MentionSkeletonRows />,
 		}),
-		[mentionCandidates, collaboratorsQuery.isLoading],
+		[mentionCandidates, collaboratorsQuery.isPending],
 	);
 
 	const toggleLabel = useCallback((label: GitHubLabel) => {
@@ -260,12 +254,11 @@ function NewIssueForm({
 					repoLabels={repoLabels}
 					selectedLabels={selectedLabels}
 					onToggleLabel={toggleLabel}
-					isLoading={labelsQuery.isLoading}
+					isLabelsLoading={labelsQuery.isPending}
+					collaborators={collaboratorsQuery.data ?? NO_COLLABORATORS}
 					selectedAssignees={selectedAssignees}
 					onToggleAssignee={toggleAssignee}
-					scope={scope}
-					owner={owner}
-					repo={repo}
+					isCollaboratorsLoading={collaboratorsQuery.isPending}
 				/>
 			</div>
 		</RepoPageHeader>
@@ -276,44 +269,47 @@ function NewIssueSidebar({
 	repoLabels,
 	selectedLabels,
 	onToggleLabel,
-	isLoading,
+	isLabelsLoading,
+	collaborators,
 	selectedAssignees,
 	onToggleAssignee,
-	scope,
-	owner,
-	repo,
+	isCollaboratorsLoading,
 }: {
 	repoLabels: GitHubLabel[];
 	selectedLabels: GitHubLabel[];
 	onToggleLabel: (label: GitHubLabel) => void;
-	isLoading: boolean;
+	isLabelsLoading: boolean;
+	collaborators: RepoCollaborator[];
 	selectedAssignees: RepoCollaborator[];
 	onToggleAssignee: (collaborator: RepoCollaborator) => void;
-	scope: GitHubQueryScope;
-	owner: string;
-	repo: string;
+	isCollaboratorsLoading: boolean;
 }) {
 	return (
 		<DetailSidebar>
 			<AssigneesSection
+				collaborators={collaborators}
 				selectedAssignees={selectedAssignees}
 				onToggleAssignee={onToggleAssignee}
-				scope={scope}
-				owner={owner}
-				repo={repo}
+				isLoading={isCollaboratorsLoading}
 			/>
-
-			<NewIssueLabelsPicker
+			<LabelsSection
 				repoLabels={repoLabels}
 				selectedLabels={selectedLabels}
 				onToggleLabel={onToggleLabel}
-				isLoading={isLoading}
+				isLoading={isLabelsLoading}
 			/>
 		</DetailSidebar>
 	);
 }
 
-function NewIssueLabelsPicker({
+const LABEL_LEADING: SidebarPickerLeading = { shape: "avatar", size: 12 };
+const ASSIGNEE_LEADING: SidebarPickerLeading = { shape: "avatar", size: 20 };
+
+const labelName = (label: GitHubLabel) => label.name;
+const collaboratorLogin = (collaborator: RepoCollaborator) =>
+	collaborator.login;
+
+function LabelsSection({
 	repoLabels,
 	selectedLabels,
 	onToggleLabel,
@@ -324,131 +320,30 @@ function NewIssueLabelsPicker({
 	onToggleLabel: (label: GitHubLabel) => void;
 	isLoading: boolean;
 }) {
-	const [pickerOpen, setPickerOpen] = useState(false);
-	const [search, setSearch] = useState("");
-	const [focusedIndex, setFocusedIndex] = useState(-1);
-	const listRef = useRef<HTMLDivElement>(null);
-
 	const selectedNames = useMemo(
-		() => new Set(selectedLabels.map((l) => l.name)),
+		() => new Set(selectedLabels.map(labelName)),
 		[selectedLabels],
 	);
 
-	const filtered = useMemo(() => {
-		if (!search) return repoLabels;
-		const q = search.toLowerCase();
-		return repoLabels.filter((l) => l.name.toLowerCase().includes(q));
-	}, [repoLabels, search]);
-
-	const scrollToFocused = useCallback((index: number) => {
-		const el = listRef.current?.querySelector(`[data-index="${index}"]`);
-		if (el) {
-			el.scrollIntoView({ block: "nearest" });
-		}
-	}, []);
-
-	const handleKeyDown = (e: React.KeyboardEvent) => {
-		if (filtered.length === 0) return;
-
-		if (e.key === "ArrowDown") {
-			e.preventDefault();
-			const next = focusedIndex < filtered.length - 1 ? focusedIndex + 1 : 0;
-			setFocusedIndex(next);
-			scrollToFocused(next);
-		} else if (e.key === "ArrowUp") {
-			e.preventDefault();
-			const next = focusedIndex > 0 ? focusedIndex - 1 : filtered.length - 1;
-			setFocusedIndex(next);
-			scrollToFocused(next);
-		} else if (e.key === "Enter") {
-			e.preventDefault();
-			if (focusedIndex >= 0 && focusedIndex < filtered.length) {
-				onToggleLabel(filtered[focusedIndex]);
-			}
-		}
-	};
-
 	return (
-		<div className="flex flex-col gap-2.5">
-			<div className="flex items-center justify-between">
-				<h3 className="text-[13px] font-[450] text-muted-foreground">Labels</h3>
-				<Popover
-					open={pickerOpen}
-					onOpenChange={(open) => {
-						setPickerOpen(open);
-						if (!open) {
-							setSearch("");
-							setFocusedIndex(-1);
-						}
-					}}
-				>
-					<PopoverTrigger asChild>
-						<button
-							type="button"
-							className="flex size-5 items-center justify-center rounded text-muted-foreground transition-colors hover:bg-ghost-hover hover:text-foreground"
-						>
-							<PlusSignIcon size={14} strokeWidth={2} />
-						</button>
-					</PopoverTrigger>
-					<PopoverContent align="end" className="w-64 p-0">
-						<div className="flex items-center gap-2 border-b-[0.5px] px-3 py-2">
-							<SearchIcon className="size-3.5 shrink-0 text-muted-foreground" />
-							<input
-								value={search}
-								onChange={(e) => {
-									setSearch(e.target.value);
-									setFocusedIndex(-1);
-								}}
-								onKeyDown={handleKeyDown}
-								placeholder="Search labels..."
-								className="w-full bg-transparent text-sm outline-none placeholder:text-muted-foreground"
-							/>
-						</div>
-						<div ref={listRef} className="max-h-64 overflow-y-auto py-1">
-							{isLoading ? (
-								<p className="px-3 py-4 text-center text-xs text-muted-foreground">
-									Loading…
-								</p>
-							) : filtered.length === 0 ? (
-								<p className="px-3 py-4 text-center text-xs text-muted-foreground">
-									{search ? "No labels found" : "No labels available"}
-								</p>
-							) : (
-								filtered.map((label, i) => {
-									const isSelected = selectedNames.has(label.name);
-									return (
-										<button
-											key={label.name}
-											type="button"
-											data-index={i}
-											onClick={() => onToggleLabel(label)}
-											onMouseEnter={() => setFocusedIndex(i)}
-											className={`flex w-full items-center gap-2 px-3 py-1.5 text-left text-sm transition-colors hover:bg-ghost-hover ${focusedIndex === i ? "bg-surface-1" : ""}`}
-										>
-											<span
-												className="size-3 shrink-0 rounded-full"
-												style={{
-													backgroundColor: `#${label.color}`,
-												}}
-											/>
-											<span className="min-w-0 flex-1 truncate">
-												{label.name}
-											</span>
-											{isSelected && (
-												<CheckIcon
-													size={14}
-													strokeWidth={2}
-													className="shrink-0 text-success"
-												/>
-											)}
-										</button>
-									);
-								})
-							)}
-						</div>
-					</PopoverContent>
-				</Popover>
-			</div>
+		<SidebarPicker
+			title="Labels"
+			placeholder="Search labels..."
+			items={repoLabels}
+			getName={labelName}
+			renderLeading={(label) => (
+				<span
+					className="size-3 shrink-0 rounded-full"
+					style={{ backgroundColor: `#${label.color}` }}
+				/>
+			)}
+			leading={LABEL_LEADING}
+			selectedNames={selectedNames}
+			onToggle={onToggleLabel}
+			loading={isLoading}
+			emptyLabel="No labels available"
+			noMatchLabel="No labels found"
+		>
 			{selectedLabels.length > 0 ? (
 				<div className="flex flex-wrap gap-1.5">
 					{selectedLabels.map((label) => (
@@ -477,168 +372,50 @@ function NewIssueLabelsPicker({
 			) : (
 				<p className="text-xs text-muted-foreground">No labels</p>
 			)}
-		</div>
+		</SidebarPicker>
 	);
 }
 
 function AssigneesSection({
+	collaborators,
 	selectedAssignees,
 	onToggleAssignee,
-	scope,
-	owner,
-	repo,
+	isLoading,
 }: {
+	collaborators: RepoCollaborator[];
 	selectedAssignees: RepoCollaborator[];
 	onToggleAssignee: (collaborator: RepoCollaborator) => void;
-	scope: GitHubQueryScope;
-	owner: string;
-	repo: string;
+	isLoading: boolean;
 }) {
-	const queryClient = useQueryClient();
-	const [pickerOpen, setPickerOpen] = useState(false);
-	const [search, setSearch] = useState("");
-	const [focusedIndex, setFocusedIndex] = useState(-1);
-	const listRef = useRef<HTMLDivElement>(null);
-
-	const collaboratorsOptions = githubRepoCollaboratorsQueryOptions(scope, {
-		owner,
-		repo,
-	});
-	const collaboratorsQuery = useQuery({
-		...collaboratorsOptions,
-		enabled: pickerOpen,
-	});
-
-	const prefetchCollaborators = useCallback(() => {
-		void queryClient.prefetchQuery(collaboratorsOptions);
-	}, [queryClient, collaboratorsOptions]);
-
-	const collaborators = collaboratorsQuery.data ?? [];
-
 	const selectedLogins = useMemo(
-		() => new Set(selectedAssignees.map((a) => a.login)),
+		() => new Set(selectedAssignees.map(collaboratorLogin)),
 		[selectedAssignees],
 	);
-
-	const filtered = useMemo(() => {
-		const users = collaborators.filter((c) => c.type !== "Bot");
-		if (!search) return users;
-		const q = search.toLowerCase();
-		return users.filter((c) => c.login.toLowerCase().includes(q));
-	}, [collaborators, search]);
-
-	const scrollToFocused = useCallback((index: number) => {
-		const el = listRef.current?.querySelector(`[data-index="${index}"]`);
-		if (el) {
-			el.scrollIntoView({ block: "nearest" });
-		}
-	}, []);
-
-	const handleKeyDown = (e: React.KeyboardEvent) => {
-		if (filtered.length === 0) return;
-
-		if (e.key === "ArrowDown") {
-			e.preventDefault();
-			const next = focusedIndex < filtered.length - 1 ? focusedIndex + 1 : 0;
-			setFocusedIndex(next);
-			scrollToFocused(next);
-		} else if (e.key === "ArrowUp") {
-			e.preventDefault();
-			const next = focusedIndex > 0 ? focusedIndex - 1 : filtered.length - 1;
-			setFocusedIndex(next);
-			scrollToFocused(next);
-		} else if (e.key === "Enter") {
-			e.preventDefault();
-			if (focusedIndex >= 0 && focusedIndex < filtered.length) {
-				onToggleAssignee(filtered[focusedIndex]);
-			}
-		}
-	};
+	const people = useMemo(
+		() => collaborators.filter((collaborator) => collaborator.type !== "Bot"),
+		[collaborators],
+	);
 
 	return (
-		<div className="flex flex-col gap-2.5">
-			<div className="flex items-center justify-between">
-				<h3 className="text-[13px] font-[450] text-muted-foreground">
-					Assignees
-				</h3>
-				<Popover
-					open={pickerOpen}
-					onOpenChange={(open) => {
-						setPickerOpen(open);
-						if (!open) {
-							setSearch("");
-							setFocusedIndex(-1);
-						}
-					}}
-				>
-					<PopoverTrigger asChild>
-						<button
-							type="button"
-							onMouseEnter={prefetchCollaborators}
-							onFocus={prefetchCollaborators}
-							className="flex size-5 items-center justify-center rounded text-muted-foreground transition-colors hover:bg-ghost-hover hover:text-foreground"
-						>
-							<PlusSignIcon size={14} strokeWidth={2} />
-						</button>
-					</PopoverTrigger>
-					<PopoverContent align="end" className="w-64 p-0">
-						<div className="flex items-center gap-2 border-b-[0.5px] px-3 py-2">
-							<SearchIcon className="size-3.5 shrink-0 text-muted-foreground" />
-							<input
-								value={search}
-								onChange={(e) => {
-									setSearch(e.target.value);
-									setFocusedIndex(-1);
-								}}
-								onKeyDown={handleKeyDown}
-								placeholder="Search people..."
-								className="w-full bg-transparent text-sm outline-none placeholder:text-muted-foreground"
-							/>
-						</div>
-						<div ref={listRef} className="max-h-64 overflow-y-auto py-1">
-							{collaboratorsQuery.isLoading ? (
-								<p className="px-3 py-4 text-center text-xs text-muted-foreground">
-									Loading…
-								</p>
-							) : filtered.length === 0 ? (
-								<p className="px-3 py-4 text-center text-xs text-muted-foreground">
-									{search ? "No people found" : "No collaborators available"}
-								</p>
-							) : (
-								filtered.map((collaborator, i) => {
-									const isSelected = selectedLogins.has(collaborator.login);
-									return (
-										<button
-											key={collaborator.login}
-											type="button"
-											data-index={i}
-											onClick={() => onToggleAssignee(collaborator)}
-											onMouseEnter={() => setFocusedIndex(i)}
-											className={`flex w-full items-center gap-2 px-3 py-1.5 text-left text-sm transition-colors hover:bg-ghost-hover ${focusedIndex === i ? "bg-surface-1" : ""}`}
-										>
-											<img
-												src={collaborator.avatarUrl}
-												alt={collaborator.login}
-												className="size-5 rounded-full ring-[0.5px] ring-chip-border"
-											/>
-											<span className="min-w-0 flex-1 truncate">
-												{collaborator.login}
-											</span>
-											{isSelected && (
-												<CheckIcon
-													size={14}
-													strokeWidth={2}
-													className="shrink-0 text-success"
-												/>
-											)}
-										</button>
-									);
-								})
-							)}
-						</div>
-					</PopoverContent>
-				</Popover>
-			</div>
+		<SidebarPicker
+			title="Assignees"
+			placeholder="Search people..."
+			items={people}
+			getName={collaboratorLogin}
+			renderLeading={(collaborator) => (
+				<img
+					src={collaborator.avatarUrl}
+					alt={collaborator.login}
+					className="size-5 rounded-full ring-[0.5px] ring-chip-border"
+				/>
+			)}
+			leading={ASSIGNEE_LEADING}
+			selectedNames={selectedLogins}
+			onToggle={onToggleAssignee}
+			loading={isLoading}
+			emptyLabel="No collaborators available"
+			noMatchLabel="No people found"
+		>
 			{selectedAssignees.length > 0 ? (
 				<div className="flex flex-col gap-2">
 					{selectedAssignees.map((assignee) => (
@@ -667,6 +444,6 @@ function AssigneesSection({
 			) : (
 				<p className="text-xs text-muted-foreground">No one assigned</p>
 			)}
-		</div>
+		</SidebarPicker>
 	);
 }

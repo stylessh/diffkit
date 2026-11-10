@@ -1,6 +1,5 @@
 import { GitBranchIcon } from "@diffkit/icons";
 import { GroupHeader } from "@diffkit/ui/components/group-header";
-import { Spinner } from "@diffkit/ui/components/spinner";
 import {
 	keepPreviousData,
 	useInfiniteQuery,
@@ -303,6 +302,18 @@ export function RepoBranchesPage({
 				)}
 			</Skeleton>
 
+			{branchesQuery.isFetchingNextPage ? (
+				<Skeleton loading label="Loading more branches">
+					<SkeletonSample>
+						<div className="flex flex-col pb-0.5">
+							{SAMPLE_BRANCHES.map((branch) => (
+								<BranchRow key={branch.name} branch={branch} {...rowProps} />
+							))}
+						</div>
+					</SkeletonSample>
+				</Skeleton>
+			) : null}
+
 			<div className="mt-6 flex flex-col items-center gap-4">
 				{view !== "overview" ? (
 					<Pagination
@@ -327,7 +338,6 @@ export function RepoBranchesPage({
 							disabled={branchesQuery.isFetchingNextPage}
 							onClick={() => void branchesQuery.fetchNextPage()}
 						>
-							{branchesQuery.isFetchingNextPage ? <Spinner size={14} /> : null}
 							Load more branches
 						</button>
 					</div>

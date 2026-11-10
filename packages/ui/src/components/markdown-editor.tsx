@@ -19,7 +19,6 @@ import {
 	getCommentMediaUploadPlaceholderText,
 	replaceCommentMediaUploadPlaceholder,
 } from "./markdown-editor-upload";
-import { Spinner } from "./spinner";
 import { Tooltip, TooltipContent, TooltipTrigger } from "./tooltip";
 
 export type MentionCandidate = {
@@ -33,6 +32,8 @@ export type MentionConfig = {
 	candidates: MentionCandidate[];
 	onActivate?: () => void;
 	isLoading?: boolean;
+	/** Skeleton rows shown in the dropdown while candidates load. */
+	loadingPlaceholder?: React.ReactNode;
 };
 
 export type MarkdownEditorHandle = {
@@ -208,7 +209,9 @@ function useMentions(
 		filtered,
 		activeIndex,
 		dropdownPos,
-		isLoading: config?.isLoading ?? false,
+		emptyContent: config?.isLoading
+			? (config.loadingPlaceholder ?? null)
+			: NO_USERS_FOUND,
 		detectMention,
 		handleMentionKeyDown,
 		selectCandidate,
@@ -307,7 +310,7 @@ export const MarkdownEditor = forwardRef<
 		filtered,
 		activeIndex,
 		dropdownPos,
-		isLoading: mentionLoading,
+		emptyContent: mentionEmptyContent,
 		detectMention,
 		handleMentionKeyDown,
 		selectCandidate,
@@ -596,7 +599,7 @@ export const MarkdownEditor = forwardRef<
 						<MentionDropdown
 							activeIndex={activeIndex}
 							candidates={filtered}
-							isLoading={mentionLoading}
+							emptyContent={mentionEmptyContent}
 							onDismiss={dismissMention}
 							onSelect={selectCandidate}
 							position={dropdownPos}
@@ -644,17 +647,21 @@ export const MarkdownEditor = forwardRef<
 	);
 });
 
+const NO_USERS_FOUND = (
+	<div className="px-3 py-2 text-muted-foreground text-xs">No users found</div>
+);
+
 function MentionDropdown({
 	candidates,
 	activeIndex,
-	isLoading,
+	emptyContent,
 	position,
 	onSelect,
 	onDismiss,
 }: {
 	candidates: MentionCandidate[];
 	activeIndex: number;
-	isLoading: boolean;
+	emptyContent: React.ReactNode;
 	position: { top: number; left: number };
 	onSelect: (candidate: MentionCandidate) => void;
 	onDismiss: () => void;
@@ -680,7 +687,9 @@ function MentionDropdown({
 		return () => document.removeEventListener("mousedown", handleClick);
 	}, [onDismiss]);
 
-	const isEmpty = candidates.length === 0 && !isLoading;
+	if (candidates.length === 0 && emptyContent === null) {
+		return null;
+	}
 
 	return createPortal(
 		<div
@@ -688,16 +697,7 @@ function MentionDropdown({
 			ref={listRef}
 			style={{ top: position.top, left: position.left }}
 		>
-			{isLoading && candidates.length === 0 && (
-				<div className="flex items-center justify-center px-3 py-2">
-					<Spinner className="text-muted-foreground" size={14} />
-				</div>
-			)}
-			{isEmpty && (
-				<div className="px-3 py-2 text-muted-foreground text-xs">
-					No users found
-				</div>
-			)}
+			{candidates.length === 0 ? emptyContent : null}
 			{candidates.map((candidate, index) => (
 				<button
 					className={cn(

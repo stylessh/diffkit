@@ -38,7 +38,6 @@ import {
 	SelectTrigger,
 	SelectValue,
 } from "@diffkit/ui/components/select";
-import { Spinner } from "@diffkit/ui/components/spinner";
 import {
 	Tooltip,
 	TooltipContent,
@@ -57,6 +56,7 @@ import {
 	useEffect,
 	useRef,
 } from "react";
+import { Skeleton } from "skullet/react";
 import { formatRelativeTime } from "#/lib/format-relative-time";
 import type { NotificationItem } from "#/lib/github.types";
 import {
@@ -67,6 +67,7 @@ import {
 	parseSubjectRef,
 	reasonLabel,
 } from "#/lib/inbox";
+import { SAMPLE_INBOX_GROUP } from "./inbox-samples";
 
 type IconComponent = React.ComponentType<{
 	size?: number;
@@ -166,7 +167,9 @@ export type InboxListProps = {
 	onToggleGroup: (key: string) => void;
 	selectedId: string | null;
 	savedIds: ReadonlySet<string>;
-	isRefreshing: boolean;
+	isLoading?: boolean;
+	/** Unused: background refreshes are silent. Kept until the landing preview stops passing it. */
+	isRefreshing?: boolean;
 	onSelect: (item: NotificationItem) => void;
 	onMarkRead: (item: NotificationItem) => void;
 	onMarkDone: (item: NotificationItem) => void;
@@ -190,9 +193,6 @@ export function InboxList(props: InboxListProps) {
 			<PageHeader
 				actions={
 					<>
-						{props.isRefreshing ? (
-							<Spinner className="size-3 text-muted-foreground" />
-						) : null}
 						<InboxDisplayOptions
 							grouping={grouping}
 							onGroupingChange={props.onGroupingChange}
@@ -237,15 +237,25 @@ export function InboxList(props: InboxListProps) {
 				))}
 			</ViewTabs>
 			<div className="flex-1 overflow-y-auto">
-				{isEmpty ? (
-					<InboxEmpty filter={filter} />
-				) : (
-					<div className="flex flex-col gap-1 px-2 py-2">
-						{groups.map((group) => (
-							<InboxGroupSection key={group.key} group={group} {...props} />
-						))}
-					</div>
-				)}
+				<Skeleton loading={props.isLoading} label="Loading notifications">
+					{props.isLoading ? (
+						<div className="flex flex-col gap-1 px-2 py-2">
+							<InboxGroupSection
+								{...props}
+								group={SAMPLE_INBOX_GROUP}
+								grouping="none"
+							/>
+						</div>
+					) : isEmpty ? (
+						<InboxEmpty filter={filter} />
+					) : (
+						<div className="flex flex-col gap-1 px-2 py-2">
+							{groups.map((group) => (
+								<InboxGroupSection key={group.key} group={group} {...props} />
+							))}
+						</div>
+					)}
+				</Skeleton>
 			</div>
 		</aside>
 	);

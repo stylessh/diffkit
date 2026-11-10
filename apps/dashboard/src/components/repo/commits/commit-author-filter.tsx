@@ -14,6 +14,7 @@ import {
 import { cn } from "@diffkit/ui/lib/utils";
 import { useQuery } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
+import { PickerSkeletonRows } from "#/components/shared/picker-skeleton-rows";
 import {
 	type GitHubQueryScope,
 	githubRepoContributorsQueryOptions,
@@ -110,9 +111,9 @@ export function CommitAuthorFilter({
 				<Command>
 					<CommandInput placeholder="Find an author…" />
 					<CommandList>
-						<CommandEmpty>
-							{contributorsQuery.isLoading ? "Loading…" : "No authors found."}
-						</CommandEmpty>
+						{contributorsQuery.isPending ? null : (
+							<CommandEmpty>No authors found.</CommandEmpty>
+						)}
 						<CommandItem value="__all_authors__" onSelect={() => pick(null)}>
 							<CheckIcon
 								size={14}
@@ -145,6 +146,9 @@ export function CommitAuthorFilter({
 								</CommandItem>
 							);
 						})}
+						{contributorsQuery.isPending ? (
+							<PickerSkeletonRows label="Loading authors" leading="avatar" />
+						) : null}
 					</CommandList>
 				</Command>
 			</PopoverContent>
