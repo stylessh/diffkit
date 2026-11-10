@@ -10,6 +10,7 @@ import {
 	useListFilters,
 } from "#/components/filters";
 import { Pagination } from "#/components/pagination";
+import { PullBulkSelection } from "#/components/pulls/pull-bulk-selection";
 import { SAMPLE_PULLS } from "#/components/pulls/pull-list-samples";
 import {
 	GroupStacksToggle,
@@ -116,11 +117,13 @@ function RepoPullsPage() {
 									: "No pull requests yet."}
 							</ListEmpty>
 						) : null}
-						<StackedPullList
-							pulls={filtered}
-							allPulls={pulls}
-							groupStacks={groupStacks}
-						/>
+						<PullBulkSelection pulls={filtered} scope={scope}>
+							<StackedPullList
+								pulls={filtered}
+								allPulls={pulls}
+								groupStacks={groupStacks}
+							/>
+						</PullBulkSelection>
 					</div>
 				)}
 			</Skeleton>

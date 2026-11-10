@@ -8,6 +8,7 @@ import {
 	issueSortOptions,
 	useListFilters,
 } from "#/components/filters";
+import { IssueBulkSelection } from "#/components/issues/issue-bulk-selection";
 import { IssueRow } from "#/components/issues/issue-row";
 import { DashboardContentLoading } from "#/components/layouts/dashboard-content-loading";
 import { ListEmpty, ListGroup, ListPage } from "#/components/shared/list-page";
@@ -103,19 +104,24 @@ function IssuesPage() {
 							: "No issues right now."}
 					</ListEmpty>
 				) : null}
-				{groups.map((group) => (
-					<ListGroup
-						key={group.id}
-						id={group.id}
-						icon={group.icon}
-						title={group.title}
-						count={group.issues.length}
-					>
-						{group.issues.map((issue) => (
-							<IssueRow key={issue.id} issue={issue} />
-						))}
-					</ListGroup>
-				))}
+				<IssueBulkSelection
+					issues={groups.flatMap((group) => group.issues)}
+					scope={scope}
+				>
+					{groups.map((group) => (
+						<ListGroup
+							key={group.id}
+							id={group.id}
+							icon={group.icon}
+							title={group.title}
+							count={group.issues.length}
+						>
+							{group.issues.map((issue) => (
+								<IssueRow key={issue.id} issue={issue} />
+							))}
+						</ListGroup>
+					))}
+				</IssueBulkSelection>
 			</ListPage>
 		);
 	}

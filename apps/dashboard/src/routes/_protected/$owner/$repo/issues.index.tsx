@@ -9,6 +9,7 @@ import {
 	repoIssueFilterDefs,
 	useListFilters,
 } from "#/components/filters";
+import { IssueBulkSelection } from "#/components/issues/issue-bulk-selection";
 import { SAMPLE_ISSUES } from "#/components/issues/issue-list-samples";
 import { IssueRow } from "#/components/issues/issue-row";
 import { Pagination } from "#/components/pagination";
@@ -104,7 +105,9 @@ function RepoIssuesPage() {
 									: "No issues yet."}
 							</ListEmpty>
 						) : null}
-						<IssueList issues={filtered} />
+						<IssueBulkSelection issues={filtered} scope={scope}>
+							<IssueList issues={filtered} />
+						</IssueBulkSelection>
 					</div>
 				)}
 			</Skeleton>

@@ -15,6 +15,7 @@ import {
 	useListFilters,
 } from "#/components/filters";
 import { DashboardContentLoading } from "#/components/layouts/dashboard-content-loading";
+import { PullBulkSelection } from "#/components/pulls/pull-bulk-selection";
 import { PullRequestRow } from "#/components/pulls/pull-request-row";
 import { ListEmpty, ListGroup, ListPage } from "#/components/shared/list-page";
 import { githubMyPullsQueryOptions } from "#/lib/github.query";
@@ -127,19 +128,24 @@ function PullRequestsPage() {
 							: "No pull requests right now."}
 					</ListEmpty>
 				) : null}
-				{groups.map((group) => (
-					<ListGroup
-						key={group.id}
-						id={group.id}
-						icon={group.icon}
-						title={group.title}
-						count={group.pulls.length}
-					>
-						{group.pulls.map((pull) => (
-							<PullRequestRow key={pull.id} pr={pull} />
-						))}
-					</ListGroup>
-				))}
+				<PullBulkSelection
+					pulls={groups.flatMap((group) => group.pulls)}
+					scope={scope}
+				>
+					{groups.map((group) => (
+						<ListGroup
+							key={group.id}
+							id={group.id}
+							icon={group.icon}
+							title={group.title}
+							count={group.pulls.length}
+						>
+							{group.pulls.map((pull) => (
+								<PullRequestRow key={pull.id} pr={pull} />
+							))}
+						</ListGroup>
+					))}
+				</PullBulkSelection>
 			</ListPage>
 		);
 	}
