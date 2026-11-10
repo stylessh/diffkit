@@ -27,6 +27,9 @@ const COLD_ROUTE_ATTRIBUTE = "data-cold-route";
  * pending slot only lives until the route's chunk has loaded, and a hydrated
  * copy would fetch, animate and then be thrown away for the real page.
  *
+ * It is `inert` because nothing in it is wired up: text typed into a form here
+ * would be erased when the real page replaces it.
+ *
  * A page that cannot run in the worker (it or one of its imports reads
  * `window`, `document` or `HTMLElement` while loading or rendering) must opt
  * out with `pendingComponent: GenericRoutePending`, or every hard load logs a
@@ -60,6 +63,7 @@ function ServerColdRoute({ routeId }: { routeId: RouteId }) {
 		<div
 			{...{ [COLD_ROUTE_ATTRIBUTE]: routeId }}
 			className="pending-reveal h-full"
+			inert
 		>
 			<Suspense fallback={<DashboardContentLoading />}>
 				<ColdRoutePage routeId={routeId} />
@@ -143,6 +147,7 @@ function AdoptedColdRoute({ routeId }: { routeId: RouteId }) {
 		<div
 			{...{ [COLD_ROUTE_ATTRIBUTE]: routeId }}
 			className="pending-reveal h-full"
+			inert
 			style={reveal}
 			suppressHydrationWarning
 			// biome-ignore lint/security/noDangerouslySetInnerHtml: our own server render of this route, read back from the document
