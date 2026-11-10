@@ -20,19 +20,18 @@ import {
 import { RepoPageHeader } from "#/components/repo/repo-page-header";
 import { ListEmpty } from "#/components/shared/list-page";
 import { githubPullsFromRepoQueryOptions } from "#/lib/github.query";
-import { buildSeo, formatPageTitle } from "#/lib/seo";
+import { useGitHubQueryScope } from "#/lib/use-github-query-scope";
 import { useHasMounted } from "#/lib/use-has-mounted";
+import { privatePageSeo } from "#/routes/-private-page-seo";
 
 const PER_PAGE = 30;
 
 export const Route = createFileRoute("/_protected/$owner/$repo/pulls")({
 	ssr: false,
 	head: ({ match, params }) =>
-		buildSeo({
-			path: match.pathname,
-			title: formatPageTitle(`Pull requests · ${params.owner}/${params.repo}`),
+		privatePageSeo(match, {
+			title: `Pull requests · ${params.owner}/${params.repo}`,
 			description: `Pull requests for ${params.owner}/${params.repo}.`,
-			robots: "noindex",
 		}),
 	component: RepoPullsPage,
 });
@@ -47,9 +46,8 @@ function deriveApiState(statusValues: Set<string>): "open" | "closed" | "all" {
 }
 
 function RepoPullsPage() {
-	const { user } = Route.useRouteContext();
 	const { owner, repo } = Route.useParams();
-	const scope = { userId: user.id };
+	const scope = useGitHubQueryScope();
 	const hasMounted = useHasMounted();
 
 	const filterState = useListFilters({

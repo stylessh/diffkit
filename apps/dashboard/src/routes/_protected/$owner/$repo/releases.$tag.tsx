@@ -1,13 +1,12 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useMemo } from "react";
-import { DashboardContentLoading } from "#/components/layouts/dashboard-content-loading";
 import { RepoReleaseDetailPage } from "#/components/releases/repo-release-detail-page";
 import {
 	githubRepoOverviewQueryOptions,
 	githubRepoReleaseQueryOptions,
 	githubRepoViewerPermissionQueryOptions,
 } from "#/lib/github.query";
-import { buildSeo, formatPageTitle } from "#/lib/seo";
+import { useGitHubQueryScope } from "#/lib/use-github-query-scope";
+import { privatePageSeo } from "#/routes/-private-page-seo";
 
 export const Route = createFileRoute("/_protected/$owner/$repo/releases/$tag")({
 	ssr: false,
@@ -25,22 +24,16 @@ export const Route = createFileRoute("/_protected/$owner/$repo/releases/$tag")({
 		);
 	},
 	head: ({ match, params }) =>
-		buildSeo({
-			path: match.pathname,
-			title: formatPageTitle(
-				`Release ${params.tag} · ${params.owner}/${params.repo}`,
-			),
+		privatePageSeo(match, {
+			title: `Release ${params.tag} · ${params.owner}/${params.repo}`,
 			description: `Release ${params.tag} of ${params.owner}/${params.repo}.`,
-			robots: "noindex",
 		}),
-	pendingComponent: DashboardContentLoading,
 	component: RepoReleaseRoute,
 });
 
 function RepoReleaseRoute() {
-	const { user } = Route.useRouteContext();
 	const { owner, repo, tag } = Route.useParams();
-	const scope = useMemo(() => ({ userId: user.id }), [user.id]);
+	const scope = useGitHubQueryScope();
 	return (
 		<RepoReleaseDetailPage owner={owner} repo={repo} tag={tag} scope={scope} />
 	);

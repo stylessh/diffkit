@@ -1,8 +1,8 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useMemo } from "react";
 import { AccessSettings } from "#/components/repo/settings/access-settings";
 import { RepoSettingsGate } from "#/components/repo/settings/repo-settings-frame";
 import { githubRepoAccessQueryOptions } from "#/lib/github.query";
+import { useGitHubQueryScope } from "#/lib/use-github-query-scope";
 
 export const Route = createFileRoute(
 	"/_protected/$owner/$repo/settings/access",
@@ -20,9 +20,8 @@ export const Route = createFileRoute(
 });
 
 function AccessRoute() {
-	const { user } = Route.useRouteContext();
 	const { owner, repo } = Route.useParams();
-	const scope = useMemo(() => ({ userId: user.id }), [user.id]);
+	const scope = useGitHubQueryScope();
 	return (
 		<RepoSettingsGate owner={owner} repo={repo} scope={scope} need="administer">
 			<AccessSettings owner={owner} repo={repo} scope={scope} />

@@ -7,7 +7,7 @@ import {
 	githubWorkflowRunLogsBundleQueryOptions,
 	githubWorkflowRunQueryOptions,
 } from "#/lib/github.query";
-import { buildSeo, formatPageTitle } from "#/lib/seo";
+import { privatePageSeo } from "#/routes/-private-page-seo";
 
 export const Route = createFileRoute(
 	"/_protected/$owner/$repo/actions/runs/$runId_/job/$jobId",
@@ -52,13 +52,9 @@ export const Route = createFileRoute(
 		};
 	},
 	head: ({ match, params }) =>
-		buildSeo({
-			path: match.pathname,
-			title: formatPageTitle(
-				match.loaderData?.jobName ?? `Job #${params.jobId}`,
-			),
+		privatePageSeo(match, {
+			title: match.loaderData?.jobName ?? `Job #${params.jobId}`,
 			description: `Workflow job #${params.jobId} in ${params.owner}/${params.repo}.`,
-			robots: "noindex",
 		}),
 	component: WorkflowJobPage,
 });

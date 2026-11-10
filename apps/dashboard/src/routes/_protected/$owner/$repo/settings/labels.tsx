@@ -1,8 +1,8 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useMemo } from "react";
 import { LabelsSettings } from "#/components/repo/settings/labels-settings";
 import { RepoSettingsGate } from "#/components/repo/settings/repo-settings-frame";
 import { githubRepoLabelsQueryOptions } from "#/lib/github.query";
+import { useGitHubQueryScope } from "#/lib/use-github-query-scope";
 
 export const Route = createFileRoute(
 	"/_protected/$owner/$repo/settings/labels",
@@ -20,9 +20,8 @@ export const Route = createFileRoute(
 });
 
 function LabelsRoute() {
-	const { user } = Route.useRouteContext();
 	const { owner, repo } = Route.useParams();
-	const scope = useMemo(() => ({ userId: user.id }), [user.id]);
+	const scope = useGitHubQueryScope();
 	return (
 		<RepoSettingsGate
 			owner={owner}

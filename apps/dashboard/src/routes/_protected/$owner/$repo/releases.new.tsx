@@ -1,13 +1,12 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useMemo } from "react";
-import { DashboardContentLoading } from "#/components/layouts/dashboard-content-loading";
 import { ReleaseFormPage } from "#/components/releases/release-form-page";
 import {
 	githubRepoOverviewQueryOptions,
 	githubRepoRefNamesQueryOptions,
 	githubRepoViewerPermissionQueryOptions,
 } from "#/lib/github.query";
-import { buildSeo, formatPageTitle } from "#/lib/seo";
+import { useGitHubQueryScope } from "#/lib/use-github-query-scope";
+import { privatePageSeo } from "#/routes/-private-page-seo";
 
 type NewReleaseSearch = {
 	/** Prefill the tag, e.g. from the tags page "Create release" action. */
@@ -36,21 +35,17 @@ export const Route = createFileRoute("/_protected/$owner/$repo/releases/new")({
 		);
 	},
 	head: ({ match, params }) =>
-		buildSeo({
-			path: match.pathname,
-			title: formatPageTitle(`New release · ${params.owner}/${params.repo}`),
+		privatePageSeo(match, {
+			title: `New release · ${params.owner}/${params.repo}`,
 			description: `Draft a new release for ${params.owner}/${params.repo}.`,
-			robots: "noindex",
 		}),
-	pendingComponent: DashboardContentLoading,
 	component: NewReleaseRoute,
 });
 
 function NewReleaseRoute() {
-	const { user } = Route.useRouteContext();
 	const { owner, repo } = Route.useParams();
 	const { tag } = Route.useSearch();
-	const scope = useMemo(() => ({ userId: user.id }), [user.id]);
+	const scope = useGitHubQueryScope();
 	return (
 		<ReleaseFormPage owner={owner} repo={repo} scope={scope} initialTag={tag} />
 	);

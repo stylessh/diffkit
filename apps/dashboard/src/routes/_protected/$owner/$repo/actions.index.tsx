@@ -24,8 +24,9 @@ import {
 	githubWorkflowRunsFromRepoQueryOptions,
 } from "#/lib/github.query";
 import type { WorkflowRun } from "#/lib/github.types";
-import { buildSeo, formatPageTitle } from "#/lib/seo";
+import { useGitHubQueryScope } from "#/lib/use-github-query-scope";
 import { useHasMounted } from "#/lib/use-has-mounted";
+import { privatePageSeo } from "#/routes/-private-page-seo";
 
 const PER_PAGE = 30;
 
@@ -59,11 +60,9 @@ export const Route = createFileRoute("/_protected/$owner/$repo/actions/")({
 		void context.queryClient.prefetchQuery(githubViewerQueryOptions(scope));
 	},
 	head: ({ match, params }) =>
-		buildSeo({
-			path: match.pathname,
-			title: formatPageTitle(`Actions · ${params.owner}/${params.repo}`),
+		privatePageSeo(match, {
+			title: `Actions · ${params.owner}/${params.repo}`,
 			description: `Workflow runs for ${params.owner}/${params.repo}.`,
-			robots: "noindex",
 		}),
 	component: RepoActionsPage,
 });
@@ -97,9 +96,8 @@ function toFilterable(run: WorkflowRun, ownerRepo: string): RunFilterable {
 }
 
 function RepoActionsPage() {
-	const { user } = Route.useRouteContext();
 	const { owner, repo } = Route.useParams();
-	const scope = useMemo(() => ({ userId: user.id }), [user.id]);
+	const scope = useGitHubQueryScope();
 	const hasMounted = useHasMounted();
 	const ownerRepo = `${owner}/${repo}`;
 

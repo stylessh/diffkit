@@ -1,11 +1,11 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useMemo } from "react";
 import { ActionsSettings } from "#/components/repo/settings/actions-config-settings";
 import { RepoSettingsGate } from "#/components/repo/settings/repo-settings-frame";
 import {
 	githubRepoActionsSecretsQueryOptions,
 	githubRepoActionsVariablesQueryOptions,
 } from "#/lib/github.query";
+import { useGitHubQueryScope } from "#/lib/use-github-query-scope";
 
 export const Route = createFileRoute(
 	"/_protected/$owner/$repo/settings/actions",
@@ -24,9 +24,8 @@ export const Route = createFileRoute(
 });
 
 function ActionsRoute() {
-	const { user } = Route.useRouteContext();
 	const { owner, repo } = Route.useParams();
-	const scope = useMemo(() => ({ userId: user.id }), [user.id]);
+	const scope = useGitHubQueryScope();
 	return (
 		<RepoSettingsGate owner={owner} repo={repo} scope={scope} need="administer">
 			<ActionsSettings owner={owner} repo={repo} scope={scope} />

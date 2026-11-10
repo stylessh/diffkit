@@ -7,7 +7,7 @@ import {
 	githubWorkflowRunJobsQueryOptions,
 	githubWorkflowRunQueryOptions,
 } from "#/lib/github.query";
-import { buildSeo, formatPageTitle } from "#/lib/seo";
+import { privatePageSeo } from "#/routes/-private-page-seo";
 
 type WorkflowRunSearch = {
 	pr?: number;
@@ -64,13 +64,9 @@ export const Route = createFileRoute(
 		};
 	},
 	head: ({ match, params }) =>
-		buildSeo({
-			path: match.pathname,
-			title: formatPageTitle(
-				match.loaderData?.runTitle ?? `Workflow run #${params.runId}`,
-			),
+		privatePageSeo(match, {
+			title: match.loaderData?.runTitle ?? `Workflow run #${params.runId}`,
 			description: `Workflow run #${params.runId} in ${params.owner}/${params.repo}.`,
-			robots: "noindex",
 		}),
 	component: WorkflowRunPage,
 });

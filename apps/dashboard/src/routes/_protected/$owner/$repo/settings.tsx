@@ -1,12 +1,11 @@
 import { createFileRoute, Outlet } from "@tanstack/react-router";
-import { useMemo } from "react";
-import { DashboardContentLoading } from "#/components/layouts/dashboard-content-loading";
 import { RepoSettingsFrame } from "#/components/repo/settings/repo-settings-frame";
 import {
 	githubRepoOverviewQueryOptions,
 	githubRepoViewerPermissionQueryOptions,
 } from "#/lib/github.query";
-import { buildSeo, formatPageTitle } from "#/lib/seo";
+import { useGitHubQueryScope } from "#/lib/use-github-query-scope";
+import { privatePageSeo } from "#/routes/-private-page-seo";
 
 export const Route = createFileRoute("/_protected/$owner/$repo/settings")({
 	ssr: false,
@@ -21,20 +20,16 @@ export const Route = createFileRoute("/_protected/$owner/$repo/settings")({
 		);
 	},
 	head: ({ match, params }) =>
-		buildSeo({
-			path: match.pathname,
-			title: formatPageTitle(`Settings · ${params.owner}/${params.repo}`),
+		privatePageSeo(match, {
+			title: `Settings · ${params.owner}/${params.repo}`,
 			description: `Settings for ${params.owner}/${params.repo}.`,
-			robots: "noindex",
 		}),
-	pendingComponent: DashboardContentLoading,
 	component: RepoSettingsLayout,
 });
 
 function RepoSettingsLayout() {
-	const { user } = Route.useRouteContext();
 	const { owner, repo } = Route.useParams();
-	const scope = useMemo(() => ({ userId: user.id }), [user.id]);
+	const scope = useGitHubQueryScope();
 	return (
 		<RepoSettingsFrame owner={owner} repo={repo} scope={scope}>
 			<Outlet />

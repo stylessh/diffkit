@@ -1,6 +1,9 @@
 import { createRouter as createTanStackRouter } from "@tanstack/react-router";
 import { setupRouterSsrQueryIntegration } from "@tanstack/react-router-ssr-query";
-import { DashboardContentLoading } from "#/components/layouts/dashboard-content-loading";
+import {
+	discardServerRenderedPending,
+	RoutePending,
+} from "#/components/layouts/dashboard-content-loading";
 import { DashboardErrorScreen } from "#/components/layouts/dashboard-error-screen";
 import { NotFoundScreen } from "#/components/layouts/not-found-screen";
 import {
@@ -30,12 +33,12 @@ export function getRouter() {
 		// Exception: during hydration the router force-holds every match whose
 		// pending component was server-rendered (all `ssr: false` routes) for
 		// pendingMinMs, even when its data is already in the restored cache.
-		// The server-rendered spinner is invisible for its first 300 ms
+		// Server-rendered pending markup is invisible for its first 300 ms
 		// (`.pending-reveal`), so there is no flash to guard against; use 0 for
 		// the first load and switch to PENDING_MIN_MS once it resolves.
 		defaultPendingMs: 300,
 		defaultPendingMinMs: isBrowser ? 0 : PENDING_MIN_MS,
-		defaultPendingComponent: DashboardContentLoading,
+		defaultPendingComponent: RoutePending,
 		defaultErrorComponent: DashboardErrorScreen,
 		defaultNotFoundComponent: NotFoundScreen,
 		Wrap: ({ children }) => (
@@ -48,6 +51,7 @@ export function getRouter() {
 	if (isBrowser) {
 		const unsubscribe = router.subscribe("onResolved", () => {
 			router.options.defaultPendingMinMs = PENDING_MIN_MS;
+			discardServerRenderedPending();
 			unsubscribe();
 		});
 	}

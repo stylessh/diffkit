@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { CommitPage } from "#/components/repo/commit-page";
 import { githubRepoCommitQueryOptions } from "#/lib/github.query";
-import { buildSeo, formatPageTitle } from "#/lib/seo";
+import { privatePageSeo } from "#/routes/-private-page-seo";
 
 export const Route = createFileRoute("/_protected/$owner/$repo/commit/$sha")({
 	ssr: false,
@@ -14,13 +14,9 @@ export const Route = createFileRoute("/_protected/$owner/$repo/commit/$sha")({
 		return {};
 	},
 	head: ({ match, params }) =>
-		buildSeo({
-			path: match.pathname,
-			title: formatPageTitle(
-				`Commit ${params.sha.slice(0, 7)} · ${params.owner}/${params.repo}`,
-			),
+		privatePageSeo(match, {
+			title: `Commit ${params.sha.slice(0, 7)} · ${params.owner}/${params.repo}`,
 			description: `View commit ${params.sha} in ${params.owner}/${params.repo}.`,
-			robots: "noindex",
 		}),
 	component: CommitPage,
 });

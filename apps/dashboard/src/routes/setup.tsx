@@ -1,7 +1,8 @@
 import { Button } from "@diffkit/ui/components/button";
 import { Logo } from "@diffkit/ui/components/logo";
-import { Spinner } from "@diffkit/ui/components/spinner";
 import { createFileRoute, Link, redirect } from "@tanstack/react-router";
+import type { ReactNode } from "react";
+import { Skeleton, SkeletonBox } from "skullet/react";
 import { getSession } from "#/lib/auth.functions";
 import { getGitHubAppAccessState } from "#/lib/github.functions";
 import {
@@ -11,21 +12,35 @@ import {
 	getAccessHrefForOwner,
 } from "#/lib/github-access";
 import { clearProtectedRouteCachedAuth } from "#/lib/protected-auth-cache";
-import { buildSeo, formatPageTitle, PRIVATE_ROUTE_HEADERS } from "#/lib/seo";
+import { PRIVATE_ROUTE_HEADERS } from "#/lib/seo";
 import { useRefreshOnReturn } from "#/lib/use-refresh-on-return";
+import { privatePageSeo } from "#/routes/-private-page-seo";
 
-function SetupPageLoading() {
+const SAMPLE_ACCESS_STATE: GitHubAppAccessState = {
+	viewerLogin: "octocat",
+	appSlug: null,
+	appAuthorizationUrl: null,
+	publicInstallUrl: null,
+	installationsAvailable: false,
+	personalInstallation: null,
+	orgInstallations: [],
+	organizations: [{ id: -1, login: "sample-organization", avatarUrl: null }],
+	missingOrganizations: [],
+};
+
+function SetupPagePending() {
 	return (
-		<main className="isolate min-h-dvh bg-background">
-			<div className="flex min-h-dvh items-center justify-center">
-				<Spinner size={20} className="text-muted-foreground" />
-			</div>
-		</main>
+		<SetupFrame>
+			<Skeleton loading label="Loading GitHub access">
+				<SetupAccessList state={SAMPLE_ACCESS_STATE} />
+			</Skeleton>
+			<SkeletonBox width="100%" height={32} radius={8} />
+		</SetupFrame>
 	);
 }
 
 export const Route = createFileRoute("/setup")({
-	pendingComponent: SetupPageLoading,
+	pendingComponent: SetupPagePending,
 	beforeLoad: async () => {
 		clearProtectedRouteCachedAuth();
 		const session = await getSession();
@@ -41,11 +56,9 @@ export const Route = createFileRoute("/setup")({
 	},
 	headers: () => PRIVATE_ROUTE_HEADERS,
 	head: ({ match }) =>
-		buildSeo({
-			path: match.pathname,
-			title: formatPageTitle("Setup"),
+		privatePageSeo(match, {
+			title: "Setup",
 			description: "Configure GitHub access for DiffKit.",
-			robots: "noindex",
 		}),
 	component: SetupPage,
 });
@@ -70,6 +83,41 @@ function SetupPage() {
 			: (state?.publicInstallUrl ?? null);
 
 	return (
+		<SetupFrame>
+			{state ? (
+				<SetupAccessList state={state} />
+			) : (
+				<div className="rounded-xl border-[0.5px] border-border/70 px-4 py-10">
+					<p className="text-center text-sm text-muted-foreground">
+						Could not load installation status. Please authorize the app to
+						continue.
+					</p>
+				</div>
+			)}
+			<div className="flex flex-col gap-1.5">
+				{primaryHref ? (
+					<Button asChild size="default" className="w-full">
+						<a href={primaryHref}>
+							{needsAppAuthorization ? "Authorize app" : "Install on GitHub"}
+						</a>
+					</Button>
+				) : !state ? (
+					<Button asChild size="default" className="w-full">
+						<a href={buildGitHubAppAuthorizePath("/setup")}>Authorize app</a>
+					</Button>
+				) : null}
+				{hasInstallations ? (
+					<Button asChild variant="ghost" size="default" className="w-full">
+						<Link to="/">Go to dashboard</Link>
+					</Button>
+				) : null}
+			</div>
+		</SetupFrame>
+	);
+}
+
+function SetupFrame({ children }: { children: ReactNode }) {
+	return (
 		<main className="isolate min-h-dvh bg-background">
 			<div className="mx-auto flex min-h-dvh max-w-md flex-col items-center justify-center px-6 py-12">
 				<div className="flex w-full flex-col gap-8">
@@ -88,45 +136,7 @@ function SetupPage() {
 						</div>
 					</div>
 
-					<div className="flex w-full flex-col gap-4">
-						{state ? (
-							<SetupAccessList state={state} />
-						) : (
-							<div className="rounded-xl border-[0.5px] border-border/70 px-4 py-10">
-								<p className="text-center text-sm text-muted-foreground">
-									Could not load installation status. Please authorize the app
-									to continue.
-								</p>
-							</div>
-						)}
-						<div className="flex flex-col gap-1.5">
-							{primaryHref ? (
-								<Button asChild size="default" className="w-full">
-									<a href={primaryHref}>
-										{needsAppAuthorization
-											? "Authorize app"
-											: "Install on GitHub"}
-									</a>
-								</Button>
-							) : !state ? (
-								<Button asChild size="default" className="w-full">
-									<a href={buildGitHubAppAuthorizePath("/setup")}>
-										Authorize app
-									</a>
-								</Button>
-							) : null}
-							{hasInstallations ? (
-								<Button
-									asChild
-									variant="ghost"
-									size="default"
-									className="w-full"
-								>
-									<Link to="/">Go to dashboard</Link>
-								</Button>
-							) : null}
-						</div>
-					</div>
+					<div className="flex w-full flex-col gap-4">{children}</div>
 				</div>
 			</div>
 		</main>

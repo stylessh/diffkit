@@ -17,8 +17,9 @@ import {
 	rememberConfirmedAuth,
 	setProtectedRouteCachedAuth,
 } from "#/lib/protected-auth-cache";
-import { buildSeo, formatPageTitle, PRIVATE_ROUTE_HEADERS } from "#/lib/seo";
+import { PRIVATE_ROUTE_HEADERS } from "#/lib/seo";
 import { parseViewerHint } from "#/lib/viewer-hint";
+import { privatePageSeo } from "#/routes/-private-page-seo";
 
 const readRequestCookie = createIsomorphicFn()
 	.server(async () => {
@@ -48,12 +49,10 @@ export const Route = createFileRoute("/_protected")({
 	},
 	headers: () => PRIVATE_ROUTE_HEADERS,
 	head: ({ match }) => {
-		return buildSeo({
-			path: match.pathname,
-			title: formatPageTitle("Dashboard"),
+		return privatePageSeo(match, {
+			title: "Dashboard",
 			description:
 				"Private GitHub workspace for tracking pull requests, issues, and review requests.",
-			robots: "noindex",
 		});
 	},
 	component: ProtectedLayout,

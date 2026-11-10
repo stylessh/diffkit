@@ -1,11 +1,11 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useMemo } from "react";
 import { CodeSearchPage } from "#/components/repo/code/code-search-page";
 import {
 	githubRepoCodeSearchQueryOptions,
 	githubRepoOverviewQueryOptions,
 } from "#/lib/github.query";
-import { buildSeo, formatPageTitle } from "#/lib/seo";
+import { useGitHubQueryScope } from "#/lib/use-github-query-scope";
+import { privatePageSeo } from "#/routes/-private-page-seo";
 
 type CodeSearchParams = { q?: string; page?: number };
 
@@ -37,20 +37,17 @@ export const Route = createFileRoute("/_protected/$owner/$repo/search")({
 		}
 	},
 	head: ({ match, params }) =>
-		buildSeo({
-			path: match.pathname,
-			title: formatPageTitle(`Search code · ${params.owner}/${params.repo}`),
+		privatePageSeo(match, {
+			title: `Search code · ${params.owner}/${params.repo}`,
 			description: `Search code in ${params.owner}/${params.repo}.`,
-			robots: "noindex",
 		}),
 	component: CodeSearchRoute,
 });
 
 function CodeSearchRoute() {
-	const { user } = Route.useRouteContext();
 	const { owner, repo } = Route.useParams();
 	const { q, page } = Route.useSearch();
-	const scope = useMemo(() => ({ userId: user.id }), [user.id]);
+	const scope = useGitHubQueryScope();
 	return (
 		<CodeSearchPage
 			scope={scope}

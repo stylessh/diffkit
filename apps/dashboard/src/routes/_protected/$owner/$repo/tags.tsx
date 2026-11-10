@@ -1,12 +1,11 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useMemo } from "react";
-import { DashboardContentLoading } from "#/components/layouts/dashboard-content-loading";
 import { RepoTagsPage } from "#/components/repo/tags/repo-tags-page";
 import {
 	githubRepoOverviewQueryOptions,
 	githubRepoTagsListInfiniteQueryOptions,
 } from "#/lib/github.query";
-import { buildSeo, formatPageTitle } from "#/lib/seo";
+import { useGitHubQueryScope } from "#/lib/use-github-query-scope";
+import { privatePageSeo } from "#/routes/-private-page-seo";
 
 export const Route = createFileRoute("/_protected/$owner/$repo/tags")({
 	ssr: false,
@@ -24,19 +23,15 @@ export const Route = createFileRoute("/_protected/$owner/$repo/tags")({
 		);
 	},
 	head: ({ match, params }) =>
-		buildSeo({
-			path: match.pathname,
-			title: formatPageTitle(`Tags · ${params.owner}/${params.repo}`),
+		privatePageSeo(match, {
+			title: `Tags · ${params.owner}/${params.repo}`,
 			description: `Tags in ${params.owner}/${params.repo}.`,
-			robots: "noindex",
 		}),
-	pendingComponent: DashboardContentLoading,
 	component: RepoTagsRoute,
 });
 
 function RepoTagsRoute() {
-	const { user } = Route.useRouteContext();
 	const { owner, repo } = Route.useParams();
-	const scope = useMemo(() => ({ userId: user.id }), [user.id]);
+	const scope = useGitHubQueryScope();
 	return <RepoTagsPage owner={owner} repo={repo} scope={scope} />;
 }
