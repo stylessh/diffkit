@@ -17,21 +17,9 @@ import {
 } from "@diffkit/ui/components/popover";
 import { Spinner } from "@diffkit/ui/components/spinner";
 import { cn } from "@diffkit/ui/lib/utils";
-import { useState, useSyncExternalStore } from "react";
+import { useState } from "react";
 import type { ReviewEvent } from "./review-types";
-
-const MD_QUERY = "(min-width: 768px)";
-const mdSubscribe = (cb: () => void) => {
-	const mql = window.matchMedia(MD_QUERY);
-	mql.addEventListener("change", cb);
-	return () => mql.removeEventListener("change", cb);
-};
-const getMdSnapshot = () => window.matchMedia(MD_QUERY).matches;
-const getMdServerSnapshot = () => true;
-
-function useIsDesktop() {
-	return useSyncExternalStore(mdSubscribe, getMdSnapshot, getMdServerSnapshot);
-}
+import { useIsDesktop } from "./use-is-desktop";
 
 const reviewOptions: Array<{
 	value: ReviewEvent;

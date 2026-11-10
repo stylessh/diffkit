@@ -8,8 +8,13 @@ import {
 	parseGitDiffFile,
 	pullFileToDiffFile,
 } from "./diff-files";
-import { readGitDiffFiles } from "./git-diff-stream";
+import { readGitDiffFiles, splitGitDiff } from "./git-diff-stream";
 import { readRawDiff, writeRawDiff } from "./raw-diff-cache";
+import {
+	recallSettledDiff,
+	rememberSettledDiff,
+	type SettledDiff,
+} from "./settled-diffs";
 
 const WORK_BUDGET_MS = 8;
 const FIRST_PUBLISH_FILES = 12;
@@ -23,7 +28,9 @@ export type PullDiffFiles =
 	| { phase: "complete"; files: readonly DiffFile[] }
 	| { phase: "error"; error: Error };
 
-type StreamState = PullDiffFiles | { phase: "too-large" };
+type StreamState = PullDiffFiles | SettledDiff;
+
+const WAITING: StreamState = { phase: "waiting" };
 
 type PullDiffInput = {
 	owner: string;
@@ -45,7 +52,7 @@ function yieldToBrowser(): Promise<void> {
  * Feeds parsed files out in batches while staying inside a frame budget, so a
  * multi-megabyte diff never blocks scrolling while it streams in.
  */
-function createPublisher(publish: (files: DiffFile[], done: boolean) => void) {
+function createPublisher(publish: (files: DiffFile[]) => void) {
 	const files: DiffFile[] = [];
 	let published = 0;
 	let lastPublishAt = performance.now();
@@ -63,22 +70,15 @@ function createPublisher(publish: (files: DiffFile[], done: boolean) => void) {
 			if (pending >= batch || now - lastPublishAt >= interval) {
 				published = files.length;
 				lastPublishAt = now;
-				publish(files.slice(), false);
+				publish(files.slice());
 			}
 			if (now - lastYieldAt >= WORK_BUDGET_MS) {
 				await yieldToBrowser();
 				lastYieldAt = performance.now();
 			}
 		},
-		finish() {
-			publish(files.slice(), true);
-		},
+		all: () => files.slice(),
 	};
-}
-
-async function* splitCachedDiff(text: string): AsyncGenerator<string> {
-	const stream = new Blob([text]).stream();
-	yield* readGitDiffFiles(stream, new AbortController().signal);
 }
 
 async function loadStream(
@@ -88,11 +88,13 @@ async function loadStream(
 	signal: AbortSignal,
 	setState: (state: StreamState) => void,
 ) {
-	const publisher = createPublisher((files, done) => {
-		if (signal.aborted) return;
-		setState({ phase: done ? "complete" : "streaming", files });
+	const publisher = createPublisher((files) => {
+		if (!signal.aborted) setState({ phase: "streaming", files });
 	});
-	const ingest = async (texts: AsyncIterable<string>, keep?: string[]) => {
+	const ingest = async (
+		texts: Iterable<string> | AsyncIterable<string>,
+		keep?: string[],
+	) => {
 		for await (const text of texts) {
 			if (signal.aborted) return;
 			keep?.push(text);
@@ -100,11 +102,16 @@ async function loadStream(
 			if (file) await publisher.add(file);
 		}
 	};
+	const settle = (diff: SettledDiff, rawCharacters: number) => {
+		if (signal.aborted) return;
+		rememberSettledDiff(revision, diff, rawCharacters);
+		setState(diff);
+	};
 
 	const cached = await readRawDiff(scope.userId, revision);
 	if (cached !== null) {
-		await ingest(splitCachedDiff(cached));
-		publisher.finish();
+		await ingest(splitGitDiff(cached));
+		settle({ phase: "complete", files: publisher.all() }, cached.length);
 		return;
 	}
 
@@ -118,7 +125,7 @@ async function loadStream(
 		cache: "no-store",
 	});
 	if (response.status === 413) {
-		setState({ phase: "too-large" });
+		settle({ phase: "too-large" }, 0);
 		return;
 	}
 	if (!response.ok || !response.body) {
@@ -126,9 +133,9 @@ async function loadStream(
 	}
 	const texts: string[] = [];
 	await ingest(readGitDiffFiles(response.body, signal), texts);
-	if (signal.aborted) return;
-	publisher.finish();
-	void writeRawDiff(scope.userId, revision, texts.join(""));
+	const raw = texts.join("");
+	settle({ phase: "complete", files: publisher.all() }, raw.length);
+	if (!signal.aborted) void writeRawDiff(scope.userId, revision, raw);
 }
 
 const pagedFileCache = new WeakMap<PullFile, DiffFile | null>();
@@ -156,13 +163,14 @@ export function usePullDiffFiles(
 	const [stream, setStream] = useState<{
 		revision: string;
 		state: StreamState;
-	}>({ revision: "", state: { phase: "waiting" } });
+	}>({ revision: "", state: WAITING });
+	const settled = headSha ? recallSettledDiff(revision) : undefined;
 
 	useEffect(() => {
-		if (!headSha) return;
+		if (!headSha || recallSettledDiff(revision)) return;
 		const controller = new AbortController();
 		const setState = (state: StreamState) => setStream({ revision, state });
-		setState({ phase: "waiting" });
+		setState(WAITING);
 		loadStream(
 			scope,
 			{ owner, repo, pullNumber, headSha, baseRefName },
@@ -180,7 +188,7 @@ export function usePullDiffFiles(
 	}, [scope, owner, repo, pullNumber, headSha, baseRefName, revision]);
 
 	const streamState: StreamState =
-		stream.revision === revision ? stream.state : { phase: "waiting" };
+		settled ?? (stream.revision === revision ? stream.state : WAITING);
 	const usePages = streamState.phase === "too-large";
 
 	const pages = useInfiniteQuery({

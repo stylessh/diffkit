@@ -16,7 +16,11 @@ import { PageIconButton } from "@diffkit/ui/components/page-header";
 import { cn } from "@diffkit/ui/lib/utils";
 import { memo, useCallback, useState } from "react";
 import { FileTypeIcon } from "#/components/shared/file-type-icon";
-import type { DiffFile, DiffFileStatus } from "#/lib/diffs/diff-files";
+import type {
+	DiffFileContent,
+	DiffFileStatus,
+	DiffFileSummary,
+} from "#/lib/diffs/diff-files";
 
 /** The virtualized code view sizes rows from this; it must equal `h-10`. */
 export const DIFF_FILE_HEADER_HEIGHT = 40;
@@ -27,6 +31,12 @@ const CHANGE_LABEL: Partial<
 	added: { label: "New", tone: "bg-pill-ok text-pill-ok-text" },
 	removed: { label: "Deleted", tone: "bg-pill-blocked text-pill-blocked-text" },
 	renamed: { label: "Renamed", tone: "bg-pill-neutral text-muted-foreground" },
+};
+
+const EMPTY_CONTENT_LABEL: Record<DiffFileContent, string | null> = {
+	hunks: null,
+	"pure-rename": "No content changes",
+	none: "Binary or too large to display",
 };
 
 function splitPath(path: string) {
@@ -62,7 +72,7 @@ export const DiffFileHeader = memo(function DiffFileHeader({
 	onViewedChange,
 	className,
 }: {
-	file: DiffFile;
+	file: DiffFileSummary;
 	isCollapsed: boolean;
 	onToggleCollapse: () => void;
 	isViewed?: boolean;
@@ -73,12 +83,7 @@ export const DiffFileHeader = memo(function DiffFileHeader({
 	const { name, dir } = splitPath(file.path);
 	const moved = file.previousPath ? splitPath(file.previousPath) : null;
 	const change = CHANGE_LABEL[file.status];
-	const emptyLabel =
-		file.fileDiff.hunks.length > 0
-			? null
-			: file.fileDiff.type === "rename-pure"
-				? "No content changes"
-				: "Binary or too large to display";
+	const emptyLabel = EMPTY_CONTENT_LABEL[file.content];
 
 	const copyPath = useCallback(() => {
 		void navigator.clipboard.writeText(file.path).then(() => {
