@@ -82,7 +82,7 @@ function DetailLayout({
 				{mobileActions}
 			</MobileActionBar>
 			<Drawer open={panelOpen} onOpenChange={setPanelOpen}>
-				<DrawerContent>
+				<DrawerContent aria-describedby={undefined}>
 					<DrawerTitle className="sr-only">{panelLabel}</DrawerTitle>
 					<div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-5 pt-2 pb-6">
 						{panel}

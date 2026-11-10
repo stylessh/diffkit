@@ -75,7 +75,7 @@ export function MobileListActions({
 			</MobileActionBar>
 
 			<Drawer {...drawerProps("search")}>
-				<DrawerContent>
+				<DrawerContent aria-describedby={undefined}>
 					<DrawerHeading>Search</DrawerHeading>
 					<form
 						className="px-4 pb-5"
@@ -113,20 +113,19 @@ export function MobileListActions({
 			</Drawer>
 
 			<Drawer {...drawerProps("filter")}>
-				<DrawerContent>
+				<DrawerContent aria-describedby={undefined}>
 					<FilterDrawerBody state={state} options={options} onDone={close} />
 				</DrawerContent>
 			</Drawer>
 
 			<Drawer {...drawerProps("sort")}>
-				<DrawerContent>
+				<DrawerContent aria-describedby={undefined}>
 					<DrawerHeading>Sort by</DrawerHeading>
-					<div role="radiogroup" aria-label="Sort by" className="px-2 pb-4">
+					<div className="px-2 pb-4">
 						{state.sortOptions.map((option) => (
 							<DrawerRow
 								key={option.id}
-								role="radio"
-								aria-checked={option.id === currentSort?.id}
+								aria-pressed={option.id === currentSort?.id}
 								onClick={() => {
 									state.setSortId(option.id);
 									close();

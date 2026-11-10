@@ -94,7 +94,7 @@ export const WorkflowRunRow = memo(function WorkflowRunRow({
 				) : null}
 				<p className="flex min-w-0 items-center gap-1 text-xs text-muted-foreground md:hidden">
 					{workflowName !== run.displayTitle ? (
-						<span className="shrink-0">{workflowName}</span>
+						<span className="min-w-0 truncate">{workflowName}</span>
 					) : null}
 					<span className="shrink-0 tabular-nums">#{run.runNumber}</span>
 					{run.headBranch ? (
