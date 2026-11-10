@@ -16,7 +16,10 @@ import { createTestD1 } from "./testing/d1-sqlite";
 const NOW = 1_800_000_000_000;
 
 function setup() {
-	return createTestD1(["0006_github_change.sql"]);
+	return createTestD1([
+		"0006_github_change.sql",
+		"0008_github_change_latest.sql",
+	]);
 }
 
 const everything: GitHubChangeAccess = {
@@ -43,7 +46,7 @@ async function insert(
 
 describe("change cursor", () => {
 	it("round-trips and rejects garbage", () => {
-		const cursor = { id: 12345, at: NOW };
+		const cursor = { version: 12345, at: NOW };
 		expect(decodeChangeCursor(encodeChangeCursor(cursor))).toEqual(cursor);
 		expect(decodeChangeCursor("nope")).toBeNull();
 		expect(decodeChangeCursor("")).toBeNull();
@@ -82,6 +85,49 @@ describe("readGitHubChanges", () => {
 		expect(third.entities).toEqual([]);
 	});
 
+	it("keeps one row per entity and reports each new change to it once", async () => {
+		const { db, sqlite } = setup();
+		const start = await readGitHubChanges(db, {
+			since: null,
+			access: everything,
+			now: NOW,
+		});
+
+		for (const at of [NOW, NOW + 100, NOW + 200]) {
+			await insert(db, [["acme/api", "checks:acme/api@abc1234", false, at]]);
+		}
+		expect(
+			sqlite.prepare("SELECT COUNT(*) AS n FROM github_change").get(),
+		).toEqual({ n: 1 });
+
+		const first = await readGitHubChanges(db, {
+			since: decodeChangeCursor(start.cursor),
+			access: everything,
+			now: NOW + 1_000,
+		});
+		expect(first.entities).toEqual(["checks:acme/api@abc1234"]);
+
+		await insert(db, [["acme/api", "checks:acme/api@abc1234", false]]);
+		const second = await readGitHubChanges(db, {
+			since: decodeChangeCursor(first.cursor),
+			access: everything,
+			now: NOW + 2_000,
+		});
+		expect(second.entities).toEqual(["checks:acme/api@abc1234"]);
+	});
+
+	it("expires a cursor that is ahead of the table, such as one issued before a reset", async () => {
+		const { db } = setup();
+		await insert(db, [["acme/api", "pull:acme/api#1", true]]);
+		const result = await readGitHubChanges(db, {
+			since: { version: 1_400_000, at: NOW },
+			access: everything,
+			now: NOW,
+		});
+		expect(result.expired).toBe(true);
+		expect(decodeChangeCursor(result.cursor)).toEqual({ version: 1, at: NOW });
+	});
+
 	it("only returns private-repo changes the viewer can read", async () => {
 		const { db } = setup();
 		const readable = new Set(["acme/api"]);
@@ -96,7 +142,7 @@ describe("readGitHubChanges", () => {
 			["oss/lib", "issue:oss/lib#3", false],
 		]);
 		const result = await readGitHubChanges(db, {
-			since: { id: 0, at: NOW },
+			since: { version: 0, at: NOW },
 			access,
 			now: NOW,
 		});
@@ -114,7 +160,7 @@ describe("readGitHubChanges", () => {
 			["acme/web", "notifications", true],
 		]);
 		const result = await readGitHubChanges(db, {
-			since: { id: 0, at: NOW },
+			since: { version: 0, at: NOW },
 			access: { canRead: () => true, watched: new Set(["acme/api"]) },
 			now: NOW,
 		});
@@ -125,12 +171,12 @@ describe("readGitHubChanges", () => {
 		const { db } = setup();
 		await insert(db, [["acme/api", "pull:acme/api#1", true]]);
 		const result = await readGitHubChanges(db, {
-			since: { id: 0, at: NOW - GITHUB_CHANGE_RETENTION_MS },
+			since: { version: 0, at: NOW - GITHUB_CHANGE_RETENTION_MS },
 			access: everything,
 			now: NOW,
 		});
 		expect(result.expired).toBe(true);
-		expect(decodeChangeCursor(result.cursor)).toEqual({ id: 1, at: NOW });
+		expect(decodeChangeCursor(result.cursor)).toEqual({ version: 1, at: NOW });
 	});
 
 	it("reports overflow as expired instead of returning a huge page", async () => {
@@ -144,7 +190,7 @@ describe("readGitHubChanges", () => {
 			]),
 		);
 		const result = await readGitHubChanges(db, {
-			since: { id: 0, at: NOW },
+			since: { version: 0, at: NOW },
 			access: everything,
 			now: NOW,
 			limit: 3,
@@ -216,6 +262,34 @@ describe("sweepGitHubChanges", () => {
 		expect(remaining.map((row) => row.entity_key)).toEqual([
 			"pull:acme/api#999",
 		]);
+	});
+
+	it("keeps the newest row so versions never go backwards", async () => {
+		const { db } = setup();
+		const old = NOW - GITHUB_CHANGE_RETENTION_MS - 1;
+		await insert(db, [
+			["acme/api", "pull:acme/api#1", true, old],
+			["acme/api", "pull:acme/api#2", true, old],
+		]);
+		const before = await readGitHubChanges(db, {
+			since: null,
+			access: everything,
+			now: NOW,
+		});
+
+		const result = await sweepGitHubChanges(db, {
+			now: NOW,
+			sleep: async () => undefined,
+		});
+		expect(result.deleted).toBe(1);
+
+		await insert(db, [["acme/api", "pull:acme/api#3", true]]);
+		const after = await readGitHubChanges(db, {
+			since: decodeChangeCursor(before.cursor),
+			access: everything,
+			now: NOW + 1_000,
+		});
+		expect(after.entities).toEqual(["pull:acme/api#3"]);
 	});
 
 	it("stops after maxBatches and reports the sweep as incomplete", async () => {

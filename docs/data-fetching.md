@@ -118,11 +118,17 @@ queryClient.invalidateQueries(keysFor(entity))   → only active, affected
   intersects that with the user's installation repo access. The server already
   computes that access as `installationAccess`.
 - **Storage is bounded by design.**
-  - `github_change(id, repo, entity_key, changed_at)` with an index on
-    `(repo, id)`.
-  - Rows older than 15 minutes are useless, so a cron trigger deletes them in
-    batches.
-  - At the current ~50k deliveries a day, the table holds about 500 rows.
+  - `github_change(repo, entity_key, is_private, version, changed_at)` keeps
+    one row per entity, keyed by `(repo, entity_key)`, with an index on
+    `version`. A repeat change updates the row instead of adding one: CI sends
+    dozens of `check_run` and `workflow_job` deliveries per commit, and on
+    2026-11-10 94% of a log-style table repeated an entity already in the
+    window. D1 bills each indexed write as a row written, so an upsert costs
+    two rows where an insert plus its later delete cost six.
+  - Rows unchanged for 15 minutes are useless, so a cron trigger deletes them
+    in batches. It always keeps the newest row so `version` never goes
+    backwards.
+  - At ~1M deliveries a day the table holds about 1k rows.
   - A client that has been away longer than 15 minutes gets a "cursor expired"
     response and refetches its active queries on focus.
 - **Polling is kept only for things that change without a webhook we receive.**
@@ -217,9 +223,11 @@ incident:
   App: `GET /user/installations/{id}/repositories`, not the installation's
   "all repos" coverage. Cached per user for 60 s in memory and 10 min in KV
   (`change-access:v1:`, `expirationTtl`). OAuth-only repos refresh on focus.
-- **Cursor** is `<last id>.<issued at>`; `github_change.id` is
-  AUTOINCREMENT, so ids never go backwards when the table empties. A cursor
-  older than 14 minutes, or more than 2,000 rows behind, answers
+- **Cursor** is `<last version>.<issued at>`. Each write takes
+  `MAX(version)` plus its position inside the statement, and D1 runs one
+  statement at a time, so a later write always gets a higher version than
+  any read has seen. A cursor older than 14 minutes, more than 2,000 rows
+  behind, or ahead of the table (issued before a reset) answers
   `expired: true`. A D1 read failure answers "nothing changed" with the
   client's own cursor, so an outage can't trigger a refetch storm.
 - **Cadence.** 15 s while visible, plus focus and reconnect. SSE stays out:

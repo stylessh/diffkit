@@ -57,6 +57,13 @@
 			"when": 1794144023000,
 			"tag": "0007_drop_legacy_cache_tables",
 			"breakpoints": true
+		},
+		{
+			"idx": 8,
+			"version": "6",
+			"when": 1794285848599,
+			"tag": "0008_github_change_latest",
+			"breakpoints": true
 		}
 	]
 }

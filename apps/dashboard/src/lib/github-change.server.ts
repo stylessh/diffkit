@@ -1,10 +1,10 @@
 import type { GitHubRepoEntity } from "./github-change-entities";
 import { formatEntityKey, parseEntityKey } from "./github-change-entities";
 
-// Storage rules from the 2026-11-08 incident (docs/platform-plan.md): rows
-// expire after 15 minutes and the cron sweeper deletes them in throttled
-// batches; inserts run in waitUntil and are dropped on failure; read failures
-// degrade to "cursor expired", never to an error.
+// Storage rules from the 2026-11-08 incident (docs/platform-plan.md): one row
+// per entity, deleted by the cron sweeper once unchanged for 15 minutes; writes
+// run in waitUntil and are dropped on failure; read failures degrade to
+// "nothing changed", never to an error.
 
 export const GITHUB_CHANGE_RETENTION_MS = 15 * 60 * 1000;
 // Rows after a cursor older than this may already be swept.
@@ -27,6 +27,12 @@ export type GitHubChangeRow = {
 };
 
 const INSERT_ROWS_PER_STATEMENT = 20;
+// D1 runs one statement at a time, so a version taken inside the write is
+// above every version a finished read has seen. The row's position keeps
+// versions unique within a statement.
+function nextVersionSql(position: number) {
+	return `(SELECT COALESCE(MAX(version), 0) + ${position + 1} FROM github_change)`;
+}
 
 export function toGitHubChangeRows(
 	entities: GitHubRepoEntity[],
@@ -60,9 +66,11 @@ export async function recordGitHubChanges(
 		statements.push(
 			db
 				.prepare(
-					`INSERT INTO github_change (repo, entity_key, is_private, changed_at) VALUES ${chunk
-						.map(() => "(?, ?, ?, ?)")
-						.join(", ")}`,
+					`INSERT INTO github_change (repo, entity_key, is_private, version, changed_at) VALUES ${chunk
+						.map((_, position) => `(?, ?, ?, ${nextVersionSql(position)}, ?)`)
+						.join(
+							", ",
+						)} ON CONFLICT (repo, entity_key) DO UPDATE SET is_private = excluded.is_private, version = excluded.version, changed_at = MAX(changed_at, excluded.changed_at)`,
 				)
 				.bind(
 					...chunk.flatMap((row) => [
@@ -78,12 +86,12 @@ export async function recordGitHubChanges(
 }
 
 export type GitHubChangeCursor = {
-	id: number;
+	version: number;
 	at: number;
 };
 
 export function encodeChangeCursor(cursor: GitHubChangeCursor) {
-	return `${cursor.id.toString(36)}.${cursor.at.toString(36)}`;
+	return `${cursor.version.toString(36)}.${cursor.at.toString(36)}`;
 }
 
 export function decodeChangeCursor(
@@ -92,10 +100,10 @@ export function decodeChangeCursor(
 	if (!value) return null;
 	const match = /^([0-9a-z]{1,12})\.([0-9a-z]{1,12})$/.exec(value);
 	if (!match) return null;
-	const id = Number.parseInt(match[1], 36);
+	const version = Number.parseInt(match[1], 36);
 	const at = Number.parseInt(match[2], 36);
-	return Number.isSafeInteger(id) && Number.isSafeInteger(at)
-		? { id, at }
+	return Number.isSafeInteger(version) && Number.isSafeInteger(at)
+		? { version, at }
 		: null;
 }
 
@@ -125,17 +133,17 @@ export type GitHubChangesResult =
 	| { cursor: string; entities: []; expired: true };
 
 type ChangeRowRecord = {
-	id: number;
+	version: number;
 	repo: string;
 	entity_key: string;
 	is_private: number;
 };
 
-async function currentMaxId(db: D1Database) {
+async function currentVersion(db: D1Database) {
 	const row = await db
-		.prepare("SELECT COALESCE(MAX(id), 0) AS id FROM github_change")
-		.first<{ id: number }>();
-	return row?.id ?? 0;
+		.prepare("SELECT COALESCE(MAX(version), 0) AS version FROM github_change")
+		.first<{ version: number }>();
+	return row?.version ?? 0;
 }
 
 export async function readGitHubChanges(
@@ -153,7 +161,10 @@ export async function readGitHubChanges(
 	const cursorState = classifyCursor(options.since, now);
 
 	if (cursorState.kind !== "live") {
-		const cursor = encodeChangeCursor({ id: await currentMaxId(db), at: now });
+		const cursor = encodeChangeCursor({
+			version: await currentVersion(db),
+			at: now,
+		});
 		return cursorState.kind === "stale"
 			? { cursor, entities: [], expired: true }
 			: { cursor, entities: [], expired: false };
@@ -162,24 +173,39 @@ export async function readGitHubChanges(
 
 	const { results } = await db
 		.prepare(
-			"SELECT id, repo, entity_key, is_private FROM github_change WHERE id > ? ORDER BY id LIMIT ?",
+			"SELECT version, repo, entity_key, is_private FROM github_change WHERE version > ? ORDER BY version LIMIT ?",
 		)
-		.bind(since.id, limit + 1)
+		.bind(since.version, limit + 1)
 		.all<ChangeRowRecord>();
 
 	if (results.length > limit) {
-		const id = await currentMaxId(db);
 		return {
-			cursor: encodeChangeCursor({ id, at: now }),
+			cursor: encodeChangeCursor({
+				version: await currentVersion(db),
+				at: now,
+			}),
 			entities: [],
 			expired: true,
 		};
 	}
 
-	let lastId = since.id;
+	if (results.length === 0) {
+		// A cursor ahead of the table predates a reset (such as the 0008
+		// migration), so changes since then would be invisible to it.
+		const version = await currentVersion(db);
+		if (since.version > version) {
+			return {
+				cursor: encodeChangeCursor({ version, at: now }),
+				entities: [],
+				expired: true,
+			};
+		}
+	}
+
+	let lastVersion = since.version;
 	const entities = new Set<string>();
 	for (const row of results) {
-		lastId = Math.max(lastId, row.id);
+		lastVersion = Math.max(lastVersion, row.version);
 		if (!access.canRead(row.repo, row.is_private !== 0)) continue;
 		const parsed = parseEntityKey(row.entity_key);
 		if (!parsed) continue;
@@ -190,7 +216,7 @@ export async function readGitHubChanges(
 	}
 
 	return {
-		cursor: encodeChangeCursor({ id: lastId, at: now }),
+		cursor: encodeChangeCursor({ version: lastVersion, at: now }),
 		entities: [...entities],
 		expired: false,
 	};
@@ -224,7 +250,7 @@ export async function sweepGitHubChanges(
 		if (batches > 0) await sleep(pauseMs);
 		const result = await db
 			.prepare(
-				"DELETE FROM github_change WHERE id IN (SELECT id FROM github_change WHERE changed_at < ? ORDER BY id LIMIT ?)",
+				"DELETE FROM github_change WHERE rowid IN (SELECT rowid FROM github_change WHERE changed_at < ? AND version < (SELECT MAX(version) FROM github_change) ORDER BY version LIMIT ?)",
 			)
 			.bind(cutoff, batchSize)
 			.run();

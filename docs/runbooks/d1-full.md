@@ -49,8 +49,8 @@ pnpm exec wrangler d1 execute quickhub-db --remote --command \
 A `COUNT(*)` over tens of millions of rows is slow and counts toward D1's
 per-query limits, so run counts one table at a time.
 
-Expected steady state: `github_change` stays in the low thousands (15-minute
-retention).
+Expected steady state: `github_change` stays in the low thousands (one row
+per entity changed in the last 15 minutes).
 
 ## 2. Stop the growth
 
