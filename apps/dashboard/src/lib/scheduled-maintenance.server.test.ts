@@ -14,9 +14,12 @@ function quiet() {
 }
 
 describe("runScheduledMaintenance", () => {
-	it("sweeps expired rows, keeps fresh ones and logs one JSON line", async () => {
+	it("sweeps expired entities, keeps fresh ones and logs one JSON line", async () => {
 		const log = quiet();
-		const { db } = createTestD1(["0006_github_change.sql"]);
+		const { db } = createTestD1([
+			"0006_github_change.sql",
+			"0008_github_change_latest.sql",
+		]);
 		await recordGitHubChanges(db, [
 			{
 				repo: "a/b",
@@ -43,7 +46,7 @@ describe("runScheduledMaintenance", () => {
 		expect(summary).toMatchObject({
 			task: "scheduled-maintenance",
 			scheduledTime: NOW,
-			sweep: { deleted: 2, batches: 1, complete: true },
+			sweep: { deleted: 1, batches: 1, complete: true },
 			changeRows: 1,
 		});
 		expect(typeof summary.d1SizeBytes).toBe("number");
@@ -54,7 +57,10 @@ describe("runScheduledMaintenance", () => {
 	it("reports a failing task in the log line and never lets it stop the other", async () => {
 		quiet();
 		const failing = (pattern: string) => {
-			const { db } = createTestD1(["0006_github_change.sql"]);
+			const { db } = createTestD1([
+				"0006_github_change.sql",
+				"0008_github_change_latest.sql",
+			]);
 			const realPrepare = db.prepare.bind(db);
 			db.prepare = ((sql: string) => {
 				if (sql.includes(pattern)) throw new Error("D1_ERROR: unavailable");

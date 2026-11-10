@@ -19,7 +19,10 @@ function setup(
 		getReadableRepoSet?: ChangesRequestDeps["getReadableRepoSet"];
 	} = {},
 ) {
-	const { db } = createTestD1(["0006_github_change.sql"]);
+	const { db } = createTestD1([
+		"0006_github_change.sql",
+		"0008_github_change_latest.sql",
+	]);
 	const deps: ChangesRequestDeps = {
 		getSession: options.session ?? (async () => ({ user: { id: "viewer" } })),
 		getReadableRepoSet:
@@ -43,7 +46,7 @@ function setup(
 	return { db, deps, insert };
 }
 
-const cursor0 = encodeChangeCursor({ id: 0, at: NOW });
+const cursor0 = encodeChangeCursor({ version: 0, at: NOW });
 
 function get(query: string) {
 	return new Request(`https://diffkit.test/api/changes?${query}`);

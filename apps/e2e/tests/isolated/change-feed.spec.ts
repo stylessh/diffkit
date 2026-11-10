@@ -44,10 +44,23 @@ test("a signed webhook refreshes the affected list without a reload", async ({
 	expect(delivered.status).toBe(202);
 
 	// The feed polls every 15 s and on focus; focus keeps the test off the interval.
-	await expect(async () => {
-		await page.evaluate(() => window.dispatchEvent(new Event("focus")));
-		await expect(issue13Row(page, 3)).toBeVisible({ timeout: 1000 });
-	}).toPass({ timeout: 30_000 });
+	const refreshesTo = (comments: number) =>
+		expect(async () => {
+			await page.evaluate(() => window.dispatchEvent(new Event("focus")));
+			await expect(issue13Row(page, comments)).toBeVisible({ timeout: 1000 });
+		}).toPass({ timeout: 30_000 });
+	await refreshesTo(3);
+
+	// A second change to the same issue updates its feed row, which must still
+	// reach a client that already saw the first.
+	await emulator.rest(
+		"jun-park",
+		"POST",
+		"/repos/lumen-labs/beacon/issues/13/comments",
+		{ body: "Also on 2.0.0-rc.2." },
+	);
+	expect((await postWebhook("issue_comment", payload)).status).toBe(202);
+	await refreshesTo(4);
 
 	expect(
 		await page.evaluate(

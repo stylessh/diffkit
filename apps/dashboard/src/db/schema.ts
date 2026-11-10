@@ -80,27 +80,27 @@ export const userForbiddenOrg = sqliteTable(
 );
 
 /**
- * Change feed: one row per entity a GitHub webhook changed (see
- * docs/data-fetching.md, L2). Rows are only useful for 15 minutes; the cron
- * sweeper in scheduled-maintenance.server.ts deletes older ones, so the table stays at a few
- * hundred rows. `id` is AUTOINCREMENT so cursors stay monotonic even when the
- * table is empty.
+ * Change feed (docs/data-fetching.md, L2): the latest change of each entity a
+ * GitHub webhook touched. A repeat change updates the row and raises
+ * `version`, which is the cursor clients poll from. The cron sweeper deletes
+ * rows unchanged for 15 minutes but always keeps the newest, so `version`
+ * never goes backwards.
  */
 export const githubChange = sqliteTable(
 	"github_change",
 	{
-		id: integer("id").primaryKey({ autoIncrement: true }),
 		/** Lowercased `owner/repo`. */
 		repo: text("repo").notNull(),
 		entityKey: text("entity_key").notNull(),
 		isPrivate: integer("is_private", { mode: "boolean" })
 			.notNull()
 			.default(true),
+		version: integer("version").notNull(),
 		/** Epoch milliseconds. */
 		changedAt: integer("changed_at").notNull(),
 	},
 	(table) => [
-		index("github_change_repo_id_idx").on(table.repo, table.id),
-		index("github_change_changed_at_idx").on(table.changedAt),
+		primaryKey({ columns: [table.repo, table.entityKey] }),
+		index("github_change_version_idx").on(table.version),
 	],
 );
