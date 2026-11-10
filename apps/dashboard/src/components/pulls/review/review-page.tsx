@@ -1,12 +1,19 @@
-import { PanelLeftIcon } from "@diffkit/icons";
+import { LayoutAlignBottomIcon, TextWrapIcon } from "@diffkit/icons";
 import { LineCounts } from "@diffkit/ui/components/detail-layout";
 import {
 	Drawer,
 	DrawerContent,
+	DrawerNoDrag,
 	DrawerTitle,
 } from "@diffkit/ui/components/drawer";
 import type { MentionConfig } from "@diffkit/ui/components/markdown-editor";
-import { PageIconButton } from "@diffkit/ui/components/page-header";
+import {
+	MOBILE_ACTION_BAR_CLEARANCE,
+	MobileActionBar,
+	MobileActionButton,
+	MobileActionGroup,
+	mobilePrimaryActionClassName,
+} from "@diffkit/ui/components/mobile-action-bar";
 import {
 	ResizableHandle,
 	ResizablePanel,
@@ -261,7 +268,8 @@ export function ReviewPage() {
 
 	const [diffStyle, setDiffStyle] = useState<DiffStyle>("split");
 	const [diffView, setDiffView] = useState<DiffView>("files");
-	const [wrapLines, setWrapLines] = useState(false);
+	// Phones start wrapped: a long line otherwise scrolls the whole diff sideways.
+	const [wrapLines, setWrapLines] = useState(() => !getMdSnapshot());
 	const [pendingComments, setPendingComments] = useState<PendingComment[]>([]);
 	const [activeCommentForm, setActiveCommentForm] =
 		useState<ActiveCommentForm | null>(null);
@@ -567,15 +575,19 @@ export function ReviewPage() {
 						ref={diffPaneRef}
 						revision={diff.revision}
 						files={diffFiles.files}
-						diffStyle={diffStyle}
+						diffStyle={isDesktop ? diffStyle : "unified"}
 						wrapLines={wrapLines}
 						review={review}
 						onActiveFileChange={handleActiveFileChange}
 						footer={
-							diffFiles.phase === "streaming" ? (
-								<p className="px-4 py-3 text-xs font-[450] text-muted-foreground">
-									Loaded {diffFiles.files.length} of {prChangedFiles} files…
-								</p>
+							diffFiles.phase === "streaming" || !isDesktop ? (
+								<div className={MOBILE_ACTION_BAR_CLEARANCE}>
+									{diffFiles.phase === "streaming" ? (
+										<p className="px-4 py-3 text-xs font-[450] text-muted-foreground">
+											Loaded {diffFiles.files.length} of {prChangedFiles} files…
+										</p>
+									) : null}
+								</div>
 							) : undefined
 						}
 					/>
@@ -600,7 +612,6 @@ export function ReviewPage() {
 			pendingCount={pendingComments.length}
 			isSubmitting={isSubmitting}
 			onSubmitReview={handleSubmitReview}
-			onOpenChanges={() => setFileSheetOpen(true)}
 			isDesktop={isDesktop}
 		/>
 	);
@@ -626,15 +637,40 @@ export function ReviewPage() {
 
 	if (!isDesktop) {
 		return (
-			<div className="flex h-full min-h-0 flex-col">
+			<div className="relative flex h-full min-h-0 flex-col">
 				{toolbar}
 				<div className="min-h-0 flex-1 overflow-hidden border-t-[0.5px] border-header-rule">
 					{diffContent}
 				</div>
+				<MobileActionBar label="Review actions">
+					<MobileActionGroup>
+						<MobileActionButton
+							icon={<LayoutAlignBottomIcon size={15} strokeWidth={2} />}
+							count={prChangedFiles}
+							onClick={() => setFileSheetOpen(true)}
+						>
+							Files
+						</MobileActionButton>
+						<MobileActionButton
+							icon={<TextWrapIcon size={15} strokeWidth={2} />}
+							active={wrapLines}
+							aria-pressed={wrapLines}
+							onClick={() => setWrapLines((wrap) => !wrap)}
+						>
+							Wrap
+						</MobileActionButton>
+					</MobileActionGroup>
+					<ReviewSubmitPopover
+						pendingCount={pendingComments.length}
+						isSubmitting={isSubmitting}
+						onSubmit={handleSubmitReview}
+						triggerClassName={mobilePrimaryActionClassName}
+					/>
+				</MobileActionBar>
 				<Drawer open={fileSheetOpen} onOpenChange={setFileSheetOpen}>
 					<DrawerContent className="h-[70dvh]">
 						<DrawerTitle className="sr-only">Changes</DrawerTitle>
-						{changesPanel}
+						<DrawerNoDrag>{changesPanel}</DrawerNoDrag>
 					</DrawerContent>
 				</Drawer>
 			</div>
@@ -679,7 +715,6 @@ const ReviewTabs = memo(function ReviewTabs({
 	pendingCount,
 	isSubmitting,
 	onSubmitReview,
-	onOpenChanges,
 	isDesktop,
 }: {
 	stack: React.ReactNode;
@@ -696,7 +731,6 @@ const ReviewTabs = memo(function ReviewTabs({
 	pendingCount: number;
 	isSubmitting: boolean;
 	onSubmitReview: (body: string, event: ReviewEvent) => Promise<boolean>;
-	onOpenChanges: () => void;
 	isDesktop: boolean;
 }) {
 	return (
@@ -705,28 +739,23 @@ const ReviewTabs = memo(function ReviewTabs({
 			actions={
 				<>
 					{stack}
-					{isDesktop ? null : (
-						<PageIconButton
-							raised
-							type="button"
-							onClick={onOpenChanges}
-							aria-label="Open files and commits"
-						>
-							<PanelLeftIcon size={14} strokeWidth={2} />
-						</PageIconButton>
-					)}
-					<DiffDisplayOptions
-						raised
-						diffStyle={diffStyle}
-						onDiffStyleChange={onSetDiffStyle}
-						wrapLines={wrapLines}
-						onWrapLinesChange={onWrapLinesChange}
-					/>
-					<ReviewSubmitPopover
-						pendingCount={pendingCount}
-						isSubmitting={isSubmitting}
-						onSubmit={onSubmitReview}
-					/>
+					{/* Phones carry these in the floating action bar instead. */}
+					{isDesktop ? (
+						<>
+							<DiffDisplayOptions
+								raised
+								diffStyle={diffStyle}
+								onDiffStyleChange={onSetDiffStyle}
+								wrapLines={wrapLines}
+								onWrapLinesChange={onWrapLinesChange}
+							/>
+							<ReviewSubmitPopover
+								pendingCount={pendingCount}
+								isSubmitting={isSubmitting}
+								onSubmit={onSubmitReview}
+							/>
+						</>
+					) : null}
 				</>
 			}
 		>

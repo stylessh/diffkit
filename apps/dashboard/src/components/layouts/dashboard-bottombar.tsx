@@ -10,7 +10,9 @@ export function DashboardBottomBar() {
 	const [, setShowOrgSetup] = useShowOrgSetupQueryState();
 
 	return (
-		<div className="empty:hidden flex flex-row flex-wrap items-start gap-1 px-2 pb-2">
+		// Collapses when it has nothing to show, including on phones where the
+		// extension prompt alone is hidden.
+		<div className="empty:hidden flex flex-row flex-wrap items-start gap-1 px-2 pb-2 max-md:[&:not(:has(>:not(.hidden)))]:hidden">
 			<ExtensionInstallPrompt />
 			{warnings.map((warning) => {
 				const isError = warning.severity === "error";

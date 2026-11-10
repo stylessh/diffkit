@@ -14,7 +14,7 @@ export function focusFirstMenuItem(from: HTMLElement) {
 }
 
 /** Selected values the current items no longer carry still show, so they can be cleared. */
-function withSelectedOptions(
+export function withSelectedOptions(
 	options: FilterOption[],
 	selected: Set<string>,
 ): FilterOption[] {

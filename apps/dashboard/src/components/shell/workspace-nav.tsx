@@ -28,7 +28,6 @@ type NavIcon = ComponentType<{
 export type NavItem = {
 	to: string;
 	label: string;
-	shortLabel: string;
 	icon: NavIcon;
 	keys?: readonly string[];
 	badge: NavBadge;
@@ -53,7 +52,6 @@ export function workspaceNavItems(
 		{
 			to: "/",
 			label: "Overview",
-			shortLabel: "Overview",
 			icon: HomeIcon,
 			keys: ["G", "H"],
 			badge: { kind: "none" },
@@ -61,14 +59,12 @@ export function workspaceNavItems(
 		{
 			to: "/inbox",
 			label: "Inbox",
-			shortLabel: "Inbox",
 			icon: InboxIcon,
 			badge: hasUnread ? { kind: "unread" } : { kind: "none" },
 		},
 		{
 			to: "/pulls",
 			label: "Pull requests",
-			shortLabel: "Pulls",
 			icon: GitPullRequestIcon,
 			keys: ["G", "P"],
 			badge: countBadge(counts.pulls),
@@ -76,7 +72,6 @@ export function workspaceNavItems(
 		{
 			to: "/reviews",
 			label: "Reviews",
-			shortLabel: "Reviews",
 			icon: ReviewsIcon,
 			keys: ["G", "R"],
 			badge: countBadge(counts.reviews),
@@ -84,7 +79,6 @@ export function workspaceNavItems(
 		{
 			to: "/issues",
 			label: "Issues",
-			shortLabel: "Issues",
 			icon: IssuesIcon,
 			keys: ["G", "I"],
 			badge: countBadge(counts.issues),
@@ -163,7 +157,7 @@ export function MobileNavBar({ items }: { items: NavItem[] }) {
 					activeOptions={{ exact: true, includeSearch: false }}
 					activeProps={{ className: "active", "aria-current": "page" }}
 					aria-label={accessibleName(item)}
-					className="flex flex-1 flex-col items-center gap-1 pt-2 pb-1.5 text-icon-faint transition-colors [&.active]:text-foreground"
+					className="flex h-12 flex-1 items-center justify-center text-icon-faint transition-colors [&.active]:text-foreground"
 				>
 					<span className="relative">
 						<item.icon size={20} strokeWidth={1.8} />
@@ -178,9 +172,6 @@ export function MobileNavBar({ items }: { items: NavItem[] }) {
 								className="absolute -top-0.5 -right-0.5 size-2 rounded-full bg-indigo"
 							/>
 						) : null}
-					</span>
-					<span className="text-[10px] leading-none font-medium">
-						{item.shortLabel}
 					</span>
 				</Link>
 			))}

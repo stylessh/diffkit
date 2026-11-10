@@ -111,8 +111,35 @@ function DrawerDescription({
 	);
 }
 
+/**
+ * Drawer content that handles its own taps, such as a file tree. A touch that
+ * starts here never reaches vaul's drag start, which captures the pointer on
+ * the event target: for a tree inside a shadow root that is the host, and iOS
+ * then sends the tap to the host instead of the row. The handle and header
+ * still drag the drawer.
+ */
+function DrawerNoDrag({
+	className,
+	onPointerDown,
+	...props
+}: React.ComponentProps<"div">) {
+	return (
+		<div
+			data-vaul-no-drag
+			data-slot="drawer-no-drag"
+			className={cn("flex min-h-0 flex-1 flex-col", className)}
+			onPointerDown={(event) => {
+				onPointerDown?.(event);
+				event.stopPropagation();
+			}}
+			{...props}
+		/>
+	);
+}
+
 export {
 	Drawer,
+	DrawerNoDrag,
 	DrawerTrigger,
 	DrawerClose,
 	DrawerPortal,

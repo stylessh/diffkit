@@ -1,8 +1,9 @@
-import { FileIcon, GitCommitIcon, PanelLeftIcon } from "@diffkit/icons";
+import { FileIcon, GitCommitIcon, LayoutAlignBottomIcon } from "@diffkit/icons";
 import { LineCounts } from "@diffkit/ui/components/detail-layout";
 import {
 	Drawer,
 	DrawerContent,
+	DrawerNoDrag,
 	DrawerTitle,
 } from "@diffkit/ui/components/drawer";
 import { PageHeaderTitle } from "@diffkit/ui/components/page-header";
@@ -269,14 +270,16 @@ export function CommitPage() {
 						{diffContent}
 					</div>
 					<Drawer open={fileSheetOpen} onOpenChange={setFileSheetOpen}>
-						<DrawerContent className="max-h-[70dvh]">
+						<DrawerContent className="h-[70dvh]">
 							<DrawerTitle className="sr-only">Files</DrawerTitle>
-							<ReviewSidebar
-								sidebarFiles={sidebarFiles}
-								sidebarFileCount={sidebarFileCount}
-								activeFileStore={activeFileStore}
-								onFileClick={scrollToFile}
-							/>
+							<DrawerNoDrag>
+								<ReviewSidebar
+									sidebarFiles={sidebarFiles}
+									sidebarFileCount={sidebarFileCount}
+									activeFileStore={activeFileStore}
+									onFileClick={scrollToFile}
+								/>
+							</DrawerNoDrag>
 						</DrawerContent>
 					</Drawer>
 				</>
@@ -315,7 +318,7 @@ const CommitToolbar = memo(function CommitToolbar({
 					className={iconButtonClassName}
 					aria-label="Open file tree"
 				>
-					<PanelLeftIcon size={16} strokeWidth={2} />
+					<LayoutAlignBottomIcon size={16} strokeWidth={2} />
 				</button>
 			)}
 

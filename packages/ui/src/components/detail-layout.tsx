@@ -1,13 +1,20 @@
+import { LayoutAlignBottomIcon } from "@diffkit/icons";
 import { Slot, Slottable } from "@radix-ui/react-slot";
-import type * as React from "react";
-
+import * as React from "react";
 import { cn } from "../lib/utils";
+import { Drawer, DrawerContent, DrawerTitle } from "./drawer";
+import {
+	MobileActionBar,
+	MobileActionButton,
+	MobileActionGroup,
+} from "./mobile-action-bar";
 import { ScrollFade } from "./scroll-fade";
 
-// Below lg the page is one scroller, so the column scrollers stand down: no
-// overflow of their own and no edge mask.
+// Below md the page is one scroller and the panel moves into a drawer opened
+// from the floating action bar, so the content column's scroller stands down:
+// no overflow of its own and no edge mask.
 const COLUMN_SCROLLER =
-	"max-lg:overflow-visible max-lg:[mask-image:none]! max-lg:[-webkit-mask-image:none]! lg:min-h-0";
+	"max-md:overflow-visible max-md:[mask-image:none]! max-md:[-webkit-mask-image:none]! md:min-h-0";
 
 function DetailLayout({
 	className,
@@ -15,44 +22,47 @@ function DetailLayout({
 	panel,
 	panelLabel = "Properties",
 	toolbar,
+	mobileActions,
 	...props
 }: React.ComponentProps<"div"> & {
 	panel: React.ReactNode;
 	panelLabel?: string;
 	toolbar?: React.ReactNode;
+	/** The page's main call to action on phones, beside the Details pill. */
+	mobileActions?: React.ReactNode;
 }) {
+	const [panelOpen, setPanelOpen] = React.useState(false);
 	return (
 		<div
 			className={cn(
-				"flex min-h-0 flex-1 flex-col max-lg:overflow-y-auto lg:grid lg:grid-cols-[minmax(0,1fr)_21rem] lg:grid-rows-[auto_minmax(0,1fr)]",
+				"flex min-h-0 flex-1 flex-col max-md:overflow-y-auto md:grid md:grid-cols-[minmax(0,1fr)_16rem] md:grid-rows-[auto_minmax(0,1fr)] lg:grid-cols-[minmax(0,1fr)_21rem]",
 				className,
 			)}
 			data-slot="detail-layout"
 			{...props}
 		>
 			{toolbar ? (
-				<div className="z-10 shrink-0 bg-main max-lg:sticky max-lg:top-0 lg:col-start-1 lg:row-start-1">
+				<div className="z-10 shrink-0 bg-main max-md:sticky max-md:top-0 md:col-start-1 md:row-start-1">
 					{toolbar}
 				</div>
 			) : null}
 			<ScrollFade
-				className={cn("min-w-0 lg:col-start-1 lg:row-start-2", COLUMN_SCROLLER)}
+				className={cn("min-w-0 md:col-start-1 md:row-start-2", COLUMN_SCROLLER)}
 				fade={32}
 				orientation="vertical"
 			>
-				<div className="mx-auto flex w-full min-w-0 max-w-[780px] flex-col gap-8 px-4 pt-14 pb-16 md:px-[46px]">
+				<div className="mx-auto flex w-full min-w-0 max-w-[780px] flex-col gap-8 px-4 pt-14 pb-20 sm:px-[46px] md:px-8 md:pb-16 lg:px-[46px]">
 					{children}
 				</div>
 			</ScrollFade>
 			<aside
 				aria-label={panelLabel}
-				className="min-w-0 border-header-rule lg:col-start-2 lg:row-span-2 lg:row-start-1 lg:flex lg:min-h-0 lg:flex-col lg:border-l"
+				className="hidden min-w-0 border-header-rule md:col-start-2 md:row-span-2 md:row-start-1 md:flex md:min-h-0 md:flex-col md:border-l"
 			>
 				<ScrollFade
 					className={cn(
-						"flex flex-col px-4 pt-2 pb-10 md:px-[46px] lg:flex-1 lg:px-6",
-						toolbar ? "lg:pt-25" : "lg:pt-14",
-						COLUMN_SCROLLER,
+						"flex flex-1 flex-col px-5 pb-10 lg:px-6",
+						toolbar ? "pt-25" : "pt-14",
 					)}
 					fade={32}
 					orientation="vertical"
@@ -60,6 +70,25 @@ function DetailLayout({
 					{panel}
 				</ScrollFade>
 			</aside>
+			<MobileActionBar label="Page actions">
+				<MobileActionGroup>
+					<MobileActionButton
+						icon={<LayoutAlignBottomIcon size={15} strokeWidth={2} />}
+						onClick={() => setPanelOpen(true)}
+					>
+						Details
+					</MobileActionButton>
+				</MobileActionGroup>
+				{mobileActions}
+			</MobileActionBar>
+			<Drawer open={panelOpen} onOpenChange={setPanelOpen}>
+				<DrawerContent aria-describedby={undefined}>
+					<DrawerTitle className="sr-only">{panelLabel}</DrawerTitle>
+					<div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-5 pt-2 pb-6">
+						{panel}
+					</div>
+				</DrawerContent>
+			</Drawer>
 		</div>
 	);
 }

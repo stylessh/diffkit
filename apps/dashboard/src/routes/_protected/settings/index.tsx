@@ -140,7 +140,7 @@ function ThemePicker() {
 	const hasMounted = useHasMounted();
 
 	return (
-		<div className="flex gap-3">
+		<div className="grid grid-cols-3 gap-2 sm:flex sm:gap-3">
 			{themeOptions.map((opt) => {
 				const isActive = hasMounted && theme === opt.value;
 				return (
@@ -149,7 +149,7 @@ function ThemePicker() {
 						type="button"
 						onClick={() => setTheme(opt.value)}
 						className={cn(
-							"group flex flex-col items-center gap-2.5 rounded-xl border-2 p-3 transition-colors",
+							"group flex min-w-0 flex-col items-center gap-2.5 rounded-xl border-2 p-2 transition-colors sm:p-3",
 							isActive
 								? "border-primary bg-surface-1"
 								: "border-transparent bg-surface-1 hover:border-border",
@@ -324,7 +324,7 @@ function LayoutPreview({ mode }: { mode: "light" | "dark" }) {
 	return (
 		<div
 			className={cn(
-				"flex h-[4.5rem] w-28 flex-col overflow-hidden rounded-lg",
+				"flex h-[4.5rem] w-full max-w-28 flex-col overflow-hidden rounded-lg sm:w-28",
 				shell,
 			)}
 		>
@@ -362,7 +362,7 @@ function LayoutPreview({ mode }: { mode: "light" | "dark" }) {
  */
 function SystemThemePreview() {
 	return (
-		<div className="relative h-[4.5rem] w-28 overflow-hidden rounded-lg">
+		<div className="relative h-[4.5rem] w-full max-w-28 overflow-hidden rounded-lg sm:w-28">
 			{/* Light – full, clipped to left half */}
 			<div
 				className="absolute inset-0"

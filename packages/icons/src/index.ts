@@ -83,12 +83,12 @@ export {
   Remove01Icon,
   SearchList01Icon as ReviewsIcon,
   Settings01Icon as SettingsIcon,
-  SidebarLeftIcon as PanelLeftIcon,
   SmileIcon,
   Sorting01Icon,
   SquareLock02Icon,
   StopIcon,
   Sun01Icon as SunIcon,
+  TextWrapIcon,
   Tick02Icon as CheckIcon,
   Tick02Icon as TickIcon,
   Unlink01Icon as UnlinkIcon,
@@ -137,6 +137,11 @@ export {
   GitCommitHorizontalIcon as GitCommitIcon,
 } from "./git-commit-horizontal-icon";
 export { LayersIcon } from "./layers-icon";
+export {
+  LayoutAlignBottomIcon,
+  LayoutAlignLeftIcon,
+  LayoutAlignRightIcon,
+} from "./layout-align-icons";
 export { DisplayOptionsIcon, FilterLinesIcon } from "./linear-glyphs";
 export { PasskeyIcon } from "./passkey-icon";
 export { PenIcon } from "./pen-icon";

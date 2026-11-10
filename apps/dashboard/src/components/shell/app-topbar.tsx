@@ -67,7 +67,7 @@ export function MobileTopbar({
 	viewerLogin?: string;
 }) {
 	return (
-		<header className="flex h-11 shrink-0 items-center gap-1 border-b-[0.5px] border-header-rule bg-main px-2 md:hidden">
+		<header className="flex h-11 shrink-0 items-center gap-1 px-2 md:hidden">
 			<AccountMenu user={user} viewerLogin={viewerLogin} />
 			<PageIconButton
 				aria-label="Search"

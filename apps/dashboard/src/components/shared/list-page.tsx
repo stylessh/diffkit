@@ -1,4 +1,5 @@
 import { GroupHeader } from "@diffkit/ui/components/group-header";
+import { MOBILE_ACTION_BAR_CLEARANCE } from "@diffkit/ui/components/mobile-action-bar";
 import {
 	PageHeader,
 	PageHeaderCount,
@@ -16,6 +17,7 @@ import {
 	ListActions,
 	type ListFiltersConfig,
 } from "#/components/filters/list-toolbar";
+import { MobileListActions } from "#/components/filters/mobile-list-actions";
 import { SearchQueryProvider } from "./search-highlight";
 
 type ListIcon = ComponentType<{
@@ -44,13 +46,17 @@ export function ListPage({
 	children: ReactNode;
 }) {
 	return (
-		<div className="flex h-full min-h-0 flex-col">
+		<div className="relative flex h-full min-h-0 flex-col">
 			<PageHeader
 				actions={
 					actions || filters ? (
 						<>
 							{actions}
-							{filters ? <ListActions {...filters} /> : null}
+							{filters ? (
+								<span className="flex max-md:hidden">
+									<ListActions {...filters} />
+								</span>
+							) : null}
 						</>
 					) : undefined
 				}
@@ -66,6 +72,7 @@ export function ListPage({
 				ref={scrollRef}
 				className={cn(
 					"min-h-0 flex-1 overflow-y-auto px-2 pt-2 pb-10",
+					filters && MOBILE_ACTION_BAR_CLEARANCE,
 					className,
 				)}
 			>
@@ -73,6 +80,7 @@ export function ListPage({
 					{children}
 				</SearchQueryProvider>
 			</div>
+			{filters ? <MobileListActions {...filters} /> : null}
 		</div>
 	);
 }
