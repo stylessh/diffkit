@@ -45,13 +45,6 @@ import {
 import { checkPermissionWarning } from "#/lib/warning-store";
 import { useRegisterCommentTarget } from "./comment-target";
 
-/**
- * Spacing for an event followed by another event, and the 0.5px thread joining
- * its glyph to the next one's, 1.5px clear of each (glyphs sit 10px in, 14px wide).
- */
-export const eventThreadClassName =
-	"pb-1 after:absolute after:top-[calc(100%-5.5px)] after:left-[16.75px] after:h-[11.5px] after:w-[0.5px] after:bg-activity-line";
-
 export function DetailActivityHeader({
 	title,
 	count,

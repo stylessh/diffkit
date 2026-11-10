@@ -5,12 +5,10 @@ import { Skeleton } from "skullet/react";
 import { DetailPageLayout } from "#/components/details/detail-page";
 import { SkeletonSample } from "#/components/shared/skeleton-sample";
 import {
-	type GitHubQueryScope,
 	githubIssuePageQueryOptions,
 	githubQueryKeys,
 	githubViewerQueryOptions,
 } from "#/lib/github.query";
-import type { IssueDetail, IssuePageData } from "#/lib/github.types";
 import { findIssueSummaryInLists } from "#/lib/github-query-updates";
 import { useHasMounted } from "#/lib/use-has-mounted";
 import { usePageTitle } from "#/lib/use-page-title";
@@ -150,19 +148,17 @@ export function IssueDetailContent({
 					</div>
 					<Skeleton loading={!issue} label="Loading issue">
 						{page && issue ? (
-							<IssueDetailActivity
+							<IssueDetailActivitySection
 								{...activityProps}
 								issue={issue}
 								page={page}
-								isFetching={pageQuery.isFetching}
 							/>
 						) : (
 							<SkeletonSample>
-								<IssueDetailActivity
+								<IssueDetailActivitySection
 									{...activityProps}
 									issue={SAMPLE_ISSUE}
 									page={SAMPLE_ISSUE_PAGE}
-									isFetching={false}
 								/>
 							</SkeletonSample>
 						)}
@@ -182,48 +178,6 @@ export function IssueDetailContent({
 					)}
 				</Skeleton>
 			}
-		/>
-	);
-}
-
-function IssueDetailActivity({
-	owner,
-	repo,
-	issueNumber,
-	scope,
-	pageQueryKey,
-	viewerLogin,
-	issue,
-	page,
-	isFetching,
-}: {
-	owner: string;
-	repo: string;
-	issueNumber: number;
-	scope: GitHubQueryScope;
-	pageQueryKey: readonly unknown[];
-	viewerLogin: string | undefined;
-	issue: IssueDetail;
-	page: IssuePageData;
-	isFetching: boolean;
-}) {
-	return (
-		<IssueDetailActivitySection
-			comments={page.comments}
-			events={page.events}
-			commentPagination={page.commentPagination}
-			eventPagination={page.eventPagination}
-			pageQueryKey={pageQueryKey}
-			isFetching={isFetching}
-			owner={owner}
-			repo={repo}
-			issueNumber={issueNumber}
-			scope={scope}
-			issueAuthor={issue.author}
-			issueState={issue.state === "closed" ? "closed" : "open"}
-			issueClosedAt={issue.closedAt}
-			issueStateReason={issue.stateReason}
-			viewerLogin={viewerLogin}
 		/>
 	);
 }
