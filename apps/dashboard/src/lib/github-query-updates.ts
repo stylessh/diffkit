@@ -7,6 +7,7 @@ import {
 } from "./github.query";
 import type {
 	IssueSummary,
+	MyIssuesResult,
 	MyPullsResult,
 	PullSummary,
 	RepoOverview,
@@ -18,55 +19,41 @@ import {
 	parseEntityKey,
 } from "./github-change-entities";
 
-function matchesPull(
-	pull: Pick<PullSummary, "number" | "repository">,
-	owner: string,
-	repo: string,
-	pullNumber: number,
-) {
-	return (
-		pull.number === pullNumber &&
-		pull.repository.owner === owner &&
-		pull.repository.name === repo
-	);
-}
-
-export function removePullFromOpenViews(
+/**
+ * Drops item `#number` from every cached list that only holds open items: the
+ * viewer's own lists, the repo's open list, and the repo overview's counter.
+ */
+function removeFromOpenViews(
 	queryClient: QueryClient,
 	scope: GitHubQueryScope,
-	input: { owner: string; repo: string; pullNumber: number },
+	group: "pulls" | "issues",
+	input: { owner: string; repo: string; number: number },
 ) {
-	const { owner, repo, pullNumber } = input;
+	const { owner, repo, number } = input;
+	const isOther = (item: ListItem) =>
+		item.number !== number ||
+		item.repository.owner !== owner ||
+		item.repository.name !== repo;
 
-	queryClient.setQueryData<MyPullsResult>(
-		githubQueryKeys.pulls.mine(scope),
+	queryClient.setQueryData<MyPullsResult | MyIssuesResult>(
+		githubQueryKeys[group].mine(scope),
 		(current) => {
 			if (!current) {
 				return current;
 			}
 
-			return {
-				...current,
-				reviewRequested: current.reviewRequested.filter(
-					(pull) => !matchesPull(pull, owner, repo, pullNumber),
-				),
-				assigned: current.assigned.filter(
-					(pull) => !matchesPull(pull, owner, repo, pullNumber),
-				),
-				authored: current.authored.filter(
-					(pull) => !matchesPull(pull, owner, repo, pullNumber),
-				),
-				mentioned: current.mentioned.filter(
-					(pull) => !matchesPull(pull, owner, repo, pullNumber),
-				),
-				involved: current.involved.filter(
-					(pull) => !matchesPull(pull, owner, repo, pullNumber),
-				),
-			};
+			return Object.fromEntries(
+				Object.entries(current).map(([name, value]) => [
+					name,
+					Array.isArray(value) && value.every(isListItem)
+						? value.filter(isOther)
+						: value,
+				]),
+			) as typeof current;
 		},
 	);
 
-	queryClient.setQueriesData<PullSummary[]>(
+	queryClient.setQueriesData<ListItem[]>(
 		{
 			predicate: (query) => {
 				const key = query.queryKey;
@@ -77,7 +64,7 @@ export function removePullFromOpenViews(
 				if (
 					key[0] !== "github" ||
 					key[1] !== scope.userId ||
-					key[2] !== "pulls" ||
+					key[2] !== group ||
 					key[3] !== "repo"
 				) {
 					return false;
@@ -101,17 +88,10 @@ export function removePullFromOpenViews(
 				);
 			},
 		},
-		(current) => {
-			if (!current) {
-				return current;
-			}
-
-			return current.filter(
-				(pull) => !matchesPull(pull, owner, repo, pullNumber),
-			);
-		},
+		(current) => current?.filter(isOther),
 	);
 
+	const counter = group === "pulls" ? "openPullCount" : "openIssueCount";
 	queryClient.setQueryData<RepoOverview>(
 		githubQueryKeys.repo.overview(scope, { owner, repo }),
 		(current) => {
@@ -119,12 +99,33 @@ export function removePullFromOpenViews(
 				return current;
 			}
 
-			return {
-				...current,
-				openPullCount: Math.max(0, current.openPullCount - 1),
-			};
+			return { ...current, [counter]: Math.max(0, current[counter] - 1) };
 		},
 	);
+}
+
+export function removePullFromOpenViews(
+	queryClient: QueryClient,
+	scope: GitHubQueryScope,
+	input: { owner: string; repo: string; pullNumber: number },
+) {
+	removeFromOpenViews(queryClient, scope, "pulls", {
+		owner: input.owner,
+		repo: input.repo,
+		number: input.pullNumber,
+	});
+}
+
+export function removeIssueFromOpenViews(
+	queryClient: QueryClient,
+	scope: GitHubQueryScope,
+	input: { owner: string; repo: string; issueNumber: number },
+) {
+	removeFromOpenViews(queryClient, scope, "issues", {
+		owner: input.owner,
+		repo: input.repo,
+		number: input.issueNumber,
+	});
 }
 
 type ListItem = {

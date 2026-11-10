@@ -212,6 +212,15 @@ const shortcutGroups: ShortcutGroup[] = [
 		],
 	},
 	{
+		title: "Pull request and issue lists",
+		shortcuts: [
+			{ keys: ["X"], description: "Select the row under the pointer" },
+			{ keys: ["Shift", "Click"], description: "Select a range of rows" },
+			{ keys: [mod, "A"], description: "Select every row" },
+			{ keys: ["Esc"], description: "Clear the selection" },
+		],
+	},
+	{
 		title: "General",
 		shortcuts: [{ keys: [mod, "K"], description: "Open command palette" }],
 	},

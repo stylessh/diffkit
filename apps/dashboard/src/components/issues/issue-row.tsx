@@ -14,6 +14,7 @@ import {
 	RowTime,
 	rowAccessibleName,
 } from "#/components/shared/list-row";
+import { SelectableRow } from "#/components/shared/list-selection";
 import { HighlightedText } from "#/components/shared/search-highlight";
 import { useIsSkeletonSample } from "#/components/shared/skeleton-sample";
 import { formatRelativeTime } from "#/lib/format-relative-time";
@@ -27,6 +28,10 @@ function getIssueStateProps(issue: IssueSummary) {
 		return { color: "text-state-merged" };
 	}
 	return { color: "text-state-open" };
+}
+
+export function issueSelectionKey(issue: IssueSummary) {
+	return `${issue.repository.fullName}#${issue.number}`;
 }
 
 export const IssueRow = memo(function IssueRow({
@@ -45,44 +50,49 @@ export const IssueRow = memo(function IssueRow({
 	const isSample = useIsSkeletonSample();
 
 	return (
-		<Link
-			to={href}
-			preload={isSample ? false : undefined}
-			aria-label={rowAccessibleName(issue)}
-			className={cn(listRowClassName, listRowHoverClassName)}
+		<SelectableRow
+			selectionKey={issueSelectionKey(issue)}
+			label={`Select #${issue.number} ${issue.title}`}
 		>
-			<RowStateIcon className={color}>
-				<IssuesIcon size={14} strokeWidth={2} />
-			</RowStateIcon>
-			<RowNumber number={issue.number} />
-			<div className="flex min-w-0 flex-1 flex-col gap-1 md:flex-row md:items-center md:gap-2">
-				<p
-					title={issue.title}
-					className="text-[13px] font-medium text-foreground md:truncate"
-				>
-					<HighlightedText text={issue.title} />
-				</p>
-				<p className="flex min-w-0 items-center gap-1 truncate text-xs text-muted-foreground md:hidden">
-					<span className="truncate">{issue.repository.fullName}</span>
-					<span className="tabular-nums">#{issue.number}</span>
-					<span aria-hidden>·</span>
-					<span className="tabular-nums">{time}</span>
-				</p>
-			</div>
-			<div className="hidden min-w-0 shrink items-center gap-1 md:flex">
-				<RowLabels labels={issue.labels} />
-				{showRepository ? (
-					<RepoChip
-						fullName={issue.repository.fullName}
-						ownerAvatarUrl={issue.repository.ownerAvatarUrl}
-					/>
-				) : null}
-				<CommentsChip count={issue.comments} />
-			</div>
-			<span className="hidden shrink-0 items-center gap-2 md:ml-3 md:flex">
-				<RowAvatar actor={issue.author} />
-				<RowTime>{time}</RowTime>
-			</span>
-		</Link>
+			<Link
+				to={href}
+				preload={isSample ? false : undefined}
+				aria-label={rowAccessibleName(issue)}
+				className={cn(listRowClassName, listRowHoverClassName)}
+			>
+				<RowStateIcon className={color}>
+					<IssuesIcon size={14} strokeWidth={2} />
+				</RowStateIcon>
+				<RowNumber number={issue.number} />
+				<div className="flex min-w-0 flex-1 flex-col gap-1 md:flex-row md:items-center md:gap-2">
+					<p
+						title={issue.title}
+						className="text-[13px] font-medium text-foreground md:truncate"
+					>
+						<HighlightedText text={issue.title} />
+					</p>
+					<p className="flex min-w-0 items-center gap-1 truncate text-xs text-muted-foreground md:hidden">
+						<span className="truncate">{issue.repository.fullName}</span>
+						<span className="tabular-nums">#{issue.number}</span>
+						<span aria-hidden>·</span>
+						<span className="tabular-nums">{time}</span>
+					</p>
+				</div>
+				<div className="hidden min-w-0 shrink items-center gap-1 md:flex">
+					<RowLabels labels={issue.labels} />
+					{showRepository ? (
+						<RepoChip
+							fullName={issue.repository.fullName}
+							ownerAvatarUrl={issue.repository.ownerAvatarUrl}
+						/>
+					) : null}
+					<CommentsChip count={issue.comments} />
+				</div>
+				<span className="hidden shrink-0 items-center gap-2 md:ml-3 md:flex">
+					<RowAvatar actor={issue.author} />
+					<RowTime>{time}</RowTime>
+				</span>
+			</Link>
+		</SelectableRow>
 	);
 });

@@ -9,6 +9,7 @@ import {
 	useListFilters,
 } from "#/components/filters";
 import { DashboardContentLoading } from "#/components/layouts/dashboard-content-loading";
+import { PullBulkSelection } from "#/components/pulls/pull-bulk-selection";
 import { PullRequestRow } from "#/components/pulls/pull-request-row";
 import { ListEmpty, ListGroup, ListPage } from "#/components/shared/list-page";
 import { githubMyPullsQueryOptions } from "#/lib/github.query";
@@ -77,15 +78,17 @@ function ReviewsPage() {
 							: "No review requests right now — you're all caught up."}
 					</ListEmpty>
 				) : (
-					<ListGroup
-						icon={ReviewsIcon}
-						title="Review requested"
-						count={reviews.length}
-					>
-						{reviews.map((pr) => (
-							<PullRequestRow key={pr.id} pr={pr} />
-						))}
-					</ListGroup>
+					<PullBulkSelection pulls={reviews} scope={scope}>
+						<ListGroup
+							icon={ReviewsIcon}
+							title="Review requested"
+							count={reviews.length}
+						>
+							{reviews.map((pr) => (
+								<PullRequestRow key={pr.id} pr={pr} />
+							))}
+						</ListGroup>
+					</PullBulkSelection>
 				)}
 			</ListPage>
 		);

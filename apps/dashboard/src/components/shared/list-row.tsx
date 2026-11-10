@@ -5,8 +5,9 @@ import type { GitHubActor, GitHubLabel } from "#/lib/github.types";
 
 export const listRowClassName = cn(
 	"group/row relative isolate flex items-start gap-3 px-3 py-2.5 text-left outline-none",
-	"before:absolute before:inset-0 before:-z-10 before:rounded-lg focus-visible:before:outline-1 focus-visible:before:-outline-offset-1 focus-visible:before:outline-focus",
+	"before:absolute before:inset-0 before:-z-10 before:rounded-t-[var(--row-radius-top,var(--radius-lg))] before:rounded-b-[var(--row-radius-bottom,var(--radius-lg))] focus-visible:before:outline-1 focus-visible:before:-outline-offset-1 focus-visible:before:outline-focus",
 	"md:-mx-2 md:h-11 md:w-[calc(100%+16px)] md:items-center md:gap-2 md:py-0 md:pr-[26px] md:pl-[42px] md:before:inset-x-2",
+	"group-hover/select:before:bg-row-hover group-data-selected/select:before:bg-row-selected group-data-selected/select:hover:before:bg-row-selected group-data-selected/select:group-hover/select:before:bg-row-selected",
 );
 
 export function rowAccessibleName(item: {
