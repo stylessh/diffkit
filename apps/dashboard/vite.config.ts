@@ -328,12 +328,72 @@ function hugeiconsDeepImports(): import("vite").Plugin {
 	};
 }
 
+// Every `@hugeicons/react` icon module carries seven drawings of the icon (bulk,
+// duotone, solid, sharp, ...) and picks one by prop at render time, so none of
+// them tree-shake. The app only renders the default, which is about a seventh
+// of each module.
+function hugeiconsDefaultVariantOnly(): import("vite").Plugin {
+	const ICON_MODULE_RE =
+		/@hugeicons[\\/]react[\\/]dist[\\/]esm[\\/]icons[\\/](?!index\.js)[^\\/]+\.js$/u;
+	const DEFAULT_VARIANT = '"stroke.rounded":';
+
+	const endOfArray = (code: string, start: number) => {
+		let depth = 0;
+		let quote: string | null = null;
+		for (let position = start; position < code.length; position++) {
+			const character = code[position];
+			if (quote) {
+				if (character === quote) quote = null;
+			} else if (character === '"' || character === "'") {
+				quote = character;
+			} else if (character === "[") {
+				depth++;
+			} else if (character === "]" && --depth === 0) {
+				return position + 1;
+			}
+		}
+		return -1;
+	};
+
+	return {
+		name: "hugeicons-default-variant-only",
+		transform(code, id) {
+			if (!ICON_MODULE_RE.test(id.split("?")[0])) return;
+			const variantsStart = code.indexOf(",{") + 2;
+			const variantsEnd = code.lastIndexOf("})");
+			const defaultStart = code.indexOf(DEFAULT_VARIANT, variantsStart);
+			const defaultEnd = endOfArray(
+				code,
+				defaultStart + DEFAULT_VARIANT.length,
+			);
+			if (
+				variantsStart < 2 ||
+				defaultStart < 0 ||
+				defaultEnd < 0 ||
+				defaultEnd > variantsEnd
+			) {
+				throw new Error(
+					`hugeicons-default-variant-only: could not find the default variant in ${id}. The package's build format changed; update the parser.`,
+				);
+			}
+			return {
+				code:
+					code.slice(0, variantsStart) +
+					code.slice(defaultStart, defaultEnd) +
+					code.slice(variantsEnd),
+				map: null,
+			};
+		},
+	};
+}
+
 const config = defineConfig(({ command }) => {
 	return {
 		server: command === "serve" ? getTunnelServerConfig() : undefined,
 		plugins: [
 			devtools(),
 			hugeiconsDeepImports(),
+			hugeiconsDefaultVariantOnly(),
 			shikiSSRStub(),
 			shikiTrimmedLanguages(),
 			betterAuthDialectStub(),

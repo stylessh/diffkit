@@ -1,5 +1,4 @@
-import { dehydrate, type QueryClient } from "@tanstack/react-query";
-import { persistQueryClientRestore } from "@tanstack/react-query-persist-client";
+import { dehydrate, hydrate, type QueryClient } from "@tanstack/react-query";
 import { readDocumentCookie } from "./cookies";
 import {
 	isGitHubQueryKeyPersistable,
@@ -7,6 +6,7 @@ import {
 } from "./github.query";
 import {
 	createIdbQueryPersister,
+	type DehydratedQuery,
 	type IdbQueryPersister,
 } from "./query-persister";
 import { parseViewerHint } from "./viewer-hint";
@@ -17,12 +17,18 @@ import { parseViewerHint } from "./viewer-hint";
  * - One IndexedDB database per user id, so accounts on a shared browser never
  *   read each other's data.
  * - ~50 MB budget with least-recently-updated eviction (see query-persister).
+ * - The most recently updated ~4 MB restore before first paint, the rest after.
  * - Busted by `QUERY_SCHEMA_VERSION`.
  * - Large payloads opt out via `githubQueryPersistOptOut`.
  * - Wiped on sign-out and when the background session check fails.
  */
 
 export const GITHUB_QUERY_CACHE_MAX_BYTES = 50 * 1024 * 1024;
+/**
+ * Restored before first paint. Reading costs main-thread time in proportion
+ * to size, so this bounds how long a large cache can hold the first render.
+ */
+export const GITHUB_QUERY_CACHE_RECENT_BYTES = 4 * 1024 * 1024;
 export const GITHUB_QUERY_CACHE_MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000;
 /** Longest the first paint waits for IndexedDB before rendering without it. */
 export const GITHUB_QUERY_RESTORE_TIMEOUT_MS = 400;
@@ -59,6 +65,7 @@ export function getGitHubQueryPersister(
 			dbName: githubQueryCacheDbName(userId),
 			buster: getGitHubQueryCacheBuster(),
 			maxBytes: GITHUB_QUERY_CACHE_MAX_BYTES,
+			recentBytes: GITHUB_QUERY_CACHE_RECENT_BYTES,
 			maxAgeMs: GITHUB_QUERY_CACHE_MAX_AGE_MS,
 			// Only this user's queries go into this user's database.
 			shouldPersistQuery: (query) =>
@@ -87,11 +94,16 @@ function removeLegacyLocalStorageCache() {
 	}
 }
 
+function hydrateQueries(queryClient: QueryClient, queries: DehydratedQuery[]) {
+	hydrate(queryClient, { queries, mutations: [] });
+}
+
 /**
- * Hydrates the query client from IndexedDB. Resolves after the restore or after
- * `timeoutMs`, whichever comes first; a slow or failing restore never delays
- * first paint by more than that, and a late restore still hydrates when it
- * lands (hydrate never overwrites newer data).
+ * Hydrates the query client with the most recently updated queries in
+ * IndexedDB. Resolves after the restore or after `timeoutMs`, whichever comes
+ * first; a slow or failing restore never delays first paint by more than that,
+ * and a late restore still hydrates when it lands (hydrate never overwrites
+ * newer data). `restoreRestOfGitHubQueryCache` brings in everything else.
  */
 export async function restoreGitHubQueryCache(
 	queryClient: QueryClient,
@@ -104,14 +116,10 @@ export async function restoreGitHubQueryCache(
 	const persister = getGitHubQueryPersister(userId);
 	if (!persister) return "unavailable";
 
-	const restore = persistQueryClientRestore({
-		queryClient,
-		persister,
-		buster: getGitHubQueryCacheBuster(),
-		maxAge: GITHUB_QUERY_CACHE_MAX_AGE_MS,
-	})
-		.then(() => "restored" as const)
-		.catch(() => "empty" as const);
+	const restore = persister.restoreRecent().then((queries) => {
+		hydrateQueries(queryClient, queries);
+		return "restored" as const;
+	});
 
 	const timeoutMs = options.timeoutMs ?? GITHUB_QUERY_RESTORE_TIMEOUT_MS;
 	let timer: ReturnType<typeof setTimeout> | undefined;
@@ -121,6 +129,22 @@ export async function restoreGitHubQueryCache(
 	const result = await Promise.race([restore, timeout]);
 	clearTimeout(timer);
 	return result;
+}
+
+/**
+ * Hydrates every stored query the first restore left out, a page at a time so
+ * a large cache never blocks the main thread for long.
+ */
+export async function restoreRestOfGitHubQueryCache(
+	queryClient: QueryClient,
+	userId: string | null = getActiveGitHubQueryCacheUserId(),
+) {
+	if (typeof window === "undefined" || !userId || wipedUserIds.has(userId)) {
+		return;
+	}
+	await getGitHubQueryPersister(userId)?.restoreRest((queries) => {
+		if (!wipedUserIds.has(userId)) hydrateQueries(queryClient, queries);
+	});
 }
 
 /** Users whose cache was wiped in this page; never written again until reload. */
@@ -150,11 +174,7 @@ export function startGitHubQueryPersistence(queryClient: QueryClient) {
 					isGitHubQueryKeyPersistable(query.queryKey),
 				shouldDehydrateMutation: () => false,
 			});
-			void persister.persistClient({
-				timestamp: Date.now(),
-				buster: getGitHubQueryCacheBuster(),
-				clientState,
-			});
+			void persister.persist(clientState.queries);
 		} catch {
 			// A failed save is a cache miss on the next load, never an error.
 		}
