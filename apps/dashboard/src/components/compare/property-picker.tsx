@@ -47,6 +47,8 @@ export function PropertyPicker({
 	options,
 	selected,
 	loading,
+	display = "rows",
+	selection = "many",
 	onToggle,
 }: {
 	label: string;
@@ -56,6 +58,8 @@ export function PropertyPicker({
 	options: PickerOption[];
 	selected: PickerOption[];
 	loading: boolean;
+	display?: "rows" | "pills";
+	selection?: "one" | "many";
 	onToggle: (key: string) => void;
 }) {
 	const [state, setState] = useState<PickerState>(CLOSED);
@@ -103,6 +107,21 @@ export function PropertyPicker({
 	const open = () =>
 		setState((current) => (current.status === "open" ? current : OPENED));
 	const expanded = state.status === "open";
+	const triggerProps = {
+		"aria-haspopup": "listbox",
+		"aria-expanded": expanded,
+		onClick: open,
+	} as const;
+	const addButton =
+		selection === "one" && selected.length > 0 ? null : (
+			<PanelAddButton
+				aria-label={addLabel}
+				className={
+					display === "pills" && selected.length > 0 ? "ml-0" : undefined
+				}
+				{...triggerProps}
+			/>
+		);
 
 	return (
 		<PanelSection label={label}>
@@ -117,26 +136,33 @@ export function PropertyPicker({
 				placeholder={placeholder}
 				listRef={listRef}
 				anchor={
-					<>
-						{selected.map((option) => (
-							<PanelPill key={option.key} asChild icon={option.leading}>
+					display === "pills" ? (
+						<div className="flex flex-wrap items-center gap-1.5">
+							{selected.map((option) => (
 								<button
+									key={option.key}
 									type="button"
-									aria-haspopup="listbox"
-									aria-expanded={expanded}
-									onClick={open}
+									className="inline-flex h-6 max-w-full items-center gap-1.5 rounded-full bg-chip px-2 text-xs font-[450] text-text-header shadow-chip transition-colors hover:bg-row-hover"
+									{...triggerProps}
 								>
-									{option.label}
+									{option.leading}
+									<span className="truncate">{option.label}</span>
 								</button>
-							</PanelPill>
-						))}
-						<PanelAddButton
-							aria-label={addLabel}
-							aria-haspopup="listbox"
-							aria-expanded={expanded}
-							onClick={open}
-						/>
-					</>
+							))}
+							{addButton}
+						</div>
+					) : (
+						<>
+							{selected.map((option) => (
+								<PanelPill key={option.key} asChild icon={option.leading}>
+									<button type="button" {...triggerProps}>
+										{option.label}
+									</button>
+								</PanelPill>
+							))}
+							{addButton}
+						</>
+					)
 				}
 			>
 				{loading ? (

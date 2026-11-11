@@ -6,10 +6,10 @@ test("a new issue is created in the repository and shows up in nova's authored q
 }) => {
 	await page.goto("/lumen-labs/beacon/issues/new");
 	await page
-		.getByRole("textbox", { name: "Title *" })
+		.getByRole("textbox", { name: "Title" })
 		.fill("Reconnect jitter ignores maxDelay");
 	await page
-		.getByRole("textbox", { name: "Describe the issue..." })
+		.getByRole("textbox", { name: /^Describe the issue/ })
 		.fill("With jitter on, the delay can exceed maxDelay by up to 20%.");
 	await page.getByRole("button", { name: "Create issue" }).click();
 

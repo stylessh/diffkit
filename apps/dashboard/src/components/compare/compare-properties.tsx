@@ -1,3 +1,4 @@
+import { MilestoneIcon } from "@diffkit/icons";
 import { useQuery } from "@tanstack/react-query";
 import type { Dispatch } from "react";
 import { useMemo } from "react";
@@ -46,13 +47,13 @@ function LabelDot({ color }: { color: string }) {
 	return (
 		<span
 			aria-hidden
-			className="size-2.5 rounded-full"
+			className="size-2 shrink-0 rounded-full"
 			style={{ backgroundColor: `#${color}` }}
 		/>
 	);
 }
 
-const userOption = (user: RepoCollaborator): PickerOption => ({
+export const userOption = (user: RepoCollaborator): PickerOption => ({
 	key: `user:${user.login}`,
 	label: user.login,
 	leading: <Avatar src={user.avatarUrl} />,
@@ -65,7 +66,7 @@ const teamOption = (team: OrgTeam): PickerOption => ({
 	group: "Teams",
 });
 
-const labelOption = (label: GitHubLabel): PickerOption => ({
+export const labelOption = (label: GitHubLabel): PickerOption => ({
 	key: label.name,
 	label: label.name,
 	leading: <LabelDot color={label.color} />,
@@ -74,6 +75,7 @@ const labelOption = (label: GitHubLabel): PickerOption => ({
 const milestoneOption = (milestone: RepoMilestone): PickerOption => ({
 	key: String(milestone.number),
 	label: milestone.title,
+	leading: <MilestoneIcon size={13} strokeWidth={2} />,
 });
 
 export function CompareProperties({
@@ -176,6 +178,7 @@ export function CompareProperties({
 				addLabel="Add labels"
 				placeholder="Change labels…"
 				emptyLabel="No labels in this repository"
+				display="pills"
 				options={labelOptions}
 				selected={draft.labels.map(labelOption)}
 				loading={labelsQuery.isLoading}
@@ -189,6 +192,7 @@ export function CompareProperties({
 				addLabel="Set milestone"
 				placeholder="Set milestone…"
 				emptyLabel="No open milestones"
+				selection="one"
 				options={milestoneOptions}
 				selected={draft.milestone ? [milestoneOption(draft.milestone)] : []}
 				loading={milestonesQuery.isLoading}

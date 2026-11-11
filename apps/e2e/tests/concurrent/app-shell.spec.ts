@@ -18,9 +18,7 @@ test("the topbar creates an issue in a picked repository and lists pinned reposi
 	await page.getByRole("option", { name: "nova/dotfiles" }).click();
 
 	await expect(page).toHaveURL(/\/nova\/dotfiles\/issues\/new$/);
-	await expect(
-		page.getByRole("heading", { level: 1, name: "Create new issue" }),
-	).toBeVisible();
+	await expect(page.getByRole("textbox", { name: "Title" })).toBeVisible();
 
 	await page.getByRole("button", { name: "Search" }).click();
 	await page.getByRole("combobox").fill("pin");
