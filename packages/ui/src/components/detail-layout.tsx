@@ -23,11 +23,14 @@ function DetailLayout({
 	panelLabel = "Properties",
 	toolbar,
 	mobileActions,
+	content = "reading",
 	...props
 }: React.ComponentProps<"div"> & {
 	panel: React.ReactNode;
 	panelLabel?: string;
 	toolbar?: React.ReactNode;
+	/** `diff` drops the reading column and marks the scroller for virtualized diffs. */
+	content?: "reading" | "diff";
 	/** The page's main call to action on phones, beside the Details pill. */
 	mobileActions?: React.ReactNode;
 }) {
@@ -48,12 +51,22 @@ function DetailLayout({
 			) : null}
 			<ScrollFade
 				className={cn("min-w-0 md:col-start-1 md:row-start-2", COLUMN_SCROLLER)}
+				data-diffs-scroll-root={content === "diff" ? "" : undefined}
 				fade={32}
 				orientation="vertical"
 			>
-				<div className="mx-auto flex w-full min-w-0 max-w-[780px] flex-col gap-8 px-4 pt-14 pb-20 sm:px-[46px] md:px-8 md:pb-16 lg:px-[46px]">
-					{children}
-				</div>
+				{content === "diff" ? (
+					<div
+						className="min-w-0 px-2 pb-20 md:pb-16"
+						data-diffs-scroll-content=""
+					>
+						{children}
+					</div>
+				) : (
+					<div className="mx-auto flex w-full min-w-0 max-w-[780px] flex-col gap-8 px-4 pt-14 pb-20 sm:px-[46px] md:px-8 md:pb-16 lg:px-[46px]">
+						{children}
+					</div>
+				)}
 			</ScrollFade>
 			<aside
 				aria-label={panelLabel}

@@ -6,23 +6,15 @@ import {
 	CalloutContent,
 } from "@diffkit/ui/components/callout";
 import { BranchBadge } from "@diffkit/ui/components/detail-layout";
-import type { MentionCandidate } from "@diffkit/ui/components/markdown-editor";
 import {
 	PageHeader,
 	PageHeaderCrumb,
 	PageHeaderTitle,
 } from "@diffkit/ui/components/page-header";
-import { toast } from "@diffkit/ui/components/sonner";
-import {
-	useInfiniteQuery,
-	useQuery,
-	useQueryClient,
-} from "@tanstack/react-query";
+import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import { Link, useRouter } from "@tanstack/react-router";
-import { type ReactNode, useMemo, useReducer, useState } from "react";
+import type { ReactNode } from "react";
 import { Skeleton } from "skullet/react";
-import { MentionSkeletonRows } from "#/components/shared/picker-skeleton-rows";
-import { SkeletonSample } from "#/components/shared/skeleton-sample";
 import {
 	type CompareRefs,
 	formatCompareSplat,
@@ -30,45 +22,28 @@ import {
 	resolveCompareRefs,
 } from "#/lib/compare-ref";
 import type { CompareDetail } from "#/lib/github.functions";
-import { createPullRequest } from "#/lib/github.functions";
 import {
 	type GitHubQueryScope,
 	githubCompareDetailQueryOptions,
 	githubOpenPullForRefsQueryOptions,
 	githubRepoBranchesListInfiniteQueryOptions,
-	githubRepoCollaboratorsQueryOptions,
 	githubRepoOverviewQueryOptions,
-	githubRepoTemplateQueryOptions,
 	githubRepoViewerPermissionQueryOptions,
-	githubViewerQueryOptions,
 } from "#/lib/github.query";
 import {
-	invalidateGitHubEntities,
-	milestonesEntityKey,
-	pullEntityKey,
-	repoEntityKey,
-} from "#/lib/github-query-updates";
-import {
-	buildCreatePullRequestInput,
-	emptyPullRequestDraft,
 	type PullRequestAccess,
 	permissionLookup,
 	pullRequestAccess,
-	pullRequestBody,
-	pullRequestDraftReducer,
-	pullRequestTitle,
-	suggestPullRequestTitle,
 } from "#/lib/pull-request-draft";
 import { useHasMounted } from "#/lib/use-has-mounted";
 import { CompareBranchBar, type CompareBranches } from "./compare-branch-bar";
 import { CompareDiffView } from "./compare-diff-view";
-import { CompareForm, type SubmitState } from "./compare-form";
-import { CompareProperties } from "./compare-properties";
 import { CompareRecentBranches } from "./compare-recent-branches";
 import {
 	SAMPLE_COMPARE_COMMITS,
 	SAMPLE_COMPARE_FILES,
 } from "./compare-samples";
+import { PullRequestComposer } from "./pull-request-composer";
 
 type CompareView =
 	| { kind: "choose-branch" }
@@ -89,6 +64,34 @@ const NO_BRANCHES: CompareBranches = {
 };
 
 const noop = () => {};
+
+type ComposerStage =
+	| { kind: "none" }
+	| { kind: "pending" }
+	| { kind: "ready"; compare: CompareDetail };
+
+/** The form takes over the page once there is something the viewer may open. */
+function resolveComposerStage(
+	showForm: boolean,
+	target: CompareTarget | null,
+	view: CompareView,
+	access: PullRequestAccess,
+): ComposerStage {
+	if (!showForm) return { kind: "none" };
+	if (target === null || view.kind === "loading") return { kind: "pending" };
+	if (view.kind !== "ready" || view.compare.aheadBy === 0) {
+		return { kind: "none" };
+	}
+	switch (access) {
+		case "checking":
+			return { kind: "pending" };
+		case "allowed":
+			return { kind: "ready", compare: view.compare };
+		case "read-only":
+		case "unavailable":
+			return { kind: "none" };
+	}
+}
 
 function resolveCompareView(
 	head: string | null,
@@ -188,6 +191,28 @@ export function ComparePage({
 			search: showForm ? { expand: 1 } : {},
 		});
 	};
+
+	const composer = resolveComposerStage(showForm, target, view, access);
+	if (composer.kind !== "none") {
+		return (
+			<PullRequestComposer
+				compare={composer.kind === "ready" ? composer.compare : null}
+				owner={owner}
+				repo={repo}
+				scope={scope}
+				base={target?.base ?? "main"}
+				head={target?.head ?? "feature/review-threads"}
+				defaultBranch={target?.defaultBranch ?? "main"}
+				branches={branches}
+				onBaseChange={(next) =>
+					navigateTo({ base: next, head: target?.head ?? null })
+				}
+				onHeadChange={(next) =>
+					navigateTo({ base: target?.base ?? "main", head: next })
+				}
+			/>
+		);
+	}
 
 	return (
 		<div className="flex h-full min-h-0 flex-col">
@@ -371,16 +396,12 @@ function CompareReady({
 			{!noCommits && access === "unavailable" ? (
 				<AccessUnavailable owner={owner} repo={repo} scope={scope} />
 			) : null}
-			{showForm && !noCommits && access !== "unavailable" ? (
-				<PullRequestComposer
-					compare={compare}
-					access={access}
-					owner={owner}
-					repo={repo}
-					scope={scope}
-					base={base}
-					head={head}
-				/>
+			{showForm && !noCommits && access === "read-only" ? (
+				<Notice>
+					You don't have push access to {owner}/{repo}. To open a pull request,
+					compare from a fork by choosing its branch as{" "}
+					<span className="font-mono">owner:branch</span>.
+				</Notice>
 			) : null}
 			<CompareDiffView
 				commits={compare.commits}
@@ -391,160 +412,6 @@ function CompareReady({
 				repo={repo}
 			/>
 		</div>
-	);
-}
-
-function PullRequestComposer({
-	compare,
-	access,
-	owner,
-	repo,
-	scope,
-	base,
-	head,
-}: {
-	compare: CompareDetail;
-	access: PullRequestAccess;
-	owner: string;
-	repo: string;
-	scope: GitHubQueryScope;
-	base: string;
-	head: string;
-}) {
-	const router = useRouter();
-	const queryClient = useQueryClient();
-	const [draft, dispatch] = useReducer(
-		pullRequestDraftReducer,
-		emptyPullRequestDraft,
-	);
-	const [submit, setSubmit] = useState<SubmitState>({ status: "idle" });
-
-	const viewerQuery = useQuery(githubViewerQueryOptions(scope));
-	const collaboratorsQuery = useQuery(
-		githubRepoCollaboratorsQueryOptions(scope, { owner, repo }),
-	);
-	const templateQuery = useQuery(
-		githubRepoTemplateQueryOptions(scope, { owner, repo, kind: "pr" }),
-	);
-
-	const mentionConfig = useMemo(() => {
-		const candidates: MentionCandidate[] = (collaboratorsQuery.data ?? []).map(
-			(collaborator) => ({
-				id: collaborator.login,
-				label: collaborator.login,
-				avatarUrl: collaborator.avatarUrl,
-			}),
-		);
-		return {
-			candidates,
-			isLoading: collaboratorsQuery.isPending,
-			loadingPlaceholder: <MentionSkeletonRows />,
-		};
-	}, [collaboratorsQuery.data, collaboratorsQuery.isPending]);
-
-	const titleSuggestion = suggestPullRequestTitle(compare.commits, head);
-	const bodyTemplate = templateQuery.data ?? "";
-	const title = pullRequestTitle(draft, titleSuggestion);
-	const body = pullRequestBody(draft, bodyTemplate);
-
-	const handleSubmit = async () => {
-		const input = buildCreatePullRequestInput({
-			owner,
-			repo,
-			base,
-			head,
-			draft,
-			titleSuggestion,
-			bodyTemplate,
-		});
-		if (!input) return;
-
-		setSubmit({ status: "submitting" });
-		try {
-			const result = await createPullRequest({ data: input });
-			if (!result.ok) {
-				setSubmit({
-					status: "failed",
-					message: result.error || "Failed to create pull request.",
-				});
-				return;
-			}
-			await invalidateGitHubEntities(
-				queryClient,
-				scope,
-				[
-					pullEntityKey({ owner, repo, pullNumber: result.pullNumber }),
-					repoEntityKey({ owner, repo }),
-					...(draft.milestone ? [milestonesEntityKey({ owner, repo })] : []),
-				],
-				"created",
-			);
-			if (result.warnings && result.warnings.length > 0) {
-				toast.warning("Pull request created with some issues", {
-					description: result.warnings.join("\n"),
-				});
-			}
-			await router.navigate({
-				to: "/$owner/$repo/pull/$pullId",
-				params: { owner, repo, pullId: String(result.pullNumber) },
-			});
-		} catch {
-			setSubmit({
-				status: "failed",
-				message: "Failed to create pull request. Please try again.",
-			});
-		}
-	};
-
-	return (
-		<Skeleton loading={access === "checking"} label="Checking your access">
-			{access === "read-only" ? (
-				<Notice>
-					You don't have push access to {owner}/{repo}. To open a pull request,
-					compare from a fork by choosing its branch as{" "}
-					<span className="font-mono">owner:branch</span>.
-				</Notice>
-			) : (
-				<ComposerShape isSample={access === "checking"}>
-					<div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(17rem,34%)]">
-						<div className="mx-auto w-full max-w-[780px] min-w-0">
-							<CompareForm
-								owner={owner}
-								repo={repo}
-								title={title}
-								body={body}
-								isDraft={draft.isDraft}
-								submit={submit}
-								canSubmit={title.trim() !== ""}
-								mentionConfig={mentionConfig}
-								onTitleChange={(value) =>
-									dispatch({ type: "title-edited", value })
-								}
-								onBodyChange={(value) =>
-									dispatch({ type: "body-edited", value })
-								}
-								onDraftChange={(value) =>
-									dispatch({ type: "draft-set", value })
-								}
-								onSubmit={handleSubmit}
-							/>
-						</div>
-						<aside aria-label="Pull request properties" className="min-w-0">
-							<div className="flex max-w-80 flex-col">
-								<CompareProperties
-									owner={owner}
-									repo={repo}
-									scope={scope}
-									viewerLogin={viewerQuery.data?.login ?? null}
-									draft={draft}
-									dispatch={dispatch}
-								/>
-							</div>
-						</aside>
-					</div>
-				</ComposerShape>
-			)}
-		</Skeleton>
 	);
 }
 
@@ -661,15 +528,4 @@ function CompareDiffSample({ owner, repo }: { owner: string; repo: string }) {
 			repo={repo}
 		/>
 	);
-}
-
-/** While access is checked the form is only a measured shape, so its pickers stay idle. */
-function ComposerShape({
-	isSample,
-	children,
-}: {
-	isSample: boolean;
-	children: React.ReactNode;
-}) {
-	return isSample ? <SkeletonSample>{children}</SkeletonSample> : children;
 }
