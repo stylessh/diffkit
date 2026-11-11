@@ -92,36 +92,36 @@ function NewIssueForm({
 
 	const handleSubmit = async () => {
 		setSubmission({ status: "submitting" });
-		try {
-			const result = await createIssue({
-				data: {
-					owner,
-					repo,
-					title: title.trim(),
-					body: body.trim() || undefined,
-					labels: labels.length > 0 ? labels.map((l) => l.name) : undefined,
-					assignees:
-						assignees.length > 0 ? assignees.map((a) => a.login) : undefined,
-				},
+		const result = await createIssue({
+			data: {
+				owner,
+				repo,
+				title: title.trim(),
+				body: body.trim() || undefined,
+				labels: labels.length > 0 ? labels.map((l) => l.name) : undefined,
+				assignees:
+					assignees.length > 0 ? assignees.map((a) => a.login) : undefined,
+			},
+		}).catch(() => null);
+		if (!result?.ok) {
+			setSubmission({
+				status: "failed",
+				message: result?.error || "Failed to create issue. Please try again.",
 			});
-			if (!result.ok) {
-				setSubmission({ status: "failed", message: result.error });
-				return;
-			}
+			return;
+		}
+		// The issue exists from here on, so nothing below may offer Create again.
+		try {
 			await invalidateGitHubEntities(
 				queryClient,
 				scope,
 				[issueEntityKey({ owner, repo, issueNumber: result.issueNumber })],
 				"created",
 			);
+		} finally {
 			await router.navigate({
 				to: "/$owner/$repo/issues/$issueId",
 				params: { owner, repo, issueId: String(result.issueNumber) },
-			});
-		} catch {
-			setSubmission({
-				status: "failed",
-				message: "Failed to create issue. Please try again.",
 			});
 		}
 	};

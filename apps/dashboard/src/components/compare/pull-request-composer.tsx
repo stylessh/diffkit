@@ -146,15 +146,17 @@ export function PullRequestComposer({
 		if (!input) return;
 
 		setSubmission({ status: "submitting" });
+		const result = await createPullRequest({ data: input }).catch(() => null);
+		if (!result?.ok) {
+			setSubmission({
+				status: "failed",
+				message:
+					result?.error || "Failed to create pull request. Please try again.",
+			});
+			return;
+		}
+		// The pull request exists from here on, so nothing below may offer Create again.
 		try {
-			const result = await createPullRequest({ data: input });
-			if (!result.ok) {
-				setSubmission({
-					status: "failed",
-					message: result.error || "Failed to create pull request.",
-				});
-				return;
-			}
 			await invalidateGitHubEntities(
 				queryClient,
 				scope,
@@ -165,6 +167,7 @@ export function PullRequestComposer({
 				],
 				"created",
 			);
+		} finally {
 			if (result.warnings && result.warnings.length > 0) {
 				toast.warning("Pull request created with some issues", {
 					description: result.warnings.join("\n"),
@@ -173,11 +176,6 @@ export function PullRequestComposer({
 			await router.navigate({
 				to: "/$owner/$repo/pull/$pullId",
 				params: { owner, repo, pullId: String(result.pullNumber) },
-			});
-		} catch {
-			setSubmission({
-				status: "failed",
-				message: "Failed to create pull request. Please try again.",
 			});
 		}
 	};

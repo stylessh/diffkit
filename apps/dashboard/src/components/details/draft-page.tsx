@@ -120,6 +120,15 @@ export function DraftPage({
 		</Button>
 	);
 	const showingFiles = view === "files" && files !== undefined;
+	const failure =
+		submission.status === "failed" ? (
+			<div
+				role="alert"
+				className="rounded-lg bg-pill-blocked px-4 py-3 text-[13px] font-[450] text-pill-blocked-text"
+			>
+				{submission.message}
+			</div>
+		) : null;
 
 	return (
 		<div className="flex h-full min-h-0 flex-col">
@@ -167,7 +176,10 @@ export function DraftPage({
 				}
 			>
 				{showingFiles ? (
-					files.content
+					<div className="flex flex-col gap-2">
+						{failure}
+						{files.content}
+					</div>
 				) : (
 					<Skeleton
 						loading={loading}
@@ -188,6 +200,7 @@ export function DraftPage({
 										placeholder={titlePlaceholder}
 										onChange={(event) => onTitleChange(event.target.value)}
 										onKeyDown={(event) => {
+											if (event.nativeEvent.isComposing) return;
 											if (isSubmitChord(event)) {
 												submitOnChord(event);
 											} else if (event.key === "Enter") {
@@ -201,14 +214,7 @@ export function DraftPage({
 								)}
 								{titleDetail}
 							</div>
-							{submission.status === "failed" ? (
-								<div
-									role="alert"
-									className="rounded-lg bg-pill-blocked px-4 py-3 text-[13px] font-[450] text-pill-blocked-text"
-								>
-									{submission.message}
-								</div>
-							) : null}
+							{failure}
 							{view === "preview" ? (
 								body.trim() ? (
 									<AppMarkdown
