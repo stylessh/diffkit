@@ -25,9 +25,8 @@ describe("this repository's product map", () => {
 		if (!parsed.ok) return;
 		const referenced = parsed.map.areas.flatMap((area) => [
 			...area.flow.flatMap((step) => (step.path ? [step.path] : [])),
-			...area.entryPoints.map((entry) => entry.path),
 			...area.features.flatMap((feature) =>
-				feature.entry.map((entry) => entry.path),
+				feature.path ? [feature.path] : [],
 			),
 			...(area.screen ? [area.screen.light, area.screen.dark] : []),
 		]);
@@ -35,6 +34,15 @@ describe("this repository's product map", () => {
 			(file) => !existsSync(path.join(root, file)),
 		);
 		expect(missing).toEqual([]);
+	});
+
+	it("stays small enough to read: no area file runs past 150 lines", () => {
+		const long = readdirSync(areasDir).filter(
+			(name) =>
+				readFileSync(path.join(areasDir, name), "utf8").split("\n").length >
+				150,
+		);
+		expect(long).toEqual([]);
 	});
 
 	it("gives every area at least one file", () => {

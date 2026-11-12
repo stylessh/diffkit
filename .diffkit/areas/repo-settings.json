@@ -54,221 +54,41 @@
     {
       "name": "General settings",
       "summary": "Name, description, website, default branch, feature and merge switches behind a save bar, plus visibility, archive and delete behind confirm dialogs.",
-      "entry": [
-        {
-          "path": "apps/dashboard/src/components/repo/settings/general-settings.tsx",
-          "line": 101,
-          "symbol": "GeneralSettings",
-          "role": "General page and danger zone"
-        },
-        {
-          "path": "apps/dashboard/src/lib/github/settings-repo.ts",
-          "line": 24,
-          "symbol": "updateRepoGeneralSettings",
-          "role": "Server function: PATCH the repository"
-        },
-        {
-          "path": "apps/dashboard/src/lib/settings/repo-general.ts",
-          "line": 143,
-          "symbol": "toApiPatch",
-          "role": "Only place field names become API names"
-        }
-      ]
+      "path": "apps/dashboard/src/components/repo/settings/general-settings.tsx"
     },
     {
       "name": "Branches and rules",
       "summary": "A read-only list of rulesets and branch protection rules described in plain words, with a link to edit them on github.com.",
-      "entry": [
-        {
-          "path": "apps/dashboard/src/components/repo/settings/branch-rules-settings.tsx",
-          "line": 54,
-          "symbol": "BranchRulesSettings",
-          "role": "Rules page"
-        },
-        {
-          "path": "apps/dashboard/src/lib/github/settings-rules.ts",
-          "line": 16,
-          "symbol": "getRepoRulesets",
-          "role": "Server read: rulesets with details"
-        },
-        {
-          "path": "apps/dashboard/src/lib/settings/rules.ts",
-          "line": 96,
-          "symbol": "describeRule",
-          "role": "Turns a rule into a short phrase"
-        }
-      ]
+      "path": "apps/dashboard/src/components/repo/settings/branch-rules-settings.tsx"
     },
     {
       "name": "Collaborators and teams",
       "summary": "Add people or teams with a role, change roles, remove them, and cancel pending invitations after an inline confirmation.",
-      "entry": [
-        {
-          "path": "apps/dashboard/src/components/repo/settings/access-settings.tsx",
-          "line": 54,
-          "symbol": "AccessSettings",
-          "role": "Access page"
-        },
-        {
-          "path": "apps/dashboard/src/lib/github/settings-access.ts",
-          "line": 18,
-          "symbol": "getRepoAccess",
-          "role": "Collaborators, invitations and teams"
-        },
-        {
-          "path": "apps/dashboard/src/lib/github/settings-access.ts",
-          "line": 68,
-          "symbol": "setRepoCollaboratorRole",
-          "role": "Add a person or change a role"
-        }
-      ]
+      "path": "apps/dashboard/src/components/repo/settings/access-settings.tsx"
     },
     {
       "name": "Webhooks page",
       "summary": "Create, edit and delete webhooks, choose their events, see recent deliveries and redeliver one.",
-      "entry": [
-        {
-          "path": "apps/dashboard/src/components/repo/settings/webhooks-settings.tsx",
-          "line": 87,
-          "symbol": "WebhooksSettings",
-          "role": "Webhooks page, editor and deliveries"
-        },
-        {
-          "path": "apps/dashboard/src/lib/github/settings-webhooks.ts",
-          "line": 34,
-          "symbol": "saveRepoWebhook",
-          "role": "Server function: create or update"
-        },
-        {
-          "path": "apps/dashboard/src/lib/github/settings-webhooks.ts",
-          "line": 96,
-          "symbol": "redeliverWebhookDelivery",
-          "role": "Server function: redeliver"
-        }
-      ]
+      "path": "apps/dashboard/src/components/repo/settings/webhooks-settings.tsx"
     },
     {
       "name": "Actions secrets and variables",
       "summary": "Secrets are write-only. Sealing means encrypting the value to the repo's public key (a libsodium sealed box), which GitHub requires before storing it.",
-      "entry": [
-        {
-          "path": "apps/dashboard/src/components/repo/settings/actions-config-settings.tsx",
-          "line": 79,
-          "symbol": "ActionsSettings",
-          "role": "Secrets and variables page"
-        },
-        {
-          "path": "apps/dashboard/src/lib/github/settings-actions.ts",
-          "line": 52,
-          "symbol": "saveRepoActionsSecret",
-          "role": "Fetches the key, seals, uploads"
-        },
-        {
-          "path": "apps/dashboard/src/lib/settings/seal.ts",
-          "line": 74,
-          "symbol": "sealSecret",
-          "role": "Sealed box with WebCrypto and noble"
-        }
-      ]
+      "path": "apps/dashboard/src/components/repo/settings/actions-config-settings.tsx"
     },
     {
       "name": "Labels page",
       "summary": "Create, rename, recolour and delete labels. Open to triage access and above, unlike the other pages, which need admin.",
-      "entry": [
-        {
-          "path": "apps/dashboard/src/components/repo/settings/labels-settings.tsx",
-          "line": 42,
-          "symbol": "LabelsSettings",
-          "role": "Labels page and editor"
-        },
-        {
-          "path": "apps/dashboard/src/lib/github/labels.ts",
-          "line": 111,
-          "symbol": "saveRepoLabel",
-          "role": "Server function: create or update"
-        },
-        {
-          "path": "apps/dashboard/src/lib/settings/permissions.ts",
-          "line": 19,
-          "symbol": "repoSettingsCapabilities",
-          "role": "Role to what the viewer may open"
-        }
-      ]
+      "path": "apps/dashboard/src/components/repo/settings/labels-settings.tsx"
     },
     {
       "name": "Organisation settings",
       "summary": "Profile and member privileges, members and invitations, teams and their members. Members who are not owners get a read-only view.",
-      "entry": [
-        {
-          "path": "apps/dashboard/src/components/org/settings/org-settings-frame.tsx",
-          "line": 57,
-          "symbol": "OrgSettingsFrame",
-          "role": "Org settings shell and member check"
-        },
-        {
-          "path": "apps/dashboard/src/components/org/settings/org-members-settings.tsx",
-          "line": 53,
-          "symbol": "OrgMembersSettings",
-          "role": "Members and invitations page"
-        },
-        {
-          "path": "apps/dashboard/src/lib/github/settings-org.ts",
-          "line": 56,
-          "symbol": "getOrgViewerRole",
-          "role": "Viewer's role in the organisation"
-        }
-      ]
-    }
-  ],
-  "entryPoints": [
-    {
-      "path": "apps/dashboard/src/routes/_protected/$owner/$repo/settings.tsx",
-      "line": 10,
-      "symbol": "Route",
-      "role": "Repo settings layout; child pages are in settings/"
-    },
-    {
-      "path": "apps/dashboard/src/components/repo/settings/repo-settings-frame.tsx",
-      "line": 49,
-      "symbol": "RepoSettingsFrame",
-      "role": "Settings nav and the per-page permission gate"
-    },
-    {
-      "path": "apps/dashboard/src/lib/github/settings-server.ts",
-      "line": 28,
-      "symbol": "readSettings",
-      "role": "The two helpers every settings server function uses"
-    },
-    {
-      "path": "apps/dashboard/src/components/settings/use-settings-action.ts",
-      "line": 15,
-      "symbol": "useSettingsAction",
-      "role": "How a write runs and reports in the UI"
-    },
-    {
-      "path": "apps/dashboard/src/lib/settings/permissions.ts",
-      "line": 19,
-      "symbol": "repoSettingsCapabilities",
-      "role": "Role ranking behind every gate"
-    },
-    {
-      "path": "apps/dashboard/src/routes/_protected/orgs/$org/settings.tsx",
-      "line": 7,
-      "symbol": "Route",
-      "role": "Organisation settings layout"
+      "path": "apps/dashboard/src/components/org/settings/org-settings-frame.tsx"
     }
   ],
   "dependsOn": ["sign-in", "github-data", "ui-kit"],
   "outside": ["github-rest"],
-  "goodParts": [
-    "Each settings domain is a pure module with its own test in lib/settings (9 test files); seal.test.ts checks only the repository key opens the box.",
-    "e2e runs real writes against the emulator: isolated/repo-settings.spec.ts (8 tests), org-settings.spec.ts and org-settings-member.spec.ts."
-  ],
-  "watch": [
-    "Branches and rules is read-only, and it loads at most 20 rulesets and 20 protected branches, one detail request each (lib/github/settings-rules.ts:14).",
-    "A secret's plain value is posted to the DiffKit server function and sealed there, not in the browser (lib/github/settings-actions.ts:52).",
-    "Largest files: webhooks-settings.tsx 521 lines, org-teams-settings.tsx 469, access-settings.tsx 408."
-  ],
   "issues": [
     {
       "number": 185,

@@ -5,8 +5,8 @@
 //
 //   node check.mjs [repository root] [--fix] [--fail-on-unmapped]
 //
-// --fix               put every map file's keys in the format's order, and move
-//                     code links whose line drifted back onto their symbol
+// --fix               first put every map file's keys in the format's order, so
+//                     the same content always diffs the same
 // --fail-on-unmapped  also fail when a file belongs to no area
 //
 // Exits 1 when the map would be rejected or points at something missing.
@@ -17,7 +17,6 @@ import path from "node:path";
 import { MAP_AREAS_PATH, MAP_FILE_PATH, parseMapFolder } from "./lib/map-file.mjs";
 import { createAreaMatcher } from "./lib/path-rules.mjs";
 import {
-  anchorLines,
   byDirectory,
   parseArgs,
   readMapFolder,
@@ -70,8 +69,7 @@ const problems = [];
 for (const area of map.areas) {
   const mentioned = [
     ...area.flow.flatMap((step) => (step.path ? [step.path] : [])),
-    ...area.entryPoints.map((entry) => entry.path),
-    ...area.features.flatMap((feature) => feature.entry.map((entry) => entry.path)),
+    ...area.features.flatMap((feature) => (feature.path ? [feature.path] : [])),
     ...(area.screen ? [area.screen.light, area.screen.dark] : []),
   ];
   for (const file of new Set(mentioned))
@@ -96,24 +94,6 @@ if (problems.length > 0)
 
 const placed = [...filesPerArea.values()].reduce((sum, count) => sum + count, 0);
 console.log(`Product map OK: ${map.areas.length} areas, ${placed} files placed.`);
-
-const anchors = anchorLines(root, { fix: Boolean(options.fix) });
-if (anchors.moved.length > 0) {
-  console.log(
-    options.fix
-      ? `\nMoved ${anchors.moved.length} code link(s) back onto their symbol:`
-      : `\n${anchors.moved.length} code link(s) point at a line that no longer shows their symbol. Run check.mjs --fix to move them:`
-  );
-  for (const line of anchors.moved) console.log(`  ${line}`);
-  if (inActions && !options.fix)
-    console.log(
-      `::warning::${anchors.moved.length} product map code link(s) point at the wrong line. Run the product-map check with --fix.`
-    );
-}
-if (anchors.lost.length > 0) {
-  console.log(`\n${anchors.lost.length} code link(s) name a symbol their file no longer has. Update or remove them:`);
-  for (const line of anchors.lost) console.log(`  ${line}`);
-}
 
 if (unmapped.length > 0) {
   console.log(

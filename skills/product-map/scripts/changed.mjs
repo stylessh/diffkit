@@ -76,9 +76,8 @@ for (const [file, status] of changed) {
 function mentions(area) {
   return [
     ...area.flow.flatMap((step) => (step.path ? [[step.path, `flow "${step.label}"`]] : [])),
-    ...area.entryPoints.map((entry) => [entry.path, "entryPoints"]),
     ...area.features.flatMap((feature) =>
-      feature.entry.map((entry) => [entry.path, `feature "${feature.name}"`])
+      feature.path ? [[feature.path, `feature "${feature.name}"`]] : []
     ),
   ];
 }
@@ -97,7 +96,7 @@ if (stale.length > 0) {
 
 if (perArea.size > 0) {
   console.log("\n## Areas whose code changed");
-  console.log("Re-read each one's file in .diffkit/areas/ against these changes. Update it only where the behaviour, a path, a line or a symbol is now wrong.");
+  console.log("Re-read each one's file in .diffkit/areas/ against these changes. Update it only where the behaviour or a path is now wrong.");
   for (const [id, list] of [...perArea].sort((a, b) => b[1].length - a[1].length)) {
     const area = map.areas.find((candidate) => candidate.id === id);
     console.log(`\n### ${id} (${list.length} file${list.length === 1 ? "" : "s"})`);
@@ -106,7 +105,7 @@ if (perArea.size > 0) {
     const touched = new Set(list.map(([, file]) => file));
     const mentioned = [...new Set(mentions(area).filter(([file]) => touched.has(file)).map(([file, where]) => `${file} (${where})`))];
     if (mentioned.length > 0) {
-      console.log("  The map mentions these changed files; check their lines and symbols:");
+      console.log("  The map mentions these changed files; check what it says about them:");
       for (const line of mentioned) console.log(`    - ${line}`);
     }
   }

@@ -54,195 +54,39 @@
     {
       "name": "Sign-in tables",
       "summary": "user, session, account and verification are Better Auth's tables. account holds each user's GitHub OAuth and GitHub App tokens.",
-      "entry": [
-        {
-          "path": "apps/dashboard/src/db/schema.ts",
-          "line": 9,
-          "symbol": "user",
-          "role": "First of the four Better Auth tables"
-        },
-        {
-          "path": "apps/dashboard/src/db/schema.ts",
-          "line": 32,
-          "symbol": "account",
-          "role": "Provider accounts and their tokens"
-        },
-        {
-          "path": "apps/dashboard/src/db/index.ts",
-          "line": 5,
-          "symbol": "getDb",
-          "role": "Drizzle client over the D1 binding"
-        }
-      ]
+      "path": "apps/dashboard/src/db/schema.ts"
     },
     {
       "name": "Change feed table",
       "summary": "github_change keeps one row per repo and entity key with a version number. A repeat change updates the row, so the table stays small.",
-      "entry": [
-        {
-          "path": "apps/dashboard/src/db/schema.ts",
-          "line": 89,
-          "symbol": "githubChange",
-          "role": "Table definition and index"
-        },
-        {
-          "path": "apps/dashboard/src/lib/github-change.server.ts",
-          "line": 58,
-          "symbol": "recordGitHubChanges",
-          "role": "Upsert with a rising version"
-        }
-      ]
+      "path": "apps/dashboard/src/db/schema.ts"
     },
     {
       "name": "Forbidden orgs table",
       "summary": "user_forbidden_org remembers orgs that block the OAuth app, so searches skip them. Rows go away once the GitHub App is installed on the org.",
-      "entry": [
-        {
-          "path": "apps/dashboard/src/db/schema.ts",
-          "line": 70,
-          "symbol": "userForbiddenOrg",
-          "role": "Table definition"
-        },
-        {
-          "path": "apps/dashboard/src/lib/forbidden-orgs-store.ts",
-          "line": 15,
-          "symbol": "getForbiddenOrgsForUser",
-          "role": "Reads and writes for this table"
-        }
-      ]
+      "path": "apps/dashboard/src/db/schema.ts"
     },
     {
       "name": "KV cache keys",
       "summary": "Four key families, all with a TTL: installation tokens, per-user readable repo lists (10 min), the cron heartbeat (24 h) and the landing star count (7 d).",
-      "entry": [
-        {
-          "path": "apps/dashboard/src/lib/github.server.ts",
-          "line": 75,
-          "symbol": "getGitHubInstallationClient",
-          "role": "Installation tokens in KV"
-        },
-        {
-          "path": "apps/dashboard/src/lib/github-change-access.server.ts",
-          "line": 104,
-          "symbol": "getReadableRepoSet",
-          "role": "change-access:v1: keys"
-        },
-        {
-          "path": "apps/dashboard/src/lib/health.server.ts",
-          "line": 39,
-          "symbol": "recordMaintenanceRun",
-          "role": "Cron heartbeat key"
-        }
-      ]
+      "path": "apps/dashboard/src/lib/github.server.ts"
     },
     {
       "name": "Comment media bucket",
       "summary": "R2 stores comment uploads under a per-user prefix: images up to 25 MB, videos up to 120 MB, type checked from the file's first bytes.",
-      "entry": [
-        {
-          "path": "apps/dashboard/src/lib/comment-media-upload.handler.ts",
-          "line": 31,
-          "symbol": "handleCommentMediaUpload",
-          "role": "POST /api/comment-media/upload"
-        },
-        {
-          "path": "apps/dashboard/src/lib/comment-media.server.ts",
-          "line": 31,
-          "symbol": "detectCommentMediaFromBytes",
-          "role": "File type from magic bytes"
-        }
-      ]
+      "path": "apps/dashboard/src/lib/comment-media-upload.handler.ts"
     },
     {
       "name": "Sweeper and size check",
       "summary": "The cron deletes change rows older than 15 minutes in batches and warns in the logs at 80% of D1's 10 GB limit or above 50k change rows.",
-      "entry": [
-        {
-          "path": "apps/dashboard/crons/maintenance.ts",
-          "line": 7,
-          "symbol": "cron",
-          "role": "Schedule: every 5 minutes"
-        },
-        {
-          "path": "apps/dashboard/src/lib/scheduled-maintenance.server.ts",
-          "line": 18,
-          "symbol": "runScheduledMaintenance",
-          "role": "Runs the sweep and the size check"
-        },
-        {
-          "path": "apps/dashboard/src/lib/github-change.server.ts",
-          "line": 225,
-          "symbol": "sweepGitHubChanges",
-          "role": "Batched delete of old rows"
-        }
-      ]
+      "path": "apps/dashboard/crons/maintenance.ts"
     },
     {
       "name": "Migrations and CI check",
       "summary": "Nine migrations; 0007 drops the four cache tables behind the 2026-11-08 incident. A CI script blocks edited or destructive migrations without approval.",
-      "entry": [
-        {
-          "path": "apps/dashboard/db/migrations/0007_drop_legacy_cache_tables.sql",
-          "line": 11,
-          "symbol": "DROP TABLE IF EXISTS `github_webhook_event`",
-          "role": "Drops the legacy cache tables"
-        },
-        {
-          "path": "scripts/check-d1-migrations.mjs",
-          "line": 271,
-          "symbol": "checkSchemaDrift",
-          "role": "Compares migrations with the Drizzle schema"
-        }
-      ]
-    }
-  ],
-  "entryPoints": [
-    {
-      "path": "apps/dashboard/src/db/schema.ts",
-      "line": 89,
-      "symbol": "githubChange",
-      "role": "All six tables are in this one file"
-    },
-    {
-      "path": "apps/dashboard/void.config.ts",
-      "line": 17,
-      "symbol": "pinnedResources",
-      "role": "D1, KV and R2 bindings and how they are pinned"
-    },
-    {
-      "path": "apps/dashboard/env.ts",
-      "line": 6,
-      "symbol": "defineEnv",
-      "role": "Every secret and setting the Worker reads"
-    },
-    {
-      "path": "apps/dashboard/src/lib/scheduled-maintenance.server.ts",
-      "line": 18,
-      "symbol": "runScheduledMaintenance",
-      "role": "What the cron does on each run"
-    },
-    {
-      "path": "docs/platform-plan.md",
-      "line": 5,
-      "symbol": "2026-11-08: Sign-in and dashboard down (D1 database full)",
-      "role": "The incident that shaped the storage rules"
-    },
-    {
-      "path": "docs/runbooks/d1-full.md",
-      "line": 1,
-      "symbol": "Runbook: D1 database full or filling up",
-      "role": "How to measure, stop growth and purge"
+      "path": "apps/dashboard/db/migrations/0007_drop_legacy_cache_tables.sql"
     }
   ],
   "dependsOn": [],
-  "outside": ["cf-d1", "cf-kv", "cf-r2"],
-  "goodParts": [
-    "Tests run real SQL: lib/testing/d1-sqlite.ts applies the migration files to an in-memory node:sqlite database behind a D1-shaped API.",
-    "The D1-full incident is written up in docs/platform-plan.md with a runbook; its rule (a TTL and sweeper for every store) is repeated in code comments."
-  ],
-  "watch": [
-    "Sweeper batches are 20,000 rows with a 4 s pause (github-change.server.ts:15); platform-plan.md:68 notes that purge setting made about 12% of live change inserts fail.",
-    "The cron sweeps only github_change. Nothing in apps/dashboard deletes expired session or verification rows, or old R2 comment media.",
-    "Migration history is noisy: 0002 to 0004 create tables that 0007 drops, and 0006 creates github_change that 0008 drops and recreates."
-  ]
+  "outside": ["cf-d1", "cf-kv", "cf-r2"]
 }

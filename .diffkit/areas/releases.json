@@ -54,179 +54,41 @@
     {
       "name": "Release timeline",
       "summary": "Releases as a dated changelog with draft, prerelease and latest badges. Long notes are clamped with a link to the full release.",
-      "entry": [
-        {
-          "path": "apps/dashboard/src/components/releases/repo-releases-page.tsx",
-          "line": 26,
-          "symbol": "RepoReleasesPage",
-          "role": "List page with paging"
-        },
-        {
-          "path": "apps/dashboard/src/components/releases/release-timeline-item.tsx",
-          "line": 37,
-          "symbol": "ReleaseTimelineItem",
-          "role": "One release in the timeline"
-        },
-        {
-          "path": "apps/dashboard/src/lib/github/releases.ts",
-          "line": 108,
-          "symbol": "getRepoReleases",
-          "role": "Server read: releases page"
-        }
-      ]
+      "path": "apps/dashboard/src/components/releases/repo-releases-page.tsx"
     },
     {
       "name": "Release page",
       "summary": "One release looked up by tag, with its notes rendered as Markdown and its assets shown open.",
-      "entry": [
-        {
-          "path": "apps/dashboard/src/components/releases/repo-release-detail-page.tsx",
-          "line": 18,
-          "symbol": "RepoReleaseDetailPage",
-          "role": "Detail page"
-        },
-        {
-          "path": "apps/dashboard/src/lib/github/releases.ts",
-          "line": 141,
-          "symbol": "getRepoRelease",
-          "role": "Server read: release by tag"
-        }
-      ]
+      "path": "apps/dashboard/src/components/releases/repo-release-detail-page.tsx"
     },
     {
       "name": "Assets and source archives",
       "summary": "Uploaded assets with size and download count, plus GitHub's source archives. Drafts hide the archives because the tag may not exist yet.",
-      "entry": [
-        {
-          "path": "apps/dashboard/src/components/releases/release-assets.tsx",
-          "line": 56,
-          "symbol": "ReleaseAssets",
-          "role": "Asset and archive rows"
-        }
-      ]
+      "path": "apps/dashboard/src/components/releases/release-assets.tsx"
     },
     {
       "name": "Draft, publish and edit",
       "summary": "One form saves as draft or publishes. Saving a published release never demotes it to draft, and a prerelease is never marked latest.",
-      "entry": [
-        {
-          "path": "apps/dashboard/src/components/releases/release-form-page.tsx",
-          "line": 66,
-          "symbol": "ReleaseFormPage",
-          "role": "New and edit form"
-        },
-        {
-          "path": "apps/dashboard/src/components/releases/release-save-utils.ts",
-          "line": 115,
-          "symbol": "buildReleaseSavePayload",
-          "role": "Payload rules for create and update"
-        },
-        {
-          "path": "apps/dashboard/src/lib/github/releases.ts",
-          "line": 216,
-          "symbol": "createRepoRelease",
-          "role": "Server function: create a release"
-        }
-      ]
+      "path": "apps/dashboard/src/components/releases/release-form-page.tsx"
     },
     {
       "name": "Generate release notes",
       "summary": "Asks GitHub to draft notes for the tag range and applies them only if you have not typed or changed the range in the meantime.",
-      "entry": [
-        {
-          "path": "apps/dashboard/src/lib/github/releases.ts",
-          "line": 286,
-          "symbol": "generateRepoReleaseNotes",
-          "role": "Server call to GitHub's notes generator"
-        },
-        {
-          "path": "apps/dashboard/src/components/releases/release-save-utils.ts",
-          "line": 157,
-          "symbol": "shouldApplyGeneratedReleaseNotes",
-          "role": "Guard against overwriting edits"
-        }
-      ]
+      "path": "apps/dashboard/src/lib/github/releases.ts"
     },
     {
       "name": "Tag and branch pickers",
       "summary": "Pick an existing tag or type a new one to be created from a chosen branch on publish. Names are checked against git's ref rules.",
-      "entry": [
-        {
-          "path": "apps/dashboard/src/components/releases/release-ref-pickers.tsx",
-          "line": 31,
-          "symbol": "ReleaseTagPicker",
-          "role": "Tag combobox over the first 100 tags"
-        },
-        {
-          "path": "apps/dashboard/src/components/releases/release-save-utils.ts",
-          "line": 19,
-          "symbol": "validateReleaseTag",
-          "role": "Tag name validation"
-        }
-      ]
+      "path": "apps/dashboard/src/components/releases/release-ref-pickers.tsx"
     },
     {
       "name": "Delete release",
       "summary": "A confirm-and-delete control on cards and in the form, shown only to viewers with push access.",
-      "entry": [
-        {
-          "path": "apps/dashboard/src/components/releases/release-card-actions.tsx",
-          "line": 78,
-          "symbol": "ReleaseDeleteButton",
-          "role": "Confirm and delete"
-        },
-        {
-          "path": "apps/dashboard/src/lib/github/releases.ts",
-          "line": 265,
-          "symbol": "deleteRepoRelease",
-          "role": "Server function: delete a release"
-        }
-      ]
-    }
-  ],
-  "entryPoints": [
-    {
-      "path": "apps/dashboard/src/routes/_protected/$owner/$repo/releases.index.tsx",
-      "line": 12,
-      "symbol": "Route",
-      "role": "List route; new, $tag and $tag_.edit sit beside it"
-    },
-    {
-      "path": "apps/dashboard/src/components/releases/repo-releases-page.tsx",
-      "line": 26,
-      "symbol": "RepoReleasesPage",
-      "role": "Releases list"
-    },
-    {
-      "path": "apps/dashboard/src/components/releases/release-form-page.tsx",
-      "line": 66,
-      "symbol": "ReleaseFormPage",
-      "role": "New and edit form"
-    },
-    {
-      "path": "apps/dashboard/src/components/releases/release-save-utils.ts",
-      "line": 115,
-      "symbol": "buildReleaseSavePayload",
-      "role": "The form's rules, kept free of React"
-    },
-    {
-      "path": "apps/dashboard/src/lib/github/releases.ts",
-      "line": 108,
-      "symbol": "getRepoReleases",
-      "role": "All release server functions live in this file"
+      "path": "apps/dashboard/src/components/releases/release-card-actions.tsx"
     }
   ],
   "dependsOn": ["conversation", "github-data", "instant-cache"],
   "outside": ["github-rest"],
-  "goodParts": [
-    "Save rules sit in release-save-utils.ts with a 257-line test file (published stays published, prerelease is never latest, tag validation).",
-    "Generated notes cannot overwrite typing: shouldApplyGeneratedReleaseNotes drops them if the range or the notes changed while waiting."
-  ],
-  "watch": [
-    "components/releases/release-form-page.tsx is 633 lines.",
-    "Assets can be listed and downloaded but not uploaded; lib/github/releases.ts has no upload call.",
-    "e2e only checks that the releases list shows up (apps/e2e/tests/concurrent/repository.spec.ts); creating and editing rely on unit tests alone."
-  ],
   "issues": [
     {
       "number": 169,

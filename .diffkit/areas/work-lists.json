@@ -58,215 +58,41 @@
     {
       "name": "Role-grouped lists",
       "summary": "Pull requests in five groups, issues in three (assigned, authored, mentioned), and Reviews as the review-requested group on its own.",
-      "entry": [
-        {
-          "path": "apps/dashboard/src/routes/_protected/pulls.tsx",
-          "line": 86,
-          "symbol": "PullRequestsPage",
-          "role": "Pull requests across repositories"
-        },
-        {
-          "path": "apps/dashboard/src/routes/_protected/issues.tsx",
-          "line": 56,
-          "symbol": "IssuesPage",
-          "role": "Issues across repositories"
-        },
-        {
-          "path": "apps/dashboard/src/routes/_protected/reviews.tsx",
-          "line": 40,
-          "symbol": "ReviewsPage",
-          "role": "Pull requests waiting on your review"
-        }
-      ]
+      "path": "apps/dashboard/src/routes/_protected/pulls.tsx"
     },
     {
       "name": "Multi-source search",
       "summary": "Each installation and the OAuth token search with their own rate limit. A blocked or slow source gives a partial result and a warning.",
-      "entry": [
-        {
-          "path": "apps/dashboard/src/lib/github/my-search.ts",
-          "line": 176,
-          "symbol": "searchEverySource",
-          "role": "Runs and merges the per-source searches"
-        },
-        {
-          "path": "apps/dashboard/src/lib/github/my-search-sources.ts",
-          "line": 119,
-          "symbol": "getMySearchSources",
-          "role": "Builds the list of tokens to search with"
-        },
-        {
-          "path": "apps/dashboard/src/lib/github/search-query.ts",
-          "line": 9,
-          "symbol": "buildUserSearchQuery",
-          "role": "Builds the GitHub search string per role"
-        }
-      ]
+      "path": "apps/dashboard/src/lib/github/my-search.ts"
     },
     {
       "name": "Filters, sort and search",
       "summary": "Status, author, label, repository and updated-within filters with 'is' and 'is not', five sort orders, and text search. Phones get drawers.",
-      "entry": [
-        {
-          "path": "apps/dashboard/src/components/filters/filter-model.ts",
-          "line": 186,
-          "symbol": "applyListView",
-          "role": "Applies search, filters and sort to items"
-        },
-        {
-          "path": "apps/dashboard/src/components/filters/pull-filters.ts",
-          "line": 104,
-          "symbol": "pullFilterDefs",
-          "role": "Filter fields for pull request lists"
-        },
-        {
-          "path": "apps/dashboard/src/components/filters/list-toolbar.tsx",
-          "line": 400,
-          "symbol": "ListActions",
-          "role": "Search, Filter and Sort controls in the header"
-        }
-      ]
+      "path": "apps/dashboard/src/components/filters/filter-model.ts"
     },
     {
       "name": "Remembered view",
       "summary": "Filters live in the URL as 'status:open,draft|author!:nova'. The 'diffkit-filters' cookie restores the last view when a list opens without any.",
-      "entry": [
-        {
-          "path": "apps/dashboard/src/components/filters/use-list-filters.ts",
-          "line": 46,
-          "symbol": "useListFilters",
-          "role": "URL state plus cookie restore for one list"
-        },
-        {
-          "path": "apps/dashboard/src/components/filters/filter-cookie.ts",
-          "line": 36,
-          "symbol": "rememberView",
-          "role": "Writes the per-list view to the cookie"
-        },
-        {
-          "path": "apps/dashboard/src/components/filters/filter-model.ts",
-          "line": 68,
-          "symbol": "parseFilterString",
-          "role": "Parses the URL form of the filters"
-        }
-      ]
+      "path": "apps/dashboard/src/components/filters/use-list-filters.ts"
     },
     {
       "name": "Row selection",
       "summary": "Checkboxes on hover, X to toggle, Shift+click for a range, Cmd/Ctrl+A for every visible row, Esc to clear. Desktop widths only.",
-      "entry": [
-        {
-          "path": "apps/dashboard/src/components/shared/list-selection.tsx",
-          "line": 49,
-          "symbol": "ListSelectionScope",
-          "role": "Selection shortcuts and range logic"
-        },
-        {
-          "path": "apps/dashboard/src/lib/list-selection.ts",
-          "line": 9,
-          "symbol": "createListSelectionStore",
-          "role": "Selection store kept outside React state"
-        }
-      ]
+      "path": "apps/dashboard/src/components/shared/list-selection.tsx"
     },
     {
       "name": "Floating action bar",
       "summary": "Merge, close or reopen pull requests; close with a reason or reopen issues. It shows what is skipped, runs one by one and keeps failures to retry.",
-      "entry": [
-        {
-          "path": "apps/dashboard/src/components/shared/bulk-bar.tsx",
-          "line": 78,
-          "symbol": "BulkBar",
-          "role": "The bar: actions, review and feedback modes"
-        },
-        {
-          "path": "apps/dashboard/src/lib/bulk-actions.ts",
-          "line": 92,
-          "symbol": "bulkRunReducer",
-          "role": "State machine of one bulk run"
-        },
-        {
-          "path": "apps/dashboard/src/components/pulls/pull-bulk-selection.tsx",
-          "line": 95,
-          "symbol": "PullBulkSelection",
-          "role": "Merge, close and reopen for pull requests"
-        }
-      ]
+      "path": "apps/dashboard/src/components/shared/bulk-bar.tsx"
     },
     {
       "name": "Row design",
       "summary": "One shared row: state icon, number, title with diff stat, label and repository pills, comment count, then aligned avatar and time columns.",
-      "entry": [
-        {
-          "path": "apps/dashboard/src/components/shared/list-row.tsx",
-          "line": 241,
-          "symbol": "RowDetails",
-          "role": "Pills and the aligned author and time columns"
-        },
-        {
-          "path": "apps/dashboard/src/components/pulls/pull-request-row.tsx",
-          "line": 22,
-          "symbol": "PullRequestRow",
-          "role": "Pull request row, preloads detail on hover"
-        },
-        {
-          "path": "apps/dashboard/src/components/issues/issue-row.tsx",
-          "line": 27,
-          "symbol": "IssueRow",
-          "role": "Issue row"
-        }
-      ]
-    }
-  ],
-  "entryPoints": [
-    {
-      "path": "apps/dashboard/src/routes/_protected/pulls.tsx",
-      "line": 29,
-      "symbol": "Route",
-      "role": "Cross-repository pull request list"
-    },
-    {
-      "path": "apps/dashboard/src/lib/github/search.ts",
-      "line": 233,
-      "symbol": "getMyPulls",
-      "role": "Server function behind Pull requests, Reviews and the nav counts"
-    },
-    {
-      "path": "apps/dashboard/src/lib/github/my-search.ts",
-      "line": 176,
-      "symbol": "searchEverySource",
-      "role": "How one list is assembled from several tokens"
-    },
-    {
-      "path": "apps/dashboard/src/components/filters/use-list-filters.ts",
-      "line": 46,
-      "symbol": "useListFilters",
-      "role": "Filter, sort and search state for any list"
-    },
-    {
-      "path": "apps/dashboard/src/components/shared/bulk-selection.tsx",
-      "line": 72,
-      "symbol": "BulkSelection",
-      "role": "Ties row selection to the floating action bar"
-    },
-    {
-      "path": "apps/dashboard/src/components/shared/list-page.tsx",
-      "line": 31,
-      "symbol": "ListPage",
-      "role": "Page frame: header, filter pills, scroll area, phone actions"
+      "path": "apps/dashboard/src/components/shared/list-row.tsx"
     }
   ],
   "dependsOn": ["pull-request", "issues", "github-data", "instant-cache"],
   "outside": ["github-graphql"],
-  "goodParts": [
-    "A bulk run is an explicit reducer (confirming, running, settled, succeeded) in lib/bulk-actions.ts, with unit tests and an e2e spec.",
-    "Filter parsing, matching and the cookie are pure and tested (components/filters/filter-model.test.ts, filter-cookie.test.ts)."
-  ],
-  "watch": [
-    "Lists hold open items only, at most 30 per group, with no paging (MY_SEARCH_BUCKET_LIMIT, lib/github/my-search.ts:37; 'first: 30' in my-search-documents.ts).",
-    "Search, filter and sort UI exists twice: list-toolbar.tsx (482 lines) for desktop menus and mobile-list-actions.tsx (425 lines) for phone drawers.",
-    "lib/list-selection.ts and the range logic in components/shared/list-selection.tsx have no unit tests; only the bulk-actions e2e exercises them."
-  ],
   "issues": [
     {
       "number": 137

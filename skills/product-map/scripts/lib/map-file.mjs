@@ -3,9 +3,10 @@ import { compileGlob, expandBraces } from "./path-rules.mjs";
 /**
  * The `.diffkit` folder: the part of a product map a repository owns.
  * `map.json` lays out the overview and each file in `areas/` describes one
- * area and says which files belong to it. Everything countable (sizes, pull
- * requests, people) is computed from GitHub when the map is opened and is
- * never stored here.
+ * area and says which files belong to it. They hold only what someone has to
+ * say: what an area is and how it works. Everything that can be counted or
+ * looked up (sizes, pull requests, people, the files that change most, line
+ * numbers) is computed from GitHub when the map is opened and never stored.
  *
  * The format is closed: a field, icon or step kind that is not listed below
  * is an error, never ignored. An agent writes these files, and the only way
@@ -81,17 +82,13 @@ export const MAP_FIELDS = {
         "screen",
         "flow",
         "features",
-        "entryPoints",
         "dependsOn",
         "outside",
-        "goodParts",
-        "watch",
         "issues",
     ],
     screen: ["light", "dark"],
     flowStep: ["kind", "label", "note", "path"],
-    feature: ["name", "summary", "entry"],
-    reference: ["path", "line", "symbol", "role"],
+    feature: ["name", "summary", "path"],
     issueHint: ["number", "note"],
 };
 export const MAX_AREAS = 200;
@@ -199,19 +196,6 @@ export function parseMapFolder(source) {
         problem(`${where} must be a path inside the repository.`);
         return "";
     };
-    const reference = (item, at) => {
-        if (item.symbol !== undefined && typeof item.symbol !== "string")
-            problem(`${at}: "symbol" must be text.`);
-        const validLine = Number.isInteger(item.line) && item.line > 0;
-        if (item.line !== undefined && !validLine)
-            problem(`${at}: "line" must be a line number, 1 or more.`);
-        return {
-            path: repoPath(item.path, `${at}.path`),
-            role: textOf(item, "role", at, true),
-            ...(typeof item.symbol === "string" ? { symbol: item.symbol } : {}),
-            ...(validLine ? { line: item.line } : {}),
-        };
-    };
     const glob = (value, where) => {
         if (typeof value !== "string") {
             problem(`${where} must be a path pattern.`);
@@ -287,13 +271,12 @@ export function parseMapFolder(source) {
                 features: objects(item, "features", where, MAP_FIELDS.feature, 30).map(({ item: feature, at }) => ({
                     name: textOf(feature, "name", at),
                     summary: textOf(feature, "summary", at),
-                    entry: objects(feature, "entry", at, MAP_FIELDS.reference, 10).map((entry) => reference(entry.item, entry.at)),
+                    ...(feature.path === undefined
+                        ? {}
+                        : { path: repoPath(feature.path, `${at}.path`) }),
                 })),
-                entryPoints: objects(item, "entryPoints", where, MAP_FIELDS.reference, 20).map((entry) => reference(entry.item, entry.at)),
                 dependsOn: strings(item, "dependsOn", where),
                 outside: strings(item, "outside", where),
-                goodParts: strings(item, "goodParts", where, 20),
-                watch: strings(item, "watch", where, 20),
                 ...(isObject(screen)
                     ? {
                         screen: {

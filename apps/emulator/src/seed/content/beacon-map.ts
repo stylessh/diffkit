@@ -114,58 +114,22 @@ const areas: Record<string, object> = {
 				name: "Typed events",
 				summary:
 					"An EventMap type names every event and its payload; listeners get the right payload type.",
-				entry: [
-					{
-						path: "src/types.ts",
-						symbol: "EventMap",
-					},
-				],
+				path: "src/types.ts",
 			},
 			{
 				name: "Connection status",
 				summary:
 					"The client reports connecting, open or closed so a UI can show it.",
-				entry: [
-					{
-						path: "src/client.ts",
-						symbol: "ConnectionStatus",
-					},
-				],
+				path: "src/client.ts",
 			},
 			{
 				name: "Package entry",
 				summary: "The one module the package exports from.",
-				entry: [
-					{
-						path: "src/index.ts",
-					},
-				],
-			},
-		],
-		entryPoints: [
-			{
-				path: "src/client.ts",
-				symbol: "createClient",
-				role: "The client",
-			},
-			{
-				path: "src/types.ts",
-				symbol: "ClientOptions",
-				role: "Its options",
-			},
-			{
 				path: "src/index.ts",
-				role: "What the package exports",
 			},
 		],
 		dependsOn: ["transports", "reconnect"],
 		outside: ["server"],
-		goodParts: [
-			"The public types live in one file (src/types.ts) and index.ts re-exports only those.",
-		],
-		watch: [
-			"The client has been rewritten in place four times; the state-machine rewrite is still an open pull request.",
-		],
 		issues: [
 			{
 				number: 13,
@@ -209,49 +173,21 @@ const areas: Record<string, object> = {
 			{
 				name: "WebSocket",
 				summary: "The default transport, two-way over one socket.",
-				entry: [
-					{
-						path: "src/transport/websocket.ts",
-					},
-				],
+				path: "src/transport/websocket.ts",
 			},
 			{
 				name: "Server-sent events",
 				summary: "Receive-only streaming over plain HTTP.",
-				entry: [
-					{
-						path: "src/transport/sse.ts",
-					},
-				],
+				path: "src/transport/sse.ts",
 			},
 			{
 				name: "Transport registry",
 				summary: "Register a custom transport under your own kind.",
-				entry: [
-					{
-						path: "src/transport/registry.ts",
-					},
-				],
-			},
-		],
-		entryPoints: [
-			{
-				path: "src/transport/transport.ts",
-				symbol: "Transport",
-				role: "The contract every transport implements",
-			},
-			{
 				path: "src/transport/registry.ts",
-				symbol: "createTransport",
-				role: "How a kind becomes a transport",
 			},
 		],
 		dependsOn: [],
 		outside: ["server"],
-		goodParts: ["A new transport is one file plus one registerTransport call."],
-		watch: [
-			"The SSE transport has had the most fixes; custom headers were the latest.",
-		],
 		issues: [
 			{
 				number: 12,
@@ -292,25 +228,11 @@ const areas: Record<string, object> = {
 			{
 				name: "Exponential delay",
 				summary: "Each failed attempt doubles the wait, up to a cap.",
-				entry: [
-					{
-						path: "src/backoff.ts",
-						symbol: "nextDelay",
-					},
-				],
-			},
-		],
-		entryPoints: [
-			{
 				path: "src/backoff.ts",
-				symbol: "nextDelay",
-				role: "The delay curve",
 			},
 		],
 		dependsOn: [],
 		outside: [],
-		goodParts: ["nextDelay is a pure function with its own tests."],
-		watch: ["Without jitter, many clients retry at the same instant."],
 		issues: [
 			{
 				number: 9,
@@ -350,27 +272,11 @@ const areas: Record<string, object> = {
 			{
 				name: "Changelog",
 				summary: "One entry per released version.",
-				entry: [
-					{
-						path: "CHANGELOG.md",
-					},
-				],
-			},
-		],
-		entryPoints: [
-			{
-				path: ".github/workflows/ci.yml",
-				role: "What a pull request must pass",
-			},
-			{
-				path: "package.json",
-				role: "Version, exports and scripts",
+				path: "CHANGELOG.md",
 			},
 		],
 		dependsOn: [],
 		outside: ["npm"],
-		goodParts: [],
-		watch: [],
 	},
 };
 

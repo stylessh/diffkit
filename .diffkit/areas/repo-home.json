@@ -62,190 +62,37 @@
     {
       "name": "Overview page",
       "summary": "Root files with each entry's last commit, a latest-commit bar and the branch toolbar; other branches reuse the same page through the tree route.",
-      "entry": [
-        {
-          "path": "apps/dashboard/src/components/repo/repo-overview-page.tsx",
-          "line": 25,
-          "symbol": "RepoOverviewPage",
-          "role": "The page component"
-        },
-        {
-          "path": "apps/dashboard/src/components/repo/latest-commit-bar.tsx",
-          "line": 20,
-          "symbol": "LatestCommitBar",
-          "role": "Latest commit on the shown ref"
-        },
-        {
-          "path": "apps/dashboard/src/components/repo/file-tree.tsx",
-          "line": 16,
-          "symbol": "FileTree",
-          "role": "Root file rows with last commits"
-        }
-      ]
+      "path": "apps/dashboard/src/components/repo/repo-overview-page.tsx"
     },
     {
       "name": "About panel",
       "summary": "Description, fork parent, star, watcher and fork counts, links to branches and tags, topics, recent releases and top contributors.",
-      "entry": [
-        {
-          "path": "apps/dashboard/src/components/repo/repo-sidebar.tsx",
-          "line": 63,
-          "symbol": "RepoSidebar",
-          "role": "Side panel for the overview"
-        },
-        {
-          "path": "apps/dashboard/src/lib/github/repo-insights.ts",
-          "line": 182,
-          "symbol": "getRepoContributors",
-          "role": "Server read for the contributors list"
-        }
-      ]
+      "path": "apps/dashboard/src/components/repo/repo-sidebar.tsx"
     },
     {
       "name": "Star and fork",
       "summary": "Star flips at once in the cached overview and rolls back with a toast on failure; fork opens the new fork when GitHub has created it.",
-      "entry": [
-        {
-          "path": "apps/dashboard/src/components/repo/repo-star-fork-actions.tsx",
-          "line": 19,
-          "symbol": "RepoStarForkActions",
-          "role": "Header buttons and optimistic update"
-        },
-        {
-          "path": "apps/dashboard/src/lib/github/repos.ts",
-          "line": 219,
-          "symbol": "setRepoStarred",
-          "role": "Server function: star or unstar"
-        },
-        {
-          "path": "apps/dashboard/src/lib/github/repos.ts",
-          "line": 303,
-          "symbol": "forkRepository",
-          "role": "Server function: create a fork"
-        }
-      ]
+      "path": "apps/dashboard/src/components/repo/repo-star-fork-actions.tsx"
     },
     {
       "name": "Repo tabs",
       "summary": "Nine repo sections; each user picks which show as tabs and the rest sit in a menu. Settings shows only with triage access or higher.",
-      "entry": [
-        {
-          "path": "apps/dashboard/src/components/repo/repo-nav.tsx",
-          "line": 78,
-          "symbol": "RepoNav",
-          "role": "Tab bar, overflow menu, phone switcher"
-        },
-        {
-          "path": "apps/dashboard/src/lib/repo-nav-tabs.ts",
-          "line": 105,
-          "symbol": "useRepoTabs",
-          "role": "Per-user tab choice from localStorage"
-        },
-        {
-          "path": "apps/dashboard/src/components/repo/repo-header.tsx",
-          "line": 74,
-          "symbol": "RepoHeader",
-          "role": "Header used by every repo page"
-        }
-      ]
+      "path": "apps/dashboard/src/components/repo/repo-nav.tsx"
     },
     {
       "name": "README and docs",
       "summary": "README, license, contributing, security and changelog files appear as pills; one opens on click and its content prefetches on hover.",
-      "entry": [
-        {
-          "path": "apps/dashboard/src/components/repo/repo-markdown-files.tsx",
-          "line": 53,
-          "symbol": "RepoMarkdownFiles",
-          "role": "Doc pills and the opened document"
-        },
-        {
-          "path": "apps/dashboard/src/components/repo/repo-markdown-files.tsx",
-          "line": 212,
-          "symbol": "resolveGitHubMarkdownAssetUrl",
-          "role": "Points relative images at GitHub's raw route"
-        }
-      ]
+      "path": "apps/dashboard/src/components/repo/repo-markdown-files.tsx"
     },
     {
       "name": "Branch banners",
       "summary": "On the default branch, your own push in the last 2 hours offers Compare & pull request; other branches show how far ahead or behind they are.",
-      "entry": [
-        {
-          "path": "apps/dashboard/src/components/repo/recent-push-banner.tsx",
-          "line": 18,
-          "symbol": "RecentPushBanner",
-          "role": "Recent push callout"
-        },
-        {
-          "path": "apps/dashboard/src/lib/github/repo-branches.ts",
-          "line": 123,
-          "symbol": "getRecentPushableBranch",
-          "role": "Finds the viewer's recently pushed branch"
-        },
-        {
-          "path": "apps/dashboard/src/components/repo/branch-comparison-banner.tsx",
-          "line": 17,
-          "symbol": "BranchComparisonBanner",
-          "role": "Ahead and behind callout"
-        }
-      ]
+      "path": "apps/dashboard/src/components/repo/recent-push-banner.tsx"
     },
     {
       "name": "Clone menu",
       "summary": "Copy an HTTPS, SSH or GitHub CLI clone command, or download a zip. The chosen protocol is remembered in localStorage.",
-      "entry": [
-        {
-          "path": "apps/dashboard/src/components/repo/code-explorer-toolbar.tsx",
-          "line": 28,
-          "symbol": "CodeExplorerToolbar",
-          "role": "Ref picker, file finder and clone menu"
-        },
-        {
-          "path": "apps/dashboard/src/lib/repo-clone-protocol-storage.ts",
-          "line": 19,
-          "symbol": "useRepoCloneProtocol",
-          "role": "Remembered clone protocol"
-        }
-      ]
-    }
-  ],
-  "entryPoints": [
-    {
-      "path": "apps/dashboard/src/routes/_protected/$owner/$repo/index.tsx",
-      "line": 12,
-      "symbol": "Route",
-      "role": "Route and its non-blocking prefetches"
-    },
-    {
-      "path": "apps/dashboard/src/components/repo/repo-overview-page.tsx",
-      "line": 25,
-      "symbol": "RepoOverviewPage",
-      "role": "Page layout and loading states"
-    },
-    {
-      "path": "apps/dashboard/src/lib/github/repo-overview.ts",
-      "line": 188,
-      "symbol": "getRepoOverview",
-      "role": "The overview query every repo page shares"
-    },
-    {
-      "path": "apps/dashboard/src/lib/github/repo-overview.ts",
-      "line": 307,
-      "symbol": "getRepoViewerPermission",
-      "role": "Viewer's role in the repo, used to gate actions"
-    },
-    {
-      "path": "apps/dashboard/src/components/repo/repo-header.tsx",
-      "line": 74,
-      "symbol": "RepoHeader",
-      "role": "Shared repo header with star, fork and tabs"
-    },
-    {
-      "path": "apps/dashboard/src/components/repo/repo-page-header.tsx",
-      "line": 15,
-      "symbol": "RepoPageHeader",
-      "role": "Header plus scroll body used by list-style repo pages"
+      "path": "apps/dashboard/src/components/repo/code-explorer-toolbar.tsx"
     }
   ],
   "dependsOn": [
@@ -256,14 +103,6 @@
     "instant-cache"
   ],
   "outside": ["github-graphql"],
-  "goodParts": [
-    "Tab choices, the recent-push window and README asset URLs are pure functions with tests (repo-nav-tabs, recent-push, repo-markdown-files .test.ts).",
-    "A comment in repo-overview.ts explains why the star state is read with the user token: installation tokens give the wrong answer."
-  ],
-  "watch": [
-    "getRepoDiscussions and its query options exist (lib/github/repo-insights.ts:98) but no component reads them.",
-    "setRepoStarred writes three console.info lines per star click (lib/github/repos.ts:227, 246, 266)."
-  ],
   "issues": [
     {
       "number": 106

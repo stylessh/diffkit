@@ -54,209 +54,41 @@
     {
       "name": "Repository PR list",
       "summary": "Filterable list, 30 per page; line counts for the whole page come from one aliased GraphQL query, and rows can be selected to merge, close or reopen in bulk.",
-      "entry": [
-        {
-          "path": "apps/dashboard/src/routes/_protected/$owner/$repo/pulls.tsx",
-          "line": 29,
-          "symbol": "Route",
-          "role": "Repo pull request list page"
-        },
-        {
-          "path": "apps/dashboard/src/lib/github/pulls.ts",
-          "line": 90,
-          "symbol": "getPullsFromRepo",
-          "role": "Server function that lists a repo's PRs"
-        },
-        {
-          "path": "apps/dashboard/src/lib/github/pull-list-stats.ts",
-          "line": 18,
-          "symbol": "buildPullListStatsQuery",
-          "role": "Builds the per-page stats GraphQL query"
-        }
-      ]
+      "path": "apps/dashboard/src/routes/_protected/$owner/$repo/pulls.tsx"
     },
     {
       "name": "One-call page load",
       "summary": "Detail, commits, the first and last comment pages and timeline events arrive together; middle comment pages load when the reader asks for them.",
-      "entry": [
-        {
-          "path": "apps/dashboard/src/lib/github/pull-page-data.ts",
-          "line": 455,
-          "symbol": "getPullPageDataResult",
-          "role": "GraphQL page read with REST fallback"
-        },
-        {
-          "path": "apps/dashboard/src/lib/github/pull-query-options.ts",
-          "line": 73,
-          "symbol": "githubPullPageQueryOptions",
-          "role": "The query every part of the page shares"
-        }
-      ]
+      "path": "apps/dashboard/src/lib/github/pull-page-data.ts"
     },
     {
       "name": "Merge box",
       "summary": "Reviews, checks and conflict or out-of-date state in one card, then merge, squash or rebase with an editable commit message. Drafts get Ready for review.",
-      "entry": [
-        {
-          "path": "apps/dashboard/src/components/pulls/detail/merge-box/merge-status-section.tsx",
-          "line": 34,
-          "symbol": "MergeStatusSection",
-          "role": "The merge card"
-        },
-        {
-          "path": "apps/dashboard/src/components/pulls/detail/merge-box/merge-footer.tsx",
-          "line": 73,
-          "symbol": "MergeFooter",
-          "role": "Merge button, method menu, confirm step"
-        },
-        {
-          "path": "apps/dashboard/src/lib/github/pull-status.ts",
-          "line": 207,
-          "symbol": "getPullStatusResult",
-          "role": "Reads everything the card needs in one round"
-        }
-      ]
+      "path": "apps/dashboard/src/components/pulls/detail/merge-box/merge-status-section.tsx"
     },
     {
       "name": "Checks and re-runs",
       "summary": "Check runs, commit statuses and required checks not yet reported in one grouped list. Re-run all or failed only, and approve workflows that wait for approval.",
-      "entry": [
-        {
-          "path": "apps/dashboard/src/components/pulls/detail/merge-box/checks-section.tsx",
-          "line": 96,
-          "symbol": "ChecksSection",
-          "role": "Checks list and re-run buttons"
-        },
-        {
-          "path": "apps/dashboard/src/lib/github/pull-checks.ts",
-          "line": 219,
-          "symbol": "summarizePullChecks",
-          "role": "Merges check runs, statuses, expected checks"
-        },
-        {
-          "path": "apps/dashboard/src/lib/github/pull-check-reruns.ts",
-          "line": 109,
-          "symbol": "rerunPullChecks",
-          "role": "Re-runs Actions jobs via their workflow run"
-        }
-      ]
+      "path": "apps/dashboard/src/components/pulls/detail/merge-box/checks-section.tsx"
     },
     {
       "name": "Bypass branch protections",
       "summary": "A bypass checkbox appears only when merging is blocked, there are no conflicts, and rulesets or classic branch protection say this viewer may bypass.",
-      "entry": [
-        {
-          "path": "apps/dashboard/src/lib/github/pull-bypass.ts",
-          "line": 136,
-          "symbol": "getRulesetBypassState",
-          "role": "Asks GitHub rulesets whether the viewer can bypass"
-        },
-        {
-          "path": "apps/dashboard/src/components/pulls/detail/merge-box/use-merge-bypass.ts",
-          "line": 3,
-          "symbol": "useMergeBypass",
-          "role": "When to show and honour the checkbox"
-        }
-      ]
+      "path": "apps/dashboard/src/lib/github/pull-bypass.ts"
     },
     {
       "name": "Reviewers picker",
       "summary": "Request or remove people, teams and known review bots (Copilot, CodeRabbit, Cursor and others). The sidebar updates at once; number keys pick the first nine.",
-      "entry": [
-        {
-          "path": "apps/dashboard/src/components/pulls/detail/pull-detail-sidebar.tsx",
-          "line": 43,
-          "symbol": "PullDetailSidebar",
-          "role": "Properties, labels and reviewers panel"
-        },
-        {
-          "path": "apps/dashboard/src/lib/github/review-requests.ts",
-          "line": 35,
-          "symbol": "getRepoCollaborators",
-          "role": "Candidates: collaborators plus review bots"
-        },
-        {
-          "path": "apps/dashboard/src/lib/github/reviewer-candidates.ts",
-          "line": 237,
-          "symbol": "getRepoReviewerBots",
-          "role": "Finds installed review bots for the repo"
-        }
-      ]
+      "path": "apps/dashboard/src/components/pulls/detail/pull-detail-sidebar.tsx"
     },
     {
       "name": "Stacked pull requests",
       "summary": "Stacks are worked out from branch names alone (B targets A's head branch). The list groups them and the merge box shows where this PR sits in its stack.",
-      "entry": [
-        {
-          "path": "apps/dashboard/src/lib/pull-stack.ts",
-          "line": 68,
-          "symbol": "buildPullStackIndex",
-          "role": "Pure stack detection"
-        },
-        {
-          "path": "apps/dashboard/src/components/pulls/stack/use-pull-stack.ts",
-          "line": 36,
-          "symbol": "usePullStack",
-          "role": "Stack for the open PR from the cached list"
-        },
-        {
-          "path": "apps/dashboard/src/components/pulls/stack/stacked-pull-list.tsx",
-          "line": 80,
-          "symbol": "StackedPullList",
-          "role": "List rows grouped by stack"
-        }
-      ]
-    }
-  ],
-  "entryPoints": [
-    {
-      "path": "apps/dashboard/src/components/pulls/detail/pull-detail-page.tsx",
-      "line": 72,
-      "symbol": "PullDetailContent",
-      "role": "The PR page: queries, skeletons and layout"
-    },
-    {
-      "path": "apps/dashboard/src/lib/github/pull-page-data.ts",
-      "line": 455,
-      "symbol": "getPullPageDataResult",
-      "role": "Server read behind the page (GraphQL, REST fallback)"
-    },
-    {
-      "path": "apps/dashboard/src/lib/github/pull-status.ts",
-      "line": 207,
-      "symbol": "getPullStatusResult",
-      "role": "Reviews, checks, rules and permissions for the merge box"
-    },
-    {
-      "path": "apps/dashboard/src/components/pulls/detail/merge-box/merge-status-section.tsx",
-      "line": 34,
-      "symbol": "MergeStatusSection",
-      "role": "Merge box UI, start here for merge behaviour"
-    },
-    {
-      "path": "apps/dashboard/src/lib/github/pulls.ts",
-      "line": 90,
-      "symbol": "getPullsFromRepo",
-      "role": "PR server functions: list, read, merge, close, re-run"
-    },
-    {
-      "path": "apps/dashboard/src/lib/pull-stack.ts",
-      "line": 68,
-      "symbol": "buildPullStackIndex",
-      "role": "Stack detection, pure and unit tested"
+      "path": "apps/dashboard/src/lib/pull-stack.ts"
     }
   ],
   "dependsOn": ["conversation", "actions", "github-data", "instant-cache"],
   "outside": ["github-graphql", "github-rest"],
-  "goodParts": [
-    "Stack detection is a pure module with tests (lib/pull-stack.ts, lib/pull-stack.test.ts), reused by the list, the PR page and the review page.",
-    "pull-status.ts reads reviews, checks, rules, permissions and base drift in one Promise.all; the poll cost is written down in github-refetch-policy.ts."
-  ],
-  "watch": [
-    "The merge footer sends bypassProtections (merge-footer.tsx:119) but the mergePullRequest handler never reads it (lib/github/pulls.ts:243).",
-    "PullStackSection is mounted only for merged or closed PRs (pull-detail-page.tsx:309), yet usePullStack returns null unless the PR is open (use-pull-stack.ts:48).",
-    "Stacks are built from one page of 100 open PRs; use-pull-stack.ts:16 says repos with more may show a truncated stack."
-  ],
   "issues": [
     {
       "number": 116

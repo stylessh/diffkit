@@ -56,201 +56,39 @@
     {
       "name": "Void deploy on Cloudflare",
       "summary": "void deploy builds and ships one Worker with D1, KV and R2. A first deploy creates them in your own Cloudflare account; production pins existing ones.",
-      "entry": [
-        {
-          "path": "apps/dashboard/void.config.ts",
-          "line": 52,
-          "symbol": "defineConfig",
-          "role": "Worker name, flags, bindings, domain"
-        },
-        {
-          "path": "docs/self-hosting.md",
-          "line": 1,
-          "symbol": "Self-hosting DiffKit",
-          "role": "Step-by-step guide for your own instance"
-        }
-      ]
+      "path": "apps/dashboard/void.config.ts"
     },
     {
       "name": "Health gate and rollback",
       "summary": "After a deploy the script polls /login and /api/health for up to 2 minutes. If the new version never reports healthy, it runs wrangler rollback.",
-      "entry": [
-        {
-          "path": "scripts/deploy-dashboard.mjs",
-          "line": 190,
-          "symbol": "main",
-          "role": "Deploy phases in order"
-        },
-        {
-          "path": "scripts/deploy-dashboard.mjs",
-          "line": 76,
-          "symbol": "settle",
-          "role": "Verify or roll back"
-        },
-        {
-          "path": "docs/runbooks/deploy-rollback.md",
-          "line": 1,
-          "symbol": "Runbook: production deploy and rollback",
-          "role": "Phases and manual rollback steps"
-        }
-      ]
+      "path": "scripts/deploy-dashboard.mjs"
     },
     {
       "name": "CI workflows",
       "summary": "Six workflows: PR Checks, E2E, Dev Smoke, D1 migration check, production deploy and production alerts.",
-      "entry": [
-        {
-          "path": ".github/workflows/pr-checks.yml",
-          "line": 1,
-          "symbol": "PR Checks",
-          "role": "Lint, type check, tests"
-        },
-        {
-          "path": ".github/workflows/dashboard-deploy-production.yml",
-          "line": 27,
-          "symbol": "deploy",
-          "role": "Deploy job, runs on push to main"
-        },
-        {
-          "path": ".github/workflows/production-alerts.yml",
-          "line": 1,
-          "symbol": "Production alerts",
-          "role": "Watchdog on a 15-minute schedule"
-        }
-      ]
+      "path": ".github/workflows/pr-checks.yml"
     },
     {
       "name": "Health endpoint",
       "summary": "GET /api/health needs no sign-in. It returns 200 when D1 and KV answer, 503 otherwise, with the serving version and how long ago the cron ran.",
-      "entry": [
-        {
-          "path": "apps/dashboard/src/routes/api/health.ts",
-          "line": 8,
-          "symbol": "Route",
-          "role": "GET /api/health"
-        },
-        {
-          "path": "apps/dashboard/src/lib/health.server.ts",
-          "line": 58,
-          "symbol": "checkHealth",
-          "role": "D1 and KV probes with a 5 s timeout"
-        }
-      ]
+      "path": "apps/dashboard/src/routes/api/health.ts"
     },
     {
       "name": "Production alerts",
       "summary": "A script opens one GitHub issue per failing check and closes it on recovery: health failing, D1 above 8 GB, cron not clean, Worker errors above 5%.",
-      "entry": [
-        {
-          "path": "scripts/production-alerts.mjs",
-          "line": 292,
-          "symbol": "main",
-          "role": "Evaluates the four checks"
-        },
-        {
-          "path": "scripts/production-alerts.mjs",
-          "line": 237,
-          "symbol": "reconcile",
-          "role": "Opens or closes the issue for a check"
-        }
-      ]
+      "path": "scripts/production-alerts.mjs"
     },
     {
       "name": "Security headers and safe errors",
       "summary": "Every response gets HSTS, nosniff, frame-deny, referrer and permissions headers. API routes fail to a 503, and logged errors have tokens stripped.",
-      "entry": [
-        {
-          "path": "apps/dashboard/src/lib/security-headers.server.ts",
-          "line": 11,
-          "symbol": "applySecurityHeaders",
-          "role": "Adds the five headers"
-        },
-        {
-          "path": "apps/dashboard/src/lib/route-safety.server.ts",
-          "line": 78,
-          "symbol": "guardRoute",
-          "role": "Wraps API handlers; errors become 503"
-        },
-        {
-          "path": "apps/dashboard/src/lib/route-safety.server.ts",
-          "line": 12,
-          "symbol": "redactErrorMessage",
-          "role": "Removes tokens and SQL params from logs"
-        }
-      ]
+      "path": "apps/dashboard/src/lib/security-headers.server.ts"
     },
     {
       "name": "Local dev scripts",
       "summary": "pnpm dev checks the toolchain, .env and ports before starting Vite. In a git worktree it links .env from the main checkout and shares its local state.",
-      "entry": [
-        {
-          "path": "scripts/dev.mjs",
-          "line": 17,
-          "symbol": "assertLocalConfig",
-          "role": "pnpm dev: config checks before Vite starts"
-        },
-        {
-          "path": "scripts/dev-env.mjs",
-          "line": 235,
-          "symbol": "runDevScript",
-          "role": "Shared checks and process supervisor"
-        },
-        {
-          "path": "scripts/link-worktree-dev-vars.mjs",
-          "line": 94,
-          "symbol": "linkWorktreeDevFiles",
-          "role": "Links .env into worktrees"
-        }
-      ]
-    }
-  ],
-  "entryPoints": [
-    {
-      "path": "apps/dashboard/src/entry-worker.ts",
-      "line": 17,
-      "symbol": "handleRequest",
-      "role": "First code to run on every request"
-    },
-    {
-      "path": "apps/dashboard/void.config.ts",
-      "line": 52,
-      "symbol": "defineConfig",
-      "role": "What gets deployed and with which bindings"
-    },
-    {
-      "path": "scripts/deploy-dashboard.mjs",
-      "line": 190,
-      "symbol": "main",
-      "role": "The production deploy, phase by phase"
-    },
-    {
-      "path": "apps/dashboard/src/lib/health.server.ts",
-      "line": 58,
-      "symbol": "checkHealth",
-      "role": "What healthy means"
-    },
-    {
-      "path": "scripts/production-alerts.mjs",
-      "line": 292,
-      "symbol": "main",
-      "role": "What is alerted on and how"
-    },
-    {
-      "path": "apps/dashboard/vite.config.ts",
-      "line": 390,
-      "symbol": "config",
-      "role": "Build plugins, including the dev-memory fixes"
+      "path": "scripts/dev.mjs"
     }
   ],
   "dependsOn": ["storage", "emulator"],
-  "outside": ["cf-workers", "cf-d1", "cf-kv"],
-  "goodParts": [
-    "Deploy and rollback are documented phase by phase in docs/runbooks/deploy-rollback.md and implemented in one 213-line script.",
-    "The watchdog reads D1 size from the Cloudflare API, so that alert works when the Worker is down; a check it cannot run opens an issue too."
-  ],
-  "watch": [
-    "No Content-Security-Policy header: security-headers.server.ts sets five headers and none of them is a CSP.",
-    "apps/dashboard/vite.config.ts is 412 lines, mostly hand-written stub plugins for shiki, Better Auth dialects and hugeicons.",
-    "Dev ports are fixed at 3000 and 4001 (scripts/dev-env.mjs:13, dev-demo.mjs:16), so two checkouts cannot run pnpm dev or dev:demo at once."
-  ]
+  "outside": ["cf-workers", "cf-d1", "cf-kv"]
 }

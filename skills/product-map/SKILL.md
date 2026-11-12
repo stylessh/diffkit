@@ -10,27 +10,32 @@ metadata:
 
 DiffKit shows a repository as a product: its areas in plain language, how each
 works and where its code lives. The repository owns that description as small
-files in `.diffkit/`. DiffKit counts everything else (sizes, pull requests,
-people) live from GitHub.
+files in `.diffkit/`.
 
 ```
 .diffkit/
   map.json          the overview: pitch, groups of areas, outside systems, tour
   areas/
-    <area-id>.json  one area: what it does, how it works, which files are its own
+    <area-id>.json  one area: what it is, how it works, which folders are its own
 ```
+
+The files hold only what someone has to say. DiffKit works out the rest when
+the map is opened: sizes, pull requests, people, and the files in each area
+that change the most.
 
 ## Rules that do not bend
 
 1. **The format is closed.** Only the fields, icons and step kinds listed in
    [references/format.md](references/format.md) exist. Anything else makes
    DiffKit reject the whole map. Do not add a field because it seems useful.
-2. **No numbers.** Never write counts, sizes, dates or percentages into these
-   files. DiffKit computes them.
-3. **Only what you opened.** Every path, line and symbol must be one you
-   opened and checked. Describe nothing from its file name alone.
-4. **The checker decides when you are done.** The work is finished only when
-   `check.mjs --fix` exits 0. Never skip it and never commit a map it rejects.
+2. **Nothing that can be looked up.** No counts, sizes, dates, line numbers,
+   function names or lists of files. An area names its folders with a few
+   patterns and DiffKit finds everything inside them.
+3. **Keep it short.** An area file is about a hundred lines. If one grows past
+   that, it is describing code instead of the product.
+4. **Only what you opened.** Describe nothing from its file name alone.
+5. **The checker decides when you are done.** The work is finished only when
+   `check.mjs --fix` exits 0. Never commit a map it rejects.
 
 ## Tools
 
@@ -41,8 +46,8 @@ install. Run them from the repository root.
 | --- | --- |
 | `survey.mjs` | A bounded inventory of the repository: folders by size, packages, likely entry points, most changed files. Same length for any repository size. |
 | `scaffold.mjs` | Writes `map.json` and new area files in the exact accepted shape. Use it instead of typing the structure. |
-| `changed.mjs` | Says which areas a change touched, which mentioned files moved, and which new files no area covers. |
-| `check.mjs --fix` | Puts keys in the format's order, moves code links whose line drifted back onto their symbol, then validates exactly as DiffKit does and checks the map against the code. |
+| `changed.mjs` | Says which areas a change touched, which mentioned files are gone, and which new files no area covers. |
+| `check.mjs --fix` | Puts keys in the format's order, then validates exactly as DiffKit does and checks the map against the code. |
 
 ## Keep it current (the usual job)
 
@@ -52,18 +57,18 @@ Do this in the same pull request as the code change.
    stop: there is nothing to do.
 2. **Files that are gone.** Fix every path it lists first.
 3. **Areas whose code changed.** Open only those area files. Update the
-   `summary`, `flow`, `features` and `entryPoints` where the behaviour, a
-   path, a line or a symbol is now wrong. Leave what your change did not
-   affect exactly as it is.
+   `summary`, `flow` and `features` where what they say is now wrong. Leave
+   what your change did not affect exactly as it is.
 4. **New files no area covers.** Add a pattern to the `paths` of the area each
-   belongs to, at folder level where you can. Generated or vendored files go
-   in `ignore` in `map.json` instead.
+   belongs to, at folder level. Generated or vendored files go in `ignore` in
+   `map.json` instead.
 5. **A new product area** gets `scaffold.mjs area …`. Add one only for
    something a user or a new contributor would name as its own thing, not for
    a new folder.
 6. Run `node <skill>/scripts/check.mjs --fix` until it exits 0.
 
-A bug fix or a refactor that moves no files usually needs no map edit.
+Most changes need no map edit at all: a bug fix, a refactor, a new file in a
+folder an area already covers.
 
 ## Set it up
 
@@ -91,9 +96,8 @@ defaults and say which you took.
    into 2 to 5 bands.
 2. `scaffold.mjs init --pitch "…"`, then one `scaffold.mjs area …` per area
    with its name, tagline, summary, paths and its band and group.
-3. Fill in each area file: `flow`, `features`, `entryPoints`, `dependsOn`,
-   `outside`, `goodParts`, `watch`. Follow "Large repositories" below for how
-   much to read.
+3. Fill in each area file: `flow`, `features`, `dependsOn`, `outside`. Follow
+   "Large repositories" below for how much to read.
 4. In `map.json`, add the `outside` systems the areas name and a `tour` of 4
    to 8 stops that walks a newcomer through the product.
 5. Run `check.mjs --fix`. Add patterns or `ignore` entries until few files
@@ -113,7 +117,7 @@ defaults and say which you took.
 ## Product map
 
 `.diffkit/` describes this product as areas: `map.json` is the overview and
-each file in `areas/` covers one area and lists the paths that belong to it.
+each file in `areas/` covers one area and lists the folders that belong to it.
 When a change adds, moves, renames or removes a feature, screen, module or
 folder, update the matching area file in the same pull request. The
 `product-map` skill has the steps, the format and a checker
@@ -131,9 +135,9 @@ the repository.
   the files `survey.mjs` lists as most changed inside it: about 10 to 15
   files, never the whole folder. That is enough for a flow of 3 to 6 steps
   and 3 to 8 features.
-- **Patterns at folder level.** Prefer `apps/billing/**` to a list of files.
-  A handful of patterns per area is normal; dozens means the area is drawn
-  along the wrong line.
+- **Patterns at folder level.** Write `apps/billing/**`, not a list of
+  files. A handful of patterns per area is normal; dozens means the area is
+  drawn along the wrong line.
 - **Work in parallel when you can.** If you can start subagents, give each
   one 3 to 6 areas, the survey output and this skill. Each writes only its
   own area files, so they never conflict. Write `map.json` yourself once
@@ -151,8 +155,8 @@ same problems. Fix only those and run it again until it exits 0.
 
 - Plain language. No jargon the product's own users would not know, and no
   internal code names in `name`, `tagline` or `summary`.
-- Short. A `summary` is one or two sentences; a flow step's `note` is one.
-- Evidence. Each entry in `goodParts` and `watch` names the file that shows
-  it.
-- Per area: a `flow` of 3 to 6 steps, 3 to 8 `features`, 3 to 6
-  `entryPoints`, one to three notes each in `goodParts` and `watch`.
+- Short. A `summary` is one or two sentences; a flow step's `note` and a
+  feature's `summary` are one each.
+- Per area: a `flow` of 3 to 6 steps and 3 to 8 `features`.
+- A flow step or a feature may name **one** file with `path`, and only when
+  there is an obvious one to open first. Most need none.

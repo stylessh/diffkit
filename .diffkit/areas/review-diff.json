@@ -57,213 +57,39 @@
     {
       "name": "Streamed diff loading",
       "summary": "One raw diff request, parsed per file inside an 8 ms work budget. First paint after 12 files or 150 ms. Too-large diffs fall back to the paged files API.",
-      "entry": [
-        {
-          "path": "apps/dashboard/src/lib/diffs/use-pull-diff-files.ts",
-          "line": 157,
-          "symbol": "usePullDiffFiles",
-          "role": "Cache lookup, stream, paged fallback"
-        },
-        {
-          "path": "apps/dashboard/src/lib/pull-diff-request.server.ts",
-          "line": 125,
-          "symbol": "handlePullDiffRequest",
-          "role": "Server handler behind /api/pulls/diff"
-        },
-        {
-          "path": "apps/dashboard/src/lib/diffs/git-diff-stream.ts",
-          "line": 46,
-          "symbol": "readGitDiffFiles",
-          "role": "Splits a byte stream into per-file diffs"
-        }
-      ]
+      "path": "apps/dashboard/src/lib/diffs/use-pull-diff-files.ts"
     },
     {
       "name": "Diff cache per commit",
       "summary": "A revision (repo, PR, head commit, base branch) never changes, so its raw diff is kept in IndexedDB for 7 days and parsed diffs stay in memory for the tab.",
-      "entry": [
-        {
-          "path": "apps/dashboard/src/lib/diffs/raw-diff-cache.ts",
-          "line": 34,
-          "symbol": "readRawDiff",
-          "role": "IndexedDB store, 40 MB cap per user"
-        },
-        {
-          "path": "apps/dashboard/src/lib/diffs/settled-diffs.ts",
-          "line": 17,
-          "symbol": "recallSettledDiff",
-          "role": "In-memory parsed diffs for instant return"
-        }
-      ]
+      "path": "apps/dashboard/src/lib/diffs/raw-diff-cache.ts"
     },
     {
       "name": "Renderer and highlighting",
       "summary": "@pierre/diffs CodeView with a worker pool (up to 3 workers, 1 on small touch devices). Uses Pierre's WASM highlighter when it can, Shiki in JS otherwise.",
-      "entry": [
-        {
-          "path": "apps/dashboard/src/lib/diffs/diffs-runtime.ts",
-          "line": 104,
-          "symbol": "getDiffsRuntime",
-          "role": "Highlighter, themes and worker pool"
-        },
-        {
-          "path": "apps/dashboard/src/components/diffs/diff-code-view.tsx",
-          "line": 496,
-          "symbol": "DiffCodeView",
-          "role": "CodeView wrapper with review annotations"
-        },
-        {
-          "path": "apps/dashboard/src/components/diffs/lazy-diff-code-view.tsx",
-          "line": 40,
-          "symbol": "preloadDiffCodeView",
-          "role": "Loads viewer and workers ahead of render"
-        }
-      ]
+      "path": "apps/dashboard/src/lib/diffs/diffs-runtime.ts"
     },
     {
       "name": "Files and commits panel",
       "summary": "Resizable side panel with a @pierre/trees file tree that fills in up to 500 files per request and follows your scroll, plus a commits tab. A drawer on phones.",
-      "entry": [
-        {
-          "path": "apps/dashboard/src/components/pulls/review/review-file-tree.tsx",
-          "line": 121,
-          "symbol": "ReviewFileTree",
-          "role": "Changed-files tree"
-        },
-        {
-          "path": "apps/dashboard/src/components/pulls/review/use-review-file-summaries.ts",
-          "line": 21,
-          "symbol": "useReviewFileSummaries",
-          "role": "Pages file summaries in automatically"
-        },
-        {
-          "path": "apps/dashboard/src/lib/github/pull-files.ts",
-          "line": 131,
-          "symbol": "getPullFileSummariesResult",
-          "role": "GraphQL file list, 5 pages per call"
-        }
-      ]
+      "path": "apps/dashboard/src/components/pulls/review/review-file-tree.tsx"
     },
     {
       "name": "Inline comment threads",
       "summary": "The gutter button on a line or selected range opens a comment form. Existing threads sit on their line with reply, edit, and resolve or unresolve.",
-      "entry": [
-        {
-          "path": "apps/dashboard/src/components/pulls/review/review-comment-annotations.tsx",
-          "line": 245,
-          "symbol": "ReviewCommentThread",
-          "role": "A posted thread inside the diff"
-        },
-        {
-          "path": "apps/dashboard/src/components/pulls/review/review-comment-annotations.tsx",
-          "line": 140,
-          "symbol": "InlineCommentForm",
-          "role": "Form for a new line comment"
-        },
-        {
-          "path": "apps/dashboard/src/components/pulls/review/use-review-threads.ts",
-          "line": 19,
-          "symbol": "useReviewThreads",
-          "role": "Arranges comments by file and line"
-        }
-      ]
+      "path": "apps/dashboard/src/components/pulls/review/review-comment-annotations.tsx"
     },
     {
       "name": "Pending review and submit",
       "summary": "New comments queue as pending bubbles. Submit review sends them with a summary as Comment, Approve or Request changes, then returns to the PR page.",
-      "entry": [
-        {
-          "path": "apps/dashboard/src/components/pulls/review/review-draft.ts",
-          "line": 54,
-          "symbol": "reviewDraftReducer",
-          "role": "State of the review being written"
-        },
-        {
-          "path": "apps/dashboard/src/components/pulls/review/use-submit-review.ts",
-          "line": 35,
-          "symbol": "useSubmitReview",
-          "role": "Sends the review and refreshes the PR"
-        },
-        {
-          "path": "apps/dashboard/src/components/pulls/review/review-submit-popover.tsx",
-          "line": 54,
-          "symbol": "ReviewSubmitPopover",
-          "role": "Summary field and verdict choice"
-        }
-      ]
+      "path": "apps/dashboard/src/components/pulls/review/review-draft.ts"
     },
     {
       "name": "Viewed files and options",
       "summary": "Ticking Viewed collapses a file and moves a progress meter; ticks reset on a new head commit. Split or unified and wrap lines; phones are always unified.",
-      "entry": [
-        {
-          "path": "apps/dashboard/src/components/pulls/review/viewed-files-store.ts",
-          "line": 12,
-          "symbol": "createViewedFilesStore",
-          "role": "In-memory set of viewed paths"
-        },
-        {
-          "path": "apps/dashboard/src/components/pulls/review/review-diff-toolbar.tsx",
-          "line": 121,
-          "symbol": "DiffDisplayOptions",
-          "role": "Split, unified and wrap controls"
-        },
-        {
-          "path": "apps/dashboard/src/components/diffs/diff-skeleton.tsx",
-          "line": 64,
-          "symbol": "DiffSkeleton",
-          "role": "Placeholder diff for cold loads"
-        }
-      ]
-    }
-  ],
-  "entryPoints": [
-    {
-      "path": "apps/dashboard/src/components/pulls/review/review-page.tsx",
-      "line": 86,
-      "symbol": "ReviewPage",
-      "role": "Review page: layout, queries, draft state"
-    },
-    {
-      "path": "apps/dashboard/src/lib/diffs/use-pull-diff-files.ts",
-      "line": 157,
-      "symbol": "usePullDiffFiles",
-      "role": "How the diff gets loaded, cached and streamed"
-    },
-    {
-      "path": "apps/dashboard/src/lib/pull-diff-request.server.ts",
-      "line": 125,
-      "symbol": "handlePullDiffRequest",
-      "role": "Server side of /api/pulls/diff, pure and tested"
-    },
-    {
-      "path": "apps/dashboard/src/components/diffs/diff-code-view.tsx",
-      "line": 496,
-      "symbol": "DiffCodeView",
-      "role": "The viewer shared by review, commit and compare pages"
-    },
-    {
-      "path": "apps/dashboard/src/lib/diffs/diffs-runtime.ts",
-      "line": 104,
-      "symbol": "getDiffsRuntime",
-      "role": "Highlighter and worker pool setup"
-    },
-    {
-      "path": "apps/dashboard/src/lib/github/reviews.ts",
-      "line": 202,
-      "symbol": "submitPullReview",
-      "role": "Review server functions: comments, threads, submit"
+      "path": "apps/dashboard/src/components/pulls/review/viewed-files-store.ts"
     }
   ],
   "dependsOn": ["pull-request", "conversation", "github-data", "instant-cache"],
-  "outside": ["github-rest", "browser-idb"],
-  "goodParts": [
-    "The diff route's logic is a pure handler with injected fetchers (lib/pull-diff-request.server.ts) and a test file next to it.",
-    "The stream splitter, draft reducer and comment cache patching have unit tests; apps/e2e/tests/isolated/review-submission.spec.ts covers submitting."
-  ],
-  "watch": [
-    "The loader prefetches the paged pulls/files query (review.$pullId.tsx:29), which the page reads only when the diff is too large (use-pull-diff-files.ts:196).",
-    "Pending comments and Viewed ticks live only in page memory (review-draft.ts, viewed-files-store.ts); a reload drops them and Viewed is never sent to GitHub.",
-    "createReviewComment is exported (lib/github/reviews.ts:235) but nothing calls it; new line comments only go out inside a submitted review."
-  ]
+  "outside": ["github-rest", "browser-idb"]
 }

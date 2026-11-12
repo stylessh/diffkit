@@ -54,207 +54,39 @@
     {
       "name": "Run list",
       "summary": "Runs with status, event, actor and branch filters sent to GitHub, plus search and sorting over the loaded page.",
-      "entry": [
-        {
-          "path": "apps/dashboard/src/routes/_protected/$owner/$repo/actions.index.tsx",
-          "line": 33,
-          "symbol": "Route",
-          "role": "List route and page component"
-        },
-        {
-          "path": "apps/dashboard/src/components/workflows/workflow-run-row.tsx",
-          "line": 31,
-          "symbol": "WorkflowRunRow",
-          "role": "One run row"
-        },
-        {
-          "path": "apps/dashboard/src/lib/github/actions.ts",
-          "line": 158,
-          "symbol": "getWorkflowRunsForRepo",
-          "role": "Server read: list runs"
-        }
-      ]
+      "path": "apps/dashboard/src/routes/_protected/$owner/$repo/actions.index.tsx"
     },
     {
       "name": "Job graph",
       "summary": "Jobs drawn as a graph from the workflow file's needs; a matrix job is one node that fans out to its variants.",
-      "entry": [
-        {
-          "path": "apps/dashboard/src/components/workflows/workflow-run-graph-canvas.tsx",
-          "line": 67,
-          "symbol": "WorkflowRunGraphCanvas",
-          "role": "The @xyflow/react canvas"
-        },
-        {
-          "path": "apps/dashboard/src/components/workflows/graph/build-layout.ts",
-          "line": 17,
-          "symbol": "buildLayoutFromDefinition",
-          "role": "Matches YAML jobs to run jobs, lays out"
-        },
-        {
-          "path": "apps/dashboard/src/lib/github/actions.ts",
-          "line": 403,
-          "symbol": "getWorkflowDefinition",
-          "role": "Reads and parses the workflow YAML"
-        }
-      ]
+      "path": "apps/dashboard/src/components/workflows/workflow-run-graph-canvas.tsx"
     },
     {
       "name": "Step logs in the graph",
       "summary": "Opening a step shows its log as its own node on the canvas, cut out of the job log by group name or time range; live jobs refresh every 4 s.",
-      "entry": [
-        {
-          "path": "apps/dashboard/src/components/workflows/graph/step-log-node.tsx",
-          "line": 36,
-          "symbol": "StepLogNode",
-          "role": "Log node on the canvas"
-        },
-        {
-          "path": "apps/dashboard/src/components/workflows/graph/parse-step-log.ts",
-          "line": 149,
-          "symbol": "extractStepLog",
-          "role": "Cuts one step out of a job log"
-        },
-        {
-          "path": "apps/dashboard/src/components/workflows/graph/step-log-content.tsx",
-          "line": 51,
-          "symbol": "StepLogContent",
-          "role": "Log lines with groups and levels"
-        }
-      ]
+      "path": "apps/dashboard/src/components/workflows/graph/step-log-node.tsx"
     },
     {
       "name": "Job page",
       "summary": "Every step of one job with collapsible log groups, error and warning rows, durations and a sidebar listing the run's jobs.",
-      "entry": [
-        {
-          "path": "apps/dashboard/src/components/workflows/workflow-job-page.tsx",
-          "line": 57,
-          "symbol": "WorkflowJobPage",
-          "role": "Job page"
-        },
-        {
-          "path": "apps/dashboard/src/lib/github/actions.ts",
-          "line": 456,
-          "symbol": "getWorkflowJobLogs",
-          "role": "Live job log, app token then user token"
-        },
-        {
-          "path": "apps/dashboard/src/lib/github/actions.ts",
-          "line": 748,
-          "symbol": "getWorkflowRunLogsBundle",
-          "role": "Per-step logs for completed runs"
-        }
-      ]
+      "path": "apps/dashboard/src/components/workflows/workflow-job-page.tsx"
     },
     {
       "name": "Re-run jobs",
       "summary": "Re-run all jobs or only the failed ones. The buttons appear only when the viewer has push or admin rights on the repo.",
-      "entry": [
-        {
-          "path": "apps/dashboard/src/components/workflows/workflow-run-header.tsx",
-          "line": 35,
-          "symbol": "WorkflowRunHeader",
-          "role": "Run title, links and re-run menu"
-        },
-        {
-          "path": "apps/dashboard/src/lib/github/actions.ts",
-          "line": 336,
-          "symbol": "rerunWorkflowRun",
-          "role": "Server function: re-run all jobs"
-        },
-        {
-          "path": "apps/dashboard/src/lib/github/actions.ts",
-          "line": 349,
-          "symbol": "rerunFailedWorkflowJobs",
-          "role": "Server function: re-run failed jobs"
-        }
-      ]
+      "path": "apps/dashboard/src/components/workflows/workflow-run-header.tsx"
     },
     {
       "name": "Run artifacts",
       "summary": "Lists a run's artifacts with size, digest and expiry. Downloads link to GitHub's archive URL.",
-      "entry": [
-        {
-          "path": "apps/dashboard/src/components/workflows/workflow-run-artifacts.tsx",
-          "line": 18,
-          "symbol": "WorkflowRunArtifacts",
-          "role": "Artifacts table"
-        },
-        {
-          "path": "apps/dashboard/src/lib/github/actions.ts",
-          "line": 294,
-          "symbol": "listWorkflowRunArtifacts",
-          "role": "Server read: artifacts of a run"
-        }
-      ]
+      "path": "apps/dashboard/src/components/workflows/workflow-run-artifacts.tsx"
     },
     {
       "name": "Check state icons",
       "summary": "One mapping from status and conclusion to an icon and colour, shared by runs, jobs, steps and the pull request checks list.",
-      "entry": [
-        {
-          "path": "apps/dashboard/src/components/checks/check-state-icon.tsx",
-          "line": 21,
-          "symbol": "getCheckState",
-          "role": "Status and conclusion to one state"
-        },
-        {
-          "path": "apps/dashboard/src/components/checks/check-state-icon.tsx",
-          "line": 50,
-          "symbol": "CheckStateIcon",
-          "role": "Icon for a state"
-        }
-      ]
-    }
-  ],
-  "entryPoints": [
-    {
-      "path": "apps/dashboard/src/routes/_protected/$owner/$repo/actions.index.tsx",
-      "line": 33,
-      "symbol": "Route",
-      "role": "Run list and how filters map to the API"
-    },
-    {
-      "path": "apps/dashboard/src/components/workflows/workflow-run-page.tsx",
-      "line": 42,
-      "symbol": "WorkflowRunPage",
-      "role": "Run page: queries, polling and layout"
-    },
-    {
-      "path": "apps/dashboard/src/components/workflows/workflow-run-graph-canvas.tsx",
-      "line": 67,
-      "symbol": "WorkflowRunGraphCanvas",
-      "role": "Graph state: collapsed nodes, open logs, layout"
-    },
-    {
-      "path": "apps/dashboard/src/components/workflows/workflow-job-page.tsx",
-      "line": 57,
-      "symbol": "WorkflowJobPage",
-      "role": "Job page and its two log sources"
-    },
-    {
-      "path": "apps/dashboard/src/lib/github/actions.ts",
-      "line": 208,
-      "symbol": "getWorkflowRun",
-      "role": "All Actions server functions live in this file"
-    },
-    {
-      "path": "apps/dashboard/src/lib/github/actions-query-options.ts",
-      "line": 38,
-      "symbol": "githubWorkflowRunQueryOptions",
-      "role": "Query options with the polling rules"
+      "path": "apps/dashboard/src/components/checks/check-state-icon.tsx"
     }
   ],
   "dependsOn": ["github-data", "instant-cache", "live-updates"],
-  "outside": ["github-rest"],
-  "goodParts": [
-    "Polling is centralised: lib/github-refetch-policy.ts states the rate-limit cost behind each interval and is covered by github-refetch-policy.test.ts.",
-    "The canvas is lazy-loaded behind a frame-shaped skeleton (workflow-run-graph.tsx), so @xyflow/react stays out of other pages' code."
-  ],
-  "watch": [
-    "No tests under components/workflows: graph/parse-step-log.ts (227 lines) and graph/build-layout.ts (142 lines) are pure logic, and no e2e spec opens an Actions page.",
-    "getWorkflowJobLogs and the logs bundle print console.log lines on every call (lib/github/actions.ts:482, 496, 519, 715).",
-    "lib/github/actions.ts is 771 lines; open step logs poll every 4 s on a fixed interval, outside the adaptive policy (graph/step-log-node.tsx:50)."
-  ]
+  "outside": ["github-rest"]
 }

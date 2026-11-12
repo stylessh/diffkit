@@ -49,167 +49,41 @@
     {
       "name": "Webhook intake",
       "summary": "Verifies the signature, caps the body at 25 MB and replies 202 before writing. Installation events instead drop the cached installation token.",
-      "entry": [
-        {
-          "path": "apps/dashboard/src/lib/github-webhook.server.ts",
-          "line": 117,
-          "symbol": "handleGitHubWebhook",
-          "role": "Webhook logic with injected dependencies"
-        },
-        {
-          "path": "apps/dashboard/src/routes/api/webhooks/github.ts",
-          "line": 32,
-          "symbol": "Route",
-          "role": "POST /api/webhooks/github"
-        }
-      ]
+      "path": "apps/dashboard/src/lib/github-webhook.server.ts"
     },
     {
       "name": "Entity keys",
       "summary": "Twelve kinds of key say what changed: pull, issue, repo, checks, run, release, labels, milestones, collaborators, discussions, settings, org.",
-      "entry": [
-        {
-          "path": "apps/dashboard/src/lib/github-change-entities.ts",
-          "line": 172,
-          "symbol": "getWebhookChangeEntities",
-          "role": "Webhook event to entity list"
-        },
-        {
-          "path": "apps/dashboard/src/lib/github-change-entities.ts",
-          "line": 51,
-          "symbol": "formatEntityKey",
-          "role": "Entity to key string"
-        }
-      ]
+      "path": "apps/dashboard/src/lib/github-change-entities.ts"
     },
     {
       "name": "Cursor and expiry",
       "summary": "The cursor is a version plus issue time. If it is over 14 minutes old or 2,000 rows behind, the client refetches every on-screen query once.",
-      "entry": [
-        {
-          "path": "apps/dashboard/src/lib/github-change.server.ts",
-          "line": 149,
-          "symbol": "readGitHubChanges",
-          "role": "Reads rows after a cursor from D1"
-        },
-        {
-          "path": "apps/dashboard/src/lib/changes-request.server.ts",
-          "line": 39,
-          "symbol": "handleChangesRequest",
-          "role": "GET /api/changes logic"
-        }
-      ]
+      "path": "apps/dashboard/src/lib/github-change.server.ts"
     },
     {
       "name": "Private repo filter",
       "summary": "Public repo changes go to anyone. Private ones only reach users who can read the repo through the GitHub App; the list is cached 60 s in memory, 10 min in KV.",
-      "entry": [
-        {
-          "path": "apps/dashboard/src/lib/github-change-access.server.ts",
-          "line": 104,
-          "symbol": "getReadableRepoSet",
-          "role": "Repos the user can read, with caches"
-        }
-      ]
+      "path": "apps/dashboard/src/lib/github-change-access.server.ts"
     },
     {
       "name": "Entity to query registry",
       "summary": "One table maps each query group to the entity kinds that affect it. Cross-repo lists and the inbox refetch only if the changed item is already in them.",
-      "entry": [
-        {
-          "path": "apps/dashboard/src/lib/github/query-registry.ts",
-          "line": 16,
-          "symbol": "githubQueryEntityCoverage",
-          "role": "Query group to entity kinds"
-        },
-        {
-          "path": "apps/dashboard/src/lib/github/query-registry.ts",
-          "line": 245,
-          "symbol": "githubQueryMatchesEntity",
-          "role": "Does this cached query care about this change"
-        }
-      ]
+      "path": "apps/dashboard/src/lib/github/query-registry.ts"
     },
     {
       "name": "Own-write invalidation",
       "summary": "When you comment, merge or edit in DiffKit, the same entity keys are applied right away, so your own change does not wait for the webhook.",
-      "entry": [
-        {
-          "path": "apps/dashboard/src/lib/github-query-updates.ts",
-          "line": 223,
-          "symbol": "invalidateGitHubEntities",
-          "role": "Mutations invalidate by entity key"
-        }
-      ]
+      "path": "apps/dashboard/src/lib/github-query-updates.ts"
     },
     {
       "name": "Polling, not sockets",
       "summary": "One small request per tab every 15 s, plus on focus and reconnect. An earlier WebSocket relay on a Durable Object was removed in commit 5886c02.",
-      "entry": [
-        {
-          "path": "apps/dashboard/src/lib/github-change-feed.ts",
-          "line": 196,
-          "symbol": "useGitHubChangeFeed",
-          "role": "Hook mounted once in the signed-in layout"
-        },
-        {
-          "path": "apps/dashboard/src/lib/github-change-feed.ts",
-          "line": 120,
-          "symbol": "createChangeFeedPoller",
-          "role": "Poll loop, cursor and visibility rules"
-        }
-      ]
-    }
-  ],
-  "entryPoints": [
-    {
-      "path": "docs/data-fetching.md",
-      "line": 92,
-      "symbol": "L2: Revalidation via a change feed",
-      "role": "Design and the decisions behind it"
-    },
-    {
-      "path": "apps/dashboard/src/lib/github-webhook.server.ts",
-      "line": 117,
-      "symbol": "handleGitHubWebhook",
-      "role": "Where a webhook enters"
-    },
-    {
-      "path": "apps/dashboard/src/lib/github-change-entities.ts",
-      "line": 172,
-      "symbol": "getWebhookChangeEntities",
-      "role": "Which events map to which keys"
-    },
-    {
-      "path": "apps/dashboard/src/lib/github-change.server.ts",
-      "line": 149,
-      "symbol": "readGitHubChanges",
-      "role": "D1 writes, reads, sweep and size check"
-    },
-    {
-      "path": "apps/dashboard/src/lib/github-change-feed.ts",
-      "line": 196,
-      "symbol": "useGitHubChangeFeed",
-      "role": "Client side of the feed"
-    },
-    {
-      "path": "apps/dashboard/src/lib/github/query-registry.ts",
-      "line": 16,
-      "symbol": "githubQueryEntityCoverage",
-      "role": "Which queries each change refreshes"
+      "path": "apps/dashboard/src/lib/github-change-feed.ts"
     }
   ],
   "dependsOn": ["storage", "github-data"],
   "outside": ["github-webhooks", "cf-d1", "cf-kv"],
-  "goodParts": [
-    "handleGitHubWebhook and handleChangesRequest take their dependencies as arguments, so each has a test file that runs without a Worker.",
-    "github.query.test.ts fails when a query key group is neither mapped to an entity kind nor marked exempt in the registry."
-  ],
-  "watch": [
-    "docs/github-cache-architecture.md (437 lines) describes the removed design; its banner says it stays until a replacement is written, and data-fetching.md now exists.",
-    "Repos without the GitHub App send no webhooks, so they refresh only on focus or stale time (docs/data-fetching.md, L2).",
-    "The private-repo list stops at 10 pages of 100 repos per installation (github-change-access.server.ts:19); larger installs fall back to refetch on focus."
-  ],
   "issues": [
     {
       "number": 137

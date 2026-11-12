@@ -9,12 +9,20 @@ the map does not cover yet.
 The map has two halves:
 
 - **Written by an agent, kept in the repository.** The `.diffkit/` folder on
-  the default branch names the areas, says which files belong to each and
-  explains each one. It is ordinary reviewed text, changed in pull requests.
-- **Counted when the page opens.** File counts and sizes, merged and open pull
-  requests per area, each pull request's share, the people involved. None of
-  this is stored; DiffKit reads it from GitHub every time, so it is never out
-  of date.
+  the default branch names the areas, says which folders belong to each and
+  explains each one in a few sentences. It is ordinary reviewed text, changed
+  in pull requests, and deliberately small: about a hundred lines per area.
+- **Worked out when the page opens.** File counts and sizes, merged and open
+  pull requests per area, each pull request's share, the people involved, and
+  the files in each area that change the most. None of this is stored; DiffKit
+  reads it from GitHub every time, so it is never out of date.
+
+The rule for which half something belongs to: if it can be counted or looked
+up, DiffKit computes it. The files never list files, name functions or carry
+line numbers, because those change with every edit. An earlier version stored
+hand-picked entry points with line numbers and notes on code quality; both
+are gone. Entry points are now the area's most changed files, computed, and
+code-quality notes are a different feature.
 
 ## Setting one up
 
@@ -65,9 +73,8 @@ Four things do the tending:
   - `changed.mjs` names the areas a change touched, the mentioned files that
     moved and the new files no area covers, so an update reads only those.
   - `check.mjs --fix` applies DiffKit's own validation, confirms every
-    mentioned path exists and every area receives files, puts keys in the
-    format's order and moves code links whose line drifted back onto their
-    symbol. That last part needs no agent at all.
+    mentioned path exists and every area receives files, and puts keys in the
+    format's order.
   - `survey.mjs` and `scaffold.mjs` are for setting a map up: a bounded
     inventory of any size of repository, and files written in the one
     accepted shape.
@@ -90,7 +97,8 @@ therefore not drift into a structure the page cannot draw.
 
 - DiffKit's own map is covered by a test
   (`apps/dashboard/src/lib/product-map/repo-map.test.ts`): it must parse,
-  every path it mentions must exist and every area must receive files.
+  every path it mentions must exist, every area must receive files and no
+  area file may run past 150 lines.
 - `.github/workflows/product-map.yml` runs the skill's check action on this
   repository's own map.
 - The skill's scripts are exercised end to end on a throwaway repository in

@@ -52,209 +52,41 @@
     {
       "name": "Activity timeline",
       "summary": "Comments, commits and events in date order. One person's quick label, review-request and open/close changes fold into one row; long ones show both ends first.",
-      "entry": [
-        {
-          "path": "apps/dashboard/src/components/details/timeline/timeline-items.ts",
-          "line": 40,
-          "symbol": "buildTimeline",
-          "role": "Sorts and groups timeline items"
-        },
-        {
-          "path": "apps/dashboard/src/components/details/grouped-label-event.tsx",
-          "line": 34,
-          "symbol": "groupTimelineEvents",
-          "role": "Folds same-actor events within 60 s"
-        },
-        {
-          "path": "apps/dashboard/src/components/details/timeline/use-windowed-timeline.ts",
-          "line": 55,
-          "symbol": "useWindowedTimeline",
-          "role": "Hides the middle, loads more pages"
-        }
-      ]
+      "path": "apps/dashboard/src/components/details/timeline/timeline-items.ts"
     },
     {
       "name": "Markdown rendering",
       "summary": "GitHub-flavoured markdown with raw HTML passed through a sanitizer, GitHub alerts, footnotes, and Shiki code blocks with a copy button.",
-      "entry": [
-        {
-          "path": "packages/ui/src/components/markdown.tsx",
-          "line": 861,
-          "symbol": "Markdown",
-          "role": "The shared renderer"
-        },
-        {
-          "path": "apps/dashboard/src/components/markdown/app-markdown.tsx",
-          "line": 44,
-          "symbol": "AppMarkdown",
-          "role": "Renderer wired to routes and GitHub links"
-        },
-        {
-          "path": "packages/ui/src/lib/markdown-sanitize-schema.ts",
-          "line": 17,
-          "symbol": "markdownSanitizeSchema",
-          "role": "Allow-list for HTML in user content"
-        }
-      ]
+      "path": "packages/ui/src/components/markdown.tsx"
     },
     {
       "name": "Mentions and reference cards",
       "summary": "@logins, #123, commit SHAs and github.com URLs become in-app links with hover cards. Cards paint first from lists and pages already in the cache.",
-      "entry": [
-        {
-          "path": "apps/dashboard/src/components/markdown/markdown-reference.tsx",
-          "line": 226,
-          "symbol": "MarkdownReference",
-          "role": "Issue, PR and commit links with cards"
-        },
-        {
-          "path": "apps/dashboard/src/components/markdown/markdown-mention.tsx",
-          "line": 72,
-          "symbol": "MarkdownMention",
-          "role": "User link with profile card"
-        },
-        {
-          "path": "apps/dashboard/src/lib/reference-placeholders.ts",
-          "line": 87,
-          "symbol": "cachedItemReference",
-          "role": "Finds card data already in the cache"
-        }
-      ]
+      "path": "apps/dashboard/src/components/markdown/markdown-reference.tsx"
     },
     {
       "name": "Comment composer",
       "summary": "A textarea editor. Comment boxes are a bare field where shortcuts still format, with an @mention menu; descriptions get a toolbar and Write/Preview tabs.",
-      "entry": [
-        {
-          "path": "packages/ui/src/components/markdown-editor.tsx",
-          "line": 282,
-          "symbol": "MarkdownEditor",
-          "role": "Editor used by every composer"
-        },
-        {
-          "path": "apps/dashboard/src/components/details/detail-activity.tsx",
-          "line": 69,
-          "symbol": "DetailCommentBox",
-          "role": "Composer with send and close/reopen"
-        }
-      ]
+      "path": "packages/ui/src/components/markdown-editor.tsx"
     },
     {
       "name": "Image and video upload",
       "summary": "Paste, drop or attach png, jpeg, gif, webp, mp4, webm or mov. The server trusts the file's magic bytes, not its MIME type; 25 MB images, 120 MB video.",
-      "entry": [
-        {
-          "path": "apps/dashboard/src/hooks/use-comment-media-upload.ts",
-          "line": 80,
-          "symbol": "useCommentMediaUpload",
-          "role": "Client upload and placeholder swap"
-        },
-        {
-          "path": "apps/dashboard/src/lib/comment-media-upload.handler.ts",
-          "line": 31,
-          "symbol": "handleCommentMediaUpload",
-          "role": "Validates and writes to R2"
-        },
-        {
-          "path": "apps/dashboard/src/lib/media.functions.ts",
-          "line": 74,
-          "symbol": "finalizeCommentMediaUpload",
-          "role": "Verifies the object, returns the HTML tag"
-        }
-      ]
+      "path": "apps/dashboard/src/hooks/use-comment-media-upload.ts"
     },
     {
       "name": "Emoji reactions",
       "summary": "The eight GitHub reactions on comments and on PR or issue descriptions. A click updates the count at once and is undone if GitHub refuses.",
-      "entry": [
-        {
-          "path": "apps/dashboard/src/components/details/comment-reaction-bar.tsx",
-          "line": 209,
-          "symbol": "IssueCommentReactionBar",
-          "role": "Reaction chips and picker"
-        },
-        {
-          "path": "apps/dashboard/src/lib/github/comments.ts",
-          "line": 111,
-          "symbol": "toggleIssueCommentReaction",
-          "role": "Adds or removes via GraphQL"
-        }
-      ]
+      "path": "apps/dashboard/src/components/details/comment-reaction-bar.tsx"
     },
     {
       "name": "Edit, delete, hide, reply",
       "summary": "Edits and deletes patch every cached copy of a comment and restore it on failure. Replies are quote blocks that the timeline nests under their parent.",
-      "entry": [
-        {
-          "path": "apps/dashboard/src/components/details/use-comment-actions.ts",
-          "line": 34,
-          "symbol": "useCommentActions",
-          "role": "Optimistic edit and delete"
-        },
-        {
-          "path": "apps/dashboard/src/lib/comment-cache.ts",
-          "line": 51,
-          "symbol": "patchComment",
-          "role": "Applies an edit or delete to cached data"
-        },
-        {
-          "path": "apps/dashboard/src/components/details/comment-threads.ts",
-          "line": 12,
-          "symbol": "buildCommentThreads",
-          "role": "Detects replies from quote blocks"
-        }
-      ]
-    }
-  ],
-  "entryPoints": [
-    {
-      "path": "apps/dashboard/src/components/details/detail-page.tsx",
-      "line": 13,
-      "symbol": "DetailPageLayout",
-      "role": "Shared detail page shell: column, panel, phone action"
-    },
-    {
-      "path": "apps/dashboard/src/components/details/timeline/comment-thread.tsx",
-      "line": 141,
-      "symbol": "CommentThread",
-      "role": "One comment with its replies, menu and reactions"
-    },
-    {
-      "path": "apps/dashboard/src/components/details/detail-activity.tsx",
-      "line": 69,
-      "symbol": "DetailCommentBox",
-      "role": "Composer at the foot of a PR or issue"
-    },
-    {
-      "path": "apps/dashboard/src/components/markdown/app-markdown.tsx",
-      "line": 44,
-      "symbol": "AppMarkdown",
-      "role": "Markdown with mentions and references wired in"
-    },
-    {
-      "path": "apps/dashboard/src/lib/github/comments.ts",
-      "line": 53,
-      "symbol": "createComment",
-      "role": "Comment, reaction, edit and delete server functions"
-    },
-    {
-      "path": "apps/dashboard/src/lib/github/timeline.ts",
-      "line": 353,
-      "symbol": "getTimelineEventsResult",
-      "role": "Timeline events: REST plus GraphQL cross-references"
+      "path": "apps/dashboard/src/components/details/use-comment-actions.ts"
     }
   ],
   "dependsOn": ["ui-kit", "github-data", "instant-cache", "storage"],
   "outside": ["github-rest", "cf-r2"],
-  "goodParts": [
-    "Upload code is pure helpers plus a handler with an injected runtime, both tested (comment-media.server.test.ts, comment-media-upload.handler.test.ts).",
-    "The markdown pipeline has an XSS suite (packages/ui/src/lib/markdown-pipeline-xss.test.ts) next to markdown.test.ts."
-  ],
-  "watch": [
-    "No unit test files under components/details: event grouping (grouped-label-event.tsx, 346 lines), reply detection and timeline windowing have none.",
-    "The upload endpoint is matched by hand in entry-worker.ts:25, before the router, instead of living under routes/api like the other API routes.",
-    "packages/ui/src/components/markdown.tsx is 955 lines and markdown-editor.tsx is 870 lines."
-  ],
   "issues": [
     {
       "number": 106

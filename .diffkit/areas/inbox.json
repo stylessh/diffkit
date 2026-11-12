@@ -54,159 +54,34 @@
     {
       "name": "Unread, All and Saved",
       "summary": "Three views. Saved is DiffKit's own: GitHub has no public API for it, so up to 200 saved threads are kept per user in the browser.",
-      "entry": [
-        {
-          "path": "apps/dashboard/src/components/inbox/inbox-list.tsx",
-          "line": 187,
-          "symbol": "InboxList",
-          "role": "List pane: header, view tabs, groups, rows"
-        },
-        {
-          "path": "apps/dashboard/src/components/inbox/use-saved-notifications.ts",
-          "line": 23,
-          "symbol": "useSavedNotifications",
-          "role": "Saved threads as snapshots in localStorage"
-        }
-      ]
+      "path": "apps/dashboard/src/components/inbox/inbox-list.tsx"
     },
     {
       "name": "Grouping and collapsing",
       "summary": "Group by repository (latest activity first) or by reason (ordered by how much it asks of you). Groups collapse and the choice is remembered.",
-      "entry": [
-        {
-          "path": "apps/dashboard/src/lib/inbox.ts",
-          "line": 70,
-          "symbol": "groupNotifications",
-          "role": "Pure grouping and ordering"
-        },
-        {
-          "path": "apps/dashboard/src/components/inbox/inbox-list.tsx",
-          "line": 107,
-          "symbol": "InboxDisplayOptions",
-          "role": "The display options popover"
-        }
-      ]
+      "path": "apps/dashboard/src/lib/inbox.ts"
     },
     {
       "name": "Keyboard triage",
       "summary": "J/K or arrows move, E marks done, S saves, Shift+M unsubscribes, Enter opens. After a removal the selection moves to the next row.",
-      "entry": [
-        {
-          "path": "apps/dashboard/src/components/inbox/inbox-page.tsx",
-          "line": 67,
-          "symbol": "InboxPage",
-          "role": "Registers the inbox shortcuts"
-        },
-        {
-          "path": "apps/dashboard/src/lib/inbox.ts",
-          "line": 126,
-          "symbol": "selectionAfterRemoval",
-          "role": "Where selection goes when a row leaves"
-        }
-      ]
+      "path": "apps/dashboard/src/components/inbox/inbox-page.tsx"
     },
     {
       "name": "Inline preview",
       "summary": "Selecting a row marks it read and opens the pull request or issue beside the list. On phones it goes to the full page.",
-      "entry": [
-        {
-          "path": "apps/dashboard/src/components/inbox/inbox-preview.tsx",
-          "line": 51,
-          "symbol": "InboxPreview",
-          "role": "Right pane with actions and detail content"
-        },
-        {
-          "path": "apps/dashboard/src/lib/inbox.ts",
-          "line": 146,
-          "symbol": "parseSubjectRef",
-          "role": "Turns a thread's API URL into owner, repo, number"
-        }
-      ]
+      "path": "apps/dashboard/src/components/inbox/inbox-preview.tsx"
     },
     {
       "name": "Thread actions",
       "summary": "Mark read, mark done, unsubscribe (ignore the thread, then mark it done), mark all read, and mark everything read and unsaved as done.",
-      "entry": [
-        {
-          "path": "apps/dashboard/src/components/inbox/use-inbox-actions.ts",
-          "line": 17,
-          "symbol": "useInboxActions",
-          "role": "Optimistic actions over both list caches"
-        },
-        {
-          "path": "apps/dashboard/src/lib/github/notifications.ts",
-          "line": 70,
-          "symbol": "unsubscribeNotification",
-          "role": "Server function: ignore thread, then done"
-        }
-      ]
+      "path": "apps/dashboard/src/components/inbox/use-inbox-actions.ts"
     },
     {
       "name": "State-aware rows",
       "summary": "Each row shows an open, closed or merged icon, the title, repository and number, the reason, and an unread dot or saved pin.",
-      "entry": [
-        {
-          "path": "apps/dashboard/src/components/inbox/inbox-list.tsx",
-          "line": 344,
-          "symbol": "InboxRow",
-          "role": "One notification row with hover actions"
-        },
-        {
-          "path": "apps/dashboard/src/lib/github/notification-reads.ts",
-          "line": 141,
-          "symbol": "listVisibleNotifications",
-          "role": "Lists, filters by access and reads subject state"
-        }
-      ]
-    }
-  ],
-  "entryPoints": [
-    {
-      "path": "apps/dashboard/src/components/inbox/inbox-page.tsx",
-      "line": 67,
-      "symbol": "InboxPage",
-      "role": "Page state, shortcuts and layout"
-    },
-    {
-      "path": "apps/dashboard/src/lib/inbox.ts",
-      "line": 70,
-      "symbol": "groupNotifications",
-      "role": "Pure grouping, ordering and selection rules for the inbox"
-    },
-    {
-      "path": "apps/dashboard/src/lib/github/notification-reads.ts",
-      "line": 141,
-      "symbol": "listVisibleNotifications",
-      "role": "Server read: list, access filter, per-thread enrichment"
-    },
-    {
-      "path": "apps/dashboard/src/lib/github/notifications.ts",
-      "line": 10,
-      "symbol": "getNotifications",
-      "role": "Server functions: list, read, done, mark all, unsubscribe"
-    },
-    {
-      "path": "apps/dashboard/src/components/inbox/use-inbox-actions.ts",
-      "line": 17,
-      "symbol": "useInboxActions",
-      "role": "Client side of every inbox action"
-    },
-    {
-      "path": "apps/dashboard/src/routes/_protected/inbox.tsx",
-      "line": 7,
-      "symbol": "Route",
-      "role": "The /inbox route"
+      "path": "apps/dashboard/src/components/inbox/inbox-list.tsx"
     }
   ],
   "dependsOn": ["pull-request", "issues", "github-data", "instant-cache"],
-  "outside": ["github-rest"],
-  "goodParts": [
-    "Grouping and selection rules are pure functions in lib/inbox.ts with unit tests (lib/inbox.test.ts).",
-    "e2e marks a thread read and triages from the keyboard, then checks the emulator's GitHub state (apps/e2e/tests/isolated/inbox.spec.ts)."
-  ],
-  "watch": [
-    "Only the first 50 threads are read (per_page: 50, lib/github/notification-reads.ts:154); there is no paging or 'load more'.",
-    "The server reads comments and reviews of every thread to build 'participants' (notification-reads.ts:54), but no component reads that field; only subjectState is shown.",
-    "docs/e2e.md:105 says the inbox menu has no accessible name; inbox-list.tsx:202 now sets aria-label 'Inbox actions', so the doc is stale."
-  ]
+  "outside": ["github-rest"]
 }

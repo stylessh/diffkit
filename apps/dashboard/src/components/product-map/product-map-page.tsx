@@ -75,19 +75,17 @@ function areaSections(
 	area: ProductArea,
 	map: LoadedProductMap,
 ): { section: AreaSection; label: string; count?: number }[] {
+	const hotFiles = map.activity?.areas[area.id]?.hotFiles.length ?? 0;
 	return [
 		{ section: "how", label: "How it works" },
 		{ section: "inside", label: "Inside", count: area.features.length },
-		{ section: "code", label: "Code", count: area.entryPoints.length },
+		...(hotFiles > 0
+			? [{ section: "code" as const, label: "Code", count: hotFiles }]
+			: []),
 		{
 			section: "activity",
 			label: "Activity",
 			count: openWorkCount(map, area),
-		},
-		{
-			section: "notes",
-			label: "Notes",
-			count: area.goodParts.length + area.watch.length,
 		},
 	];
 }
@@ -132,7 +130,7 @@ function useVisibleSection(
 	}, [scopeRef, areaId]);
 
 	const scrollable = view.band !== "how" || !view.atEnd;
-	return view.atEnd && scrollable ? "notes" : view.band;
+	return view.atEnd && scrollable ? "activity" : view.band;
 }
 
 function Stage({

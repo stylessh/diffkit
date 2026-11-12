@@ -169,7 +169,13 @@ describe("the product-map skill's scripts", () => {
 			JSON.stringify(
 				{
 					...signIn,
-					entryPoints: [{ path: "src/auth/session.ts", role: "Sessions" }],
+					features: [
+						{
+							name: "Sessions",
+							summary: "Keeps a visitor signed in.",
+							path: "src/auth/session.ts",
+						},
+					],
 				},
 				null,
 				2,
@@ -187,63 +193,12 @@ describe("the product-map skill's scripts", () => {
 		write("src/search/index.ts", "export const search = 1;\n");
 		const { output } = run("changed.mjs", ["--base", "HEAD"]);
 		expect(output).toContain(
-			"areas/sign-in.json, entryPoints: src/auth/session.ts no longer exists",
+			'areas/sign-in.json, feature "Sessions": src/auth/session.ts no longer exists',
 		);
 		expect(output).toContain("### billing (1 file)");
 		expect(output).toContain("A src/billing/refund.ts");
 		expect(output).toContain("## New files no area covers (1)");
 		expect(output).toContain("src/search/index.ts");
-	});
-
-	it("moves a code link back onto its symbol when the file grew above it", () => {
-		writeFileSync(
-			areaFile("sign-in"),
-			JSON.stringify(
-				{
-					...readArea("sign-in"),
-					entryPoints: [{ path: "src/auth/sessions.ts", role: "Sessions" }],
-				},
-				null,
-				2,
-			),
-		);
-		const billing = readArea("billing");
-		writeFileSync(
-			areaFile("billing"),
-			JSON.stringify(
-				{
-					...billing,
-					entryPoints: [
-						{
-							path: "src/billing/invoice.ts",
-							line: 1,
-							symbol: "invoice",
-							role: "Invoices",
-						},
-					],
-				},
-				null,
-				2,
-			),
-		);
-		write(
-			"src/billing/invoice.ts",
-			"// Totals are in cents.\n\nexport const invoice = 1;\n",
-		);
-		expect(run("check.mjs").output).toContain(
-			"src/billing/invoice.ts:1 (invoice) is now line 3",
-		);
-		expect(run("check.mjs", ["--fix"]).output).toContain(
-			"Moved 1 code link(s) back onto their symbol",
-		);
-		expect(readArea("billing").entryPoints).toEqual([
-			{
-				path: "src/billing/invoice.ts",
-				line: 3,
-				symbol: "invoice",
-				role: "Invoices",
-			},
-		]);
 	});
 
 	it("surveys a repository in a bounded number of lines", () => {

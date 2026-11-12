@@ -1,4 +1,3 @@
-import { AlertCircleIcon, CircleCheckIcon } from "@diffkit/icons";
 import { SectionCard } from "@diffkit/ui/components/section-card";
 import { cn } from "@diffkit/ui/lib/utils";
 import { Link } from "@tanstack/react-router";
@@ -10,19 +9,9 @@ import { blobLink, CodeLink, type RepoLinks } from "./code-link";
 import { plural, shortPath } from "./map-format";
 import { featureIcon } from "./map-icons";
 import type { LoadedProductMap } from "./product-map-data";
-import type {
-	AreaFeature,
-	CodeReference,
-	ProductArea,
-} from "./product-map-types";
+import type { AreaFeature, ProductArea } from "./product-map-types";
 
-export const AREA_SECTIONS = [
-	"how",
-	"inside",
-	"code",
-	"activity",
-	"notes",
-] as const;
+export const AREA_SECTIONS = ["how", "inside", "code", "activity"] as const;
 
 export type AreaSection = (typeof AREA_SECTIONS)[number];
 
@@ -105,7 +94,7 @@ function FeatureItem({
 	onToggle: () => void;
 	repo: RepoLinks;
 }) {
-	const Icon = featureIcon(feature.name, feature.entry[0]?.path ?? "");
+	const Icon = featureIcon(feature.name, feature.path ?? "");
 	return (
 		<li
 			className={cn(
@@ -136,15 +125,9 @@ function FeatureItem({
 					</span>
 				</span>
 			</button>
-			{open ? (
-				<span className="flex flex-wrap gap-1 pr-2.5 pb-2.5 pl-[3.375rem]">
-					{feature.entry.map((entry) => (
-						<CodeLink
-							key={`${entry.path}:${entry.symbol ?? ""}`}
-							reference={entry}
-							repo={repo}
-						/>
-					))}
+			{open && feature.path ? (
+				<span className="flex pr-2.5 pb-2.5 pl-[3.375rem]">
+					<CodeLink reference={{ path: feature.path }} repo={repo} />
 				</span>
 			) : null}
 		</li>
@@ -178,62 +161,28 @@ function FeatureList({
 	);
 }
 
-function EntryPointRow({
-	entry,
+/** One of the area's most changed files, with how many pull requests changed it. */
+function HotFileRow({
+	file,
 	repo,
 }: {
-	entry: CodeReference;
+	file: { path: string; pulls: number };
 	repo: RepoLinks;
 }) {
 	return (
 		<Link
-			{...blobLink(repo, entry)}
-			title={`${entry.path}${entry.line ? `:${entry.line}` : ""}`}
+			{...blobLink(repo, file)}
+			title={file.path}
 			className="flex items-center gap-3 px-4 py-2.5 transition-colors hover:bg-row-hover"
 		>
-			<FileTypeIcon path={entry.path} size={15} />
-			<span className="min-w-0 flex-1 truncate text-[13px] text-foreground">
-				{entry.role}
+			<FileTypeIcon path={file.path} size={15} />
+			<span className="min-w-0 flex-1 truncate font-mono text-[12px] text-foreground">
+				{shortPath(file.path)}
 			</span>
-			<span className="max-w-[45%] shrink-0 truncate font-mono text-[11px] text-muted-foreground">
-				{entry.symbol ?? shortPath(entry.path)}
+			<span className="shrink-0 font-[450] text-muted-foreground text-xs tabular-nums">
+				{plural(file.pulls, "pull request")}
 			</span>
 		</Link>
-	);
-}
-
-function NoteList({
-	label,
-	notes,
-	tone,
-}: {
-	label: string;
-	notes: string[];
-	tone: "good" | "watch";
-}) {
-	if (notes.length === 0) return null;
-	const Icon = tone === "good" ? CircleCheckIcon : AlertCircleIcon;
-	return (
-		<div className="flex flex-col gap-2.5">
-			<h3 className="font-[450] text-muted-foreground text-xs">{label}</h3>
-			<ul className="flex flex-col gap-3">
-				{notes.map((text) => (
-					<li key={text} className="flex gap-3">
-						<Icon
-							size={15}
-							strokeWidth={2}
-							className={cn(
-								"mt-[3px] shrink-0",
-								tone === "good" ? "text-success" : "text-warning",
-							)}
-						/>
-						<span className="text-pretty text-[13px] text-foreground leading-5">
-							{text}
-						</span>
-					</li>
-				))}
-			</ul>
-		</div>
 	);
 }
 
@@ -249,6 +198,7 @@ export function AreaSheet({
 		repo: map.repo.name,
 		branch: map.repo.branch,
 	};
+	const hotFiles = map.activity?.areas[area.id]?.hotFiles ?? [];
 	const group = map.bands
 		.flatMap((band) => band.groups)
 		.find((candidate) => candidate.areas.includes(area.id));
@@ -286,26 +236,24 @@ export function AreaSheet({
 			<Section
 				id="inside"
 				title="What is inside"
-				description={`${plural(area.features.length, "part")}. Open one for its code.`}
+				description={`${plural(area.features.length, "part")}. Open one to read more.`}
 			>
 				<FeatureList key={area.id} features={area.features} repo={repo} />
 			</Section>
 
-			<Section
-				id="code"
-				title="Ways into the code"
-				description="Where to start reading."
-			>
-				<SectionCard className="[&>div:last-child]:pb-0">
-					{area.entryPoints.map((entry) => (
-						<EntryPointRow
-							key={`${entry.path}:${entry.symbol ?? ""}`}
-							entry={entry}
-							repo={repo}
-						/>
-					))}
-				</SectionCard>
-			</Section>
+			{hotFiles.length > 0 ? (
+				<Section
+					id="code"
+					title="Where the work happens"
+					description="The files here that the most pull requests changed. A good place to start reading."
+				>
+					<SectionCard className="[&>div:last-child]:pb-0">
+						{hotFiles.map((file) => (
+							<HotFileRow key={file.path} file={file} repo={repo} />
+						))}
+					</SectionCard>
+				</Section>
+			) : null}
 
 			<Section
 				id="activity"
@@ -315,18 +263,6 @@ export function AreaSheet({
 				<AreaActivity key={area.id} area={area} map={map} repo={repo} />
 			</Section>
 
-			{area.goodParts.length + area.watch.length > 0 ? (
-				<Section
-					id="notes"
-					title="Worth knowing"
-					description="Found by reading the code, each with its evidence."
-				>
-					<div className="flex flex-col gap-8">
-						<NoteList label="Done well" notes={area.goodParts} tone="good" />
-						<NoteList label="Rough edges" notes={area.watch} tone="watch" />
-					</div>
-				</Section>
-			) : null}
 			<div data-area-end aria-hidden className="h-px" />
 		</>
 	);

@@ -51,201 +51,39 @@
     {
       "name": "Topbar and workspace nav",
       "summary": "Overview, Inbox, Pull requests, Reviews and Issues with live counts and an unread dot. On phones the same items become a bottom tab bar.",
-      "entry": [
-        {
-          "path": "apps/dashboard/src/components/shell/app-topbar.tsx",
-          "line": 42,
-          "symbol": "AppTopbar",
-          "role": "Desktop topbar"
-        },
-        {
-          "path": "apps/dashboard/src/components/shell/workspace-nav.tsx",
-          "line": 47,
-          "symbol": "workspaceNavItems",
-          "role": "The five destinations, their keys and badges"
-        },
-        {
-          "path": "apps/dashboard/src/components/shell/workspace-nav.tsx",
-          "line": 166,
-          "symbol": "MobileNavBar",
-          "role": "Bottom navigation on phones"
-        }
-      ]
+      "path": "apps/dashboard/src/components/shell/app-topbar.tsx"
     },
     {
       "name": "Create menu",
       "summary": "New issue, pull request or release. Inside a repository it goes straight there; anywhere else it first asks which repository.",
-      "entry": [
-        {
-          "path": "apps/dashboard/src/components/shell/create-menu.tsx",
-          "line": 24,
-          "symbol": "CreateMenu",
-          "role": "The pencil button and its menu"
-        },
-        {
-          "path": "apps/dashboard/src/lib/shell/create-actions.ts",
-          "line": 71,
-          "symbol": "resolveCreateTarget",
-          "role": "Decides: navigate now or pick a repository"
-        },
-        {
-          "path": "apps/dashboard/src/lib/shell/use-shell-actions.ts",
-          "line": 45,
-          "symbol": "useStartCreateAction",
-          "role": "Runs a create action from menu, key or palette"
-        }
-      ]
+      "path": "apps/dashboard/src/components/shell/create-menu.tsx"
     },
     {
       "name": "Repository picker",
       "summary": "A searchable dialog (O then R) to switch repository, pin one, or choose the target of a create action. Pinned and recent come first.",
-      "entry": [
-        {
-          "path": "apps/dashboard/src/components/shell/repo-picker-dialog.tsx",
-          "line": 143,
-          "symbol": "RepoPickerDialog",
-          "role": "The picker dialog"
-        },
-        {
-          "path": "apps/dashboard/src/lib/shell/workspace-repos.ts",
-          "line": 169,
-          "symbol": "useWorkspaceRepos",
-          "role": "Pinned and recent repositories from localStorage"
-        },
-        {
-          "path": "apps/dashboard/src/lib/shell/use-shell-actions.ts",
-          "line": 64,
-          "symbol": "useCompleteRepoPick",
-          "role": "What happens after a repository is picked"
-        }
-      ]
+      "path": "apps/dashboard/src/components/shell/repo-picker-dialog.tsx"
     },
     {
       "name": "Account menu",
       "summary": "Avatar menu with Profile, Repositories, Settings, shortcut help, report an issue, a light/dark/system switch and sign out.",
-      "entry": [
-        {
-          "path": "apps/dashboard/src/components/shell/account-menu.tsx",
-          "line": 101,
-          "symbol": "AccountMenu",
-          "role": "The avatar dropdown at the left of the topbar"
-        }
-      ]
+      "path": "apps/dashboard/src/components/shell/account-menu.tsx"
     },
     {
       "name": "Bottom bar warnings",
       "summary": "Dismissible notices for blocked organisations, GitHub timeouts and missing permissions, plus a prompt to install the browser extension.",
-      "entry": [
-        {
-          "path": "apps/dashboard/src/components/layouts/dashboard-bottombar.tsx",
-          "line": 8,
-          "symbol": "DashboardBottomBar",
-          "role": "Renders the warnings under the page"
-        },
-        {
-          "path": "apps/dashboard/src/lib/warning-store.ts",
-          "line": 45,
-          "symbol": "addWarning",
-          "role": "In-memory warning list any feature can add to"
-        },
-        {
-          "path": "apps/dashboard/src/components/layouts/extension-install-prompt.tsx",
-          "line": 14,
-          "symbol": "ExtensionInstallPrompt",
-          "role": "Extension offer, hidden once it is detected"
-        }
-      ]
+      "path": "apps/dashboard/src/components/layouts/dashboard-bottombar.tsx"
     },
     {
       "name": "Route loading states",
       "summary": "On a hard load a page's own empty state is server-rendered in place of a spinner. Pending UI stays hidden for its first 300 ms so it never flashes.",
-      "entry": [
-        {
-          "path": "apps/dashboard/src/components/layouts/dashboard-content-loading.tsx",
-          "line": 38,
-          "symbol": "RoutePending",
-          "role": "Default pending component for every route"
-        },
-        {
-          "path": "apps/dashboard/src/router.tsx",
-          "line": 18,
-          "symbol": "getRouter",
-          "role": "Router defaults: pending timing, error, 404"
-        }
-      ]
+      "path": "apps/dashboard/src/components/layouts/dashboard-content-loading.tsx"
     },
     {
       "name": "Error and 404 screens",
       "summary": "One screen turns an error into rate limit, re-authorize, no access, not found, offline or timeout, each with a matching action.",
-      "entry": [
-        {
-          "path": "apps/dashboard/src/components/layouts/dashboard-error-screen.tsx",
-          "line": 135,
-          "symbol": "DashboardErrorScreen",
-          "role": "Default error screen inside the shell"
-        },
-        {
-          "path": "apps/dashboard/src/components/layouts/not-found-screen.tsx",
-          "line": 5,
-          "symbol": "NotFoundScreen",
-          "role": "404 page"
-        },
-        {
-          "path": "apps/dashboard/src/routes/$.tsx",
-          "line": 5,
-          "symbol": "Route",
-          "role": "Catch-all route that throws notFound"
-        }
-      ]
-    }
-  ],
-  "entryPoints": [
-    {
-      "path": "apps/dashboard/src/components/layouts/dashboard-layout.tsx",
-      "line": 47,
-      "symbol": "DashboardLayout",
-      "role": "The shell: topbar, outlet, bottom bar, dialogs and nav counts"
-    },
-    {
-      "path": "apps/dashboard/src/routes/_protected.tsx",
-      "line": 45,
-      "symbol": "Route",
-      "role": "Parent route of every signed-in page"
-    },
-    {
-      "path": "apps/dashboard/src/router.tsx",
-      "line": 18,
-      "symbol": "getRouter",
-      "role": "Router setup: preload on intent, pending, error and 404 defaults"
-    },
-    {
-      "path": "apps/dashboard/src/routes/__root.tsx",
-      "line": 30,
-      "symbol": "Route",
-      "role": "Document head, theme boot script and global providers"
-    },
-    {
-      "path": "apps/dashboard/src/lib/shell/shell-overlay.ts",
-      "line": 9,
-      "symbol": "ShellOverlay",
-      "role": "State of the palette and repository picker overlay"
-    },
-    {
-      "path": "apps/dashboard/src/components/shell/workspace-nav.tsx",
-      "line": 47,
-      "symbol": "workspaceNavItems",
-      "role": "The workspace destinations and their badges"
+      "path": "apps/dashboard/src/components/layouts/dashboard-error-screen.tsx"
     }
   ],
   "dependsOn": ["command-palette", "sign-in", "live-updates", "ui-kit"],
-  "outside": ["browser-storage"],
-  "goodParts": [
-    "Overlay state is one explicit union (none, command-palette, repo-picker) in lib/shell/shell-overlay.ts, so two overlays cannot be open at once.",
-    "Pin, recent and create-action rules are pure functions with tests (lib/shell/workspace-repos.test.ts, create-actions.test.ts)."
-  ],
-  "watch": [
-    "No tab bar exists: 12 files still call useRegisterTab and fill localStorage 'diffkit:tabs', but nothing reads useTabs (lib/tab-store.ts:155).",
-    "docs/github-cache-architecture.md:350 still points to components/layouts/dashboard-tabs.tsx, which no longer exists.",
-    "The welcome dialog says 'Alpha software' (alpha-notice-dialog.tsx:67) while the landing header shows a 'Beta' chip (routes/login.tsx:89)."
-  ]
+  "outside": ["browser-storage"]
 }

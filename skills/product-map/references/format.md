@@ -6,6 +6,11 @@ Two kinds of file, both JSON. Paths are relative to the repository root.
 is an error and DiffKit rejects the whole map. Fields are written in the order
 shown; `check.mjs --fix` puts them in that order.
 
+**The files stay small.** They say what an area is and how it works, in a few
+sentences. They never list files, name functions or carry line numbers:
+DiffKit finds the files from an area's `paths` and shows the ones that change
+most on its own.
+
 ## `.diffkit/map.json`
 
 The overview. It holds no description of any single area.
@@ -47,8 +52,9 @@ The overview. It holds no description of any single area.
 
 ## `.diffkit/areas/<area-id>.json`
 
-One file per area. **The file name is the area's id**: lowercase letters,
-digits and dashes, ending in `.json`. There is no `id` field inside.
+One file per area, about a hundred lines. **The file name is the area's id**:
+lowercase letters, digits and dashes, ending in `.json`. There is no `id`
+field inside.
 
 ```json
 {
@@ -57,52 +63,42 @@ digits and dashes, ending in `.json`. There is no `id` field inside.
   "tagline": "A few words, shown on hover",
   "summary": "One or two sentences: what it does for a user.",
   "paths": ["src/auth/**", "src/routes/{login,logout}.tsx"],
-  "screen": { "light": ".diffkit/screens/sign-in-light.jpg", "dark": ".diffkit/screens/sign-in-dark.jpg" },
   "flow": [
     { "kind": "page", "label": "Login page", "note": "One sentence.", "path": "src/routes/login.tsx" },
-    { "kind": "server", "label": "createSession", "note": "One sentence.", "path": "src/auth/session.ts" },
-    { "kind": "storage", "label": "sessions table", "note": "One sentence." }
+    { "kind": "server", "label": "Session check", "note": "One sentence." },
+    { "kind": "storage", "label": "Sessions table", "note": "One sentence." }
   ],
   "features": [
-    {
-      "name": "Password reset",
-      "summary": "One or two sentences.",
-      "entry": [{ "path": "src/auth/reset.ts", "line": 12, "symbol": "requestReset" }]
-    }
-  ],
-  "entryPoints": [
-    { "path": "src/auth/session.ts", "symbol": "getSession", "role": "Where a request finds its user" }
+    { "name": "Password reset", "summary": "One sentence.", "path": "src/auth/reset.ts" },
+    { "name": "Remember this device", "summary": "One sentence." }
   ],
   "dependsOn": ["database"],
-  "outside": ["email-provider"],
-  "goodParts": ["What is done well, with the file or number that shows it."],
-  "watch": ["What looks rough, with the file or number that shows it."],
-  "issues": [{ "number": 137, "note": "Optional: why it matters here." }]
+  "outside": ["email-provider"]
 }
 ```
 
 | Field | Required | Notes |
 | --- | --- | --- |
 | `name` | yes | Plain language. |
+| `icon` | no | One of the names listed below. Any other value is an error; leave the field out for a neutral icon. |
 | `tagline` | yes | A few words. |
 | `summary` | yes | One or two sentences on what it does for a user. |
-| `paths` | yes | At least one path pattern. See below. |
-| `icon` | no | One of the names listed below. Any other value is an error; leave the field out for a neutral icon. |
-| `flow` | no | The path one request takes, 3 to 6 steps. `path` is optional per step. |
-| `features` | no | The area's parts, each with code links in `entry`. |
-| `entryPoints` | no | Where to start reading. `role` says what the file is for. |
+| `paths` | yes | The folders that are this area's own, as path patterns. See below. |
+| `screen` | no | `{ "light": "…", "dark": "…" }`: repository paths of a screenshot per theme. |
+| `flow` | no | The path one request takes, 3 to 6 steps. Each has `kind`, `label` and a one-sentence `note`. |
+| `features` | no | The area's parts, 3 to 8. Each has `name` and a one-sentence `summary`. |
 | `dependsOn` | no | Ids of other areas this one builds on. "Used by" is derived; do not write it. |
 | `outside` | no | Ids from `outside` in `map.json`. Naming one that is not listed there is an error. |
-| `goodParts`, `watch` | no | Short notes with their evidence. |
-| `issues` | no | Issue numbers about this area. Shown only while the issue is open on GitHub, so stale ones do no harm. |
-| `screen` | no | Repository paths of a screenshot per theme. |
+| `issues` | no | `[{ "number": 137, "note": "…" }]`: issues about this area. Shown only while the issue is open on GitHub. |
 
-In `entry` and `entryPoints`, `path` is required; `line` and `symbol` are
-optional. Include a `line` only if you checked it.
+A flow step or a feature may carry `path`: **one** file to open first. Use it
+only when there is an obvious one, and leave it out otherwise. There is no
+line number and no symbol: both go stale with every edit, and DiffKit shows
+the area's most changed files without being told.
 
 ### Path patterns
 
-Globs, not regular expressions.
+Globs, not regular expressions. Write them at folder level.
 
 | Pattern | Matches |
 | --- | --- |

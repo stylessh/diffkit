@@ -15,7 +15,7 @@
 //     --group account --group-name "Your account" [--icon lock]
 //
 // Add --root <repository root> to either when not run from it. Fill in the
-// rest of an area (flow, features, entryPoints, notes) by editing its file.
+// rest of an area (flow, features, dependsOn, outside) by editing its file.
 
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
@@ -73,11 +73,8 @@ if (command === "init") {
     paths: need("paths").split(",").map((pattern) => pattern.trim()).filter(Boolean),
     flow: [],
     features: [],
-    entryPoints: [],
     dependsOn: [],
     outside: [],
-    goodParts: [],
-    watch: [],
   };
 
   const index = JSON.parse(source.index);

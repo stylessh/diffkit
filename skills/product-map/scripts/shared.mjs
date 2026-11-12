@@ -110,10 +110,8 @@ const NESTED = {
     screen: "screen",
     flow: "flowStep",
     features: "feature",
-    entryPoints: "reference",
     issues: "issueHint",
   },
-  feature: { entry: "reference" },
 };
 
 /**
@@ -173,80 +171,4 @@ export function byDirectory(files, depth = 3) {
     counts.set(directory, (counts.get(directory) ?? 0) + 1);
   }
   return [...counts].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]));
-}
-
-const DEFINITION =
-  /\b(function|const|let|var|class|type|interface|enum|def|fn|func|struct|trait|impl|export|public|private|protected)\b/;
-
-function symbolWord(symbol) {
-  return /[A-Za-z_$][\w$]*/.exec(symbol)?.[0] ?? null;
-}
-
-/** Where `word` is most likely defined now, or null when the file no longer has it. */
-function anchorFor(lines, word, previousLine) {
-  const whole = new RegExp(`(^|[^\\w$])${word.replace(/\$/g, "\\$")}([^\\w$]|$)`);
-  const found = lines.flatMap((text, index) => (whole.test(text) ? [index + 1] : []));
-  if (found.length === 0) return null;
-  const defined = found.filter((line) => DEFINITION.test(lines[line - 1]));
-  const pool = defined.length > 0 ? defined : found;
-  return pool.reduce((best, line) =>
-    Math.abs(line - previousLine) < Math.abs(best - previousLine) ? line : best
-  );
-}
-
-/**
- * Code links whose line no longer shows the symbol they name: the file was
- * edited above it. With `fix`, each is moved to where the symbol is now.
- * Returns what moved and what could not be found.
- */
-export function anchorLines(root, { fix }) {
-  const areasPath = path.join(root, MAP_AREAS_PATH);
-  const sources = new Map();
-  const linesOf = (file) => {
-    if (!sources.has(file)) {
-      const full = path.join(root, file);
-      sources.set(file, existsSync(full) ? readFileSync(full, "utf8").split("\n") : null);
-    }
-    return sources.get(file);
-  };
-  const moved = [];
-  const lost = [];
-  if (!existsSync(areasPath)) return { moved, lost };
-  for (const name of readdirSync(areasPath).sort()) {
-    if (!name.endsWith(".json")) continue;
-    const file = path.join(areasPath, name);
-    const text = readFileSync(file, "utf8");
-    let area;
-    try {
-      area = JSON.parse(text);
-    } catch {
-      continue;
-    }
-    const references = [
-      ...(Array.isArray(area.entryPoints) ? area.entryPoints : []),
-      ...(Array.isArray(area.features) ? area.features : []).flatMap((feature) =>
-        Array.isArray(feature?.entry) ? feature.entry : []
-      ),
-    ];
-    let changed = false;
-    for (const reference of references) {
-      if (!(Number.isInteger(reference?.line) && typeof reference.symbol === "string")) continue;
-      const word = symbolWord(reference.symbol);
-      const lines = typeof reference.path === "string" ? linesOf(reference.path) : null;
-      if (!(word && lines)) continue;
-      if ((lines[reference.line - 1] ?? "").includes(word)) continue;
-      const where = `areas/${name}: ${reference.path}:${reference.line} (${reference.symbol})`;
-      const line = anchorFor(lines, word, reference.line);
-      if (line === null) lost.push(where);
-      else {
-        moved.push(`${where} is now line ${line}`);
-        if (fix) {
-          reference.line = line;
-          changed = true;
-        }
-      }
-    }
-    if (changed) writeFileSync(file, canonicalText(area, "area", text));
-  }
-  return { moved, lost };
 }

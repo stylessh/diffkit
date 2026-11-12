@@ -78,7 +78,10 @@ const activity = buildMapActivity({
 			2,
 			"merged",
 			"2026-11-10T09:00:00Z",
-			[["src/transport/ws.ts", 5]],
+			[
+				["src/transport/ws.ts", 5],
+				["src/transport/polling.ts", 3],
+			],
 			"Fix reconnect",
 		),
 		pull(4, "merged", "2026-11-10T10:00:00Z", [["README.md", 40]]),
@@ -141,6 +144,15 @@ describe("buildMapActivity", () => {
 			mergedPulls: 1,
 			openPulls: 1,
 		});
+	});
+
+	it("names the files most pull requests changed, skipping ones since deleted", () => {
+		expect(activity.areas.transport.hotFiles).toEqual([
+			{ path: "src/transport/ws.ts", pulls: 2 },
+		]);
+		expect(activity.areas.client.hotFiles).toEqual([
+			{ path: "src/client.ts", pulls: 2 },
+		]);
 	});
 
 	it("shows a hinted issue only while it is open", () => {

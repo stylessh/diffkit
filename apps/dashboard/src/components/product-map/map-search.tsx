@@ -28,19 +28,20 @@ type CodeHit = {
 function collectCode(map: LoadedProductMap): CodeHit[] {
 	const hits = new Map<string, CodeHit>();
 	for (const area of map.areas) {
-		const references = [
-			...area.entryPoints,
-			...area.features.flatMap((feature) => feature.entry),
+		const paths = [
+			...area.flow.flatMap((step) => (step.path ? [step.path] : [])),
+			...area.features.flatMap((feature) =>
+				feature.path ? [feature.path] : [],
+			),
 		];
-		for (const reference of references) {
-			const key = `${reference.path}:${reference.symbol ?? ""}`;
-			if (hits.has(key)) continue;
-			hits.set(key, {
-				key,
+		for (const path of paths) {
+			if (hits.has(path)) continue;
+			hits.set(path, {
+				key: path,
 				areaId: area.id,
 				areaName: area.name,
-				label: reference.symbol ?? shortPath(reference.path),
-				path: reference.path,
+				label: shortPath(path),
+				path,
 			});
 		}
 	}

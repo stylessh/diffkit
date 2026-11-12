@@ -56,201 +56,39 @@
     {
       "name": "File tree sidebar",
       "summary": "A @pierre/trees tree that selects and reveals the current path, and lists folders one by one when GitHub truncates the full tree.",
-      "entry": [
-        {
-          "path": "apps/dashboard/src/components/repo/repo-file-tree-sidebar.tsx",
-          "line": 28,
-          "symbol": "RepoFileTreeSidebar",
-          "role": "Sidebar tree for the explorer"
-        },
-        {
-          "path": "apps/dashboard/src/components/repo/use-explorer-directories.ts",
-          "line": 36,
-          "symbol": "useExplorerDirectories",
-          "role": "Directory data: full tree or per-folder"
-        },
-        {
-          "path": "apps/dashboard/src/components/shared/pierre-file-tree.ts",
-          "line": 36,
-          "symbol": "TREE_UNSAFE_CSS",
-          "role": "Shared look for every Pierre tree"
-        }
-      ]
+      "path": "apps/dashboard/src/components/repo/repo-file-tree-sidebar.tsx"
     },
     {
       "name": "Folder view",
       "summary": "Folder rows with file-type icons and each entry's last commit, fetched for the whole folder in one aliased GraphQL query.",
-      "entry": [
-        {
-          "path": "apps/dashboard/src/components/repo/folder-view.tsx",
-          "line": 22,
-          "symbol": "FolderView",
-          "role": "Folder listing"
-        },
-        {
-          "path": "apps/dashboard/src/lib/github/code.ts",
-          "line": 171,
-          "symbol": "getTreeEntryCommits",
-          "role": "Last commit per entry, one query"
-        },
-        {
-          "path": "apps/dashboard/src/lib/file-icons.ts",
-          "line": 114,
-          "symbol": "resolveFileIcon",
-          "role": "Path to a Pierre file-type icon"
-        }
-      ]
+      "path": "apps/dashboard/src/components/repo/folder-view.tsx"
     },
     {
       "name": "File view",
       "summary": "Text with line numbers and Shiki colours, Markdown and SVG preview, image preview, and plain states for binary, too-large, submodule and missing files.",
-      "entry": [
-        {
-          "path": "apps/dashboard/src/components/repo/code-file-view.tsx",
-          "line": 57,
-          "symbol": "CodeFileView",
-          "role": "File page body and header actions"
-        },
-        {
-          "path": "apps/dashboard/src/lib/code-browsing/blob-classify.ts",
-          "line": 47,
-          "symbol": "classifyContentsFile",
-          "role": "Decides text, image, binary or too large"
-        },
-        {
-          "path": "apps/dashboard/src/components/repo/code/code-lines.tsx",
-          "line": 40,
-          "symbol": "CodeLines",
-          "role": "Line numbers, selection, highlighted code"
-        }
-      ]
+      "path": "apps/dashboard/src/components/repo/code-file-view.tsx"
     },
     {
       "name": "Line links and permalinks",
       "summary": "Click or shift-click line numbers to put #L10-L20 in the URL. Y copies a link pinned to the commit SHA instead of the branch.",
-      "entry": [
-        {
-          "path": "apps/dashboard/src/components/repo/code/use-line-selection.ts",
-          "line": 30,
-          "symbol": "useLineSelection",
-          "role": "Line range kept in the URL hash"
-        },
-        {
-          "path": "apps/dashboard/src/components/repo/code/use-permalink.ts",
-          "line": 24,
-          "symbol": "usePermalink",
-          "role": "Copy a commit-pinned link"
-        },
-        {
-          "path": "apps/dashboard/src/lib/code-browsing/line-range.ts",
-          "line": 5,
-          "symbol": "parseLineHash",
-          "role": "Parses and clamps #L hashes"
-        }
-      ]
+      "path": "apps/dashboard/src/components/repo/code/use-line-selection.ts"
     },
     {
       "name": "Blame view",
       "summary": "Shows which commit last touched each range of lines, with links to that commit and to the file as it was before it.",
-      "entry": [
-        {
-          "path": "apps/dashboard/src/components/repo/code/blame-view.tsx",
-          "line": 74,
-          "symbol": "BlameView",
-          "role": "Blame gutter beside the code"
-        },
-        {
-          "path": "apps/dashboard/src/lib/github/code-browsing.ts",
-          "line": 176,
-          "symbol": "getRepoBlame",
-          "role": "Server read of GraphQL blame ranges"
-        }
-      ]
+      "path": "apps/dashboard/src/components/repo/code/blame-view.tsx"
     },
     {
       "name": "Go to file",
       "summary": "Press T for a fuzzy finder over every path in the cached tree. It can pass the typed text on to code search.",
-      "entry": [
-        {
-          "path": "apps/dashboard/src/components/repo/code/file-finder.tsx",
-          "line": 39,
-          "symbol": "FileFinder",
-          "role": "Finder button, shortcut and dialog"
-        },
-        {
-          "path": "apps/dashboard/src/lib/code-browsing/tree-index.ts",
-          "line": 39,
-          "symbol": "buildTreeIndex",
-          "role": "Builds the finder's path list"
-        }
-      ]
+      "path": "apps/dashboard/src/components/repo/code/file-finder.tsx"
     },
     {
       "name": "Code search",
       "summary": "Searches one repo through GitHub code search with highlighted fragments, matching paths from the tree, paging and a rate-limit state.",
-      "entry": [
-        {
-          "path": "apps/dashboard/src/components/repo/code/code-search-page.tsx",
-          "line": 47,
-          "symbol": "CodeSearchPage",
-          "role": "Search page"
-        },
-        {
-          "path": "apps/dashboard/src/lib/github/code-browsing.ts",
-          "line": 229,
-          "symbol": "searchRepoCode",
-          "role": "Server call to GET /search/code"
-        }
-      ]
-    }
-  ],
-  "entryPoints": [
-    {
-      "path": "apps/dashboard/src/components/repo/code/code-route.tsx",
-      "line": 60,
-      "symbol": "CodeRoutePage",
-      "role": "Shared entry for the tree, blob and blame routes"
-    },
-    {
-      "path": "apps/dashboard/src/lib/code-browsing/code-location.ts",
-      "line": 32,
-      "symbol": "resolveCodeLocation",
-      "role": "How a URL becomes a ref and a path"
-    },
-    {
-      "path": "apps/dashboard/src/components/repo/repo-explorer-layout.tsx",
-      "line": 76,
-      "symbol": "RepoExplorerLayout",
-      "role": "Explorer shell: sidebar, header, content"
-    },
-    {
-      "path": "apps/dashboard/src/components/repo/code/use-directory-listing.ts",
-      "line": 38,
-      "symbol": "useDirectoryListing",
-      "role": "Folder data from the tree index or the contents API"
-    },
-    {
-      "path": "apps/dashboard/src/lib/github/code-browsing.ts",
-      "line": 44,
-      "symbol": "getRepoGitTree",
-      "role": "Server reads: tree, blob, blame, search"
-    },
-    {
-      "path": "apps/dashboard/src/components/repo/code-file-view.tsx",
-      "line": 57,
-      "symbol": "CodeFileView",
-      "role": "What a file page shows for each kind of blob"
+      "path": "apps/dashboard/src/components/repo/code/code-search-page.tsx"
     }
   ],
   "dependsOn": ["history-compare", "github-data", "instant-cache", "ui-kit"],
-  "outside": ["github-rest", "github-graphql"],
-  "goodParts": [
-    "Ref and path splitting, line ranges, blob classification and the tree index are pure modules covered by lib/code-browsing/code-browsing.test.ts.",
-    "apps/e2e/tests/concurrent/code-browsing.spec.ts walks a folder, the finder, line links, blame and search in one test."
-  ],
-  "watch": [
-    "Syntax colours are skipped above 200,000 bytes or 5,000 lines because Shiki runs on the main thread (components/repo/code/code-lines.tsx:15-17).",
-    "Files over 1 MB cannot be shown: the contents API returns no body, so the page points to the raw file on GitHub (lib/code-browsing/blob-classify.ts:43).",
-    "Server reads are split across lib/github/code.ts (contents listings, last commits) and lib/github/code-browsing.ts (git tree, blob, blame, search)."
-  ]
+  "outside": ["github-rest", "github-graphql"]
 }

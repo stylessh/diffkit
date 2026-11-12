@@ -2,7 +2,6 @@ import type { MapFileArea } from "#/lib/product-map/map-file";
 
 export type {
 	AreaFeature,
-	CodeReference,
 	FlowStep,
 	MapBand,
 	MapGroup,

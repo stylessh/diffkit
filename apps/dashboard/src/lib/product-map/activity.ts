@@ -65,6 +65,11 @@ export type AreaActivity = {
 	pulls: number[];
 	openIssues: number[];
 	people: { login: string; pulls: number }[];
+	/**
+	 * The files still in the area that the most pull requests changed: where
+	 * to start reading, worked out rather than written down.
+	 */
+	hotFiles: { path: string; pulls: number }[];
 };
 
 export type MapActivity = {
@@ -89,6 +94,7 @@ export type MapActivity = {
 const DAY_MS = 86_400_000;
 const WEEK_MS = 7 * DAY_MS;
 const MAX_WEEKS = 52;
+const HOT_FILES = 6;
 const TEST_FILE =
 	/(^|[./_-])(test|spec)s?[./_-]|(^|\/)(__tests__|tests?|e2e)\//i;
 
@@ -105,6 +111,7 @@ function emptyArea(): AreaActivity {
 		pulls: [],
 		openIssues: [],
 		people: [],
+		hotFiles: [],
 	};
 }
 
@@ -139,7 +146,9 @@ export function buildMapActivity({
 		openPulls: 0,
 		people: 0,
 	};
+	const present = new Set<string>();
 	for (const file of tree) {
+		present.add(file.path);
 		const found = match(file.path);
 		if (found.kind === "ignored") continue;
 		totals.files += 1;
@@ -170,9 +179,11 @@ export function buildMapActivity({
 	const people: Record<string, MapPerson> = {};
 	const mergedDates: Record<string, string[]> = {};
 	const authorsByArea: Record<string, Map<string, number>> = {};
+	const changesByArea: Record<string, Map<string, number>> = {};
 	for (const area of map.areas) {
 		mergedDates[area.id] = [];
 		authorsByArea[area.id] = new Map();
+		changesByArea[area.id] = new Map();
 	}
 	for (const pull of oldestFirst) {
 		const parts = pullParts(pull.files, match);
@@ -187,6 +198,12 @@ export function buildMapActivity({
 			parts,
 			approximate: pull.filesTruncated,
 		};
+		for (const file of pull.files) {
+			const found = match(file.path);
+			if (found.kind !== "area" || !present.has(file.path)) continue;
+			const changes = changesByArea[found.area];
+			changes.set(file.path, (changes.get(file.path) ?? 0) + 1);
+		}
 		const merged = pull.state === "merged";
 		if (merged) totals.mergedPulls += 1;
 		else totals.openPulls += 1;
@@ -230,6 +247,10 @@ export function buildMapActivity({
 		area.people = [...authorsByArea[id]]
 			.map(([login, count]) => ({ login, pulls: count }))
 			.sort((a, b) => b.pulls - a.pulls);
+		area.hotFiles = [...changesByArea[id]]
+			.map(([path, count]) => ({ path, pulls: count }))
+			.sort((a, b) => b.pulls - a.pulls || a.path.localeCompare(b.path))
+			.slice(0, HOT_FILES);
 	}
 
 	return {
