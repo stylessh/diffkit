@@ -139,6 +139,9 @@ function PromptCard({
 	);
 }
 
+const headingClassName =
+	"text-pretty font-semibold text-[23px] text-foreground leading-8 tracking-[-0.01em]";
+
 const EXAMPLE: { group: string; areas: [icon: string, name: string][] }[] = [
 	{
 		group: "Getting in",
@@ -189,9 +192,13 @@ function ExampleMap() {
 			aria-hidden
 			className="flex select-none flex-col opacity-70 [mask-image:linear-gradient(to_bottom,black_70%,transparent)]"
 		>
-			<div className="flex flex-col gap-2.5 pb-8">
-				<span className="h-6 w-80 max-w-full rounded-md bg-foreground/10" />
-				<span className="h-3.5 w-56 rounded-md bg-foreground/[0.06]" />
+			<div className="flex flex-col gap-2 pb-7">
+				<span className={headingClassName}>
+					A shared inbox for everything your team ships.
+				</span>
+				<span className="font-[450] text-[13px] text-muted-foreground">
+					Hover an area to see what it builds on. Click to open it.
+				</span>
 			</div>
 			{EXAMPLE.map(({ group, areas }) => (
 				<div
@@ -279,9 +286,6 @@ function MapFrame({
 	);
 }
 
-const headingClassName =
-	"text-pretty font-semibold text-[23px] text-foreground leading-8 tracking-[-0.01em]";
-
 export function MapLoading({ owner, repo }: { owner: string; repo: string }) {
 	return (
 		<MapFrame owner={owner} repo={repo}>
@@ -305,7 +309,7 @@ export function MapSetup({ owner, repo }: { owner: string; repo: string }) {
 					<div className="relative flex w-full max-w-[31rem] flex-col gap-3">
 						<div
 							aria-hidden
-							className="-inset-x-20 -inset-y-12 pointer-events-none absolute rounded-[3rem] bg-main/95 blur-2xl max-sm:-inset-x-6"
+							className="-inset-x-24 -top-20 -bottom-14 pointer-events-none absolute rounded-[4rem] bg-main blur-2xl max-sm:-inset-x-6"
 						/>
 						<h1 className="relative text-pretty px-4 font-semibold text-[17px] text-foreground leading-6 tracking-[-0.01em]">
 							Give {repo} a product map
