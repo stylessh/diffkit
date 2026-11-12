@@ -190,7 +190,7 @@ export function AreaActivity({
 	const pulls = areaPullCounts(map, area.id);
 
 	return (
-		<div className="flex flex-col gap-5">
+		<div className="flex flex-col gap-10">
 			<dl className="flex flex-wrap gap-x-10 gap-y-3">
 				<Figure value={stats.commits} label="commits" />
 				<Figure value={stats.commitsLast30} label="in the last 30 days" />

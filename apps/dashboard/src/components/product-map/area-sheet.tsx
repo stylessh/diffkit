@@ -44,7 +44,7 @@ function Section({
 	return (
 		<section
 			data-area-section={id}
-			className="flex scroll-mt-6 flex-col gap-4 pt-6 max-md:scroll-mt-16"
+			className="mt-24 flex scroll-mt-10 flex-col gap-6 max-md:mt-14 max-md:scroll-mt-20"
 		>
 			<header className="flex flex-col gap-0.5">
 				<h2 className="font-medium text-[15px] text-foreground">{title}</h2>
@@ -309,7 +309,7 @@ export function AreaSheet({
 					title="Worth knowing"
 					description="Found by reading the code, each with its evidence."
 				>
-					<div className="flex flex-col gap-6">
+					<div className="flex flex-col gap-8">
 						<NoteList label="Done well" notes={area.goodParts} tone="good" />
 						<NoteList label="Rough edges" notes={area.watch} tone="watch" />
 					</div>

@@ -319,10 +319,16 @@ export function AreaWork({
 	};
 
 	return (
-		<div className="flex flex-col gap-3 pt-2">
-			<WorkCells rows={merged} selected={selected} onSelect={selectFromCell} />
-			<CellLegend />
-			<SectionCard className="mt-1 [&>div:last-child]:pb-0">
+		<div className="flex flex-col gap-6">
+			<div className="flex flex-col gap-3">
+				<WorkCells
+					rows={merged}
+					selected={selected}
+					onSelect={selectFromCell}
+				/>
+				<CellLegend />
+			</div>
+			<SectionCard className="[&>div:last-child]:pb-0">
 				<ul className="divide-y-[0.5px] divide-rule">
 					{shown.map((row) => (
 						<PullRow
