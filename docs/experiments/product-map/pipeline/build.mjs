@@ -71,8 +71,10 @@ for (const file of git("ls-files").split("\n").filter(Boolean)) {
 const pullsByNumber = new Map(snapshot.pulls.map((pull) => [pull.number, pull]));
 const commits = [];
 let current = null;
+const snapshotRef = authored.snapshotCommit ?? "HEAD";
 for (const line of git(
   "log",
+  snapshotRef,
   "--no-merges",
   "--no-renames",
   "--date=iso-strict",
@@ -368,6 +370,10 @@ const output = {
 };
 
 writeFileSync(outPath, `${JSON.stringify(output, null, "\t")}\n`);
+execFileSync("pnpm", ["exec", "biome", "format", "--write", outPath], {
+  cwd: path.join(root, "apps/dashboard"),
+  stdio: "ignore",
+});
 
 const unique = [...new Set(problems)];
 console.log(`wrote ${path.relative(root, outPath)}: ${areas.length} areas, ${Object.keys(pulls).length} pull requests, ${Object.keys(issues).length} issues`);

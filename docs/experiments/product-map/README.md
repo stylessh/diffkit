@@ -224,7 +224,9 @@ Steps, in order:
 GitHub calls made tonight, all read-only: one pull request list, one issue
 list, and 55 `gh pr view --json files`.
 
-Known gaps in the data: the snapshot is frozen at commit `312aece`; closed
+Known gaps in the data: the snapshot is frozen at commit `312aece`
+(`snapshotCommit` in `areas.json`; change or remove it to analyse a newer
+history); closed
 unmerged pull requests are ignored; a pull request merged without a squash
 suffix is counted from GitHub's file list, which caps at 100 files.
 
