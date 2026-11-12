@@ -65,6 +65,16 @@ cd diffkit
 pnpm install
 ```
 
+### Create the GitHub apps with one command
+
+```bash
+pnpm setup:github
+```
+
+It opens a local page that registers the GitHub App from a manifest (one click on GitHub), takes the OAuth App's client ID and secret, and writes `apps/dashboard/.env`. Pass `--tunnel https://<your tunnel>` to turn webhooks on ([Local webhook testing](#local-webhook-testing)). Then go to [step 6](#6-start-the-dev-server) and install the app from the link the page ends on.
+
+The app it registers asks for the same permissions and events as the hosted DiffKit app, which is more than the minimum below. Steps 2–5 do the same by hand.
+
 ### 2. Create a GitHub OAuth App
 
 The OAuth App handles user login and broad-scope reads (`repo`, `read:org`, `user:email`). It's also the fallback for repositories where the GitHub App is not installed.
@@ -188,7 +198,7 @@ request. Open [http://localhost:3000](http://localhost:3000) in your browser.
 
 ### Local webhook testing
 
-To receive GitHub webhooks locally, you need a public tunnel:
+To receive GitHub webhooks locally, you need a public tunnel. With a tunnel URL that stays the same across restarts, `pnpm setup:github --tunnel <url>` does steps 3–5 when it creates the app. Otherwise:
 
 1. Start a tunnel (e.g. with [ngrok](https://ngrok.com/)):
    ```bash
@@ -214,6 +224,7 @@ The dev server uses `DEV_TUNNEL_URL` to allow the tunnel host and configure HMR 
 |---------|------------|
 | `pnpm dev` | Run the dashboard against real GitHub ([docs](docs/local-dev.md)) |
 | `pnpm dev:demo` | Run the dashboard against the local GitHub emulator ([docs](docs/local-demo-mode.md)) |
+| `pnpm setup:github` | Create the GitHub apps for `pnpm dev` and write `apps/dashboard/.env` |
 | `pnpm build` | Build all packages and apps |
 | `pnpm lint` | Lint the codebase |
 | `pnpm check` | Run Biome checks |

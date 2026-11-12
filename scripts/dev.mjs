@@ -27,8 +27,8 @@ function assertLocalConfig() {
     throw new DevSetupError(
       [
         "apps/dashboard/.env is missing.",
-        "  cp apps/dashboard/env.example apps/dashboard/.env",
-        "and add your GitHub OAuth App and GitHub App credentials (docs/local-dev.md).",
+        "  pnpm setup:github",
+        "creates the GitHub apps and writes it (docs/local-dev.md).",
         NO_GITHUB_HINT,
       ].join("\n")
     );
