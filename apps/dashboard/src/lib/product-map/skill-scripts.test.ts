@@ -132,6 +132,43 @@ describe("the product-map skill's scripts", () => {
 		expect(run("check.mjs").output).toContain("2 areas");
 	});
 
+	it("keeps a braced pattern whole and refuses a group id the format would reject", () => {
+		const area = (id: string, band: string) => [
+			"area",
+			id,
+			"--name",
+			"Search",
+			"--tagline",
+			"Find things",
+			"--summary",
+			"Finds things.",
+			"--paths",
+			"src/{search,find}/**,src/lookup.ts",
+			"--band",
+			band,
+			"--band-name",
+			"More",
+			"--group",
+			"tools",
+			"--group-name",
+			"Tools",
+		];
+		const refused = run("scaffold.mjs", area("search", "More Things"));
+		expect(refused.code).toBe(1);
+		expect(refused.output).toContain("Nothing written");
+		expect(refused.output).toContain("lowercase letters, digits and dashes");
+
+		write("src/search/index.ts", "export const search = 1;\n");
+		expect(run("scaffold.mjs", area("search", "more")).code).toBe(0);
+		expect(readArea("search").paths).toEqual([
+			"src/{search,find}/**",
+			"src/lookup.ts",
+		]);
+		rmSync(areaFile("search"));
+		git("checkout", "--", ".diffkit/map.json");
+		rmSync(path.join(repo, "src/search"), { recursive: true });
+	});
+
 	it("rejects a field the format does not have", () => {
 		const area = readArea("billing");
 		writeFileSync(

@@ -268,36 +268,58 @@ async function readPulls(context: GitHubContext, data: RepoProductMapInput) {
 	return { pulls, truncated: true };
 }
 
+const ISSUES_PER_PAGE = 100;
+const MAX_ISSUE_PAGES = 10;
+
+/**
+ * The open issues among the ones the map hints at. GitHub lists open issues a
+ * page at a time, so this reads on until every hinted number has been seen or
+ * the open issues run out.
+ */
 async function readOpenIssues(
 	context: GitHubContext,
 	data: RepoProductMapInput,
+	hinted: ReadonlySet<number>,
 ) {
-	return fetchGitHubResource<IssueListData, IssueInput[]>({
-		context,
-		resource: "productMap.openIssues.v1",
-		params: data,
-		request: (signal) =>
-			context.octokit.rest.issues.listForRepo({
-				owner: data.owner,
-				repo: data.repo,
-				state: "open",
-				per_page: 100,
-				request: { signal },
+	const found: IssueInput[] = [];
+	for (let page = 1; page <= MAX_ISSUE_PAGES; page++) {
+		const listing = { ...data, page };
+		const batch = await fetchGitHubResource<
+			IssueListData,
+			{ issues: IssueInput[]; size: number }
+		>({
+			context,
+			resource: "productMap.openIssues.v2",
+			params: listing,
+			request: (signal) =>
+				context.octokit.rest.issues.listForRepo({
+					owner: data.owner,
+					repo: data.repo,
+					state: "open",
+					per_page: ISSUES_PER_PAGE,
+					page,
+					request: { signal },
+				}),
+			mapData: (issues) => ({
+				size: issues.length,
+				issues: issues.flatMap((issue) =>
+					issue.pull_request || !hinted.has(issue.number)
+						? []
+						: [
+								{
+									number: issue.number,
+									title: issue.title,
+									author: issue.user?.login ?? "ghost",
+									date: issue.created_at,
+								},
+							],
+				),
 			}),
-		mapData: (issues) =>
-			issues.flatMap((issue) =>
-				issue.pull_request
-					? []
-					: [
-							{
-								number: issue.number,
-								title: issue.title,
-								author: issue.user?.login ?? "ghost",
-								date: issue.created_at,
-							},
-						],
-			),
-	});
+		});
+		found.push(...batch.issues);
+		if (batch.size < ISSUES_PER_PAGE || found.length === hinted.size) break;
+	}
+	return found;
 }
 
 /**
@@ -315,7 +337,13 @@ export const getRepoProductMapActivity = createServerFn({ method: "GET" })
 		const [tree, pulls, issues] = await Promise.all([
 			readTree(context, data),
 			readPulls(context, data),
-			file.map.issues.length > 0 ? readOpenIssues(context, data) : [],
+			file.map.issues.length > 0
+				? readOpenIssues(
+						context,
+						data,
+						new Set(file.map.issues.map((issue) => issue.number)),
+					)
+				: [],
 		]);
 		return buildMapActivity({
 			map: file.map,

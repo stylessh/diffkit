@@ -6,6 +6,7 @@ import {
 	TooltipTrigger,
 } from "@diffkit/ui/components/tooltip";
 import { cn } from "@diffkit/ui/lib/utils";
+import { Link } from "@tanstack/react-router";
 import { useState } from "react";
 
 import { AreaHoverCard, relationTo } from "./area-hover-card";
@@ -186,14 +187,19 @@ export function AreaPanel({
 								{live.people.map(({ login, pulls }) => (
 									<Tooltip key={login}>
 										<TooltipTrigger asChild>
-											<span className="-ml-1.5 flex rounded-full bg-main p-[1.5px]">
+											<Link
+												to="/$owner"
+												params={{ owner: login }}
+												aria-label={`${login}, ${plural(pulls, "pull request")} here`}
+												className="-ml-1.5 flex rounded-full bg-main p-[1.5px]"
+											>
 												<PersonAvatar
 													login={login}
 													avatarUrl={
 														map.activity?.people[login]?.avatarUrl ?? null
 													}
 												/>
-											</span>
+											</Link>
 										</TooltipTrigger>
 										<TooltipContent className="flex-col items-start gap-0.5">
 											<span>{login}</span>

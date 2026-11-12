@@ -28,6 +28,7 @@ import {
 	type RefObject,
 	useCallback,
 	useEffect,
+	useLayoutEffect,
 	useMemo,
 	useReducer,
 	useRef,
@@ -77,8 +78,18 @@ function areaSections(
 ): { section: AreaSection; label: string; count?: number }[] {
 	const hotFiles = map.activity?.areas[area.id]?.hotFiles.length ?? 0;
 	return [
-		{ section: "how", label: "How it works" },
-		{ section: "inside", label: "Inside", count: area.features.length },
+		...(area.flow.length > 0
+			? [{ section: "how" as const, label: "How it works" }]
+			: []),
+		...(area.features.length > 0
+			? [
+					{
+						section: "inside" as const,
+						label: "Inside",
+						count: area.features.length,
+					},
+				]
+			: []),
 		...(hotFiles > 0
 			? [{ section: "code" as const, label: "Code", count: hotFiles }]
 			: []),
@@ -169,7 +180,11 @@ function useMapKeys(handlers: {
 	enabled: boolean;
 }) {
 	const latest = useRef(handlers);
-	latest.current = handlers;
+	// Written after commit, so a render React throws away never leaves the
+	// listener holding handlers for an area that was not shown.
+	useLayoutEffect(() => {
+		latest.current = handlers;
+	});
 
 	useEffect(() => {
 		const onKeyDown = (event: KeyboardEvent) => {
@@ -262,10 +277,12 @@ function ProductMapView({
 		[area, map, setAreaParam],
 	);
 
+	const hasTour = map.tour.length > 0;
 	const startTour = useCallback(() => {
+		if (!hasTour) return;
 		void setAreaParam(null);
 		dispatchTour({ type: "start" });
-	}, [setAreaParam]);
+	}, [setAreaParam, hasTour]);
 
 	useMapKeys({
 		enabled: !searchOpen,
@@ -406,14 +423,16 @@ function ProductMapView({
 										label="Map views"
 										actions={
 											<>
-												<Button
-													size="xs"
-													variant="outline"
-													onClick={startTour}
-													iconLeft={<PlayIcon className="size-3.5" />}
-												>
-													Tour
-												</Button>
+												{hasTour ? (
+													<Button
+														size="xs"
+														variant="outline"
+														onClick={startTour}
+														iconLeft={<PlayIcon className="size-3.5" />}
+													>
+														Tour
+													</Button>
+												) : null}
 												<JumpButton onSearch={() => setSearchOpen(true)} />
 											</>
 										}

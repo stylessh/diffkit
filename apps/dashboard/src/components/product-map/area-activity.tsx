@@ -1,4 +1,5 @@
 import { IssuesIcon } from "@diffkit/icons";
+import { Button } from "@diffkit/ui/components/button";
 import { SectionCard } from "@diffkit/ui/components/section-card";
 import { Spinner } from "@diffkit/ui/components/spinner";
 import {
@@ -100,9 +101,16 @@ export function AreaActivity({
 	map: LoadedProductMap;
 	repo: RepoLinks;
 }) {
-	const { activity } = map;
+	const { activity, retryActivity } = map;
 	if (!activity)
-		return (
+		return retryActivity ? (
+			<p className="flex items-center gap-3 text-[13px] text-muted-foreground">
+				GitHub did not answer, so there is nothing to count yet.
+				<Button size="xs" variant="outline" onClick={retryActivity}>
+					Try again
+				</Button>
+			</p>
+		) : (
 			<p className="flex items-center gap-2 text-[13px] text-muted-foreground">
 				<Spinner className="size-3.5" />
 				Counting pull requests on GitHub

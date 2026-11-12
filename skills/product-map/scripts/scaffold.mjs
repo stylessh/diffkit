@@ -25,7 +25,7 @@ import {
   MAP_FILE_VERSION,
   parseMapFolder,
 } from "./lib/map-file.mjs";
-import { canonicalText, parseArgs, readMapFolder } from "./shared.mjs";
+import { canonicalText, parseArgs, readMapFolder, splitPatterns } from "./shared.mjs";
 
 const { positional, options } = parseArgs(process.argv.slice(2));
 const [command, areaId] = positional;
@@ -70,7 +70,7 @@ if (command === "init") {
     ...(typeof options.icon === "string" ? { icon: options.icon } : {}),
     tagline: need("tagline"),
     summary: need("summary"),
-    paths: need("paths").split(",").map((pattern) => pattern.trim()).filter(Boolean),
+    paths: splitPatterns(need("paths")),
     flow: [],
     features: [],
     dependsOn: [],
@@ -95,19 +95,20 @@ if (command === "init") {
 
   const indexText = canonicalText(index, "index", source.index);
   const areaText = canonicalText(area, "area", source.areas[0]?.text ?? source.index);
-  const parsed = parseMapFolder({
+  // Areas added earlier may still be incomplete, so the map as a whole need
+  // not be valid yet. What must not happen is this command adding a problem:
+  // anything wrong that was not wrong before stops the write.
+  const problemsOf = (folder) => {
+    const parsed = parseMapFolder(folder);
+    return parsed.ok ? [] : parsed.problems;
+  };
+  const before = new Set(problemsOf(source));
+  const added = problemsOf({
     index: indexText,
     areas: [...source.areas, { name: areaFile, text: areaText }],
-  });
-  // Areas added earlier may still be unplaced or incomplete; only this area's
-  // own problems stop it from being written.
-  const mine = parsed.ok
-    ? []
-    : parsed.problems.filter(
-        (problem) => problem.includes(`areas/${areaFile}`) || problem.includes(`"${areaId}"`)
-      );
-  if (mine.length > 0)
-    stop(["Nothing written. This area would be rejected:", ...mine.map((problem) => `  - ${problem}`)].join("\n"));
+  }).filter((problem) => !before.has(problem));
+  if (added.length > 0)
+    stop(["Nothing written. This would be rejected:", ...added.map((problem) => `  - ${problem}`)].join("\n"));
 
   mkdirSync(path.join(root, MAP_AREAS_PATH), { recursive: true });
   writeFileSync(path.join(root, MAP_AREAS_PATH, areaFile), areaText);

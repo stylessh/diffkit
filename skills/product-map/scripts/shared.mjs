@@ -19,6 +19,23 @@ import {
 
 const SKIPPED_DIRECTORIES = new Set([".git", "node_modules"]);
 
+/** Splits `a,b/{c,d},e` at the commas that are not inside braces. */
+export function splitPatterns(text) {
+  const patterns = [];
+  let depth = 0;
+  let current = "";
+  for (const char of text) {
+    if (char === "{") depth += 1;
+    else if (char === "}") depth = Math.max(0, depth - 1);
+    if (char === "," && depth === 0) {
+      patterns.push(current);
+      current = "";
+    } else current += char;
+  }
+  patterns.push(current);
+  return patterns.map((pattern) => pattern.trim()).filter(Boolean);
+}
+
 /** `--name value` and `--flag` pairs after the positional arguments. */
 export function parseArgs(argv) {
   const positional = [];
@@ -59,10 +76,18 @@ function walk(directory, prefix = "") {
   });
 }
 
-/** Tracked files when this is a git checkout, otherwise every file on disk. */
+/**
+ * The files as they are in the checkout right now: tracked ones that still
+ * exist plus new ones git does not ignore, so a map can be checked before
+ * anything is staged. Outside a git checkout, every file on disk.
+ */
 export function repositoryFiles(root) {
   try {
-    return git(root, ["ls-files", "-z"]).split("\0").filter(Boolean);
+    const list = (args) => git(root, ["ls-files", "-z", ...args]).split("\0").filter(Boolean);
+    const deleted = new Set(list(["--deleted"]));
+    return [...new Set([...list(["--cached"]), ...list(["--others", "--exclude-standard"])])].filter(
+      (file) => !deleted.has(file)
+    );
   } catch {
     return walk(root);
   }

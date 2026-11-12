@@ -5,6 +5,7 @@ import {
 	LayersIcon,
 	UserMultiple02Icon,
 } from "@diffkit/icons";
+import { Button } from "@diffkit/ui/components/button";
 import { Chip } from "@diffkit/ui/components/chip";
 import { PanelRow, PanelSection } from "@diffkit/ui/components/detail-layout";
 import { cn } from "@diffkit/ui/lib/utils";
@@ -107,6 +108,22 @@ export function MapPanel({
 				<p className="text-pretty text-muted-foreground text-xs leading-[1.5]">
 					Counts the most recently updated pull requests only.
 				</p>
+			) : null}
+			{map.activity?.limits.treeTruncated ? (
+				<p className="text-pretty text-muted-foreground text-xs leading-[1.5]">
+					This repository has more files than GitHub lists at once, so file
+					counts and sizes are partial.
+				</p>
+			) : null}
+			{map.retryActivity ? (
+				<div className="flex flex-col items-start gap-2">
+					<p className="text-pretty text-muted-foreground text-xs leading-[1.5]">
+						GitHub did not answer, so the numbers are missing.
+					</p>
+					<Button size="xs" variant="outline" onClick={map.retryActivity}>
+						Try again
+					</Button>
+				</div>
 			) : null}
 		</>
 	);

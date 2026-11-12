@@ -37,9 +37,41 @@ describe("pullParts", () => {
 		expect(parts).toEqual([{ area: "shell", lines: 10, share: 1 }]);
 	});
 
-	it("returns nothing for a change with no countable lines", () => {
+	it("keeps the areas of a change with no countable lines, shared by file", () => {
 		expect(
-			pullParts([{ path: "src/logo.png", additions: 0, deletions: 0 }], match),
+			pullParts(
+				[
+					{ path: "src/logo.png", additions: 0, deletions: 0 },
+					{ path: "src/review/old.ts", additions: 0, deletions: 0 },
+					{ path: "src/review/new.ts", additions: 0, deletions: 0 },
+					{ path: "src/review/moved.ts", additions: 0, deletions: 0 },
+				],
+				match,
+			),
+		).toEqual([
+			{ area: "review", lines: 0, share: 0.75 },
+			{ area: "shell", lines: 0, share: 0.25 },
+		]);
+	});
+
+	it("still lists an area whose only change was a rename", () => {
+		expect(
+			pullParts(
+				[
+					{ path: "src/app.tsx", additions: 10, deletions: 0 },
+					{ path: "src/review/renamed.ts", additions: 0, deletions: 0 },
+				],
+				match,
+			),
+		).toEqual([
+			{ area: "shell", lines: 10, share: 1 },
+			{ area: "review", lines: 0, share: 0 },
+		]);
+	});
+
+	it("returns nothing when no changed file is on the map", () => {
+		expect(
+			pullParts([{ path: "README.md", additions: 3, deletions: 0 }], match),
 		).toEqual([]);
 	});
 });

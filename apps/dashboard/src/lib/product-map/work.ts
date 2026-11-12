@@ -11,27 +11,38 @@ export type WorkPart = { area: string; lines: number; share: number };
 
 /**
  * Splits a pull request's changed lines across the areas its files belong to,
- * largest first. Ignored and unmapped files are left out of the total, so the
- * shares describe the part of the change the map can place.
+ * largest first. Ignored and unmapped files are left out of the total, so a
+ * share is the area's part of the change the map can place.
+ *
+ * A change with no countable lines (renames, binary files) still touches its
+ * areas: they are kept, and shared out by file count instead.
  */
 export function pullParts(
 	files: readonly ChangedFile[],
 	match: (path: string) => AreaMatch,
 ): WorkPart[] {
-	const lines = new Map<string, number>();
+	const touched = new Map<string, { lines: number; files: number }>();
 	for (const file of files) {
 		const found = match(file.path);
 		if (found.kind !== "area") continue;
-		lines.set(
-			found.area,
-			(lines.get(found.area) ?? 0) + file.additions + file.deletions,
-		);
+		const area = touched.get(found.area) ?? { lines: 0, files: 0 };
+		area.lines += file.additions + file.deletions;
+		area.files += 1;
+		touched.set(found.area, area);
 	}
-	const total = [...lines.values()].reduce((sum, value) => sum + value, 0);
-	return [...lines]
-		.filter(([, value]) => value > 0)
-		.map(([area, value]) => ({ area, lines: value, share: value / total }))
-		.sort((a, b) => b.lines - a.lines);
+	const totals = { lines: 0, files: 0 };
+	for (const area of touched.values()) {
+		totals.lines += area.lines;
+		totals.files += area.files;
+	}
+	const weigh = totals.lines > 0 ? "lines" : "files";
+	return [...touched]
+		.map(([area, counts]) => ({
+			area,
+			lines: counts.lines,
+			share: counts[weigh] / totals[weigh],
+		}))
+		.sort((a, b) => b.share - a.share || a.area.localeCompare(b.area));
 }
 
 const FIX_TITLE = /\b(hot)?fix(es|ed)?\b|^revert|^harden|^stabilize|^handle /i;

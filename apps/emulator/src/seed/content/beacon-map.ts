@@ -99,9 +99,8 @@ const areas: Record<string, object> = {
 			},
 			{
 				kind: "client",
-				label: "createTransport",
-				note: "Looks up the transport registered for the kind you asked for.",
-				path: "src/transport/registry.ts",
+				label: "The chosen transport",
+				note: "Hands each frame to the transport set in the options.",
 			},
 			{
 				kind: "external",
@@ -140,22 +139,16 @@ const areas: Record<string, object> = {
 	transports: {
 		name: "Transports",
 		icon: "refresh",
-		tagline: "WebSocket, server-sent events, WebTransport",
+		tagline: "WebSocket and server-sent events",
 		summary:
-			"How events travel. Each transport implements one small interface, and a registry lets an app add its own.",
+			"How events travel. Each transport implements one small interface, so the client does not care which one it was given.",
 		paths: ["src/transport/**"],
 		flow: [
 			{
 				kind: "client",
 				label: "Transport interface",
 				note: "connect, send, onMessage and onClose: the whole contract.",
-				path: "src/transport/transport.ts",
-			},
-			{
-				kind: "client",
-				label: "registerTransport",
-				note: "Maps a kind such as 'ws' or 'sse' to a factory.",
-				path: "src/transport/registry.ts",
+				path: "src/types.ts",
 			},
 			{
 				kind: "client",
@@ -179,11 +172,6 @@ const areas: Record<string, object> = {
 				name: "Server-sent events",
 				summary: "Receive-only streaming over plain HTTP.",
 				path: "src/transport/sse.ts",
-			},
-			{
-				name: "Transport registry",
-				summary: "Register a custom transport under your own kind.",
-				path: "src/transport/registry.ts",
 			},
 		],
 		dependsOn: [],

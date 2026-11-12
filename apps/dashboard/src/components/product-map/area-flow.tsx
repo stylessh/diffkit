@@ -173,6 +173,8 @@ export function AreaFlow({
 		usedLanes.findIndex((lane) => lane.index === laneOf(step.kind));
 	const height = usedLanes.length * (LANE_HEIGHT + LANE_GAP) - LANE_GAP;
 	const selected = steps[state.step];
+	// An area may describe no flow at all; there is then nothing to draw.
+	if (!selected) return null;
 	const SelectedIcon = stepKind(selected.kind).icon;
 	const holdAt = (step: number) =>
 		dispatch({ type: "hold", step: (step + steps.length) % steps.length });

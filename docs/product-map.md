@@ -3,8 +3,8 @@
 A repository's **Map** tab shows it as a product instead of a file tree: its
 areas in plain language, how each one works, where its code lives, and the
 pull requests that changed it. A pull request's side panel shows which areas
-it touches, with what share of its changed lines, and how many of its files
-the map does not cover yet.
+it touches, each with its share of the changed lines the map can place, and
+how many of its files the map does not cover yet.
 
 The map has two halves:
 
@@ -15,7 +15,8 @@ The map has two halves:
 - **Worked out when the page opens.** File counts and sizes, merged and open
   pull requests per area, each pull request's share, the people involved, and
   the files in each area that change the most. None of this is stored; DiffKit
-  reads it from GitHub every time, so it is never out of date.
+  reads it from GitHub, and the browser may show the last answer for up to
+  five minutes.
 
 The rule for which half something belongs to: if it can be counted or looked
 up, DiffKit computes it. The files never list files, name functions or carry

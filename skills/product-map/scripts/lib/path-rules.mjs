@@ -122,6 +122,15 @@ function literalPrefix(glob) {
     return prefix;
 }
 /**
+ * One pattern as the matchers for everything it stands for. Throws when the
+ * pattern, or any alternative inside it, is not one the format allows: an
+ * alternative can be empty (`{,src/**}`) even when the whole pattern is not.
+ */
+export function compilePatterns(glob) {
+    compileGlob(glob);
+    return expandBraces(glob).map(compileGlob);
+}
+/**
  * Gives each path to the most specific pattern that matches it: the one that
  * fixes the longest start of the path, then the one with the most fixed text.
  * Order between areas therefore never matters, so each area can keep its own
@@ -129,18 +138,25 @@ function literalPrefix(glob) {
  * as unmapped.
  */
 export function createAreaMatcher(rules, ignore) {
-    const ignored = ignore.map(compileGlob);
+    const ignored = ignore.flatMap(compilePatterns);
     const candidates = rules
         .flatMap((rule) => {
         compileGlob(rule.path);
         return expandBraces(rule.path).map((glob) => ({
             area: rule.area,
+            glob,
             prefix: literalPrefix(glob),
             fixed: glob.replace(/[*?]/g, "").length,
+            broad: glob.split("**").length - 1,
             pattern: compileGlob(glob),
         }));
     })
-        .sort((a, b) => b.prefix.length - a.prefix.length || b.fixed - a.fixed);
+        // The last two keys only break ties, so that the result never depends on
+        // the order the rules were listed in: `src/foo*` beats `src/foo**`.
+        .sort((a, b) => b.prefix.length - a.prefix.length ||
+        b.fixed - a.fixed ||
+        a.broad - b.broad ||
+        (a.glob < b.glob ? -1 : a.glob > b.glob ? 1 : 0));
     return (path) => {
         if (ignored.some((pattern) => pattern.test(path)))
             return { kind: "ignored" };

@@ -35,14 +35,19 @@ function defaultBase() {
 /** Path to status letter: A added, M modified, D deleted, R renamed away. */
 function changes() {
   const result = new Map();
+  // `git log` lists the newest commit first, so the first status seen for a
+  // path is where it ended up: a file added and later deleted counts as gone.
+  const put = (file, status) => {
+    if (!result.has(file)) result.set(file, status);
+  };
   const record = (lines) => {
     for (const line of lines.split("\n")) {
       const [status, first, second] = line.split("\t");
       if (!(status && first)) continue;
       if (status.startsWith("R") && second) {
-        result.set(first, "R");
-        result.set(second, "A");
-      } else result.set(first, status[0]);
+        put(first, "R");
+        put(second, "A");
+      } else put(first, status[0]);
     }
   };
   if (typeof options.since === "string") {
@@ -52,7 +57,7 @@ function changes() {
   const base = typeof options.base === "string" ? git(root, ["merge-base", "HEAD", options.base]).trim() : defaultBase();
   record(git(root, ["diff", "--name-status", "-M", base]));
   for (const file of git(root, ["ls-files", "--others", "--exclude-standard"]).split("\n"))
-    if (file) result.set(file, "A");
+    if (file) put(file, "A");
   return { changed: result, label: `since ${base.slice(0, 9)}` };
 }
 

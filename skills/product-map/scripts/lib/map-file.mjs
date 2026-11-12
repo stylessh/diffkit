@@ -1,5 +1,5 @@
 // Generated from apps/dashboard/src/lib/product-map/map-file.ts by scripts/build-map-skill.mjs. Do not edit.
-import { compileGlob, expandBraces } from "./path-rules.mjs";
+import { compilePatterns } from "./path-rules.mjs";
 /**
  * The `.diffkit` folder: the part of a product map a repository owns.
  * `map.json` lays out the overview and each file in `areas/` describes one
@@ -202,13 +202,21 @@ export function parseMapFolder(source) {
             return "";
         }
         try {
-            compileGlob(value);
-            expandBraces(value);
+            compilePatterns(value);
         }
         catch (error) {
             problem(`${where} "${value}": ${error.message}.`);
         }
         return value;
+    };
+    const uniquelyNamed = (features, where) => {
+        const names = new Set();
+        for (const feature of features) {
+            if (feature.name && names.has(feature.name))
+                problem(`${where}: two features are named "${feature.name}".`);
+            names.add(feature.name);
+        }
+        return features;
     };
     onlyKnown(index, "map.json", MAP_FIELDS.index);
     if (source.areas.length > MAX_AREAS)
@@ -268,13 +276,13 @@ export function parseMapFolder(source) {
                         : { path: repoPath(step.path, `${at}.path`) };
                     return kind ? [{ kind, label, note, ...path }] : [];
                 }),
-                features: objects(item, "features", where, MAP_FIELDS.feature, 30).map(({ item: feature, at }) => ({
+                features: uniquelyNamed(objects(item, "features", where, MAP_FIELDS.feature, 30).map(({ item: feature, at }) => ({
                     name: textOf(feature, "name", at),
                     summary: textOf(feature, "summary", at),
                     ...(feature.path === undefined
                         ? {}
                         : { path: repoPath(feature.path, `${at}.path`) }),
-                })),
+                })), where),
                 dependsOn: strings(item, "dependsOn", where),
                 outside: strings(item, "outside", where),
                 ...(isObject(screen)

@@ -1,4 +1,4 @@
-import { compileGlob, expandBraces, type PathRule } from "./path-rules";
+import { compilePatterns, type PathRule } from "./path-rules";
 
 /**
  * The `.diffkit` folder: the part of a product map a repository owns.
@@ -310,12 +310,21 @@ export function parseMapFolder(source: MapFolderSource): ParsedMapFile {
 			return "";
 		}
 		try {
-			compileGlob(value);
-			expandBraces(value);
+			compilePatterns(value);
 		} catch (error) {
 			problem(`${where} "${value}": ${(error as Error).message}.`);
 		}
 		return value;
+	};
+
+	const uniquelyNamed = (features: AreaFeature[], where: string) => {
+		const names = new Set<string>();
+		for (const feature of features) {
+			if (feature.name && names.has(feature.name))
+				problem(`${where}: two features are named "${feature.name}".`);
+			names.add(feature.name);
+		}
+		return features;
 	};
 
 	onlyKnown(index, "map.json", MAP_FIELDS.index);
@@ -388,19 +397,18 @@ export function parseMapFolder(source: MapFolderSource): ParsedMapFile {
 							return kind ? [{ kind, label, note, ...path }] : [];
 						},
 					),
-					features: objects(
-						item,
-						"features",
+					features: uniquelyNamed(
+						objects(item, "features", where, MAP_FIELDS.feature, 30).map(
+							({ item: feature, at }) => ({
+								name: textOf(feature, "name", at),
+								summary: textOf(feature, "summary", at),
+								...(feature.path === undefined
+									? {}
+									: { path: repoPath(feature.path, `${at}.path`) }),
+							}),
+						),
 						where,
-						MAP_FIELDS.feature,
-						30,
-					).map(({ item: feature, at }) => ({
-						name: textOf(feature, "name", at),
-						summary: textOf(feature, "summary", at),
-						...(feature.path === undefined
-							? {}
-							: { path: repoPath(feature.path, `${at}.path`) }),
-					})),
+					),
 					dependsOn: strings(item, "dependsOn", where),
 					outside: strings(item, "outside", where),
 					...(isObject(screen)

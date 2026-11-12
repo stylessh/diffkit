@@ -42,7 +42,7 @@ function Section({
 	);
 }
 
-type ScreenState = "showing" | "unavailable";
+type Theme = "light" | "dark";
 
 /** The area's own screenshots, served from the repository like README images. */
 function ScreenPreview({
@@ -54,31 +54,27 @@ function ScreenPreview({
 	screen: NonNullable<ProductArea["screen"]>;
 	repo: RepoLinks;
 }) {
-	const [state, setState] = useState<ScreenState>("showing");
-	if (state === "unavailable") return null;
+	const [failed, setFailed] = useState<readonly Theme[]>([]);
+	if (failed.length === 2) return null;
 	const label = `${area.name}, as it looks in the product`;
 	const raw = (path: string) =>
 		`https://github.com/${repo.owner}/${repo.repo}/raw/${repo.branch}/${path}`;
+	const image = (theme: Theme, className: string) =>
+		failed.includes(theme) ? null : (
+			<img
+				src={raw(screen[theme])}
+				alt={label}
+				width={1280}
+				height={800}
+				loading="lazy"
+				onError={() => setFailed((current) => [...current, theme])}
+				className={className}
+			/>
+		);
 	return (
-		<figure className="overflow-hidden rounded-lg bg-card shadow-card">
-			<img
-				src={raw(screen.light)}
-				alt={label}
-				width={1280}
-				height={800}
-				loading="lazy"
-				onError={() => setState("unavailable")}
-				className="block h-auto w-full dark:hidden"
-			/>
-			<img
-				src={raw(screen.dark)}
-				alt={label}
-				width={1280}
-				height={800}
-				loading="lazy"
-				onError={() => setState("unavailable")}
-				className="hidden h-auto w-full dark:block"
-			/>
+		<figure className="overflow-hidden rounded-lg bg-card shadow-card empty:hidden">
+			{image("light", "block h-auto w-full dark:hidden")}
+			{image("dark", "hidden h-auto w-full dark:block")}
 		</figure>
 	);
 }
@@ -225,21 +221,25 @@ export function AreaSheet({
 				/>
 			) : null}
 
-			<Section
-				id="how"
-				title="How it works"
-				description="The path one request takes, and where each step runs."
-			>
-				<AreaFlow key={area.id} steps={area.flow} repo={repo} />
-			</Section>
+			{area.flow.length > 0 ? (
+				<Section
+					id="how"
+					title="How it works"
+					description="The path one request takes, and where each step runs."
+				>
+					<AreaFlow key={area.id} steps={area.flow} repo={repo} />
+				</Section>
+			) : null}
 
-			<Section
-				id="inside"
-				title="What is inside"
-				description={`${plural(area.features.length, "part")}. Open one to read more.`}
-			>
-				<FeatureList key={area.id} features={area.features} repo={repo} />
-			</Section>
+			{area.features.length > 0 ? (
+				<Section
+					id="inside"
+					title="What is inside"
+					description={`${plural(area.features.length, "part")}. Open one to read more.`}
+				>
+					<FeatureList key={area.id} features={area.features} repo={repo} />
+				</Section>
+			) : null}
 
 			{hotFiles.length > 0 ? (
 				<Section

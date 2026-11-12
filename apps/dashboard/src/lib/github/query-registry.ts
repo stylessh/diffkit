@@ -53,7 +53,7 @@ export const githubQueryEntityCoverage: Record<
 	"repo.template": ["repo"],
 	"repo.tree": ["repo"],
 	"repo.productMapFile": ["repo"],
-	"repo.productMapActivity": ["repo", "pull"],
+	"repo.productMapActivity": ["repo", "pull", "issue"],
 	"repo.fileLastCommit": ["repo"],
 	"repo.commit": ["checks"],
 	"repo.refHeadCommit": ["repo"],

@@ -30,12 +30,18 @@ export type LoadedProductMap = {
 	areaById: Map<string, ProductArea>;
 	order: string[];
 	activity: MapActivity | null;
+	/**
+	 * Set only when counting failed and there is nothing to show: calling it
+	 * tries again. Null while counting is still running or has succeeded.
+	 */
+	retryActivity: (() => void) | null;
 };
 
 export function loadProductMap(
 	file: MapFile,
 	repo: LoadedProductMap["repo"],
 	activity: MapActivity | null,
+	retryActivity: (() => void) | null = null,
 ): LoadedProductMap {
 	const areas = file.areas.map((area) => ({
 		...area,
@@ -56,6 +62,7 @@ export function loadProductMap(
 			band.groups.flatMap((group) => group.areas),
 		),
 		activity,
+		retryActivity,
 	};
 }
 
@@ -80,6 +87,12 @@ export function useProductMap(owner: string, repo: string): ProductMapState {
 	});
 	// "HEAD" until the overview answers: the code pages accept it as a ref.
 	const branch = overview.data?.defaultBranch ?? "HEAD";
+	const activityFailed = activity.isError && !activity.data;
+	const { refetch } = activity;
+
+	// A failed read with nothing cached goes to the route's error screen, which
+	// offers "Try again", instead of spinning for ever.
+	if (file.error && !file.data) throw file.error;
 
 	return useMemo((): ProductMapState => {
 		if (!file.data) return { status: "loading" };
@@ -90,7 +103,8 @@ export function useProductMap(owner: string, repo: string): ProductMapState {
 				file.data.map,
 				{ owner, name: repo, branch },
 				activity.data ?? null,
+				activityFailed ? () => void refetch() : null,
 			),
 		};
-	}, [file.data, activity.data, owner, repo, branch]);
+	}, [file.data, activity.data, activityFailed, refetch, owner, repo, branch]);
 }

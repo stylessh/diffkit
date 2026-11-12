@@ -182,4 +182,21 @@ describe("parseMapFolder", () => {
 			]),
 		);
 	});
+
+	it("catches what would only fail later: an empty alternative, a repeated feature name", () => {
+		expect(
+			problemsOf(
+				folder((files) => {
+					files.transport.paths = ["{,src/transport/**}"];
+					files.client.features = [
+						{ name: "Emit", summary: "Sends an event." },
+						{ name: "Emit", summary: "Sends it again." },
+					];
+				}),
+			),
+		).toEqual([
+			'areas/client.json: two features are named "Emit".',
+			'areas/transport.json: paths[0] "{,src/transport/**}": pattern must be 1 to 300 characters.',
+		]);
+	});
 });

@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { compileGlob, createAreaMatcher, expandBraces } from "./path-rules";
+import {
+	compileGlob,
+	compilePatterns,
+	createAreaMatcher,
+	expandBraces,
+} from "./path-rules";
 
 describe("compileGlob", () => {
 	it("keeps * inside a segment and lets ** cross them", () => {
@@ -50,6 +55,11 @@ describe("expandBraces", () => {
 		expect(expandBraces("src/\\{literal\\}")).toEqual(["src/\\{literal\\}"]);
 	});
 
+	it("refuses a pattern with an alternative that would match nothing", () => {
+		expect(() => compilePatterns("{,src/**}")).toThrow("1 to 300 characters");
+		expect(compilePatterns("src/{a,b}/**")).toHaveLength(2);
+	});
+
 	it("refuses a pattern that multiplies out too far", () => {
 		const wide = "{a,b,c,d}{a,b,c,d}{a,b,c,d}{a,b}";
 		expect(() => expandBraces(wide)).toThrow("alternatives");
@@ -77,6 +87,30 @@ describe("createAreaMatcher", () => {
 			});
 			expect(pick("src/app.tsx")).toEqual({ kind: "area", area: "shell" });
 		}
+	});
+
+	it("prefers the narrower wildcard when two patterns are otherwise as specific", () => {
+		const narrow = { path: "src/foo*", area: "narrow" };
+		const broad = { path: "src/foo**", area: "broad" };
+		for (const order of [
+			[narrow, broad],
+			[broad, narrow],
+		]) {
+			const pick = createAreaMatcher(order, []);
+			expect(pick("src/foo.ts")).toEqual({ kind: "area", area: "narrow" });
+			expect(pick("src/foo/bar.ts")).toEqual({ kind: "area", area: "broad" });
+		}
+	});
+
+	it("reads each alternative of an ignore pattern on its own", () => {
+		const pick = createAreaMatcher(
+			[{ path: "**", area: "all" }],
+			["{**/secret,src/test/**}"],
+		);
+		expect(pick("secret")).toEqual({ kind: "ignored" });
+		expect(pick("config/secret")).toEqual({ kind: "ignored" });
+		expect(pick("src/test/a.ts")).toEqual({ kind: "ignored" });
+		expect(pick("src/a.ts")).toEqual({ kind: "area", area: "all" });
 	});
 
 	it("separates ignored paths from ones no pattern covers", () => {

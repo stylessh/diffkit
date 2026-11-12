@@ -24,7 +24,6 @@ jobs:
     timeout-minutes: 30
     permissions:
       contents: read
-      id-token: write
     steps:
       - uses: actions/checkout@v4
         with:
@@ -37,6 +36,9 @@ jobs:
       - uses: anthropics/claude-code-action@v1
         with:
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          # The job's own read-only token. Without it the action asks for an
+          # app token that can write, and the read-only boundary is gone.
+          github_token: ${{ github.token }}
           prompt: |
             Bring this repository's product map up to date with the last week of changes.
 
