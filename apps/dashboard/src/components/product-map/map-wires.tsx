@@ -114,7 +114,7 @@ export function MapWires({
 		<svg
 			role="img"
 			aria-label={`${plural(wires.length, "connection")} from the focused area`}
-			className="pointer-events-none absolute inset-0 size-full overflow-visible"
+			className="pointer-events-none absolute inset-0 z-[5] size-full overflow-visible"
 		>
 			{wires.map((wire) => (
 				<g key={`${wire.from}>${wire.to}`} className="text-indigo">

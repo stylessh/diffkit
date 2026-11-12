@@ -1,9 +1,15 @@
 import { CircleCheckIcon, ClockIcon, CodeIcon, FileIcon } from "@diffkit/icons";
 import { PanelPill, PanelSection } from "@diffkit/ui/components/detail-layout";
+import {
+	Tooltip,
+	TooltipContent,
+	TooltipTrigger,
+} from "@diffkit/ui/components/tooltip";
 import { cn } from "@diffkit/ui/lib/utils";
 import { useState } from "react";
 import { PersonAvatar } from "./area-activity";
-import { formatCount, formatShortDate } from "./map-format";
+import { AreaHoverCard, relationTo } from "./area-hover-card";
+import { formatCount, formatShortDate, plural } from "./map-format";
 import { areaIcon } from "./map-icons";
 import { StatRow } from "./map-panel";
 import type { LoadedProductMap } from "./product-map-data";
@@ -21,11 +27,11 @@ const dotClassName: Record<TileRole, string> = {
 
 function MiniMap({
 	map,
-	currentId,
+	current,
 	onNavigate,
 }: {
 	map: LoadedProductMap;
-	currentId: string;
+	current: ProductArea;
 	onNavigate: (id: string) => void;
 }) {
 	return (
@@ -34,25 +40,30 @@ function MiniMap({
 				band.groups.map((group) => (
 					<div key={group.id} className="-ml-1 flex flex-wrap">
 						{group.areas.map((id) => {
-							const role = tileRole({ kind: "area", id: currentId }, id, map);
-							const name = map.areaById.get(id)?.name ?? id;
+							const area = map.areaById.get(id);
+							if (!area) return null;
+							const role = tileRole({ kind: "area", id: current.id }, id, map);
 							return (
-								<button
+								<AreaHoverCard
 									key={id}
-									type="button"
-									title={name}
-									aria-label={name}
-									aria-current={role === "self" ? "page" : undefined}
-									onClick={() => onNavigate(id)}
-									className="group/dot flex size-5 items-center justify-center rounded-md hover:bg-item-hover"
+									area={area}
+									relation={relationTo(area, current)}
 								>
-									<span
-										className={cn(
-											"size-2.5 rounded-[3px] transition-colors group-hover/dot:bg-foreground",
-											dotClassName[role],
-										)}
-									/>
-								</button>
+									<button
+										type="button"
+										aria-label={area.name}
+										aria-current={role === "self" ? "page" : undefined}
+										onClick={() => onNavigate(id)}
+										className="group/dot flex size-5 items-center justify-center rounded-md hover:bg-item-hover"
+									>
+										<span
+											className={cn(
+												"size-2.5 rounded-[3px] transition-colors group-hover/dot:bg-foreground",
+												dotClassName[role],
+											)}
+										/>
+									</button>
+								</AreaHoverCard>
 							);
 						})}
 					</div>
@@ -67,11 +78,13 @@ type LinkListState = "preview" | "all";
 function AreaLinks({
 	label,
 	ids,
+	current,
 	map,
 	onNavigate,
 }: {
 	label: string;
 	ids: string[];
+	current: ProductArea;
 	map: LoadedProductMap;
 	onNavigate: (id: string) => void;
 }) {
@@ -85,11 +98,17 @@ function AreaLinks({
 				if (!area) return null;
 				const Icon = areaIcon(area.icon);
 				return (
-					<PanelPill key={id} asChild icon={<Icon size={14} strokeWidth={2} />}>
-						<button type="button" onClick={() => onNavigate(id)}>
-							{area.name}
-						</button>
-					</PanelPill>
+					<AreaHoverCard
+						key={id}
+						area={area}
+						relation={relationTo(area, current)}
+					>
+						<PanelPill asChild icon={<Icon size={14} strokeWidth={2} />}>
+							<button type="button" onClick={() => onNavigate(id)}>
+								{area.name}
+							</button>
+						</PanelPill>
+					</AreaHoverCard>
 				);
 			})}
 			{listState === "preview" && ids.length > LINK_PREVIEW ? (
@@ -115,11 +134,12 @@ export function AreaPanel({
 	const { stats } = area;
 	return (
 		<>
-			<MiniMap map={map} currentId={area.id} onNavigate={onNavigate} />
+			<MiniMap map={map} current={area} onNavigate={onNavigate} />
 			<AreaLinks
 				key={`builds-on-${area.id}`}
 				label="Builds on"
 				ids={area.dependsOn}
+				current={area}
 				map={map}
 				onNavigate={onNavigate}
 			/>
@@ -127,6 +147,7 @@ export function AreaPanel({
 				key={`used-by-${area.id}`}
 				label="Used by"
 				ids={area.usedBy}
+				current={area}
 				map={map}
 				onNavigate={onNavigate}
 			/>
@@ -154,16 +175,23 @@ export function AreaPanel({
 			</PanelSection>
 			<PanelSection label="People">
 				<div className="flex min-h-7 flex-wrap items-center gap-y-1 pl-1.5">
-					{area.people.map(({ login }) => (
-						<span
-							key={login}
-							className="-ml-1.5 flex rounded-full bg-main p-[1.5px]"
-						>
-							<PersonAvatar
-								login={login}
-								bot={map.people[login]?.bot ?? false}
-							/>
-						</span>
+					{area.people.map(({ login, commits }) => (
+						<Tooltip key={login}>
+							<TooltipTrigger asChild>
+								<span className="-ml-1.5 flex rounded-full bg-main p-[1.5px]">
+									<PersonAvatar
+										login={login}
+										bot={map.people[login]?.bot ?? false}
+									/>
+								</span>
+							</TooltipTrigger>
+							<TooltipContent className="flex-col items-start gap-0.5">
+								<span>{map.people[login]?.name ?? login}</span>
+								<span className="font-[450] text-muted-foreground">
+									{plural(commits, "commit")} here
+								</span>
+							</TooltipContent>
+						</Tooltip>
 					))}
 				</div>
 			</PanelSection>

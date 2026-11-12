@@ -49,25 +49,29 @@ Everything else is one step away:
 | **View tabs** add one number per area: commits in the last 30 days, lines, or open work. | **Jump to** (`/`) finds an area, feature, file, pull request or issue. |
 
 **Click an area to open it.** The page follows the pull request page: a
-title and one or two sentences, then section cards that each lead with
-something to look at.
+title and one or two sentences, then five well-spaced sections that each lead
+with something to look at. Only the tables are cards; the rest sits open on
+the page.
 
 | | |
 | --- | --- |
 | ![Area](screenshots/area-desktop-dark.png) | ![How it works](screenshots/area-how-desktop-light.png) |
 | **The screen itself.** User-facing areas open with a real screenshot of that screen, captured from demo mode in both themes. | **How it works** is a lane diagram: the path one request takes, drawn across the browser, the Worker, and GitHub and storage. A highlight walks the steps; pick one for its sentence and file. |
 | ![Data path](screenshots/area-data-path-desktop-dark.png) | ![Activity](screenshots/area-activity-desktop-dark.png) |
-| The same diagram for an internal area: a webhook climbs from GitHub through the Worker to the browser. | **What is happening**: commits per week, then open and merged work with avatars. **Worth knowing** follows, with what is well done and what looks rough. |
+| The same diagram for an internal area: a webhook climbs from GitHub through the Worker to the browser. | **What is happening**: four numbers, commits per week (hover a bar for its week), then a table of open and merged work. |
+| ![Inside](screenshots/area-inside-desktop-light.png) | ![Notes](screenshots/area-notes-desktop-light.png) |
+| **What is inside** is a two-column list: an icon, a name and two clipped lines per sub-feature. Opening one shows the full sentence and its code. | **Worth knowing** is two short lists: what is done well and where the rough edges are. |
 
-Between them, **What is inside** shows the sub-features as a grid, each with
-an icon for where it lives (page, component, browser, server) and one clipped
-line; opening one shows the full sentence and its code. **Ways into the code**
-lists four to six starting points with their file-type icons. The tabs above
-the page jump between the five cards and follow the scroll.
+**Ways into the code** stays a table: four to six starting points with their
+file-type icons. The tabs above the page jump between the five sections and
+follow the scroll.
 
 The panel on the right holds a small dot map of the product (this area in
 green, connected areas brighter; every dot is a link), then what the area
-builds on, what uses it, four stats and the people who worked on it.
+builds on, what uses it, four stats and the people who worked on it. Hovering
+a dot or a linked area opens a [card](screenshots/area-hover-desktop-light.png)
+with its name, how it relates to the open area, one line and two numbers;
+hovering a person shows their name and commit count.
 
 Moving around:
 
@@ -110,8 +114,8 @@ What changed:
 | Each tile: icon, name, a two-line description, a sparkline, sometimes a metric | Icon and name. The description appears on hover, the metric only when a view tab asks for it |
 | Pitch, a three-line paragraph, a stats line, lens buttons with a description | Pitch and one caption line. Description and stats moved to the side panel |
 | Ten outside systems as their own strip | Three chips in the panel (GitHub, Cloudflare, The browser) |
-| Wires for "builds on", "used by" and outside systems, with badges | Wires for "builds on" only, drawn behind the areas |
-| Area page: eight stacked sections of text and badges | Five section cards, each led by a visual |
+| Wires for "builds on", "used by" and outside systems, with badges | Wires for "builds on" only, drawn over the dimmed areas and under the lit ones |
+| Area page: eight stacked sections of text and badges | Five spaced sections, each led by a visual; cards only for tables |
 | A 25-row sidebar for moving sideways | A dot map in the panel. No left sidebar |
 | Request path: six cards with a paragraph each | A lane diagram. One sentence for the selected step |
 | Tour stops of about 30 words | About 15 words each |
@@ -121,8 +125,16 @@ The overview now fits one screen at 1440×900, which the first version did not.
 That pass went too far on the area page: it hid each kind of content behind a
 tab, so the page explained very little at a glance. Alan's second note was to
 bring the explanations back with visual support instead of text. The area
-page now scrolls through section cards again, but each one leads with
-something to look at: the real screen, a lane diagram, an icon grid, a chart.
+page now scrolls through sections again, but each one leads with
+something to look at: the real screen, a lane diagram, an icon list, a chart.
+
+A third note, after Alan used it locally, fixed four things: connection lines
+were hidden behind dimmed areas and looked cropped; the lane diagram's labels
+touched the lane edges; every section was a card; and the chart bars and the
+dot map had no hover context. Lines now draw over dimmed areas, the diagram
+has taller lanes with their labels inside and step buttons, sections are
+spaced further apart with a card only where the content is a table, and bars,
+dots, linked areas and people have hover cards.
 
 ## Does it answer the question?
 
@@ -287,7 +299,10 @@ attribution, reference checking and line re-anchoring.
   summarised from file names;
 - mapping an issue to areas from its title and body, and noticing when
   shipped work has answered it;
-- the tour script.
+- the tour script;
+- an icon per sub-feature. The prototype stands in for this with a word list
+  matched against the feature name (`featureIcon` in `map-icons.tsx`), which
+  gets about one in seven wrong or falls back to a generic icon.
 
 **Keeping it cheap:** only re-read an area when enough of its files changed
 since its description was written. A merged pull request touches one to three
@@ -320,7 +335,7 @@ suite.
   - `product-map-page.tsx`: page, URL state, keys, the zoom between map and area
   - `map-canvas.tsx`, `map-wires.tsx`, `spotlight.ts`: areas, wires, what is lit
   - `map-panel.tsx`: the overview's side panel
-  - `area-sheet.tsx`, `area-flow.tsx`, `area-activity.tsx`, `area-panel.tsx`: the area page, its lane diagram, activity card and side panel
+  - `area-sheet.tsx`, `area-flow.tsx`, `area-activity.tsx`, `area-panel.tsx`, `area-hover-card.tsx`: the area page, its lane diagram, activity section, side panel and the hover card for an area
   - `map-search.tsx`, `map-tour.tsx`: jump-to and the tour
 - It uses `packages/ui` components and the existing theme tokens only. No new
   dependency, no change to `packages/ui`.

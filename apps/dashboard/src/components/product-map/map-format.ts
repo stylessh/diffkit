@@ -8,6 +8,11 @@ const monthName = new Intl.DateTimeFormat("en", {
 	month: "short",
 	timeZone: "UTC",
 });
+const utcDay = new Intl.DateTimeFormat("en", {
+	month: "short",
+	day: "numeric",
+	timeZone: "UTC",
+});
 const compact = new Intl.NumberFormat("en", {
 	notation: "compact",
 	maximumFractionDigits: 1,
@@ -19,6 +24,14 @@ export function formatShortDate(iso: string | null) {
 
 export function formatMonth(date: Date) {
 	return monthName.format(date);
+}
+
+const DAY_MS = 86_400_000;
+
+/** The Monday-to-Sunday span of week `index`, counted from `weekStart`. */
+export function formatWeekRange(weekStart: string, index: number) {
+	const start = new Date(weekStart).getTime() + index * 7 * DAY_MS;
+	return `${utcDay.format(start)} – ${utcDay.format(start + 6 * DAY_MS)}`;
 }
 
 export function formatCount(value: number) {

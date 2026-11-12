@@ -1,20 +1,41 @@
+import { ChevronLeftIcon, ChevronRightIcon } from "@diffkit/icons";
 import { cn } from "@diffkit/ui/lib/utils";
 import { useReducedMotion } from "motion/react";
-import { type CSSProperties, useEffect, useReducer } from "react";
+import {
+	type CSSProperties,
+	type ReactNode,
+	useEffect,
+	useReducer,
+	useRef,
+} from "react";
 import { CodeLink, type RepoLinks } from "./code-link";
 import { stepKind } from "./map-icons";
 import type { FlowStep } from "./product-map-types";
 
 const LANES = [
-	{ label: "In the browser", kinds: ["page", "component", "client"] },
-	{ label: "On the Worker", kinds: ["server", "route"] },
-	{ label: "GitHub and storage", kinds: ["github", "storage", "external"] },
-	{ label: "Tooling", kinds: ["tool"] },
+	{
+		label: "In the browser",
+		icon: "client",
+		kinds: ["page", "component", "client"],
+	},
+	{ label: "On the Worker", icon: "server", kinds: ["server", "route"] },
+	{
+		label: "GitHub and storage",
+		icon: "storage",
+		kinds: ["github", "storage", "external"],
+	},
+	{ label: "Tooling", icon: "tool", kinds: ["tool"] },
 ];
 
-const LANE_HEIGHT = 100;
-const NODE_CENTER = 44;
+const LANE_HEIGHT = 124;
+const LANE_GAP = 8;
+const NODE_TOP = 38;
+const NODE_SIZE = 36;
+const NODE_CENTER = NODE_TOP + NODE_SIZE / 2;
 const TRAVEL_MS = 2200;
+/** Opaque, so a lane label can cover a connector that passes behind it. */
+const LANE_SURFACE =
+	"bg-[color-mix(in_oklab,var(--color-foreground)_3%,var(--color-main))]";
 
 type FlowState =
 	| { mode: "travelling"; step: number }
@@ -35,6 +56,11 @@ function laneOf(kind: string) {
 	return lane === -1 ? 0 : lane;
 }
 
+/** Lets a camelCase identifier wrap between its words instead of mid-word. */
+function wrappable(label: string) {
+	return label.replace(/([a-z0-9])([A-Z])/g, "$1​$2");
+}
+
 function Connector({
 	index,
 	steps,
@@ -50,8 +76,9 @@ function Connector({
 	height: number;
 	reached: boolean;
 }) {
-	const fromY = fromRow * LANE_HEIGHT + NODE_CENTER;
-	const toY = toRow * LANE_HEIGHT + NODE_CENTER;
+	const pitch = LANE_HEIGHT + LANE_GAP;
+	const fromY = fromRow * pitch + NODE_CENTER;
+	const toY = toRow * pitch + NODE_CENTER;
 	return (
 		<svg
 			aria-hidden="true"
@@ -68,13 +95,34 @@ function Connector({
 			}}
 		>
 			<path
-				d={`M0,${fromY} C50,${fromY} 50,${toY} 100,${toY}`}
+				d={`M0,${fromY} C60,${fromY} 40,${toY} 100,${toY}`}
 				fill="none"
 				stroke="currentColor"
-				strokeWidth={1.25}
+				strokeWidth={1.5}
 				vectorEffect="non-scaling-stroke"
 			/>
 		</svg>
+	);
+}
+
+function StepButton({
+	label,
+	onClick,
+	children,
+}: {
+	label: string;
+	onClick: () => void;
+	children: ReactNode;
+}) {
+	return (
+		<button
+			type="button"
+			aria-label={label}
+			onClick={onClick}
+			className="flex size-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-item-hover hover:text-foreground"
+		>
+			{children}
+		</button>
 	);
 }
 
@@ -100,51 +148,73 @@ export function AreaFlow({
 		return () => window.clearInterval(timer);
 	}, [state.mode, steps.length]);
 
+	const scrollerRef = useRef<HTMLDivElement>(null);
+	useEffect(() => {
+		const scroller = scrollerRef.current;
+		const node = scroller?.querySelector<HTMLElement>(
+			`[data-step="${state.step}"]`,
+		);
+		if (!(scroller && node)) return;
+		const centre =
+			node.getBoundingClientRect().left -
+			scroller.getBoundingClientRect().left +
+			scroller.scrollLeft +
+			node.offsetWidth / 2;
+		scroller.scrollTo({
+			left: centre - scroller.clientWidth / 2,
+			behavior: "smooth",
+		});
+	}, [state.step]);
+
 	const usedLanes = LANES.map((lane, index) => ({ ...lane, index })).filter(
 		(lane) => steps.some((step) => laneOf(step.kind) === lane.index),
 	);
 	const rowOf = (step: FlowStep) =>
 		usedLanes.findIndex((lane) => lane.index === laneOf(step.kind));
-	const height = usedLanes.length * LANE_HEIGHT;
+	const height = usedLanes.length * (LANE_HEIGHT + LANE_GAP) - LANE_GAP;
 	const selected = steps[state.step];
+	const SelectedIcon = stepKind(selected.kind).icon;
+	const holdAt = (step: number) =>
+		dispatch({ type: "hold", step: (step + steps.length) % steps.length });
 
 	return (
-		<div>
-			<div className="flex px-3 pt-3">
+		<div className="flex flex-col gap-4">
+			<div ref={scrollerRef} className="no-scrollbar overflow-x-auto">
 				<div
-					aria-hidden
-					className="grid w-[6.5rem] shrink-0 max-sm:hidden"
-					style={{
-						gridTemplateRows: `repeat(${usedLanes.length}, ${LANE_HEIGHT}px)`,
-					}}
+					className="relative"
+					style={{ minWidth: `${steps.length * 6.5}rem`, height }}
 				>
-					{usedLanes.map((lane) => (
-						<span
-							key={lane.label}
-							className="pt-[34px] pl-1 font-[450] text-muted-foreground text-xs leading-5"
-						>
-							{lane.label}
-						</span>
-					))}
-				</div>
-				<div className="no-scrollbar min-w-0 flex-1 overflow-x-auto">
-					<div
-						className="relative grid"
-						style={{
-							minWidth: `${steps.length * 5.75}rem`,
-							gridTemplateColumns: `repeat(${steps.length}, minmax(0, 1fr))`,
-							gridTemplateRows: `repeat(${usedLanes.length}, ${LANE_HEIGHT}px)`,
-						}}
-					>
-						{usedLanes.map((lane, row) => (
+					{usedLanes.map((lane, row) => {
+						const LaneIcon = stepKind(lane.icon).icon;
+						return (
 							<div
 								key={lane.label}
-								className="absolute inset-x-0 rounded-lg bg-foreground/[0.035] px-2.5 pt-1.5 font-[450] text-[11px] text-muted-foreground"
-								style={{ top: row * LANE_HEIGHT, height: LANE_HEIGHT - 6 }}
+								className={cn("absolute inset-x-0 rounded-xl", LANE_SURFACE)}
+								style={{
+									top: row * (LANE_HEIGHT + LANE_GAP),
+									height: LANE_HEIGHT,
+								}}
 							>
-								<span className="sticky left-2.5 sm:hidden">{lane.label}</span>
+								<span
+									className={cn(
+										"sticky left-2 z-10 mt-2 ml-2 inline-flex h-5 items-center gap-1.5 rounded-md px-1.5 font-[450] text-muted-foreground text-xs",
+										LANE_SURFACE,
+									)}
+								>
+									<LaneIcon size={12} strokeWidth={2} />
+									{lane.label}
+								</span>
 							</div>
-						))}
+						);
+					})}
+					<div
+						className="absolute inset-x-3 inset-y-0 grid"
+						style={{
+							gridTemplateColumns: `repeat(${steps.length}, minmax(0, 1fr))`,
+							gridTemplateRows: `repeat(${usedLanes.length}, ${LANE_HEIGHT}px)`,
+							rowGap: LANE_GAP,
+						}}
+					>
 						{steps.slice(1).map((step, index) => (
 							<Connector
 								key={`${step.kind}:${step.label}`}
@@ -159,11 +229,13 @@ export function AreaFlow({
 						{steps.map((step, index) => {
 							const Icon = stepKind(step.kind).icon;
 							const active = index === state.step;
+							const reached = index < state.step;
 							const hold = () => dispatch({ type: "hold", step: index });
 							return (
 								<button
 									key={`${step.kind}:${step.label}`}
 									type="button"
+									data-step={index}
 									aria-pressed={active}
 									onClick={hold}
 									onFocus={hold}
@@ -174,26 +246,28 @@ export function AreaFlow({
 										{
 											gridColumn: index + 1,
 											gridRow: rowOf(step) + 1,
+											paddingTop: NODE_TOP,
 										} as CSSProperties
 									}
-									className="group/step relative flex flex-col items-center gap-1.5 pt-[26px] outline-none"
+									className="group/step relative flex min-w-0 flex-col items-center gap-2 outline-none"
 								>
 									<span
 										className={cn(
 											"-outline-offset-1 flex size-9 items-center justify-center rounded-full bg-button text-muted-foreground shadow-button transition-colors group-focus-visible/step:outline-2 group-focus-visible/step:outline-focus group-focus-visible/step:outline-solid",
+											reached && "text-foreground",
 											active &&
-												"text-foreground outline-[1.5px] outline-indigo outline-solid",
+												"text-indigo outline-[1.5px] outline-indigo outline-solid",
 										)}
 									>
 										<Icon size={15} strokeWidth={2} />
 									</span>
 									<span
 										className={cn(
-											"line-clamp-2 px-1 text-center font-[450] text-[11px] leading-[14px] transition-colors",
+											"line-clamp-2 max-w-[4.75rem] text-center font-[450] text-[11px] leading-[14px] transition-colors [overflow-wrap:anywhere]",
 											active ? "text-foreground" : "text-muted-foreground",
 										)}
 									>
-										{step.label}
+										{wrappable(step.label)}
 									</span>
 								</button>
 							);
@@ -201,19 +275,37 @@ export function AreaFlow({
 					</div>
 				</div>
 			</div>
-			<div className="flex min-h-[7rem] flex-col items-start gap-1 px-4 pt-3 pb-3">
-				<span className="font-[450] text-muted-foreground text-xs">
-					Step {state.step + 1} of {steps.length} ·{" "}
-					{stepKind(selected.kind).label}
+			<div className="flex min-h-[5.5rem] items-start gap-3">
+				<span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-group text-foreground">
+					<SelectedIcon size={15} strokeWidth={2} />
 				</span>
-				<p className="text-pretty text-[13px] text-foreground leading-5">
-					{selected.note}
-				</p>
-				{selected.path ? (
-					<span className="pt-1">
-						<CodeLink reference={{ path: selected.path }} repo={repo} />
+				<div className="flex min-w-0 flex-1 flex-col items-start gap-1">
+					<span className="font-[450] text-muted-foreground text-xs">
+						{stepKind(selected.kind).label}
 					</span>
-				) : null}
+					<p className="text-pretty text-[13px] text-foreground leading-5">
+						{selected.note}
+					</p>
+					{selected.path ? (
+						<span className="pt-1">
+							<CodeLink reference={{ path: selected.path }} repo={repo} />
+						</span>
+					) : null}
+				</div>
+				<div className="flex shrink-0 items-center gap-0.5">
+					<StepButton
+						label="Previous step"
+						onClick={() => holdAt(state.step - 1)}
+					>
+						<ChevronLeftIcon size={14} strokeWidth={2} />
+					</StepButton>
+					<span className="min-w-8 text-center font-[450] text-muted-foreground text-xs tabular-nums">
+						{state.step + 1} / {steps.length}
+					</span>
+					<StepButton label="Next step" onClick={() => holdAt(state.step + 1)}>
+						<ChevronRightIcon size={14} strokeWidth={2} />
+					</StepButton>
+				</div>
 			</div>
 		</div>
 	);

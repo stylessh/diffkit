@@ -23,7 +23,7 @@ const roleClassName: Record<TileRole, string> = {
 	plain: "",
 	self: "text-foreground outline-[1.5px] outline-indigo outline-solid",
 	related: "text-foreground",
-	dim: "bg-main text-muted-foreground/45 shadow-none [&_svg]:opacity-45",
+	dim: "z-0 bg-main text-muted-foreground/45 shadow-none [&_svg]:opacity-45",
 };
 
 const MapTile = memo(function MapTile({

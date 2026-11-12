@@ -12,7 +12,7 @@ import {
 	plural,
 	shortPath,
 } from "./map-format";
-import { pathKind, stepKind } from "./map-icons";
+import { featureIcon } from "./map-icons";
 import type { LoadedProductMap } from "./product-map-data";
 import type {
 	AreaFeature,
@@ -30,11 +30,30 @@ export const AREA_SECTIONS = [
 
 export type AreaSection = (typeof AREA_SECTIONS)[number];
 
-function Section({ id, children }: { id: AreaSection; children: ReactNode }) {
+function Section({
+	id,
+	title,
+	description,
+	children,
+}: {
+	id: AreaSection;
+	title: string;
+	description: string;
+	children: ReactNode;
+}) {
 	return (
-		<div data-area-section={id} className="scroll-mt-6 max-md:scroll-mt-16">
+		<section
+			data-area-section={id}
+			className="flex scroll-mt-6 flex-col gap-4 pt-6 max-md:scroll-mt-16"
+		>
+			<header className="flex flex-col gap-0.5">
+				<h2 className="font-medium text-[15px] text-foreground">{title}</h2>
+				<p className="text-pretty text-[13px] text-muted-foreground">
+					{description}
+				</p>
+			</header>
 			{children}
-		</div>
+		</section>
 	);
 }
 
@@ -62,7 +81,7 @@ function ScreenPreview({ area }: { area: ProductArea }) {
 	);
 }
 
-function FeatureCell({
+function FeatureItem({
 	feature,
 	open,
 	onToggle,
@@ -73,16 +92,21 @@ function FeatureCell({
 	onToggle: () => void;
 	repo: RepoLinks;
 }) {
-	const Icon = stepKind(pathKind(feature.entry[0]?.path ?? "")).icon;
+	const Icon = featureIcon(feature.name, feature.entry[0]?.path ?? "");
 	return (
-		<li className="flex flex-col bg-card">
+		<li
+			className={cn(
+				"-mx-2.5 flex flex-col rounded-lg transition-colors",
+				open ? "bg-item-hover" : "hover:bg-item-hover",
+			)}
+		>
 			<button
 				type="button"
 				aria-expanded={open}
 				onClick={onToggle}
-				className="flex flex-1 items-start gap-3 px-4 py-3.5 text-left transition-colors hover:bg-row-hover"
+				className="flex items-start gap-3 rounded-lg p-2.5 text-left"
 			>
-				<span className="flex size-7 shrink-0 items-center justify-center rounded-md bg-group text-muted-foreground">
+				<span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-button text-muted-foreground shadow-button">
 					<Icon size={14} strokeWidth={2} />
 				</span>
 				<span className="flex min-w-0 flex-col gap-0.5">
@@ -92,7 +116,7 @@ function FeatureCell({
 					<span
 						className={cn(
 							"text-pretty text-muted-foreground text-xs leading-[1.5]",
-							!open && "line-clamp-1",
+							!open && "line-clamp-2",
 						)}
 					>
 						{feature.summary}
@@ -100,7 +124,7 @@ function FeatureCell({
 				</span>
 			</button>
 			{open ? (
-				<span className="flex flex-wrap gap-1 px-4 pb-3.5 pl-[3.25rem]">
+				<span className="flex flex-wrap gap-1 pr-2.5 pb-2.5 pl-[3.375rem]">
 					{feature.entry.map((entry) => (
 						<CodeLink
 							key={`${entry.path}:${entry.symbol ?? ""}`}
@@ -114,7 +138,7 @@ function FeatureCell({
 	);
 }
 
-function FeatureGrid({
+function FeatureList({
 	features,
 	repo,
 }: {
@@ -123,9 +147,9 @@ function FeatureGrid({
 }) {
 	const [openFeature, setOpenFeature] = useState<string | null>(null);
 	return (
-		<ul className="grid gap-px bg-rule sm:grid-cols-2">
+		<ul className="grid items-start gap-x-8 gap-y-1 sm:grid-cols-2">
 			{features.map((feature) => (
-				<FeatureCell
+				<FeatureItem
 					key={feature.name}
 					feature={feature}
 					open={feature.name === openFeature}
@@ -137,9 +161,6 @@ function FeatureGrid({
 					repo={repo}
 				/>
 			))}
-			{features.length % 2 === 1 ? (
-				<li aria-hidden className="bg-card max-sm:hidden" />
-			) : null}
 		</ul>
 	);
 }
@@ -170,21 +191,37 @@ function EntryPointRow({
 	);
 }
 
-function NoteRow({ text, tone }: { text: string; tone: "good" | "watch" }) {
+function NoteList({
+	label,
+	notes,
+	tone,
+}: {
+	label: string;
+	notes: string[];
+	tone: "good" | "watch";
+}) {
+	if (notes.length === 0) return null;
 	const Icon = tone === "good" ? CircleCheckIcon : AlertCircleIcon;
 	return (
-		<div className="flex gap-3 px-4 py-2.5">
-			<Icon
-				size={15}
-				strokeWidth={2}
-				className={cn(
-					"mt-[3px] shrink-0",
-					tone === "good" ? "text-success" : "text-warning",
-				)}
-			/>
-			<span className="text-pretty text-[13px] text-foreground leading-5">
-				{text}
-			</span>
+		<div className="flex flex-col gap-2.5">
+			<h3 className="font-[450] text-muted-foreground text-xs">{label}</h3>
+			<ul className="flex flex-col gap-3">
+				{notes.map((text) => (
+					<li key={text} className="flex gap-3">
+						<Icon
+							size={15}
+							strokeWidth={2}
+							className={cn(
+								"mt-[3px] shrink-0",
+								tone === "good" ? "text-success" : "text-warning",
+							)}
+						/>
+						<span className="text-pretty text-[13px] text-foreground leading-5">
+							{text}
+						</span>
+					</li>
+				))}
+			</ul>
 		</div>
 	);
 }
@@ -219,30 +256,28 @@ export function AreaSheet({
 			</p>
 			{area.screen ? <ScreenPreview area={area} /> : null}
 
-			<Section id="how">
-				<SectionCard
-					title="How it works"
-					description="The path one request takes, and where each step runs."
-				>
-					<AreaFlow key={area.id} steps={area.flow} repo={repo} />
-				</SectionCard>
+			<Section
+				id="how"
+				title="How it works"
+				description="The path one request takes, and where each step runs."
+			>
+				<AreaFlow key={area.id} steps={area.flow} repo={repo} />
 			</Section>
 
-			<Section id="inside">
-				<SectionCard
-					title="What is inside"
-					description={`${plural(area.features.length, "part")}. Open one for its code.`}
-					className="[&>div:last-child]:pb-0"
-				>
-					<FeatureGrid key={area.id} features={area.features} repo={repo} />
-				</SectionCard>
+			<Section
+				id="inside"
+				title="What is inside"
+				description={`${plural(area.features.length, "part")}. Open one for its code.`}
+			>
+				<FeatureList key={area.id} features={area.features} repo={repo} />
 			</Section>
 
-			<Section id="code">
-				<SectionCard
-					title="Ways into the code"
-					description="Where to start reading. Opens on GitHub."
-				>
+			<Section
+				id="code"
+				title="Ways into the code"
+				description="Where to start reading. Opens on GitHub."
+			>
+				<SectionCard className="[&>div:last-child]:pb-0">
 					{area.entryPoints.map((entry) => (
 						<EntryPointRow
 							key={`${entry.path}:${entry.symbol ?? ""}`}
@@ -253,28 +288,24 @@ export function AreaSheet({
 				</SectionCard>
 			</Section>
 
-			<Section id="activity">
-				<SectionCard
-					title="What is happening"
-					description={`${plural(area.stats.commits, "commit")} since ${formatShortDate(map.repo.firstCommit)}, ${area.stats.commitsLast30} in the last 30 days.`}
-				>
-					<AreaActivity key={area.id} area={area} map={map} />
-				</SectionCard>
+			<Section
+				id="activity"
+				title="What is happening"
+				description={`Commits per week since ${formatShortDate(map.repo.firstCommit)}, then the work that touched this area.`}
+			>
+				<AreaActivity key={area.id} area={area} map={map} />
 			</Section>
 
 			{area.goodParts.length + area.watch.length > 0 ? (
-				<Section id="notes">
-					<SectionCard
-						title="Worth knowing"
-						description="Found by reading the code, each with its evidence."
-					>
-						{area.goodParts.map((text) => (
-							<NoteRow key={text} text={text} tone="good" />
-						))}
-						{area.watch.map((text) => (
-							<NoteRow key={text} text={text} tone="watch" />
-						))}
-					</SectionCard>
+				<Section
+					id="notes"
+					title="Worth knowing"
+					description="Found by reading the code, each with its evidence."
+				>
+					<div className="flex flex-col gap-6">
+						<NoteList label="Done well" notes={area.goodParts} tone="good" />
+						<NoteList label="Rough edges" notes={area.watch} tone="watch" />
+					</div>
 				</Section>
 			) : null}
 			<div data-area-end aria-hidden className="h-px" />
