@@ -12,14 +12,14 @@ import {
 	webhookConfig,
 } from "../settings/webhooks";
 import { readSettings, runSettingsMutation } from "./settings-server";
-import { identityValidator } from "./validators";
+import { identityValidator, repoInputValidator } from "./validators";
 
 type RepoInput = { owner: string; repo: string };
 
 const DELIVERY_LIMIT = 30;
 
 export const getRepoWebhooks = createServerFn({ method: "GET" })
-	.validator(identityValidator<RepoInput>)
+	.validator(repoInputValidator)
 	.handler(
 		({ data }): Promise<SettingsRead<RepoWebhook[]>> =>
 			readSettings("webhooks", async (octokit) => {

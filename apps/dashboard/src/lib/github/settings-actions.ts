@@ -11,7 +11,7 @@ import {
 import type { SettingsOutcome, SettingsRead } from "../settings/read-result";
 import { sealSecret } from "../settings/seal";
 import { readSettings, runSettingsMutation } from "./settings-server";
-import { identityValidator } from "./validators";
+import { identityValidator, repoInputValidator } from "./validators";
 
 type RepoInput = { owner: string; repo: string };
 type NamedInput = RepoInput & { name: string };
@@ -24,7 +24,7 @@ function invalid(error: string): Promise<SettingsOutcome> {
 }
 
 export const getRepoActionsSecrets = createServerFn({ method: "GET" })
-	.validator(identityValidator<RepoInput>)
+	.validator(repoInputValidator)
 	.handler(
 		({ data }): Promise<SettingsRead<RepoActionsSecret[]>> =>
 			readSettings("secrets", async (octokit) => {
@@ -37,7 +37,7 @@ export const getRepoActionsSecrets = createServerFn({ method: "GET" })
 	);
 
 export const getRepoActionsVariables = createServerFn({ method: "GET" })
-	.validator(identityValidator<RepoInput>)
+	.validator(repoInputValidator)
 	.handler(
 		({ data }): Promise<SettingsRead<RepoActionsVariable[]>> =>
 			readSettings("variables", async (octokit) => {

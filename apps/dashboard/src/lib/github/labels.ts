@@ -134,6 +134,10 @@ export const deleteRepoLabel = createServerFn({ method: "POST" })
 	.handler(
 		({ data }): Promise<SettingsOutcome> =>
 			runSettingsMutation("delete the label", (octokit) =>
-				octokit.rest.issues.deleteLabel(data),
+				octokit.rest.issues.deleteLabel({
+					owner: data.owner,
+					repo: data.repo,
+					name: data.name,
+				}),
 			),
 	);
