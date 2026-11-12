@@ -105,13 +105,17 @@ export { ActionsIcon } from "./actions-icon";
 export { ArchiveDownIcon } from "./archive-down-icon";
 export { AutomationIcon } from "./automation-icon";
 export {
+  ClaudeLogo,
+  CursorLogo,
   DiscordLogo,
+  GitHubCopilotLogo,
   GitHubLogo,
   GitHubWordmarkLogo,
   GitLabLogo,
   GoogleLogo,
   LinearWordmarkLogo,
   NotionWordmarkLogo,
+  OpenAILogo,
   SlackWordmarkLogo,
   StripeWordmarkLogo,
   SupabaseWordmarkLogo,

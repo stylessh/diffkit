@@ -16,7 +16,10 @@ The map has two halves:
   of date.
 
 A repository without the file has no Map tab. Opening `/owner/repo/map`
-directly explains what is missing.
+directly shows a prompt to copy into a coding agent (Claude Code, Codex,
+Cursor, Copilot or any other): it writes the file and opens a pull request,
+and the map appears once that is merged. A file that was rejected gets the
+same page with the problems listed and a prompt that fixes them.
 
 ## The file
 
@@ -114,7 +117,10 @@ whole, and the Map page lists what to fix.
 ## Writing one with an agent
 
 The areas and their descriptions need the code read, so this is a job for a
-coding agent with the repository checked out. A brief that works:
+coding agent with the repository checked out. The Map page of a repository
+without a map offers the full prompt, with the format included
+(`mapSetupPrompt` in `apps/dashboard/src/components/product-map/map-prompt.ts`);
+in short it asks for this:
 
 > Write `.diffkit/map.json` for this repository, following
 > `docs/product-map.md` in stylessh/diffkit.
