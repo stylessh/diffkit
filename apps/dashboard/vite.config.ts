@@ -13,6 +13,7 @@ import {
 	getSharedWranglerStatePath,
 	isWorktreeCheckout,
 } from "../../scripts/shared-worktree-paths.mjs";
+import { devTunnelGuard } from "./vite/dev-tunnel-guard.ts";
 
 const dashboardRoot = new URL(".", import.meta.url);
 
@@ -68,37 +69,19 @@ function getDevTunnelUrl() {
 	return process.env.DEV_TUNNEL_URL ?? getDevVarFromFile("DEV_TUNNEL_URL");
 }
 
-function getTunnelServerConfig(): import("vite").UserConfig["server"] {
+function getDevTunnelHostname() {
 	const tunnelUrl = getDevTunnelUrl();
 	if (!tunnelUrl) {
-		return undefined;
+		return null;
 	}
 
-	let parsedTunnelUrl: URL;
 	try {
-		parsedTunnelUrl = new URL(tunnelUrl);
+		return new URL(tunnelUrl).hostname;
 	} catch {
 		throw new Error(
 			`Invalid DEV_TUNNEL_URL: ${JSON.stringify(tunnelUrl)}. Expected a full URL like https://example.ngrok-free.app.`,
 		);
 	}
-
-	const isSecure = parsedTunnelUrl.protocol === "https:";
-	const port =
-		parsedTunnelUrl.port.length > 0
-			? Number.parseInt(parsedTunnelUrl.port, 10)
-			: isSecure
-				? 443
-				: 80;
-
-	return {
-		allowedHosts: [parsedTunnelUrl.hostname],
-		hmr: {
-			host: parsedTunnelUrl.hostname,
-			protocol: isSecure ? "wss" : "ws",
-			clientPort: port,
-		},
-	};
 }
 
 // Stub out shiki in the SSR (Cloudflare Worker) environment to prevent all
@@ -388,9 +371,11 @@ function hugeiconsDefaultVariantOnly(): import("vite").Plugin {
 }
 
 const config = defineConfig(({ command }) => {
+	const tunnelHostname = command === "serve" ? getDevTunnelHostname() : null;
 	return {
-		server: command === "serve" ? getTunnelServerConfig() : undefined,
+		server: tunnelHostname ? { allowedHosts: [tunnelHostname] } : undefined,
 		plugins: [
+			...(tunnelHostname ? [devTunnelGuard()] : []),
 			devtools(),
 			hugeiconsDeepImports(),
 			hugeiconsDefaultVariantOnly(),
