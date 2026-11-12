@@ -1,0 +1,1847 @@
+{
+	"repo": "stylessh/diffkit",
+	"pulls": {
+		"1": {
+			"fix": false,
+			"parts": [
+				{ "area": "ui-kit", "lines": 304, "share": 0.6117 },
+				{ "area": "platform-ops", "lines": 158, "share": 0.3179 },
+				{ "area": "shell", "lines": 35, "share": 0.0704 }
+			]
+		},
+		"2": {
+			"fix": false,
+			"parts": [
+				{ "area": "platform-ops", "lines": 14522, "share": 0.9539 },
+				{ "area": "storage", "lines": 459, "share": 0.0301 },
+				{ "area": "sign-in", "lines": 175, "share": 0.0115 },
+				{ "area": "github-data", "lines": 52, "share": 0.0034 },
+				{ "area": "shell", "lines": 16, "share": 0.0011 }
+			]
+		},
+		"3": {
+			"fix": false,
+			"parts": [{ "area": "platform-ops", "lines": 120, "share": 1 }]
+		},
+		"4": {
+			"fix": false,
+			"parts": [
+				{ "area": "ui-kit", "lines": 3535, "share": 0.9394 },
+				{ "area": "sign-in", "lines": 228, "share": 0.0606 }
+			]
+		},
+		"6": {
+			"fix": false,
+			"parts": [
+				{ "area": "ui-kit", "lines": 23, "share": 0.8519 },
+				{ "area": "sign-in", "lines": 4, "share": 0.1481 }
+			]
+		},
+		"7": {
+			"fix": false,
+			"parts": [
+				{ "area": "sign-in", "lines": 36, "share": 0.5625 },
+				{ "area": "ui-kit", "lines": 28, "share": 0.4375 }
+			]
+		},
+		"8": {
+			"fix": false,
+			"parts": [{ "area": "shell", "lines": 2, "share": 1 }]
+		},
+		"9": {
+			"fix": false,
+			"parts": [
+				{ "area": "shell", "lines": 187, "share": 0.4056 },
+				{ "area": "sign-in", "lines": 169, "share": 0.3666 },
+				{ "area": "ui-kit", "lines": 82, "share": 0.1779 },
+				{ "area": "platform-ops", "lines": 14, "share": 0.0304 },
+				{ "area": "repos-profiles", "lines": 9, "share": 0.0195 }
+			]
+		},
+		"10": {
+			"fix": false,
+			"parts": [
+				{ "area": "platform-ops", "lines": 54, "share": 0.675 },
+				{ "area": "storage", "lines": 26, "share": 0.325 }
+			]
+		},
+		"11": {
+			"fix": false,
+			"parts": [
+				{ "area": "ui-kit", "lines": 99, "share": 0.4853 },
+				{ "area": "sign-in", "lines": 97, "share": 0.4755 },
+				{ "area": "shell", "lines": 8, "share": 0.0392 }
+			]
+		},
+		"12": {
+			"fix": false,
+			"parts": [{ "area": "sign-in", "lines": 11, "share": 1 }]
+		},
+		"13": {
+			"fix": false,
+			"parts": [{ "area": "github-data", "lines": 866, "share": 1 }]
+		},
+		"14": {
+			"fix": false,
+			"parts": [
+				{ "area": "github-data", "lines": 1047, "share": 0.4127 },
+				{ "area": "instant-cache", "lines": 642, "share": 0.2531 },
+				{ "area": "storage", "lines": 490, "share": 0.1931 },
+				{ "area": "repos-profiles", "lines": 159, "share": 0.0627 },
+				{ "area": "work-lists", "lines": 129, "share": 0.0508 },
+				{ "area": "shell", "lines": 37, "share": 0.0146 },
+				{ "area": "sign-in", "lines": 25, "share": 0.0099 },
+				{ "area": "platform-ops", "lines": 8, "share": 0.0032 }
+			]
+		},
+		"15": {
+			"fix": false,
+			"parts": [
+				{ "area": "work-lists", "lines": 229, "share": 0.373 },
+				{ "area": "repos-profiles", "lines": 224, "share": 0.3648 },
+				{ "area": "shell", "lines": 161, "share": 0.2622 }
+			]
+		},
+		"16": {
+			"fix": false,
+			"parts": [
+				{ "area": "repos-profiles", "lines": 230, "share": 0.29 },
+				{ "area": "conversation", "lines": 221, "share": 0.2787 },
+				{ "area": "work-lists", "lines": 181, "share": 0.2282 },
+				{ "area": "ui-kit", "lines": 93, "share": 0.1173 },
+				{ "area": "github-data", "lines": 66, "share": 0.0832 },
+				{ "area": "shell", "lines": 2, "share": 0.0025 }
+			]
+		},
+		"17": {
+			"fix": false,
+			"parts": [{ "area": "work-lists", "lines": 274, "share": 1 }]
+		},
+		"18": {
+			"fix": false,
+			"parts": [{ "area": "work-lists", "lines": 281, "share": 1 }]
+		},
+		"19": {
+			"fix": false,
+			"parts": [{ "area": "work-lists", "lines": 75, "share": 1 }]
+		},
+		"20": {
+			"fix": false,
+			"parts": [
+				{ "area": "pull-request", "lines": 733, "share": 0.5217 },
+				{ "area": "issues", "lines": 425, "share": 0.3025 },
+				{ "area": "github-data", "lines": 235, "share": 0.1673 },
+				{ "area": "work-lists", "lines": 10, "share": 0.0071 },
+				{ "area": "ui-kit", "lines": 2, "share": 0.0014 }
+			]
+		},
+		"21": {
+			"fix": false,
+			"parts": [
+				{ "area": "shell", "lines": 215, "share": 0.8366 },
+				{ "area": "issues", "lines": 17, "share": 0.0661 },
+				{ "area": "pull-request", "lines": 17, "share": 0.0661 },
+				{ "area": "ui-kit", "lines": 8, "share": 0.0311 }
+			]
+		},
+		"22": {
+			"fix": false,
+			"parts": [
+				{ "area": "github-data", "lines": 620, "share": 0.4566 },
+				{ "area": "instant-cache", "lines": 187, "share": 0.1377 },
+				{ "area": "shell", "lines": 155, "share": 0.1141 },
+				{ "area": "pull-request", "lines": 141, "share": 0.1038 },
+				{ "area": "issues", "lines": 134, "share": 0.0987 },
+				{ "area": "sign-in", "lines": 88, "share": 0.0648 },
+				{ "area": "work-lists", "lines": 25, "share": 0.0184 },
+				{ "area": "repos-profiles", "lines": 8, "share": 0.0059 }
+			]
+		},
+		"23": {
+			"fix": false,
+			"parts": [
+				{ "area": "storage", "lines": 14, "share": 0.7778 },
+				{ "area": "platform-ops", "lines": 4, "share": 0.2222 }
+			]
+		},
+		"24": {
+			"fix": false,
+			"parts": [
+				{ "area": "conversation", "lines": 361, "share": 0.6203 },
+				{ "area": "pull-request", "lines": 131, "share": 0.2251 },
+				{ "area": "ui-kit", "lines": 48, "share": 0.0825 },
+				{ "area": "issues", "lines": 42, "share": 0.0722 }
+			]
+		},
+		"25": {
+			"fix": false,
+			"parts": [{ "area": "shell", "lines": 44, "share": 1 }]
+		},
+		"26": {
+			"fix": false,
+			"parts": [{ "area": "pull-request", "lines": 44, "share": 1 }]
+		},
+		"27": {
+			"fix": false,
+			"parts": [
+				{ "area": "review-diff", "lines": 1248, "share": 0.6194 },
+				{ "area": "conversation", "lines": 378, "share": 0.1876 },
+				{ "area": "github-data", "lines": 271, "share": 0.1345 },
+				{ "area": "shell", "lines": 51, "share": 0.0253 },
+				{ "area": "platform-ops", "lines": 38, "share": 0.0189 },
+				{ "area": "pull-request", "lines": 23, "share": 0.0114 },
+				{ "area": "ui-kit", "lines": 6, "share": 0.003 }
+			]
+		},
+		"28": {
+			"fix": false,
+			"parts": [
+				{ "area": "platform-ops", "lines": 283, "share": 0.7467 },
+				{ "area": "work-lists", "lines": 20, "share": 0.0528 },
+				{ "area": "ui-kit", "lines": 18, "share": 0.0475 },
+				{ "area": "shell", "lines": 14, "share": 0.0369 },
+				{ "area": "review-diff", "lines": 12, "share": 0.0317 },
+				{ "area": "issues", "lines": 10, "share": 0.0264 },
+				{ "area": "pull-request", "lines": 10, "share": 0.0264 },
+				{ "area": "sign-in", "lines": 8, "share": 0.0211 },
+				{ "area": "instant-cache", "lines": 2, "share": 0.0053 },
+				{ "area": "repos-profiles", "lines": 2, "share": 0.0053 }
+			]
+		},
+		"29": {
+			"fix": true,
+			"parts": [{ "area": "review-diff", "lines": 25, "share": 1 }]
+		},
+		"30": {
+			"fix": false,
+			"parts": [
+				{ "area": "ui-kit", "lines": 102, "share": 0.7846 },
+				{ "area": "platform-ops", "lines": 23, "share": 0.1769 },
+				{ "area": "shell", "lines": 5, "share": 0.0385 }
+			]
+		},
+		"31": {
+			"fix": false,
+			"parts": [
+				{ "area": "ui-kit", "lines": 48, "share": 0.9231 },
+				{ "area": "shell", "lines": 4, "share": 0.0769 }
+			]
+		},
+		"32": {
+			"fix": true,
+			"parts": [{ "area": "storage", "lines": 4, "share": 1 }]
+		},
+		"34": {
+			"fix": false,
+			"parts": [
+				{ "area": "platform-ops", "lines": 59, "share": 0.7284 },
+				{ "area": "review-diff", "lines": 22, "share": 0.2716 }
+			]
+		},
+		"35": {
+			"fix": true,
+			"parts": [{ "area": "storage", "lines": 21, "share": 1 }]
+		},
+		"36": {
+			"fix": false,
+			"parts": [
+				{ "area": "command-palette", "lines": 356, "share": 0.9295 },
+				{ "area": "ui-kit", "lines": 25, "share": 0.0653 },
+				{ "area": "shell", "lines": 2, "share": 0.0052 }
+			]
+		},
+		"37": {
+			"fix": false,
+			"parts": [
+				{ "area": "pull-request", "lines": 185, "share": 0.7773 },
+				{ "area": "github-data", "lines": 53, "share": 0.2227 }
+			]
+		},
+		"38": {
+			"fix": false,
+			"parts": [
+				{ "area": "platform-ops", "lines": 238, "share": 0.4367 },
+				{ "area": "sign-in", "lines": 96, "share": 0.1761 },
+				{ "area": "shell", "lines": 57, "share": 0.1046 },
+				{ "area": "review-diff", "lines": 54, "share": 0.0991 },
+				{ "area": "issues", "lines": 32, "share": 0.0587 },
+				{ "area": "pull-request", "lines": 32, "share": 0.0587 },
+				{ "area": "work-lists", "lines": 27, "share": 0.0495 },
+				{ "area": "repos-profiles", "lines": 9, "share": 0.0165 }
+			]
+		},
+		"39": {
+			"fix": false,
+			"parts": [
+				{ "area": "pull-request", "lines": 1025, "share": 0.5966 },
+				{ "area": "github-data", "lines": 380, "share": 0.2212 },
+				{ "area": "conversation", "lines": 187, "share": 0.1088 },
+				{ "area": "ui-kit", "lines": 53, "share": 0.0308 },
+				{ "area": "issues", "lines": 39, "share": 0.0227 },
+				{ "area": "work-lists", "lines": 23, "share": 0.0134 },
+				{ "area": "instant-cache", "lines": 11, "share": 0.0064 }
+			]
+		},
+		"40": {
+			"fix": false,
+			"parts": [
+				{ "area": "pull-request", "lines": 3718, "share": 0.5088 },
+				{ "area": "review-diff", "lines": 2391, "share": 0.3272 },
+				{ "area": "issues", "lines": 942, "share": 0.1289 },
+				{ "area": "conversation", "lines": 235, "share": 0.0322 },
+				{ "area": "work-lists", "lines": 18, "share": 0.0025 },
+				{ "area": "shell", "lines": 2, "share": 0.0003 },
+				{ "area": "command-palette", "lines": 2, "share": 0.0003 }
+			]
+		},
+		"42": {
+			"fix": false,
+			"parts": [
+				{ "area": "live-updates", "lines": 647, "share": 0.4369 },
+				{ "area": "sign-in", "lines": 285, "share": 0.1924 },
+				{ "area": "instant-cache", "lines": 238, "share": 0.1607 },
+				{ "area": "platform-ops", "lines": 188, "share": 0.1269 },
+				{ "area": "github-data", "lines": 102, "share": 0.0689 },
+				{ "area": "storage", "lines": 19, "share": 0.0128 },
+				{ "area": "shell", "lines": 2, "share": 0.0014 }
+			]
+		},
+		"43": {
+			"fix": false,
+			"parts": [{ "area": "platform-ops", "lines": 9, "share": 1 }]
+		},
+		"44": {
+			"fix": false,
+			"parts": [
+				{ "area": "pull-request", "lines": 874, "share": 0.7522 },
+				{ "area": "github-data", "lines": 160, "share": 0.1377 },
+				{ "area": "shell", "lines": 121, "share": 0.1041 },
+				{ "area": "sign-in", "lines": 4, "share": 0.0034 },
+				{ "area": "platform-ops", "lines": 2, "share": 0.0017 },
+				{ "area": "ui-kit", "lines": 1, "share": 0.0009 }
+			]
+		},
+		"45": {
+			"fix": false,
+			"parts": [
+				{ "area": "ui-kit", "lines": 14, "share": 0.3784 },
+				{ "area": "platform-ops", "lines": 12, "share": 0.3243 },
+				{ "area": "shell", "lines": 6, "share": 0.1622 },
+				{ "area": "sign-in", "lines": 5, "share": 0.1351 }
+			]
+		},
+		"46": {
+			"fix": false,
+			"parts": [{ "area": "extension", "lines": 1280, "share": 1 }]
+		},
+		"47": {
+			"fix": false,
+			"parts": [
+				{ "area": "sign-in", "lines": 512, "share": 0.6624 },
+				{ "area": "github-data", "lines": 157, "share": 0.2031 },
+				{ "area": "shell", "lines": 88, "share": 0.1138 },
+				{ "area": "ui-kit", "lines": 16, "share": 0.0207 }
+			]
+		},
+		"48": {
+			"fix": true,
+			"parts": [
+				{ "area": "work-lists", "lines": 21, "share": 0.4286 },
+				{ "area": "pull-request", "lines": 12, "share": 0.2449 },
+				{ "area": "repos-profiles", "lines": 8, "share": 0.1633 },
+				{ "area": "review-diff", "lines": 7, "share": 0.1429 },
+				{ "area": "shell", "lines": 1, "share": 0.0204 }
+			]
+		},
+		"49": {
+			"fix": false,
+			"parts": [
+				{ "area": "preferences", "lines": 235, "share": 0.5365 },
+				{ "area": "command-palette", "lines": 93, "share": 0.2123 },
+				{ "area": "pull-request", "lines": 64, "share": 0.1461 },
+				{ "area": "shell", "lines": 46, "share": 0.105 }
+			]
+		},
+		"50": {
+			"fix": false,
+			"parts": [{ "area": "live-updates", "lines": 133, "share": 1 }]
+		},
+		"51": {
+			"fix": false,
+			"parts": [
+				{ "area": "review-diff", "lines": 760, "share": 0.8068 },
+				{ "area": "github-data", "lines": 179, "share": 0.19 },
+				{ "area": "ui-kit", "lines": 2, "share": 0.0021 },
+				{ "area": "live-updates", "lines": 1, "share": 0.0011 }
+			]
+		},
+		"52": {
+			"fix": false,
+			"parts": [{ "area": "shell", "lines": 8, "share": 1 }]
+		},
+		"53": {
+			"fix": false,
+			"parts": [
+				{ "area": "review-diff", "lines": 586, "share": 0.5723 },
+				{ "area": "work-lists", "lines": 232, "share": 0.2266 },
+				{ "area": "shell", "lines": 134, "share": 0.1309 },
+				{ "area": "pull-request", "lines": 72, "share": 0.0703 }
+			]
+		},
+		"54": {
+			"fix": false,
+			"parts": [
+				{ "area": "instant-cache", "lines": 859, "share": 0.5855 },
+				{ "area": "github-data", "lines": 545, "share": 0.3715 },
+				{ "area": "platform-ops", "lines": 44, "share": 0.03 },
+				{ "area": "storage", "lines": 11, "share": 0.0075 },
+				{ "area": "live-updates", "lines": 5, "share": 0.0034 },
+				{ "area": "pull-request", "lines": 3, "share": 0.002 }
+			]
+		},
+		"55": {
+			"fix": false,
+			"parts": [
+				{ "area": "shell", "lines": 362, "share": 0.7269 },
+				{ "area": "pull-request", "lines": 103, "share": 0.2068 },
+				{ "area": "review-diff", "lines": 20, "share": 0.0402 },
+				{ "area": "issues", "lines": 13, "share": 0.0261 }
+			]
+		},
+		"56": {
+			"fix": true,
+			"parts": [{ "area": "sign-in", "lines": 78, "share": 1 }]
+		},
+		"57": {
+			"fix": false,
+			"parts": [
+				{ "area": "pull-request", "lines": 861, "share": 0.3574 },
+				{ "area": "issues", "lines": 725, "share": 0.301 },
+				{ "area": "github-data", "lines": 548, "share": 0.2275 },
+				{ "area": "sign-in", "lines": 201, "share": 0.0834 },
+				{ "area": "platform-ops", "lines": 45, "share": 0.0187 },
+				{ "area": "conversation", "lines": 29, "share": 0.012 }
+			]
+		},
+		"58": {
+			"fix": false,
+			"parts": [
+				{ "area": "pull-request", "lines": 91, "share": 0.3714 },
+				{ "area": "sign-in", "lines": 70, "share": 0.2857 },
+				{ "area": "conversation", "lines": 60, "share": 0.2449 },
+				{ "area": "github-data", "lines": 22, "share": 0.0898 },
+				{ "area": "review-diff", "lines": 1, "share": 0.0041 },
+				{ "area": "ui-kit", "lines": 1, "share": 0.0041 }
+			]
+		},
+		"59": {
+			"fix": false,
+			"parts": [
+				{ "area": "review-diff", "lines": 436, "share": 0.409 },
+				{ "area": "shell", "lines": 357, "share": 0.3349 },
+				{ "area": "ui-kit", "lines": 219, "share": 0.2054 },
+				{ "area": "pull-request", "lines": 38, "share": 0.0356 },
+				{ "area": "work-lists", "lines": 12, "share": 0.0113 },
+				{ "area": "conversation", "lines": 4, "share": 0.0038 }
+			]
+		},
+		"60": {
+			"fix": false,
+			"parts": [
+				{ "area": "github-data", "lines": 785, "share": 0.5623 },
+				{ "area": "sign-in", "lines": 492, "share": 0.3524 },
+				{ "area": "platform-ops", "lines": 82, "share": 0.0587 },
+				{ "area": "shell", "lines": 29, "share": 0.0208 },
+				{ "area": "pull-request", "lines": 8, "share": 0.0057 }
+			]
+		},
+		"61": {
+			"fix": true,
+			"parts": [{ "area": "github-data", "lines": 8, "share": 1 }]
+		},
+		"62": {
+			"fix": false,
+			"parts": [
+				{ "area": "work-lists", "lines": 1309, "share": 0.9977 },
+				{ "area": "ui-kit", "lines": 3, "share": 0.0023 }
+			]
+		},
+		"63": {
+			"fix": false,
+			"parts": [{ "area": "platform-ops", "lines": 4, "share": 1 }]
+		},
+		"64": {
+			"fix": false,
+			"parts": [
+				{ "area": "github-data", "lines": 1534, "share": 0.2562 },
+				{ "area": "pull-request", "lines": 1105, "share": 0.1846 },
+				{ "area": "sign-in", "lines": 785, "share": 0.1311 },
+				{ "area": "shell", "lines": 744, "share": 0.1243 },
+				{ "area": "issues", "lines": 738, "share": 0.1233 },
+				{ "area": "review-diff", "lines": 433, "share": 0.0723 },
+				{ "area": "ui-kit", "lines": 220, "share": 0.0367 },
+				{ "area": "command-palette", "lines": 206, "share": 0.0344 },
+				{ "area": "platform-ops", "lines": 117, "share": 0.0195 },
+				{ "area": "conversation", "lines": 93, "share": 0.0155 },
+				{ "area": "work-lists", "lines": 12, "share": 0.002 }
+			]
+		},
+		"65": {
+			"fix": true,
+			"parts": [
+				{ "area": "review-diff", "lines": 42, "share": 0.4375 },
+				{ "area": "pull-request", "lines": 32, "share": 0.3333 },
+				{ "area": "issues", "lines": 22, "share": 0.2292 }
+			]
+		},
+		"66": {
+			"fix": false,
+			"parts": [
+				{ "area": "github-data", "lines": 441, "share": 0.8448 },
+				{ "area": "pull-request", "lines": 81, "share": 0.1552 }
+			]
+		},
+		"67": {
+			"fix": false,
+			"parts": [
+				{ "area": "command-palette", "lines": 111, "share": 0.5692 },
+				{ "area": "github-data", "lines": 84, "share": 0.4308 }
+			]
+		},
+		"68": {
+			"fix": false,
+			"parts": [
+				{ "area": "work-lists", "lines": 1309, "share": 0.9917 },
+				{ "area": "github-data", "lines": 8, "share": 0.0061 },
+				{ "area": "ui-kit", "lines": 3, "share": 0.0023 }
+			]
+		},
+		"69": {
+			"fix": true,
+			"parts": [
+				{ "area": "shell", "lines": 186, "share": 0.4757 },
+				{ "area": "pull-request", "lines": 144, "share": 0.3683 },
+				{ "area": "github-data", "lines": 40, "share": 0.1023 },
+				{ "area": "conversation", "lines": 15, "share": 0.0384 },
+				{ "area": "live-updates", "lines": 4, "share": 0.0102 },
+				{ "area": "ui-kit", "lines": 2, "share": 0.0051 }
+			]
+		},
+		"70": {
+			"fix": true,
+			"parts": [
+				{ "area": "github-data", "lines": 124, "share": 0.3139 },
+				{ "area": "review-diff", "lines": 78, "share": 0.1975 },
+				{ "area": "shell", "lines": 58, "share": 0.1468 },
+				{ "area": "pull-request", "lines": 42, "share": 0.1063 },
+				{ "area": "live-updates", "lines": 40, "share": 0.1013 },
+				{ "area": "issues", "lines": 34, "share": 0.0861 },
+				{ "area": "sign-in", "lines": 15, "share": 0.038 },
+				{ "area": "work-lists", "lines": 3, "share": 0.0076 },
+				{ "area": "repos-profiles", "lines": 1, "share": 0.0025 }
+			]
+		},
+		"71": {
+			"fix": true,
+			"parts": [
+				{ "area": "github-data", "lines": 259, "share": 0.8605 },
+				{ "area": "sign-in", "lines": 42, "share": 0.1395 }
+			]
+		},
+		"72": {
+			"fix": false,
+			"parts": [
+				{ "area": "sign-in", "lines": 265, "share": 0.8104 },
+				{ "area": "shell", "lines": 36, "share": 0.1101 },
+				{ "area": "github-data", "lines": 26, "share": 0.0795 }
+			]
+		},
+		"73": {
+			"fix": false,
+			"parts": [
+				{ "area": "repos-profiles", "lines": 22, "share": 0.7333 },
+				{ "area": "live-updates", "lines": 8, "share": 0.2667 }
+			]
+		},
+		"74": {
+			"fix": false,
+			"parts": [
+				{ "area": "preferences", "lines": 600, "share": 0.9539 },
+				{ "area": "shell", "lines": 16, "share": 0.0254 },
+				{ "area": "command-palette", "lines": 10, "share": 0.0159 },
+				{ "area": "ui-kit", "lines": 3, "share": 0.0048 }
+			]
+		},
+		"75": {
+			"fix": false,
+			"parts": [
+				{ "area": "repos-profiles", "lines": 1318, "share": 0.6442 },
+				{ "area": "github-data", "lines": 534, "share": 0.261 },
+				{ "area": "pull-request", "lines": 110, "share": 0.0538 },
+				{ "area": "ui-kit", "lines": 33, "share": 0.0161 },
+				{ "area": "work-lists", "lines": 25, "share": 0.0122 },
+				{ "area": "shell", "lines": 18, "share": 0.0088 },
+				{ "area": "instant-cache", "lines": 8, "share": 0.0039 }
+			]
+		},
+		"76": {
+			"fix": false,
+			"parts": [
+				{ "area": "repos-profiles", "lines": 343, "share": 0.9528 },
+				{ "area": "conversation", "lines": 17, "share": 0.0472 }
+			]
+		},
+		"77": {
+			"fix": false,
+			"parts": [
+				{ "area": "repo-home", "lines": 658, "share": 0.3933 },
+				{ "area": "github-data", "lines": 428, "share": 0.2558 },
+				{ "area": "code-browser", "lines": 419, "share": 0.2504 },
+				{ "area": "live-updates", "lines": 108, "share": 0.0646 },
+				{ "area": "shell", "lines": 40, "share": 0.0239 },
+				{ "area": "ui-kit", "lines": 16, "share": 0.0096 },
+				{ "area": "instant-cache", "lines": 4, "share": 0.0024 }
+			]
+		},
+		"78": {
+			"fix": false,
+			"parts": [
+				{ "area": "review-diff", "lines": 49, "share": 0.4188 },
+				{ "area": "ui-kit", "lines": 29, "share": 0.2479 },
+				{ "area": "shell", "lines": 20, "share": 0.1709 },
+				{ "area": "pull-request", "lines": 13, "share": 0.1111 },
+				{ "area": "issues", "lines": 6, "share": 0.0513 }
+			]
+		},
+		"79": {
+			"fix": false,
+			"parts": [
+				{ "area": "shell", "lines": 224, "share": 0.9655 },
+				{ "area": "github-data", "lines": 4, "share": 0.0172 },
+				{ "area": "pull-request", "lines": 2, "share": 0.0086 },
+				{ "area": "ui-kit", "lines": 2, "share": 0.0086 }
+			]
+		},
+		"80": {
+			"fix": false,
+			"parts": [
+				{ "area": "conversation", "lines": 158, "share": 0.3015 },
+				{ "area": "pull-request", "lines": 132, "share": 0.2519 },
+				{ "area": "shell", "lines": 125, "share": 0.2385 },
+				{ "area": "issues", "lines": 106, "share": 0.2023 },
+				{ "area": "platform-ops", "lines": 1, "share": 0.0019 },
+				{ "area": "repos-profiles", "lines": 1, "share": 0.0019 },
+				{ "area": "ui-kit", "lines": 1, "share": 0.0019 }
+			]
+		},
+		"81": {
+			"fix": false,
+			"parts": [
+				{ "area": "repo-home", "lines": 338, "share": 0.5106 },
+				{ "area": "shell", "lines": 167, "share": 0.2523 },
+				{ "area": "github-data", "lines": 155, "share": 0.2341 },
+				{ "area": "code-browser", "lines": 2, "share": 0.003 }
+			]
+		},
+		"82": {
+			"fix": true,
+			"parts": [{ "area": "shell", "lines": 56, "share": 1 }]
+		},
+		"83": {
+			"fix": true,
+			"parts": [
+				{ "area": "instant-cache", "lines": 30, "share": 0.8108 },
+				{ "area": "github-data", "lines": 7, "share": 0.1892 }
+			]
+		},
+		"84": {
+			"fix": false,
+			"parts": [{ "area": "shell", "lines": 61, "share": 1 }]
+		},
+		"85": {
+			"fix": false,
+			"parts": [
+				{ "area": "sign-in", "lines": 260, "share": 0.3982 },
+				{ "area": "extension", "lines": 222, "share": 0.34 },
+				{ "area": "shell", "lines": 163, "share": 0.2496 },
+				{ "area": "platform-ops", "lines": 7, "share": 0.0107 },
+				{ "area": "ui-kit", "lines": 1, "share": 0.0015 }
+			]
+		},
+		"86": {
+			"fix": false,
+			"parts": [
+				{ "area": "extension", "lines": 46, "share": 0.7931 },
+				{ "area": "platform-ops", "lines": 12, "share": 0.2069 }
+			]
+		},
+		"87": {
+			"fix": true,
+			"parts": [{ "area": "sign-in", "lines": 40, "share": 1 }]
+		},
+		"88": {
+			"fix": false,
+			"parts": [
+				{ "area": "conversation", "lines": 765, "share": 0.4693 },
+				{ "area": "pull-request", "lines": 362, "share": 0.2221 },
+				{ "area": "review-diff", "lines": 273, "share": 0.1675 },
+				{ "area": "ui-kit", "lines": 80, "share": 0.0491 },
+				{ "area": "github-data", "lines": 65, "share": 0.0399 },
+				{ "area": "shell", "lines": 43, "share": 0.0264 },
+				{ "area": "issues", "lines": 42, "share": 0.0258 }
+			]
+		},
+		"89": {
+			"fix": true,
+			"parts": [
+				{ "area": "shell", "lines": 59, "share": 0.831 },
+				{ "area": "repos-profiles", "lines": 10, "share": 0.1408 },
+				{ "area": "repo-home", "lines": 2, "share": 0.0282 }
+			]
+		},
+		"90": {
+			"fix": true,
+			"parts": [
+				{ "area": "github-data", "lines": 3078, "share": 0.7874 },
+				{ "area": "live-updates", "lines": 467, "share": 0.1195 },
+				{ "area": "instant-cache", "lines": 143, "share": 0.0366 },
+				{ "area": "review-diff", "lines": 52, "share": 0.0133 },
+				{ "area": "repos-profiles", "lines": 49, "share": 0.0125 },
+				{ "area": "pull-request", "lines": 42, "share": 0.0107 },
+				{ "area": "issues", "lines": 35, "share": 0.009 },
+				{ "area": "work-lists", "lines": 18, "share": 0.0046 },
+				{ "area": "shell", "lines": 10, "share": 0.0026 },
+				{ "area": "sign-in", "lines": 10, "share": 0.0026 },
+				{ "area": "platform-ops", "lines": 5, "share": 0.0013 }
+			]
+		},
+		"91": {
+			"fix": false,
+			"parts": [
+				{ "area": "shell", "lines": 44, "share": 0.3667 },
+				{ "area": "github-data", "lines": 38, "share": 0.3167 },
+				{ "area": "instant-cache", "lines": 30, "share": 0.25 },
+				{ "area": "work-lists", "lines": 8, "share": 0.0667 }
+			]
+		},
+		"92": {
+			"fix": true,
+			"parts": [
+				{ "area": "github-data", "lines": 48, "share": 0.7742 },
+				{ "area": "instant-cache", "lines": 14, "share": 0.2258 }
+			]
+		},
+		"93": {
+			"fix": true,
+			"parts": [
+				{ "area": "shell", "lines": 156, "share": 0.5417 },
+				{ "area": "github-data", "lines": 132, "share": 0.4583 }
+			]
+		},
+		"96": {
+			"fix": false,
+			"parts": [
+				{ "area": "issues", "lines": 678, "share": 0.9212 },
+				{ "area": "github-data", "lines": 46, "share": 0.0625 },
+				{ "area": "repo-home", "lines": 12, "share": 0.0163 }
+			]
+		},
+		"97": {
+			"fix": false,
+			"parts": [
+				{ "area": "work-lists", "lines": 419, "share": 0.5693 },
+				{ "area": "pull-request", "lines": 159, "share": 0.216 },
+				{ "area": "issues", "lines": 158, "share": 0.2147 }
+			]
+		},
+		"98": {
+			"fix": false,
+			"parts": [
+				{ "area": "live-updates", "lines": 320, "share": 0.6214 },
+				{ "area": "platform-ops", "lines": 75, "share": 0.1456 },
+				{ "area": "work-lists", "lines": 51, "share": 0.099 },
+				{ "area": "repos-profiles", "lines": 21, "share": 0.0408 },
+				{ "area": "github-data", "lines": 20, "share": 0.0388 },
+				{ "area": "review-diff", "lines": 12, "share": 0.0233 },
+				{ "area": "issues", "lines": 8, "share": 0.0155 },
+				{ "area": "pull-request", "lines": 8, "share": 0.0155 }
+			]
+		},
+		"99": {
+			"fix": true,
+			"parts": [
+				{ "area": "extension", "lines": 23, "share": 0.6765 },
+				{ "area": "platform-ops", "lines": 11, "share": 0.3235 }
+			]
+		},
+		"100": {
+			"fix": false,
+			"parts": [
+				{ "area": "live-updates", "lines": 216, "share": 0.9114 },
+				{ "area": "github-data", "lines": 21, "share": 0.0886 }
+			]
+		},
+		"101": {
+			"fix": true,
+			"parts": [
+				{ "area": "shell", "lines": 21, "share": 0.913 },
+				{ "area": "issues", "lines": 2, "share": 0.087 }
+			]
+		},
+		"102": {
+			"fix": false,
+			"parts": [{ "area": "platform-ops", "lines": 20, "share": 1 }]
+		},
+		"103": {
+			"fix": true,
+			"parts": [
+				{ "area": "ui-kit", "lines": 79, "share": 0.5267 },
+				{ "area": "shell", "lines": 54, "share": 0.36 },
+				{ "area": "conversation", "lines": 15, "share": 0.1 },
+				{ "area": "code-browser", "lines": 2, "share": 0.0133 }
+			]
+		},
+		"104": {
+			"fix": false,
+			"parts": [{ "area": "platform-ops", "lines": 488, "share": 1 }]
+		},
+		"105": {
+			"fix": false,
+			"parts": [{ "area": "platform-ops", "lines": 172, "share": 1 }]
+		},
+		"109": {
+			"fix": true,
+			"parts": [
+				{ "area": "repo-home", "lines": 127, "share": 0.5962 },
+				{ "area": "conversation", "lines": 86, "share": 0.4038 }
+			]
+		},
+		"110": {
+			"fix": false,
+			"parts": [
+				{ "area": "pull-request", "lines": 614, "share": 0.3294 },
+				{ "area": "github-data", "lines": 404, "share": 0.2167 },
+				{ "area": "review-diff", "lines": 334, "share": 0.1792 },
+				{ "area": "ui-kit", "lines": 312, "share": 0.1674 },
+				{ "area": "conversation", "lines": 175, "share": 0.0939 },
+				{ "area": "issues", "lines": 25, "share": 0.0134 }
+			]
+		},
+		"111": {
+			"fix": false,
+			"parts": [
+				{ "area": "conversation", "lines": 216, "share": 0.3364 },
+				{ "area": "pull-request", "lines": 213, "share": 0.3318 },
+				{ "area": "issues", "lines": 122, "share": 0.19 },
+				{ "area": "github-data", "lines": 57, "share": 0.0888 },
+				{ "area": "instant-cache", "lines": 20, "share": 0.0312 },
+				{ "area": "platform-ops", "lines": 14, "share": 0.0218 }
+			]
+		},
+		"112": {
+			"fix": true,
+			"parts": [
+				{ "area": "issues", "lines": 221, "share": 0.3333 },
+				{ "area": "pull-request", "lines": 219, "share": 0.3303 },
+				{ "area": "conversation", "lines": 192, "share": 0.2896 },
+				{ "area": "github-data", "lines": 16, "share": 0.0241 },
+				{ "area": "platform-ops", "lines": 15, "share": 0.0226 }
+			]
+		},
+		"113": {
+			"fix": true,
+			"parts": [{ "area": "repo-home", "lines": 28, "share": 1 }]
+		},
+		"114": {
+			"fix": false,
+			"parts": [
+				{ "area": "pull-request", "lines": 85, "share": 0.9043 },
+				{ "area": "github-data", "lines": 9, "share": 0.0957 }
+			]
+		},
+		"117": {
+			"fix": false,
+			"parts": [{ "area": "platform-ops", "lines": 10, "share": 1 }]
+		},
+		"119": {
+			"fix": true,
+			"parts": [
+				{ "area": "issues", "lines": 26, "share": 0.5 },
+				{ "area": "pull-request", "lines": 26, "share": 0.5 }
+			]
+		},
+		"120": {
+			"fix": true,
+			"parts": [
+				{ "area": "pull-request", "lines": 2, "share": 0.3333 },
+				{ "area": "review-diff", "lines": 2, "share": 0.3333 },
+				{ "area": "conversation", "lines": 2, "share": 0.3333 }
+			]
+		},
+		"121": {
+			"fix": true,
+			"parts": [
+				{ "area": "pull-request", "lines": 14, "share": 0.5833 },
+				{ "area": "issues", "lines": 10, "share": 0.4167 }
+			]
+		},
+		"122": {
+			"fix": true,
+			"parts": [
+				{ "area": "pull-request", "lines": 148, "share": 0.5992 },
+				{ "area": "conversation", "lines": 66, "share": 0.2672 },
+				{ "area": "github-data", "lines": 33, "share": 0.1336 }
+			]
+		},
+		"124": {
+			"fix": true,
+			"parts": [
+				{ "area": "shell", "lines": 94, "share": 0.8174 },
+				{ "area": "command-palette", "lines": 19, "share": 0.1652 },
+				{ "area": "preferences", "lines": 2, "share": 0.0174 }
+			]
+		},
+		"125": {
+			"fix": false,
+			"parts": [
+				{ "area": "inbox", "lines": 863, "share": 0.669 },
+				{ "area": "github-data", "lines": 270, "share": 0.2093 },
+				{ "area": "pull-request", "lines": 64, "share": 0.0496 },
+				{ "area": "issues", "lines": 34, "share": 0.0264 },
+				{ "area": "shell", "lines": 29, "share": 0.0225 },
+				{ "area": "ui-kit", "lines": 28, "share": 0.0217 },
+				{ "area": "repos-profiles", "lines": 2, "share": 0.0016 }
+			]
+		},
+		"126": {
+			"fix": false,
+			"parts": [
+				{ "area": "pull-request", "lines": 115, "share": 0.4832 },
+				{ "area": "issues", "lines": 111, "share": 0.4664 },
+				{ "area": "repo-home", "lines": 12, "share": 0.0504 }
+			]
+		},
+		"127": {
+			"fix": false,
+			"parts": [
+				{ "area": "code-browser", "lines": 1873, "share": 0.6609 },
+				{ "area": "review-diff", "lines": 467, "share": 0.1648 },
+				{ "area": "github-data", "lines": 251, "share": 0.0886 },
+				{ "area": "repo-home", "lines": 172, "share": 0.0607 },
+				{ "area": "shell", "lines": 71, "share": 0.0251 }
+			]
+		},
+		"128": {
+			"fix": false,
+			"parts": [
+				{ "area": "repo-home", "lines": 40, "share": 0.7273 },
+				{ "area": "code-browser", "lines": 15, "share": 0.2727 }
+			]
+		},
+		"129": {
+			"fix": false,
+			"parts": [
+				{ "area": "github-data", "lines": 136, "share": 0.8 },
+				{ "area": "platform-ops", "lines": 28, "share": 0.1647 },
+				{ "area": "instant-cache", "lines": 6, "share": 0.0353 }
+			]
+		},
+		"131": {
+			"fix": false,
+			"parts": [
+				{ "area": "conversation", "lines": 27, "share": 0.4737 },
+				{ "area": "command-palette", "lines": 16, "share": 0.2807 },
+				{ "area": "extension", "lines": 13, "share": 0.2281 },
+				{ "area": "preferences", "lines": 1, "share": 0.0175 }
+			]
+		},
+		"133": {
+			"fix": true,
+			"parts": [
+				{ "area": "preferences", "lines": 76, "share": 0.8444 },
+				{ "area": "extension", "lines": 14, "share": 0.1556 }
+			]
+		},
+		"138": {
+			"fix": false,
+			"parts": [
+				{ "area": "shell", "lines": 100, "share": 0.9804 },
+				{ "area": "pull-request", "lines": 1, "share": 0.0098 },
+				{ "area": "review-diff", "lines": 1, "share": 0.0098 }
+			]
+		},
+		"139": {
+			"fix": false,
+			"parts": [
+				{ "area": "github-data", "lines": 580, "share": 0.7223 },
+				{ "area": "sign-in", "lines": 151, "share": 0.188 },
+				{ "area": "instant-cache", "lines": 63, "share": 0.0785 },
+				{ "area": "live-updates", "lines": 9, "share": 0.0112 }
+			]
+		},
+		"140": {
+			"fix": true,
+			"parts": [{ "area": "shell", "lines": 75, "share": 1 }]
+		},
+		"141": {
+			"fix": true,
+			"parts": [{ "area": "sign-in", "lines": 15, "share": 1 }]
+		},
+		"142": {
+			"fix": true,
+			"parts": [{ "area": "github-data", "lines": 19, "share": 1 }]
+		},
+		"143": {
+			"fix": false,
+			"parts": [
+				{ "area": "platform-ops", "lines": 23458, "share": 0.9714 },
+				{ "area": "conversation", "lines": 563, "share": 0.0233 },
+				{ "area": "ui-kit", "lines": 128, "share": 0.0053 }
+			]
+		},
+		"151": {
+			"fix": false,
+			"parts": [
+				{ "area": "conversation", "lines": 847, "share": 0.3497 },
+				{ "area": "github-data", "lines": 691, "share": 0.2853 },
+				{ "area": "repo-home", "lines": 351, "share": 0.1449 },
+				{ "area": "pull-request", "lines": 289, "share": 0.1193 },
+				{ "area": "issues", "lines": 241, "share": 0.0995 },
+				{ "area": "ui-kit", "lines": 3, "share": 0.0012 }
+			]
+		},
+		"152": {
+			"fix": false,
+			"parts": [
+				{ "area": "github-data", "lines": 82, "share": 0.8913 },
+				{ "area": "instant-cache", "lines": 5, "share": 0.0543 },
+				{ "area": "live-updates", "lines": 5, "share": 0.0543 }
+			]
+		},
+		"153": {
+			"fix": false,
+			"parts": [
+				{ "area": "repos-profiles", "lines": 999, "share": 0.6055 },
+				{ "area": "github-data", "lines": 496, "share": 0.3006 },
+				{ "area": "work-lists", "lines": 80, "share": 0.0485 },
+				{ "area": "ui-kit", "lines": 36, "share": 0.0218 },
+				{ "area": "shell", "lines": 17, "share": 0.0103 },
+				{ "area": "command-palette", "lines": 10, "share": 0.0061 },
+				{ "area": "sign-in", "lines": 7, "share": 0.0042 },
+				{ "area": "instant-cache", "lines": 4, "share": 0.0024 },
+				{ "area": "preferences", "lines": 1, "share": 0.0006 }
+			]
+		},
+		"155": {
+			"fix": false,
+			"parts": [
+				{ "area": "github-data", "lines": 127, "share": 0.5381 },
+				{ "area": "shell", "lines": 65, "share": 0.2754 },
+				{ "area": "sign-in", "lines": 44, "share": 0.1864 }
+			]
+		},
+		"156": {
+			"fix": false,
+			"parts": [
+				{ "area": "history-compare", "lines": 346, "share": 0.3372 },
+				{ "area": "repo-home", "lines": 319, "share": 0.3109 },
+				{ "area": "github-data", "lines": 180, "share": 0.1754 },
+				{ "area": "code-browser", "lines": 147, "share": 0.1433 },
+				{ "area": "review-diff", "lines": 20, "share": 0.0195 },
+				{ "area": "shell", "lines": 14, "share": 0.0136 }
+			]
+		},
+		"157": {
+			"fix": false,
+			"parts": [
+				{ "area": "platform-ops", "lines": 340, "share": 0.8252 },
+				{ "area": "storage", "lines": 72, "share": 0.1748 }
+			]
+		},
+		"158": {
+			"fix": false,
+			"parts": [
+				{ "area": "conversation", "lines": 185, "share": 0.9788 },
+				{ "area": "ui-kit", "lines": 4, "share": 0.0212 }
+			]
+		},
+		"159": {
+			"fix": true,
+			"parts": [{ "area": "platform-ops", "lines": 54, "share": 1 }]
+		},
+		"160": {
+			"fix": true,
+			"parts": [{ "area": "live-updates", "lines": 65, "share": 1 }]
+		},
+		"161": {
+			"fix": true,
+			"parts": [{ "area": "live-updates", "lines": 138, "share": 1 }]
+		},
+		"162": {
+			"fix": false,
+			"parts": [
+				{ "area": "review-diff", "lines": 725, "share": 0.6688 },
+				{ "area": "github-data", "lines": 190, "share": 0.1753 },
+				{ "area": "repo-home", "lines": 123, "share": 0.1135 },
+				{ "area": "instant-cache", "lines": 46, "share": 0.0424 }
+			]
+		},
+		"164": {
+			"fix": false,
+			"parts": [
+				{ "area": "pull-request", "lines": 594, "share": 0.4339 },
+				{ "area": "github-data", "lines": 588, "share": 0.4295 },
+				{ "area": "instant-cache", "lines": 58, "share": 0.0424 },
+				{ "area": "live-updates", "lines": 58, "share": 0.0424 },
+				{ "area": "ui-kit", "lines": 40, "share": 0.0292 },
+				{ "area": "issues", "lines": 22, "share": 0.0161 },
+				{ "area": "platform-ops", "lines": 9, "share": 0.0066 }
+			]
+		},
+		"165": {
+			"fix": false,
+			"parts": [
+				{ "area": "history-compare", "lines": 1712, "share": 0.6767 },
+				{ "area": "github-data", "lines": 508, "share": 0.2008 },
+				{ "area": "repo-home", "lines": 167, "share": 0.066 },
+				{ "area": "ui-kit", "lines": 61, "share": 0.0241 },
+				{ "area": "pull-request", "lines": 29, "share": 0.0115 },
+				{ "area": "code-browser", "lines": 25, "share": 0.0099 },
+				{ "area": "issues", "lines": 17, "share": 0.0067 },
+				{ "area": "conversation", "lines": 11, "share": 0.0043 }
+			]
+		},
+		"166": {
+			"fix": true,
+			"parts": [
+				{ "area": "github-data", "lines": 214, "share": 0.6221 },
+				{ "area": "history-compare", "lines": 130, "share": 0.3779 }
+			]
+		},
+		"167": {
+			"fix": false,
+			"parts": [
+				{ "area": "work-lists", "lines": 496, "share": 0.9706 },
+				{ "area": "pull-request", "lines": 15, "share": 0.0294 }
+			]
+		},
+		"172": {
+			"fix": false,
+			"parts": [
+				{ "area": "actions", "lines": 4194, "share": 0.6941 },
+				{ "area": "github-data", "lines": 1136, "share": 0.188 },
+				{ "area": "pull-request", "lines": 277, "share": 0.0458 },
+				{ "area": "work-lists", "lines": 232, "share": 0.0384 },
+				{ "area": "ui-kit", "lines": 126, "share": 0.0209 },
+				{ "area": "repo-home", "lines": 54, "share": 0.0089 },
+				{ "area": "shell", "lines": 11, "share": 0.0018 },
+				{ "area": "live-updates", "lines": 8, "share": 0.0013 },
+				{ "area": "instant-cache", "lines": 4, "share": 0.0007 }
+			]
+		},
+		"173": {
+			"fix": true,
+			"parts": [
+				{ "area": "repos-profiles", "lines": 11, "share": 0.3793 },
+				{ "area": "shell", "lines": 10, "share": 0.3448 },
+				{ "area": "review-diff", "lines": 8, "share": 0.2759 }
+			]
+		},
+		"176": {
+			"fix": true,
+			"parts": [
+				{ "area": "platform-ops", "lines": 12, "share": 0.4 },
+				{ "area": "shell", "lines": 9, "share": 0.3 },
+				{ "area": "issues", "lines": 3, "share": 0.1 },
+				{ "area": "pull-request", "lines": 3, "share": 0.1 },
+				{ "area": "review-diff", "lines": 3, "share": 0.1 }
+			]
+		},
+		"177": {
+			"fix": false,
+			"parts": [
+				{ "area": "history-compare", "lines": 519, "share": 0.5563 },
+				{ "area": "github-data", "lines": 270, "share": 0.2894 },
+				{ "area": "code-browser", "lines": 65, "share": 0.0697 },
+				{ "area": "shell", "lines": 35, "share": 0.0375 },
+				{ "area": "command-palette", "lines": 28, "share": 0.03 },
+				{ "area": "instant-cache", "lines": 12, "share": 0.0129 },
+				{ "area": "live-updates", "lines": 2, "share": 0.0021 },
+				{ "area": "sign-in", "lines": 2, "share": 0.0021 }
+			]
+		},
+		"178": {
+			"fix": false,
+			"parts": [
+				{ "area": "work-lists", "lines": 236, "share": 0.3237 },
+				{ "area": "conversation", "lines": 171, "share": 0.2346 },
+				{ "area": "pull-request", "lines": 131, "share": 0.1797 },
+				{ "area": "issues", "lines": 113, "share": 0.155 },
+				{ "area": "shell", "lines": 38, "share": 0.0521 },
+				{ "area": "history-compare", "lines": 31, "share": 0.0425 },
+				{ "area": "command-palette", "lines": 9, "share": 0.0123 }
+			]
+		},
+		"179": {
+			"fix": false,
+			"parts": [
+				{ "area": "github-data", "lines": 670, "share": 0.4437 },
+				{ "area": "instant-cache", "lines": 305, "share": 0.202 },
+				{ "area": "live-updates", "lines": 265, "share": 0.1755 },
+				{ "area": "repo-home", "lines": 94, "share": 0.0623 },
+				{ "area": "pull-request", "lines": 90, "share": 0.0596 },
+				{ "area": "repos-profiles", "lines": 56, "share": 0.0371 },
+				{ "area": "inbox", "lines": 22, "share": 0.0146 },
+				{ "area": "conversation", "lines": 8, "share": 0.0053 }
+			]
+		},
+		"180": {
+			"fix": false,
+			"parts": [
+				{ "area": "pull-request", "lines": 111, "share": 0.7929 },
+				{ "area": "github-data", "lines": 29, "share": 0.2071 }
+			]
+		},
+		"181": {
+			"fix": false,
+			"parts": [{ "area": "ui-kit", "lines": 74, "share": 1 }]
+		},
+		"183": {
+			"fix": false,
+			"parts": [
+				{ "area": "pull-request", "lines": 22, "share": 0.2785 },
+				{ "area": "conversation", "lines": 20, "share": 0.2532 },
+				{ "area": "review-diff", "lines": 19, "share": 0.2405 },
+				{ "area": "issues", "lines": 11, "share": 0.1392 },
+				{ "area": "history-compare", "lines": 7, "share": 0.0886 }
+			]
+		},
+		"187": {
+			"fix": false,
+			"parts": [
+				{ "area": "instant-cache", "lines": 37, "share": 0.4458 },
+				{ "area": "review-diff", "lines": 36, "share": 0.4337 },
+				{ "area": "history-compare", "lines": 8, "share": 0.0964 },
+				{ "area": "code-browser", "lines": 2, "share": 0.0241 }
+			]
+		},
+		"189": {
+			"fix": false,
+			"parts": [
+				{ "area": "instant-cache", "lines": 854, "share": 0.3147 },
+				{ "area": "github-data", "lines": 699, "share": 0.2576 },
+				{ "area": "live-updates", "lines": 652, "share": 0.2402 },
+				{ "area": "repo-home", "lines": 115, "share": 0.0424 },
+				{ "area": "actions", "lines": 83, "share": 0.0306 },
+				{ "area": "platform-ops", "lines": 80, "share": 0.0295 },
+				{ "area": "pull-request", "lines": 60, "share": 0.0221 },
+				{ "area": "repos-profiles", "lines": 55, "share": 0.0203 },
+				{ "area": "work-lists", "lines": 45, "share": 0.0166 },
+				{ "area": "review-diff", "lines": 43, "share": 0.0158 },
+				{ "area": "inbox", "lines": 16, "share": 0.0059 },
+				{ "area": "issues", "lines": 12, "share": 0.0044 }
+			]
+		},
+		"190": {
+			"fix": false,
+			"parts": [
+				{ "area": "ui-kit", "lines": 16085, "share": 0.8843 },
+				{ "area": "conversation", "lines": 2105, "share": 0.1157 }
+			]
+		},
+		"191": {
+			"fix": false,
+			"parts": [
+				{ "area": "pull-request", "lines": 945, "share": 0.5048 },
+				{ "area": "conversation", "lines": 570, "share": 0.3045 },
+				{ "area": "github-data", "lines": 322, "share": 0.172 },
+				{ "area": "shell", "lines": 22, "share": 0.0118 },
+				{ "area": "command-palette", "lines": 10, "share": 0.0053 },
+				{ "area": "review-diff", "lines": 3, "share": 0.0016 }
+			]
+		},
+		"192": {
+			"fix": false,
+			"parts": [
+				{ "area": "history-compare", "lines": 2738, "share": 0.3807 },
+				{ "area": "releases", "lines": 2459, "share": 0.3419 },
+				{ "area": "github-data", "lines": 1413, "share": 0.1965 },
+				{ "area": "repo-home", "lines": 427, "share": 0.0594 },
+				{ "area": "command-palette", "lines": 73, "share": 0.0102 },
+				{ "area": "code-browser", "lines": 48, "share": 0.0067 },
+				{ "area": "shell", "lines": 34, "share": 0.0047 }
+			]
+		},
+		"193": {
+			"fix": true,
+			"parts": [
+				{ "area": "instant-cache", "lines": 1771, "share": 0.7107 },
+				{ "area": "live-updates", "lines": 533, "share": 0.2139 },
+				{ "area": "platform-ops", "lines": 68, "share": 0.0273 },
+				{ "area": "storage", "lines": 59, "share": 0.0237 },
+				{ "area": "command-palette", "lines": 40, "share": 0.0161 },
+				{ "area": "github-data", "lines": 21, "share": 0.0084 }
+			]
+		},
+		"194": {
+			"fix": false,
+			"parts": [{ "area": "instant-cache", "lines": 186, "share": 1 }]
+		},
+		"195": {
+			"fix": false,
+			"parts": [
+				{ "area": "instant-cache", "lines": 1608, "share": 0.5217 },
+				{ "area": "sign-in", "lines": 632, "share": 0.2051 },
+				{ "area": "live-updates", "lines": 205, "share": 0.0665 },
+				{ "area": "shell", "lines": 152, "share": 0.0493 },
+				{ "area": "work-lists", "lines": 116, "share": 0.0376 },
+				{ "area": "issues", "lines": 115, "share": 0.0373 },
+				{ "area": "pull-request", "lines": 105, "share": 0.0341 },
+				{ "area": "github-data", "lines": 98, "share": 0.0318 },
+				{ "area": "command-palette", "lines": 23, "share": 0.0075 },
+				{ "area": "ui-kit", "lines": 18, "share": 0.0058 },
+				{ "area": "repos-profiles", "lines": 10, "share": 0.0032 }
+			]
+		},
+		"196": {
+			"fix": false,
+			"parts": [
+				{ "area": "emulator", "lines": 12528, "share": 0.9689 },
+				{ "area": "sign-in", "lines": 197, "share": 0.0152 },
+				{ "area": "platform-ops", "lines": 185, "share": 0.0143 },
+				{ "area": "github-data", "lines": 20, "share": 0.0015 }
+			]
+		},
+		"197": {
+			"fix": false,
+			"parts": [
+				{ "area": "live-updates", "lines": 1863, "share": 0.6915 },
+				{ "area": "github-data", "lines": 469, "share": 0.1741 },
+				{ "area": "storage", "lines": 169, "share": 0.0627 },
+				{ "area": "instant-cache", "lines": 110, "share": 0.0408 },
+				{ "area": "pull-request", "lines": 35, "share": 0.013 },
+				{ "area": "platform-ops", "lines": 30, "share": 0.0111 },
+				{ "area": "review-diff", "lines": 15, "share": 0.0056 },
+				{ "area": "shell", "lines": 3, "share": 0.0011 }
+			]
+		},
+		"198": {
+			"fix": false,
+			"parts": [{ "area": "storage", "lines": 16, "share": 1 }]
+		},
+		"199": {
+			"fix": false,
+			"parts": [
+				{ "area": "platform-ops", "lines": 30, "share": 0.4839 },
+				{ "area": "live-updates", "lines": 20, "share": 0.3226 },
+				{ "area": "conversation", "lines": 6, "share": 0.0968 },
+				{ "area": "sign-in", "lines": 4, "share": 0.0645 },
+				{ "area": "storage", "lines": 2, "share": 0.0323 }
+			]
+		},
+		"200": {
+			"fix": true,
+			"parts": [
+				{ "area": "sign-in", "lines": 1414, "share": 0.3837 },
+				{ "area": "live-updates", "lines": 1391, "share": 0.3775 },
+				{ "area": "platform-ops", "lines": 405, "share": 0.1099 },
+				{ "area": "conversation", "lines": 317, "share": 0.086 },
+				{ "area": "storage", "lines": 158, "share": 0.0429 }
+			]
+		},
+		"201": {
+			"fix": false,
+			"parts": [
+				{ "area": "github-data", "lines": 18445, "share": 0.6491 },
+				{ "area": "pull-request", "lines": 2290, "share": 0.0806 },
+				{ "area": "repos-profiles", "lines": 1464, "share": 0.0515 },
+				{ "area": "work-lists", "lines": 1303, "share": 0.0459 },
+				{ "area": "review-diff", "lines": 1161, "share": 0.0409 },
+				{ "area": "actions", "lines": 843, "share": 0.0297 },
+				{ "area": "issues", "lines": 787, "share": 0.0277 },
+				{ "area": "history-compare", "lines": 711, "share": 0.025 },
+				{ "area": "conversation", "lines": 382, "share": 0.0134 },
+				{ "area": "code-browser", "lines": 365, "share": 0.0128 },
+				{ "area": "releases", "lines": 345, "share": 0.0121 },
+				{ "area": "inbox", "lines": 272, "share": 0.0096 },
+				{ "area": "emulator", "lines": 48, "share": 0.0017 }
+			]
+		},
+		"202": {
+			"fix": false,
+			"parts": [
+				{ "area": "sign-in", "lines": 278, "share": 0.4441 },
+				{ "area": "github-data", "lines": 165, "share": 0.2636 },
+				{ "area": "live-updates", "lines": 88, "share": 0.1406 },
+				{ "area": "storage", "lines": 77, "share": 0.123 },
+				{ "area": "platform-ops", "lines": 11, "share": 0.0176 },
+				{ "area": "emulator", "lines": 7, "share": 0.0112 }
+			]
+		},
+		"203": {
+			"fix": false,
+			"parts": [
+				{ "area": "platform-ops", "lines": 747, "share": 0.6073 },
+				{ "area": "storage", "lines": 458, "share": 0.3724 },
+				{ "area": "instant-cache", "lines": 25, "share": 0.0203 }
+			]
+		},
+		"204": {
+			"fix": true,
+			"parts": [
+				{ "area": "platform-ops", "lines": 455, "share": 0.6519 },
+				{ "area": "emulator", "lines": 243, "share": 0.3481 }
+			]
+		},
+		"205": {
+			"fix": false,
+			"parts": [{ "area": "emulator", "lines": 1007, "share": 1 }]
+		},
+		"206": {
+			"fix": false,
+			"parts": [
+				{ "area": "instant-cache", "lines": 679, "share": 0.1856 },
+				{ "area": "github-data", "lines": 620, "share": 0.1694 },
+				{ "area": "repos-profiles", "lines": 439, "share": 0.12 },
+				{ "area": "pull-request", "lines": 342, "share": 0.0935 },
+				{ "area": "conversation", "lines": 287, "share": 0.0784 },
+				{ "area": "live-updates", "lines": 250, "share": 0.0683 },
+				{ "area": "issues", "lines": 197, "share": 0.0538 },
+				{ "area": "history-compare", "lines": 192, "share": 0.0525 },
+				{ "area": "review-diff", "lines": 187, "share": 0.0511 },
+				{ "area": "work-lists", "lines": 132, "share": 0.0361 },
+				{ "area": "actions", "lines": 126, "share": 0.0344 },
+				{ "area": "releases", "lines": 95, "share": 0.026 },
+				{ "area": "code-browser", "lines": 78, "share": 0.0213 },
+				{ "area": "inbox", "lines": 28, "share": 0.0077 },
+				{ "area": "platform-ops", "lines": 7, "share": 0.0019 }
+			]
+		},
+		"207": {
+			"fix": false,
+			"parts": [{ "area": "platform-ops", "lines": 325, "share": 1 }]
+		},
+		"208": {
+			"fix": false,
+			"parts": [
+				{ "area": "history-compare", "lines": 2193, "share": 0.1745 },
+				{ "area": "review-diff", "lines": 1607, "share": 0.1279 },
+				{ "area": "repo-home", "lines": 1340, "share": 0.1067 },
+				{ "area": "pull-request", "lines": 1249, "share": 0.0994 },
+				{ "area": "work-lists", "lines": 1238, "share": 0.0985 },
+				{ "area": "ui-kit", "lines": 1126, "share": 0.0896 },
+				{ "area": "code-browser", "lines": 1125, "share": 0.0895 },
+				{ "area": "conversation", "lines": 772, "share": 0.0614 },
+				{ "area": "issues", "lines": 596, "share": 0.0474 },
+				{ "area": "releases", "lines": 449, "share": 0.0357 },
+				{ "area": "repos-profiles", "lines": 262, "share": 0.0209 },
+				{ "area": "actions", "lines": 219, "share": 0.0174 },
+				{ "area": "shell", "lines": 169, "share": 0.0135 },
+				{ "area": "preferences", "lines": 101, "share": 0.008 },
+				{ "area": "inbox", "lines": 51, "share": 0.0041 },
+				{ "area": "sign-in", "lines": 38, "share": 0.003 },
+				{ "area": "emulator", "lines": 13, "share": 0.001 },
+				{ "area": "command-palette", "lines": 10, "share": 0.0008 },
+				{ "area": "extension", "lines": 6, "share": 0.0005 }
+			]
+		},
+		"209": {
+			"fix": false,
+			"parts": [
+				{ "area": "history-compare", "lines": 3360, "share": 0.904 },
+				{ "area": "emulator", "lines": 162, "share": 0.0436 },
+				{ "area": "repo-home", "lines": 65, "share": 0.0175 },
+				{ "area": "github-data", "lines": 54, "share": 0.0145 },
+				{ "area": "issues", "lines": 45, "share": 0.0121 },
+				{ "area": "live-updates", "lines": 17, "share": 0.0046 },
+				{ "area": "pull-request", "lines": 12, "share": 0.0032 },
+				{ "area": "repos-profiles", "lines": 2, "share": 0.0005 }
+			]
+		},
+		"210": {
+			"fix": false,
+			"parts": [
+				{ "area": "repo-settings", "lines": 4685, "share": 0.5161 },
+				{ "area": "emulator", "lines": 3477, "share": 0.3831 },
+				{ "area": "github-data", "lines": 789, "share": 0.0869 },
+				{ "area": "issues", "lines": 42, "share": 0.0046 },
+				{ "area": "live-updates", "lines": 34, "share": 0.0037 },
+				{ "area": "ui-kit", "lines": 25, "share": 0.0028 },
+				{ "area": "repo-home", "lines": 21, "share": 0.0023 },
+				{ "area": "instant-cache", "lines": 4, "share": 0.0004 }
+			]
+		},
+		"211": {
+			"fix": false,
+			"parts": [
+				{ "area": "conversation", "lines": 2621, "share": 0.9364 },
+				{ "area": "github-data", "lines": 88, "share": 0.0314 },
+				{ "area": "pull-request", "lines": 36, "share": 0.0129 },
+				{ "area": "issues", "lines": 20, "share": 0.0071 },
+				{ "area": "review-diff", "lines": 12, "share": 0.0043 },
+				{ "area": "releases", "lines": 8, "share": 0.0029 },
+				{ "area": "instant-cache", "lines": 8, "share": 0.0029 },
+				{ "area": "ui-kit", "lines": 6, "share": 0.0021 }
+			]
+		},
+		"212": {
+			"fix": false,
+			"parts": [
+				{ "area": "code-browser", "lines": 5338, "share": 0.8842 },
+				{ "area": "emulator", "lines": 388, "share": 0.0643 },
+				{ "area": "repo-home", "lines": 250, "share": 0.0414 },
+				{ "area": "github-data", "lines": 57, "share": 0.0094 },
+				{ "area": "instant-cache", "lines": 4, "share": 0.0007 }
+			]
+		},
+		"213": {
+			"fix": false,
+			"parts": [
+				{ "area": "shell", "lines": 3136, "share": 0.903 },
+				{ "area": "command-palette", "lines": 131, "share": 0.0377 },
+				{ "area": "issues", "lines": 89, "share": 0.0256 },
+				{ "area": "emulator", "lines": 53, "share": 0.0153 },
+				{ "area": "ui-kit", "lines": 40, "share": 0.0115 },
+				{ "area": "preferences", "lines": 24, "share": 0.0069 }
+			]
+		},
+		"214": {
+			"fix": false,
+			"parts": [
+				{ "area": "repo-settings", "lines": 1744, "share": 0.7409 },
+				{ "area": "github-data", "lines": 446, "share": 0.1895 },
+				{ "area": "emulator", "lines": 124, "share": 0.0527 },
+				{ "area": "live-updates", "lines": 29, "share": 0.0123 },
+				{ "area": "preferences", "lines": 11, "share": 0.0047 }
+			]
+		},
+		"215": {
+			"fix": false,
+			"parts": [{ "area": "emulator", "lines": 30, "share": 1 }]
+		},
+		"216": {
+			"fix": false,
+			"parts": [
+				{ "area": "inbox", "lines": 2049, "share": 0.6977 },
+				{ "area": "conversation", "lines": 454, "share": 0.1546 },
+				{ "area": "review-diff", "lines": 234, "share": 0.0797 },
+				{ "area": "emulator", "lines": 107, "share": 0.0364 },
+				{ "area": "pull-request", "lines": 43, "share": 0.0146 },
+				{ "area": "issues", "lines": 27, "share": 0.0092 },
+				{ "area": "github-data", "lines": 23, "share": 0.0078 }
+			]
+		},
+		"217": {
+			"fix": false,
+			"parts": [{ "area": "platform-ops", "lines": 16, "share": 1 }]
+		},
+		"218": {
+			"fix": false,
+			"parts": [
+				{ "area": "work-lists", "lines": 3084, "share": 0.2429 },
+				{ "area": "repos-profiles", "lines": 2469, "share": 0.1945 },
+				{ "area": "shell", "lines": 1372, "share": 0.1081 },
+				{ "area": "ui-kit", "lines": 1030, "share": 0.0811 },
+				{ "area": "command-palette", "lines": 977, "share": 0.077 },
+				{ "area": "pull-request", "lines": 955, "share": 0.0752 },
+				{ "area": "conversation", "lines": 623, "share": 0.0491 },
+				{ "area": "repo-home", "lines": 547, "share": 0.0431 },
+				{ "area": "preferences", "lines": 367, "share": 0.0289 },
+				{ "area": "issues", "lines": 327, "share": 0.0258 },
+				{ "area": "actions", "lines": 253, "share": 0.0199 },
+				{ "area": "releases", "lines": 212, "share": 0.0167 },
+				{ "area": "review-diff", "lines": 209, "share": 0.0165 },
+				{ "area": "emulator", "lines": 135, "share": 0.0106 },
+				{ "area": "history-compare", "lines": 86, "share": 0.0068 },
+				{ "area": "code-browser", "lines": 42, "share": 0.0033 },
+				{ "area": "github-data", "lines": 6, "share": 0.0005 }
+			]
+		},
+		"219": {
+			"fix": false,
+			"parts": [
+				{ "area": "history-compare", "lines": 1098, "share": 0.1892 },
+				{ "area": "pull-request", "lines": 746, "share": 0.1285 },
+				{ "area": "repo-home", "lines": 716, "share": 0.1234 },
+				{ "area": "repo-settings", "lines": 561, "share": 0.0967 },
+				{ "area": "actions", "lines": 533, "share": 0.0918 },
+				{ "area": "issues", "lines": 522, "share": 0.0899 },
+				{ "area": "conversation", "lines": 459, "share": 0.0791 },
+				{ "area": "code-browser", "lines": 414, "share": 0.0713 },
+				{ "area": "repos-profiles", "lines": 379, "share": 0.0653 },
+				{ "area": "releases", "lines": 217, "share": 0.0374 },
+				{ "area": "ui-kit", "lines": 89, "share": 0.0153 },
+				{ "area": "command-palette", "lines": 38, "share": 0.0065 },
+				{ "area": "shell", "lines": 24, "share": 0.0041 },
+				{ "area": "emulator", "lines": 8, "share": 0.0014 }
+			]
+		},
+		"220": {
+			"fix": false,
+			"parts": [
+				{ "area": "history-compare", "lines": 1386, "share": 0.4341 },
+				{ "area": "repo-home", "lines": 727, "share": 0.2277 },
+				{ "area": "code-browser", "lines": 286, "share": 0.0896 },
+				{ "area": "review-diff", "lines": 258, "share": 0.0808 },
+				{ "area": "shell", "lines": 212, "share": 0.0664 },
+				{ "area": "releases", "lines": 173, "share": 0.0542 },
+				{ "area": "ui-kit", "lines": 114, "share": 0.0357 },
+				{ "area": "work-lists", "lines": 23, "share": 0.0072 },
+				{ "area": "command-palette", "lines": 8, "share": 0.0025 },
+				{ "area": "repos-profiles", "lines": 2, "share": 0.0006 },
+				{ "area": "actions", "lines": 2, "share": 0.0006 },
+				{ "area": "emulator", "lines": 2, "share": 0.0006 }
+			]
+		},
+		"221": {
+			"fix": false,
+			"parts": [
+				{ "area": "review-diff", "lines": 4638, "share": 0.6911 },
+				{ "area": "code-browser", "lines": 712, "share": 0.1061 },
+				{ "area": "emulator", "lines": 700, "share": 0.1043 },
+				{ "area": "repo-home", "lines": 319, "share": 0.0475 },
+				{ "area": "history-compare", "lines": 162, "share": 0.0241 },
+				{ "area": "ui-kit", "lines": 87, "share": 0.013 },
+				{ "area": "pull-request", "lines": 50, "share": 0.0075 },
+				{ "area": "platform-ops", "lines": 28, "share": 0.0042 },
+				{ "area": "sign-in", "lines": 6, "share": 0.0009 },
+				{ "area": "repos-profiles", "lines": 5, "share": 0.0007 },
+				{ "area": "conversation", "lines": 4, "share": 0.0006 }
+			]
+		},
+		"222": {
+			"fix": false,
+			"parts": [
+				{ "area": "platform-ops", "lines": 14079, "share": 0.9541 },
+				{ "area": "storage", "lines": 216, "share": 0.0146 },
+				{ "area": "github-data", "lines": 136, "share": 0.0092 },
+				{ "area": "emulator", "lines": 99, "share": 0.0067 },
+				{ "area": "pull-request", "lines": 32, "share": 0.0022 },
+				{ "area": "repos-profiles", "lines": 28, "share": 0.0019 },
+				{ "area": "review-diff", "lines": 28, "share": 0.0019 },
+				{ "area": "conversation", "lines": 24, "share": 0.0016 },
+				{ "area": "issues", "lines": 24, "share": 0.0016 },
+				{ "area": "actions", "lines": 18, "share": 0.0012 },
+				{ "area": "code-browser", "lines": 16, "share": 0.0011 },
+				{ "area": "history-compare", "lines": 14, "share": 0.0009 },
+				{ "area": "releases", "lines": 12, "share": 0.0008 },
+				{ "area": "inbox", "lines": 8, "share": 0.0005 },
+				{ "area": "shell", "lines": 6, "share": 0.0004 },
+				{ "area": "sign-in", "lines": 6, "share": 0.0004 },
+				{ "area": "work-lists", "lines": 6, "share": 0.0004 },
+				{ "area": "instant-cache", "lines": 4, "share": 0.0003 }
+			]
+		},
+		"223": {
+			"fix": false,
+			"parts": [
+				{ "area": "history-compare", "lines": 156, "share": 0.2396 },
+				{ "area": "actions", "lines": 136, "share": 0.2089 },
+				{ "area": "work-lists", "lines": 111, "share": 0.1705 },
+				{ "area": "releases", "lines": 111, "share": 0.1705 },
+				{ "area": "issues", "lines": 79, "share": 0.1214 },
+				{ "area": "pull-request", "lines": 58, "share": 0.0891 }
+			]
+		},
+		"224": {
+			"fix": false,
+			"parts": [
+				{ "area": "ui-kit", "lines": 168, "share": 0.5367 },
+				{ "area": "repo-home", "lines": 101, "share": 0.3227 },
+				{ "area": "pull-request", "lines": 26, "share": 0.0831 },
+				{ "area": "conversation", "lines": 14, "share": 0.0447 },
+				{ "area": "review-diff", "lines": 4, "share": 0.0128 }
+			]
+		},
+		"225": {
+			"fix": true,
+			"parts": [
+				{ "area": "pull-request", "lines": 136, "share": 0.8047 },
+				{ "area": "emulator", "lines": 24, "share": 0.142 },
+				{ "area": "work-lists", "lines": 6, "share": 0.0355 },
+				{ "area": "github-data", "lines": 3, "share": 0.0178 }
+			]
+		},
+		"226": {
+			"fix": false,
+			"parts": [
+				{ "area": "sign-in", "lines": 1645, "share": 0.7871 },
+				{ "area": "repos-profiles", "lines": 308, "share": 0.1474 },
+				{ "area": "emulator", "lines": 63, "share": 0.0301 },
+				{ "area": "ui-kit", "lines": 28, "share": 0.0134 },
+				{ "area": "github-data", "lines": 15, "share": 0.0072 },
+				{ "area": "conversation", "lines": 13, "share": 0.0062 },
+				{ "area": "shell", "lines": 8, "share": 0.0038 },
+				{ "area": "work-lists", "lines": 7, "share": 0.0033 },
+				{ "area": "pull-request", "lines": 2, "share": 0.001 },
+				{ "area": "platform-ops", "lines": 1, "share": 0.0005 }
+			]
+		},
+		"227": {
+			"fix": false,
+			"parts": [
+				{ "area": "conversation", "lines": 614, "share": 0.6196 },
+				{ "area": "review-diff", "lines": 191, "share": 0.1927 },
+				{ "area": "github-data", "lines": 110, "share": 0.111 },
+				{ "area": "emulator", "lines": 26, "share": 0.0262 },
+				{ "area": "sign-in", "lines": 22, "share": 0.0222 },
+				{ "area": "shell", "lines": 13, "share": 0.0131 },
+				{ "area": "command-palette", "lines": 10, "share": 0.0101 },
+				{ "area": "instant-cache", "lines": 5, "share": 0.005 }
+			]
+		},
+		"228": {
+			"fix": true,
+			"parts": [{ "area": "emulator", "lines": 26, "share": 1 }]
+		},
+		"229": {
+			"fix": false,
+			"parts": [
+				{ "area": "review-diff", "lines": 1097, "share": 0.6483 },
+				{ "area": "conversation", "lines": 296, "share": 0.1749 },
+				{ "area": "ui-kit", "lines": 166, "share": 0.0981 },
+				{ "area": "issues", "lines": 63, "share": 0.0372 },
+				{ "area": "history-compare", "lines": 37, "share": 0.0219 },
+				{ "area": "pull-request", "lines": 33, "share": 0.0195 }
+			]
+		},
+		"230": {
+			"fix": false,
+			"parts": [
+				{ "area": "work-lists", "lines": 1893, "share": 0.8871 },
+				{ "area": "emulator", "lines": 109, "share": 0.0511 },
+				{ "area": "live-updates", "lines": 105, "share": 0.0492 },
+				{ "area": "pull-request", "lines": 13, "share": 0.0061 },
+				{ "area": "preferences", "lines": 9, "share": 0.0042 },
+				{ "area": "issues", "lines": 5, "share": 0.0023 }
+			]
+		},
+		"231": {
+			"fix": false,
+			"parts": [
+				{ "area": "work-lists", "lines": 351, "share": 0.3165 },
+				{ "area": "ui-kit", "lines": 302, "share": 0.2723 },
+				{ "area": "review-diff", "lines": 106, "share": 0.0956 },
+				{ "area": "code-browser", "lines": 94, "share": 0.0848 },
+				{ "area": "repo-home", "lines": 92, "share": 0.083 },
+				{ "area": "conversation", "lines": 89, "share": 0.0803 },
+				{ "area": "shell", "lines": 23, "share": 0.0207 },
+				{ "area": "history-compare", "lines": 21, "share": 0.0189 },
+				{ "area": "actions", "lines": 16, "share": 0.0144 },
+				{ "area": "preferences", "lines": 10, "share": 0.009 },
+				{ "area": "extension", "lines": 5, "share": 0.0045 }
+			]
+		},
+		"232": {
+			"fix": false,
+			"parts": [
+				{ "area": "sign-in", "lines": 62, "share": 0.6526 },
+				{ "area": "emulator", "lines": 33, "share": 0.3474 }
+			]
+		},
+		"233": {
+			"fix": false,
+			"parts": [
+				{ "area": "live-updates", "lines": 173, "share": 0.6245 },
+				{ "area": "storage", "lines": 59, "share": 0.213 },
+				{ "area": "instant-cache", "lines": 24, "share": 0.0866 },
+				{ "area": "emulator", "lines": 21, "share": 0.0758 }
+			]
+		},
+		"234": {
+			"fix": false,
+			"parts": [
+				{ "area": "work-lists", "lines": 472, "share": 0.3251 },
+				{ "area": "shell", "lines": 240, "share": 0.1653 },
+				{ "area": "repos-profiles", "lines": 178, "share": 0.1226 },
+				{ "area": "sign-in", "lines": 114, "share": 0.0785 },
+				{ "area": "history-compare", "lines": 85, "share": 0.0585 },
+				{ "area": "repo-settings", "lines": 75, "share": 0.0517 },
+				{ "area": "code-browser", "lines": 70, "share": 0.0482 },
+				{ "area": "releases", "lines": 64, "share": 0.0441 },
+				{ "area": "actions", "lines": 32, "share": 0.022 },
+				{ "area": "issues", "lines": 32, "share": 0.022 },
+				{ "area": "pull-request", "lines": 24, "share": 0.0165 },
+				{ "area": "review-diff", "lines": 16, "share": 0.011 },
+				{ "area": "platform-ops", "lines": 14, "share": 0.0096 },
+				{ "area": "inbox", "lines": 14, "share": 0.0096 },
+				{ "area": "repo-home", "lines": 13, "share": 0.009 },
+				{ "area": "preferences", "lines": 9, "share": 0.0062 }
+			]
+		},
+		"235": {
+			"fix": false,
+			"parts": [
+				{ "area": "issues", "lines": 566, "share": 0.3942 },
+				{ "area": "actions", "lines": 402, "share": 0.2799 },
+				{ "area": "history-compare", "lines": 160, "share": 0.1114 },
+				{ "area": "inbox", "lines": 119, "share": 0.0829 },
+				{ "area": "code-browser", "lines": 70, "share": 0.0487 },
+				{ "area": "ui-kit", "lines": 61, "share": 0.0425 },
+				{ "area": "conversation", "lines": 34, "share": 0.0237 },
+				{ "area": "command-palette", "lines": 17, "share": 0.0118 },
+				{ "area": "pull-request", "lines": 7, "share": 0.0049 }
+			]
+		},
+		"236": {
+			"fix": false,
+			"parts": [
+				{ "area": "pull-request", "lines": 5754, "share": 0.6961 },
+				{ "area": "issues", "lines": 1262, "share": 0.1527 },
+				{ "area": "conversation", "lines": 1250, "share": 0.1512 }
+			]
+		},
+		"237": {
+			"fix": false,
+			"parts": [{ "area": "review-diff", "lines": 2541, "share": 1 }]
+		},
+		"238": {
+			"fix": false,
+			"parts": [
+				{ "area": "pull-request", "lines": 4431, "share": 0.3772 },
+				{ "area": "github-data", "lines": 1622, "share": 0.1381 },
+				{ "area": "work-lists", "lines": 1601, "share": 0.1363 },
+				{ "area": "repos-profiles", "lines": 1045, "share": 0.089 },
+				{ "area": "review-diff", "lines": 791, "share": 0.0673 },
+				{ "area": "repo-home", "lines": 740, "share": 0.063 },
+				{ "area": "history-compare", "lines": 658, "share": 0.056 },
+				{ "area": "inbox", "lines": 388, "share": 0.033 },
+				{ "area": "actions", "lines": 171, "share": 0.0146 },
+				{ "area": "issues", "lines": 128, "share": 0.0109 },
+				{ "area": "conversation", "lines": 113, "share": 0.0096 },
+				{ "area": "instant-cache", "lines": 52, "share": 0.0044 },
+				{ "area": "code-browser", "lines": 7, "share": 0.0006 }
+			]
+		},
+		"239": {
+			"fix": false,
+			"parts": [
+				{ "area": "instant-cache", "lines": 614, "share": 0.8759 },
+				{ "area": "platform-ops", "lines": 62, "share": 0.0884 },
+				{ "area": "shell", "lines": 25, "share": 0.0357 }
+			]
+		},
+		"240": {
+			"fix": false,
+			"parts": [
+				{ "area": "ui-kit", "lines": 4080, "share": 0.5636 },
+				{ "area": "work-lists", "lines": 1906, "share": 0.2633 },
+				{ "area": "releases", "lines": 1152, "share": 0.1591 },
+				{ "area": "shell", "lines": 63, "share": 0.0087 },
+				{ "area": "repo-settings", "lines": 22, "share": 0.003 },
+				{ "area": "pull-request", "lines": 14, "share": 0.0019 },
+				{ "area": "review-diff", "lines": 2, "share": 0.0003 }
+			]
+		},
+		"241": {
+			"fix": false,
+			"parts": [
+				{ "area": "history-compare", "lines": 750, "share": 0.4373 },
+				{ "area": "issues", "lines": 686, "share": 0.4 },
+				{ "area": "conversation", "lines": 252, "share": 0.1469 },
+				{ "area": "ui-kit", "lines": 19, "share": 0.0111 },
+				{ "area": "emulator", "lines": 8, "share": 0.0047 }
+			]
+		}
+	}
+}

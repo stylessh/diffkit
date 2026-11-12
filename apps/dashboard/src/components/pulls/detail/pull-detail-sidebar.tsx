@@ -24,6 +24,7 @@ import {
 	PanelPickerEmpty,
 } from "#/components/details/panel-picker";
 import { LabelsSection } from "#/components/issues/labels-section";
+import { PullProductAreas } from "#/components/product-map/work/pull-footprint";
 import { PickerSkeletonRows } from "#/components/shared/picker-skeleton-rows";
 import {
 	removeReviewRequest,
@@ -76,6 +77,8 @@ export function PullDetailSidebar({
 				pullNumber={pullNumber}
 				scope={scope}
 			/>
+
+			<PullProductAreas owner={owner} repo={repo} pullNumber={pullNumber} />
 		</DetailSidebar>
 	);
 }
