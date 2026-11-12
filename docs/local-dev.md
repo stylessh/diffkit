@@ -29,24 +29,33 @@ and how: [local-demo-mode.md](local-demo-mode.md).
 
 ## Real GitHub
 
-1. Create a GitHub OAuth App and a GitHub App, and install the App
-   ([README, steps 2–4](../README.md#2-create-a-github-oauth-app)).
-2. Credentials:
+1. Create the GitHub apps and `.env`:
    ```sh
-   cp apps/dashboard/env.example apps/dashboard/.env
+   pnpm setup:github        # --tunnel https://<your tunnel> also turns webhooks on
    ```
-   Fill in the values ([README, step 5](../README.md#5-configure-environment-variables)).
+   It opens a local page with three steps. The GitHub App is registered from a
+   manifest with the hosted app's permissions and events, so that step is one
+   click on GitHub. GitHub has no such flow for OAuth Apps: the page links to
+   the form, and you paste the client ID and secret back. It then writes
+   `apps/dashboard/.env` in the main checkout and refuses to replace an
+   existing one.
+
+   To do it by hand instead, follow
+   [README, steps 2–5](../README.md#2-create-a-github-oauth-app).
    `apps/dashboard/env.ts` lists every value and which ones are required; `pnpm
    --filter @diffkit/dashboard exec void env check` validates your file. An
    older checkout's `.dev.vars` works as is once renamed to `.env`.
-3. Start it:
+2. Start it:
    ```sh
    pnpm dev
    ```
    It links `.env` from the main checkout when you are in a git worktree, then
    starts the dashboard, which applies new D1 migrations to local state.
+3. Install the GitHub App from the link the setup page ends on. GitHub sends
+   you back to <http://localhost:3000/setup>, so the dashboard has to be
+   running first.
 
-Webhooks need a public tunnel. See
+Webhooks need a public tunnel that is up before GitHub delivers. See
 [Local webhook testing](../README.md#local-webhook-testing).
 
 ## When something is off

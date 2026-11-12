@@ -5,6 +5,7 @@
     "build": "turbo run build",
     "dev": "node scripts/dev.mjs",
     "dev:demo": "node scripts/dev-demo.mjs",
+    "setup:github": "node scripts/setup-github.mjs",
     "lint": "turbo run lint",
     "check": "turbo run check",
     "check-types": "turbo run check-types",

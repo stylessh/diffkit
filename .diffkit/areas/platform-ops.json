@@ -87,6 +87,11 @@
       "name": "Local dev scripts",
       "summary": "pnpm dev checks the toolchain, .env and ports before starting Vite. In a git worktree it links .env from the main checkout and shares its local state.",
       "path": "scripts/dev.mjs"
+    },
+    {
+      "name": "GitHub app setup",
+      "summary": "pnpm setup:github registers a local GitHub App from a manifest with the hosted app's permissions, takes the OAuth App's ID and secret, and writes .env.",
+      "path": "scripts/setup-github.mjs"
     }
   ],
   "dependsOn": ["storage", "emulator"],
