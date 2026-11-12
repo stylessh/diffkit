@@ -17,7 +17,7 @@ The map has two halves:
 
 A repository without the file has no Map tab. Opening `/owner/repo/map`
 directly shows a prompt to copy into a coding agent (Claude Code, Codex,
-Cursor, Copilot or any other): it writes the file and opens a pull request,
+Cursor, Antigravity or any other): it writes the file and opens a pull request,
 and the map appears once that is merged. A file that was rejected gets the
 same page with the problems listed and a prompt that fixes them.
 

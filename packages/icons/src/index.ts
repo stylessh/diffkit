@@ -105,11 +105,11 @@ export { ActionsIcon } from "./actions-icon";
 export { ArchiveDownIcon } from "./archive-down-icon";
 export { AutomationIcon } from "./automation-icon";
 export {
+  AntigravityLogo,
   ChatGPTLogo,
   ClaudeLogo,
   CursorLogo,
   DiscordLogo,
-  GitHubCopilotLogo,
   GitHubLogo,
   GitHubWordmarkLogo,
   GitLabLogo,

@@ -1,12 +1,12 @@
 import {
 	AlertCircleIcon,
+	AntigravityLogo,
 	ChatGPTLogo,
 	CheckIcon,
 	ClaudeLogo,
 	CodeIcon,
 	CopyIcon,
 	CursorLogo,
-	GitHubCopilotLogo,
 	GitMergeIcon,
 	GitPullRequestIcon,
 	LayersIcon,
@@ -57,11 +57,7 @@ const AGENTS: {
 		logo: CursorLogo,
 		className: "text-[#26251e] dark:text-[#edecec]",
 	},
-	{
-		name: "GitHub Copilot",
-		logo: GitHubCopilotLogo,
-		className: "text-black dark:text-white",
-	},
+	{ name: "Antigravity", logo: AntigravityLogo, className: "" },
 ];
 
 type CopyState = "idle" | "copied";
