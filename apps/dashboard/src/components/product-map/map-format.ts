@@ -51,11 +51,8 @@ export function lensValue(area: ProductArea, lens: MapLens) {
 }
 
 export function lensLabel(area: ProductArea, lens: MapLens) {
-	if (lens === "activity") return plural(area.stats.commitsLast30, "commit");
-	if (lens === "size") return `${formatCount(area.stats.loc)} lines`;
-	if (lens === "open")
-		return `${area.stats.openPulls + area.stats.openIssues} open`;
-	return null;
+	if (lens === "structure") return null;
+	return formatCount(lensValue(area, lens));
 }
 
 export const lensDescriptions: Record<MapLens, string> = {

@@ -125,7 +125,7 @@ export function TourBar({
 			aria-label="Product tour"
 			initial={{ opacity: 0, y: 16 }}
 			animate={{ opacity: 1, y: 0 }}
-			className="absolute inset-x-0 bottom-4 z-30 mx-auto flex w-[min(42rem,calc(100%-1.5rem))] flex-col gap-2 rounded-xl bg-popover/85 p-3 shadow-popover backdrop-blur-xl"
+			className="absolute inset-x-0 bottom-4 z-30 mx-auto flex w-[min(36rem,calc(100%-1.5rem))] flex-col gap-2 rounded-xl bg-popover/85 p-3 shadow-popover backdrop-blur-xl max-md:bottom-20 md:right-[16rem] lg:right-[21rem]"
 		>
 			<TourProgress state={state} stops={stops} dispatch={dispatch} />
 			<div className="flex items-start gap-3 max-sm:flex-col-reverse max-sm:gap-1">

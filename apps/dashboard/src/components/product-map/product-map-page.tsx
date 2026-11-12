@@ -6,6 +6,7 @@ import {
 	SearchIcon,
 } from "@diffkit/icons";
 import { Button } from "@diffkit/ui/components/button";
+import { DetailLayout } from "@diffkit/ui/components/detail-layout";
 import { EmptyState } from "@diffkit/ui/components/empty-state";
 import { KeyboardShortcutKeys } from "@diffkit/ui/components/keyboard-shortcut-keys";
 import {
@@ -14,12 +15,17 @@ import {
 	PageHeaderTitle,
 	PageIconButton,
 } from "@diffkit/ui/components/page-header";
-import { SegmentedToggle } from "@diffkit/ui/components/segmented-toggle";
+import {
+	ViewTab,
+	ViewTabCount,
+	ViewTabs,
+} from "@diffkit/ui/components/view-tabs";
 import { isEditableKeyboardEvent } from "@diffkit/ui/lib/editable-keyboard-target";
 import { Link } from "@tanstack/react-router";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { parseAsString, parseAsStringLiteral, useQueryState } from "nuqs";
 import {
+	type ReactNode,
 	useCallback,
 	useEffect,
 	useMemo,
@@ -27,90 +33,88 @@ import {
 	useRef,
 	useState,
 } from "react";
-import { AreaSheet } from "./area-sheet";
+import { AreaPanel } from "./area-panel";
+import { AREA_TABS, AreaSheet, type AreaTab } from "./area-sheet";
 import { MapCanvas } from "./map-canvas";
-import {
-	formatCount,
-	formatShortDate,
-	lensDescriptions,
-	plural,
-} from "./map-format";
-import { MapRail } from "./map-rail";
+import { lensDescriptions } from "./map-format";
+import { MapPanel } from "./map-panel";
 import { MapSearch } from "./map-search";
 import { TOUR_IDLE, TourBar, tourReducer } from "./map-tour";
 import { type LoadedProductMap, loadProductMap } from "./product-map-data";
-import type { MapLens } from "./product-map-types";
+import type { MapLens, ProductArea } from "./product-map-types";
 import { NO_SPOTLIGHT, type Spotlight } from "./spotlight";
 
 const LENSES = ["structure", "activity", "size", "open"] as const;
 
-const lensOptions: { value: MapLens; label: string }[] = [
-	{ value: "structure", label: "Structure" },
-	{ value: "activity", label: "Activity" },
-	{ value: "size", label: "Size" },
-	{ value: "open", label: "Open work" },
-];
+const lensLabels: Record<MapLens, string> = {
+	structure: "Structure",
+	activity: "Activity",
+	size: "Size",
+	open: "Open work",
+};
+
+const DEFAULT_CAPTION =
+	"Hover an area to see what it builds on. Click to open it.";
 
 type ZoomOrigin = { x: number; y: number };
 
-const CENTER: ZoomOrigin = { x: 50, y: 40 };
+const CENTER: ZoomOrigin = { x: 40, y: 40 };
 
-function MapIntro({
-	map,
-	lens,
-	onLens,
-	onTour,
-	onSearch,
-}: {
-	map: LoadedProductMap;
-	lens: MapLens;
-	onLens: (lens: MapLens) => void;
-	onTour: () => void;
-	onSearch: () => void;
-}) {
-	const { repo } = map;
+function JumpButton({ onSearch }: { onSearch: () => void }) {
 	return (
-		<div className="flex flex-col gap-3.5 px-5 pt-6 pb-5 max-md:px-4 max-md:pt-5">
-			<div className="flex max-w-[46rem] flex-col gap-2">
-				<h2 className="text-balance font-semibold text-3xl text-foreground tracking-[-0.02em] max-md:text-2xl">
-					{repo.pitch}
-				</h2>
-				<p className="text-pretty text-[15px] text-text-header leading-[1.55] max-md:text-[13px]">
-					{repo.description}
-				</p>
-			</div>
-			<div className="flex flex-wrap items-center gap-2">
-				<Button
-					size="sm"
-					variant="accent"
-					onClick={onTour}
-					iconLeft={<PlayIcon />}
-				>
-					One-minute tour
-				</Button>
-				<Button size="sm" variant="outline" onClick={onSearch}>
-					Jump to
-					<KeyboardShortcutKeys keys={["/"]} className="max-md:hidden" />
-				</Button>
-				<span className="mx-1 h-4 w-px bg-card-border max-sm:hidden" />
-				<SegmentedToggle
-					aria-label="Colour the map by"
-					value={lens}
-					onValueChange={onLens}
-					options={lensOptions}
-				/>
-				<span className="text-muted-foreground text-xs">
-					{lensDescriptions[lens]}
-				</span>
-			</div>
-			<p className="text-muted-foreground text-xs tabular-nums">
-				{plural(map.areas.length, "area")} · {formatCount(repo.totals.loc)}{" "}
-				lines · {plural(repo.totals.commits, "commit")} ·{" "}
-				{repo.totals.mergedPulls} merged pull requests ·{" "}
-				{repo.totals.contributors} people · {formatShortDate(repo.firstCommit)}{" "}
-				to {formatShortDate(repo.analysedAt)} · snapshot at {repo.commit}
-			</p>
-		</div>
+		<Button size="xs" variant="outline" onClick={onSearch}>
+			<SearchIcon className="size-3.5 text-muted-foreground" />
+			Jump to
+			<KeyboardShortcutKeys keys={["/"]} className="max-md:hidden" />
+		</Button>
+	);
+}
+
+function areaTabs(
+	area: ProductArea,
+): { tab: AreaTab; label: string; count?: number }[] {
+	return [
+		{ tab: "how", label: "How it works" },
+		{ tab: "inside", label: "Inside", count: area.features.length },
+		{ tab: "code", label: "Code", count: area.entryPoints.length },
+		{
+			tab: "activity",
+			label: "Activity",
+			count: area.pulls.open.length + area.issues.open.length,
+		},
+		{
+			tab: "notes",
+			label: "Notes",
+			count: area.goodParts.length + area.watch.length,
+		},
+	];
+}
+
+function Stage({
+	stageKey,
+	transformOrigin,
+	from,
+	children,
+}: {
+	stageKey: string;
+	transformOrigin: string;
+	from: number;
+	children: ReactNode;
+}) {
+	const reduceMotion = useReducedMotion();
+	const scale = reduceMotion ? 1 : from;
+	return (
+		<motion.div
+			key={stageKey}
+			className="absolute inset-0 flex flex-col bg-main"
+			style={{ transformOrigin }}
+			initial={{ opacity: 0, scale }}
+			animate={{ opacity: 1, scale: 1 }}
+			exit={{ opacity: 0, scale }}
+			transition={{ duration: 0.26, ease: [0.2, 0.8, 0.2, 1] }}
+		>
+			{children}
+		</motion.div>
 	);
 }
 
@@ -159,14 +163,15 @@ function ProductMapView({
 		"lens",
 		parseAsStringLiteral(LENSES).withDefault("structure"),
 	);
+	const [tab, setTab] = useQueryState(
+		"tab",
+		parseAsStringLiteral(AREA_TABS).withDefault("how"),
+	);
 	const [hovered, setHovered] = useState<string | null>(null);
 	const [searchOpen, setSearchOpen] = useState(false);
 	const [tour, dispatchTour] = useReducer(tourReducer, TOUR_IDLE);
 	const [origin, setOrigin] = useState<ZoomOrigin>(CENTER);
 	const stageRef = useRef<HTMLDivElement>(null);
-	const overviewRef = useRef<HTMLDivElement>(null);
-	const overviewScroll = useRef(0);
-	const reduceMotion = useReducedMotion();
 
 	const area = areaParam ? (map.areaById.get(areaParam) ?? null) : null;
 	const tourStop = tour.status === "idle" ? null : map.tour[tour.stop];
@@ -196,12 +201,12 @@ function ProductMapView({
 						100,
 				});
 			}
-			overviewScroll.current = overviewRef.current?.scrollTop ?? 0;
 			dispatchTour({ type: "stop" });
 			setHovered(null);
+			if (!areaParam) void setTab(null);
 			void setAreaParam(id);
 		},
-		[setAreaParam],
+		[areaParam, setAreaParam, setTab],
 	);
 
 	const showOverview = useCallback(() => {
@@ -246,13 +251,13 @@ function ProductMapView({
 	const firstTourArea = tourStop?.areas[0];
 	useEffect(() => {
 		if (!firstTourArea) return;
-		overviewRef.current
+		stageRef.current
 			?.querySelector(`[data-area="${firstTourArea}"]`)
 			?.scrollIntoView({ block: "center", behavior: "smooth" });
 	}, [firstTourArea]);
 
+	const hoveredArea = hovered ? map.areaById.get(hovered) : null;
 	const transformOrigin = `${origin.x}% ${origin.y}%`;
-	const zoom = reduceMotion ? 1 : undefined;
 
 	return (
 		<div className="flex h-full min-h-0 flex-col">
@@ -272,12 +277,6 @@ function ProductMapView({
 							>
 								<ChevronRightIcon size={14} />
 							</PageIconButton>
-							<PageIconButton
-								aria-label="Jump to"
-								onClick={() => setSearchOpen(true)}
-							>
-								<SearchIcon size={14} />
-							</PageIconButton>
 						</>
 					) : undefined
 				}
@@ -295,12 +294,16 @@ function ProductMapView({
 								Product map
 							</button>
 						</PageHeaderCrumb>
-						<PageHeaderTitle>{area.name}</PageHeaderTitle>
+						<PageHeaderTitle asChild>
+							<span>{area.name}</span>
+						</PageHeaderTitle>
 					</>
 				) : (
-					<PageHeaderTitle>
-						<LayersIcon size={14} />
-						Product map
+					<PageHeaderTitle asChild>
+						<span>
+							<LayersIcon size={14} />
+							Product map
+						</span>
 					</PageHeaderTitle>
 				)}
 			</PageHeader>
@@ -308,58 +311,112 @@ function ProductMapView({
 			<div ref={stageRef} className="relative min-h-0 flex-1 overflow-hidden">
 				<AnimatePresence initial={false}>
 					{area ? (
-						<motion.div
-							key="area"
-							className="absolute inset-0 grid bg-main lg:grid-cols-[15.5rem_minmax(0,1fr)]"
-							style={{ transformOrigin }}
-							initial={{ opacity: 0, scale: zoom ?? 0.9 }}
-							animate={{ opacity: 1, scale: 1 }}
-							exit={{ opacity: 0, scale: zoom ?? 0.9 }}
-							transition={{ duration: 0.28, ease: [0.2, 0.8, 0.2, 1] }}
+						<Stage
+							stageKey="area"
+							transformOrigin={transformOrigin}
+							from={0.94}
 						>
-							<div className="min-h-0 max-lg:hidden">
-								<MapRail map={map} currentId={area.id} onNavigate={openArea} />
-							</div>
-							<div key={area.id} className="min-h-0 overflow-y-auto">
-								<motion.div
-									initial={{ opacity: 0, y: reduceMotion ? 0 : 10 }}
-									animate={{ opacity: 1, y: 0 }}
-									transition={{ duration: 0.22 }}
-								>
-									<AreaSheet area={area} map={map} onNavigate={openArea} />
-								</motion.div>
-							</div>
-						</motion.div>
+							<DetailLayout
+								key={area.id}
+								panelLabel="Area details"
+								panel={
+									<AreaPanel area={area} map={map} onNavigate={openArea} />
+								}
+								toolbar={
+									<ViewTabs
+										label="Area views"
+										actions={
+											<JumpButton onSearch={() => setSearchOpen(true)} />
+										}
+									>
+										{areaTabs(area).map((entry) => (
+											<ViewTab
+												key={entry.tab}
+												active={entry.tab === tab}
+												onClick={() => void setTab(entry.tab)}
+											>
+												{entry.label}
+												{entry.count ? (
+													<ViewTabCount>{entry.count}</ViewTabCount>
+												) : null}
+											</ViewTab>
+										))}
+									</ViewTabs>
+								}
+							>
+								<AreaSheet area={area} map={map} tab={tab} />
+							</DetailLayout>
+						</Stage>
 					) : (
-						<motion.div
-							key="overview"
-							ref={(element) => {
-								overviewRef.current = element;
-								if (element) element.scrollTop = overviewScroll.current;
-							}}
-							className="absolute inset-0 overflow-y-auto pb-28"
-							style={{ transformOrigin }}
-							initial={{ opacity: 0, scale: zoom ?? 1.08 }}
-							animate={{ opacity: 1, scale: 1 }}
-							exit={{ opacity: 0, scale: zoom ?? 1.14 }}
-							transition={{ duration: 0.28, ease: [0.2, 0.8, 0.2, 1] }}
+						<Stage
+							stageKey="overview"
+							transformOrigin={transformOrigin}
+							from={1.06}
 						>
-							<MapIntro
-								map={map}
-								lens={lens}
-								onLens={(next) => void setLens(next)}
-								onTour={startTour}
-								onSearch={() => setSearchOpen(true)}
-							/>
-							<MapCanvas
-								map={map}
-								lens={lens}
-								spotlight={spotlight}
-								onSpotlight={setHovered}
-								onClearSpotlight={() => setHovered(null)}
-								onOpen={openArea}
-							/>
-						</motion.div>
+							<DetailLayout
+								panelLabel="About this product"
+								panel={<MapPanel map={map} spotlight={spotlight} />}
+								toolbar={
+									<ViewTabs
+										label="Map views"
+										actions={
+											<>
+												<Button
+													size="xs"
+													variant="outline"
+													onClick={startTour}
+													iconLeft={<PlayIcon className="size-3.5" />}
+												>
+													Tour
+												</Button>
+												<JumpButton onSearch={() => setSearchOpen(true)} />
+											</>
+										}
+									>
+										{LENSES.map((value) => (
+											<ViewTab
+												key={value}
+												active={value === lens}
+												title={lensDescriptions[value]}
+												onClick={() => void setLens(value)}
+											>
+												{lensLabels[value]}
+											</ViewTab>
+										))}
+									</ViewTabs>
+								}
+							>
+								<header className="flex flex-col gap-2">
+									<h1 className="text-pretty font-semibold text-[23px] text-foreground leading-8 tracking-[-0.01em]">
+										{map.repo.pitch}
+									</h1>
+									<p
+										aria-live="polite"
+										className="min-h-5 font-[450] text-[13px] text-muted-foreground"
+									>
+										{hoveredArea ? (
+											<>
+												<span className="text-foreground">
+													{hoveredArea.name}
+												</span>{" "}
+												{hoveredArea.tagline}
+											</>
+										) : (
+											DEFAULT_CAPTION
+										)}
+									</p>
+								</header>
+								<MapCanvas
+									map={map}
+									lens={lens}
+									spotlight={spotlight}
+									onSpotlight={setHovered}
+									onClearSpotlight={() => setHovered(null)}
+									onOpen={openArea}
+								/>
+								{tourStop ? <div aria-hidden className="h-40" /> : null}
+							</DetailLayout>
+						</Stage>
 					)}
 				</AnimatePresence>
 				<TourBar state={tour} stops={map.tour} dispatch={dispatchTour} />

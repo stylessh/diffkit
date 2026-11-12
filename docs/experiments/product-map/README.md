@@ -33,97 +33,112 @@ DiffKit map.
 
 ![Overview, dark](screenshots/overview-desktop-dark.png)
 
-**The overview is a cross-section of the product.** Four bands, top to bottom:
-what people use (every screen, in the order someone meets them), what every
-screen shares, what makes it fast (the data path), and what surrounds it. A
-last strip names the systems DiffKit talks to but does not own (GitHub,
-Cloudflare, the browser). 25 areas in all, each a tile with a name, one plain
-line, and a sparkline of weekly commits since the first commit.
+**The overview shows names and nothing else.** Seven rows of areas, 25 in
+all, in the order someone meets the product: getting in, your workspace, in a
+repository, pull requests, then what every screen shares, the data path, and
+what surrounds the product. It uses the same layout as the repo home: a
+reading column, view tabs above it, a quiet panel on the right.
+
+Everything else is one step away:
 
 | | |
 | --- | --- |
-| ![Wires](screenshots/wires-desktop-dark.png) | ![Tour](screenshots/tour-desktop-dark.png) |
-| Hover a tile: solid wires run to what it builds on, dotted wires come from what uses it, and the outside systems it touches light up. | The one-minute tour: eight stops, 7.5 s each, lighting the tiles it talks about. |
-| ![Area](screenshots/area-desktop-light.png) | ![Activity](screenshots/area-activity-desktop-dark.png) |
-| Click a tile to dive in. The map becomes a rail on the left for moving sideways. | Lower on the same page: entry points, weekly activity, open and merged work, people. |
+| ![Wires](screenshots/wires-desktop-light.png) | ![Tour](screenshots/tour-desktop-dark.png) |
+| **Hover** an area: its one-line description replaces the caption under the title, wires run to what it builds on, the areas that use it stay lit, and "Talks to" marks the outside systems it touches. | **Tour**: eight stops of one or two short sentences, 7.5 s each. |
+| ![Lens](screenshots/activity-desktop-dark.png) | ![Search](screenshots/search-desktop-light.png) |
+| **View tabs** add one number per area: commits in the last 30 days, lines, or open work. | **Jump to** (`/`) finds an area, feature, file, pull request or issue. |
 
-Each area page answers, in this order:
+**Click an area to open it.** The page follows the pull request page: title,
+one or two sentences, and five tabs that show one thing at a time.
 
-1. **What it does for a user**, in one or two sentences.
-2. **How it works**: a short paragraph, then the path one request takes
-   through it (page, browser state, server function, API route, GitHub,
-   storage). A highlight travels along the steps; hover holds it.
-3. **What is inside**: sub-features, each with one to three code references.
-4. **Ways into the code**: four to six symbols to start reading from, with
-   `path:line`. They open on GitHub.
-5. **What is happening here**: commits per week, open pull requests and
-   issues, merged pull requests.
-6. **Who has worked on it**.
-7. **Connected to**: builds on, used by. Click to move sideways.
-8. **Worth knowing**: what is clearly well done and what looks rough, each
-   with its evidence.
+| | |
+| --- | --- |
+| ![How it works](screenshots/area-desktop-light.png) | ![Inside](screenshots/area-inside-desktop-light.png) |
+| **How it works**: the path one request takes. Pick a step to read its one sentence and open its file. | **Inside**: sub-features as closed rows. Opening one shows a sentence and its code references. |
+| ![Activity](screenshots/area-activity-desktop-dark.png) | ![Notes](screenshots/area-notes-desktop-light.png) |
+| **Activity**: commits per week, then open and merged work. | **Notes**: what is clearly well done and what looks rough, each with its evidence. |
+
+The fifth tab, **Code**, lists four to six symbols to start reading from.
+
+The panel on the right holds a small dot map of the product (this area in
+green, connected areas brighter; every dot is a link), then what the area
+builds on, what uses it, four stats and the people who worked on it.
 
 Moving around:
 
 | Do | How |
 | --- | --- |
-| Open an area | click a tile |
+| Open an area | click it |
 | Back to the map | `Esc`, the breadcrumb, or browser back |
 | Next or previous area | `]` and `[`, or the arrows in the header |
-| Jump to an area, feature, file, pull request or issue | `/` |
-| Start, pause the tour | `t`; arrow keys step through it |
-| Recolour the map | Structure, Activity, Size, Open work |
+| Move sideways | the dot map, Builds on, Used by |
+| Jump anywhere | `/` |
+| Start or pause the tour | `t`; arrow keys step through it |
 
-The area and the lens live in the URL (`?area=review-diff&lens=activity`), so
-any view can be linked.
+The area, tab and view live in the URL
+(`?area=review-diff&tab=activity`), so any view can be linked.
 
-More screenshots, light and dark, desktop and phone:
+Phone width, light and dark:
+[overview dark](screenshots/overview-phone-dark.png),
+[overview light](screenshots/overview-phone-light.png),
+[area dark](screenshots/area-phone-dark.png),
+[area light](screenshots/area-phone-light.png),
+[tour](screenshots/tour-phone-light.png).
+Desktop in the other theme:
 [overview light](screenshots/overview-desktop-light.png),
-[overview phone dark](screenshots/overview-phone-dark.png),
-[overview phone light](screenshots/overview-phone-light.png),
-[activity lens](screenshots/activity-desktop-light.png),
-[area dark](screenshots/area-desktop-dark.png),
-[area phone dark](screenshots/area-phone-dark.png),
-[area phone light](screenshots/area-phone-light.png),
-[tour on a phone](screenshots/tour-phone-light.png),
-[search](screenshots/search-desktop-light.png).
+[area dark](screenshots/area-desktop-dark.png).
+
+## The reduction pass
+
+The first version put everything on screen at once. Alan's feedback was that
+it was cluttered, generic and showed too much, and he was right. Before:
+[overview](screenshots/before/overview-desktop-dark.png),
+[area page](screenshots/before/area-desktop-light.png).
+
+What changed:
+
+| First version | Now |
+| --- | --- |
+| Custom full-width page with its own tile cards | The shared `DetailLayout`, `ViewTabs`, `PanelSection`, `Chip` and list cards, as on the repo home and pull request page |
+| Each tile: icon, name, a two-line description, a sparkline, sometimes a metric | Icon and name. The description appears on hover, the metric only when a view tab asks for it |
+| Pitch, a three-line paragraph, a stats line, lens buttons with a description | Pitch and one caption line. Description and stats moved to the side panel |
+| Ten outside systems as their own strip | Three chips in the panel (GitHub, Cloudflare, The browser) |
+| Wires for "builds on", "used by" and outside systems, with badges | Wires for "builds on" only, drawn behind the areas |
+| Area page: eight stacked sections, about four screens tall | Five tabs, one visible. Nothing scrolls on most tabs |
+| A 25-row sidebar for moving sideways | A dot map in the panel. No left sidebar |
+| Request path: six cards with a paragraph each | Six icons. One sentence for the selected step |
+| Tour stops of about 30 words | About 15 words each |
+
+The overview now fits one screen at 1440×900, which the first version did not.
 
 ## Does it answer the question?
 
 The question: could someone who has never seen DiffKit's code understand what
 the product is and how it is put together in about a minute from this page?
 
-**What the product is: yes.** The pitch, the first band and the tour do it.
-The tour is eight stops of about 30 words, 60 seconds in total, and it is the
-part I would keep whatever else changes.
+**What the product is: yes.** Seven labelled rows of names read in a few
+seconds, and the tour explains them in one minute.
 
-**How it is put together: partly.** The band order (screens, shared parts,
-data path, outside systems) and tour stops 6 and 7 give the right mental
-model: every screen goes through one data layer, a browser cache makes it
-instant, webhooks become a change feed. The wires add "this screen depends on
-those parts". What a newcomer does not get in a minute is the detail inside an
-area. That takes opening it, and each area page is a few minutes of reading.
+**How it is put together: partly.** The row order and tour stops 6 and 7 give
+the right model: every screen goes through one data layer, a browser cache
+makes it instant, webhooks become a change feed. Hovering shows what one area
+depends on. The detail inside an area still takes opening it.
 
 Where it falls short:
 
-- **25 tiles is a lot to scan cold.** Without the tour a first-time reader
-  spends the minute reading tiles. The tour should probably start on its own
-  on a first visit.
-- **The map does not fit one screen at 1440×900.** The first two bands do. The
-  data path, which is the most interesting part, starts below the fold.
-- **The good and bad parts are buried.** "Worth knowing" sits at the bottom of
-  each area. It is the most valuable content on the page per line, and the
-  overview gives no hint of where it is. A lens for it is the obvious next
-  step.
-- **Wires get busy for hub areas.** Hovering the GitHub data layer draws 23 of
-  them across the tiles.
+- **Names alone assume you know GitHub.** "History & compare" means nothing
+  to someone who does not. The description is one hover away, but a first-time
+  reader has to know to hover. The tour should probably start on its own on a
+  first visit.
+- **The good and bad parts are one click and one tab away.** Notes is the
+  most valuable content per line and the overview gives no hint of where the
+  rough areas are. A view tab that counts watch items per area is the obvious
+  next step.
 - **Dependencies are curated, not derived.** I chose the notable edges by
   hand from the analysts' notes. They should come from the import graph, with
   a model only trimming them.
-- **An area page is a document.** Summary and request path work as a glance;
-  everything below is reference.
-- **On phones there are no wires.** The map works as a list and the area
-  pages work well, but the "how it connects" interaction is desktop only.
+- **On phones there is no hover**, so no wires and no caption: the map is a
+  list of names and the area pages carry everything.
 - **Links leave DiffKit.** Code and pull request links open github.com,
   because the demo emulator does not have this repo. In the real product they
   should open DiffKit's own blob, pull request and issue pages.
@@ -139,6 +154,8 @@ Where it falls short:
   answered by #192 and #210, and #137 and #182 predate the cache rebuild.
 - **The request path per area.** Four to six steps, each with a kind, a
   sentence and a file, was the format that explained "how it works" best.
+- **Building on the shipped layout.** The reduced version took less code than
+  the first one and reads as part of the dashboard.
 - **The reading pass found real defects**, for example: the merge footer
   sends `bypassProtections` but the server handler never reads it; twelve
   files still write to a tab store nothing reads; the setup page ignores the
@@ -149,37 +166,43 @@ Where it falls short:
 
 ## What did not work
 
-- **The first layout.** Each group of tiles was its own cluster; one group of
-  seven wasted a row. A single grid per band with group labels on a rail above
-  the tiles is denser and reads better.
+- **The first version**, for the reasons above.
 - **A shared-element morph from tile to page.** I dropped it for a camera
-  push toward the clicked tile, which is simpler and holds up when the page
-  has scrolled.
-- **Square-root scaling for the lenses.** It flattened every tile to the same
-  tint. Linear scaling shows the differences.
-- **Inspiration from Awwwards.** The Sites of the Day are mostly video case
-  studies; I got the names of interactions from them, not much more.
+  push toward the clicked area, which is simpler.
+- **Square-root scaling for the view tints.** It flattened every area to the
+  same tint. Linear scaling shows the differences.
 - **Not done:** the check on a second, well-known repository. Time went to
-  accuracy on this one, so whether the idea is overfitted to DiffKit is
-  untested.
+  accuracy and then to the reduction pass, so whether the idea is overfitted
+  to DiffKit is untested.
 
 ## References that shaped it
 
 Interaction ideas only; no design, assets or copy were taken.
 
+- [Creative Reference Library](https://crl-2026.webflow.io/library): one
+  item holds the screen in large type, its neighbours stay faint, and a
+  Wheel/List switch re-lays the same items. It became the single caption
+  line that names whatever you point at, and the idea that the overview and
+  the dot map are the same items in two layouts.
+- [DeepBook](https://www.deepbook.tech/): numbered layers stacked like
+  folder tabs, one line each, with text that sharpens as you reach it. It
+  became the rows-as-layers order of the map and the one-sentence rule.
+- [FORMAT](https://format.obys.agency/) and
+  [Grids](https://grids03.obys.agency/), both by Obys: a single dial changes
+  the format of the same content, and composition is carried by blocks, not
+  text. They became the view tabs that recolour the same map, and the dot
+  map. Grids would not run at the browser pane's width, so I only saw its
+  opening composition.
 - [incident.io Catalog Graph](https://mobbin.com/screens/dd2f6452-c35e-42f0-b179-d3f1fa9ef9b3)
-  (Mobbin): typed nodes, relationship lines and "expand a level deeper". It
-  became the wires and the drill from product to area to feature to code.
-- [Quo call flow builder](https://mobbin.com/screens/160b7a9c-6331-4e2d-a59a-5567fe521f58)
-  (Mobbin): a selected step with an inspector that offers "jump to" the next
-  one. It became the request path and the sideways jumps.
-- Creative Reference Library, Awwwards Site of the Day for 10 Nov 2026: its
-  list-to-carousel transition keeps the same items and changes their layout.
-  It became the dive from the map into an area, with the map staying on as a
-  rail.
+  and the
+  [Quo call flow builder](https://mobbin.com/screens/160b7a9c-6331-4e2d-a59a-5567fe521f58),
+  through Mobbin: relationship lines between typed nodes, and a selected step
+  with its details beside it. They became the wires and the request path.
 
-The tour's segmented progress bar is the stories pattern, from my own
-knowledge. About 15 minutes went to inspiration, of the 30 allowed.
+A fifth winner, Cyera AI Guardian, stayed on its loading screen in the
+built-in browser, so I could not use it. The first inspiration pass, before
+Alan's correction, only read the Awwwards listing pages; the second used the
+live sites for about 15 minutes.
 
 ## How the data was produced
 
@@ -275,14 +298,17 @@ next regeneration, and in-app links.
 - Route: `apps/dashboard/src/routes/_protected/$owner/$repo/map.tsx`
 - Components: `apps/dashboard/src/components/product-map/`
   - `product-map-page.tsx`: page, URL state, keys, the zoom between map and area
-  - `map-canvas.tsx`, `map-wires.tsx`, `spotlight.ts`: tiles, bands, wires, what is lit
-  - `area-sheet.tsx`, `area-activity.tsx`: the area page
-  - `map-rail.tsx`, `map-search.tsx`, `map-tour.tsx`: sideways rail, jump-to, tour
+  - `map-canvas.tsx`, `map-wires.tsx`, `spotlight.ts`: areas, wires, what is lit
+  - `map-panel.tsx`: the overview's side panel
+  - `area-sheet.tsx`, `area-activity.tsx`, `area-panel.tsx`: the area page, its tabs and side panel
+  - `map-search.tsx`, `map-tour.tsx`: jump-to and the tour
 - It uses `packages/ui` components and the existing theme tokens only. No new
-  dependency.
+  dependency, no change to `packages/ui`.
 
 `pnpm check` and `pnpm check-types` pass. There is one unit test, for the
 tour's state transitions. No e2e test was added; I verified by driving the
-page with Playwright against the demo emulator (tile click, `[` `]`, `Esc`,
-browser back, search, tour auto-advance, lenses, wires, the empty state) and
-by reading the screenshots in both themes at 1440×900 and 390×844.
+page with Playwright against the demo emulator (open an area, the five tabs,
+`[` `]`, `Esc`, browser back, the panel links, search, tour auto-advance, view
+tabs, wires, the empty state) and by reading the screenshots in both themes at
+1440×900 and 390×844, beside screenshots of the shipped repo home and pull
+request page.

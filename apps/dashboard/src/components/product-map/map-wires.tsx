@@ -2,12 +2,9 @@ import { motion, useReducedMotion } from "motion/react";
 import { type RefObject, useLayoutEffect, useState } from "react";
 import { plural } from "./map-format";
 
-export type WireKind = "uses" | "used-by" | "outside";
-
 export type WireLink = {
 	from: string;
 	to: string;
-	kind: WireKind;
 };
 
 type Box = {
@@ -101,12 +98,6 @@ function useWires(
 	return wires;
 }
 
-const wireClassName: Record<WireKind, string> = {
-	uses: "text-indigo",
-	"used-by": "text-muted-foreground",
-	outside: "text-text-header",
-};
-
 export function MapWires({
 	containerRef,
 	nodes,
@@ -123,32 +114,29 @@ export function MapWires({
 		<svg
 			role="img"
 			aria-label={`${plural(wires.length, "connection")} from the focused area`}
-			className="pointer-events-none absolute inset-0 z-10 size-full overflow-visible"
+			className="pointer-events-none absolute inset-0 size-full overflow-visible"
 		>
 			{wires.map((wire) => (
-				<g key={`${wire.from}>${wire.to}`} className={wireClassName[wire.kind]}>
+				<g key={`${wire.from}>${wire.to}`} className="text-indigo">
 					<motion.path
 						d={wire.d}
 						fill="none"
 						stroke="currentColor"
-						strokeWidth={wire.kind === "uses" ? 1.5 : 1}
+						strokeWidth={1.25}
 						strokeLinecap="round"
-						strokeDasharray={wire.kind === "uses" ? "5 5" : "2 5"}
+						strokeDasharray="4 5"
 						initial={{ opacity: 0, strokeDashoffset: 0 }}
-						animate={{
-							opacity: wire.kind === "uses" ? 0.95 : 0.6,
-							strokeDashoffset: reduceMotion ? 0 : -40,
-						}}
+						animate={{ opacity: 0.9, strokeDashoffset: reduceMotion ? 0 : -36 }}
 						transition={{
 							opacity: { duration: 0.18 },
 							strokeDashoffset: {
-								duration: 1.6,
+								duration: 1.8,
 								ease: "linear",
 								repeat: Number.POSITIVE_INFINITY,
 							},
 						}}
 					/>
-					<circle cx={wire.endX} cy={wire.endY} r={2.5} fill="currentColor" />
+					<circle cx={wire.endX} cy={wire.endY} r={2} fill="currentColor" />
 				</g>
 			))}
 		</svg>

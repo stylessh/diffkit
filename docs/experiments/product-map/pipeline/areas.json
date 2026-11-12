@@ -4,7 +4,7 @@
   "owner": "stylessh",
   "name": "diffkit",
   "pitch": "DiffKit is a fast, design-first GitHub client.",
-  "description": "It redraws GitHub's daily surfaces (inbox, pull requests, reviews, issues, code, Actions) on top of GitHub's own API. Nothing is copied: GitHub stays the source of truth, and a browser cache plus a small change feed make it feel instant.",
+  "description": "GitHub's daily surfaces, redrawn on GitHub's own API. A browser cache and a small change feed make it feel instant.",
   "url": "https://github.com/stylessh/diffkit",
   "defaultBranch": "main"
  },
@@ -53,7 +53,7 @@
     },
     {
      "id": "repository",
-     "name": "Inside a repository",
+     "name": "In a repository",
      "areas": [
       "repo-home",
       "code-browser",
@@ -81,7 +81,7 @@
    "groups": [
     {
      "id": "blocks",
-     "name": "Building blocks",
+     "name": "Every screen shares",
      "areas": [
       "shell",
       "conversation",
@@ -114,7 +114,7 @@
    "groups": [
     {
      "id": "tooling",
-     "name": "Tooling and reach",
+     "name": "Around the product",
      "areas": [
       "emulator",
       "platform-ops",
@@ -188,8 +188,8 @@
  ],
  "tour": [
   {
-   "title": "A GitHub client, not a GitHub copy",
-   "text": "You sign in with GitHub and choose which repos DiffKit may read. GitHub stays the source of truth; DiffKit stores only sign-in rows and a short change log.",
+   "title": "Sign in with GitHub",
+   "text": "You sign in with GitHub and pick the repos DiffKit may read. GitHub stays the source of truth.",
    "areas": [
     "sign-in"
    ],
@@ -201,7 +201,7 @@
   },
   {
    "title": "Your work, across repos",
-   "text": "The workspace is cross-repo: a home summary, a keyboard inbox for notifications, and lists of the pull requests, reviews and issues that involve you.",
+   "text": "A home summary, a keyboard inbox, and lists of the pull requests, reviews and issues that involve you.",
    "areas": [
     "repos-profiles",
     "inbox",
@@ -211,7 +211,7 @@
   },
   {
    "title": "Inside a repository",
-   "text": "Each repo gets the GitHub tabs redrawn: code with blame and search, history and compare, issues, Actions with a job graph, releases and settings.",
+   "text": "Every GitHub tab, redrawn: code, history, issues, Actions, releases and settings.",
    "areas": [
     "repo-home",
     "code-browser",
@@ -223,16 +223,16 @@
    ]
   },
   {
-   "title": "The centre of gravity: pull requests",
-   "text": "The PR page loads in one GraphQL call. The review page streams the raw diff and paints the first files before the download ends.",
+   "title": "Pull requests are the centre",
+   "text": "The PR page loads in one call. The review page streams the diff as it downloads.",
    "areas": [
     "pull-request",
     "review-diff"
    ]
   },
   {
-   "title": "Parts every screen shares",
-   "text": "One frame, one comment-and-timeline kit used by both pull requests and issues, and a 59-component design system with five colour themes.",
+   "title": "Shared by every screen",
+   "text": "One frame, one comments-and-timeline kit, and a 59-component design system.",
    "areas": [
     "shell",
     "conversation",
@@ -241,7 +241,7 @@
   },
   {
    "title": "One road to GitHub",
-   "text": "Every screen asks through the same layer: 85 typed queries call 152 server functions, which pick the right token and call GitHub through Octokit.",
+   "text": "Every screen asks through one layer of server functions that picks the right token.",
    "areas": [
     "github-data"
    ],
@@ -252,7 +252,7 @@
   },
   {
    "title": "Why it feels instant",
-   "text": "Pages you have seen paint from IndexedDB. Webhooks become rows in a small change table; each tab polls it every 15 s and refetches only what changed.",
+   "text": "Seen pages paint from a browser cache. Webhooks feed a change list that tabs poll every 15 s.",
    "areas": [
     "instant-cache",
     "live-updates",
@@ -266,7 +266,7 @@
   },
   {
    "title": "Around the product",
-   "text": "A local fake GitHub runs the demo and 20 Playwright specs with no credentials. It ships as one Cloudflare Worker with a health gate and automatic rollback.",
+   "text": "A local fake GitHub for demos and tests. One Cloudflare Worker, with rollback.",
    "areas": [
     "emulator",
     "platform-ops",

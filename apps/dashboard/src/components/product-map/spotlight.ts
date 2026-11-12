@@ -6,11 +6,9 @@ export type Spotlight =
 	| { kind: "area"; id: string }
 	| { kind: "stop"; areas: string[]; outside: string[] };
 
-export type TileRole = "plain" | "self" | "uses" | "used-by" | "lit" | "dim";
+export type TileRole = "plain" | "self" | "related" | "dim";
 
 export const NO_SPOTLIGHT: Spotlight = { kind: "none" };
-
-export const outsideNodeId = (id: string) => `outside:${id}`;
 
 export function tileRole(
 	spotlight: Spotlight,
@@ -19,25 +17,28 @@ export function tileRole(
 ): TileRole {
 	if (spotlight.kind === "none") return "plain";
 	if (spotlight.kind === "stop")
-		return spotlight.areas.includes(areaId) ? "lit" : "dim";
+		return spotlight.areas.includes(areaId) ? "self" : "dim";
 	if (spotlight.id === areaId) return "self";
 	const focused = map.areaById.get(spotlight.id);
-	if (focused?.dependsOn.includes(areaId)) return "uses";
-	if (focused?.usedBy.includes(areaId)) return "used-by";
-	return "dim";
+	const related =
+		focused?.dependsOn.includes(areaId) || focused?.usedBy.includes(areaId);
+	return related ? "related" : "dim";
 }
 
-export function outsideRole(
+export function litOutsideOwners(
 	spotlight: Spotlight,
-	outsideId: string,
 	map: LoadedProductMap,
-): "plain" | "lit" | "dim" {
-	if (spotlight.kind === "none") return "plain";
-	const lit =
+): Set<string> {
+	if (spotlight.kind === "none") return new Set();
+	const ids =
 		spotlight.kind === "stop"
 			? spotlight.outside
 			: (map.areaById.get(spotlight.id)?.outside ?? []);
-	return lit.includes(outsideId) ? "lit" : "dim";
+	return new Set(
+		map.outside
+			.filter((system) => ids.includes(system.id))
+			.map((system) => system.owner),
+	);
 }
 
 export function spotlightLinks(
@@ -46,20 +47,5 @@ export function spotlightLinks(
 ): WireLink[] {
 	if (spotlight.kind !== "area") return [];
 	const area = map.areaById.get(spotlight.id);
-	if (!area) return [];
-	return [
-		...area.usedBy.map(
-			(id): WireLink => ({ from: id, to: area.id, kind: "used-by" }),
-		),
-		...area.dependsOn.map(
-			(id): WireLink => ({ from: area.id, to: id, kind: "uses" }),
-		),
-		...area.outside.map(
-			(id): WireLink => ({
-				from: area.id,
-				to: outsideNodeId(id),
-				kind: "outside",
-			}),
-		),
-	];
+	return (area?.dependsOn ?? []).map((id) => ({ from: spotlight.id, to: id }));
 }
