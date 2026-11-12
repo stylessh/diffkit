@@ -54,30 +54,47 @@ The Map page then lists what to fix and offers a prompt that fixes it.
 
 ## Keeping it current
 
-Three things keep the map from going stale:
+The aim is that a repository sets its map up once and never tends it by hand.
+Four things do the tending:
 
 - **The note in `AGENTS.md`.** Every agent working in the repository reads
   that when a change adds, moves, renames or removes a feature, the matching
   area file changes in the same pull request.
-- **The skill** ([`skills/product-map/`](../skills/product-map)). It holds the
-  steps for creating, updating and fixing a map, and a checker with no
-  dependencies: `node <skill folder>/scripts/check.mjs`. The checker applies
-  the same validation as DiffKit, confirms every path the map mentions exists
-  and every area receives files, and lists files no area covers. It exits 1 on
-  a broken map, so it can run in CI. `npx skills update` brings a repository's
-  copy up to date.
+- **The skill's tools** ([`skills/product-map/scripts/`](../skills/product-map/scripts)),
+  all dependency-free:
+  - `changed.mjs` names the areas a change touched, the mentioned files that
+    moved and the new files no area covers, so an update reads only those.
+  - `check.mjs --fix` applies DiffKit's own validation, confirms every
+    mentioned path exists and every area receives files, puts keys in the
+    format's order and moves code links whose line drifted back onto their
+    symbol. That last part needs no agent at all.
+  - `survey.mjs` and `scaffold.mjs` are for setting a map up: a bounded
+    inventory of any size of repository, and files written in the one
+    accepted shape.
+- **Workflows the skill installs on request** (templates in
+  [`skills/product-map/assets/`](../skills/product-map/assets)): a check on
+  every pull request, which needs no secret, and an optional weekly refresh
+  where a coding agent updates the areas whose code changed and a pull
+  request is opened. In the refresh the agent's job can only read the
+  repository; a second job applies only its changes under `.diffkit/`, runs
+  the check and opens the pull request.
 - **DiffKit itself.** A pull request's side panel says how many of its files
   are outside the map, and the overview's side panel counts them for the whole
-  repository. That number is the signal that the map is behind.
+  repository.
 
-Descriptions go stale more slowly than paths. When an area's code changes a
-lot, the pull request's "Product areas" section names the areas to re-read.
+The format is closed: a field, icon or step kind the format does not list
+makes the whole map invalid, in the checker and in DiffKit alike. An agent can
+therefore not drift into a structure the page cannot draw.
 
 ### In this repository
 
 - DiffKit's own map is covered by a test
   (`apps/dashboard/src/lib/product-map/repo-map.test.ts`): it must parse,
   every path it mentions must exist and every area must receive files.
+- `.github/workflows/product-map.yml` runs the skill's check action on this
+  repository's own map.
+- The skill's scripts are exercised end to end on a throwaway repository in
+  `apps/dashboard/src/lib/product-map/skill-scripts.test.ts`.
 - The skill's checker runs a JavaScript copy of the dashboard's validation
   modules. After changing `apps/dashboard/src/lib/product-map/map-file.ts` or
   `path-rules.ts`, run `node scripts/build-map-skill.mjs`; a test fails while

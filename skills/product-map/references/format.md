@@ -1,7 +1,10 @@
 # The `.diffkit` folder format
 
 Two kinds of file, both JSON. Paths are relative to the repository root.
-Anything not listed here is ignored.
+
+**The format is closed.** A field, icon or step kind that is not listed here
+is an error and DiffKit rejects the whole map. Fields are written in the order
+shown; `check.mjs --fix` puts them in that order.
 
 ## `.diffkit/map.json`
 
@@ -54,6 +57,7 @@ digits and dashes, ending in `.json`. There is no `id` field inside.
   "tagline": "A few words, shown on hover",
   "summary": "One or two sentences: what it does for a user.",
   "paths": ["src/auth/**", "src/routes/{login,logout}.tsx"],
+  "screen": { "light": ".diffkit/screens/sign-in-light.jpg", "dark": ".diffkit/screens/sign-in-dark.jpg" },
   "flow": [
     { "kind": "page", "label": "Login page", "note": "One sentence.", "path": "src/routes/login.tsx" },
     { "kind": "server", "label": "createSession", "note": "One sentence.", "path": "src/auth/session.ts" },
@@ -73,8 +77,7 @@ digits and dashes, ending in `.json`. There is no `id` field inside.
   "outside": ["email-provider"],
   "goodParts": ["What is done well, with the file or number that shows it."],
   "watch": ["What looks rough, with the file or number that shows it."],
-  "issues": [{ "number": 137, "note": "Optional: why it matters here." }],
-  "screen": { "light": ".diffkit/screens/sign-in-light.jpg", "dark": ".diffkit/screens/sign-in-dark.jpg" }
+  "issues": [{ "number": 137, "note": "Optional: why it matters here." }]
 }
 ```
 
@@ -84,12 +87,12 @@ digits and dashes, ending in `.json`. There is no `id` field inside.
 | `tagline` | yes | A few words. |
 | `summary` | yes | One or two sentences on what it does for a user. |
 | `paths` | yes | At least one path pattern. See below. |
-| `icon` | no | One of the names listed below; anything else gets a neutral icon. |
+| `icon` | no | One of the names listed below. Any other value is an error; leave the field out for a neutral icon. |
 | `flow` | no | The path one request takes, 3 to 6 steps. `path` is optional per step. |
 | `features` | no | The area's parts, each with code links in `entry`. |
 | `entryPoints` | no | Where to start reading. `role` says what the file is for. |
 | `dependsOn` | no | Ids of other areas this one builds on. "Used by" is derived; do not write it. |
-| `outside` | no | Ids from `outside` in `map.json`. |
+| `outside` | no | Ids from `outside` in `map.json`. Naming one that is not listed there is an error. |
 | `goodParts`, `watch` | no | Short notes with their evidence. |
 | `issues` | no | Issue numbers about this area. Shown only while the issue is open on GitHub, so stale ones do no harm. |
 | `screen` | no | Repository paths of a screenshot per theme. |
@@ -142,9 +145,13 @@ matches it.
 DiffKit rejects the whole map, and shows the list of problems, when:
 
 - a file is not a JSON object, or `version` is not `1`;
+- any object has a field this document does not list;
+- a required text is missing or empty, or a field has the wrong type;
+- `icon` or a flow step's `kind` is not one of the listed values;
 - a file in `areas/` is not named `<id>.json` with a valid id;
 - an area has no `paths`, or a pattern breaks a limit;
 - `dependsOn`, a group, or a tour stop names an area that has no file;
+- an area or a tour stop names an outside system `map.json` does not list;
 - an area is in no group, or in more than one;
 - a path points outside the repository (starts with `/` or contains `..`).
 

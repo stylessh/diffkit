@@ -131,13 +131,13 @@
       "entry": [
         {
           "path": "apps/dashboard/src/components/repo/repo-nav.tsx",
-          "line": 77,
+          "line": 78,
           "symbol": "RepoNav",
           "role": "Tab bar, overflow menu, phone switcher"
         },
         {
           "path": "apps/dashboard/src/lib/repo-nav-tabs.ts",
-          "line": 103,
+          "line": 105,
           "symbol": "useRepoTabs",
           "role": "Per-user tab choice from localStorage"
         },
@@ -225,13 +225,13 @@
     },
     {
       "path": "apps/dashboard/src/lib/github/repo-overview.ts",
-      "line": 186,
+      "line": 188,
       "symbol": "getRepoOverview",
       "role": "The overview query every repo page shares"
     },
     {
       "path": "apps/dashboard/src/lib/github/repo-overview.ts",
-      "line": 302,
+      "line": 307,
       "symbol": "getRepoViewerPermission",
       "role": "Viewer's role in the repo, used to gate actions"
     },

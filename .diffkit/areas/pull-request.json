@@ -81,7 +81,7 @@
       "entry": [
         {
           "path": "apps/dashboard/src/lib/github/pull-page-data.ts",
-          "line": 448,
+          "line": 455,
           "symbol": "getPullPageDataResult",
           "role": "GraphQL page read with REST fallback"
         },
@@ -165,7 +165,7 @@
       "entry": [
         {
           "path": "apps/dashboard/src/components/pulls/detail/pull-detail-sidebar.tsx",
-          "line": 42,
+          "line": 43,
           "symbol": "PullDetailSidebar",
           "role": "Properties, labels and reviewers panel"
         },
@@ -217,7 +217,7 @@
     },
     {
       "path": "apps/dashboard/src/lib/github/pull-page-data.ts",
-      "line": 448,
+      "line": 455,
       "symbol": "getPullPageDataResult",
       "role": "Server read behind the page (GraphQL, REST fallback)"
     },

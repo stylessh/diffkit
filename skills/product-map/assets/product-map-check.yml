@@ -1,0 +1,23 @@
+# Checks the product map on every pull request: that DiffKit would accept it,
+# that every path it mentions exists and that every area still has files.
+# Files no area covers show as a warning; set fail-on-unmapped to make a pull
+# request that adds unplaced code fail instead.
+name: Product map
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: stylessh/diffkit/skills/product-map/action@main
+        with:
+          fail-on-unmapped: "false"

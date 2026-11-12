@@ -9,7 +9,8 @@ folder, update the matching area file in the same pull request. The
 `product-map` skill in `skills/product-map/` has the format and a checker:
 
 ```bash
-node skills/product-map/scripts/check.mjs
+node skills/product-map/scripts/changed.mjs      # what this change asks of the map
+node skills/product-map/scripts/check.mjs --fix  # validate, and re-anchor drifted line numbers
 ```
 
 The skill's `scripts/lib/` is generated from

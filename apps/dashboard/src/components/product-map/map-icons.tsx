@@ -45,6 +45,7 @@ import {
 	UserMultiple02Icon,
 } from "@diffkit/icons";
 import type { ComponentType } from "react";
+import type { AreaIcon, FlowKind } from "#/lib/product-map/map-file";
 
 type MapIconProps = {
 	size?: number;
@@ -58,7 +59,7 @@ function GitHubMark({ size = 16, className }: MapIconProps) {
 	return <GitHubLogo width={size} height={size} className={className} />;
 }
 
-const areaIcons: Record<string, MapIcon> = {
+const areaIcons: Record<AreaIcon, MapIcon> = {
 	actions: ActionsIcon,
 	cache: ArchiveDownIcon,
 	code: CodeIcon,
@@ -87,10 +88,10 @@ const areaIcons: Record<string, MapIcon> = {
 };
 
 export function areaIcon(name: string): MapIcon {
-	return areaIcons[name] ?? CellsIcon;
+	return (areaIcons as Record<string, MapIcon>)[name] ?? CellsIcon;
 }
 
-const stepKinds: Record<string, { icon: MapIcon; label: string }> = {
+const stepKinds: Record<FlowKind, { icon: MapIcon; label: string }> = {
 	page: { icon: DashboardIcon, label: "Page" },
 	component: { icon: CellsIcon, label: "Component" },
 	client: { icon: ComputerIcon, label: "In the browser" },
@@ -103,7 +104,12 @@ const stepKinds: Record<string, { icon: MapIcon; label: string }> = {
 };
 
 export function stepKind(kind: string) {
-	return stepKinds[kind] ?? { icon: FileIcon, label: kind };
+	return (
+		(stepKinds as Record<string, { icon: MapIcon; label: string }>)[kind] ?? {
+			icon: FileIcon,
+			label: kind,
+		}
+	);
 }
 
 const pathKinds: [RegExp, string][] = [

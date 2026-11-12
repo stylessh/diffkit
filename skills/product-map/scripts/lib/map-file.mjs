@@ -6,14 +6,98 @@ import { compileGlob, expandBraces } from "./path-rules.mjs";
  * area and says which files belong to it. Everything countable (sizes, pull
  * requests, people) is computed from GitHub when the map is opened and is
  * never stored here.
+ *
+ * The format is closed: a field, icon or step kind that is not listed below
+ * is an error, never ignored. An agent writes these files, and the only way
+ * to keep what it writes inside what the page can draw is to refuse the rest.
  */
 export const MAP_FILE_PATH = ".diffkit/map.json";
 export const MAP_AREAS_PATH = ".diffkit/areas";
 export const MAP_FILE_VERSION = 1;
+/** Every icon an area may name. */
+export const AREA_ICONS = [
+    "actions",
+    "cache",
+    "code",
+    "command",
+    "comment",
+    "commit",
+    "compare",
+    "computer",
+    "display",
+    "github",
+    "globe",
+    "home",
+    "inbox",
+    "issues",
+    "kit",
+    "layers",
+    "lock",
+    "package",
+    "pull",
+    "refresh",
+    "repo",
+    "reviews",
+    "settings",
+    "shell",
+    "tag",
+];
+/** Every kind a flow step may have; the kind picks its lane and icon. */
+export const FLOW_KINDS = [
+    "page",
+    "component",
+    "client",
+    "server",
+    "route",
+    "github",
+    "storage",
+    "external",
+    "tool",
+];
+/**
+ * The fields each object may have, in the order they are written. The parser
+ * rejects anything else, and the skill's checker sorts keys into this order.
+ */
+export const MAP_FIELDS = {
+    index: [
+        "version",
+        "pitch",
+        "description",
+        "bands",
+        "ignore",
+        "outside",
+        "tour",
+    ],
+    band: ["id", "name", "caption", "groups"],
+    group: ["id", "name", "areas"],
+    outsideSystem: ["id", "name", "owner", "role"],
+    tourStop: ["title", "text", "areas", "outside"],
+    area: [
+        "name",
+        "icon",
+        "tagline",
+        "summary",
+        "paths",
+        "screen",
+        "flow",
+        "features",
+        "entryPoints",
+        "dependsOn",
+        "outside",
+        "goodParts",
+        "watch",
+        "issues",
+    ],
+    screen: ["light", "dark"],
+    flowStep: ["kind", "label", "note", "path"],
+    feature: ["name", "summary", "entry"],
+    reference: ["path", "line", "symbol", "role"],
+    issueHint: ["number", "note"],
+};
 export const MAX_AREAS = 200;
 const MAX_PATTERNS_PER_AREA = 100;
 const MAX_TEXT = 2000;
-const MAX_PROBLEMS = 20;
+const MAX_PROBLEMS = 30;
 const ID = /^[a-z0-9][a-z0-9-]{0,63}$/;
 function isObject(value) {
     return typeof value === "object" && value !== null && !Array.isArray(value);
@@ -45,15 +129,31 @@ export function parseMapFolder(source) {
         if (problems.length < MAX_PROBLEMS)
             problems.push(message);
     };
+    const onlyKnown = (from, where, fields) => {
+        for (const key of Object.keys(from))
+            if (!fields.includes(key))
+                problem(`${where}: unknown field "${key}". Allowed: ${fields.join(", ")}.`);
+    };
     const textOf = (from, key, where, optional = false) => {
         const value = from[key];
         if (value === undefined && optional)
             return "";
-        if (typeof value !== "string" || value.length > MAX_TEXT) {
-            problem(`${where}: "${key}" must be text of at most ${MAX_TEXT} characters.`);
+        if (typeof value !== "string" ||
+            value.trim().length === 0 ||
+            value.length > MAX_TEXT) {
+            problem(`${where}: "${key}" must be text of 1 to ${MAX_TEXT} characters.`);
             return "";
         }
         return value;
+    };
+    const oneOf = (from, key, where, allowed, optional = false) => {
+        const value = from[key];
+        if (value === undefined && optional)
+            return "";
+        if (allowed.includes(value))
+            return value;
+        problem(`${where}: "${key}" must be one of: ${allowed.join(", ")}.`);
+        return "";
     };
     const list = (from, key, where, max = 100) => {
         const value = from[key];
@@ -65,14 +165,19 @@ export function parseMapFolder(source) {
         }
         return value;
     };
-    const objects = (from, key, where, max = 100) => list(from, key, where, max).flatMap((item, at) => {
-        if (isObject(item))
-            return [{ item, at: `${where}: ${key}[${at}]` }];
-        problem(`${where}: ${key}[${at}] must be an object.`);
-        return [];
+    const objects = (from, key, where, fields, max = 100) => list(from, key, where, max).flatMap((item, at) => {
+        const here = `${where}: ${key}[${at}]`;
+        if (!isObject(item)) {
+            problem(`${here} must be an object.`);
+            return [];
+        }
+        onlyKnown(item, here, fields);
+        return [{ item, at: here }];
     });
     const strings = (from, key, where, max = 100) => list(from, key, where, max).flatMap((item, at) => {
-        if (typeof item === "string" && item.length <= MAX_TEXT)
+        if (typeof item === "string" &&
+            item.trim().length > 0 &&
+            item.length <= MAX_TEXT)
             return [item];
         problem(`${where}: ${key}[${at}] must be text.`);
         return [];
@@ -94,14 +199,19 @@ export function parseMapFolder(source) {
         problem(`${where} must be a path inside the repository.`);
         return "";
     };
-    const reference = (item, at) => ({
-        path: repoPath(item.path, `${at}.path`),
-        role: textOf(item, "role", at, true),
-        ...(typeof item.symbol === "string" ? { symbol: item.symbol } : {}),
-        ...(Number.isInteger(item.line) && item.line > 0
-            ? { line: item.line }
-            : {}),
-    });
+    const reference = (item, at) => {
+        if (item.symbol !== undefined && typeof item.symbol !== "string")
+            problem(`${at}: "symbol" must be text.`);
+        const validLine = Number.isInteger(item.line) && item.line > 0;
+        if (item.line !== undefined && !validLine)
+            problem(`${at}: "line" must be a line number, 1 or more.`);
+        return {
+            path: repoPath(item.path, `${at}.path`),
+            role: textOf(item, "role", at, true),
+            ...(typeof item.symbol === "string" ? { symbol: item.symbol } : {}),
+            ...(validLine ? { line: item.line } : {}),
+        };
+    };
     const glob = (value, where) => {
         if (typeof value !== "string") {
             problem(`${where} must be a path pattern.`);
@@ -116,6 +226,7 @@ export function parseMapFolder(source) {
         }
         return value;
     };
+    onlyKnown(index, "map.json", MAP_FIELDS.index);
     if (source.areas.length > MAX_AREAS)
         problem(`areas/ holds more than ${MAX_AREAS} files.`);
     const issues = new Map();
@@ -133,15 +244,17 @@ export function parseMapFolder(source) {
             problem(`${where} is not a JSON object.`);
             return [];
         }
-        const screen = item.screen;
+        onlyKnown(item, where, MAP_FIELDS.area);
         const paths = list(item, "paths", where, MAX_PATTERNS_PER_AREA).map((value, at) => glob(value, `${where}: paths[${at}]`));
         if (paths.length === 0)
             problem(`${where}: "paths" must list at least one path pattern.`);
-        for (const { item: hint, at } of objects(item, "issues", where, 50)) {
-            if (!Number.isInteger(hint.number)) {
-                problem(`${at}.number must be an issue number.`);
+        for (const { item: hint, at } of objects(item, "issues", where, MAP_FIELDS.issueHint, 50)) {
+            if (!(Number.isInteger(hint.number) && hint.number > 0)) {
+                problem(`${at}: "number" must be an issue number.`);
                 continue;
             }
+            if (hint.note !== undefined && typeof hint.note !== "string")
+                problem(`${at}: "note" must be text.`);
             const number = hint.number;
             const known = issues.get(number) ?? { number, areas: [] };
             known.areas.push(id);
@@ -149,28 +262,34 @@ export function parseMapFolder(source) {
                 known.note = hint.note;
             issues.set(number, known);
         }
+        const { screen } = item;
+        if (screen !== undefined && !isObject(screen))
+            problem(`${where}: "screen" must be an object with light and dark.`);
+        if (isObject(screen))
+            onlyKnown(screen, `${where}: screen`, MAP_FIELDS.screen);
         return [
             {
                 id,
                 name: textOf(item, "name", where),
-                icon: textOf(item, "icon", where, true),
+                icon: oneOf(item, "icon", where, AREA_ICONS, true),
                 tagline: textOf(item, "tagline", where),
                 summary: textOf(item, "summary", where),
                 paths,
-                flow: objects(item, "flow", where, 12).map(({ item: step, at }) => ({
-                    kind: textOf(step, "kind", at),
-                    label: textOf(step, "label", at),
-                    note: textOf(step, "note", at),
-                    ...(step.path === undefined
+                flow: objects(item, "flow", where, MAP_FIELDS.flowStep, 12).flatMap(({ item: step, at }) => {
+                    const kind = oneOf(step, "kind", at, FLOW_KINDS);
+                    const label = textOf(step, "label", at);
+                    const note = textOf(step, "note", at);
+                    const path = step.path === undefined
                         ? {}
-                        : { path: repoPath(step.path, `${at}.path`) }),
-                })),
-                features: objects(item, "features", where, 30).map(({ item: feature, at }) => ({
+                        : { path: repoPath(step.path, `${at}.path`) };
+                    return kind ? [{ kind, label, note, ...path }] : [];
+                }),
+                features: objects(item, "features", where, MAP_FIELDS.feature, 30).map(({ item: feature, at }) => ({
                     name: textOf(feature, "name", at),
                     summary: textOf(feature, "summary", at),
-                    entry: objects(feature, "entry", at, 10).map((entry) => reference(entry.item, entry.at)),
+                    entry: objects(feature, "entry", at, MAP_FIELDS.reference, 10).map((entry) => reference(entry.item, entry.at)),
                 })),
-                entryPoints: objects(item, "entryPoints", where, 20).map((entry) => reference(entry.item, entry.at)),
+                entryPoints: objects(item, "entryPoints", where, MAP_FIELDS.reference, 20).map((entry) => reference(entry.item, entry.at)),
                 dependsOn: strings(item, "dependsOn", where),
                 outside: strings(item, "outside", where),
                 goodParts: strings(item, "goodParts", where, 20),
@@ -197,11 +316,11 @@ export function parseMapFolder(source) {
         for (const other of area.dependsOn)
             knownArea(other, `areas/${area.id}.json: dependsOn`);
     const placed = new Set();
-    const bands = objects(index, "bands", "map.json", 20).map(({ item, at }) => ({
+    const bands = objects(index, "bands", "map.json", MAP_FIELDS.band, 20).map(({ item, at }) => ({
         id: idOf(item, at),
         name: textOf(item, "name", at),
         caption: textOf(item, "caption", at, true),
-        groups: objects(item, "groups", at, 30).map(({ item: group, at: groupAt }) => {
+        groups: objects(item, "groups", at, MAP_FIELDS.group, 30).map(({ item: group, at: groupAt }) => {
             const members = strings(group, "areas", groupAt, MAX_AREAS);
             for (const member of members) {
                 knownArea(member, groupAt);
@@ -219,6 +338,20 @@ export function parseMapFolder(source) {
     for (const area of areas)
         if (!placed.has(area.id))
             problem(`Area "${area.id}" is not in any group in map.json, so it would not show.`);
+    const outside = objects(index, "outside", "map.json", MAP_FIELDS.outsideSystem, 50).map(({ item, at }) => ({
+        id: idOf(item, at),
+        name: textOf(item, "name", at),
+        owner: textOf(item, "owner", at),
+        role: textOf(item, "role", at, true),
+    }));
+    const outsideIds = new Set(outside.map((system) => system.id));
+    const knownOutside = (value, where) => {
+        if (!outsideIds.has(value))
+            problem(`${where} names an outside system "${value}" that map.json does not list.`);
+    };
+    for (const area of areas)
+        for (const system of area.outside)
+            knownOutside(system, `areas/${area.id}.json: outside`);
     const map = {
         version: MAP_FILE_VERSION,
         pitch: textOf(index, "pitch", "map.json"),
@@ -227,21 +360,19 @@ export function parseMapFolder(source) {
         areas,
         rules: areas.flatMap((area) => area.paths.map((path) => ({ path, area: area.id }))),
         ignore: list(index, "ignore", "map.json", 200).map((value, at) => glob(value, `map.json: ignore[${at}]`)),
-        outside: objects(index, "outside", "map.json", 50).map(({ item, at }) => ({
-            id: idOf(item, at),
-            name: textOf(item, "name", at),
-            owner: textOf(item, "owner", at),
-            role: textOf(item, "role", at, true),
-        })),
-        tour: objects(index, "tour", "map.json", 20).map(({ item, at }) => {
+        outside,
+        tour: objects(index, "tour", "map.json", MAP_FIELDS.tourStop, 20).map(({ item, at }) => {
             const stopAreas = strings(item, "areas", at);
             for (const area of stopAreas)
                 knownArea(area, at);
+            const stopOutside = strings(item, "outside", at);
+            for (const system of stopOutside)
+                knownOutside(system, at);
             return {
                 title: textOf(item, "title", at),
                 text: textOf(item, "text", at),
                 areas: stopAreas,
-                outside: strings(item, "outside", at),
+                outside: stopOutside,
             };
         }),
         issues: [...issues.values()],

@@ -1,0 +1,22 @@
+name: Check product map
+description: Checks a repository's .diffkit product map the way DiffKit does, and that it still matches the code.
+
+inputs:
+  root:
+    description: Repository root, relative to the workspace.
+    default: "."
+  fail-on-unmapped:
+    description: Fail when a file belongs to no area, instead of only warning.
+    default: "false"
+
+runs:
+  using: composite
+  steps:
+    - shell: bash
+      env:
+        MAP_ROOT: ${{ inputs.root }}
+        MAP_STRICT: ${{ inputs.fail-on-unmapped }}
+      run: |
+        args=("$MAP_ROOT")
+        if [ "$MAP_STRICT" = "true" ]; then args+=(--fail-on-unmapped); fi
+        node "$GITHUB_ACTION_PATH/../scripts/check.mjs" "${args[@]}"

@@ -124,7 +124,7 @@
         },
         {
           "path": "apps/dashboard/src/lib/github/query-registry.ts",
-          "line": 242,
+          "line": 245,
           "symbol": "githubQueryMatchesEntity",
           "role": "Does this cached query care about this change"
         }
