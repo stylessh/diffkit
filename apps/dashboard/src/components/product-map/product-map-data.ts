@@ -1,7 +1,8 @@
 import diffkitMap from "./data/diffkit.json?raw";
+import { type MappedRepo, mappedRepo } from "./product-map-repos";
 import type { ProductArea, ProductMap } from "./product-map-types";
 
-const maps: Record<string, string> = {
+const maps: Record<MappedRepo, string> = {
 	"stylessh/diffkit": diffkitMap,
 };
 
@@ -16,12 +17,11 @@ export function loadProductMap(
 	owner: string,
 	repo: string,
 ): LoadedProductMap | null {
-	const key = `${owner}/${repo}`.toLowerCase();
+	const key = mappedRepo(owner, repo);
+	if (!key) return null;
 	const cached = loaded.get(key);
 	if (cached) return cached;
-	const raw = maps[key];
-	if (!raw) return null;
-	const map = JSON.parse(raw) as ProductMap;
+	const map = JSON.parse(maps[key]) as ProductMap;
 	const result: LoadedProductMap = {
 		...map,
 		areaById: new Map(map.areas.map((area) => [area.id, area])),

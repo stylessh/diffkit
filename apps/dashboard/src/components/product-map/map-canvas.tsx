@@ -29,7 +29,7 @@ const roleClassName: Record<TileRole, string> = {
 const MapTile = memo(function MapTile({
 	area,
 	role,
-	lens,
+	metric,
 	heat,
 	register,
 	onOpen,
@@ -37,14 +37,13 @@ const MapTile = memo(function MapTile({
 }: {
 	area: ProductArea;
 	role: TileRole;
-	lens: MapLens;
+	metric: string | null;
 	heat: number;
 	register: (id: string, element: HTMLElement | null) => void;
 	onOpen: (id: string, origin: HTMLElement) => void;
 	onSpotlight: (id: string) => void;
 }) {
 	const Icon = areaIcon(area.icon);
-	const metric = lensLabel(area, lens);
 	const handlePointerEnter = (event: PointerEvent<HTMLButtonElement>) => {
 		if (event.pointerType === "mouse") onSpotlight(area.id);
 	};
@@ -102,7 +101,7 @@ export function MapCanvas({
 	}, []);
 	const links = useMemo(() => spotlightLinks(spotlight, map), [spotlight, map]);
 	const peak = useMemo(
-		() => Math.max(1, ...map.areas.map((area) => lensValue(area, lens))),
+		() => Math.max(1, ...map.areas.map((area) => lensValue(area, lens, map))),
 		[map, lens],
 	);
 
@@ -141,8 +140,8 @@ export function MapCanvas({
 											key={id}
 											area={area}
 											role={tileRole(spotlight, id, map)}
-											lens={lens}
-											heat={lensValue(area, lens) / peak}
+											metric={lensLabel(area, lens, map)}
+											heat={lensValue(area, lens, map) / peak}
 											register={register}
 											onOpen={onOpen}
 											onSpotlight={onSpotlight}

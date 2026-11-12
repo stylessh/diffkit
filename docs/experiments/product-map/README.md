@@ -58,7 +58,7 @@ the page.
 | ![Area](screenshots/area-desktop-dark.png) | ![How it works](screenshots/area-how-desktop-light.png) |
 | **The screen itself.** User-facing areas open with a real screenshot of that screen, captured from demo mode in both themes. | **How it works** is a lane diagram: the path one request takes, drawn across the browser, the Worker, and GitHub and storage. A highlight walks the steps; pick one for its sentence and file. |
 | ![Data path](screenshots/area-data-path-desktop-dark.png) | ![Activity](screenshots/area-activity-desktop-dark.png) |
-| The same diagram for an internal area: a webhook climbs from GitHub through the Worker to the browser. | **What is happening**: four numbers, commits per week (hover a bar for its week), then a table of open and merged work. |
+| The same diagram for an internal area: a webhook climbs from GitHub through the Worker to the browser. | **What is happening**: four numbers, commits per week (hover a bar for its week), then every pull request that changed the area: a cell per merged one (greener is bigger, red is a fix) and a table with each one's share. A row opens that pull request's footprint across the other areas. |
 | ![Inside](screenshots/area-inside-desktop-light.png) | ![Notes](screenshots/area-notes-desktop-light.png) |
 | **What is inside** is a two-column list: an icon, a name and two clipped lines per sub-feature. Opening one shows the full sentence and its code. | **Worth knowing** is two short lists: what is done well and where the rough edges are. |
 
@@ -135,6 +135,34 @@ dot map had no hover context. Lines now draw over dimmed areas, the diagram
 has taller lanes with their labels inside and step buttons, sections are
 spaced further apart with a card only where the content is a table, and bars,
 dots, linked areas and people have hover cards.
+
+## The work map, folded in
+
+The work-on-the-map experiment answered a different question (what is being
+changed, and where) and Alan asked for it inside this one. Its session built
+the pieces on this map's path rules; they were cherry-picked here and fitted
+to the area page:
+
+- **On an area page**, "What is happening" lists every pull request with a
+  changed line in the area, not only the ones mainly about it:
+  [cells and table](screenshots/area-work-desktop-light.png),
+  [phone](screenshots/area-work-phone-light.png). The share is line-weighted:
+  28% means 28% of that pull request's changed lines land in this area. The
+  list shows five, then the ones where the area is a real part (10% or 40
+  lines), then the ones that barely touch it.
+- **On a real pull request page**, the side panel gains a "Product areas"
+  section: the areas the pull request touches, a share bar each, linking into
+  the map. It appears only for a repository that has a map, and the map data
+  is fetched only then, so other pull request pages load nothing extra.
+- The merged and open counts on the area page, the Activity tab and the
+  overview's "Open work" view all use this same count now.
+
+Limits: the pull request section reads the static file, so it shows for
+`stylessh/diffkit` only, which the demo emulator does not contain; it was
+checked by pointing the demo repository at the DiffKit data for one run, not
+committed. A real version would compute the shares from the pull request's
+files and the repository's path rules at request time. Lighting a pull
+request's areas on the overview is not built.
 
 ## Does it answer the question?
 
@@ -241,6 +269,7 @@ Everything is in [`pipeline/`](pipeline). The output is
 | `issue-areas.json` | 16 issues mapped to areas, with a note where one looks answered | me, by judgment |
 | `github-snapshot.json` | pull request and issue metadata, fetched 12 Nov 2026 | read-only `gh` |
 | `build.mjs` | joins the above with `git log` and checks every code reference | script, no model |
+| `build-work.mjs` | per pull request, the share of changed lines per area, into `data/diffkit-work.json` (64 KB). Needs per-file additions and deletions, which `github-snapshot.json` lacks; it reads the raw files fetched by `docs/experiments/work-on-the-map/pipeline/fetch.sh`, which lives on the work-on-the-map branch and is not in this one | script, no model |
 | `capture-screens.mjs` | one screenshot per user-facing area, light and dark, into `apps/dashboard/public/product-map/` (30 JPEGs, 1.5 MB) | Playwright against demo mode |
 
 To rebuild after editing any of them:
@@ -336,6 +365,8 @@ suite.
   - `map-canvas.tsx`, `map-wires.tsx`, `spotlight.ts`: areas, wires, what is lit
   - `map-panel.tsx`: the overview's side panel
   - `area-sheet.tsx`, `area-flow.tsx`, `area-activity.tsx`, `area-panel.tsx`, `area-hover-card.tsx`: the area page, its lane diagram, activity section, side panel and the hover card for an area
+  - `work/`: `area-work.tsx` (cells and pull request table for one area), `pull-footprint.tsx` and `pull-footprint-areas.tsx` (the pull request side panel section and its lazily loaded body), `share-bar.tsx`, `work-data.ts`
+  - `product-map-repos.ts`: which repositories have a map, without loading one
   - `map-search.tsx`, `map-tour.tsx`: jump-to and the tour
 - It uses `packages/ui` components and the existing theme tokens only. No new
   dependency, no change to `packages/ui`.

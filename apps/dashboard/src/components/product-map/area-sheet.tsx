@@ -229,9 +229,11 @@ function NoteList({
 export function AreaSheet({
 	area,
 	map,
+	onNavigate,
 }: {
 	area: ProductArea;
 	map: LoadedProductMap;
+	onNavigate: (id: string) => void;
 }) {
 	const repo: RepoLinks = {
 		url: map.repo.url,
@@ -291,9 +293,14 @@ export function AreaSheet({
 			<Section
 				id="activity"
 				title="What is happening"
-				description={`Commits per week since ${formatShortDate(map.repo.firstCommit)}, then the work that touched this area.`}
+				description={`Commits per week since ${formatShortDate(map.repo.firstCommit)}, then every pull request that changed this area.`}
 			>
-				<AreaActivity key={area.id} area={area} map={map} />
+				<AreaActivity
+					key={area.id}
+					area={area}
+					map={map}
+					onOpenArea={onNavigate}
+				/>
 			</Section>
 
 			{area.goodParts.length + area.watch.length > 0 ? (

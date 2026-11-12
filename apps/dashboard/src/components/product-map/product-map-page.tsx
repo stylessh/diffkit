@@ -44,6 +44,7 @@ import { TOUR_IDLE, TourBar, tourReducer } from "./map-tour";
 import { type LoadedProductMap, loadProductMap } from "./product-map-data";
 import type { MapLens, ProductArea } from "./product-map-types";
 import { NO_SPOTLIGHT, type Spotlight } from "./spotlight";
+import { openWorkCount } from "./work/work-data";
 
 const LENSES = ["structure", "activity", "size", "open"] as const;
 
@@ -73,6 +74,7 @@ function JumpButton({ onSearch }: { onSearch: () => void }) {
 
 function areaSections(
 	area: ProductArea,
+	map: LoadedProductMap,
 ): { section: AreaSection; label: string; count?: number }[] {
 	return [
 		{ section: "how", label: "How it works" },
@@ -81,7 +83,7 @@ function areaSections(
 		{
 			section: "activity",
 			label: "Activity",
-			count: area.pulls.open.length + area.issues.open.length,
+			count: openWorkCount(map, area),
 		},
 		{
 			section: "notes",
@@ -375,7 +377,7 @@ function ProductMapView({
 											<JumpButton onSearch={() => setSearchOpen(true)} />
 										}
 									>
-										{areaSections(area).map((entry) => (
+										{areaSections(area, map).map((entry) => (
 											<ViewTab
 												key={entry.section}
 												active={entry.section === visibleSection}
@@ -390,7 +392,7 @@ function ProductMapView({
 									</ViewTabs>
 								}
 							>
-								<AreaSheet area={area} map={map} />
+								<AreaSheet area={area} map={map} onNavigate={openArea} />
 							</DetailLayout>
 						</Stage>
 					) : (

@@ -1,4 +1,4 @@
-import { GitMergeIcon, GitPullRequestIcon, IssuesIcon } from "@diffkit/icons";
+import { IssuesIcon } from "@diffkit/icons";
 import {
 	Avatar,
 	AvatarFallback,
@@ -12,7 +12,7 @@ import {
 	TooltipTrigger,
 } from "@diffkit/ui/components/tooltip";
 import { cn } from "@diffkit/ui/lib/utils";
-import { type ReactNode, useState } from "react";
+import type { ReactNode } from "react";
 import {
 	formatMonth,
 	formatShortDate,
@@ -22,8 +22,8 @@ import {
 import type { MapIcon } from "./map-icons";
 import type { LoadedProductMap } from "./product-map-data";
 import type { ProductArea } from "./product-map-types";
-
-const MERGED_PREVIEW = 4;
+import { AreaWork } from "./work/area-work";
+import { areaPullCounts, openWorkCount } from "./work/work-data";
 
 export function PersonAvatar({
 	login,
@@ -176,95 +176,61 @@ export function WorkRow({
 	);
 }
 
-type MergedListState = "preview" | "all";
-
 export function AreaActivity({
 	area,
 	map,
+	onOpenArea,
 }: {
 	area: ProductArea;
 	map: LoadedProductMap;
+	onOpenArea: (id: string) => void;
 }) {
-	const [listState, setListState] = useState<MergedListState>("preview");
 	const isBot = (login: string) => map.people[login]?.bot ?? false;
-	const merged = area.pulls.merged;
-	const shown = listState === "all" ? merged : merged.slice(0, MERGED_PREVIEW);
-
 	const { stats } = area;
+	const pulls = areaPullCounts(map, area.id);
 
 	return (
 		<div className="flex flex-col gap-5">
 			<dl className="flex flex-wrap gap-x-10 gap-y-3">
 				<Figure value={stats.commits} label="commits" />
 				<Figure value={stats.commitsLast30} label="in the last 30 days" />
-				<Figure value={stats.mergedPulls} label="merged pull requests" />
-				<Figure value={stats.openPulls + stats.openIssues} label="open" />
+				<Figure value={pulls.merged} label="merged pull requests" />
+				<Figure value={openWorkCount(map, area)} label="open" />
 			</dl>
 			<WeeklyBars
 				weekly={stats.weekly}
 				weekStart={map.repo.weekStart}
 				analysedAt={map.repo.analysedAt}
 			/>
-			<SectionCard className="mt-1 [&>div:last-child]:pb-0">
-				{area.pulls.open.map((number) => {
-					const pull = map.pulls[number];
-					return (
-						<WorkRow
-							key={`pull-${number}`}
-							icon={GitPullRequestIcon}
-							iconClassName="text-state-open"
-							number={number}
-							title={pull.title}
-							author={pull.author}
-							bot={isBot(pull.author)}
-							date={pull.date}
-							href={`${map.repo.url}/pull/${number}`}
-						/>
-					);
-				})}
-				{area.issues.open.map((number) => {
-					const issue = map.issues[number];
-					return (
-						<WorkRow
-							key={`issue-${number}`}
-							icon={IssuesIcon}
-							iconClassName={issue.note ? "text-warning" : "text-state-open"}
-							number={number}
-							title={issue.title}
-							note={issue.note}
-							author={issue.author}
-							bot={isBot(issue.author)}
-							date={issue.date}
-							href={`${map.repo.url}/issues/${number}`}
-						/>
-					);
-				})}
-				{shown.map((number) => {
-					const pull = map.pulls[number];
-					return (
-						<WorkRow
-							key={number}
-							icon={GitMergeIcon}
-							iconClassName="text-state-merged"
-							number={number}
-							title={pull.title}
-							author={pull.author}
-							bot={isBot(pull.author)}
-							date={pull.date}
-							href={`${map.repo.url}/pull/${number}`}
-						/>
-					);
-				})}
-				{listState === "preview" && merged.length > MERGED_PREVIEW ? (
-					<button
-						type="button"
-						onClick={() => setListState("all")}
-						className="w-full px-4 py-2.5 text-left font-[450] text-muted-foreground text-xs transition-colors hover:bg-row-hover hover:text-foreground"
-					>
-						Show {merged.length - MERGED_PREVIEW} more merged
-					</button>
-				) : null}
-			</SectionCard>
+			<AreaWork area={area} map={map} onOpenArea={onOpenArea} />
+			{area.issues.open.length > 0 ? (
+				<div className="flex flex-col gap-2.5">
+					<h3 className="font-[450] text-muted-foreground text-xs">
+						Open issues
+					</h3>
+					<SectionCard className="[&>div:last-child]:pb-0">
+						{area.issues.open.map((number) => {
+							const issue = map.issues[number];
+							return (
+								<WorkRow
+									key={number}
+									icon={IssuesIcon}
+									iconClassName={
+										issue.note ? "text-warning" : "text-state-open"
+									}
+									number={number}
+									title={issue.title}
+									note={issue.note}
+									author={issue.author}
+									bot={isBot(issue.author)}
+									date={issue.date}
+									href={`${map.repo.url}/issues/${number}`}
+								/>
+							);
+						})}
+					</SectionCard>
+				</div>
+			) : null}
 		</div>
 	);
 }

@@ -1,4 +1,8 @@
-import { GitMergeIcon, GitPullRequestIcon } from "@diffkit/icons";
+import {
+	ExternalLinkIcon,
+	GitMergeIcon,
+	GitPullRequestIcon,
+} from "@diffkit/icons";
 import { SectionCard } from "@diffkit/ui/components/section-card";
 import {
 	Tooltip,
@@ -8,17 +12,12 @@ import {
 } from "@diffkit/ui/components/tooltip";
 import { cn } from "@diffkit/ui/lib/utils";
 import { memo, type ReactNode, useMemo, useRef, useState } from "react";
-import { formatShortDate } from "../map-format";
+import { formatShare, formatShortDate } from "../map-format";
 import { areaIcon } from "../map-icons";
 import type { LoadedProductMap } from "../product-map-data";
 import type { ProductArea, PullReference } from "../product-map-types";
-import { ShareBar } from "./pull-footprint";
-import {
-	type AreaTouch,
-	formatShare,
-	loadProductWork,
-	type WorkPart,
-} from "./work-data";
+import { ShareBar } from "./share-bar";
+import { type AreaTouch, loadProductWork, type WorkPart } from "./work-data";
 
 const LIST_PREVIEW = 5;
 const MAIN_SHARE = 0.1;
@@ -56,6 +55,7 @@ const WorkCells = memo(function WorkCells({
 	selected: number | null;
 	onSelect: (number: number) => void;
 }) {
+	const hasSelectedCell = rows.some((row) => row.touch.number === selected);
 	return (
 		<TooltipProvider delayDuration={0} skipDelayDuration={0}>
 			<ul aria-label="Merged pull requests" className="-m-0.5 flex flex-wrap">
@@ -74,7 +74,7 @@ const WorkCells = memo(function WorkCells({
 										style={{ backgroundColor: cellColor(touch) }}
 										className={cn(
 											"size-2.5 rounded-[3px] transition-[opacity,box-shadow] duration-150 group-hover/cell:shadow-[0_0_0_1.5px_var(--color-foreground)]",
-											selected === null || touch.number === selected
+											!hasSelectedCell || touch.number === selected
 												? "opacity-90"
 												: "opacity-30",
 											touch.number === selected &&
@@ -97,12 +97,42 @@ const WorkCells = memo(function WorkCells({
 	);
 });
 
+function Swatch({ color }: { color: string }) {
+	return (
+		<span
+			style={{ backgroundColor: color }}
+			className="size-2.5 rounded-[3px]"
+		/>
+	);
+}
+
+function CellLegend() {
+	return (
+		<div
+			aria-hidden
+			className="flex items-center gap-1 font-[450] text-muted-foreground text-xs"
+		>
+			<span className="pr-1">Smaller</span>
+			{[1, 2, 3, 4].map((level) => (
+				<Swatch key={level} color={`var(--contrib-level-${level})`} />
+			))}
+			<span className="pr-3 pl-1">Bigger</span>
+			<Swatch
+				color={`color-mix(in oklab, var(--color-removed) ${FIX_STRENGTH[3]}%, transparent)`}
+			/>
+			<span className="pl-1">Fix</span>
+		</div>
+	);
+}
+
 function Footprint({
+	number,
 	parts,
 	currentId,
 	map,
 	onOpenArea,
 }: {
+	number: number;
 	parts: WorkPart[];
 	currentId: string;
 	map: LoadedProductMap;
@@ -144,6 +174,17 @@ function Footprint({
 					{traces} more under 1%
 				</li>
 			) : null}
+			<li className="pt-1.5">
+				<a
+					href={`${map.repo.url}/pull/${number}`}
+					target="_blank"
+					rel="noreferrer"
+					className="inline-flex items-center gap-2.5 font-[450] text-muted-foreground text-xs transition-colors hover:text-foreground"
+				>
+					<ExternalLinkIcon size={14} strokeWidth={2} />
+					Open #{number} on GitHub
+				</a>
+			</li>
 		</ul>
 	);
 }
@@ -182,6 +223,9 @@ function PullRow({
 				/>
 				<span className="min-w-0 flex-1 truncate text-[13px] text-foreground">
 					{pull.title}
+				</span>
+				<span className="shrink-0 font-[450] text-muted-foreground text-xs tabular-nums">
+					#{touch.number}
 				</span>
 				<ShareBar share={touch.share} />
 				<time
@@ -225,14 +269,10 @@ export function AreaWork({
 	area,
 	map,
 	onOpenArea,
-	title,
-	description,
 }: {
 	area: ProductArea;
 	map: LoadedProductMap;
 	onOpenArea: (id: string) => void;
-	title?: ReactNode;
-	description?: ReactNode;
 }) {
 	const [listState, setListState] = useState<ListState>("preview");
 	const [selected, setSelected] = useState<number | null>(null);
@@ -279,52 +319,46 @@ export function AreaWork({
 	};
 
 	return (
-		<SectionCard
-			title={title}
-			description={description}
-			className="[&>div:last-child]:pb-0"
-		>
-			<div className="px-4 py-3.5">
-				<WorkCells
-					rows={merged}
-					selected={selected}
-					onSelect={selectFromCell}
-				/>
-			</div>
-			<ul className="divide-y-[0.5px] divide-rule">
-				{shown.map((row) => (
-					<PullRow
-						key={row.touch.number}
-						row={row}
-						open={row.touch.number === selected}
-						onMount={(node) => revealRow(row.touch.number, node)}
-						onToggle={() =>
-							setSelected((current) =>
-								current === row.touch.number ? null : row.touch.number,
-							)
-						}
-					>
-						<Footprint
-							parts={work.pulls.get(row.touch.number)?.parts ?? []}
-							currentId={area.id}
-							map={map}
-							onOpenArea={onOpenArea}
-						/>
-					</PullRow>
-				))}
-			</ul>
-			{listState === "preview" && main.length > LIST_PREVIEW ? (
-				<MoreButton onClick={() => setListState("main")}>
-					Show all {main.length}
-				</MoreButton>
-			) : null}
-			{listState !== "all" &&
-			minor.length > 0 &&
-			(listState === "main" || main.length <= LIST_PREVIEW) ? (
-				<MoreButton onClick={() => setListState("all")}>
-					{minor.length} more that barely touch it
-				</MoreButton>
-			) : null}
-		</SectionCard>
+		<div className="flex flex-col gap-3 pt-2">
+			<WorkCells rows={merged} selected={selected} onSelect={selectFromCell} />
+			<CellLegend />
+			<SectionCard className="mt-1 [&>div:last-child]:pb-0">
+				<ul className="divide-y-[0.5px] divide-rule">
+					{shown.map((row) => (
+						<PullRow
+							key={row.touch.number}
+							row={row}
+							open={row.touch.number === selected}
+							onMount={(node) => revealRow(row.touch.number, node)}
+							onToggle={() =>
+								setSelected((current) =>
+									current === row.touch.number ? null : row.touch.number,
+								)
+							}
+						>
+							<Footprint
+								number={row.touch.number}
+								parts={work.pulls.get(row.touch.number)?.parts ?? []}
+								currentId={area.id}
+								map={map}
+								onOpenArea={onOpenArea}
+							/>
+						</PullRow>
+					))}
+				</ul>
+				{listState === "preview" && main.length > LIST_PREVIEW ? (
+					<MoreButton onClick={() => setListState("main")}>
+						Show all {main.length}
+					</MoreButton>
+				) : null}
+				{listState !== "all" &&
+				minor.length > 0 &&
+				(listState === "main" || main.length <= LIST_PREVIEW) ? (
+					<MoreButton onClick={() => setListState("all")}>
+						{minor.length} more that barely touch it
+					</MoreButton>
+				) : null}
+			</SectionCard>
+		</div>
 	);
 }
