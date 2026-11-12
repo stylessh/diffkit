@@ -105,8 +105,8 @@ export { ActionsIcon } from "./actions-icon";
 export { ArchiveDownIcon } from "./archive-down-icon";
 export { AutomationIcon } from "./automation-icon";
 export {
+  ChatGPTLogo,
   ClaudeLogo,
-  CodexLogo,
   CursorLogo,
   DiscordLogo,
   GitHubCopilotLogo,

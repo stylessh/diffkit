@@ -1,9 +1,9 @@
 import {
 	AlertCircleIcon,
+	ChatGPTLogo,
 	CheckIcon,
 	ClaudeLogo,
 	CodeIcon,
-	CodexLogo,
 	CopyIcon,
 	CursorLogo,
 	GitHubCopilotLogo,
@@ -51,7 +51,7 @@ const AGENTS: {
 	className: string;
 }[] = [
 	{ name: "Claude Code", logo: ClaudeLogo, className: "" },
-	{ name: "Codex", logo: CodexLogo, className: "text-[#111] dark:text-white" },
+	{ name: "Codex", logo: ChatGPTLogo, className: "text-black dark:text-white" },
 	{
 		name: "Cursor",
 		logo: CursorLogo,
