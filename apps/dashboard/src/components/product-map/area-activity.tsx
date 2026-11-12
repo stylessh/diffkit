@@ -12,7 +12,7 @@ import {
 	TooltipTrigger,
 } from "@diffkit/ui/components/tooltip";
 import { cn } from "@diffkit/ui/lib/utils";
-import { useState } from "react";
+import { type ReactNode, useState } from "react";
 import {
 	formatMonth,
 	formatShortDate,
@@ -117,7 +117,7 @@ function Figure({ value, label }: { value: number; label: string }) {
 	);
 }
 
-function WorkRow({
+export function WorkRow({
 	icon: Icon,
 	iconClassName,
 	number,
@@ -127,6 +127,7 @@ function WorkRow({
 	date,
 	href,
 	note,
+	trailing,
 }: {
 	icon: MapIcon;
 	iconClassName: string;
@@ -137,6 +138,7 @@ function WorkRow({
 	date: string;
 	href: string;
 	note?: string;
+	trailing?: ReactNode;
 }) {
 	return (
 		<a
@@ -154,6 +156,7 @@ function WorkRow({
 			<span className="min-w-0 flex-1 truncate text-[13px] text-foreground">
 				{title}
 			</span>
+			{trailing}
 			<span className="shrink-0 font-[450] text-muted-foreground text-xs tabular-nums">
 				#{number}
 			</span>
