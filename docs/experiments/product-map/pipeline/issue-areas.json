@@ -1,0 +1,96 @@
+{
+ "137": {
+  "areas": [
+   "instant-cache",
+   "live-updates",
+   "work-lists"
+  ],
+  "note": "Predates the cache rebuild (#193, #206). Worth re-testing before it stays open."
+ },
+ "168": {
+  "areas": [
+   "repo-home"
+  ]
+ },
+ "169": {
+  "areas": [
+   "releases"
+  ],
+  "note": "Looks answered: releases pages shipped in #192 on Nov 8."
+ },
+ "170": {
+  "areas": [
+   "conversation",
+   "issues"
+  ],
+  "note": "Comment uploads to R2 exist since Apr 16. Worth re-testing on issues."
+ },
+ "171": {
+  "areas": [
+   "repo-home"
+  ]
+ },
+ "182": {
+  "areas": [
+   "issues",
+   "conversation"
+  ],
+  "note": "Predates the cache rebuild (#193, #206). Worth re-testing before it stays open."
+ },
+ "184": {
+  "areas": [
+   "github-data"
+  ]
+ },
+ "185": {
+  "areas": [
+   "repo-settings"
+  ],
+  "note": "Looks answered: repository settings shipped in #210 on Nov 8."
+ },
+ "106": {
+  "areas": [
+   "repo-home",
+   "conversation"
+  ]
+ },
+ "107": {
+  "areas": [
+   "repo-home"
+  ]
+ },
+ "108": {
+  "areas": [
+   "repo-home"
+  ]
+ },
+ "116": {
+  "areas": [
+   "conversation",
+   "pull-request"
+  ]
+ },
+ "130": {
+  "areas": [
+   "preferences",
+   "command-palette"
+  ]
+ },
+ "144": {
+  "areas": [
+   "github-data",
+   "sign-in"
+  ]
+ },
+ "154": {
+  "areas": [
+   "repos-profiles"
+  ]
+ },
+ "188": {
+  "areas": [
+   "sign-in",
+   "repos-profiles"
+  ]
+ }
+}
