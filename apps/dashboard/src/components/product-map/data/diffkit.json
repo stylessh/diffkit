@@ -481,6 +481,9 @@
 				"The account list is built twice with the same logic: SetupAccessList (routes/setup.tsx:146) and buildTargets (components/layouts/github-access-dialog.tsx:144).",
 				"lib/github/installations.ts is 663 lines and mixes installation lookup, token routing and list filtering."
 			],
+			"screen": {
+				"path": "/login"
+			},
 			"usedBy": ["preferences", "repo-settings", "shell", "github-data"],
 			"stats": {
 				"files": 43,
@@ -762,6 +765,9 @@
 				"No e2e spec opens /repos or a profile page, and lib/repos-hub-filter.ts has no unit test.",
 				"There is no dedicated organisation profile: /$owner calls user endpoints only (lib/github/users.ts), and organisations only have /orgs/$org/settings."
 			],
+			"screen": {
+				"path": "/"
+			},
 			"usedBy": [],
 			"stats": {
 				"files": 17,
@@ -1022,6 +1028,9 @@
 				"The server reads comments and reviews of every thread to build 'participants' (notification-reads.ts:54), but no component reads that field; only subjectState is shown.",
 				"docs/e2e.md:105 says the inbox menu has no accessible name; inbox-list.tsx:202 now sets aria-label 'Inbox actions', so the doc is stale."
 			],
+			"screen": {
+				"path": "/inbox"
+			},
 			"usedBy": [],
 			"stats": {
 				"files": 11,
@@ -1332,6 +1341,9 @@
 				"Search, filter and sort UI exists twice: list-toolbar.tsx (482 lines) for desktop menus and mobile-list-actions.tsx (425 lines) for phone drawers.",
 				"lib/list-selection.ts and the range logic in components/shared/list-selection.tsx have no unit tests; only the bulk-actions e2e exercises them."
 			],
+			"screen": {
+				"path": "/pulls"
+			},
 			"usedBy": ["repos-profiles", "command-palette", "issues"],
 			"stats": {
 				"files": 41,
@@ -1613,6 +1625,9 @@
 				"command-palette.tsx (540 lines) defines its own useMediaQuery and useDebouncedValue although lib/use-media-query.ts and lib/use-debounced-value.ts exist.",
 				"The pull request and issue row builders are written twice in use-command-items.ts (useCommandItems at :57, getCommandSearchItems at :215)."
 			],
+			"screen": {
+				"path": "/?palette"
+			},
 			"usedBy": ["shell"],
 			"stats": {
 				"files": 9,
@@ -1890,6 +1905,9 @@
 				"The reference is hand-written apart from the handlers: inbox keys (J, K, E, S, Shift+M) and '/' for list search work but are not listed.",
 				"lib/shortcuts.ts (235 lines) has no unit test."
 			],
+			"screen": {
+				"path": "/settings"
+			},
 			"usedBy": ["extension"],
 			"stats": {
 				"files": 6,
@@ -2201,6 +2219,9 @@
 				"getRepoDiscussions and its query options exist (lib/github/repo-insights.ts:98) but no component reads them.",
 				"setRepoStarred writes three console.info lines per star click (lib/github/repos.ts:227, 246, 266)."
 			],
+			"screen": {
+				"path": "/lumen-labs/beacon"
+			},
 			"usedBy": ["repos-profiles"],
 			"stats": {
 				"files": 21,
@@ -2512,6 +2533,9 @@
 				"Files over 1 MB cannot be shown: the contents API returns no body, so the page points to the raw file on GitHub (lib/code-browsing/blob-classify.ts:43).",
 				"Server reads are split across lib/github/code.ts (contents listings, last commits) and lib/github/code-browsing.ts (git tree, blob, blame, search)."
 			],
+			"screen": {
+				"path": "/lumen-labs/beacon/tree/main/src"
+			},
 			"usedBy": ["repo-home"],
 			"stats": {
 				"files": 42,
@@ -2825,6 +2849,9 @@
 				"Message search uses GitHub's commit index only on the default branch; on other refs it filters the loaded page (repo-commits-page.tsx:45-49).",
 				"lib/github/commits.ts is 636 lines and also holds the branch list, tag list, ref names and the ref resolver; compare-page.tsx is 531 lines."
 			],
+			"screen": {
+				"path": "/lumen-labs/beacon/commits"
+			},
 			"usedBy": ["repo-home", "code-browser"],
 			"stats": {
 				"files": 46,
@@ -3093,6 +3120,9 @@
 				"The issue sidebar edits labels only; assignees and milestone are display-only (components/issues/detail/issue-detail-sidebar.tsx).",
 				"No unit tests under components/issues; lib/github/issues.ts is 578 lines mixing GraphQL mapping, the REST fallback and mutations."
 			],
+			"screen": {
+				"path": "/lumen-labs/beacon/issues"
+			},
 			"usedBy": ["inbox", "work-lists"],
 			"stats": {
 				"files": 14,
@@ -3406,6 +3436,9 @@
 				"getWorkflowJobLogs and the logs bundle print console.log lines on every call (lib/github/actions.ts:482, 496, 519, 715).",
 				"lib/github/actions.ts is 771 lines; open step logs poll every 4 s on a fixed interval, outside the adaptive policy (graph/step-log-node.tsx:50)."
 			],
+			"screen": {
+				"path": "/lumen-labs/beacon/actions"
+			},
 			"usedBy": ["pull-request"],
 			"stats": {
 				"files": 36,
@@ -3681,6 +3714,9 @@
 				"Assets can be listed and downloaded but not uploaded; lib/github/releases.ts has no upload call.",
 				"e2e only checks that the releases list shows up (apps/e2e/tests/concurrent/repository.spec.ts); creating and editing rely on unit tests alone."
 			],
+			"screen": {
+				"path": "/lumen-labs/beacon/releases"
+			},
 			"usedBy": ["repo-home"],
 			"stats": {
 				"files": 17,
@@ -3997,6 +4033,9 @@
 				"A secret's plain value is posted to the DiffKit server function and sealed there, not in the browser (lib/github/settings-actions.ts:52).",
 				"Largest files: webhooks-settings.tsx 521 lines, org-teams-settings.tsx 469, access-settings.tsx 408."
 			],
+			"screen": {
+				"path": "/lumen-labs/beacon/settings"
+			},
 			"usedBy": [],
 			"stats": {
 				"files": 54,
@@ -4301,6 +4340,9 @@
 				"PullStackSection is mounted only for merged or closed PRs (pull-detail-page.tsx:309), yet usePullStack returns null unless the PR is open (use-pull-stack.ts:48).",
 				"Stacks are built from one page of 100 open PRs; use-pull-stack.ts:16 says repos with more may show a truncated stack."
 			],
+			"screen": {
+				"path": "/lumen-labs/beacon/pull/16"
+			},
 			"usedBy": ["inbox", "work-lists", "history-compare", "review-diff"],
 			"stats": {
 				"files": 49,
@@ -4640,6 +4682,9 @@
 				"Pending comments and Viewed ticks live only in page memory (review-draft.ts, viewed-files-store.ts); a reload drops them and Viewed is never sent to GitHub.",
 				"createReviewComment is exported (lib/github/reviews.ts:235) but nothing calls it; new line comments only go out inside a submitted review."
 			],
+			"screen": {
+				"path": "/lumen-labs/beacon/review/16"
+			},
 			"usedBy": ["history-compare"],
 			"stats": {
 				"files": 48,

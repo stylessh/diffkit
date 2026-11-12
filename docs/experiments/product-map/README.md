@@ -48,17 +48,22 @@ Everything else is one step away:
 | ![Lens](screenshots/activity-desktop-dark.png) | ![Search](screenshots/search-desktop-light.png) |
 | **View tabs** add one number per area: commits in the last 30 days, lines, or open work. | **Jump to** (`/`) finds an area, feature, file, pull request or issue. |
 
-**Click an area to open it.** The page follows the pull request page: title,
-one or two sentences, and five tabs that show one thing at a time.
+**Click an area to open it.** The page follows the pull request page: a
+title and one or two sentences, then section cards that each lead with
+something to look at.
 
 | | |
 | --- | --- |
-| ![How it works](screenshots/area-desktop-light.png) | ![Inside](screenshots/area-inside-desktop-light.png) |
-| **How it works**: the path one request takes. Pick a step to read its one sentence and open its file. | **Inside**: sub-features as closed rows. Opening one shows a sentence and its code references. |
-| ![Activity](screenshots/area-activity-desktop-dark.png) | ![Notes](screenshots/area-notes-desktop-light.png) |
-| **Activity**: commits per week, then open and merged work. | **Notes**: what is clearly well done and what looks rough, each with its evidence. |
+| ![Area](screenshots/area-desktop-dark.png) | ![How it works](screenshots/area-how-desktop-light.png) |
+| **The screen itself.** User-facing areas open with a real screenshot of that screen, captured from demo mode in both themes. | **How it works** is a lane diagram: the path one request takes, drawn across the browser, the Worker, and GitHub and storage. A highlight walks the steps; pick one for its sentence and file. |
+| ![Data path](screenshots/area-data-path-desktop-dark.png) | ![Activity](screenshots/area-activity-desktop-dark.png) |
+| The same diagram for an internal area: a webhook climbs from GitHub through the Worker to the browser. | **What is happening**: commits per week, then open and merged work with avatars. **Worth knowing** follows, with what is well done and what looks rough. |
 
-The fifth tab, **Code**, lists four to six symbols to start reading from.
+Between them, **What is inside** shows the sub-features as a grid, each with
+an icon for where it lives (page, component, browser, server) and one clipped
+line; opening one shows the full sentence and its code. **Ways into the code**
+lists four to six starting points with their file-type icons. The tabs above
+the page jump between the five cards and follow the scroll.
 
 The panel on the right holds a small dot map of the product (this area in
 green, connected areas brighter; every dot is a link), then what the area
@@ -75,18 +80,20 @@ Moving around:
 | Jump anywhere | `/` |
 | Start or pause the tour | `t`; arrow keys step through it |
 
-The area, tab and view live in the URL
-(`?area=review-diff&tab=activity`), so any view can be linked.
+The area and view live in the URL (`?area=review-diff`, `?lens=activity`), so
+either can be linked.
 
 Phone width, light and dark:
 [overview dark](screenshots/overview-phone-dark.png),
 [overview light](screenshots/overview-phone-light.png),
 [area dark](screenshots/area-phone-dark.png),
 [area light](screenshots/area-phone-light.png),
+[lane diagram](screenshots/area-how-phone-dark.png),
 [tour](screenshots/tour-phone-light.png).
 Desktop in the other theme:
 [overview light](screenshots/overview-desktop-light.png),
-[area dark](screenshots/area-desktop-dark.png).
+[area light](screenshots/area-desktop-light.png),
+[sub-features open](screenshots/area-inside-desktop-light.png).
 
 ## The reduction pass
 
@@ -104,12 +111,18 @@ What changed:
 | Pitch, a three-line paragraph, a stats line, lens buttons with a description | Pitch and one caption line. Description and stats moved to the side panel |
 | Ten outside systems as their own strip | Three chips in the panel (GitHub, Cloudflare, The browser) |
 | Wires for "builds on", "used by" and outside systems, with badges | Wires for "builds on" only, drawn behind the areas |
-| Area page: eight stacked sections, about four screens tall | Five tabs, one visible. Nothing scrolls on most tabs |
+| Area page: eight stacked sections of text and badges | Five section cards, each led by a visual |
 | A 25-row sidebar for moving sideways | A dot map in the panel. No left sidebar |
-| Request path: six cards with a paragraph each | Six icons. One sentence for the selected step |
+| Request path: six cards with a paragraph each | A lane diagram. One sentence for the selected step |
 | Tour stops of about 30 words | About 15 words each |
 
 The overview now fits one screen at 1440×900, which the first version did not.
+
+That pass went too far on the area page: it hid each kind of content behind a
+tab, so the page explained very little at a glance. Alan's second note was to
+bring the explanations back with visual support instead of text. The area
+page now scrolls through section cards again, but each one leads with
+something to look at: the real screen, a lane diagram, an icon grid, a chart.
 
 ## Does it answer the question?
 
@@ -130,9 +143,9 @@ Where it falls short:
   to someone who does not. The description is one hover away, but a first-time
   reader has to know to hover. The tour should probably start on its own on a
   first visit.
-- **The good and bad parts are one click and one tab away.** Notes is the
-  most valuable content per line and the overview gives no hint of where the
-  rough areas are. A view tab that counts watch items per area is the obvious
+- **The good and bad parts are one click and a scroll away.** Worth knowing
+  is the most valuable content per line and the overview gives no hint of
+  where the rough areas are. A view tab that counts watch items per area is the obvious
   next step.
 - **Dependencies are curated, not derived.** I chose the notable edges by
   hand from the analysts' notes. They should come from the import graph, with
@@ -216,6 +229,7 @@ Everything is in [`pipeline/`](pipeline). The output is
 | `issue-areas.json` | 16 issues mapped to areas, with a note where one looks answered | me, by judgment |
 | `github-snapshot.json` | pull request and issue metadata, fetched 12 Nov 2026 | read-only `gh` |
 | `build.mjs` | joins the above with `git log` and checks every code reference | script, no model |
+| `capture-screens.mjs` | one screenshot per user-facing area, light and dark, into `apps/dashboard/public/product-map/` (30 JPEGs, 1.5 MB) | Playwright against demo mode |
 
 To rebuild after editing any of them:
 
@@ -293,6 +307,12 @@ request. Squash-merged pull requests need none.
 for the owner to correct a description and have the correction survive the
 next regeneration, and in-app links.
 
+**Screen previews are the least portable part.** They work here because
+DiffKit ships a GitHub emulator with seeded data, so a script can sign in and
+photograph every screen. A repository without a runnable demo would need
+another source: a preview deployment, Storybook, or screenshots from its e2e
+suite.
+
 ## Code
 
 - Route: `apps/dashboard/src/routes/_protected/$owner/$repo/map.tsx`
@@ -300,14 +320,15 @@ next regeneration, and in-app links.
   - `product-map-page.tsx`: page, URL state, keys, the zoom between map and area
   - `map-canvas.tsx`, `map-wires.tsx`, `spotlight.ts`: areas, wires, what is lit
   - `map-panel.tsx`: the overview's side panel
-  - `area-sheet.tsx`, `area-activity.tsx`, `area-panel.tsx`: the area page, its tabs and side panel
+  - `area-sheet.tsx`, `area-flow.tsx`, `area-activity.tsx`, `area-panel.tsx`: the area page, its lane diagram, activity card and side panel
   - `map-search.tsx`, `map-tour.tsx`: jump-to and the tour
 - It uses `packages/ui` components and the existing theme tokens only. No new
   dependency, no change to `packages/ui`.
 
 `pnpm check` and `pnpm check-types` pass. There is one unit test, for the
 tour's state transitions. No e2e test was added; I verified by driving the
-page with Playwright against the demo emulator (open an area, the five tabs,
+page with Playwright against the demo emulator (open an area, section jumps,
+the lane diagram, the screen previews,
 `[` `]`, `Esc`, browser back, the panel links, search, tour auto-advance, view
 tabs, wires, the empty state) and by reading the screenshots in both themes at
 1440×900 and 390×844, beside screenshots of the shipped repo home and pull

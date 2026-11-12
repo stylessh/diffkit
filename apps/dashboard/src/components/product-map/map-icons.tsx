@@ -89,3 +89,17 @@ const stepKinds: Record<string, { icon: MapIcon; label: string }> = {
 export function stepKind(kind: string) {
 	return stepKinds[kind] ?? { icon: FileIcon, label: kind };
 }
+
+const pathKinds: [RegExp, string][] = [
+	[/\/routes\/api\//, "route"],
+	[/\/routes\//, "page"],
+	[/^packages\/ui\/|\/components\//, "component"],
+	[/^apps\/(emulator|e2e)\/|^scripts\/|^\.github\/|^docs\//, "tool"],
+	[/\/db\/|\/crons\//, "storage"],
+	[/^extensions\//, "external"],
+	[/\.server\.|\.functions\.|\/lib\/github\//, "server"],
+];
+
+export function pathKind(path: string) {
+	return pathKinds.find(([pattern]) => pattern.test(path))?.[1] ?? "client";
+}

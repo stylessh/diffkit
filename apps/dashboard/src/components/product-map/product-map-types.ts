@@ -43,6 +43,7 @@ export type ProductArea = {
 	flow: FlowStep[];
 	features: AreaFeature[];
 	entryPoints: CodeReference[];
+	screen?: { path: string };
 	dependsOn: string[];
 	usedBy: string[];
 	outside: string[];

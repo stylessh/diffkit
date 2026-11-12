@@ -26,6 +26,7 @@ import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { parseAsString, parseAsStringLiteral, useQueryState } from "nuqs";
 import {
 	type ReactNode,
+	type RefObject,
 	useCallback,
 	useEffect,
 	useMemo,
@@ -34,7 +35,7 @@ import {
 	useState,
 } from "react";
 import { AreaPanel } from "./area-panel";
-import { AREA_TABS, AreaSheet, type AreaTab } from "./area-sheet";
+import { AREA_SECTIONS, type AreaSection, AreaSheet } from "./area-sheet";
 import { MapCanvas } from "./map-canvas";
 import { lensDescriptions } from "./map-format";
 import { MapPanel } from "./map-panel";
@@ -70,24 +71,67 @@ function JumpButton({ onSearch }: { onSearch: () => void }) {
 	);
 }
 
-function areaTabs(
+function areaSections(
 	area: ProductArea,
-): { tab: AreaTab; label: string; count?: number }[] {
+): { section: AreaSection; label: string; count?: number }[] {
 	return [
-		{ tab: "how", label: "How it works" },
-		{ tab: "inside", label: "Inside", count: area.features.length },
-		{ tab: "code", label: "Code", count: area.entryPoints.length },
+		{ section: "how", label: "How it works" },
+		{ section: "inside", label: "Inside", count: area.features.length },
+		{ section: "code", label: "Code", count: area.entryPoints.length },
 		{
-			tab: "activity",
+			section: "activity",
 			label: "Activity",
 			count: area.pulls.open.length + area.issues.open.length,
 		},
 		{
-			tab: "notes",
+			section: "notes",
 			label: "Notes",
 			count: area.goodParts.length + area.watch.length,
 		},
 	];
+}
+
+function isAreaSection(value: string | undefined): value is AreaSection {
+	return AREA_SECTIONS.includes(value as AreaSection);
+}
+
+type SectionView = { band: AreaSection; atEnd: boolean };
+
+function useVisibleSection(
+	scopeRef: RefObject<HTMLElement | null>,
+	areaId: string | null,
+) {
+	const [view, setView] = useState<SectionView>({ band: "how", atEnd: false });
+
+	useEffect(() => {
+		const scope = scopeRef.current;
+		if (!(scope && areaId)) return;
+		setView({ band: "how", atEnd: false });
+		const bandObserver = new IntersectionObserver(
+			(entries) => {
+				for (const entry of entries) {
+					const section = (entry.target as HTMLElement).dataset.areaSection;
+					if (entry.isIntersecting && isAreaSection(section))
+						setView((current) => ({ ...current, band: section }));
+				}
+			},
+			{ rootMargin: "-20% 0px -70% 0px" },
+		);
+		const endObserver = new IntersectionObserver(([entry]) =>
+			setView((current) => ({ ...current, atEnd: entry.isIntersecting })),
+		);
+		const sections = scope.querySelectorAll("[data-area-section]");
+		for (const section of sections) bandObserver.observe(section);
+		const end = scope.querySelector("[data-area-end]");
+		if (end) endObserver.observe(end);
+		return () => {
+			bandObserver.disconnect();
+			endObserver.disconnect();
+		};
+	}, [scopeRef, areaId]);
+
+	const scrollable = view.band !== "how" || !view.atEnd;
+	return view.atEnd && scrollable ? "notes" : view.band;
 }
 
 function Stage({
@@ -163,10 +207,6 @@ function ProductMapView({
 		"lens",
 		parseAsStringLiteral(LENSES).withDefault("structure"),
 	);
-	const [tab, setTab] = useQueryState(
-		"tab",
-		parseAsStringLiteral(AREA_TABS).withDefault("how"),
-	);
 	const [hovered, setHovered] = useState<string | null>(null);
 	const [searchOpen, setSearchOpen] = useState(false);
 	const [tour, dispatchTour] = useReducer(tourReducer, TOUR_IDLE);
@@ -203,10 +243,9 @@ function ProductMapView({
 			}
 			dispatchTour({ type: "stop" });
 			setHovered(null);
-			if (!areaParam) void setTab(null);
 			void setAreaParam(id);
 		},
-		[areaParam, setAreaParam, setTab],
+		[setAreaParam],
 	);
 
 	const showOverview = useCallback(() => {
@@ -255,6 +294,13 @@ function ProductMapView({
 			?.querySelector(`[data-area="${firstTourArea}"]`)
 			?.scrollIntoView({ block: "center", behavior: "smooth" });
 	}, [firstTourArea]);
+
+	const visibleSection = useVisibleSection(stageRef, area?.id ?? null);
+	const showSection = (section: AreaSection) => {
+		stageRef.current
+			?.querySelector(`[data-area-section="${section}"]`)
+			?.scrollIntoView({ block: "start", behavior: "smooth" });
+	};
 
 	const hoveredArea = hovered ? map.areaById.get(hovered) : null;
 	const transformOrigin = `${origin.x}% ${origin.y}%`;
@@ -324,16 +370,16 @@ function ProductMapView({
 								}
 								toolbar={
 									<ViewTabs
-										label="Area views"
+										label="Sections"
 										actions={
 											<JumpButton onSearch={() => setSearchOpen(true)} />
 										}
 									>
-										{areaTabs(area).map((entry) => (
+										{areaSections(area).map((entry) => (
 											<ViewTab
-												key={entry.tab}
-												active={entry.tab === tab}
-												onClick={() => void setTab(entry.tab)}
+												key={entry.section}
+												active={entry.section === visibleSection}
+												onClick={() => showSection(entry.section)}
 											>
 												{entry.label}
 												{entry.count ? (
@@ -344,7 +390,7 @@ function ProductMapView({
 									</ViewTabs>
 								}
 							>
-								<AreaSheet area={area} map={map} tab={tab} />
+								<AreaSheet area={area} map={map} />
 							</DetailLayout>
 						</Stage>
 					) : (
@@ -414,7 +460,10 @@ function ProductMapView({
 									onClearSpotlight={() => setHovered(null)}
 									onOpen={openArea}
 								/>
-								{tourStop ? <div aria-hidden className="h-40" /> : null}
+								<div
+									aria-hidden
+									className={tourStop ? "h-40" : "h-16 md:hidden"}
+								/>
 							</DetailLayout>
 						</Stage>
 					)}

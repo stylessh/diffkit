@@ -11,7 +11,7 @@ import type { MapIcon } from "./map-icons";
 import type { LoadedProductMap } from "./product-map-data";
 import type { ProductArea } from "./product-map-types";
 
-const MERGED_PREVIEW = 5;
+const MERGED_PREVIEW = 4;
 
 export function PersonAvatar({
 	login,
@@ -97,56 +97,32 @@ function WorkRow({
 	note?: string;
 }) {
 	return (
-		<li>
-			<a
-				href={href}
-				target="_blank"
-				rel="noreferrer"
-				title={note}
-				className="flex items-center gap-2.5 px-3 py-2.5 transition-colors hover:bg-row-hover"
+		<a
+			href={href}
+			target="_blank"
+			rel="noreferrer"
+			title={note}
+			className="flex items-center gap-3 px-4 py-2.5 transition-colors hover:bg-row-hover"
+		>
+			<Icon
+				size={14}
+				strokeWidth={2}
+				className={cn("shrink-0", iconClassName)}
+			/>
+			<span className="min-w-0 flex-1 truncate text-[13px] text-foreground">
+				{title}
+			</span>
+			<span className="shrink-0 font-[450] text-muted-foreground text-xs tabular-nums">
+				#{number}
+			</span>
+			<PersonAvatar login={author} bot={bot} className="size-4 shrink-0" />
+			<time
+				dateTime={date}
+				className="min-w-11 shrink-0 text-right font-[450] text-muted-foreground text-xs tabular-nums"
 			>
-				<Icon
-					size={14}
-					strokeWidth={2}
-					className={cn("shrink-0", iconClassName)}
-				/>
-				<span className="min-w-0 flex-1 truncate text-[13px] text-foreground">
-					{title}
-				</span>
-				<span className="shrink-0 font-[450] text-muted-foreground text-xs tabular-nums">
-					#{number}
-				</span>
-				<PersonAvatar login={author} bot={bot} className="size-4 shrink-0" />
-				<time
-					dateTime={date}
-					className="min-w-11 shrink-0 text-right font-[450] text-muted-foreground text-xs tabular-nums"
-				>
-					{formatShortDate(date)}
-				</time>
-			</a>
-		</li>
-	);
-}
-
-function WorkGroup({
-	label,
-	count,
-	children,
-}: {
-	label: string;
-	count: number;
-	children: React.ReactNode;
-}) {
-	return (
-		<div className="flex flex-col gap-2">
-			<h2 className="flex items-baseline gap-2 font-[450] text-[13px] text-muted-foreground">
-				{label}
-				<span className="tabular-nums">{count}</span>
-			</h2>
-			<ul className="divide-y-[0.5px] divide-rule overflow-hidden rounded-lg bg-card shadow-card">
-				{children}
-			</ul>
-		</div>
+				{formatShortDate(date)}
+			</time>
+		</a>
 	);
 }
 
@@ -161,85 +137,76 @@ export function AreaActivity({
 }) {
 	const [listState, setListState] = useState<MergedListState>("preview");
 	const isBot = (login: string) => map.people[login]?.bot ?? false;
-	const openCount = area.pulls.open.length + area.issues.open.length;
 	const merged = area.pulls.merged;
 	const shown = listState === "all" ? merged : merged.slice(0, MERGED_PREVIEW);
 
 	return (
-		<div className="flex flex-col gap-8">
-			<WeeklyBars
-				weekly={area.stats.weekly}
-				weekStart={map.repo.weekStart}
-				analysedAt={map.repo.analysedAt}
-			/>
-			{openCount > 0 ? (
-				<WorkGroup label="Open" count={openCount}>
-					{area.pulls.open.map((number) => {
-						const pull = map.pulls[number];
-						return (
-							<WorkRow
-								key={`pull-${number}`}
-								icon={GitPullRequestIcon}
-								iconClassName="text-state-open"
-								number={number}
-								title={pull.title}
-								author={pull.author}
-								bot={isBot(pull.author)}
-								date={pull.date}
-								href={`${map.repo.url}/pull/${number}`}
-							/>
-						);
-					})}
-					{area.issues.open.map((number) => {
-						const issue = map.issues[number];
-						return (
-							<WorkRow
-								key={`issue-${number}`}
-								icon={IssuesIcon}
-								iconClassName={issue.note ? "text-warning" : "text-state-open"}
-								number={number}
-								title={issue.title}
-								note={issue.note}
-								author={issue.author}
-								bot={isBot(issue.author)}
-								date={issue.date}
-								href={`${map.repo.url}/issues/${number}`}
-							/>
-						);
-					})}
-				</WorkGroup>
+		<>
+			<div className="px-4 pt-4 pb-3.5">
+				<WeeklyBars
+					weekly={area.stats.weekly}
+					weekStart={map.repo.weekStart}
+					analysedAt={map.repo.analysedAt}
+				/>
+			</div>
+			{area.pulls.open.map((number) => {
+				const pull = map.pulls[number];
+				return (
+					<WorkRow
+						key={`pull-${number}`}
+						icon={GitPullRequestIcon}
+						iconClassName="text-state-open"
+						number={number}
+						title={pull.title}
+						author={pull.author}
+						bot={isBot(pull.author)}
+						date={pull.date}
+						href={`${map.repo.url}/pull/${number}`}
+					/>
+				);
+			})}
+			{area.issues.open.map((number) => {
+				const issue = map.issues[number];
+				return (
+					<WorkRow
+						key={`issue-${number}`}
+						icon={IssuesIcon}
+						iconClassName={issue.note ? "text-warning" : "text-state-open"}
+						number={number}
+						title={issue.title}
+						note={issue.note}
+						author={issue.author}
+						bot={isBot(issue.author)}
+						date={issue.date}
+						href={`${map.repo.url}/issues/${number}`}
+					/>
+				);
+			})}
+			{shown.map((number) => {
+				const pull = map.pulls[number];
+				return (
+					<WorkRow
+						key={number}
+						icon={GitMergeIcon}
+						iconClassName="text-state-merged"
+						number={number}
+						title={pull.title}
+						author={pull.author}
+						bot={isBot(pull.author)}
+						date={pull.date}
+						href={`${map.repo.url}/pull/${number}`}
+					/>
+				);
+			})}
+			{listState === "preview" && merged.length > MERGED_PREVIEW ? (
+				<button
+					type="button"
+					onClick={() => setListState("all")}
+					className="w-full px-4 py-2.5 text-left font-[450] text-muted-foreground text-xs transition-colors hover:bg-row-hover hover:text-foreground"
+				>
+					Show {merged.length - MERGED_PREVIEW} more merged
+				</button>
 			) : null}
-			{merged.length > 0 ? (
-				<WorkGroup label="Merged" count={merged.length}>
-					{shown.map((number) => {
-						const pull = map.pulls[number];
-						return (
-							<WorkRow
-								key={number}
-								icon={GitMergeIcon}
-								iconClassName="text-state-merged"
-								number={number}
-								title={pull.title}
-								author={pull.author}
-								bot={isBot(pull.author)}
-								date={pull.date}
-								href={`${map.repo.url}/pull/${number}`}
-							/>
-						);
-					})}
-					{listState === "preview" && merged.length > MERGED_PREVIEW ? (
-						<li>
-							<button
-								type="button"
-								onClick={() => setListState("all")}
-								className="w-full px-3 py-2.5 text-left font-[450] text-muted-foreground text-xs transition-colors hover:bg-row-hover hover:text-foreground"
-							>
-								Show {merged.length - MERGED_PREVIEW} more
-							</button>
-						</li>
-					) : null}
-				</WorkGroup>
-			) : null}
-		</div>
+		</>
 	);
 }
