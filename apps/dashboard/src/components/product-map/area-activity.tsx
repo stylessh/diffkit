@@ -1,9 +1,4 @@
 import { IssuesIcon } from "@diffkit/icons";
-import {
-	Avatar,
-	AvatarFallback,
-	AvatarImage,
-} from "@diffkit/ui/components/avatar";
 import { SectionCard } from "@diffkit/ui/components/section-card";
 import {
 	Tooltip,
@@ -12,41 +7,18 @@ import {
 	TooltipTrigger,
 } from "@diffkit/ui/components/tooltip";
 import { cn } from "@diffkit/ui/lib/utils";
-import type { ReactNode } from "react";
+import type { RepoLinks } from "./code-link";
 import {
 	formatMonth,
 	formatShortDate,
 	formatWeekRange,
 	plural,
 } from "./map-format";
-import type { MapIcon } from "./map-icons";
 import type { LoadedProductMap } from "./product-map-data";
 import type { ProductArea } from "./product-map-types";
 import { AreaWork } from "./work/area-work";
 import { areaPullCounts, openWorkCount } from "./work/work-data";
-
-export function PersonAvatar({
-	login,
-	bot,
-	title,
-	className,
-}: {
-	login: string;
-	bot: boolean;
-	title?: string;
-	className?: string;
-}) {
-	return (
-		<Avatar className={cn("size-5", className)} title={title}>
-			{bot ? null : (
-				<AvatarImage src={`https://github.com/${login}.png?size=40`} alt="" />
-			)}
-			<AvatarFallback className="text-[8px]">
-				{login.slice(0, 2).toUpperCase()}
-			</AvatarFallback>
-		</Avatar>
-	);
-}
+import { WorkRow } from "./work-row";
 
 function WeeklyBars({
 	weekly,
@@ -117,73 +89,14 @@ function Figure({ value, label }: { value: number; label: string }) {
 	);
 }
 
-export function WorkRow({
-	icon: Icon,
-	iconClassName,
-	number,
-	title,
-	author,
-	bot,
-	date,
-	href,
-	note,
-	trailing,
-}: {
-	icon: MapIcon;
-	iconClassName: string;
-	number: number;
-	title: string;
-	author: string;
-	bot: boolean;
-	date: string;
-	href: string;
-	note?: string;
-	trailing?: ReactNode;
-}) {
-	return (
-		<a
-			href={href}
-			target="_blank"
-			rel="noreferrer"
-			title={note}
-			className="flex items-center gap-3 px-4 py-2.5 transition-colors hover:bg-row-hover"
-		>
-			<Icon
-				size={14}
-				strokeWidth={2}
-				className={cn("shrink-0", iconClassName)}
-			/>
-			<span className="min-w-0 flex-1 truncate text-[13px] text-foreground">
-				{title}
-			</span>
-			{trailing}
-			<span className="shrink-0 font-[450] text-muted-foreground text-xs tabular-nums">
-				#{number}
-			</span>
-			<PersonAvatar
-				login={author}
-				bot={bot}
-				title={author}
-				className="size-4 shrink-0"
-			/>
-			<time
-				dateTime={date}
-				className="min-w-11 shrink-0 text-right font-[450] text-muted-foreground text-xs tabular-nums"
-			>
-				{formatShortDate(date)}
-			</time>
-		</a>
-	);
-}
-
 export function AreaActivity({
 	area,
 	map,
-	onOpenArea,
+	repo,
 }: {
 	area: ProductArea;
 	map: LoadedProductMap;
-	onOpenArea: (id: string) => void;
+	repo: RepoLinks;
 }) {
 	const isBot = (login: string) => map.people[login]?.bot ?? false;
 	const { stats } = area;
@@ -202,7 +115,7 @@ export function AreaActivity({
 				weekStart={map.repo.weekStart}
 				analysedAt={map.repo.analysedAt}
 			/>
-			<AreaWork area={area} map={map} onOpenArea={onOpenArea} />
+			<AreaWork area={area} map={map} repo={repo} />
 			{area.issues.open.length > 0 ? (
 				<div className="flex flex-col gap-2.5">
 					<h3 className="font-[450] text-muted-foreground text-xs">
@@ -214,6 +127,8 @@ export function AreaActivity({
 							return (
 								<WorkRow
 									key={number}
+									kind="issue"
+									repo={repo}
 									icon={IssuesIcon}
 									iconClassName={
 										issue.note ? "text-warning" : "text-state-open"
@@ -224,7 +139,6 @@ export function AreaActivity({
 									author={issue.author}
 									bot={isBot(issue.author)}
 									date={issue.date}
-									href={`${map.repo.url}/issues/${number}`}
 								/>
 							);
 						})}

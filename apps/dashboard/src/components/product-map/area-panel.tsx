@@ -7,7 +7,7 @@ import {
 } from "@diffkit/ui/components/tooltip";
 import { cn } from "@diffkit/ui/lib/utils";
 import { useState } from "react";
-import { PersonAvatar } from "./area-activity";
+
 import { AreaHoverCard, relationTo } from "./area-hover-card";
 import { formatCount, formatShortDate, plural } from "./map-format";
 import { areaIcon } from "./map-icons";
@@ -15,6 +15,7 @@ import { StatRow } from "./map-panel";
 import type { LoadedProductMap } from "./product-map-data";
 import type { ProductArea } from "./product-map-types";
 import { type TileRole, tileRole } from "./spotlight";
+import { PersonAvatar } from "./work-row";
 
 const LINK_PREVIEW = 5;
 

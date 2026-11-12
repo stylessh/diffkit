@@ -392,7 +392,7 @@ function ProductMapView({
 									</ViewTabs>
 								}
 							>
-								<AreaSheet area={area} map={map} onNavigate={openArea} />
+								<AreaSheet area={area} map={map} />
 							</DetailLayout>
 						</Stage>
 					) : (

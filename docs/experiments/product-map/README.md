@@ -58,7 +58,7 @@ the page.
 | ![Area](screenshots/area-desktop-dark.png) | ![How it works](screenshots/area-how-desktop-light.png) |
 | **The screen itself.** User-facing areas open with a real screenshot of that screen, captured from demo mode in both themes. | **How it works** is a lane diagram: the path one request takes, drawn across the browser, the Worker, and GitHub and storage. A highlight walks the steps; pick one for its sentence and file. |
 | ![Data path](screenshots/area-data-path-desktop-dark.png) | ![Activity](screenshots/area-activity-desktop-dark.png) |
-| The same diagram for an internal area: a webhook climbs from GitHub through the Worker to the browser. | **What is happening**: four numbers, commits per week (hover a bar for its week), then every pull request that changed the area: a cell per merged one (greener is bigger, red is a fix) and a table with each one's share. A row opens that pull request's footprint across the other areas. |
+| The same diagram for an internal area: a webhook climbs from GitHub through the Worker to the browser. | **What is happening**: four numbers, commits per week (hover a bar for its week), then every pull request that changed the area: a cell per merged one (greener is bigger, red is a fix) and a table of them with number, author and date. Cells and rows open the pull request in DiffKit. |
 | ![Inside](screenshots/area-inside-desktop-light.png) | ![Notes](screenshots/area-notes-desktop-light.png) |
 | **What is inside** is a two-column list: an icon, a name and two clipped lines per sub-feature. Opening one shows the full sentence and its code. | **Worth knowing** is two short lists: what is done well and where the rough edges are. |
 
@@ -146,10 +146,13 @@ to the area page:
 - **On an area page**, "What is happening" lists every pull request with a
   changed line in the area, not only the ones mainly about it:
   [cells and table](screenshots/area-work-desktop-light.png),
-  [phone](screenshots/area-work-phone-light.png). The share is line-weighted:
-  28% means 28% of that pull request's changed lines land in this area. The
-  list shows five, then the ones where the area is a real part (10% or 40
-  lines), then the ones that barely touch it.
+  [phone](screenshots/area-work-phone-light.png). A cell's tooltip gives the
+  share: 28% means 28% of that pull request's changed lines land in this
+  area. The list shows five, then the ones where the area is a real part (10%
+  or 40 lines), then the ones that barely touch it. A first version let a row
+  open the pull request's spread across the other areas in place; Alan found
+  that cluttered, so rows are plain again and the spread lives on the pull
+  request page.
 - **On a real pull request page**, the side panel gains a "Product areas"
   section: the areas the pull request touches, a share bar each, linking into
   the map. It appears only for a repository that has a map, and the map data
@@ -192,9 +195,10 @@ Where it falls short:
   a model only trimming them.
 - **On phones there is no hover**, so no wires and no caption: the map is a
   list of names and the area pages carry everything.
-- **Links leave DiffKit.** Code and pull request links open github.com,
-  because the demo emulator does not have this repo. In the real product they
-  should open DiffKit's own blob, pull request and issue pages.
+- **Links go nowhere in the demo.** Code, pull request and issue links open
+  DiffKit's own pages (`/stylessh/diffkit/blob/…`, `/pull/…`, `/issues/…`),
+  never github.com. The demo emulator does not have this repository, so there
+  they land on DiffKit's "Not found" page; against real GitHub they resolve.
 
 ## What worked
 

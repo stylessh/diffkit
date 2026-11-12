@@ -48,15 +48,6 @@ export function plural(count: number, noun: string) {
 	return `${count} ${noun}${count === 1 ? "" : "s"}`;
 }
 
-export function githubBlobUrl(
-	repoUrl: string,
-	branch: string,
-	path: string,
-	line?: number,
-) {
-	return `${repoUrl}/blob/${branch}/${path}${line ? `#L${line}` : ""}`;
-}
-
 export function shortPath(path: string) {
 	const parts = path.split("/");
 	return parts.length <= 2 ? path : parts.slice(-2).join("/");

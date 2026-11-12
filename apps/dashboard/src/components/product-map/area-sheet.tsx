@@ -1,17 +1,13 @@
 import { AlertCircleIcon, CircleCheckIcon } from "@diffkit/icons";
 import { SectionCard } from "@diffkit/ui/components/section-card";
 import { cn } from "@diffkit/ui/lib/utils";
+import { Link } from "@tanstack/react-router";
 import { type ReactNode, useState } from "react";
 import { FileTypeIcon } from "#/components/shared/file-type-icon";
 import { AreaActivity } from "./area-activity";
 import { AreaFlow } from "./area-flow";
-import { CodeLink, type RepoLinks } from "./code-link";
-import {
-	formatShortDate,
-	githubBlobUrl,
-	plural,
-	shortPath,
-} from "./map-format";
+import { blobLink, CodeLink, type RepoLinks } from "./code-link";
+import { formatShortDate, plural, shortPath } from "./map-format";
 import { featureIcon } from "./map-icons";
 import type { LoadedProductMap } from "./product-map-data";
 import type {
@@ -173,10 +169,8 @@ function EntryPointRow({
 	repo: RepoLinks;
 }) {
 	return (
-		<a
-			href={githubBlobUrl(repo.url, repo.branch, entry.path, entry.line)}
-			target="_blank"
-			rel="noreferrer"
+		<Link
+			{...blobLink(repo, entry)}
 			title={`${entry.path}${entry.line ? `:${entry.line}` : ""}`}
 			className="flex items-center gap-3 px-4 py-2.5 transition-colors hover:bg-row-hover"
 		>
@@ -187,7 +181,7 @@ function EntryPointRow({
 			<span className="max-w-[45%] shrink-0 truncate font-mono text-[11px] text-muted-foreground">
 				{entry.symbol ?? shortPath(entry.path)}
 			</span>
-		</a>
+		</Link>
 	);
 }
 
@@ -229,14 +223,13 @@ function NoteList({
 export function AreaSheet({
 	area,
 	map,
-	onNavigate,
 }: {
 	area: ProductArea;
 	map: LoadedProductMap;
-	onNavigate: (id: string) => void;
 }) {
 	const repo: RepoLinks = {
-		url: map.repo.url,
+		owner: map.repo.owner,
+		repo: map.repo.name,
 		branch: map.repo.defaultBranch,
 	};
 	const group = map.bands
@@ -277,7 +270,7 @@ export function AreaSheet({
 			<Section
 				id="code"
 				title="Ways into the code"
-				description="Where to start reading. Opens on GitHub."
+				description="Where to start reading."
 			>
 				<SectionCard className="[&>div:last-child]:pb-0">
 					{area.entryPoints.map((entry) => (
@@ -295,12 +288,7 @@ export function AreaSheet({
 				title="What is happening"
 				description={`Commits per week since ${formatShortDate(map.repo.firstCommit)}, then every pull request that changed this area.`}
 			>
-				<AreaActivity
-					key={area.id}
-					area={area}
-					map={map}
-					onOpenArea={onNavigate}
-				/>
+				<AreaActivity key={area.id} area={area} map={map} repo={repo} />
 			</Section>
 
 			{area.goodParts.length + area.watch.length > 0 ? (
