@@ -14,12 +14,31 @@ type WorkerFetch = (
 	ctx: ExecutionContext,
 ) => Promise<Response>;
 
+const SERVER_FUNCTION_PATH_PREFIX = "/_serverFn/";
+
+/**
+ * The app's client sets this header on every server-function call. A page
+ * cannot set it on an image, frame or link, so requiring it keeps content
+ * rendered inside the app from calling a server function with the reader's
+ * session.
+ */
+function isServerFunctionCallFromClient(request: Request) {
+	return request.headers.get("x-tsr-serverfn") === "true";
+}
+
 async function handleRequest(
 	request: Request,
 	env: Record<string, unknown>,
 	ctx: ExecutionContext,
 ): Promise<Response> {
 	const url = new URL(request.url);
+
+	if (
+		url.pathname.startsWith(SERVER_FUNCTION_PATH_PREFIX) &&
+		!isServerFunctionCallFromClient(request)
+	) {
+		return applySecurityHeaders(new Response("Forbidden", { status: 403 }));
+	}
 
 	if (
 		url.pathname === "/api/comment-media/upload" &&
