@@ -101,10 +101,9 @@ const NAME_TO_LANG: Record<string, string> = {
 export function detectLang(path: string): string {
 	const name = path.split("/").pop() ?? "";
 	const lower = name.toLowerCase();
-	const nameMatch = NAME_TO_LANG[lower];
-	if (nameMatch) return nameMatch;
+	if (Object.hasOwn(NAME_TO_LANG, lower)) return NAME_TO_LANG[lower];
 	const ext = lower.split(".").pop() ?? "";
-	return EXT_TO_LANG[ext] ?? "text";
+	return Object.hasOwn(EXT_TO_LANG, ext) ? EXT_TO_LANG[ext] : "text";
 }
 
 const MARKDOWN_EXTENSIONS = new Set(["md", "mdx", "markdown", "mdown", "mkd"]);
