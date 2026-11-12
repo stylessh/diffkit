@@ -68,22 +68,26 @@ function CopyPromptButton({ prompt }: { prompt: string }) {
 		timer.current = setTimeout(() => setState("idle"), 1800);
 	};
 
+	const label = state === "copied" ? "Copied" : "Copy prompt";
 	return (
-		<Button
-			size="sm"
-			onClick={copy}
-			iconLeft={
-				state === "copied" ? (
-					<CheckIcon className="size-3.5" />
-				) : (
-					<CopyIcon className="size-3.5" />
-				)
-			}
-		>
-			<span aria-live="polite">
-				{state === "copied" ? "Copied" : "Copy prompt"}
-			</span>
-		</Button>
+		<Tooltip open={state === "copied" ? true : undefined}>
+			<TooltipTrigger asChild>
+				<Button
+					variant="accent"
+					size="icon"
+					aria-label={label}
+					onClick={copy}
+					className="size-7 rounded-md"
+				>
+					{state === "copied" ? (
+						<CheckIcon className="size-3.5" />
+					) : (
+						<CopyIcon className="size-3.5" />
+					)}
+				</Button>
+			</TooltipTrigger>
+			<TooltipContent>{label}</TooltipContent>
+		</Tooltip>
 	);
 }
 
@@ -298,12 +302,12 @@ export function MapSetup({ owner, repo }: { owner: string; repo: string }) {
 			<div className="relative">
 				<ExampleMap />
 				<div className="absolute inset-0 flex items-center justify-center">
-					<div className="relative flex w-full max-w-[36rem] flex-col items-center gap-6">
+					<div className="relative flex w-full max-w-[31rem] flex-col gap-3">
 						<div
 							aria-hidden
-							className="-inset-x-8 -inset-y-10 pointer-events-none absolute rounded-[3rem] bg-main/90 blur-2xl"
+							className="-inset-x-20 -inset-y-12 pointer-events-none absolute rounded-[3rem] bg-main/95 blur-2xl max-sm:-inset-x-6"
 						/>
-						<h1 className={cn(headingClassName, "relative text-center")}>
+						<h1 className="relative text-pretty px-4 font-semibold text-[17px] text-foreground leading-6 tracking-[-0.01em]">
 							Give {repo} a product map
 						</h1>
 						<PromptCard
