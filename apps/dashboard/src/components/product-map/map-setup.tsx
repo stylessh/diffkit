@@ -3,13 +3,13 @@ import {
 	CheckIcon,
 	ClaudeLogo,
 	CodeIcon,
+	CodexLogo,
 	CopyIcon,
 	CursorLogo,
 	GitHubCopilotLogo,
 	GitMergeIcon,
 	GitPullRequestIcon,
 	LayersIcon,
-	OpenAILogo,
 	UserMultiple02Icon,
 } from "@diffkit/icons";
 import { Button } from "@diffkit/ui/components/button";
@@ -31,6 +31,7 @@ import {
 	TooltipTrigger,
 } from "@diffkit/ui/components/tooltip";
 import { ViewTab, ViewTabs } from "@diffkit/ui/components/view-tabs";
+import { cn } from "@diffkit/ui/lib/utils";
 import { Link } from "@tanstack/react-router";
 import {
 	type ComponentType,
@@ -43,14 +44,24 @@ import { MAP_FILE_PATH } from "#/lib/product-map/map-file";
 import { areaIcon } from "./map-icons";
 import { mapFixPrompt, mapSetupPrompt } from "./map-prompt";
 
+/** Each agent's own mark in its own colours, light and dark. */
 const AGENTS: {
 	name: string;
 	logo: ComponentType<{ className?: string }>;
+	className: string;
 }[] = [
-	{ name: "Claude Code", logo: ClaudeLogo },
-	{ name: "Codex", logo: OpenAILogo },
-	{ name: "Cursor", logo: CursorLogo },
-	{ name: "GitHub Copilot", logo: GitHubCopilotLogo },
+	{ name: "Claude Code", logo: ClaudeLogo, className: "" },
+	{ name: "Codex", logo: CodexLogo, className: "text-[#111] dark:text-white" },
+	{
+		name: "Cursor",
+		logo: CursorLogo,
+		className: "text-[#26251e] dark:text-[#edecec]",
+	},
+	{
+		name: "GitHub Copilot",
+		logo: GitHubCopilotLogo,
+		className: "text-black dark:text-white",
+	},
 ];
 
 type CopyState = "idle" | "copied";
@@ -101,12 +112,12 @@ function PromptCard({ prompt }: { prompt: string }) {
 					Paste into
 				</span>
 				<ul className="flex items-center gap-1">
-					{AGENTS.map(({ name, logo: Logo }) => (
+					{AGENTS.map(({ name, logo: Logo, className }) => (
 						<li key={name}>
 							<Tooltip>
 								<TooltipTrigger asChild>
-									<span className="flex size-7 items-center justify-center rounded-md bg-button text-foreground shadow-button">
-										<Logo className="size-3.5" />
+									<span className="flex size-7 items-center justify-center rounded-md bg-button shadow-button">
+										<Logo className={cn("size-4", className)} />
 										<span className="sr-only">{name}</span>
 									</span>
 								</TooltipTrigger>

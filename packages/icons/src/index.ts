@@ -106,6 +106,7 @@ export { ArchiveDownIcon } from "./archive-down-icon";
 export { AutomationIcon } from "./automation-icon";
 export {
   ClaudeLogo,
+  CodexLogo,
   CursorLogo,
   DiscordLogo,
   GitHubCopilotLogo,
@@ -115,7 +116,6 @@ export {
   GoogleLogo,
   LinearWordmarkLogo,
   NotionWordmarkLogo,
-  OpenAILogo,
   SlackWordmarkLogo,
   StripeWordmarkLogo,
   SupabaseWordmarkLogo,
