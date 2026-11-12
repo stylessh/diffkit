@@ -68,20 +68,86 @@ export function compileGlob(glob: string): RegExp {
 	return new RegExp(`^${source}$`);
 }
 
-/** First matching rule wins; ignored paths belong to no area and are not counted as unmapped. */
+const MAX_ALTERNATIVES = 64;
+
+/** `a/{b,c{,d}}` as the plain patterns it stands for: a/b, a/c, a/cd. */
+export function expandBraces(glob: string): string[] {
+	let open = -1;
+	let depth = 0;
+	for (let index = 0; index < glob.length; index++) {
+		const char = glob[index];
+		if (char === "\\") index += 1;
+		else if (char === "{") {
+			if (depth === 0) open = index;
+			depth += 1;
+		} else if (char === "}" && depth > 0) {
+			depth -= 1;
+			if (depth > 0) continue;
+			const options: string[] = [];
+			let start = open + 1;
+			let inner = 0;
+			for (let at = open + 1; at <= index; at++) {
+				const here = glob[at];
+				if (here === "\\") at += 1;
+				else if (here === "{") inner += 1;
+				else if (here === "}" && inner > 0) inner -= 1;
+				else if ((here === "," && inner === 0) || at === index) {
+					options.push(glob.slice(start, at));
+					start = at + 1;
+				}
+			}
+			const expanded = options.flatMap((option) =>
+				expandBraces(glob.slice(0, open) + option + glob.slice(index + 1)),
+			);
+			if (expanded.length > MAX_ALTERNATIVES)
+				throw new Error(`at most ${MAX_ALTERNATIVES} alternatives per pattern`);
+			return expanded;
+		}
+	}
+	return [glob];
+}
+
+/** The text a brace-free pattern fixes before its first wildcard. */
+function literalPrefix(glob: string) {
+	let prefix = "";
+	for (let index = 0; index < glob.length; index++) {
+		const char = glob[index];
+		if (char === "*" || char === "?") break;
+		prefix += char === "\\" ? (glob[++index] ?? "") : char;
+	}
+	return prefix;
+}
+
+/**
+ * Gives each path to the most specific pattern that matches it: the one that
+ * fixes the longest start of the path, then the one with the most fixed text.
+ * Order between areas therefore never matters, so each area can keep its own
+ * patterns in its own file. Ignored paths belong to no area and do not count
+ * as unmapped.
+ */
 export function createAreaMatcher(
 	rules: readonly PathRule[],
 	ignore: readonly string[],
 ): (path: string) => AreaMatch {
 	const ignored = ignore.map(compileGlob);
-	const compiled = rules.map((rule) => ({
-		area: rule.area,
-		pattern: compileGlob(rule.path),
-	}));
+	const candidates = rules
+		.flatMap((rule) => {
+			compileGlob(rule.path);
+			return expandBraces(rule.path).map((glob) => ({
+				area: rule.area,
+				prefix: literalPrefix(glob),
+				fixed: glob.replace(/[*?]/g, "").length,
+				pattern: compileGlob(glob),
+			}));
+		})
+		.sort((a, b) => b.prefix.length - a.prefix.length || b.fixed - a.fixed);
 	return (path) => {
 		if (ignored.some((pattern) => pattern.test(path)))
 			return { kind: "ignored" };
-		const rule = compiled.find((candidate) => candidate.pattern.test(path));
-		return rule ? { kind: "area", area: rule.area } : { kind: "unmapped" };
+		const found = candidates.find(
+			(candidate) =>
+				path.startsWith(candidate.prefix) && candidate.pattern.test(path),
+		);
+		return found ? { kind: "area", area: found.area } : { kind: "unmapped" };
 	};
 }

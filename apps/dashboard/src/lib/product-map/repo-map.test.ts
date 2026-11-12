@@ -1,17 +1,22 @@
 import { execFileSync } from "node:child_process";
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync } from "node:fs";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
-import { MAP_FILE_PATH, parseMapFile } from "./map-file";
+import { MAP_AREAS_PATH, MAP_FILE_PATH, parseMapFolder } from "./map-file";
 import { createAreaMatcher } from "./path-rules";
 
 const root = path.resolve(import.meta.dirname, "../../../../..");
-const parsed = parseMapFile(
-	readFileSync(path.join(root, MAP_FILE_PATH), "utf8"),
-);
+const areasDir = path.join(root, MAP_AREAS_PATH);
+const parsed = parseMapFolder({
+	index: readFileSync(path.join(root, MAP_FILE_PATH), "utf8"),
+	areas: readdirSync(areasDir).map((name) => ({
+		name,
+		text: readFileSync(path.join(areasDir, name), "utf8"),
+	})),
+});
 
 /** DiffKit's own map is the reference example, so it must never rot. */
-describe("this repository's map file", () => {
+describe("this repository's product map", () => {
 	it("is a valid map", () => {
 		expect(parsed.ok ? [] : parsed.problems).toEqual([]);
 	});

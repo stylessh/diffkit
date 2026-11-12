@@ -1,4 +1,9 @@
-import { PanelPill, PanelSection } from "@diffkit/ui/components/detail-layout";
+import { AlertCircleIcon } from "@diffkit/icons";
+import {
+	PanelPill,
+	PanelRow,
+	PanelSection,
+} from "@diffkit/ui/components/detail-layout";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import { useState } from "react";
@@ -26,10 +31,11 @@ export function PullFootprintAreas({
 	scope: GitHubQueryScope;
 }) {
 	const [listState, setListState] = useState<FootprintListState>("preview");
-	const { data: areas } = useQuery(
+	const { data } = useQuery(
 		githubPullProductAreasQueryOptions(scope, { owner, repo, pullNumber }),
 	);
-	if (!areas || areas.length === 0) return null;
+	if (!data || data.areas.length + data.unmappedFiles === 0) return null;
+	const { areas, unmappedFiles } = data;
 	const shown = listState === "all" ? areas : areas.slice(0, PANEL_PREVIEW);
 
 	return (
@@ -60,6 +66,22 @@ export function PullFootprintAreas({
 						{areas.length - PANEL_PREVIEW} more
 					</button>
 				</PanelPill>
+			) : null}
+			{unmappedFiles > 0 ? (
+				<PanelRow
+					muted
+					icon={
+						<AlertCircleIcon
+							size={14}
+							strokeWidth={2}
+							className="text-warning"
+						/>
+					}
+					title="These files match no area's paths yet. Update the product map so they are counted."
+				>
+					<span className="text-text-header tabular-nums">{unmappedFiles}</span>
+					{unmappedFiles === 1 ? "file" : "files"} outside the map
+				</PanelRow>
 			) : null}
 		</PanelSection>
 	);

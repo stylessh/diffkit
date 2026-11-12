@@ -1,0 +1,237 @@
+{
+  "name": "Instant cache",
+  "icon": "cache",
+  "tagline": "Browser cache: seen pages paint at once",
+  "summary": "Pages you have opened before appear at once from a cache in your browser, then refresh quietly. Loading skeletons only show for data you have never seen.",
+  "paths": [
+    "apps/dashboard/src/lib/{query-client,query-persister,github-query-persistence,github-refetch-policy,github-cache,query-data,route-preload,use-refresh-on-return}**",
+    "docs/{data-fetching,github-cache-architecture}.md"
+  ],
+  "flow": [
+    {
+      "kind": "client",
+      "label": "Boot restore",
+      "note": "Before hydration, loads the newest 4 MB of cached queries, waiting at most 400 ms.",
+      "path": "apps/dashboard/src/client.tsx"
+    },
+    {
+      "kind": "storage",
+      "label": "IndexedDB query cache",
+      "note": "One database per user, one record per query, 50 MB budget, 7-day max age.",
+      "path": "apps/dashboard/src/lib/query-persister.ts"
+    },
+    {
+      "kind": "page",
+      "label": "Route loader",
+      "note": "Starts a prefetch without awaiting it, so navigation never blocks on data.",
+      "path": "apps/dashboard/src/routes/_protected/pulls.tsx"
+    },
+    {
+      "kind": "client",
+      "label": "Stale-time tiers",
+      "note": "Cached data renders first; anything past its stale time refetches in the background.",
+      "path": "apps/dashboard/src/lib/github-cache-policy.ts"
+    },
+    {
+      "kind": "component",
+      "label": "Route pending skeleton",
+      "note": "On a hard load the server sends the page's own cold layout; later waits show after 300 ms.",
+      "path": "apps/dashboard/src/components/layouts/dashboard-content-loading.tsx"
+    },
+    {
+      "kind": "client",
+      "label": "Throttled save",
+      "note": "Writes changed queries to IndexedDB once a second and when the tab is hidden.",
+      "path": "apps/dashboard/src/lib/github-query-persistence.ts"
+    }
+  ],
+  "features": [
+    {
+      "name": "Per-user IndexedDB cache",
+      "summary": "Each account gets its own database: 50 MB, oldest data evicted first, 7-day max age. It is wiped on sign-out or when the session check fails.",
+      "entry": [
+        {
+          "path": "apps/dashboard/src/lib/query-persister.ts",
+          "line": 145,
+          "symbol": "createIdbQueryPersister",
+          "role": "One record per query, byte budget, eviction"
+        },
+        {
+          "path": "apps/dashboard/src/lib/github-query-persistence.ts",
+          "line": 38,
+          "symbol": "githubQueryCacheDbName",
+          "role": "Database name per user id"
+        },
+        {
+          "path": "apps/dashboard/src/lib/github-query-persistence.ts",
+          "line": 234,
+          "symbol": "wipeGitHubQueryCache",
+          "role": "Sign-out and session-loss wipe"
+        }
+      ]
+    },
+    {
+      "name": "Restore before first paint",
+      "summary": "The newest 4 MB of queries load before React hydrates, capped at 400 ms. The rest loads in pages once the browser is idle.",
+      "entry": [
+        {
+          "path": "apps/dashboard/src/client.tsx",
+          "line": 22,
+          "symbol": "boot",
+          "role": "Restore, start saving, then hydrate"
+        },
+        {
+          "path": "apps/dashboard/src/lib/github-query-persistence.ts",
+          "line": 108,
+          "symbol": "restoreGitHubQueryCache",
+          "role": "Recent queries, raced against a timeout"
+        },
+        {
+          "path": "apps/dashboard/src/lib/github-query-persistence.ts",
+          "line": 138,
+          "symbol": "restoreRestOfGitHubQueryCache",
+          "role": "Everything older, when idle"
+        }
+      ]
+    },
+    {
+      "name": "Stale times and polling",
+      "summary": "Each kind of data has a stale time (details 5 s, lists 30 s, viewer 5 min). PR status and workflow runs poll every 10 s while CI is running.",
+      "entry": [
+        {
+          "path": "apps/dashboard/src/lib/github-cache-policy.ts",
+          "line": 9,
+          "symbol": "githubCachePolicy",
+          "role": "Stale time and memory time per data tier"
+        },
+        {
+          "path": "apps/dashboard/src/lib/github-refetch-policy.ts",
+          "line": 95,
+          "symbol": "adaptiveRefetchInterval",
+          "role": "Polls while running, stops once settled"
+        }
+      ]
+    },
+    {
+      "name": "What is not persisted",
+      "summary": "Diffs, file contents, logs and per-keystroke search stay in memory because they are large or short-lived. Webhook settings too, as URLs can embed tokens.",
+      "entry": [
+        {
+          "path": "apps/dashboard/src/lib/github/query-keys.ts",
+          "line": 143,
+          "symbol": "githubQueryPersistOptOut",
+          "role": "List of query groups kept off disk"
+        },
+        {
+          "path": "apps/dashboard/src/lib/github/query-keys.ts",
+          "line": 159,
+          "symbol": "isGitHubQueryKeyPersistable",
+          "role": "Check used when saving and restoring"
+        }
+      ]
+    },
+    {
+      "name": "Preload on intent",
+      "summary": "Hovering or focusing a link preloads its route and data. Pull request rows and workflow run rows preload their detail page once per row.",
+      "entry": [
+        {
+          "path": "apps/dashboard/src/router.tsx",
+          "line": 18,
+          "symbol": "getRouter",
+          "role": "Sets defaultPreload to intent"
+        },
+        {
+          "path": "apps/dashboard/src/lib/route-preload.ts",
+          "line": 4,
+          "symbol": "preloadRouteOnce",
+          "role": "Preloads a route at most once"
+        }
+      ]
+    },
+    {
+      "name": "Route skeletons",
+      "summary": "A route waits 300 ms before showing a skeleton and keeps it at least 200 ms. On a hard load the server sends the page's own cold layout instead.",
+      "entry": [
+        {
+          "path": "apps/dashboard/src/components/layouts/dashboard-content-loading.tsx",
+          "line": 38,
+          "symbol": "RoutePending",
+          "role": "Default pending component for every route"
+        },
+        {
+          "path": "apps/dashboard/src/router.tsx",
+          "line": 18,
+          "symbol": "getRouter",
+          "role": "Pending delay and minimum time"
+        }
+      ]
+    },
+    {
+      "name": "Raw diff cache",
+      "summary": "Raw pull request diffs sit in a second IndexedDB store keyed by revision, so a reopened diff needs no network. 40 MB, 7 days.",
+      "entry": [
+        {
+          "path": "apps/dashboard/src/lib/diffs/raw-diff-cache.ts",
+          "line": 34,
+          "symbol": "readRawDiff",
+          "role": "Reads a stored diff by revision key"
+        }
+      ]
+    }
+  ],
+  "entryPoints": [
+    {
+      "path": "docs/data-fetching.md",
+      "line": 55,
+      "symbol": "L1: Client cache (the fast path)",
+      "role": "Design doc: goals, decisions and what is still open"
+    },
+    {
+      "path": "apps/dashboard/src/client.tsx",
+      "line": 22,
+      "symbol": "boot",
+      "role": "Browser entry: restore the cache, then hydrate"
+    },
+    {
+      "path": "apps/dashboard/src/lib/github-query-persistence.ts",
+      "line": 108,
+      "symbol": "restoreGitHubQueryCache",
+      "role": "Budgets, restore, save and wipe for GitHub queries"
+    },
+    {
+      "path": "apps/dashboard/src/lib/query-persister.ts",
+      "line": 145,
+      "symbol": "createIdbQueryPersister",
+      "role": "The IndexedDB storage engine"
+    },
+    {
+      "path": "apps/dashboard/src/lib/github-cache-policy.ts",
+      "line": 9,
+      "symbol": "githubCachePolicy",
+      "role": "Stale times per kind of data"
+    },
+    {
+      "path": "apps/dashboard/src/router.tsx",
+      "line": 18,
+      "symbol": "getRouter",
+      "role": "Preload and pending settings for all routes"
+    }
+  ],
+  "dependsOn": ["github-data", "live-updates"],
+  "outside": ["browser-idb"],
+  "goodParts": [
+    "apps/e2e/tests/isolated/instant-ui.spec.ts proves a revisited pull request paints from IndexedDB while every server function is held.",
+    "query-persister.ts knows nothing about GitHub and has a 371-line test file; every storage failure is treated as a cache miss."
+  ],
+  "watch": [
+    "Two IndexedDB caches each carry their own budget and eviction code: query-persister.ts (50 MB) and diffs/raw-diff-cache.ts (40 MB).",
+    "Four routes opt out of the server-rendered cold page with GenericRoutePending: inbox, pull detail, issue detail and review.",
+    "docs/data-fetching.md:331 'Open questions' still asks about budget, cadence and auth window, which its own Phase 1 and 2 decisions already answer."
+  ],
+  "issues": [
+    {
+      "number": 137,
+      "note": "Predates the cache rebuild (#193, #206). Worth re-testing before it stays open."
+    }
+  ]
+}

@@ -10,6 +10,7 @@ import {
 	GitMergeIcon,
 	GitPullRequestIcon,
 	LayersIcon,
+	RefreshCwIcon,
 	UserMultiple02Icon,
 } from "@diffkit/icons";
 import { Button } from "@diffkit/ui/components/button";
@@ -23,7 +24,6 @@ import {
 	PageHeaderCrumb,
 	PageHeaderTitle,
 } from "@diffkit/ui/components/page-header";
-import { ScrollFade } from "@diffkit/ui/components/scroll-fade";
 import { Spinner } from "@diffkit/ui/components/spinner";
 import {
 	Tooltip,
@@ -40,7 +40,6 @@ import {
 	useRef,
 	useState,
 } from "react";
-import { MAP_FILE_PATH } from "#/lib/product-map/map-file";
 import { areaIcon } from "./map-icons";
 import { mapFixPrompt, mapSetupPrompt } from "./map-prompt";
 
@@ -129,15 +128,9 @@ function PromptCard({ prompt }: { prompt: string }) {
 					<CopyPromptButton prompt={prompt} />
 				</span>
 			</div>
-			<ScrollFade
-				orientation="vertical"
-				fade={40}
-				className="max-h-72 overflow-y-auto"
-			>
-				<pre className="whitespace-pre-wrap px-4 py-3.5 font-mono text-[12px] text-text-header leading-[1.6]">
-					{prompt}
-				</pre>
-			</ScrollFade>
+			<pre className="whitespace-pre-wrap px-4 py-3.5 font-mono text-[12px] text-text-header leading-[1.6]">
+				{prompt.trimEnd()}
+			</pre>
 		</section>
 	);
 }
@@ -231,15 +224,15 @@ function SetupPanel() {
 					Merge its pull request
 				</PanelRow>
 			</PanelSection>
-			<PanelSection label="DiffKit then counts">
-				<PanelRow muted icon={<LayersIcon size={14} strokeWidth={2} />}>
-					Files and size per area
+			<PanelSection label="After that">
+				<PanelRow muted icon={<RefreshCwIcon size={14} strokeWidth={2} />}>
+					Agents update it with each change
 				</PanelRow>
 				<PanelRow muted icon={<GitPullRequestIcon size={14} strokeWidth={2} />}>
-					Pull requests per area
+					DiffKit counts pull requests per area
 				</PanelRow>
 				<PanelRow muted icon={<UserMultiple02Icon size={14} strokeWidth={2} />}>
-					Who works where
+					And who works where
 				</PanelRow>
 			</PanelSection>
 		</>
@@ -337,12 +330,12 @@ export function MapSetup({ owner, repo }: { owner: string; repo: string }) {
 	return (
 		<MapFrame owner={owner} repo={repo}>
 			<FrameHeading title={`Give ${repo} a product map`}>
-				Paste this prompt into a coding agent in your checkout. It reads the
-				code, writes{" "}
+				Paste this into a coding agent in your checkout. It installs a skill,
+				reads the code, writes the{" "}
 				<code className="rounded-[5px] bg-inline-code px-1 py-0.5 font-mono text-[12px] text-text-header">
-					{MAP_FILE_PATH}
+					.diffkit
 				</code>{" "}
-				and opens a pull request. Merge it and the map appears here.
+				folder and opens a pull request. Merge it and the map appears here.
 			</FrameHeading>
 			<PromptCard prompt={prompt} />
 			<ExampleMap />
@@ -364,11 +357,11 @@ export function MapInvalid({
 	return (
 		<MapFrame owner={owner} repo={repo}>
 			<FrameHeading title="The map file needs fixing">
-				DiffKit could not read{" "}
+				DiffKit could not read the{" "}
 				<code className="rounded-[5px] bg-inline-code px-1 py-0.5 font-mono text-[12px] text-text-header">
-					{MAP_FILE_PATH}
-				</code>
-				. Fix these and the map appears here.
+					.diffkit
+				</code>{" "}
+				folder. Fix these and the map appears here.
 			</FrameHeading>
 			<ul className="flex flex-col gap-3">
 				{problems.map((problem) => (

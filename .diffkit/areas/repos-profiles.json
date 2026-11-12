@@ -1,0 +1,240 @@
+{
+  "name": "Home, repos & profiles",
+  "icon": "repo",
+  "tagline": "Home summary, your repos and profile pages",
+  "summary": "A home page that sums up what needs you, a Repositories hub listing every repository you can reach, and profile pages with contributions, pinned repositories and activity.",
+  "paths": [
+    "apps/dashboard/src/routes/_protected/{index,repos,-repository-rows-skeleton}.**",
+    "apps/dashboard/src/routes/_protected/$owner/index.**",
+    "apps/dashboard/src/components/{overview,profile}/**",
+    "apps/dashboard/src/components/repo/{repository-row,repo-commit-sparkline}**",
+    "apps/dashboard/src/lib/{repos-hub-filter,contribution-grid,user-activity-feed}**",
+    "apps/dashboard/src/lib/github/{account-query-options,repos.}**"
+  ],
+  "screen": {
+    "light": ".diffkit/screens/repos-profiles-light.jpg",
+    "dark": ".diffkit/screens/repos-profiles-dark.jpg"
+  },
+  "flow": [
+    {
+      "kind": "page",
+      "label": "Overview page",
+      "note": "/ greets the viewer with one sentence that links into Reviews, Pull requests and Issues.",
+      "path": "apps/dashboard/src/routes/_protected/index.tsx"
+    },
+    {
+      "kind": "page",
+      "label": "Repositories page",
+      "note": "/repos keeps search, visibility, sort and page in the URL and asks the server for that slice.",
+      "path": "apps/dashboard/src/routes/_protected/repos.tsx"
+    },
+    {
+      "kind": "server",
+      "label": "getReposHub",
+      "note": "Lists every repository, applies the access filter, search, visibility and sort, returns the top N.",
+      "path": "apps/dashboard/src/lib/github/repos.ts"
+    },
+    {
+      "kind": "github",
+      "label": "GitHub REST",
+      "note": "Repositories of the signed-in user, 100 per page, read until the list ends."
+    },
+    {
+      "kind": "component",
+      "label": "RepositoryRow",
+      "note": "Name, description, language, stars, forks and a commit sparkline loaded near the viewport.",
+      "path": "apps/dashboard/src/components/repo/repository-row.tsx"
+    },
+    {
+      "kind": "page",
+      "label": "Profile page",
+      "note": "/$owner shows a contribution banner, profile details, pinned repos, activity or a repositories tab.",
+      "path": "apps/dashboard/src/routes/_protected/$owner/index.tsx"
+    }
+  ],
+  "features": [
+    {
+      "name": "Overview summary",
+      "summary": "'Welcome back' plus one sentence counting reviews waiting, your open pull requests, drafts and assigned issues, then your 10 latest pull requests.",
+      "entry": [
+        {
+          "path": "apps/dashboard/src/components/overview/overview-content.tsx",
+          "line": 15,
+          "symbol": "OverviewContent",
+          "role": "The summary sentence and recent pull requests"
+        },
+        {
+          "path": "apps/dashboard/src/routes/_protected/index.tsx",
+          "line": 47,
+          "symbol": "OverviewPage",
+          "role": "Home page; shows a sample-based skeleton first"
+        }
+      ]
+    },
+    {
+      "name": "Repositories hub",
+      "summary": "Every repository you can access, with search, a public/private filter, four sort orders and 'Load more' in steps of 30.",
+      "entry": [
+        {
+          "path": "apps/dashboard/src/routes/_protected/repos.tsx",
+          "line": 154,
+          "symbol": "RepositoriesPage",
+          "role": "The /repos page"
+        },
+        {
+          "path": "apps/dashboard/src/lib/github/repos.ts",
+          "line": 155,
+          "symbol": "getReposHub",
+          "role": "Server function: totals, match count, rows"
+        },
+        {
+          "path": "apps/dashboard/src/lib/repos-hub-filter.ts",
+          "line": 60,
+          "symbol": "filterUserRepoSummaries",
+          "role": "Search, visibility filter and sort"
+        }
+      ]
+    },
+    {
+      "name": "Repository row",
+      "summary": "Language dot, star and fork counts, and a year of weekly commits as a sparkline that only loads when the row scrolls near.",
+      "entry": [
+        {
+          "path": "apps/dashboard/src/components/repo/repository-row.tsx",
+          "line": 47,
+          "symbol": "RepositoryRow",
+          "role": "Row used by the hub and the profile tab"
+        }
+      ]
+    },
+    {
+      "name": "Contribution banner",
+      "summary": "The contribution calendar fills the profile banner. Cells are sized to fit the area exactly and fade out toward the edges.",
+      "entry": [
+        {
+          "path": "apps/dashboard/src/components/profile/contribution-graph.tsx",
+          "line": 157,
+          "symbol": "ContributionGraph",
+          "role": "Draws the banner; loaded on demand"
+        },
+        {
+          "path": "apps/dashboard/src/lib/contribution-grid.ts",
+          "line": 30,
+          "symbol": "fitContributionGrid",
+          "role": "Computes cell size and grid layout"
+        },
+        {
+          "path": "apps/dashboard/src/lib/github/users.ts",
+          "line": 56,
+          "symbol": "getUserContributions",
+          "role": "Server function for the calendar"
+        }
+      ]
+    },
+    {
+      "name": "Activity feed",
+      "summary": "GitHub events grouped by month: one line per pull request in its latest state, and a month's pushes folded into one expandable commits line.",
+      "entry": [
+        {
+          "path": "apps/dashboard/src/components/profile/user-activity-feed.tsx",
+          "line": 45,
+          "symbol": "UserActivityFeed",
+          "role": "Renders months and lines on a guide rail"
+        },
+        {
+          "path": "apps/dashboard/src/lib/user-activity-feed.ts",
+          "line": 85,
+          "symbol": "buildActivityMonths",
+          "role": "Groups and folds raw events"
+        },
+        {
+          "path": "apps/dashboard/src/lib/github/users.ts",
+          "line": 238,
+          "symbol": "getUserActivity",
+          "role": "Server function: events, 30 per page"
+        }
+      ]
+    },
+    {
+      "name": "Pinned and repositories tab",
+      "summary": "Pinned repositories as cards, and a Repositories tab (?tab=repositories). Your own profile lists what the App can see; others list public repos.",
+      "entry": [
+        {
+          "path": "apps/dashboard/src/components/profile/pinned-repo-card.tsx",
+          "line": 5,
+          "symbol": "PinnedRepoCard",
+          "role": "One pinned repository card"
+        },
+        {
+          "path": "apps/dashboard/src/lib/github/repos.ts",
+          "line": 187,
+          "symbol": "getProfileRepos",
+          "role": "Server function for the repositories tab"
+        },
+        {
+          "path": "apps/dashboard/src/lib/github/users.ts",
+          "line": 136,
+          "symbol": "getUserPinnedRepos",
+          "role": "Server function for pinned repositories"
+        }
+      ]
+    }
+  ],
+  "entryPoints": [
+    {
+      "path": "apps/dashboard/src/routes/_protected/index.tsx",
+      "line": 17,
+      "symbol": "Route",
+      "role": "Overview (home) page"
+    },
+    {
+      "path": "apps/dashboard/src/routes/_protected/repos.tsx",
+      "line": 40,
+      "symbol": "Route",
+      "role": "Repositories hub and its prefetching loader"
+    },
+    {
+      "path": "apps/dashboard/src/routes/_protected/$owner/index.tsx",
+      "line": 64,
+      "symbol": "Route",
+      "role": "Profile page"
+    },
+    {
+      "path": "apps/dashboard/src/lib/github/repos.ts",
+      "line": 155,
+      "symbol": "getReposHub",
+      "role": "Server side of the hub"
+    },
+    {
+      "path": "apps/dashboard/src/lib/github/users.ts",
+      "line": 19,
+      "symbol": "getUserProfile",
+      "role": "First of the profile server functions in this file"
+    },
+    {
+      "path": "apps/dashboard/src/components/repo/repository-row.tsx",
+      "line": 47,
+      "symbol": "RepositoryRow",
+      "role": "Shared repository row"
+    }
+  ],
+  "dependsOn": ["work-lists", "repo-home", "github-data", "instant-cache"],
+  "outside": ["github-rest"],
+  "goodParts": [
+    "Grid fitting and activity grouping are pure modules with tests (lib/contribution-grid.test.ts, lib/user-activity-feed.test.ts).",
+    "The overview has an e2e spec (apps/e2e/tests/concurrent/overview.spec.ts) and is reused unchanged by the landing page preview."
+  ],
+  "watch": [
+    "getReposHub lists every repository from GitHub on each call and filters in memory (lib/github/repos.ts:155), so each new search or 'Load more' repeats the full listing.",
+    "No e2e spec opens /repos or a profile page, and lib/repos-hub-filter.ts has no unit test.",
+    "There is no dedicated organisation profile: /$owner calls user endpoints only (lib/github/users.ts), and organisations only have /orgs/$org/settings."
+  ],
+  "issues": [
+    {
+      "number": 154
+    },
+    {
+      "number": 188
+    }
+  ]
+}

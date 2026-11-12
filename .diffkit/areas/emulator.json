@@ -1,0 +1,254 @@
+{
+  "name": "Emulator & tests",
+  "icon": "computer",
+  "tagline": "A local fake GitHub for demos and e2e tests",
+  "summary": "A local stand-in for GitHub with a seeded demo workspace. It lets anyone run the whole app, and the Playwright tests, with no GitHub account and no network.",
+  "paths": [
+    "apps/emulator/**",
+    "apps/e2e/**",
+    "apps/dashboard/src/lib/github-emulator**",
+    "apps/dashboard/.dev.vars.demo**",
+    "scripts/dev-demo**",
+    "docs/{local-demo-mode,e2e}.md",
+    ".github/workflows/**{e2e,demo,smoke}**"
+  ],
+  "flow": [
+    {
+      "kind": "tool",
+      "label": "pnpm dev:demo",
+      "note": "Starts the emulator on port 4001, waits for the seed, then starts the dashboard on 3000.",
+      "path": "scripts/dev-demo.mjs"
+    },
+    {
+      "kind": "tool",
+      "label": "Emulator server",
+      "note": "Boots emulate's GitHub service and registers DiffKit's shim routes ahead of it.",
+      "path": "apps/emulator/src/server.ts"
+    },
+    {
+      "kind": "tool",
+      "label": "Workspace seed",
+      "note": "Creates six people, the lumen-labs org and six repos with PRs, issues and CI runs.",
+      "path": "apps/emulator/src/seed/seed-workspace.ts"
+    },
+    {
+      "kind": "server",
+      "label": "Emulator switch",
+      "note": "With GITHUB_EMULATOR_URL set, Octokit's base URL and the OAuth flow use the emulator.",
+      "path": "apps/dashboard/src/lib/github-emulator.server.ts"
+    },
+    {
+      "kind": "tool",
+      "label": "GraphQL shim",
+      "note": "Answers the dashboard's GraphQL queries from the same store using graphql-js.",
+      "path": "apps/emulator/src/graphql/handler.ts"
+    },
+    {
+      "kind": "tool",
+      "label": "Playwright suite",
+      "note": "Starts both servers, signs in as nova and runs 20 spec files in two projects.",
+      "path": "apps/e2e/playwright.config.ts"
+    }
+  ],
+  "features": [
+    {
+      "name": "Emulated GitHub API",
+      "summary": "REST, OAuth and GitHub App auth come from @emulators/github. DiffKit shims add notifications, installations, statuses, PR diffs, zipped logs and settings.",
+      "entry": [
+        {
+          "path": "apps/emulator/src/server.ts",
+          "line": 218,
+          "symbol": "createDiffkitEmulator",
+          "role": "Boots emulate plus the shims"
+        },
+        {
+          "path": "apps/emulator/src/shims/rest.ts",
+          "line": 279,
+          "symbol": "registerRestShims",
+          "role": "REST routes emulate lacks"
+        },
+        {
+          "path": "apps/emulator/src/shims/settings.ts",
+          "line": 9,
+          "symbol": "registerSettingsShims",
+          "role": "Repo and org settings endpoints"
+        }
+      ]
+    },
+    {
+      "name": "GraphQL shim",
+      "summary": "A schema covering exactly the fields DiffKit selects, resolved against the emulator's store. A test runs every GraphQL document found in lib/github.",
+      "entry": [
+        {
+          "path": "apps/emulator/src/graphql/handler.ts",
+          "line": 120,
+          "symbol": "registerGraphQLRoute",
+          "role": "POST /graphql"
+        },
+        {
+          "path": "apps/emulator/src/graphql/schema.ts",
+          "line": 7,
+          "symbol": "typeDefs",
+          "role": "The supported schema"
+        },
+        {
+          "path": "apps/emulator/src/__tests__/dashboard-documents.ts",
+          "line": 57,
+          "symbol": "extractDocuments",
+          "role": "Pulls documents out of dashboard source"
+        }
+      ]
+    },
+    {
+      "name": "Seeded workspace",
+      "summary": "You sign in as nova. The lumen-labs org has beacon, orbit, handbook, infra and atlas, plus nova/dotfiles. Dates hang off a fixed anchor so ids repeat.",
+      "entry": [
+        {
+          "path": "apps/emulator/src/seed/content/index.ts",
+          "line": 12,
+          "symbol": "workspace",
+          "role": "The whole demo workspace as data"
+        },
+        {
+          "path": "apps/emulator/src/seed/content/people.ts",
+          "line": 3,
+          "symbol": "people",
+          "role": "The six seeded users"
+        },
+        {
+          "path": "apps/emulator/src/seed/seed-workspace.ts",
+          "line": 66,
+          "symbol": "seedWorkspace",
+          "role": "Writes the workspace into the emulator"
+        }
+      ]
+    },
+    {
+      "name": "One-variable switch",
+      "summary": "GITHUB_EMULATOR_URL is the only switch. It is refused in production builds and for any host that is not localhost.",
+      "entry": [
+        {
+          "path": "apps/dashboard/src/lib/github-emulator.ts",
+          "line": 7,
+          "symbol": "resolveGitHubEmulatorUrl",
+          "role": "Validates the variable"
+        },
+        {
+          "path": "apps/dashboard/src/lib/github-emulator.server.ts",
+          "line": 24,
+          "symbol": "getGitHubOctokitBaseOptions",
+          "role": "Base URL spread into every Octokit"
+        }
+      ]
+    },
+    {
+      "name": "Demo mode script",
+      "summary": "pnpm dev:demo runs emulator and dashboard together with committed throwaway credentials. Demo D1, KV and R2 state is kept apart from normal dev state.",
+      "entry": [
+        {
+          "path": "scripts/dev-demo.mjs",
+          "line": 25,
+          "symbol": "waitForSeededEmulator",
+          "role": "pnpm dev:demo: emulator first, then dashboard"
+        },
+        {
+          "path": "apps/emulator/src/main.ts",
+          "line": 58,
+          "symbol": "main",
+          "role": "Seed or restore, then serve"
+        }
+      ]
+    },
+    {
+      "name": "Playwright suite",
+      "summary": "20 spec files: 8 read-only ones run in parallel; 12 that write or depend on timing run one at a time, with the emulator reset before each test.",
+      "entry": [
+        {
+          "path": "apps/e2e/playwright.config.ts",
+          "line": 13,
+          "symbol": "defineConfig",
+          "role": "Projects and the two web servers"
+        },
+        {
+          "path": "apps/e2e/support/emulator.ts",
+          "line": 17,
+          "symbol": "emulator",
+          "role": "Checkpoint, reset and REST helpers"
+        },
+        {
+          "path": "apps/e2e/support/test.ts",
+          "line": 8,
+          "symbol": "isolatedTest",
+          "role": "Fixture that resets before each test"
+        }
+      ]
+    },
+    {
+      "name": "Sample data for skeletons",
+      "summary": "Separate from the emulator: 21 *-samples.ts files feed made-up rows to real components inside SkeletonSample, which tells them not to fetch.",
+      "entry": [
+        {
+          "path": "apps/dashboard/src/components/shared/skeleton-sample.tsx",
+          "line": 14,
+          "symbol": "SkeletonSample",
+          "role": "Marks a subtree as sample-only"
+        },
+        {
+          "path": "apps/dashboard/src/components/pulls/pull-list-samples.ts",
+          "line": 30,
+          "symbol": "SAMPLE_PULLS",
+          "role": "Example sample data file"
+        }
+      ]
+    }
+  ],
+  "entryPoints": [
+    {
+      "path": "docs/local-demo-mode.md",
+      "line": 1,
+      "symbol": "Local demo mode",
+      "role": "What is emulated, what is not, how it is wired"
+    },
+    {
+      "path": "apps/emulator/src/server.ts",
+      "line": 218,
+      "symbol": "createDiffkitEmulator",
+      "role": "How emulate and the shims are put together"
+    },
+    {
+      "path": "apps/emulator/src/seed/content/index.ts",
+      "line": 12,
+      "symbol": "workspace",
+      "role": "Edit this to change the demo data"
+    },
+    {
+      "path": "apps/emulator/src/graphql/handler.ts",
+      "line": 120,
+      "symbol": "registerGraphQLRoute",
+      "role": "Entry to the GraphQL shim"
+    },
+    {
+      "path": "apps/dashboard/src/lib/github-emulator.server.ts",
+      "line": 24,
+      "symbol": "getGitHubOctokitBaseOptions",
+      "role": "The dashboard side of the switch"
+    },
+    {
+      "path": "apps/e2e/playwright.config.ts",
+      "line": 13,
+      "symbol": "defineConfig",
+      "role": "How a test run is set up"
+    }
+  ],
+  "dependsOn": ["github-data", "platform-ops"],
+  "outside": [],
+  "goodParts": [
+    "graphql-documents.test.ts runs every GraphQL document extracted from the dashboard's lib/github modules against the shim, so drift fails a test.",
+    "The seed is deterministic: a fixed anchor (2026-11-02T17:00Z) and explicit commit dates make ids, SHAs and screenshots repeat."
+  ],
+  "watch": [
+    "docs/e2e.md lists 16 journeys but apps/e2e/tests has 20 spec files; app-shell, landing, comment-editing and bulk-actions are not in the table.",
+    "apps/dashboard/vite.config.ts:19 mentions a committed `.env.demo`; the file is apps/emulator/dashboard.env.",
+    "apps/emulator/src/graphql/resolvers.ts is 1,933 lines and seed/seed-workspace.ts is 1,517."
+  ]
+}

@@ -1,9 +1,12 @@
 import { describe, expect, it } from "vitest";
 import { buildMapActivity, type PullInput } from "./activity";
-import { parseMapFile } from "./map-file";
+import { parseMapFolder } from "./map-file";
 
-const parsed = parseMapFile(
-	JSON.stringify({
+const area = (name: string, extra: Record<string, unknown>) =>
+	JSON.stringify({ name, tagline: "t", summary: "s", ...extra });
+
+const parsed = parseMapFolder({
+	index: JSON.stringify({
 		version: 1,
 		pitch: "Beacon sends typed events.",
 		bands: [
@@ -13,21 +16,22 @@ const parsed = parseMapFile(
 				groups: [{ id: "core", name: "Core", areas: ["client", "transport"] }],
 			},
 		],
-		areas: [
-			{ id: "client", name: "Client", tagline: "t", summary: "s" },
-			{ id: "transport", name: "Transports", tagline: "t", summary: "s" },
-		],
-		rules: [
-			{ path: "src/transport/**", area: "transport" },
-			{ path: "src/**", area: "client" },
-		],
 		ignore: ["**/*.lock"],
-		issues: [
-			{ number: 7, areas: ["transport"], note: "Re-test after the rewrite." },
-			{ number: 8, areas: ["client"] },
-		],
 	}),
-);
+	areas: [
+		{
+			name: "client.json",
+			text: area("Client", { paths: ["src/**"], issues: [{ number: 8 }] }),
+		},
+		{
+			name: "transport.json",
+			text: area("Transports", {
+				paths: ["src/transport/**"],
+				issues: [{ number: 7, note: "Re-test after the rewrite." }],
+			}),
+		},
+	],
+});
 if (!parsed.ok) throw new Error(parsed.problems.join("\n"));
 const map = parsed.map;
 

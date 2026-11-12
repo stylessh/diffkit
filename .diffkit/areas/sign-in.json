@@ -1,0 +1,283 @@
+{
+  "name": "Sign-in & GitHub access",
+  "icon": "lock",
+  "tagline": "Landing page, sign-in and GitHub App access",
+  "summary": "Visitors see a landing page with a clickable sample of the app, sign in with GitHub, then choose which accounts and repositories DiffKit may read by installing its GitHub App.",
+  "paths": [
+    "apps/dashboard/src/routes/{login,setup,privacy,terms,index}.tsx",
+    "apps/dashboard/src/routes/api/{auth,github/app}/**",
+    "apps/dashboard/src/components/{landing,legal}/**",
+    "apps/dashboard/src/components/layouts/github-access-dialog**",
+    "apps/dashboard/src/lib/{auth,github-app,github-access,protected-auth,viewer-hint,sign-in-error,forbidden-orgs-store,local-session}**",
+    "apps/dashboard/src/lib/repository-stars**"
+  ],
+  "screen": {
+    "light": ".diffkit/screens/sign-in-light.jpg",
+    "dark": ".diffkit/screens/sign-in-dark.jpg"
+  },
+  "flow": [
+    {
+      "kind": "page",
+      "label": "Landing page",
+      "note": "/login shows the headline, a sign-in button and the sample preview; signed-in visitors are sent on.",
+      "path": "apps/dashboard/src/routes/login.tsx"
+    },
+    {
+      "kind": "client",
+      "label": "signInWithGitHub",
+      "note": "Forgets the last remembered viewer, then starts GitHub sign-in with a checked return path.",
+      "path": "apps/dashboard/src/lib/auth-actions.ts"
+    },
+    {
+      "kind": "route",
+      "label": "Better Auth handler",
+      "note": "/api/auth/* completes the OAuth exchange with GitHub and sets the session cookie.",
+      "path": "apps/dashboard/src/routes/api/auth/$.ts"
+    },
+    {
+      "kind": "storage",
+      "label": "D1 account rows",
+      "note": "One account row per token: provider 'github' for OAuth, 'github-app' for the App user token.",
+      "path": "apps/dashboard/src/db/schema.ts"
+    },
+    {
+      "kind": "page",
+      "label": "Setup page",
+      "note": "/setup lists your account and each organisation as installed or not, with a link to fix it.",
+      "path": "apps/dashboard/src/routes/setup.tsx"
+    },
+    {
+      "kind": "route",
+      "label": "App authorize and callback",
+      "note": "Authorize sets a state cookie and redirects to GitHub; callback checks it and saves the token.",
+      "path": "apps/dashboard/src/lib/github-app-oauth.server.ts"
+    }
+  ],
+  "features": [
+    {
+      "name": "Landing product preview",
+      "summary": "The real topbar, lists, inbox and pull request page run on sample data. Links switch views inside the preview and nothing is fetched.",
+      "entry": [
+        {
+          "path": "apps/dashboard/src/components/landing/product-preview.tsx",
+          "line": 137,
+          "symbol": "ProductPreview",
+          "role": "The interactive preview on the landing page"
+        },
+        {
+          "path": "apps/dashboard/src/components/landing/product-preview-views.ts",
+          "line": 18,
+          "symbol": "viewForHref",
+          "role": "Maps an app link to a view inside the preview"
+        },
+        {
+          "path": "apps/dashboard/src/components/landing/product-preview-samples.ts",
+          "line": 445,
+          "symbol": "previewWorkspace",
+          "role": "Builds the sample pulls, issues and notifications"
+        }
+      ]
+    },
+    {
+      "name": "GitHub OAuth sign-in",
+      "summary": "Better Auth's GitHub provider with repo, read:org and user:email scopes. In demo mode a generic OAuth plugin points it at the local emulator.",
+      "entry": [
+        {
+          "path": "apps/dashboard/src/lib/auth.server.ts",
+          "line": 140,
+          "symbol": "getAuth",
+          "role": "Better Auth config: provider, D1 adapter, cookies"
+        },
+        {
+          "path": "apps/dashboard/src/lib/auth-actions.ts",
+          "line": 8,
+          "symbol": "signInWithGitHub",
+          "role": "Client action behind the sign-in buttons"
+        },
+        {
+          "path": "apps/dashboard/src/routes/api/auth/$.ts",
+          "line": 14,
+          "symbol": "Route",
+          "role": "HTTP route that hands requests to Better Auth"
+        }
+      ]
+    },
+    {
+      "name": "GitHub App setup",
+      "summary": "A second authorization stores a refreshable App user token. /setup then lists each account as installed or not, with a link to fix it.",
+      "entry": [
+        {
+          "path": "apps/dashboard/src/routes/setup.tsx",
+          "line": 66,
+          "symbol": "SetupPage",
+          "role": "The 'Connect your GitHub' page"
+        },
+        {
+          "path": "apps/dashboard/src/lib/github-app-oauth.server.ts",
+          "line": 82,
+          "symbol": "handleGitHubAppAuthorize",
+          "role": "Starts the App authorization with a state cookie"
+        },
+        {
+          "path": "apps/dashboard/src/lib/github-app.server.ts",
+          "line": 215,
+          "symbol": "exchangeGitHubAppUserCode",
+          "role": "Trades the code for a token and stores it"
+        }
+      ]
+    },
+    {
+      "name": "Two GitHub apps",
+      "summary": "OAuth App: sign-in and fallback reads. GitHub App: installation tokens, webhooks and install discovery. Private repos outside the installs are hidden.",
+      "entry": [
+        {
+          "path": "apps/dashboard/src/lib/github/installations.ts",
+          "line": 416,
+          "symbol": "getGitHubContextForRepository",
+          "role": "Picks installation token or OAuth token per repo"
+        },
+        {
+          "path": "apps/dashboard/src/lib/github/installations.ts",
+          "line": 305,
+          "symbol": "getInstallationAccessIndex",
+          "role": "Index of owners and repos the App can see"
+        },
+        {
+          "path": "apps/dashboard/src/lib/github-access.ts",
+          "line": 141,
+          "symbol": "isRepoVisibleWithInstallationAccess",
+          "role": "Rule that hides private repos outside the installs"
+        }
+      ]
+    },
+    {
+      "name": "Optimistic auth",
+      "summary": "A returning viewer's name and avatar come from a non-secret hint cookie, so the shell paints at once while the real session check runs behind it.",
+      "entry": [
+        {
+          "path": "apps/dashboard/src/routes/_protected.tsx",
+          "line": 63,
+          "symbol": "resolveProtectedAuth",
+          "role": "Chooses cached, hint-based or blocking auth"
+        },
+        {
+          "path": "apps/dashboard/src/lib/protected-auth.ts",
+          "line": 109,
+          "symbol": "validateProtectedSessionInBackground",
+          "role": "Confirms the hint once per page load"
+        },
+        {
+          "path": "apps/dashboard/src/lib/viewer-hint.ts",
+          "line": 55,
+          "symbol": "parseViewerHint",
+          "role": "Reads and validates the 'diffkit-viewer' cookie"
+        }
+      ]
+    },
+    {
+      "name": "Access dialog",
+      "summary": "Opened from warnings and error screens. It lists every account with its install status and links to GitHub to configure or authorize.",
+      "entry": [
+        {
+          "path": "apps/dashboard/src/components/layouts/github-access-dialog.tsx",
+          "line": 37,
+          "symbol": "GitHubAccessDialog",
+          "role": "The dialog, opened by ?show-org-setup=true"
+        },
+        {
+          "path": "apps/dashboard/src/lib/github-access-modal-store.ts",
+          "line": 28,
+          "symbol": "openGitHubAccessPrompt",
+          "role": "Sets which owner or repo the dialog highlights"
+        },
+        {
+          "path": "apps/dashboard/src/lib/github/viewer.ts",
+          "line": 78,
+          "symbol": "getGitHubAppAccessState",
+          "role": "Server function: installs, orgs and missing orgs"
+        }
+      ]
+    },
+    {
+      "name": "Safe redirects and sign-out",
+      "summary": "Return paths are parsed so only same-site paths survive. Sign-out also wipes the hint cookie and the user's IndexedDB caches.",
+      "entry": [
+        {
+          "path": "apps/dashboard/src/lib/auth-redirect.ts",
+          "line": 7,
+          "symbol": "normalizeAuthRedirect",
+          "role": "Rejects off-site and protocol-relative redirects"
+        },
+        {
+          "path": "apps/dashboard/src/lib/auth-actions.ts",
+          "line": 57,
+          "symbol": "signOutToLogin",
+          "role": "Signs out, clears local data, returns to /login"
+        },
+        {
+          "path": "apps/dashboard/src/lib/local-session.ts",
+          "line": 14,
+          "symbol": "clearLocalSession",
+          "role": "Removes hint cookie and per-user browser caches"
+        }
+      ]
+    }
+  ],
+  "entryPoints": [
+    {
+      "path": "apps/dashboard/src/routes/login.tsx",
+      "line": 24,
+      "symbol": "Route",
+      "role": "Landing and sign-in page"
+    },
+    {
+      "path": "apps/dashboard/src/lib/auth.server.ts",
+      "line": 140,
+      "symbol": "getAuth",
+      "role": "Better Auth setup, including the emulator provider for demo mode"
+    },
+    {
+      "path": "apps/dashboard/src/routes/setup.tsx",
+      "line": 42,
+      "symbol": "Route",
+      "role": "GitHub App setup page and its loader"
+    },
+    {
+      "path": "apps/dashboard/src/lib/github-app.server.ts",
+      "line": 327,
+      "symbol": "getGitHubAppUserAccessTokenByUserId",
+      "role": "Reads the stored App user token, refreshing it when it nears expiry"
+    },
+    {
+      "path": "apps/dashboard/src/routes/_protected.tsx",
+      "line": 45,
+      "symbol": "Route",
+      "role": "Auth gate for every signed-in page, with the optimistic path"
+    },
+    {
+      "path": "apps/dashboard/src/lib/github/installations.ts",
+      "line": 416,
+      "symbol": "getGitHubContextForRepository",
+      "role": "Where a read chooses between the two tokens"
+    }
+  ],
+  "dependsOn": ["github-data", "storage"],
+  "outside": ["github-oauth", "cf-d1", "browser-storage"],
+  "goodParts": [
+    "The App OAuth handlers take their dependencies as arguments and are unit tested (lib/github-app-oauth.server.test.ts, 265 lines).",
+    "Sign-in, sign-out, a failed sign-in and the landing preview are covered end to end (apps/e2e/tests/isolated/auth.spec.ts, concurrent/landing.spec.ts)."
+  ],
+  "watch": [
+    "On failure the callback redirects to /setup?github-app-error=<code>, but routes/setup.tsx never reads that parameter, so the reason is not shown.",
+    "The account list is built twice with the same logic: SetupAccessList (routes/setup.tsx:146) and buildTargets (components/layouts/github-access-dialog.tsx:144).",
+    "lib/github/installations.ts is 663 lines and mixes installation lookup, token routing and list filtering."
+  ],
+  "issues": [
+    {
+      "number": 144
+    },
+    {
+      "number": 188
+    }
+  ]
+}

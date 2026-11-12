@@ -29,7 +29,7 @@ import {
 	beaconWebSocket,
 	beaconWebTransport,
 } from "./beacon-files.ts";
-import { beaconProductMap } from "./beacon-map.ts";
+import { beaconProductMapFiles } from "./beacon-map.ts";
 import { ciJobs, inProgressJobs, publishJob } from "./ci.ts";
 
 const clientTest = `import { describe, expect, it, vi } from "vitest";
@@ -221,7 +221,7 @@ export const beacon: RepoSpec = {
 			message: "Add a product map",
 			author: "nova",
 			at: { d: 5, h: 22 },
-			files: { ".diffkit/map.json": beaconProductMap },
+			files: beaconProductMapFiles,
 		},
 	],
 	branches: [

@@ -1,6 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
 import { RequestError } from "octokit";
-import { classifyContentsFile } from "../code-browsing/blob-classify";
 import {
 	buildMapActivity,
 	type IssueInput,
@@ -8,16 +7,13 @@ import {
 	type PullInput,
 	type TreeFile,
 } from "../product-map/activity";
-import {
-	MAP_FILE_PATH,
-	type MapFile,
-	parseMapFile,
-} from "../product-map/map-file";
+import { type MapFile, parseMapFolder } from "../product-map/map-file";
 import { createAreaMatcher } from "../product-map/path-rules";
 import { pullParts } from "../product-map/work";
 import { executeGitHubGraphQL, fetchGitHubResource } from "./client";
 import { getGitHubContextForRepository } from "./installations";
 import { getPullFileSummariesResult } from "./pull-files";
+import { dedupeGitHubRead } from "./request-dedup";
 import type { GitHubClient, GitHubContext } from "./shared";
 import { identityValidator } from "./validators";
 
@@ -28,9 +24,6 @@ export type RepoProductMapFile =
 	| { status: "invalid"; problems: string[] }
 	| { status: "ready"; map: MapFile };
 
-type ContentsData = Awaited<
-	ReturnType<GitHubClient["rest"]["repos"]["getContent"]>
->["data"];
 type GitTreeData = Awaited<
 	ReturnType<GitHubClient["rest"]["git"]["getTree"]>
 >["data"];
@@ -42,44 +35,94 @@ function statusOf(error: unknown) {
 	return error instanceof RequestError ? error.status : undefined;
 }
 
+type MapFolderResponse = {
+	repository: {
+		index: { text: string | null; isTruncated: boolean } | null;
+		areas: {
+			entries:
+				| {
+						name: string;
+						type: string;
+						object: { text: string | null; isTruncated: boolean } | null;
+				  }[]
+				| null;
+		} | null;
+	} | null;
+};
+
+const MAP_FOLDER_QUERY = `query($owner: String!, $repo: String!) {
+	repository(owner: $owner, name: $repo) {
+		index: object(expression: "HEAD:.diffkit/map.json") {
+			... on Blob {
+				text
+				isTruncated
+			}
+		}
+		areas: object(expression: "HEAD:.diffkit/areas") {
+			... on Tree {
+				entries {
+					name
+					type
+					object {
+						... on Blob {
+							text
+							isTruncated
+						}
+					}
+				}
+			}
+		}
+	}
+}`;
+
+/** The whole `.diffkit` folder on the default branch, in one request. */
 async function readMapFile(
 	context: GitHubContext,
 	data: RepoProductMapInput,
 ): Promise<RepoProductMapFile> {
-	try {
-		return await fetchGitHubResource<ContentsData, RepoProductMapFile>({
-			context,
-			resource: "productMap.file.v1",
-			params: data,
-			request: (signal) =>
-				context.octokit.rest.repos.getContent({
-					owner: data.owner,
-					repo: data.repo,
-					path: MAP_FILE_PATH,
-					request: { signal },
-				}),
-			mapData: (content) => {
-				if (Array.isArray(content) || content.type !== "file")
-					return { status: "missing" };
-				const blob = classifyContentsFile(content);
-				if (blob.kind !== "text")
-					return {
-						status: "invalid",
-						problems: ["The file must be JSON text of at most 1 MB."],
-					};
-				const parsed = parseMapFile(blob.text);
-				return parsed.ok
-					? { status: "ready", map: parsed.map }
-					: { status: "invalid", problems: parsed.problems };
-			},
-		});
-	} catch (error) {
-		if (statusOf(error) === 404) return { status: "missing" };
-		throw error;
-	}
+	const response = await dedupeGitHubRead({
+		userId: context.session.user.id,
+		resource: "productMap.folder.v1",
+		params: data,
+		fetcher: () =>
+			executeGitHubGraphQL<MapFolderResponse>(
+				context,
+				`github product map folder ${data.owner}/${data.repo}`,
+				MAP_FOLDER_QUERY,
+				{ owner: data.owner, repo: data.repo },
+			),
+	});
+	const index = response.repository?.index;
+	if (!index) return { status: "missing" };
+	const files = (response.repository?.areas?.entries ?? []).filter(
+		(entry) => entry.type === "blob",
+	);
+	const unreadable = [
+		...(index.text === null || index.isTruncated ? ["map.json"] : []),
+		...files
+			.filter((file) => !file.object?.text || file.object.isTruncated)
+			.map((file) => `areas/${file.name}`),
+	];
+	if (unreadable.length > 0)
+		return {
+			status: "invalid",
+			problems: unreadable.map(
+				(name) => `${name} must be JSON text that GitHub can return whole.`,
+			),
+		};
+	const parsed = parseMapFolder({
+		index: index.text ?? "",
+		areas: files.map((file) => ({
+			name: file.name,
+			text: file.object?.text ?? "",
+		})),
+	});
+	return parsed.ok
+		? { status: "ready", map: parsed.map }
+		: { status: "invalid", problems: parsed.problems };
 }
 
-/** The repository's `.diffkit/map.json` on its default branch, checked. */
+/** The repository's `.diffkit` folder on its default branch, checked. */
 export const getRepoProductMapFile = createServerFn({ method: "GET" })
 	.validator(identityValidator<RepoProductMapInput>)
 	.handler(async ({ data }): Promise<RepoProductMapFile> => {
@@ -299,20 +342,29 @@ export type PullProductArea = {
 	share: number;
 };
 
+export type PullProductAreas = {
+	/** Largest share first. */
+	areas: PullProductArea[];
+	/** Changed files that are neither in an area nor ignored: the map is behind. */
+	unmappedFiles: number;
+};
+
+const NO_PRODUCT_AREAS: PullProductAreas = { areas: [], unmappedFiles: 0 };
+
 /** A pull request can list files in pages of 500; this is as far as the share looks. */
 const MAX_FILE_BATCHES = 4;
 
 /**
- * The areas one pull request touches, largest share first, from its own
- * changed files and the repository's map rules. Empty without a usable map.
+ * The areas one pull request touches, from its own changed files and the
+ * repository's map, and how many of its files the map does not cover yet.
  */
 export const getPullProductAreas = createServerFn({ method: "GET" })
 	.validator(identityValidator<PullProductAreasInput>)
-	.handler(async ({ data }): Promise<PullProductArea[]> => {
+	.handler(async ({ data }): Promise<PullProductAreas> => {
 		const context = await getGitHubContextForRepository(data);
-		if (!context) return [];
+		if (!context) return NO_PRODUCT_AREAS;
 		const file = await readMapFile(context, data);
-		if (file.status !== "ready") return [];
+		if (file.status !== "ready") return NO_PRODUCT_AREAS;
 		const files = [];
 		let cursor: string | null = null;
 		for (let batch = 0; batch < MAX_FILE_BATCHES; batch++) {
@@ -327,16 +379,29 @@ export const getPullProductAreas = createServerFn({ method: "GET" })
 					path: item.filename,
 					additions: item.additions,
 					deletions: item.deletions,
+					removed: item.status === "removed",
 				});
 			cursor = page.nextCursor;
 			if (!cursor) break;
 		}
 		const names = new Map(file.map.areas.map((area) => [area.id, area]));
 		const match = createAreaMatcher(file.map.rules, file.map.ignore);
-		return pullParts(files, match).flatMap((part) => {
-			const area = names.get(part.area);
-			return area
-				? [{ id: area.id, name: area.name, icon: area.icon, share: part.share }]
-				: [];
-		});
+		return {
+			areas: pullParts(files, match).flatMap((part) => {
+				const area = names.get(part.area);
+				return area
+					? [
+							{
+								id: area.id,
+								name: area.name,
+								icon: area.icon,
+								share: part.share,
+							},
+						]
+					: [];
+			}),
+			unmappedFiles: files.filter(
+				(item) => !item.removed && match(item.path).kind === "unmapped",
+			).length,
+		};
 	});

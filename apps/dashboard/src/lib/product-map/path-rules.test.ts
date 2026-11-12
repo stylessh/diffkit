@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { compileGlob, createAreaMatcher } from "./path-rules";
+import { compileGlob, createAreaMatcher, expandBraces } from "./path-rules";
 
 describe("compileGlob", () => {
 	it("keeps * inside a segment and lets ** cross them", () => {
@@ -44,27 +44,42 @@ describe("compileGlob", () => {
 	});
 });
 
-describe("createAreaMatcher", () => {
-	const match = createAreaMatcher(
-		[
-			{ path: "src/lib/github/pull**", area: "pull-request" },
-			{ path: "src/lib/github/**", area: "github-data" },
-		],
-		["**/*.gen.ts"],
-	);
-
-	it("gives a path to the first rule that matches", () => {
-		expect(match("src/lib/github/pull-files.ts")).toEqual({
-			kind: "area",
-			area: "pull-request",
-		});
-		expect(match("src/lib/github/client.ts")).toEqual({
-			kind: "area",
-			area: "github-data",
-		});
+describe("expandBraces", () => {
+	it("lists the plain patterns a braced one stands for", () => {
+		expect(expandBraces("a/{b,c{,d}}/x")).toEqual(["a/b/x", "a/c/x", "a/cd/x"]);
+		expect(expandBraces("src/\\{literal\\}")).toEqual(["src/\\{literal\\}"]);
 	});
 
-	it("separates ignored paths from ones no rule covers", () => {
+	it("refuses a pattern that multiplies out too far", () => {
+		const wide = "{a,b,c,d}{a,b,c,d}{a,b,c,d}{a,b}";
+		expect(() => expandBraces(wide)).toThrow("alternatives");
+	});
+});
+
+describe("createAreaMatcher", () => {
+	const rules = [
+		{ path: "src/lib/github/**", area: "github-data" },
+		{ path: "src/lib/{github/pull,review-}**", area: "pull-request" },
+		{ path: "src/**", area: "shell" },
+	];
+	const match = createAreaMatcher(rules, ["**/*.gen.ts"]);
+
+	it("gives a path to the most specific pattern, whatever the order", () => {
+		const reversed = createAreaMatcher([...rules].reverse(), []);
+		for (const pick of [match, reversed]) {
+			expect(pick("src/lib/github/pull-files.ts")).toEqual({
+				kind: "area",
+				area: "pull-request",
+			});
+			expect(pick("src/lib/github/client.ts")).toEqual({
+				kind: "area",
+				area: "github-data",
+			});
+			expect(pick("src/app.tsx")).toEqual({ kind: "area", area: "shell" });
+		}
+	});
+
+	it("separates ignored paths from ones no pattern covers", () => {
 		expect(match("src/lib/github/routes.gen.ts")).toEqual({ kind: "ignored" });
 		expect(match("README.md")).toEqual({ kind: "unmapped" });
 	});

@@ -1,0 +1,262 @@
+{
+  "name": "History & compare",
+  "icon": "commit",
+  "tagline": "Commits, branches, tags, compare, new PR",
+  "summary": "Commit history with search and an author filter, a single-commit diff page, branches grouped by activity, tags with source downloads, and a compare page that turns into the new pull request form.",
+  "paths": [
+    "apps/dashboard/src/routes/_protected/$owner/$repo/{commit{,s},branches,tags,compare}.**",
+    "apps/dashboard/src/components/repo/{commits,branches,refs,tags}/**",
+    "apps/dashboard/src/components/repo/{commit-page,branch-comparison-banner,repo-commits-list,commits-link}**",
+    "apps/dashboard/src/components/compare/**",
+    "apps/dashboard/src/lib/{commit-groups,commits-route,compare-ref,branch-sections,pull-request-draft}**",
+    "apps/dashboard/src/lib/github/{commits,repo-branches,pull-create,pull-for-refs,repo-templates,repo-refs-query-options}**"
+  ],
+  "screen": {
+    "light": ".diffkit/screens/history-compare-light.jpg",
+    "dark": ".diffkit/screens/history-compare-dark.jpg"
+  },
+  "flow": [
+    {
+      "kind": "page",
+      "label": "Compare route",
+      "note": "Parses base...head from the URL and prefetches the compare, branches, permission and open PR.",
+      "path": "apps/dashboard/src/routes/_protected/$owner/$repo/compare.$.tsx"
+    },
+    {
+      "kind": "component",
+      "label": "ComparePage",
+      "note": "Shows the branch bar and diff, or swaps to the composer when ?expand=1 and access allows it.",
+      "path": "apps/dashboard/src/components/compare/compare-page.tsx"
+    },
+    {
+      "kind": "server",
+      "label": "getCompareDetail",
+      "note": "Loads up to 300 commits and 300 changed files for base...head from GitHub's compare API.",
+      "path": "apps/dashboard/src/lib/github/repo-branches.ts"
+    },
+    {
+      "kind": "component",
+      "label": "PullRequestComposer",
+      "note": "The shared draft page with title, body, branch pickers, a properties panel and the diff.",
+      "path": "apps/dashboard/src/components/compare/pull-request-composer.tsx"
+    },
+    {
+      "kind": "server",
+      "label": "createPullRequest",
+      "note": "Creates the PR with the user's token, then runs the label, assignee, milestone and reviewer calls.",
+      "path": "apps/dashboard/src/lib/github/pull-create.ts"
+    },
+    {
+      "kind": "github",
+      "label": "GitHub REST",
+      "note": "pulls.create, then follow-up calls; a failed follow-up comes back as a warning, not a failure."
+    }
+  ],
+  "features": [
+    {
+      "name": "Commit history",
+      "summary": "Commits for any ref or path, grouped into today, yesterday, this week, last week and months, with message search, an author filter and paging.",
+      "entry": [
+        {
+          "path": "apps/dashboard/src/components/repo/commits/repo-commits-page.tsx",
+          "line": 51,
+          "symbol": "RepoCommitsPage",
+          "role": "History page for both commits routes"
+        },
+        {
+          "path": "apps/dashboard/src/lib/commit-groups.ts",
+          "line": 59,
+          "symbol": "groupCommitsByPeriod",
+          "role": "Groups commits by recent period and month"
+        },
+        {
+          "path": "apps/dashboard/src/lib/github/commits.ts",
+          "line": 152,
+          "symbol": "getRepoCommits",
+          "role": "Server read: list or search commits"
+        }
+      ]
+    },
+    {
+      "name": "Commit page",
+      "summary": "One commit's diff in unified or split style with a changed-files sidebar. It reuses the review page's diff viewer and file sidebar.",
+      "entry": [
+        {
+          "path": "apps/dashboard/src/components/repo/commit-page.tsx",
+          "line": 68,
+          "symbol": "CommitPage",
+          "role": "Single commit view"
+        },
+        {
+          "path": "apps/dashboard/src/lib/github/commits.ts",
+          "line": 78,
+          "symbol": "getRepoCommit",
+          "role": "Server read: commit with its files"
+        }
+      ]
+    },
+    {
+      "name": "Branches page",
+      "summary": "Default, active and stale sections (stale after 90 days), search, ahead and behind counts, and the most recent pull request per branch.",
+      "entry": [
+        {
+          "path": "apps/dashboard/src/components/repo/branches/repo-branches-page.tsx",
+          "line": 67,
+          "symbol": "RepoBranchesPage",
+          "role": "Branches page with its four views"
+        },
+        {
+          "path": "apps/dashboard/src/lib/branch-sections.ts",
+          "line": 54,
+          "symbol": "groupBranchesIntoSections",
+          "role": "Sorts loaded branches into sections"
+        },
+        {
+          "path": "apps/dashboard/src/lib/github/commits.ts",
+          "line": 370,
+          "symbol": "getRepoBranchesList",
+          "role": "GraphQL branch list with tips and PRs"
+        }
+      ]
+    },
+    {
+      "name": "Tags page",
+      "summary": "Tags newest first with their commit, a link to the release when one exists, and zip or tar.gz source downloads.",
+      "entry": [
+        {
+          "path": "apps/dashboard/src/components/repo/tags/repo-tags-page.tsx",
+          "line": 44,
+          "symbol": "RepoTagsPage",
+          "role": "Tags page"
+        },
+        {
+          "path": "apps/dashboard/src/components/repo/tags/source-download-pill.tsx",
+          "line": 16,
+          "symbol": "SourceDownloadPill",
+          "role": "Split pill for source archives"
+        },
+        {
+          "path": "apps/dashboard/src/lib/github/commits.ts",
+          "line": 481,
+          "symbol": "getRepoTagsList",
+          "role": "GraphQL tag list, 30 per request"
+        }
+      ]
+    },
+    {
+      "name": "Compare page",
+      "summary": "Pick a base and head, including owner:branch from a fork, see the commits and files, and jump to the PR already open for that pair.",
+      "entry": [
+        {
+          "path": "apps/dashboard/src/components/compare/compare-page.tsx",
+          "line": 107,
+          "symbol": "ComparePage",
+          "role": "Compare page and its view states"
+        },
+        {
+          "path": "apps/dashboard/src/lib/compare-ref.ts",
+          "line": 14,
+          "symbol": "parseCompareSplat",
+          "role": "Reads base...head from the URL"
+        },
+        {
+          "path": "apps/dashboard/src/lib/github/pull-for-refs.ts",
+          "line": 16,
+          "symbol": "getOpenPullForRefs",
+          "role": "Finds the open PR for a base and head"
+        }
+      ]
+    },
+    {
+      "name": "New pull request",
+      "summary": "Written on the page it will become: title suggested from the single commit or the branch name, body from the repo's PR template, draft toggle, properties.",
+      "entry": [
+        {
+          "path": "apps/dashboard/src/components/compare/pull-request-composer.tsx",
+          "line": 70,
+          "symbol": "PullRequestComposer",
+          "role": "The form, its submit and navigation"
+        },
+        {
+          "path": "apps/dashboard/src/lib/pull-request-draft.ts",
+          "line": 49,
+          "symbol": "pullRequestDraftReducer",
+          "role": "Draft state and the payload builder"
+        },
+        {
+          "path": "apps/dashboard/src/lib/github/pull-create.ts",
+          "line": 91,
+          "symbol": "createPullRequestWithFollowUps",
+          "role": "Create, then apply the properties"
+        }
+      ]
+    },
+    {
+      "name": "Branch and tag picker",
+      "summary": "One popover used on code and history pages. It loads the first 100 names of the shown kind when opened.",
+      "entry": [
+        {
+          "path": "apps/dashboard/src/components/repo/refs/repo-ref-picker.tsx",
+          "line": 37,
+          "symbol": "RepoRefPicker",
+          "role": "Branch and tag switcher"
+        },
+        {
+          "path": "apps/dashboard/src/lib/github/commits.ts",
+          "line": 236,
+          "symbol": "getRepoRefNames",
+          "role": "Server read: branch or tag names"
+        }
+      ]
+    }
+  ],
+  "entryPoints": [
+    {
+      "path": "apps/dashboard/src/components/compare/compare-page.tsx",
+      "line": 107,
+      "symbol": "ComparePage",
+      "role": "Compare states and when the composer takes over"
+    },
+    {
+      "path": "apps/dashboard/src/components/compare/pull-request-composer.tsx",
+      "line": 70,
+      "symbol": "PullRequestComposer",
+      "role": "New pull request form"
+    },
+    {
+      "path": "apps/dashboard/src/lib/pull-request-draft.ts",
+      "line": 153,
+      "symbol": "pullRequestAccess",
+      "role": "Who may open a PR: pushers, or readers from a fork"
+    },
+    {
+      "path": "apps/dashboard/src/components/repo/commits/repo-commits-page.tsx",
+      "line": 51,
+      "symbol": "RepoCommitsPage",
+      "role": "Commit history page"
+    },
+    {
+      "path": "apps/dashboard/src/components/repo/branches/repo-branches-page.tsx",
+      "line": 67,
+      "symbol": "RepoBranchesPage",
+      "role": "Branches page"
+    },
+    {
+      "path": "apps/dashboard/src/lib/github/commits.ts",
+      "line": 152,
+      "symbol": "getRepoCommits",
+      "role": "Server reads for commits, branches, tags and refs"
+    }
+  ],
+  "dependsOn": ["review-diff", "conversation", "pull-request", "github-data"],
+  "outside": ["github-rest"],
+  "goodParts": [
+    "URL parsing, branch sections, commit grouping and the PR draft are pure modules, each with a test file in lib (compare-ref.test.ts and four more).",
+    "e2e covers compare and PR creation end to end (apps/e2e/tests/concurrent/compare.spec.ts, isolated/create-pull-request.spec.ts)."
+  ],
+  "watch": [
+    "Compare loads at most 300 files and 3 pages of 100 commits; bigger ranges only get a truncation note (lib/github/repo-branches.ts:206-208).",
+    "Message search uses GitHub's commit index only on the default branch; on other refs it filters the loaded page (repo-commits-page.tsx:45-49).",
+    "lib/github/commits.ts is 636 lines and also holds the branch list, tag list, ref names and the ref resolver; compare-page.tsx is 531 lines."
+  ]
+}

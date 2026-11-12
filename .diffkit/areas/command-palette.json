@@ -1,0 +1,233 @@
+{
+  "name": "Command palette",
+  "icon": "command",
+  "tagline": "Cmd+K over commands, repos, PRs and issues",
+  "summary": "Cmd/Ctrl+K opens one search field over commands, your repositories, pull requests and issues. Typing two or more characters also searches GitHub for items you are involved in.",
+  "paths": [
+    "apps/dashboard/src/components/navigation/**",
+    "apps/dashboard/src/lib/command-palette/**"
+  ],
+  "screen": {
+    "light": ".diffkit/screens/command-palette-light.jpg",
+    "dark": ".diffkit/screens/command-palette-dark.jpg"
+  },
+  "flow": [
+    {
+      "kind": "client",
+      "label": "useCommandPalette",
+      "note": "Cmd/Ctrl+K toggles the overlay; the same hook wires the G-key shortcuts from the registry.",
+      "path": "apps/dashboard/src/lib/command-palette/use-command-palette.ts"
+    },
+    {
+      "kind": "component",
+      "label": "CommandPalette",
+      "note": "Holds the query, the kind filter and the selected row; matches local items on every typed word.",
+      "path": "apps/dashboard/src/components/navigation/command-palette.tsx"
+    },
+    {
+      "kind": "client",
+      "label": "useCommandItems",
+      "note": "Builds rows from commands and from repos, pulls and issues already in the query cache.",
+      "path": "apps/dashboard/src/lib/command-palette/use-command-items.ts"
+    },
+    {
+      "kind": "server",
+      "label": "searchCommandPaletteGitHub",
+      "note": "After 250 ms and 2+ characters, searches pull requests and issues that involve the viewer.",
+      "path": "apps/dashboard/src/lib/github/search.ts"
+    },
+    {
+      "kind": "github",
+      "label": "GitHub search API",
+      "note": "Two REST issue searches with 'involves:<login> archived:false', 5 results each, newest first."
+    },
+    {
+      "kind": "component",
+      "label": "PalettePreview",
+      "note": "A card beside the list shows the selected item; details load once the selection rests 140 ms.",
+      "path": "apps/dashboard/src/components/navigation/palette-preview.tsx"
+    }
+  ],
+  "features": [
+    {
+      "name": "Commands and key sequences",
+      "summary": "A registry of commands with optional sequences such as G then P, or G then G to open the page on GitHub. Page links work by key only, not as rows.",
+      "entry": [
+        {
+          "path": "apps/dashboard/src/lib/command-palette/registry.ts",
+          "line": 20,
+          "symbol": "registerCommands",
+          "role": "Adds commands; the built-in ones follow below it"
+        },
+        {
+          "path": "apps/dashboard/src/lib/command-palette/use-command-palette.ts",
+          "line": 11,
+          "symbol": "useCommandPalette",
+          "role": "Open state plus the global shortcuts"
+        }
+      ]
+    },
+    {
+      "name": "Search over cached items",
+      "summary": "Repositories, pull requests and issues already loaded for the lists can be found at once, with no request.",
+      "entry": [
+        {
+          "path": "apps/dashboard/src/lib/command-palette/use-command-items.ts",
+          "line": 57,
+          "symbol": "useCommandItems",
+          "role": "Turns cached query data into palette rows"
+        }
+      ]
+    },
+    {
+      "name": "Live GitHub search",
+      "summary": "Server search for pull requests and issues involving you. Results are filtered by App access and added to the cached lists.",
+      "entry": [
+        {
+          "path": "apps/dashboard/src/lib/github/search.ts",
+          "line": 158,
+          "symbol": "searchCommandPaletteGitHub",
+          "role": "Server function that runs the two searches"
+        },
+        {
+          "path": "apps/dashboard/src/lib/command-palette/use-command-items.ts",
+          "line": 286,
+          "symbol": "cacheSearchResults",
+          "role": "Merges found items into the 'mine' list caches"
+        },
+        {
+          "path": "apps/dashboard/src/lib/github/account-query-options.ts",
+          "line": 59,
+          "symbol": "githubCommandPaletteSearchQueryOptions",
+          "role": "Query options: 30 s stale time"
+        }
+      ]
+    },
+    {
+      "name": "Filter by kind",
+      "summary": "Chips with counts narrow results to one group. Tab, Shift+Tab and the left and right arrows cycle them; Backspace on an empty field clears.",
+      "entry": [
+        {
+          "path": "apps/dashboard/src/components/navigation/command-palette.tsx",
+          "line": 368,
+          "symbol": "KindBar",
+          "role": "Result count and the kind chips"
+        }
+      ]
+    },
+    {
+      "name": "Preview card",
+      "summary": "On wide windows a card to the left follows the selected row and shows the pull request, issue or repository at a glance.",
+      "entry": [
+        {
+          "path": "apps/dashboard/src/components/navigation/palette-preview.tsx",
+          "line": 41,
+          "symbol": "PalettePreview",
+          "role": "The card and its three variants"
+        }
+      ]
+    },
+    {
+      "name": "Context commands",
+      "summary": "Create actions, Switch repository, Pin or Unpin, Refresh data and, inside a repository, links to Commits, Branches, Tags and Releases.",
+      "entry": [
+        {
+          "path": "apps/dashboard/src/lib/command-palette/shell-commands.ts",
+          "line": 19,
+          "symbol": "useShellCommandItems",
+          "role": "Create, switch and pin commands"
+        },
+        {
+          "path": "apps/dashboard/src/lib/command-palette/repo-commands.ts",
+          "line": 9,
+          "symbol": "getRepoSectionCommands",
+          "role": "Per-repository section links"
+        },
+        {
+          "path": "apps/dashboard/src/lib/command-palette/use-refresh-github-data.ts",
+          "line": 10,
+          "symbol": "useRefreshGitHubData",
+          "role": "Drops the IndexedDB cache and refetches"
+        }
+      ]
+    },
+    {
+      "name": "Repository code search",
+      "summary": "/owner/repo/search runs GitHub code search scoped to that repository and also lists matching file paths from the loaded file tree.",
+      "entry": [
+        {
+          "path": "apps/dashboard/src/routes/_protected/$owner/$repo/search.tsx",
+          "line": 12,
+          "symbol": "Route",
+          "role": "Search route with ?q= and ?page="
+        },
+        {
+          "path": "apps/dashboard/src/components/repo/code/code-search-page.tsx",
+          "line": 47,
+          "symbol": "CodeSearchPage",
+          "role": "The results page"
+        },
+        {
+          "path": "apps/dashboard/src/lib/fuzzy-file-search.ts",
+          "line": 77,
+          "symbol": "searchFiles",
+          "role": "Fuzzy path matcher shared with the file finder"
+        }
+      ]
+    }
+  ],
+  "entryPoints": [
+    {
+      "path": "apps/dashboard/src/components/navigation/command-palette.tsx",
+      "line": 61,
+      "symbol": "CommandPalette",
+      "role": "The dialog: input, kind bar, rows, footer hints"
+    },
+    {
+      "path": "apps/dashboard/src/lib/command-palette/use-command-items.ts",
+      "line": 57,
+      "symbol": "useCommandItems",
+      "role": "Everything the palette can show before a server search"
+    },
+    {
+      "path": "apps/dashboard/src/lib/command-palette/registry.ts",
+      "line": 20,
+      "symbol": "registerCommands",
+      "role": "Command registry and the built-in commands"
+    },
+    {
+      "path": "apps/dashboard/src/lib/github/search.ts",
+      "line": 158,
+      "symbol": "searchCommandPaletteGitHub",
+      "role": "Server side of the live search"
+    },
+    {
+      "path": "apps/dashboard/src/lib/shell/shell-overlay.ts",
+      "line": 29,
+      "symbol": "toggleCommandPalette",
+      "role": "Opens and closes the palette from anywhere"
+    },
+    {
+      "path": "apps/dashboard/src/lib/shortcuts.ts",
+      "line": 155,
+      "symbol": "useGlobalShortcuts",
+      "role": "Shortcut hook the palette registers its keys with"
+    }
+  ],
+  "dependsOn": ["work-lists", "github-data", "instant-cache"],
+  "outside": ["github-rest"],
+  "goodParts": [
+    "Cached rows and GitHub results are de-duplicated by where they open, so an item never shows twice (matchItems, command-palette.tsx:494).",
+    "The preview fetches details only after the selection rests 140 ms, so arrowing through rows makes no requests (palette-preview.tsx:41)."
+  ],
+  "watch": [
+    "No tests: lib/command-palette has no test files and no e2e spec opens the palette.",
+    "command-palette.tsx (540 lines) defines its own useMediaQuery and useDebouncedValue although lib/use-media-query.ts and lib/use-debounced-value.ts exist.",
+    "The pull request and issue row builders are written twice in use-command-items.ts (useCommandItems at :57, getCommandSearchItems at :215)."
+  ],
+  "issues": [
+    {
+      "number": 130
+    }
+  ]
+}

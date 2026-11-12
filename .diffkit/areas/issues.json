@@ -1,0 +1,227 @@
+{
+  "name": "Issues",
+  "icon": "issues",
+  "tagline": "Issue list, issue page and new-issue form",
+  "summary": "A repository's issue list with filters and bulk close or reopen, the issue page with description, labels, timeline and comments, and a new-issue form.",
+  "paths": [
+    "apps/dashboard/src/routes/_protected/$owner/$repo/issues.**",
+    "apps/dashboard/src/components/issues/**",
+    "apps/dashboard/src/lib/github/{issues,issue-query-options,labels,milestones}**"
+  ],
+  "screen": {
+    "light": ".diffkit/screens/issues-light.jpg",
+    "dark": ".diffkit/screens/issues-dark.jpg"
+  },
+  "flow": [
+    {
+      "kind": "page",
+      "label": "Issues list route",
+      "note": "Turns the status filter into an API state and asks for one page of 30 issues.",
+      "path": "apps/dashboard/src/routes/_protected/$owner/$repo/issues.index.tsx"
+    },
+    {
+      "kind": "server",
+      "label": "getIssuesFromRepo",
+      "note": "Lists the repo's issues over REST and drops pull requests from the result.",
+      "path": "apps/dashboard/src/lib/github/issues.ts"
+    },
+    {
+      "kind": "page",
+      "label": "Issue detail route",
+      "note": "Prefetches the page data without blocking and takes the tab title from a cached list row.",
+      "path": "apps/dashboard/src/routes/_protected/$owner/$repo/issues.$issueId.tsx"
+    },
+    {
+      "kind": "server",
+      "label": "getIssuePageData",
+      "note": "One GraphQL query for the issue, its comments and first timeline page; REST if that fails.",
+      "path": "apps/dashboard/src/lib/github/issues.ts"
+    },
+    {
+      "kind": "component",
+      "label": "IssueDetailContent",
+      "note": "Lays out the title, description, activity timeline and the properties sidebar.",
+      "path": "apps/dashboard/src/components/issues/detail/issue-detail-page.tsx"
+    },
+    {
+      "kind": "server",
+      "label": "updateIssueState",
+      "note": "Closes as completed or not planned, or reopens, with the user's token; caches refresh after.",
+      "path": "apps/dashboard/src/lib/github/issues.ts"
+    }
+  ],
+  "features": [
+    {
+      "name": "Repository issue list",
+      "summary": "Open issues by default, with status, author, label and updated filters, sorting, search and 30-per-page paging.",
+      "entry": [
+        {
+          "path": "apps/dashboard/src/routes/_protected/$owner/$repo/issues.index.tsx",
+          "line": 26,
+          "symbol": "Route",
+          "role": "List route and page component"
+        },
+        {
+          "path": "apps/dashboard/src/components/issues/issue-row.tsx",
+          "line": 27,
+          "symbol": "IssueRow",
+          "role": "One issue row"
+        },
+        {
+          "path": "apps/dashboard/src/components/filters/issue-filters.ts",
+          "line": 91,
+          "symbol": "repoIssueFilterDefs",
+          "role": "Filters offered on the repo list"
+        }
+      ]
+    },
+    {
+      "name": "Bulk close and reopen",
+      "summary": "Select rows to close as completed or not planned, or to reopen. Issues already in that state are skipped with a reason.",
+      "entry": [
+        {
+          "path": "apps/dashboard/src/components/issues/issue-bulk-selection.tsx",
+          "line": 60,
+          "symbol": "IssueBulkSelection",
+          "role": "Bulk actions for issue rows"
+        },
+        {
+          "path": "apps/dashboard/src/lib/github/issues.ts",
+          "line": 514,
+          "symbol": "updateIssueState",
+          "role": "Server function: close or reopen"
+        }
+      ]
+    },
+    {
+      "name": "Issue page",
+      "summary": "The title paints at once from a cached list row; description, comments and events follow as one timeline that loads more on demand.",
+      "entry": [
+        {
+          "path": "apps/dashboard/src/components/issues/detail/issue-detail-page.tsx",
+          "line": 50,
+          "symbol": "IssueDetailContent",
+          "role": "Issue view, also used by the inbox preview"
+        },
+        {
+          "path": "apps/dashboard/src/components/issues/detail/issue-detail-activity.tsx",
+          "line": 32,
+          "symbol": "IssueDetailActivitySection",
+          "role": "Builds the comment and event timeline"
+        },
+        {
+          "path": "apps/dashboard/src/lib/github/issues.ts",
+          "line": 494,
+          "symbol": "getIssuePageData",
+          "role": "Server read for the whole page"
+        }
+      ]
+    },
+    {
+      "name": "Issue labels",
+      "summary": "Toggle labels from the sidebar with an optimistic update, or type a new name to create a label with a random colour and apply it.",
+      "entry": [
+        {
+          "path": "apps/dashboard/src/components/issues/labels-section.tsx",
+          "line": 44,
+          "symbol": "LabelsSection",
+          "role": "Label picker in the sidebar"
+        },
+        {
+          "path": "apps/dashboard/src/lib/github/labels.ts",
+          "line": 60,
+          "symbol": "setIssueLabels",
+          "role": "Server function: replace an issue's labels"
+        },
+        {
+          "path": "apps/dashboard/src/lib/github/labels.ts",
+          "line": 81,
+          "symbol": "createRepoLabel",
+          "role": "Server function: create a label"
+        }
+      ]
+    },
+    {
+      "name": "New issue",
+      "summary": "Uses the shared draft page: title, body prefilled from the repo's issue template, @mentions of collaborators, assignees and labels.",
+      "entry": [
+        {
+          "path": "apps/dashboard/src/components/issues/new/new-issue-page.tsx",
+          "line": 39,
+          "symbol": "NewIssuePage",
+          "role": "New issue form"
+        },
+        {
+          "path": "apps/dashboard/src/lib/github/issues.ts",
+          "line": 555,
+          "symbol": "createIssue",
+          "role": "Server function: create the issue"
+        },
+        {
+          "path": "apps/dashboard/src/lib/github/repo-templates.ts",
+          "line": 39,
+          "symbol": "getRepoTemplate",
+          "role": "Finds the issue or PR template file"
+        }
+      ]
+    }
+  ],
+  "entryPoints": [
+    {
+      "path": "apps/dashboard/src/routes/_protected/$owner/$repo/issues.index.tsx",
+      "line": 26,
+      "symbol": "Route",
+      "role": "Repository issue list"
+    },
+    {
+      "path": "apps/dashboard/src/components/issues/detail/issue-detail-page.tsx",
+      "line": 50,
+      "symbol": "IssueDetailContent",
+      "role": "Issue page body, driven by plain props"
+    },
+    {
+      "path": "apps/dashboard/src/lib/github/issues.ts",
+      "line": 494,
+      "symbol": "getIssuePageData",
+      "role": "All issue reads and writes live in this file"
+    },
+    {
+      "path": "apps/dashboard/src/lib/github/issue-query-options.ts",
+      "line": 86,
+      "symbol": "githubIssuePageQueryOptions",
+      "role": "Query keys and cache times for issue data"
+    },
+    {
+      "path": "apps/dashboard/src/components/issues/new/new-issue-page.tsx",
+      "line": 39,
+      "symbol": "NewIssuePage",
+      "role": "New issue form"
+    },
+    {
+      "path": "apps/dashboard/src/components/issues/issue-bulk-selection.tsx",
+      "line": 60,
+      "symbol": "IssueBulkSelection",
+      "role": "Bulk close and reopen"
+    }
+  ],
+  "dependsOn": ["conversation", "work-lists", "github-data", "instant-cache"],
+  "outside": ["github-rest", "github-graphql"],
+  "goodParts": [
+    "One server call feeds the issue page, with a REST fallback if GraphQL fails (getIssuePageDataResult, lib/github/issues.ts:416).",
+    "e2e covers reading, creating and bulk-closing issues (apps/e2e/tests: issues.spec.ts, new-issue.spec.ts, bulk-actions.spec.ts)."
+  ],
+  "watch": [
+    "Only status reaches the API on the repo list; author, label and search filter the 30 issues already loaded (routes/_protected/$owner/$repo/issues.index.tsx:61-79).",
+    "The issue sidebar edits labels only; assignees and milestone are display-only (components/issues/detail/issue-detail-sidebar.tsx).",
+    "No unit tests under components/issues; lib/github/issues.ts is 578 lines mixing GraphQL mapping, the REST fallback and mutations."
+  ],
+  "issues": [
+    {
+      "number": 170
+    },
+    {
+      "number": 182,
+      "note": "Predates the cache rebuild (#193, #206). Worth re-testing before it stays open."
+    }
+  ]
+}

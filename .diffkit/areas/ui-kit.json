@@ -1,0 +1,240 @@
+{
+  "name": "Design system",
+  "icon": "kit",
+  "tagline": "59 components, tokens, icons and skeletons",
+  "summary": "The design system: 59 component files in packages/ui with Linear-derived tokens, light and dark modes, five colour themes, an icon package, empty-state illustrations and skeletons.",
+  "paths": [
+    "packages/ui/**",
+    "packages/icons/**",
+    "apps/dashboard/src/styles.css",
+    "apps/dashboard/src/components/shared/{skeleton-sample,picker-skeleton-rows,copy-badge,search-highlight}**",
+    "apps/dashboard/src/components/ui/**"
+  ],
+  "flow": [
+    {
+      "kind": "storage",
+      "label": "Saved theme",
+      "note": "A boot script copies the saved colour theme ids from localStorage onto <html> before first paint.",
+      "path": "apps/dashboard/src/lib/color-themes.ts"
+    },
+    {
+      "kind": "client",
+      "label": "Design tokens",
+      "note": "globals.css resolves the neutral scale, --ln-* values and Tailwind utilities for that scheme and theme.",
+      "path": "packages/ui/src/styles/globals.css"
+    },
+    {
+      "kind": "component",
+      "label": "UI primitives",
+      "note": "Radix-based components such as Button, Dialog and DropdownMenu style themselves with those utilities.",
+      "path": "packages/ui/src/components/button.tsx"
+    },
+    {
+      "kind": "component",
+      "label": "Layout primitives",
+      "note": "PageHeader, ViewTabs, GroupHeader and DetailLayout give list and detail pages a fixed geometry.",
+      "path": "packages/ui/src/components/detail-layout.tsx"
+    },
+    {
+      "kind": "component",
+      "label": "Mobile action bar",
+      "note": "On phones the properties panel becomes a bottom drawer and actions float in a bar above the nav.",
+      "path": "packages/ui/src/components/mobile-action-bar.tsx"
+    },
+    {
+      "kind": "component",
+      "label": "Skeleton sample",
+      "note": "While loading, a page renders the real component with sample data inside skullet's Skeleton.",
+      "path": "apps/dashboard/src/components/shared/skeleton-sample.tsx"
+    }
+  ],
+  "features": [
+    {
+      "name": "Component library",
+      "summary": "59 component files: restyled shadcn primitives on Radix plus app-shaped pieces such as StatePill, Chip, Callout, SectionCard and the markdown editor.",
+      "entry": [
+        {
+          "path": "packages/ui/src/components/button.tsx",
+          "line": 54,
+          "symbol": "Button",
+          "role": "Typical primitive: cva variants on a Radix Slot"
+        },
+        {
+          "path": "packages/ui/src/components/menu.tsx",
+          "line": 5,
+          "symbol": "menuRowClassName",
+          "role": "Shared menu row recipe used by pickers"
+        },
+        {
+          "path": "packages/ui/src/components/state-pill.tsx",
+          "line": 29,
+          "symbol": "StatePill",
+          "role": "Tinted pill for open, merged, closed states"
+        }
+      ]
+    },
+    {
+      "name": "Design tokens",
+      "summary": "One stylesheet, three layers: a 12-step neutral scale and --ln-* values, shadcn aliases on top, then Tailwind utilities such as bg-shell and shadow-button.",
+      "entry": [
+        {
+          "path": "packages/ui/src/styles/globals.css",
+          "line": 85,
+          "symbol": "--neutral-hue",
+          "role": "Start of the neutral scale and --ln-* tokens"
+        },
+        {
+          "path": "packages/ui/src/styles/globals.css",
+          "line": 31,
+          "symbol": "@theme",
+          "role": "Tailwind theme block"
+        }
+      ]
+    },
+    {
+      "name": "Light, dark and colour themes",
+      "summary": "Five themes (DiffKit, Tide, Graphite, Paper, Linear), picked separately for light and for dark. Most only move one hue and one tint variable.",
+      "entry": [
+        {
+          "path": "apps/dashboard/src/lib/color-themes.ts",
+          "line": 48,
+          "symbol": "COLOR_THEMES",
+          "role": "Theme list, storage keys and boot script"
+        },
+        {
+          "path": "packages/ui/src/styles/globals.css",
+          "line": 428,
+          "symbol": "[data-light-theme=\"tide\"]",
+          "role": "Per-theme overrides start here"
+        }
+      ]
+    },
+    {
+      "name": "List and detail layout",
+      "summary": "PageHeader, ViewTabs and GroupHeader for list chrome; DetailLayout for a reading column beside a pinned properties panel. Row geometry lives in the dashboard.",
+      "entry": [
+        {
+          "path": "packages/ui/src/components/detail-layout.tsx",
+          "line": 19,
+          "symbol": "DetailLayout",
+          "role": "Content column plus properties panel"
+        },
+        {
+          "path": "packages/ui/src/components/page-header.tsx",
+          "line": 6,
+          "symbol": "PageHeader",
+          "role": "First row of a page"
+        },
+        {
+          "path": "apps/dashboard/src/components/shared/list-row.tsx",
+          "line": 8,
+          "symbol": "listRowClassName",
+          "role": "List row grid used by PR and issue rows"
+        }
+      ]
+    },
+    {
+      "name": "Mobile bars and drawers",
+      "summary": "On phones a floating bar holds a pill of secondary actions and one main action at the right; side panels open as vaul bottom drawers.",
+      "entry": [
+        {
+          "path": "packages/ui/src/components/mobile-action-bar.tsx",
+          "line": 14,
+          "symbol": "MobileActionBar",
+          "role": "Floating phone action bar"
+        },
+        {
+          "path": "packages/ui/src/components/drawer.tsx",
+          "line": 121,
+          "symbol": "DrawerNoDrag",
+          "role": "Drawer area that does not start a drag"
+        }
+      ]
+    },
+    {
+      "name": "Icon package",
+      "summary": "@diffkit/icons re-exports 98 Hugeicons names under app-friendly aliases and adds 24 files of hand-written SVG icons and logos. The library is named in one file.",
+      "entry": [
+        {
+          "path": "packages/icons/src/index.ts",
+          "line": 5,
+          "symbol": "IssuesIcon",
+          "role": "First line of the icon name map"
+        }
+      ]
+    },
+    {
+      "name": "Loading skeletons",
+      "summary": "skullet draws loading placeholders from real components rendered with sample data. Bone colours are theme tokens, so every colour theme matches.",
+      "entry": [
+        {
+          "path": "apps/dashboard/src/components/shared/skeleton-sample.tsx",
+          "line": 14,
+          "symbol": "SkeletonSample",
+          "role": "Marks a sample render so it stays idle"
+        },
+        {
+          "path": "apps/dashboard/src/routes/__root.tsx",
+          "line": 114,
+          "symbol": "SKELETON_THEME",
+          "role": "skullet provider settings"
+        },
+        {
+          "path": "packages/ui/src/styles/globals.css",
+          "line": 581,
+          "symbol": "--skullet-base",
+          "role": "Skeleton colours from theme tokens"
+        }
+      ]
+    }
+  ],
+  "entryPoints": [
+    {
+      "path": "packages/ui/README.md",
+      "line": 1,
+      "symbol": "@diffkit/ui",
+      "role": "Token layers, a use-this-for-that table, component notes"
+    },
+    {
+      "path": "packages/ui/src/styles/globals.css",
+      "line": 83,
+      "symbol": ":root",
+      "role": "All tokens: neutral scale, --ln-*, themes, @theme"
+    },
+    {
+      "path": "packages/ui/src/components/button.tsx",
+      "line": 54,
+      "symbol": "Button",
+      "role": "A representative primitive to copy from"
+    },
+    {
+      "path": "packages/ui/src/components/detail-layout.tsx",
+      "line": 19,
+      "symbol": "DetailLayout",
+      "role": "Detail page layout and panel rows"
+    },
+    {
+      "path": "packages/icons/src/index.ts",
+      "line": 5,
+      "symbol": "IssuesIcon",
+      "role": "The icon name map (the only file that names Hugeicons)"
+    },
+    {
+      "path": "apps/dashboard/src/lib/color-themes.ts",
+      "line": 48,
+      "symbol": "COLOR_THEMES",
+      "role": "Colour themes and how they are stored and applied"
+    }
+  ],
+  "dependsOn": [],
+  "outside": ["browser-storage"],
+  "goodParts": [
+    "packages/ui/README.md explains the token layers with a table of which utility to use where; the package has 8 test files and no GitHub logic.",
+    "Every icon enters through packages/icons/src/index.ts, whose header says a library switch would touch only that file."
+  ],
+  "watch": [
+    "The README lists components that are not in packages/ui/src/components: sidebar, skeleton, activity-log, bubble, message, tab-strip, fluid-surface and more.",
+    "The README still describes 0.5px hairline rings on controls; the globals.css header says controls now use frosted glass instead.",
+    "globals.css is 1,202 lines and also holds app-specific rules (Shiki, label pills, markdown alerts, the file tree)."
+  ]
+}

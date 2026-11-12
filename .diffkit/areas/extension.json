@@ -1,0 +1,225 @@
+{
+  "name": "Browser extension",
+  "icon": "package",
+  "tagline": "Sends github.com links to DiffKit",
+  "summary": "A browser extension that sends chosen github.com pages (pull requests, issues, repositories, profiles) to the same page in DiffKit. The dashboard offers it when it is missing.",
+  "paths": [
+    "extensions/**",
+    "apps/dashboard/src/lib/{diffkit-extension-detect,extension-}**",
+    "apps/dashboard/src/components/layouts/extension-install-prompt**"
+  ],
+  "flow": [
+    {
+      "kind": "external",
+      "label": "github.com page",
+      "note": "The user opens a GitHub link from somewhere other than GitHub or DiffKit."
+    },
+    {
+      "kind": "client",
+      "label": "Redirect script",
+      "note": "Skips visits that came from GitHub or DiffKit, then looks for an enabled matching rule.",
+      "path": "extensions/diffkit-redirect/content.js"
+    },
+    {
+      "kind": "storage",
+      "label": "Rule storage",
+      "note": "Eight default rules live in browser sync storage and can be toggled or edited.",
+      "path": "extensions/diffkit-redirect/shared.js"
+    },
+    {
+      "kind": "page",
+      "label": "DiffKit page",
+      "note": "The browser lands on the matching route, for example /owner/repo/pull/12.",
+      "path": "apps/dashboard/src/routes/_protected/$owner/$repo/pull.$pullId.tsx"
+    },
+    {
+      "kind": "client",
+      "label": "Presence marker",
+      "note": "Sets data-diffkit-extension=1 on <html> so the app knows the extension is installed.",
+      "path": "extensions/diffkit-redirect/dashboard-presence.js"
+    },
+    {
+      "kind": "component",
+      "label": "Install prompt",
+      "note": "Shown in the bottom bar on desktop when the marker is missing.",
+      "path": "apps/dashboard/src/components/layouts/extension-install-prompt.tsx"
+    }
+  ],
+  "features": [
+    {
+      "name": "Redirect rules",
+      "summary": "Eight default rules: home, pulls, issues, repo overview, pull request, PR changes to the review page, issue and profile. Each is a regex or an exact URL.",
+      "entry": [
+        {
+          "path": "extensions/diffkit-redirect/shared.js",
+          "line": 9,
+          "symbol": "DEFAULT_RULES",
+          "role": "The shipped rules"
+        },
+        {
+          "path": "extensions/diffkit-redirect/shared.js",
+          "line": 413,
+          "symbol": "findRedirect",
+          "role": "First enabled rule that matches a URL"
+        },
+        {
+          "path": "extensions/diffkit-redirect/content.js",
+          "line": 1,
+          "symbol": "runRedirect",
+          "role": "Runs on github.com at document start"
+        }
+      ]
+    },
+    {
+      "name": "Popup toggles",
+      "summary": "The toolbar popup has a master switch and one toggle per rule, so redirects can be paused without losing the per-rule choices.",
+      "entry": [
+        {
+          "path": "extensions/diffkit-redirect/popup.js",
+          "line": 1,
+          "symbol": "initPopup",
+          "role": "Popup logic"
+        }
+      ]
+    },
+    {
+      "name": "Rule editor",
+      "summary": "The options page shows the rules as JSON, validates them on save and can restore the defaults.",
+      "entry": [
+        {
+          "path": "extensions/diffkit-redirect/options.js",
+          "line": 1,
+          "symbol": "initOptions",
+          "role": "Options page logic"
+        },
+        {
+          "path": "extensions/diffkit-redirect/shared.js",
+          "line": 320,
+          "symbol": "getConfig",
+          "role": "Loads and validates stored rules"
+        }
+      ]
+    },
+    {
+      "name": "Extension detection",
+      "summary": "Page code cannot see the extension directly, so a content script marks <html> with a data attribute and the app reads it.",
+      "entry": [
+        {
+          "path": "extensions/diffkit-redirect/dashboard-presence.js",
+          "line": 9,
+          "symbol": "markDiffKitExtensionPresent",
+          "role": "Sets the attribute on DiffKit origins"
+        },
+        {
+          "path": "apps/dashboard/src/lib/diffkit-extension-detect.ts",
+          "line": 6,
+          "symbol": "isDiffKitExtensionPresent",
+          "role": "Reads the attribute"
+        }
+      ]
+    },
+    {
+      "name": "Install prompt",
+      "summary": "A small chip links to the Chrome Web Store or Firefox Add-ons depending on the browser. Dismissing it hides it for 30 days.",
+      "entry": [
+        {
+          "path": "apps/dashboard/src/components/layouts/extension-install-prompt.tsx",
+          "line": 14,
+          "symbol": "ExtensionInstallPrompt",
+          "role": "The chip in the bottom bar"
+        },
+        {
+          "path": "apps/dashboard/src/lib/extension-install-prompt-storage.ts",
+          "line": 35,
+          "symbol": "shouldShowExtensionInstallPrompt",
+          "role": "30-day dismiss rule in localStorage"
+        },
+        {
+          "path": "apps/dashboard/src/lib/extension-store-url.ts",
+          "line": 17,
+          "symbol": "getExtensionStoreInstallUrl",
+          "role": "Picks the store by user agent"
+        }
+      ]
+    },
+    {
+      "name": "Settings card",
+      "summary": "The settings page has a Browser extension card that shows whether the extension is installed and links to the store when it is not.",
+      "entry": [
+        {
+          "path": "apps/dashboard/src/routes/_protected/settings/index.tsx",
+          "line": 384,
+          "symbol": "ExtensionCard",
+          "role": "Card on the settings page"
+        }
+      ]
+    },
+    {
+      "name": "GitHub link mapping",
+      "summary": "Inside the app, github.com links in comments open the matching DiffKit route. A palette command does the reverse and opens the current page on GitHub.",
+      "entry": [
+        {
+          "path": "apps/dashboard/src/lib/github-links.ts",
+          "line": 160,
+          "symbol": "parseGitHubUrl",
+          "role": "github.com URL to in-app route"
+        },
+        {
+          "path": "apps/dashboard/src/lib/github-current-url.ts",
+          "line": 1,
+          "symbol": "buildCurrentGitHubUrl",
+          "role": "Current DiffKit URL to github.com"
+        }
+      ]
+    }
+  ],
+  "entryPoints": [
+    {
+      "path": "extensions/diffkit-redirect/manifest.json",
+      "line": 40,
+      "symbol": "content_scripts",
+      "role": "Which script runs on which site"
+    },
+    {
+      "path": "extensions/diffkit-redirect/shared.js",
+      "line": 9,
+      "symbol": "DEFAULT_RULES",
+      "role": "Rules, storage, validation and matching"
+    },
+    {
+      "path": "extensions/diffkit-redirect/content.js",
+      "line": 1,
+      "symbol": "runRedirect",
+      "role": "The redirect itself"
+    },
+    {
+      "path": "apps/dashboard/src/lib/diffkit-extension-detect.ts",
+      "line": 6,
+      "symbol": "isDiffKitExtensionPresent",
+      "role": "How the dashboard knows it is installed"
+    },
+    {
+      "path": "apps/dashboard/src/components/layouts/extension-install-prompt.tsx",
+      "line": 14,
+      "symbol": "ExtensionInstallPrompt",
+      "role": "The install prompt"
+    },
+    {
+      "path": "apps/dashboard/src/lib/github-links.ts",
+      "line": 160,
+      "symbol": "parseGitHubUrl",
+      "role": "Link mapping inside the app"
+    }
+  ],
+  "dependsOn": ["shell", "preferences"],
+  "outside": ["browser-storage"],
+  "goodParts": [
+    "No build step and no dependencies: plain Manifest V3 scripts around one shared module, with Firefox settings in the same manifest.json.",
+    "The dashboard-side link mapping is tested: github-links.test.ts and github-current-url.test.ts."
+  ],
+  "watch": [
+    "Redirect targets and the presence check are fixed to diff-kit.com and localhost:3000 (shared.js, dashboard-presence.js); a self-hosted domain is never detected.",
+    "No tests cover the extension's rule matching; extensions/diffkit-redirect has no test files and no package.json.",
+    "Default rules redirect /pull/N and /pull/N/changes only; /pull/N/files and /pull/N/commits stay on GitHub (shared.js:63-87)."
+  ]
+}

@@ -103,6 +103,7 @@ export {
 } from "./github/notifications";
 export type {
 	PullProductArea,
+	PullProductAreas,
 	PullProductAreasInput,
 	RepoProductMapFile,
 	RepoProductMapInput,
