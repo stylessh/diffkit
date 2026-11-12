@@ -306,12 +306,12 @@ export function MapSetup({ owner, repo }: { owner: string; repo: string }) {
 			<div className="relative">
 				<ExampleMap />
 				<div className="absolute inset-0 flex items-center justify-center">
-					<div className="relative flex w-full max-w-[31rem] flex-col gap-3">
+					<div className="relative flex w-full max-w-[31rem] flex-col gap-2.5">
 						<div
 							aria-hidden
 							className="-inset-x-24 -top-20 -bottom-14 pointer-events-none absolute rounded-[4rem] bg-main blur-2xl max-sm:-inset-x-6"
 						/>
-						<h1 className="relative text-pretty px-4 font-semibold text-[17px] text-foreground leading-6 tracking-[-0.01em]">
+						<h1 className="relative text-pretty px-4 font-medium text-[14px] text-foreground leading-5">
 							Give {repo} a product map
 						</h1>
 						<PromptCard
