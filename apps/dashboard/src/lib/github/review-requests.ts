@@ -6,12 +6,10 @@ import type {
 } from "../github.types";
 import {
 	fetchPaginatedGitHubResource,
+	getGitHubContext,
 	withGitHubOperationTimeout,
 } from "./client";
-import {
-	getGitHubContextForOwner,
-	getGitHubContextForRepository,
-} from "./installations";
+import { getGitHubContextForRepository } from "./installations";
 import { mutateRepository } from "./mutations";
 import {
 	getRepoReviewerBots,
@@ -24,6 +22,7 @@ import {
 	type GitHubClient,
 	type GitHubContext,
 	type MutationResult,
+	normalizeLogin,
 } from "./shared";
 import { identityValidator } from "./validators";
 
@@ -114,7 +113,15 @@ async function orgTeamHasRepoAccess(
 export const getOrgTeams = createServerFn({ method: "GET" })
 	.validator(identityValidator<OrgTeamsInput>)
 	.handler(async ({ data }): Promise<OrgTeam[]> => {
-		const context = await getGitHubContextForOwner(data.org);
+		// Teams are listed to request a review on this repository, so the
+		// repository decides which token lists them.
+		const context =
+			normalizeLogin(data.org) === normalizeLogin(data.owner)
+				? await getGitHubContextForRepository({
+						owner: data.owner,
+						repo: data.repo,
+					})
+				: await getGitHubContext();
 		if (!context) {
 			return [];
 		}
