@@ -1,0 +1,95 @@
+{
+  "name": "Command palette",
+  "icon": "command",
+  "tagline": "Cmd+K over commands, repos, PRs and issues",
+  "summary": "Cmd/Ctrl+K opens one search field over commands, your repositories, pull requests and issues. Typing two or more characters also searches GitHub for items you are involved in.",
+  "paths": [
+    "apps/dashboard/src/components/navigation/**",
+    "apps/dashboard/src/lib/command-palette/**"
+  ],
+  "screen": {
+    "light": ".diffkit/screens/command-palette-light.jpg",
+    "dark": ".diffkit/screens/command-palette-dark.jpg"
+  },
+  "flow": [
+    {
+      "kind": "client",
+      "label": "useCommandPalette",
+      "note": "Cmd/Ctrl+K toggles the overlay; the same hook wires the G-key shortcuts from the registry.",
+      "path": "apps/dashboard/src/lib/command-palette/use-command-palette.ts"
+    },
+    {
+      "kind": "component",
+      "label": "CommandPalette",
+      "note": "Holds the query, the kind filter and the selected row; matches local items on every typed word.",
+      "path": "apps/dashboard/src/components/navigation/command-palette.tsx"
+    },
+    {
+      "kind": "client",
+      "label": "useCommandItems",
+      "note": "Builds rows from commands and from repos, pulls and issues already in the query cache.",
+      "path": "apps/dashboard/src/lib/command-palette/use-command-items.ts"
+    },
+    {
+      "kind": "server",
+      "label": "searchCommandPaletteGitHub",
+      "note": "After 250 ms and 2+ characters, searches pull requests and issues that involve the viewer.",
+      "path": "apps/dashboard/src/lib/github/search.ts"
+    },
+    {
+      "kind": "github",
+      "label": "GitHub search API",
+      "note": "Two REST issue searches with 'involves:<login> archived:false', 5 results each, newest first."
+    },
+    {
+      "kind": "component",
+      "label": "PalettePreview",
+      "note": "A card beside the list shows the selected item; details load once the selection rests 140 ms.",
+      "path": "apps/dashboard/src/components/navigation/palette-preview.tsx"
+    }
+  ],
+  "features": [
+    {
+      "name": "Commands and key sequences",
+      "summary": "A registry of commands with optional sequences such as G then P, or G then G to open the page on GitHub. Page links work by key only, not as rows.",
+      "path": "apps/dashboard/src/lib/command-palette/registry.ts"
+    },
+    {
+      "name": "Search over cached items",
+      "summary": "Repositories, pull requests and issues already loaded for the lists can be found at once, with no request.",
+      "path": "apps/dashboard/src/lib/command-palette/use-command-items.ts"
+    },
+    {
+      "name": "Live GitHub search",
+      "summary": "Server search for pull requests and issues involving you. Results are filtered by App access and added to the cached lists.",
+      "path": "apps/dashboard/src/lib/github/search.ts"
+    },
+    {
+      "name": "Filter by kind",
+      "summary": "Chips with counts narrow results to one group. Tab, Shift+Tab and the left and right arrows cycle them; Backspace on an empty field clears.",
+      "path": "apps/dashboard/src/components/navigation/command-palette.tsx"
+    },
+    {
+      "name": "Preview card",
+      "summary": "On wide windows a card to the left follows the selected row and shows the pull request, issue or repository at a glance.",
+      "path": "apps/dashboard/src/components/navigation/palette-preview.tsx"
+    },
+    {
+      "name": "Context commands",
+      "summary": "Create actions, Switch repository, Pin or Unpin, Refresh data and, inside a repository, links to Commits, Branches, Tags and Releases.",
+      "path": "apps/dashboard/src/lib/command-palette/shell-commands.ts"
+    },
+    {
+      "name": "Repository code search",
+      "summary": "/owner/repo/search runs GitHub code search scoped to that repository and also lists matching file paths from the loaded file tree.",
+      "path": "apps/dashboard/src/routes/_protected/$owner/$repo/search.tsx"
+    }
+  ],
+  "dependsOn": ["work-lists", "github-data", "instant-cache"],
+  "outside": ["github-rest"],
+  "issues": [
+    {
+      "number": 130
+    }
+  ]
+}

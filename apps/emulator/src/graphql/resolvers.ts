@@ -38,9 +38,11 @@ import {
 	commitsBetween,
 	connection,
 	findCommit,
+	findTree,
 	historyForPath,
 	lookupPath,
 	resolveRevision,
+	type TreeEntry,
 } from "./git.ts";
 
 export type GraphQLContext = {
@@ -77,6 +79,7 @@ type CommitModel = {
 };
 type TreeModel = { __typename: "Tree"; sha: string; repo: GitHubRepo };
 type BlobModel = { __typename: "Blob"; sha: string; repo: GitHubRepo };
+type TreeEntryModel = { entry: TreeEntry; repo: GitHubRepo };
 type TagModel = { __typename: "Tag"; tag: GitHubTag; repo: GitHubRepo };
 type GitObjectModel = CommitModel | TreeModel | BlobModel | TagModel;
 type RefModel = {
@@ -1478,6 +1481,23 @@ export const resolvers: Record<string, Record<string, unknown>> = {
 		oid: (model: TreeModel) => model.sha,
 		abbreviatedOid: (model: TreeModel) => model.sha.slice(0, 7),
 		commitUrl: (model: TreeModel) => webUrl(model.repo.full_name),
+		// Direct children only, as GitHub lists them.
+		entries: (model: TreeModel, _args: Args, ctx: GraphQLContext) =>
+			(findTree(ctx.gh, model.repo.id, model.sha)?.tree ?? [])
+				.filter((entry) => !entry.path.includes("/"))
+				.map((entry) => ({ entry, repo: model.repo })),
+	},
+
+	TreeEntry: {
+		name: (model: TreeEntryModel) => model.entry.path,
+		type: (model: TreeEntryModel) => model.entry.type,
+		oid: (model: TreeEntryModel) => model.entry.sha,
+		object: (model: TreeEntryModel): GitObjectModel | null => {
+			const { type, sha } = model.entry;
+			if (type === "tree") return { __typename: "Tree", sha, repo: model.repo };
+			if (type === "blob") return { __typename: "Blob", sha, repo: model.repo };
+			return null;
+		},
 	},
 
 	Blob: {

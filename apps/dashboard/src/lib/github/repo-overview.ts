@@ -72,6 +72,7 @@ type GitHubGraphQLRepoOverviewResponse = {
 			totalCount: number;
 		};
 		hasDiscussionsEnabled: boolean;
+		productMap: { oid: string } | null;
 		parent: {
 			nameWithOwner: string;
 			owner: {
@@ -128,6 +129,7 @@ function mapGraphQLRepoOverview(
 		openPullCount: repository.pullRequests.totalCount,
 		openIssueCount: repository.issues.totalCount,
 		hasDiscussions: repository.hasDiscussionsEnabled,
+		hasProductMap: repository.productMap !== null,
 		forkParentFullName: repository.parent?.nameWithOwner ?? null,
 		forkParentOwnerAvatarUrl: repository.parent?.owner.avatarUrl ?? null,
 		latestCommit,
@@ -260,6 +262,9 @@ export const getRepoOverview = createServerFn({ method: "GET" })
 									totalCount
 								}
 								hasDiscussionsEnabled
+								productMap: object(expression: "HEAD:.diffkit/map.json") {
+									oid
+								}
 								parent {
 									nameWithOwner
 									owner {

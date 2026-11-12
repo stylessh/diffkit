@@ -211,6 +211,7 @@ export function previewPullPage(
 			},
 			eventPagination: { loadedPages: [1], hasMore: false },
 			headRefDeleted: false,
+			hasProductMap: false,
 		},
 	};
 }

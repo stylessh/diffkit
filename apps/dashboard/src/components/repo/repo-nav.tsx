@@ -35,6 +35,7 @@ type RepoNavItem = {
 
 const ITEMS: RepoNavItem[] = [
 	{ key: "code", label: "Code", to: "/$owner/$repo" },
+	{ key: "map", label: "Map", to: "/$owner/$repo/map" },
 	{ key: "commits", label: "Commits", to: "/$owner/$repo/commits" },
 	{
 		key: "branches",
@@ -93,8 +94,13 @@ export function RepoNav({
 }) {
 	const { user } = protectedRoute.useRouteContext();
 	const pinned = useRepoTabs(user.id);
+	// Settings needs permission and Map needs a map file; neither is offered otherwise.
+	const available: Partial<Record<RepoNavKey, boolean>> = {
+		settings: showSettings,
+		map: repoData?.hasProductMap === true,
+	};
 	const items = ITEMS.filter(
-		(item) => item.key !== "settings" || showSettings || active === "settings",
+		(item) => available[item.key] !== false || item.key === active,
 	);
 	const inBar = items.filter(
 		(item) => pinned.includes(item.key) || item.key === active,

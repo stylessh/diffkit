@@ -1,0 +1,93 @@
+{
+  "name": "Instant cache",
+  "icon": "cache",
+  "tagline": "Browser cache: seen pages paint at once",
+  "summary": "Pages you have opened before appear at once from a cache in your browser, then refresh quietly. Loading skeletons only show for data you have never seen.",
+  "paths": [
+    "apps/dashboard/src/lib/{query-client,query-persister,github-query-persistence,github-refetch-policy,github-cache,query-data,route-preload,use-refresh-on-return}**",
+    "docs/{data-fetching,github-cache-architecture}.md"
+  ],
+  "flow": [
+    {
+      "kind": "client",
+      "label": "Boot restore",
+      "note": "Before hydration, loads the newest 4 MB of cached queries, waiting at most 400 ms.",
+      "path": "apps/dashboard/src/client.tsx"
+    },
+    {
+      "kind": "storage",
+      "label": "IndexedDB query cache",
+      "note": "One database per user, one record per query, 50 MB budget, 7-day max age.",
+      "path": "apps/dashboard/src/lib/query-persister.ts"
+    },
+    {
+      "kind": "page",
+      "label": "Route loader",
+      "note": "Starts a prefetch without awaiting it, so navigation never blocks on data.",
+      "path": "apps/dashboard/src/routes/_protected/pulls.tsx"
+    },
+    {
+      "kind": "client",
+      "label": "Stale-time tiers",
+      "note": "Cached data renders first; anything past its stale time refetches in the background.",
+      "path": "apps/dashboard/src/lib/github-cache-policy.ts"
+    },
+    {
+      "kind": "component",
+      "label": "Route pending skeleton",
+      "note": "On a hard load the server sends the page's own cold layout; later waits show after 300 ms.",
+      "path": "apps/dashboard/src/components/layouts/dashboard-content-loading.tsx"
+    },
+    {
+      "kind": "client",
+      "label": "Throttled save",
+      "note": "Writes changed queries to IndexedDB once a second and when the tab is hidden.",
+      "path": "apps/dashboard/src/lib/github-query-persistence.ts"
+    }
+  ],
+  "features": [
+    {
+      "name": "Per-user IndexedDB cache",
+      "summary": "Each account gets its own database: 50 MB, oldest data evicted first, 7-day max age. It is wiped on sign-out or when the session check fails.",
+      "path": "apps/dashboard/src/lib/query-persister.ts"
+    },
+    {
+      "name": "Restore before first paint",
+      "summary": "The newest 4 MB of queries load before React hydrates, capped at 400 ms. The rest loads in pages once the browser is idle.",
+      "path": "apps/dashboard/src/client.tsx"
+    },
+    {
+      "name": "Stale times and polling",
+      "summary": "Each kind of data has a stale time (details 5 s, lists 30 s, viewer 5 min). PR status and workflow runs poll every 10 s while CI is running.",
+      "path": "apps/dashboard/src/lib/github-cache-policy.ts"
+    },
+    {
+      "name": "What is not persisted",
+      "summary": "Diffs, file contents, logs and per-keystroke search stay in memory because they are large or short-lived. Webhook settings too, as URLs can embed tokens.",
+      "path": "apps/dashboard/src/lib/github/query-keys.ts"
+    },
+    {
+      "name": "Preload on intent",
+      "summary": "Hovering or focusing a link preloads its route and data. Pull request rows and workflow run rows preload their detail page once per row.",
+      "path": "apps/dashboard/src/router.tsx"
+    },
+    {
+      "name": "Route skeletons",
+      "summary": "A route waits 300 ms before showing a skeleton and keeps it at least 200 ms. On a hard load the server sends the page's own cold layout instead.",
+      "path": "apps/dashboard/src/components/layouts/dashboard-content-loading.tsx"
+    },
+    {
+      "name": "Raw diff cache",
+      "summary": "Raw pull request diffs sit in a second IndexedDB store keyed by revision, so a reopened diff needs no network. 40 MB, 7 days.",
+      "path": "apps/dashboard/src/lib/diffs/raw-diff-cache.ts"
+    }
+  ],
+  "dependsOn": ["github-data", "live-updates"],
+  "outside": ["browser-idb"],
+  "issues": [
+    {
+      "number": 137,
+      "note": "Predates the cache rebuild (#193, #206). Worth re-testing before it stays open."
+    }
+  ]
+}

@@ -24,6 +24,7 @@ import {
 	PanelPickerEmpty,
 } from "#/components/details/panel-picker";
 import { LabelsSection } from "#/components/issues/labels-section";
+import { PullProductAreas } from "#/components/product-map/work/pull-footprint";
 import { PickerSkeletonRows } from "#/components/shared/picker-skeleton-rows";
 import {
 	removeReviewRequest,
@@ -45,12 +46,14 @@ export function PullDetailSidebar({
 	repo,
 	pullNumber,
 	scope,
+	hasProductMap = false,
 }: {
 	pr: PullDetail;
 	owner: string;
 	repo: string;
 	pullNumber: number;
 	scope: GitHubQueryScope;
+	hasProductMap?: boolean;
 }) {
 	return (
 		<DetailSidebar>
@@ -76,6 +79,15 @@ export function PullDetailSidebar({
 				pullNumber={pullNumber}
 				scope={scope}
 			/>
+
+			{hasProductMap ? (
+				<PullProductAreas
+					owner={owner}
+					repo={repo}
+					pullNumber={pullNumber}
+					scope={scope}
+				/>
+			) : null}
 		</DetailSidebar>
 	);
 }

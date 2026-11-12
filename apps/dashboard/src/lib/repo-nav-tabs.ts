@@ -2,6 +2,7 @@ import { useSyncExternalStore } from "react";
 
 export const REPO_NAV_KEYS = [
 	"code",
+	"map",
 	"commits",
 	"branches",
 	"tags",
@@ -17,6 +18,7 @@ export type RepoNavKey = (typeof REPO_NAV_KEYS)[number];
 /** The tabs a repo shows before the overflow menu, until someone picks their own. */
 export const DEFAULT_REPO_TABS: readonly RepoNavKey[] = [
 	"code",
+	"map",
 	"pulls",
 	"issues",
 	"actions",

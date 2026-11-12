@@ -1,0 +1,90 @@
+{
+  "name": "Design system",
+  "icon": "kit",
+  "tagline": "59 components, tokens, icons and skeletons",
+  "summary": "The design system: 59 component files in packages/ui with Linear-derived tokens, light and dark modes, five colour themes, an icon package, empty-state illustrations and skeletons.",
+  "paths": [
+    "packages/ui/**",
+    "packages/icons/**",
+    "apps/dashboard/src/styles.css",
+    "apps/dashboard/src/components/shared/{skeleton-sample,picker-skeleton-rows,copy-badge,search-highlight}**",
+    "apps/dashboard/src/components/ui/**"
+  ],
+  "flow": [
+    {
+      "kind": "storage",
+      "label": "Saved theme",
+      "note": "A boot script copies the saved colour theme ids from localStorage onto <html> before first paint.",
+      "path": "apps/dashboard/src/lib/color-themes.ts"
+    },
+    {
+      "kind": "client",
+      "label": "Design tokens",
+      "note": "globals.css resolves the neutral scale, --ln-* values and Tailwind utilities for that scheme and theme.",
+      "path": "packages/ui/src/styles/globals.css"
+    },
+    {
+      "kind": "component",
+      "label": "UI primitives",
+      "note": "Radix-based components such as Button, Dialog and DropdownMenu style themselves with those utilities.",
+      "path": "packages/ui/src/components/button.tsx"
+    },
+    {
+      "kind": "component",
+      "label": "Layout primitives",
+      "note": "PageHeader, ViewTabs, GroupHeader and DetailLayout give list and detail pages a fixed geometry.",
+      "path": "packages/ui/src/components/detail-layout.tsx"
+    },
+    {
+      "kind": "component",
+      "label": "Mobile action bar",
+      "note": "On phones the properties panel becomes a bottom drawer and actions float in a bar above the nav.",
+      "path": "packages/ui/src/components/mobile-action-bar.tsx"
+    },
+    {
+      "kind": "component",
+      "label": "Skeleton sample",
+      "note": "While loading, a page renders the real component with sample data inside skullet's Skeleton.",
+      "path": "apps/dashboard/src/components/shared/skeleton-sample.tsx"
+    }
+  ],
+  "features": [
+    {
+      "name": "Component library",
+      "summary": "59 component files: restyled shadcn primitives on Radix plus app-shaped pieces such as StatePill, Chip, Callout, SectionCard and the markdown editor.",
+      "path": "packages/ui/src/components/button.tsx"
+    },
+    {
+      "name": "Design tokens",
+      "summary": "One stylesheet, three layers: a 12-step neutral scale and --ln-* values, shadcn aliases on top, then Tailwind utilities such as bg-shell and shadow-button.",
+      "path": "packages/ui/src/styles/globals.css"
+    },
+    {
+      "name": "Light, dark and colour themes",
+      "summary": "Five themes (DiffKit, Tide, Graphite, Paper, Linear), picked separately for light and for dark. Most only move one hue and one tint variable.",
+      "path": "apps/dashboard/src/lib/color-themes.ts"
+    },
+    {
+      "name": "List and detail layout",
+      "summary": "PageHeader, ViewTabs and GroupHeader for list chrome; DetailLayout for a reading column beside a pinned properties panel. Row geometry lives in the dashboard.",
+      "path": "packages/ui/src/components/detail-layout.tsx"
+    },
+    {
+      "name": "Mobile bars and drawers",
+      "summary": "On phones a floating bar holds a pill of secondary actions and one main action at the right; side panels open as vaul bottom drawers.",
+      "path": "packages/ui/src/components/mobile-action-bar.tsx"
+    },
+    {
+      "name": "Icon package",
+      "summary": "@diffkit/icons re-exports 98 Hugeicons names under app-friendly aliases and adds 24 files of hand-written SVG icons and logos. The library is named in one file.",
+      "path": "packages/icons/src/index.ts"
+    },
+    {
+      "name": "Loading skeletons",
+      "summary": "skullet draws loading placeholders from real components rendered with sample data. Bone colours are theme tokens, so every colour theme matches.",
+      "path": "apps/dashboard/src/components/shared/skeleton-sample.tsx"
+    }
+  ],
+  "dependsOn": [],
+  "outside": ["browser-storage"]
+}

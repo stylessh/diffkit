@@ -1,0 +1,98 @@
+{
+  "name": "Repo & org settings",
+  "icon": "settings",
+  "tagline": "Settings for a repository or organisation",
+  "summary": "Settings pages for a repository (general, branches and rules, collaborators and teams, webhooks, Actions secrets and variables, labels) and for an organisation (profile, members, teams).",
+  "paths": [
+    "apps/dashboard/src/routes/_protected/$owner/$repo/settings**",
+    "apps/dashboard/src/routes/_protected/orgs/**",
+    "apps/dashboard/src/components/{repo/settings,settings,org}/**",
+    "apps/dashboard/src/lib/settings/**"
+  ],
+  "screen": {
+    "light": ".diffkit/screens/repo-settings-light.jpg",
+    "dark": ".diffkit/screens/repo-settings-dark.jpg"
+  },
+  "flow": [
+    {
+      "kind": "page",
+      "label": "Settings layout route",
+      "note": "Prefetches the overview and the viewer's permission, then wraps the child page in the frame.",
+      "path": "apps/dashboard/src/routes/_protected/$owner/$repo/settings.tsx"
+    },
+    {
+      "kind": "component",
+      "label": "RepoSettingsGate",
+      "note": "Shows a page only if the viewer's role allows it: admin, or triage and above for labels.",
+      "path": "apps/dashboard/src/components/repo/settings/repo-settings-frame.tsx"
+    },
+    {
+      "kind": "component",
+      "label": "SettingsReadView",
+      "note": "Draws the loaded data, a not-available notice with a link to GitHub, or a retry button.",
+      "path": "apps/dashboard/src/components/settings/settings-read.tsx"
+    },
+    {
+      "kind": "client",
+      "label": "useSettingsAction",
+      "note": "Runs a save or delete, shows pending, done or the error, then invalidates the affected queries.",
+      "path": "apps/dashboard/src/components/settings/use-settings-action.ts"
+    },
+    {
+      "kind": "server",
+      "label": "runSettingsMutation",
+      "note": "Calls GitHub with the user's token and turns a failure into a readable message.",
+      "path": "apps/dashboard/src/lib/github/settings-server.ts"
+    },
+    {
+      "kind": "github",
+      "label": "GitHub REST",
+      "note": "Repos, collaborators, teams, hooks, Actions secrets and variables, labels and orgs endpoints."
+    }
+  ],
+  "features": [
+    {
+      "name": "General settings",
+      "summary": "Name, description, website, default branch, feature and merge switches behind a save bar, plus visibility, archive and delete behind confirm dialogs.",
+      "path": "apps/dashboard/src/components/repo/settings/general-settings.tsx"
+    },
+    {
+      "name": "Branches and rules",
+      "summary": "A read-only list of rulesets and branch protection rules described in plain words, with a link to edit them on github.com.",
+      "path": "apps/dashboard/src/components/repo/settings/branch-rules-settings.tsx"
+    },
+    {
+      "name": "Collaborators and teams",
+      "summary": "Add people or teams with a role, change roles, remove them, and cancel pending invitations after an inline confirmation.",
+      "path": "apps/dashboard/src/components/repo/settings/access-settings.tsx"
+    },
+    {
+      "name": "Webhooks page",
+      "summary": "Create, edit and delete webhooks, choose their events, see recent deliveries and redeliver one.",
+      "path": "apps/dashboard/src/components/repo/settings/webhooks-settings.tsx"
+    },
+    {
+      "name": "Actions secrets and variables",
+      "summary": "Secrets are write-only. Sealing means encrypting the value to the repo's public key (a libsodium sealed box), which GitHub requires before storing it.",
+      "path": "apps/dashboard/src/components/repo/settings/actions-config-settings.tsx"
+    },
+    {
+      "name": "Labels page",
+      "summary": "Create, rename, recolour and delete labels. Open to triage access and above, unlike the other pages, which need admin.",
+      "path": "apps/dashboard/src/components/repo/settings/labels-settings.tsx"
+    },
+    {
+      "name": "Organisation settings",
+      "summary": "Profile and member privileges, members and invitations, teams and their members. Members who are not owners get a read-only view.",
+      "path": "apps/dashboard/src/components/org/settings/org-settings-frame.tsx"
+    }
+  ],
+  "dependsOn": ["sign-in", "github-data", "ui-kit"],
+  "outside": ["github-rest"],
+  "issues": [
+    {
+      "number": 185,
+      "note": "Looks answered: repository settings shipped in #210 on Nov 8."
+    }
+  ]
+}

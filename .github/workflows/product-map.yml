@@ -1,0 +1,19 @@
+# Checks DiffKit's own product map (.diffkit) with the same action other
+# repositories use, so the action is exercised on every pull request here.
+name: Product map
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./skills/product-map/action

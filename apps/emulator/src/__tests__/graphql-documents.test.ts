@@ -139,7 +139,7 @@ afterAll(async () => {
 describe("DiffKit GraphQL documents", () => {
 	it("finds every document in the dashboard GitHub modules", () => {
 		// Bump this when DiffKit adds a query, and make sure it runs below.
-		expect(documents.length).toBe(26);
+		expect(documents.length).toBe(28);
 	});
 
 	it.each(

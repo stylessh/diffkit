@@ -1,0 +1,95 @@
+{
+  "name": "Review & diff",
+  "icon": "compare",
+  "tagline": "Streamed diff, inline comments, pending review",
+  "summary": "The Files changed view of a pull request: a streamed, syntax-highlighted diff with a file tree, inline comment threads, and a pending review you submit as a comment, approval or change request.",
+  "paths": [
+    "apps/dashboard/src/routes/_protected/$owner/$repo/review.**",
+    "apps/dashboard/src/routes/api/pulls/**",
+    "apps/dashboard/src/components/{pulls/review,diffs}/**",
+    "apps/dashboard/src/components/shared/file-search-card**",
+    "apps/dashboard/src/lib/{diffs/,pull-diff-request,comment-cache}**",
+    "apps/dashboard/src/lib/github/{pull-files,reviews}**"
+  ],
+  "screen": {
+    "light": ".diffkit/screens/review-diff-light.jpg",
+    "dark": ".diffkit/screens/review-diff-dark.jpg"
+  },
+  "flow": [
+    {
+      "kind": "page",
+      "label": "Review page route",
+      "note": "Prefetches PR data and file summaries without blocking; cold loads show diff-shaped skeletons.",
+      "path": "apps/dashboard/src/routes/_protected/$owner/$repo/review.$pullId.tsx"
+    },
+    {
+      "kind": "client",
+      "label": "usePullDiffFiles",
+      "note": "Looks for this revision in memory, then IndexedDB, and otherwise fetches /api/pulls/diff.",
+      "path": "apps/dashboard/src/lib/diffs/use-pull-diff-files.ts"
+    },
+    {
+      "kind": "route",
+      "label": "/api/pulls/diff",
+      "note": "Pipes GitHub's diff through; if GitHub says too large, tries the public .diff URL, else answers 413.",
+      "path": "apps/dashboard/src/routes/api/pulls/diff.ts"
+    },
+    {
+      "kind": "client",
+      "label": "Git diff splitter",
+      "note": "Cuts the stream at each 'diff --git' header and hands parsed files to the page in batches.",
+      "path": "apps/dashboard/src/lib/diffs/git-diff-stream.ts"
+    },
+    {
+      "kind": "component",
+      "label": "DiffCodeView",
+      "note": "Pierre's CodeView draws files with sticky headers and comment annotations; workers do the highlighting.",
+      "path": "apps/dashboard/src/components/diffs/diff-code-view.tsx"
+    },
+    {
+      "kind": "server",
+      "label": "submitPullReview",
+      "note": "Posts the summary, the verdict and every pending line comment as one GitHub review.",
+      "path": "apps/dashboard/src/lib/github/reviews.ts"
+    }
+  ],
+  "features": [
+    {
+      "name": "Streamed diff loading",
+      "summary": "One raw diff request, parsed per file inside an 8 ms work budget. First paint after 12 files or 150 ms. Too-large diffs fall back to the paged files API.",
+      "path": "apps/dashboard/src/lib/diffs/use-pull-diff-files.ts"
+    },
+    {
+      "name": "Diff cache per commit",
+      "summary": "A revision (repo, PR, head commit, base branch) never changes, so its raw diff is kept in IndexedDB for 7 days and parsed diffs stay in memory for the tab.",
+      "path": "apps/dashboard/src/lib/diffs/raw-diff-cache.ts"
+    },
+    {
+      "name": "Renderer and highlighting",
+      "summary": "@pierre/diffs CodeView with a worker pool (up to 3 workers, 1 on small touch devices). Uses Pierre's WASM highlighter when it can, Shiki in JS otherwise.",
+      "path": "apps/dashboard/src/lib/diffs/diffs-runtime.ts"
+    },
+    {
+      "name": "Files and commits panel",
+      "summary": "Resizable side panel with a @pierre/trees file tree that fills in up to 500 files per request and follows your scroll, plus a commits tab. A drawer on phones.",
+      "path": "apps/dashboard/src/components/pulls/review/review-file-tree.tsx"
+    },
+    {
+      "name": "Inline comment threads",
+      "summary": "The gutter button on a line or selected range opens a comment form. Existing threads sit on their line with reply, edit, and resolve or unresolve.",
+      "path": "apps/dashboard/src/components/pulls/review/review-comment-annotations.tsx"
+    },
+    {
+      "name": "Pending review and submit",
+      "summary": "New comments queue as pending bubbles. Submit review sends them with a summary as Comment, Approve or Request changes, then returns to the PR page.",
+      "path": "apps/dashboard/src/components/pulls/review/review-draft.ts"
+    },
+    {
+      "name": "Viewed files and options",
+      "summary": "Ticking Viewed collapses a file and moves a progress meter; ticks reset on a new head commit. Split or unified and wrap lines; phones are always unified.",
+      "path": "apps/dashboard/src/components/pulls/review/viewed-files-store.ts"
+    }
+  ],
+  "dependsOn": ["pull-request", "conversation", "github-data", "instant-cache"],
+  "outside": ["github-rest", "browser-idb"]
+}

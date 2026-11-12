@@ -1,0 +1,92 @@
+{
+  "name": "Actions",
+  "icon": "actions",
+  "tagline": "Workflow runs, job graph, logs and re-runs",
+  "summary": "GitHub Actions for a repository: a filterable list of workflow runs, a run page with a job graph, step logs, artifacts and re-run buttons, and a job page with full logs.",
+  "paths": [
+    "apps/dashboard/src/routes/_protected/$owner/$repo/actions.**",
+    "apps/dashboard/src/components/workflows/**",
+    "apps/dashboard/src/lib/github/actions**"
+  ],
+  "screen": {
+    "light": ".diffkit/screens/actions-light.jpg",
+    "dark": ".diffkit/screens/actions-dark.jpg"
+  },
+  "flow": [
+    {
+      "kind": "page",
+      "label": "Actions list route",
+      "note": "Sends status, event, actor and branch filters to the API and lists 30 runs per page.",
+      "path": "apps/dashboard/src/routes/_protected/$owner/$repo/actions.index.tsx"
+    },
+    {
+      "kind": "server",
+      "label": "getWorkflowRunsForRepo",
+      "note": "Lists workflow runs for the repo from GitHub REST.",
+      "path": "apps/dashboard/src/lib/github/actions.ts"
+    },
+    {
+      "kind": "component",
+      "label": "WorkflowRunPage",
+      "note": "Reads the run, jobs, artifacts and workflow definition, then shows summary, graph and artifacts.",
+      "path": "apps/dashboard/src/components/workflows/workflow-run-page.tsx"
+    },
+    {
+      "kind": "client",
+      "label": "Adaptive polling",
+      "note": "Refetches every 10 s while running, 30 s otherwise, and stops 10 minutes after the data settles.",
+      "path": "apps/dashboard/src/lib/github-refetch-policy.ts"
+    },
+    {
+      "kind": "component",
+      "label": "Job graph canvas",
+      "note": "Places jobs in dependency columns, folds matrix jobs into one node, opens step logs as nodes.",
+      "path": "apps/dashboard/src/components/workflows/workflow-run-graph-canvas.tsx"
+    },
+    {
+      "kind": "server",
+      "label": "getWorkflowRunLogsBundle",
+      "note": "Downloads a finished run's log zip, unzips it with fflate and returns text per job step.",
+      "path": "apps/dashboard/src/lib/github/actions.ts"
+    }
+  ],
+  "features": [
+    {
+      "name": "Run list",
+      "summary": "Runs with status, event, actor and branch filters sent to GitHub, plus search and sorting over the loaded page.",
+      "path": "apps/dashboard/src/routes/_protected/$owner/$repo/actions.index.tsx"
+    },
+    {
+      "name": "Job graph",
+      "summary": "Jobs drawn as a graph from the workflow file's needs; a matrix job is one node that fans out to its variants.",
+      "path": "apps/dashboard/src/components/workflows/workflow-run-graph-canvas.tsx"
+    },
+    {
+      "name": "Step logs in the graph",
+      "summary": "Opening a step shows its log as its own node on the canvas, cut out of the job log by group name or time range; live jobs refresh every 4 s.",
+      "path": "apps/dashboard/src/components/workflows/graph/step-log-node.tsx"
+    },
+    {
+      "name": "Job page",
+      "summary": "Every step of one job with collapsible log groups, error and warning rows, durations and a sidebar listing the run's jobs.",
+      "path": "apps/dashboard/src/components/workflows/workflow-job-page.tsx"
+    },
+    {
+      "name": "Re-run jobs",
+      "summary": "Re-run all jobs or only the failed ones. The buttons appear only when the viewer has push or admin rights on the repo.",
+      "path": "apps/dashboard/src/components/workflows/workflow-run-header.tsx"
+    },
+    {
+      "name": "Run artifacts",
+      "summary": "Lists a run's artifacts with size, digest and expiry. Downloads link to GitHub's archive URL.",
+      "path": "apps/dashboard/src/components/workflows/workflow-run-artifacts.tsx"
+    },
+    {
+      "name": "Check state icons",
+      "summary": "One mapping from status and conclusion to an icon and colour, shared by runs, jobs, steps and the pull request checks list.",
+      "path": "apps/dashboard/src/components/checks/check-state-icon.tsx"
+    }
+  ],
+  "dependsOn": ["github-data", "instant-cache", "live-updates"],
+  "outside": ["github-rest"]
+}

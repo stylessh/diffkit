@@ -1,0 +1,101 @@
+{
+  "name": "My work lists",
+  "icon": "reviews",
+  "tagline": "PRs, reviews and issues that involve you",
+  "summary": "Three cross-repository lists: Pull requests, Reviews and Issues that involve you, grouped by your role. Search, filter, sort, and act on many rows at once.",
+  "paths": [
+    "apps/dashboard/src/routes/_protected/{pulls,issues,reviews}.tsx",
+    "apps/dashboard/src/components/filters/**",
+    "apps/dashboard/src/components/shared/{list-,bulk-}**",
+    "apps/dashboard/src/components/pulls/{pull-request-row,pull-bulk-selection,pull-list-samples}**",
+    "apps/dashboard/src/components/issues/{issue-row,issue-bulk-selection,issue-list-samples}**",
+    "apps/dashboard/src/components/pagination**",
+    "apps/dashboard/src/lib/{bulk-actions,list-selection,repo-list-page}**",
+    "apps/dashboard/src/lib/github/{my-search,search}**"
+  ],
+  "screen": {
+    "light": ".diffkit/screens/work-lists-light.jpg",
+    "dark": ".diffkit/screens/work-lists-dark.jpg"
+  },
+  "flow": [
+    {
+      "kind": "page",
+      "label": "Pull requests page",
+      "note": "/pulls reads the 'my pulls' query and renders one collapsible group per role.",
+      "path": "apps/dashboard/src/routes/_protected/pulls.tsx"
+    },
+    {
+      "kind": "server",
+      "label": "getMyPulls",
+      "note": "Resolves the viewer, runs the multi-source search and filters the result by App access.",
+      "path": "apps/dashboard/src/lib/github/search.ts"
+    },
+    {
+      "kind": "server",
+      "label": "searchEverySource",
+      "note": "One search per installation plus an OAuth fallback, 18 s total budget, newest copy wins.",
+      "path": "apps/dashboard/src/lib/github/my-search.ts"
+    },
+    {
+      "kind": "github",
+      "label": "GitHub GraphQL search",
+      "note": "One query per source returns up to 30 open items for each role."
+    },
+    {
+      "kind": "client",
+      "label": "useListFilters",
+      "note": "Keeps search, filters and sort in the URL and restores the last view from a cookie.",
+      "path": "apps/dashboard/src/components/filters/use-list-filters.ts"
+    },
+    {
+      "kind": "component",
+      "label": "BulkSelection",
+      "note": "Row checkboxes feed a floating bar that reviews, runs and reports the chosen action.",
+      "path": "apps/dashboard/src/components/shared/bulk-selection.tsx"
+    }
+  ],
+  "features": [
+    {
+      "name": "Role-grouped lists",
+      "summary": "Pull requests in five groups, issues in three (assigned, authored, mentioned), and Reviews as the review-requested group on its own.",
+      "path": "apps/dashboard/src/routes/_protected/pulls.tsx"
+    },
+    {
+      "name": "Multi-source search",
+      "summary": "Each installation and the OAuth token search with their own rate limit. A blocked or slow source gives a partial result and a warning.",
+      "path": "apps/dashboard/src/lib/github/my-search.ts"
+    },
+    {
+      "name": "Filters, sort and search",
+      "summary": "Status, author, label, repository and updated-within filters with 'is' and 'is not', five sort orders, and text search. Phones get drawers.",
+      "path": "apps/dashboard/src/components/filters/filter-model.ts"
+    },
+    {
+      "name": "Remembered view",
+      "summary": "Filters live in the URL as 'status:open,draft|author!:nova'. The 'diffkit-filters' cookie restores the last view when a list opens without any.",
+      "path": "apps/dashboard/src/components/filters/use-list-filters.ts"
+    },
+    {
+      "name": "Row selection",
+      "summary": "Checkboxes on hover, X to toggle, Shift+click for a range, Cmd/Ctrl+A for every visible row, Esc to clear. Desktop widths only.",
+      "path": "apps/dashboard/src/components/shared/list-selection.tsx"
+    },
+    {
+      "name": "Floating action bar",
+      "summary": "Merge, close or reopen pull requests; close with a reason or reopen issues. It shows what is skipped, runs one by one and keeps failures to retry.",
+      "path": "apps/dashboard/src/components/shared/bulk-bar.tsx"
+    },
+    {
+      "name": "Row design",
+      "summary": "One shared row: state icon, number, title with diff stat, label and repository pills, comment count, then aligned avatar and time columns.",
+      "path": "apps/dashboard/src/components/shared/list-row.tsx"
+    }
+  ],
+  "dependsOn": ["pull-request", "issues", "github-data", "instant-cache"],
+  "outside": ["github-graphql"],
+  "issues": [
+    {
+      "number": 137
+    }
+  ]
+}

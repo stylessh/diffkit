@@ -1,0 +1,94 @@
+{
+  "name": "Code browser",
+  "icon": "code",
+  "tagline": "File tree, file view, blame and code search",
+  "summary": "Browse a repository at any branch, tag or commit: a file tree, folder listings, a file view with syntax colours, blame, a fuzzy file finder and code search.",
+  "paths": [
+    "apps/dashboard/src/routes/_protected/$owner/$repo/{tree,blob,blame,search}.**",
+    "apps/dashboard/src/components/repo/code/**",
+    "apps/dashboard/src/components/repo/{code-,file-tree,folder-view,repo-explorer-layout,repo-file-tree-sidebar,latest-commit-bar,use-explorer-directories}**",
+    "apps/dashboard/src/components/shared/{pierre-file-tree,file-search-card,file-type-icon}**",
+    "apps/dashboard/src/lib/{code-browsing/,file-icons,explorer-path-store,fuzzy-file-search}**",
+    "apps/dashboard/src/lib/github/code**"
+  ],
+  "screen": {
+    "light": ".diffkit/screens/code-browser-light.jpg",
+    "dark": ".diffkit/screens/code-browser-dark.jpg"
+  },
+  "flow": [
+    {
+      "kind": "page",
+      "label": "Code routes",
+      "note": "tree, blob and blame routes prefetch the tree, file and blame for the URL without blocking.",
+      "path": "apps/dashboard/src/routes/_protected/$owner/$repo/tree.$.tsx"
+    },
+    {
+      "kind": "client",
+      "label": "useCodeLocation",
+      "note": "Splits the URL into ref and path from cached branch and tag names; asks the server if unsure.",
+      "path": "apps/dashboard/src/components/repo/code/use-code-location.ts"
+    },
+    {
+      "kind": "server",
+      "label": "getRepoGitTree",
+      "note": "Fetches the whole tree for the ref in one recursive call and reports if GitHub truncated it.",
+      "path": "apps/dashboard/src/lib/github/code-browsing.ts"
+    },
+    {
+      "kind": "github",
+      "label": "GitHub REST and GraphQL",
+      "note": "Git trees, contents (files up to 1 MB), commits and code search over REST; blame over GraphQL."
+    },
+    {
+      "kind": "client",
+      "label": "Tree index",
+      "note": "Groups tree entries by folder once per tree; feeds folder listings, the sidebar and the finder.",
+      "path": "apps/dashboard/src/lib/code-browsing/tree-index.ts"
+    },
+    {
+      "kind": "component",
+      "label": "RepoExplorerLayout",
+      "note": "Resizable tree sidebar beside the folder, file or blame view; a drawer and action bar on phones.",
+      "path": "apps/dashboard/src/components/repo/repo-explorer-layout.tsx"
+    }
+  ],
+  "features": [
+    {
+      "name": "File tree sidebar",
+      "summary": "A @pierre/trees tree that selects and reveals the current path, and lists folders one by one when GitHub truncates the full tree.",
+      "path": "apps/dashboard/src/components/repo/repo-file-tree-sidebar.tsx"
+    },
+    {
+      "name": "Folder view",
+      "summary": "Folder rows with file-type icons and each entry's last commit, fetched for the whole folder in one aliased GraphQL query.",
+      "path": "apps/dashboard/src/components/repo/folder-view.tsx"
+    },
+    {
+      "name": "File view",
+      "summary": "Text with line numbers and Shiki colours, Markdown and SVG preview, image preview, and plain states for binary, too-large, submodule and missing files.",
+      "path": "apps/dashboard/src/components/repo/code-file-view.tsx"
+    },
+    {
+      "name": "Line links and permalinks",
+      "summary": "Click or shift-click line numbers to put #L10-L20 in the URL. Y copies a link pinned to the commit SHA instead of the branch.",
+      "path": "apps/dashboard/src/components/repo/code/use-line-selection.ts"
+    },
+    {
+      "name": "Blame view",
+      "summary": "Shows which commit last touched each range of lines, with links to that commit and to the file as it was before it.",
+      "path": "apps/dashboard/src/components/repo/code/blame-view.tsx"
+    },
+    {
+      "name": "Go to file",
+      "summary": "Press T for a fuzzy finder over every path in the cached tree. It can pass the typed text on to code search.",
+      "path": "apps/dashboard/src/components/repo/code/file-finder.tsx"
+    },
+    {
+      "name": "Code search",
+      "summary": "Searches one repo through GitHub code search with highlighted fragments, matching paths from the tree, paging and a rate-limit state.",
+      "path": "apps/dashboard/src/components/repo/code/code-search-page.tsx"
+    }
+  ],
+  "dependsOn": ["history-compare", "github-data", "instant-cache", "ui-kit"],
+  "outside": ["github-rest", "github-graphql"]
+}

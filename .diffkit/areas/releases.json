@@ -1,0 +1,98 @@
+{
+  "name": "Releases",
+  "icon": "tag",
+  "tagline": "A changelog you can draft, publish and edit",
+  "summary": "Read a repository's releases as a changelog timeline, open one release with its notes and downloads, and, with push access, draft, publish, edit or delete releases.",
+  "paths": [
+    "apps/dashboard/src/routes/_protected/$owner/$repo/releases.**",
+    "apps/dashboard/src/components/releases/**",
+    "apps/dashboard/src/lib/github/releases**"
+  ],
+  "screen": {
+    "light": ".diffkit/screens/releases-light.jpg",
+    "dark": ".diffkit/screens/releases-dark.jpg"
+  },
+  "flow": [
+    {
+      "kind": "page",
+      "label": "Releases list route",
+      "note": "Prefetches the first page of releases, the repo overview and the viewer's permission.",
+      "path": "apps/dashboard/src/routes/_protected/$owner/$repo/releases.index.tsx"
+    },
+    {
+      "kind": "server",
+      "label": "getRepoReleases",
+      "note": "Lists 10 releases per page with the user's token and marks the one GitHub calls latest.",
+      "path": "apps/dashboard/src/lib/github/releases.ts"
+    },
+    {
+      "kind": "component",
+      "label": "ReleaseTimelineItem",
+      "note": "Shows date, name and status; notes and assets fold open, and only the newest starts open.",
+      "path": "apps/dashboard/src/components/releases/release-timeline-item.tsx"
+    },
+    {
+      "kind": "page",
+      "label": "Release form",
+      "note": "Loads the default branch, permission and the release being edited, then mounts the form.",
+      "path": "apps/dashboard/src/components/releases/release-form-page.tsx"
+    },
+    {
+      "kind": "client",
+      "label": "Save rules",
+      "note": "Validates the tag and builds the create or update payload for publish or save as draft.",
+      "path": "apps/dashboard/src/components/releases/release-save-utils.ts"
+    },
+    {
+      "kind": "server",
+      "label": "createRepoRelease",
+      "note": "Creates or updates the release on GitHub and returns it for the detail cache.",
+      "path": "apps/dashboard/src/lib/github/releases.ts"
+    }
+  ],
+  "features": [
+    {
+      "name": "Release timeline",
+      "summary": "Releases as a dated changelog with draft, prerelease and latest badges. Long notes are clamped with a link to the full release.",
+      "path": "apps/dashboard/src/components/releases/repo-releases-page.tsx"
+    },
+    {
+      "name": "Release page",
+      "summary": "One release looked up by tag, with its notes rendered as Markdown and its assets shown open.",
+      "path": "apps/dashboard/src/components/releases/repo-release-detail-page.tsx"
+    },
+    {
+      "name": "Assets and source archives",
+      "summary": "Uploaded assets with size and download count, plus GitHub's source archives. Drafts hide the archives because the tag may not exist yet.",
+      "path": "apps/dashboard/src/components/releases/release-assets.tsx"
+    },
+    {
+      "name": "Draft, publish and edit",
+      "summary": "One form saves as draft or publishes. Saving a published release never demotes it to draft, and a prerelease is never marked latest.",
+      "path": "apps/dashboard/src/components/releases/release-form-page.tsx"
+    },
+    {
+      "name": "Generate release notes",
+      "summary": "Asks GitHub to draft notes for the tag range and applies them only if you have not typed or changed the range in the meantime.",
+      "path": "apps/dashboard/src/lib/github/releases.ts"
+    },
+    {
+      "name": "Tag and branch pickers",
+      "summary": "Pick an existing tag or type a new one to be created from a chosen branch on publish. Names are checked against git's ref rules.",
+      "path": "apps/dashboard/src/components/releases/release-ref-pickers.tsx"
+    },
+    {
+      "name": "Delete release",
+      "summary": "A confirm-and-delete control on cards and in the form, shown only to viewers with push access.",
+      "path": "apps/dashboard/src/components/releases/release-card-actions.tsx"
+    }
+  ],
+  "dependsOn": ["conversation", "github-data", "instant-cache"],
+  "outside": ["github-rest"],
+  "issues": [
+    {
+      "number": 169,
+      "note": "Looks answered: releases pages shipped in #192 on Nov 8."
+    }
+  ]
+}

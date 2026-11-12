@@ -420,6 +420,14 @@ export const typeDefs = /* GraphQL */ `
 		oid: GitObjectID!
 		abbreviatedOid: String!
 		commitUrl: URI!
+		entries: [TreeEntry!]
+	}
+
+	type TreeEntry {
+		name: String!
+		type: String!
+		oid: GitObjectID!
+		object: GitObject
 	}
 
 	type Blob implements Node & GitObject {

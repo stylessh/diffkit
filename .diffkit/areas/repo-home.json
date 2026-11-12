@@ -1,0 +1,123 @@
+{
+  "name": "Repository home",
+  "icon": "home",
+  "tagline": "Files, README, stats, star and fork",
+  "summary": "The front page of a repository: files, latest commit, README and other docs, and a side panel with stats, topics, releases and contributors. Its header carries star, fork and the repo tabs.",
+  "paths": [
+    "apps/dashboard/src/components/product-map/**",
+    "apps/dashboard/src/lib/product-map/**",
+    "apps/dashboard/src/lib/github/product-map**",
+    "apps/dashboard/src/routes/_protected/$owner/$repo/map.tsx",
+    "docs/product-map.md",
+    "apps/dashboard/src/routes/_protected/$owner/$repo/index.**",
+    "apps/dashboard/src/components/repo/**",
+    "apps/dashboard/src/lib/{repo-nav-tabs,recent-push,repo-clone-protocol-storage,parse-repo-ref}**",
+    "apps/dashboard/src/lib/github/{repo-overview,repo-insights,repos,repo-query-options}**",
+    "skills/product-map/**",
+    "scripts/build-map-skill**",
+    "scripts/capture-map-screens.mjs"
+  ],
+  "screen": {
+    "light": ".diffkit/screens/repo-home-light.jpg",
+    "dark": ".diffkit/screens/repo-home-dark.jpg"
+  },
+  "flow": [
+    {
+      "kind": "page",
+      "label": "Repo index route",
+      "note": "Prefetches the overview and viewer, plus the tree and README when the overview is already cached.",
+      "path": "apps/dashboard/src/routes/_protected/$owner/$repo/index.tsx"
+    },
+    {
+      "kind": "component",
+      "label": "RepoOverviewPage",
+      "note": "Reads the cached overview and lays out the toolbar, banners, file list, docs and side panel.",
+      "path": "apps/dashboard/src/components/repo/repo-overview-page.tsx"
+    },
+    {
+      "kind": "server",
+      "label": "getRepoOverview",
+      "note": "One GraphQL query for repo facts and counts, plus a user-token query for the star state.",
+      "path": "apps/dashboard/src/lib/github/repo-overview.ts"
+    },
+    {
+      "kind": "github",
+      "label": "GitHub GraphQL",
+      "note": "Returns description, default branch tip, stars, forks, topics and open pull request and issue counts."
+    },
+    {
+      "kind": "component",
+      "label": "RepoSidebar",
+      "note": "Shows stats, topics, recent releases and contributors; releases and contributors load on their own.",
+      "path": "apps/dashboard/src/components/repo/repo-sidebar.tsx"
+    },
+    {
+      "kind": "client",
+      "label": "Repo tab store",
+      "note": "Keeps each user's choice of visible repo tabs in localStorage and syncs it across browser tabs.",
+      "path": "apps/dashboard/src/lib/repo-nav-tabs.ts"
+    }
+  ],
+  "features": [
+    {
+      "name": "Overview page",
+      "summary": "Root files with each entry's last commit, a latest-commit bar and the branch toolbar; other branches reuse the same page through the tree route.",
+      "path": "apps/dashboard/src/components/repo/repo-overview-page.tsx"
+    },
+    {
+      "name": "About panel",
+      "summary": "Description, fork parent, star, watcher and fork counts, links to branches and tags, topics, recent releases and top contributors.",
+      "path": "apps/dashboard/src/components/repo/repo-sidebar.tsx"
+    },
+    {
+      "name": "Star and fork",
+      "summary": "Star flips at once in the cached overview and rolls back with a toast on failure; fork opens the new fork when GitHub has created it.",
+      "path": "apps/dashboard/src/components/repo/repo-star-fork-actions.tsx"
+    },
+    {
+      "name": "Repo tabs",
+      "summary": "Nine repo sections; each user picks which show as tabs and the rest sit in a menu. Settings shows only with triage access or higher.",
+      "path": "apps/dashboard/src/components/repo/repo-nav.tsx"
+    },
+    {
+      "name": "README and docs",
+      "summary": "README, license, contributing, security and changelog files appear as pills; one opens on click and its content prefetches on hover.",
+      "path": "apps/dashboard/src/components/repo/repo-markdown-files.tsx"
+    },
+    {
+      "name": "Branch banners",
+      "summary": "On the default branch, your own push in the last 2 hours offers Compare & pull request; other branches show how far ahead or behind they are.",
+      "path": "apps/dashboard/src/components/repo/recent-push-banner.tsx"
+    },
+    {
+      "name": "Clone menu",
+      "summary": "Copy an HTTPS, SSH or GitHub CLI clone command, or download a zip. The chosen protocol is remembered in localStorage.",
+      "path": "apps/dashboard/src/components/repo/code-explorer-toolbar.tsx"
+    }
+  ],
+  "dependsOn": [
+    "code-browser",
+    "history-compare",
+    "releases",
+    "github-data",
+    "instant-cache"
+  ],
+  "outside": ["github-graphql"],
+  "issues": [
+    {
+      "number": 106
+    },
+    {
+      "number": 107
+    },
+    {
+      "number": 108
+    },
+    {
+      "number": 168
+    },
+    {
+      "number": 171
+    }
+  ]
+}

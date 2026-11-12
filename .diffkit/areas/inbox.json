@@ -1,0 +1,87 @@
+{
+  "name": "Inbox",
+  "icon": "inbox",
+  "tagline": "Notifications as a two-pane, keyboard inbox",
+  "summary": "Your GitHub notifications as a two-pane inbox: a list on the left, the full pull request or issue on the right. Triage from the keyboard: read, done, save, unsubscribe.",
+  "paths": [
+    "apps/dashboard/src/routes/_protected/inbox**",
+    "apps/dashboard/src/components/inbox/**",
+    "apps/dashboard/src/lib/inbox**",
+    "apps/dashboard/src/lib/github/notification**"
+  ],
+  "screen": {
+    "light": ".diffkit/screens/inbox-light.jpg",
+    "dark": ".diffkit/screens/inbox-dark.jpg"
+  },
+  "flow": [
+    {
+      "kind": "page",
+      "label": "Inbox route",
+      "note": "/inbox starts loading the unread list without waiting for it and renders InboxPage.",
+      "path": "apps/dashboard/src/routes/_protected/inbox.tsx"
+    },
+    {
+      "kind": "component",
+      "label": "InboxPage",
+      "note": "Owns the view, grouping, selection and keyboard shortcuts; lays out list and preview.",
+      "path": "apps/dashboard/src/components/inbox/inbox-page.tsx"
+    },
+    {
+      "kind": "server",
+      "label": "getNotifications",
+      "note": "Returns the visible threads for the signed-in user, each with its subject state.",
+      "path": "apps/dashboard/src/lib/github/notifications.ts"
+    },
+    {
+      "kind": "github",
+      "label": "Notifications API",
+      "note": "Lists threads with the OAuth token, then reads each subject plus its comments and reviews."
+    },
+    {
+      "kind": "component",
+      "label": "InboxPreview",
+      "note": "Shows the selected thread with the same detail content the pull request and issue pages use.",
+      "path": "apps/dashboard/src/components/inbox/inbox-preview.tsx"
+    },
+    {
+      "kind": "client",
+      "label": "useInboxActions",
+      "note": "Updates both cached lists first, calls GitHub, and restores them with a toast on failure.",
+      "path": "apps/dashboard/src/components/inbox/use-inbox-actions.ts"
+    }
+  ],
+  "features": [
+    {
+      "name": "Unread, All and Saved",
+      "summary": "Three views. Saved is DiffKit's own: GitHub has no public API for it, so up to 200 saved threads are kept per user in the browser.",
+      "path": "apps/dashboard/src/components/inbox/inbox-list.tsx"
+    },
+    {
+      "name": "Grouping and collapsing",
+      "summary": "Group by repository (latest activity first) or by reason (ordered by how much it asks of you). Groups collapse and the choice is remembered.",
+      "path": "apps/dashboard/src/lib/inbox.ts"
+    },
+    {
+      "name": "Keyboard triage",
+      "summary": "J/K or arrows move, E marks done, S saves, Shift+M unsubscribes, Enter opens. After a removal the selection moves to the next row.",
+      "path": "apps/dashboard/src/components/inbox/inbox-page.tsx"
+    },
+    {
+      "name": "Inline preview",
+      "summary": "Selecting a row marks it read and opens the pull request or issue beside the list. On phones it goes to the full page.",
+      "path": "apps/dashboard/src/components/inbox/inbox-preview.tsx"
+    },
+    {
+      "name": "Thread actions",
+      "summary": "Mark read, mark done, unsubscribe (ignore the thread, then mark it done), mark all read, and mark everything read and unsaved as done.",
+      "path": "apps/dashboard/src/components/inbox/use-inbox-actions.ts"
+    },
+    {
+      "name": "State-aware rows",
+      "summary": "Each row shows an open, closed or merged icon, the title, repository and number, the reason, and an unread dot or saved pin.",
+      "path": "apps/dashboard/src/components/inbox/inbox-list.tsx"
+    }
+  ],
+  "dependsOn": ["pull-request", "issues", "github-data", "instant-cache"],
+  "outside": ["github-rest"]
+}

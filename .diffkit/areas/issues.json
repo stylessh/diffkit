@@ -1,0 +1,91 @@
+{
+  "name": "Issues",
+  "icon": "issues",
+  "tagline": "Issue list, issue page and new-issue form",
+  "summary": "A repository's issue list with filters and bulk close or reopen, the issue page with description, labels, timeline and comments, and a new-issue form.",
+  "paths": [
+    "apps/dashboard/src/routes/_protected/$owner/$repo/issues.**",
+    "apps/dashboard/src/components/issues/**",
+    "apps/dashboard/src/lib/github/{issues,issue-query-options,labels,milestones}**"
+  ],
+  "screen": {
+    "light": ".diffkit/screens/issues-light.jpg",
+    "dark": ".diffkit/screens/issues-dark.jpg"
+  },
+  "flow": [
+    {
+      "kind": "page",
+      "label": "Issues list route",
+      "note": "Turns the status filter into an API state and asks for one page of 30 issues.",
+      "path": "apps/dashboard/src/routes/_protected/$owner/$repo/issues.index.tsx"
+    },
+    {
+      "kind": "server",
+      "label": "getIssuesFromRepo",
+      "note": "Lists the repo's issues over REST and drops pull requests from the result.",
+      "path": "apps/dashboard/src/lib/github/issues.ts"
+    },
+    {
+      "kind": "page",
+      "label": "Issue detail route",
+      "note": "Prefetches the page data without blocking and takes the tab title from a cached list row.",
+      "path": "apps/dashboard/src/routes/_protected/$owner/$repo/issues.$issueId.tsx"
+    },
+    {
+      "kind": "server",
+      "label": "getIssuePageData",
+      "note": "One GraphQL query for the issue, its comments and first timeline page; REST if that fails.",
+      "path": "apps/dashboard/src/lib/github/issues.ts"
+    },
+    {
+      "kind": "component",
+      "label": "IssueDetailContent",
+      "note": "Lays out the title, description, activity timeline and the properties sidebar.",
+      "path": "apps/dashboard/src/components/issues/detail/issue-detail-page.tsx"
+    },
+    {
+      "kind": "server",
+      "label": "updateIssueState",
+      "note": "Closes as completed or not planned, or reopens, with the user's token; caches refresh after.",
+      "path": "apps/dashboard/src/lib/github/issues.ts"
+    }
+  ],
+  "features": [
+    {
+      "name": "Repository issue list",
+      "summary": "Open issues by default, with status, author, label and updated filters, sorting, search and 30-per-page paging.",
+      "path": "apps/dashboard/src/routes/_protected/$owner/$repo/issues.index.tsx"
+    },
+    {
+      "name": "Bulk close and reopen",
+      "summary": "Select rows to close as completed or not planned, or to reopen. Issues already in that state are skipped with a reason.",
+      "path": "apps/dashboard/src/components/issues/issue-bulk-selection.tsx"
+    },
+    {
+      "name": "Issue page",
+      "summary": "The title paints at once from a cached list row; description, comments and events follow as one timeline that loads more on demand.",
+      "path": "apps/dashboard/src/components/issues/detail/issue-detail-page.tsx"
+    },
+    {
+      "name": "Issue labels",
+      "summary": "Toggle labels from the sidebar with an optimistic update, or type a new name to create a label with a random colour and apply it.",
+      "path": "apps/dashboard/src/components/issues/labels-section.tsx"
+    },
+    {
+      "name": "New issue",
+      "summary": "Uses the shared draft page: title, body prefilled from the repo's issue template, @mentions of collaborators, assignees and labels.",
+      "path": "apps/dashboard/src/components/issues/new/new-issue-page.tsx"
+    }
+  ],
+  "dependsOn": ["conversation", "work-lists", "github-data", "instant-cache"],
+  "outside": ["github-rest", "github-graphql"],
+  "issues": [
+    {
+      "number": 170
+    },
+    {
+      "number": 182,
+      "note": "Predates the cache rebuild (#193, #206). Worth re-testing before it stays open."
+    }
+  ]
+}

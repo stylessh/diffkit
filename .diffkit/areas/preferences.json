@@ -1,0 +1,91 @@
+{
+  "name": "Settings & shortcuts",
+  "icon": "display",
+  "tagline": "Themes, GitHub access and the shortcut list",
+  "summary": "Personal settings: light, dark or system mode, a colour theme for each mode, links to manage GitHub access and organisations, the extension's status, sign out, and a shortcut reference.",
+  "paths": [
+    "apps/dashboard/src/routes/_protected/settings**",
+    "apps/dashboard/src/lib/{shortcuts,color-themes}**"
+  ],
+  "screen": {
+    "light": ".diffkit/screens/preferences-light.jpg",
+    "dark": ".diffkit/screens/preferences-dark.jpg"
+  },
+  "flow": [
+    {
+      "kind": "page",
+      "label": "Settings layout",
+      "note": "/settings shows a side nav (General, Shortcuts) and the selected page.",
+      "path": "apps/dashboard/src/routes/_protected/settings.tsx"
+    },
+    {
+      "kind": "page",
+      "label": "General page",
+      "note": "Sections for appearance, extension, repository access, organisations and account.",
+      "path": "apps/dashboard/src/routes/_protected/settings/index.tsx"
+    },
+    {
+      "kind": "client",
+      "label": "Colour theme store",
+      "note": "setColorTheme saves the id and sets data-light-theme or data-dark-theme on <html>.",
+      "path": "apps/dashboard/src/lib/color-themes.ts"
+    },
+    {
+      "kind": "storage",
+      "label": "localStorage",
+      "note": "Keys diffkit:color-theme:light and :dark; a change in one tab updates the others.",
+      "path": "apps/dashboard/src/lib/color-themes.ts"
+    },
+    {
+      "kind": "client",
+      "label": "Head boot script",
+      "note": "An inline script in <head> re-applies the saved theme ids before the first paint.",
+      "path": "apps/dashboard/src/routes/__root.tsx"
+    },
+    {
+      "kind": "component",
+      "label": "Theme stylesheet",
+      "note": "Rules keyed on those attributes change the neutral colour scale for each theme.",
+      "path": "packages/ui/src/styles/globals.css"
+    }
+  ],
+  "features": [
+    {
+      "name": "Light, dark, system",
+      "summary": "A mode picker with miniature layout previews. The same three-way switch also sits in the account menu.",
+      "path": "apps/dashboard/src/routes/_protected/settings/index.tsx"
+    },
+    {
+      "name": "Colour theme per mode",
+      "summary": "Five palettes (DiffKit, Tide, Graphite, Paper, Linear), chosen separately for light and dark and saved on this device.",
+      "path": "apps/dashboard/src/lib/color-themes.ts"
+    },
+    {
+      "name": "No-flash theme boot",
+      "summary": "A tiny script in the document head copies the saved theme ids onto <html> before first paint and ignores unknown ids.",
+      "path": "apps/dashboard/src/lib/color-themes.ts"
+    },
+    {
+      "name": "Access, orgs and account",
+      "summary": "Links to /setup for GitHub App access and to each organisation's settings, the extension's install state, and sign out.",
+      "path": "apps/dashboard/src/routes/_protected/settings/index.tsx"
+    },
+    {
+      "name": "Shortcut reference",
+      "summary": "A static page listing shortcuts by group: navigation, workspace, list selection, general and the markdown editor.",
+      "path": "apps/dashboard/src/routes/_protected/settings/shortcuts.tsx"
+    },
+    {
+      "name": "Shortcut engine",
+      "summary": "One hook matches single keys and sequences such as G then P (800 ms between keys) and skips typing in inputs unless a shortcut allows it.",
+      "path": "apps/dashboard/src/lib/shortcuts.ts"
+    }
+  ],
+  "dependsOn": ["ui-kit", "sign-in", "extension"],
+  "outside": ["browser-storage"],
+  "issues": [
+    {
+      "number": 130
+    }
+  ]
+}

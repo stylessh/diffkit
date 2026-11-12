@@ -1,0 +1,105 @@
+{
+  "name": "Comments & timeline",
+  "icon": "comment",
+  "tagline": "Comments, timeline, markdown and uploads",
+  "summary": "The comment and timeline machinery shared by pull request and issue pages: rendered markdown, the event timeline, the composer with @mentions and uploads, reactions, and hover cards for #references.",
+  "paths": [
+    "apps/dashboard/src/components/{details,markdown,drafts}/**",
+    "packages/ui/src/components/markdown**",
+    "packages/ui/src/lib/{markdown,remark,rehype,mdast,shiki}**",
+    "apps/dashboard/src/lib/github/{comments,references}**",
+    "apps/dashboard/src/lib/{github-links,github-current-url,comment-media,media.functions,reference-placeholders,timeline-close-reason,use-optimistic-mutation,markdown-excerpt,plain-excerpt}**"
+  ],
+  "flow": [
+    {
+      "kind": "component",
+      "label": "Activity timeline",
+      "note": "Sorts comments, commits and events by date, folds rapid label changes, shows both ends first.",
+      "path": "apps/dashboard/src/components/details/timeline/timeline-items.ts"
+    },
+    {
+      "kind": "component",
+      "label": "AppMarkdown",
+      "note": "Renders sanitized GitHub markdown; #numbers, SHAs, github.com links and @mentions open in-app.",
+      "path": "apps/dashboard/src/components/markdown/app-markdown.tsx"
+    },
+    {
+      "kind": "component",
+      "label": "Comment composer",
+      "note": "A textarea with an @mention menu; a pasted or dropped file leaves a placeholder line while it uploads.",
+      "path": "apps/dashboard/src/components/details/detail-activity.tsx"
+    },
+    {
+      "kind": "route",
+      "label": "Media upload endpoint",
+      "note": "POST /api/comment-media/upload checks the session, the file's magic bytes and its size.",
+      "path": "apps/dashboard/src/lib/comment-media-upload.handler.ts"
+    },
+    {
+      "kind": "storage",
+      "label": "R2 comment media",
+      "note": "Stores the file under comment-media/<user id>/; the comment gets an img or video tag with its URL.",
+      "path": "apps/dashboard/src/lib/comment-media.server.ts"
+    },
+    {
+      "kind": "server",
+      "label": "createComment",
+      "note": "Posts the body to GitHub with the viewer's token; the page's queries are then invalidated.",
+      "path": "apps/dashboard/src/lib/github/comments.ts"
+    }
+  ],
+  "features": [
+    {
+      "name": "Activity timeline",
+      "summary": "Comments, commits and events in date order. One person's quick label, review-request and open/close changes fold into one row; long ones show both ends first.",
+      "path": "apps/dashboard/src/components/details/timeline/timeline-items.ts"
+    },
+    {
+      "name": "Markdown rendering",
+      "summary": "GitHub-flavoured markdown with raw HTML passed through a sanitizer, GitHub alerts, footnotes, and Shiki code blocks with a copy button.",
+      "path": "packages/ui/src/components/markdown.tsx"
+    },
+    {
+      "name": "Mentions and reference cards",
+      "summary": "@logins, #123, commit SHAs and github.com URLs become in-app links with hover cards. Cards paint first from lists and pages already in the cache.",
+      "path": "apps/dashboard/src/components/markdown/markdown-reference.tsx"
+    },
+    {
+      "name": "Comment composer",
+      "summary": "A textarea editor. Comment boxes are a bare field where shortcuts still format, with an @mention menu; descriptions get a toolbar and Write/Preview tabs.",
+      "path": "packages/ui/src/components/markdown-editor.tsx"
+    },
+    {
+      "name": "Image and video upload",
+      "summary": "Paste, drop or attach png, jpeg, gif, webp, mp4, webm or mov. The server trusts the file's magic bytes, not its MIME type; 25 MB images, 120 MB video.",
+      "path": "apps/dashboard/src/hooks/use-comment-media-upload.ts"
+    },
+    {
+      "name": "Emoji reactions",
+      "summary": "The eight GitHub reactions on comments and on PR or issue descriptions. A click updates the count at once and is undone if GitHub refuses.",
+      "path": "apps/dashboard/src/components/details/comment-reaction-bar.tsx"
+    },
+    {
+      "name": "Edit, delete, hide, reply",
+      "summary": "Edits and deletes patch every cached copy of a comment and restore it on failure. Replies are quote blocks that the timeline nests under their parent.",
+      "path": "apps/dashboard/src/components/details/use-comment-actions.ts"
+    }
+  ],
+  "dependsOn": ["ui-kit", "github-data", "instant-cache", "storage"],
+  "outside": ["github-rest", "cf-r2"],
+  "issues": [
+    {
+      "number": 106
+    },
+    {
+      "number": 116
+    },
+    {
+      "number": 170,
+      "note": "Comment uploads to R2 exist since Apr 16. Worth re-testing on issues."
+    },
+    {
+      "number": 182
+    }
+  ]
+}

@@ -102,6 +102,18 @@ export {
 	unsubscribeNotification,
 } from "./github/notifications";
 export type {
+	PullProductArea,
+	PullProductAreas,
+	PullProductAreasInput,
+	RepoProductMapFile,
+	RepoProductMapInput,
+} from "./github/product-map";
+export {
+	getPullProductAreas,
+	getRepoProductMapActivity,
+	getRepoProductMapFile,
+} from "./github/product-map";
+export type {
 	OpenPullForRefs,
 	OpenPullForRefsInput,
 } from "./github/pull-for-refs";

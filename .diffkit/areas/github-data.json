@@ -1,0 +1,94 @@
+{
+  "name": "GitHub data layer",
+  "icon": "github",
+  "tagline": "Server functions between pages and GitHub",
+  "summary": "Every page gets its GitHub data through one layer: typed queries in the browser, server functions on the Worker, and Octokit calls made with the right token for each repository.",
+  "paths": [
+    "apps/dashboard/src/lib/github/**",
+    "apps/dashboard/src/lib/{github.,github-request-policy,github-installation-token,github-private-key,github-auth-errors,use-github-query-scope}**"
+  ],
+  "flow": [
+    {
+      "kind": "page",
+      "label": "My pulls page",
+      "note": "The loader starts a prefetch without waiting; the page reads the same query.",
+      "path": "apps/dashboard/src/routes/_protected/pulls.tsx"
+    },
+    {
+      "kind": "client",
+      "label": "Query options",
+      "note": "Pairs a per-user query key with a server function and a stale time.",
+      "path": "apps/dashboard/src/lib/github/pull-query-options.ts"
+    },
+    {
+      "kind": "server",
+      "label": "getMyPulls server function",
+      "note": "Runs on the Worker, loads the session and builds a GitHub client for the viewer.",
+      "path": "apps/dashboard/src/lib/github/search.ts"
+    },
+    {
+      "kind": "server",
+      "label": "Token routing",
+      "note": "Repo reads use the GitHub App installation token when it covers the repo, else the OAuth token.",
+      "path": "apps/dashboard/src/lib/github/installations.ts"
+    },
+    {
+      "kind": "server",
+      "label": "Dedup and timeout",
+      "note": "Identical reads in one request share a call; each call is cut off after 15 s.",
+      "path": "apps/dashboard/src/lib/github/client.ts"
+    },
+    {
+      "kind": "github",
+      "label": "GitHub REST and GraphQL",
+      "note": "Octokit sends the request; its retry and throttle plugins are turned off."
+    }
+  ],
+  "features": [
+    {
+      "name": "Query keys and options",
+      "summary": "85 query-option factories share one key tree. Every key starts with the user id, so two accounts in one browser never share data.",
+      "path": "apps/dashboard/src/lib/github/query-keys.ts"
+    },
+    {
+      "name": "Server functions",
+      "summary": "152 TanStack server functions in 29 modules, one per GitHub read or write. Most use REST; page bundles, my-work search and timelines use GraphQL.",
+      "path": "apps/dashboard/src/lib/github/pulls.ts"
+    },
+    {
+      "name": "Token routing",
+      "summary": "Reads use the GitHub App installation token when the app covers the repo, else the OAuth token. Writes use the viewer's own token so GitHub credits them.",
+      "path": "apps/dashboard/src/lib/github/installations.ts"
+    },
+    {
+      "name": "Installation token cache",
+      "summary": "Installation tokens are minted from the app key, kept in memory and KV until 5 minutes before expiry, and dropped when an installation webhook arrives.",
+      "path": "apps/dashboard/src/lib/github.server.ts"
+    },
+    {
+      "name": "Request dedup",
+      "summary": "Identical reads within one server request share a single GitHub call. Viewer and installation lookups are also remembered in memory for 30 seconds.",
+      "path": "apps/dashboard/src/lib/github/request-dedup.ts"
+    },
+    {
+      "name": "Timeouts and cancelling",
+      "summary": "Each GitHub request stops after 12 s and each operation after 15 s (25 s for paged reads). Requests are cancelled when the browser gives up.",
+      "path": "apps/dashboard/src/lib/github-request-policy.ts"
+    },
+    {
+      "name": "Error handling",
+      "summary": "Failed writes come back as a plain message, with an install-the-app link on 403. Some 401 and 403 replies are flagged as needing GitHub re-authorization.",
+      "path": "apps/dashboard/src/lib/github/shared.ts"
+    }
+  ],
+  "dependsOn": ["sign-in", "storage"],
+  "outside": ["github-rest", "github-graphql", "cf-kv"],
+  "issues": [
+    {
+      "number": 144
+    },
+    {
+      "number": 184
+    }
+  ]
+}

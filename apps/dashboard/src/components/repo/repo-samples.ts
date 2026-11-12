@@ -75,6 +75,7 @@ export function sampleRepoOverview(owner: string, name: string): RepoOverview {
 		openPullCount: 4,
 		openIssueCount: 9,
 		hasDiscussions: false,
+		hasProductMap: false,
 		forkParentFullName: null,
 		forkParentOwnerAvatarUrl: null,
 		latestCommit: SAMPLE_COMMIT,

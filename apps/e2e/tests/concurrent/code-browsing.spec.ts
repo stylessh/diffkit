@@ -40,7 +40,7 @@ test("browse a folder, open a file by finder, link lines, blame them and search 
 
 	await page.goto("/lumen-labs/beacon/search?q=reconnect");
 	const results = page.getByRole("region", { name: /^Code/ });
-	await expect(results).toContainText("4 files");
+	await expect(results).toContainText("7 files");
 	await expect(
 		results.getByRole("link", { name: "src/client.ts" }),
 	).toHaveAttribute("href", "/lumen-labs/beacon/blob/main/src/client.ts");

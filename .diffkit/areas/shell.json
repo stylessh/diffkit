@@ -1,0 +1,89 @@
+{
+  "name": "App shell",
+  "icon": "shell",
+  "tagline": "Topbar, workspace links and error screens",
+  "summary": "The frame around every signed-in page: a topbar with the account menu, five workspace links with counts, search and a create menu, plus warnings, loading states and error screens.",
+  "paths": [
+    "apps/dashboard/src/routes/{__root,_protected,$}.tsx",
+    "apps/dashboard/src/components/{shell,layouts}/**",
+    "apps/dashboard/src/lib/{shell/,tab-store,use-register-tab,warning-store,use-page-title}**",
+    "apps/dashboard/src/{router,client}.tsx"
+  ],
+  "flow": [
+    {
+      "kind": "page",
+      "label": "Protected route",
+      "note": "Resolves the viewer, starts the change feed and renders the layout for every signed-in page.",
+      "path": "apps/dashboard/src/routes/_protected.tsx"
+    },
+    {
+      "kind": "component",
+      "label": "DashboardLayout",
+      "note": "Loads counts for the nav, registers shell shortcuts and lazy-loads the dialogs.",
+      "path": "apps/dashboard/src/components/layouts/dashboard-layout.tsx"
+    },
+    {
+      "kind": "component",
+      "label": "Topbar",
+      "note": "Account menu, workspace links with badges, search trigger and create menu; a slimmer bar on phones.",
+      "path": "apps/dashboard/src/components/shell/app-topbar.tsx"
+    },
+    {
+      "kind": "client",
+      "label": "Shell overlay store",
+      "note": "One value says whether the palette or the repo picker is open, so only one shows at a time.",
+      "path": "apps/dashboard/src/lib/shell/shell-overlay.ts"
+    },
+    {
+      "kind": "component",
+      "label": "Repository picker",
+      "note": "Lists pinned, recent and all repositories; the pick opens, pins or starts a create action.",
+      "path": "apps/dashboard/src/components/shell/repo-picker-dialog.tsx"
+    },
+    {
+      "kind": "storage",
+      "label": "localStorage",
+      "note": "Pinned (max 12) and recent (max 6) repositories are kept per user in the browser.",
+      "path": "apps/dashboard/src/lib/shell/workspace-repos.ts"
+    }
+  ],
+  "features": [
+    {
+      "name": "Topbar and workspace nav",
+      "summary": "Overview, Inbox, Pull requests, Reviews and Issues with live counts and an unread dot. On phones the same items become a bottom tab bar.",
+      "path": "apps/dashboard/src/components/shell/app-topbar.tsx"
+    },
+    {
+      "name": "Create menu",
+      "summary": "New issue, pull request or release. Inside a repository it goes straight there; anywhere else it first asks which repository.",
+      "path": "apps/dashboard/src/components/shell/create-menu.tsx"
+    },
+    {
+      "name": "Repository picker",
+      "summary": "A searchable dialog (O then R) to switch repository, pin one, or choose the target of a create action. Pinned and recent come first.",
+      "path": "apps/dashboard/src/components/shell/repo-picker-dialog.tsx"
+    },
+    {
+      "name": "Account menu",
+      "summary": "Avatar menu with Profile, Repositories, Settings, shortcut help, report an issue, a light/dark/system switch and sign out.",
+      "path": "apps/dashboard/src/components/shell/account-menu.tsx"
+    },
+    {
+      "name": "Bottom bar warnings",
+      "summary": "Dismissible notices for blocked organisations, GitHub timeouts and missing permissions, plus a prompt to install the browser extension.",
+      "path": "apps/dashboard/src/components/layouts/dashboard-bottombar.tsx"
+    },
+    {
+      "name": "Route loading states",
+      "summary": "On a hard load a page's own empty state is server-rendered in place of a spinner. Pending UI stays hidden for its first 300 ms so it never flashes.",
+      "path": "apps/dashboard/src/components/layouts/dashboard-content-loading.tsx"
+    },
+    {
+      "name": "Error and 404 screens",
+      "summary": "One screen turns an error into rate limit, re-authorize, no access, not found, offline or timeout, each with a matching action.",
+      "path": "apps/dashboard/src/components/layouts/dashboard-error-screen.tsx"
+    }
+  ],
+  "dependsOn": ["command-palette", "sign-in", "live-updates", "ui-kit"],
+  "outside": ["browser-storage"]
+}

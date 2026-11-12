@@ -1,0 +1,92 @@
+{
+  "name": "Storage",
+  "icon": "layers",
+  "tagline": "D1, KV, R2: sign-in, change rows, uploads",
+  "summary": "DiffKit keeps very little on its own servers: sign-in records, a short list of recent GitHub changes, a few expiring cache keys, and images or videos uploaded into comments.",
+  "paths": [
+    "apps/dashboard/src/db/**",
+    "apps/dashboard/{db,drizzle,crons}/**",
+    "apps/dashboard/\\{drizzle**",
+    "apps/dashboard/drizzle.config**",
+    "apps/dashboard/src/lib/{scheduled-maintenance,maintenance-cron,testing/}**",
+    "docs/runbooks/d1-full**",
+    "scripts/{run,check}-d1-migrations**"
+  ],
+  "flow": [
+    {
+      "kind": "tool",
+      "label": "Void config",
+      "note": "Binds D1 as DB, KV as GITHUB_CACHE_KV and R2 as COMMENT_MEDIA to the Worker.",
+      "path": "apps/dashboard/void.config.ts"
+    },
+    {
+      "kind": "storage",
+      "label": "Drizzle schema",
+      "note": "Defines the six D1 tables that server code reads and writes through getDb().",
+      "path": "apps/dashboard/src/db/schema.ts"
+    },
+    {
+      "kind": "tool",
+      "label": "SQL migrations",
+      "note": "Nine numbered files, applied on deploy; the latest rebuilds github_change.",
+      "path": "apps/dashboard/db/migrations/0008_github_change_latest.sql"
+    },
+    {
+      "kind": "server",
+      "label": "Change row writes",
+      "note": "Webhooks upsert rows in the background; a failed write is dropped, never an error.",
+      "path": "apps/dashboard/src/lib/github-change.server.ts"
+    },
+    {
+      "kind": "server",
+      "label": "Maintenance cron",
+      "note": "Every 5 minutes: deletes change rows older than 15 minutes and logs D1 size.",
+      "path": "apps/dashboard/crons/maintenance.ts"
+    },
+    {
+      "kind": "storage",
+      "label": "KV heartbeat",
+      "note": "Each cron run writes a heartbeat key that /api/health reports back.",
+      "path": "apps/dashboard/src/lib/health.server.ts"
+    }
+  ],
+  "features": [
+    {
+      "name": "Sign-in tables",
+      "summary": "user, session, account and verification are Better Auth's tables. account holds each user's GitHub OAuth and GitHub App tokens.",
+      "path": "apps/dashboard/src/db/schema.ts"
+    },
+    {
+      "name": "Change feed table",
+      "summary": "github_change keeps one row per repo and entity key with a version number. A repeat change updates the row, so the table stays small.",
+      "path": "apps/dashboard/src/db/schema.ts"
+    },
+    {
+      "name": "Forbidden orgs table",
+      "summary": "user_forbidden_org remembers orgs that block the OAuth app, so searches skip them. Rows go away once the GitHub App is installed on the org.",
+      "path": "apps/dashboard/src/db/schema.ts"
+    },
+    {
+      "name": "KV cache keys",
+      "summary": "Four key families, all with a TTL: installation tokens, per-user readable repo lists (10 min), the cron heartbeat (24 h) and the landing star count (7 d).",
+      "path": "apps/dashboard/src/lib/github.server.ts"
+    },
+    {
+      "name": "Comment media bucket",
+      "summary": "R2 stores comment uploads under a per-user prefix: images up to 25 MB, videos up to 120 MB, type checked from the file's first bytes.",
+      "path": "apps/dashboard/src/lib/comment-media-upload.handler.ts"
+    },
+    {
+      "name": "Sweeper and size check",
+      "summary": "The cron deletes change rows older than 15 minutes in batches and warns in the logs at 80% of D1's 10 GB limit or above 50k change rows.",
+      "path": "apps/dashboard/crons/maintenance.ts"
+    },
+    {
+      "name": "Migrations and CI check",
+      "summary": "Nine migrations; 0007 drops the four cache tables behind the 2026-11-08 incident. A CI script blocks edited or destructive migrations without approval.",
+      "path": "apps/dashboard/db/migrations/0007_drop_legacy_cache_tables.sql"
+    }
+  ],
+  "dependsOn": [],
+  "outside": ["cf-d1", "cf-kv", "cf-r2"]
+}

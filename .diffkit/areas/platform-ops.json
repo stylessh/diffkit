@@ -1,0 +1,94 @@
+{
+  "name": "Deploy & operations",
+  "icon": "globe",
+  "tagline": "One Worker: deploy, health gate, alerts",
+  "summary": "How DiffKit is built, shipped and watched: one Cloudflare Worker deployed with Void, a health endpoint, automatic rollback, and alerts that open GitHub issues.",
+  "paths": [
+    "apps/dashboard/src/entry-worker**",
+    "apps/dashboard/{vite.config,void.config,wrangler,worker-configuration,env.,.dev.vars,.gitignore,README,public/,tsconfig,biome}**",
+    "apps/dashboard/src/env.d.ts",
+    "apps/dashboard/src/lib/{security-headers,route-safety,health,seo,site-config,debug}**",
+    "apps/dashboard/src/routes/{api/health,-private-page-seo}**",
+    "{scripts,.github,.husky,docs}/**",
+    "{turbo.json,biome.json{,c},README.md,CONTRIBUTING.md,LICENSE,paseo.json,pnpm-workspace.yaml,.node-version,.gitignore}",
+    "packages/typescript-config/**",
+    "AGENTS.md"
+  ],
+  "flow": [
+    {
+      "kind": "tool",
+      "label": "PR checks",
+      "note": "Lint, type check and unit tests; separate workflows run e2e and a dev-server smoke test.",
+      "path": ".github/workflows/pr-checks.yml"
+    },
+    {
+      "kind": "tool",
+      "label": "Deploy workflow",
+      "note": "On a push to main, checks the resource pins and runs the deploy script.",
+      "path": ".github/workflows/dashboard-deploy-production.yml"
+    },
+    {
+      "kind": "tool",
+      "label": "Deploy script",
+      "note": "Runs void deploy, waits up to 2 minutes for health, rolls back on failure.",
+      "path": "scripts/deploy-dashboard.mjs"
+    },
+    {
+      "kind": "server",
+      "label": "Worker entry",
+      "note": "Serves every request, adds security headers and turns a crash into a 503.",
+      "path": "apps/dashboard/src/entry-worker.ts"
+    },
+    {
+      "kind": "route",
+      "label": "Health endpoint",
+      "note": "Reports D1, KV, the serving version and the last maintenance cron run.",
+      "path": "apps/dashboard/src/routes/api/health.ts"
+    },
+    {
+      "kind": "tool",
+      "label": "Alert watchdog",
+      "note": "Every 15 minutes opens or closes GitHub issues for four production checks.",
+      "path": "scripts/production-alerts.mjs"
+    }
+  ],
+  "features": [
+    {
+      "name": "Void deploy on Cloudflare",
+      "summary": "void deploy builds and ships one Worker with D1, KV and R2. A first deploy creates them in your own Cloudflare account; production pins existing ones.",
+      "path": "apps/dashboard/void.config.ts"
+    },
+    {
+      "name": "Health gate and rollback",
+      "summary": "After a deploy the script polls /login and /api/health for up to 2 minutes. If the new version never reports healthy, it runs wrangler rollback.",
+      "path": "scripts/deploy-dashboard.mjs"
+    },
+    {
+      "name": "CI workflows",
+      "summary": "Six workflows: PR Checks, E2E, Dev Smoke, D1 migration check, production deploy and production alerts.",
+      "path": ".github/workflows/pr-checks.yml"
+    },
+    {
+      "name": "Health endpoint",
+      "summary": "GET /api/health needs no sign-in. It returns 200 when D1 and KV answer, 503 otherwise, with the serving version and how long ago the cron ran.",
+      "path": "apps/dashboard/src/routes/api/health.ts"
+    },
+    {
+      "name": "Production alerts",
+      "summary": "A script opens one GitHub issue per failing check and closes it on recovery: health failing, D1 above 8 GB, cron not clean, Worker errors above 5%.",
+      "path": "scripts/production-alerts.mjs"
+    },
+    {
+      "name": "Security headers and safe errors",
+      "summary": "Every response gets HSTS, nosniff, frame-deny, referrer and permissions headers. API routes fail to a 503, and logged errors have tokens stripped.",
+      "path": "apps/dashboard/src/lib/security-headers.server.ts"
+    },
+    {
+      "name": "Local dev scripts",
+      "summary": "pnpm dev checks the toolchain, .env and ports before starting Vite. In a git worktree it links .env from the main checkout and shares its local state.",
+      "path": "scripts/dev.mjs"
+    }
+  ],
+  "dependsOn": ["storage", "emulator"],
+  "outside": ["cf-workers", "cf-d1", "cf-kv"]
+}

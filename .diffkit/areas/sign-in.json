@@ -1,0 +1,103 @@
+{
+  "name": "Sign-in & GitHub access",
+  "icon": "lock",
+  "tagline": "Landing page, sign-in and GitHub App access",
+  "summary": "Visitors see a landing page with a clickable sample of the app, sign in with GitHub, then choose which accounts and repositories DiffKit may read by installing its GitHub App.",
+  "paths": [
+    "apps/dashboard/src/routes/{login,setup,privacy,terms,index}.tsx",
+    "apps/dashboard/src/routes/api/{auth,github/app}/**",
+    "apps/dashboard/src/components/{landing,legal}/**",
+    "apps/dashboard/src/components/layouts/github-access-dialog**",
+    "apps/dashboard/src/lib/{auth,github-app,github-access,protected-auth,viewer-hint,sign-in-error,forbidden-orgs-store,local-session}**",
+    "apps/dashboard/src/lib/repository-stars**"
+  ],
+  "screen": {
+    "light": ".diffkit/screens/sign-in-light.jpg",
+    "dark": ".diffkit/screens/sign-in-dark.jpg"
+  },
+  "flow": [
+    {
+      "kind": "page",
+      "label": "Landing page",
+      "note": "/login shows the headline, a sign-in button and the sample preview; signed-in visitors are sent on.",
+      "path": "apps/dashboard/src/routes/login.tsx"
+    },
+    {
+      "kind": "client",
+      "label": "signInWithGitHub",
+      "note": "Forgets the last remembered viewer, then starts GitHub sign-in with a checked return path.",
+      "path": "apps/dashboard/src/lib/auth-actions.ts"
+    },
+    {
+      "kind": "route",
+      "label": "Better Auth handler",
+      "note": "/api/auth/* completes the OAuth exchange with GitHub and sets the session cookie.",
+      "path": "apps/dashboard/src/routes/api/auth/$.ts"
+    },
+    {
+      "kind": "storage",
+      "label": "D1 account rows",
+      "note": "One account row per token: provider 'github' for OAuth, 'github-app' for the App user token.",
+      "path": "apps/dashboard/src/db/schema.ts"
+    },
+    {
+      "kind": "page",
+      "label": "Setup page",
+      "note": "/setup lists your account and each organisation as installed or not, with a link to fix it.",
+      "path": "apps/dashboard/src/routes/setup.tsx"
+    },
+    {
+      "kind": "route",
+      "label": "App authorize and callback",
+      "note": "Authorize sets a state cookie and redirects to GitHub; callback checks it and saves the token.",
+      "path": "apps/dashboard/src/lib/github-app-oauth.server.ts"
+    }
+  ],
+  "features": [
+    {
+      "name": "Landing product preview",
+      "summary": "The real topbar, lists, inbox and pull request page run on sample data. Links switch views inside the preview and nothing is fetched.",
+      "path": "apps/dashboard/src/components/landing/product-preview.tsx"
+    },
+    {
+      "name": "GitHub OAuth sign-in",
+      "summary": "Better Auth's GitHub provider with repo, read:org and user:email scopes. In demo mode a generic OAuth plugin points it at the local emulator.",
+      "path": "apps/dashboard/src/lib/auth.server.ts"
+    },
+    {
+      "name": "GitHub App setup",
+      "summary": "A second authorization stores a refreshable App user token. /setup then lists each account as installed or not, with a link to fix it.",
+      "path": "apps/dashboard/src/routes/setup.tsx"
+    },
+    {
+      "name": "Two GitHub apps",
+      "summary": "OAuth App: sign-in and fallback reads. GitHub App: installation tokens, webhooks and install discovery. Private repos outside the installs are hidden.",
+      "path": "apps/dashboard/src/lib/github/installations.ts"
+    },
+    {
+      "name": "Optimistic auth",
+      "summary": "A returning viewer's name and avatar come from a non-secret hint cookie, so the shell paints at once while the real session check runs behind it.",
+      "path": "apps/dashboard/src/routes/_protected.tsx"
+    },
+    {
+      "name": "Access dialog",
+      "summary": "Opened from warnings and error screens. It lists every account with its install status and links to GitHub to configure or authorize.",
+      "path": "apps/dashboard/src/components/layouts/github-access-dialog.tsx"
+    },
+    {
+      "name": "Safe redirects and sign-out",
+      "summary": "Return paths are parsed so only same-site paths survive. Sign-out also wipes the hint cookie and the user's IndexedDB caches.",
+      "path": "apps/dashboard/src/lib/auth-redirect.ts"
+    }
+  ],
+  "dependsOn": ["github-data", "storage"],
+  "outside": ["github-oauth", "cf-d1", "browser-storage"],
+  "issues": [
+    {
+      "number": 144
+    },
+    {
+      "number": 188
+    }
+  ]
+}

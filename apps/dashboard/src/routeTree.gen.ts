@@ -32,6 +32,7 @@ import { Route as ApiPullsDiffRouteImport } from './routes/api/pulls/diff'
 import { Route as ApiWebhooksGithubRouteImport } from './routes/api/webhooks/github'
 import { Route as ProtectedOwnerRepoIndexRouteImport } from './routes/_protected/$owner/$repo/index'
 import { Route as ProtectedOwnerRepoBranchesRouteImport } from './routes/_protected/$owner/$repo/branches'
+import { Route as ProtectedOwnerRepoMapRouteImport } from './routes/_protected/$owner/$repo/map'
 import { Route as ProtectedOwnerRepoPullsRouteImport } from './routes/_protected/$owner/$repo/pulls'
 import { Route as ProtectedOwnerRepoSearchRouteImport } from './routes/_protected/$owner/$repo/search'
 import { Route as ProtectedOwnerRepoSettingsRouteImport } from './routes/_protected/$owner/$repo/settings'
@@ -184,6 +185,11 @@ const ProtectedOwnerRepoBranchesRoute =
     path: '/$owner/$repo/branches',
     getParentRoute: () => ProtectedRoute,
   } as any)
+const ProtectedOwnerRepoMapRoute = ProtectedOwnerRepoMapRouteImport.update({
+  id: '/$owner/$repo/map',
+  path: '/$owner/$repo/map',
+  getParentRoute: () => ProtectedRoute,
+} as any)
 const ProtectedOwnerRepoPullsRoute = ProtectedOwnerRepoPullsRouteImport.update({
   id: '/$owner/$repo/pulls',
   path: '/$owner/$repo/pulls',
@@ -413,6 +419,7 @@ export interface FileRoutesByFullPath {
   '/$owner/': typeof ProtectedOwnerIndexRoute
   '/settings/': typeof ProtectedSettingsIndexRoute
   '/$owner/$repo/branches': typeof ProtectedOwnerRepoBranchesRoute
+  '/$owner/$repo/map': typeof ProtectedOwnerRepoMapRoute
   '/$owner/$repo/pulls': typeof ProtectedOwnerRepoPullsRoute
   '/$owner/$repo/search': typeof ProtectedOwnerRepoSearchRoute
   '/$owner/$repo/settings': typeof ProtectedOwnerRepoSettingsRouteWithChildren
@@ -471,6 +478,7 @@ export interface FileRoutesByTo {
   '/$owner': typeof ProtectedOwnerIndexRoute
   '/settings': typeof ProtectedSettingsIndexRoute
   '/$owner/$repo/branches': typeof ProtectedOwnerRepoBranchesRoute
+  '/$owner/$repo/map': typeof ProtectedOwnerRepoMapRoute
   '/$owner/$repo/pulls': typeof ProtectedOwnerRepoPullsRoute
   '/$owner/$repo/search': typeof ProtectedOwnerRepoSearchRoute
   '/$owner/$repo/tags': typeof ProtectedOwnerRepoTagsRoute
@@ -530,6 +538,7 @@ export interface FileRoutesById {
   '/_protected/$owner/': typeof ProtectedOwnerIndexRoute
   '/_protected/settings/': typeof ProtectedSettingsIndexRoute
   '/_protected/$owner/$repo/branches': typeof ProtectedOwnerRepoBranchesRoute
+  '/_protected/$owner/$repo/map': typeof ProtectedOwnerRepoMapRoute
   '/_protected/$owner/$repo/pulls': typeof ProtectedOwnerRepoPullsRoute
   '/_protected/$owner/$repo/search': typeof ProtectedOwnerRepoSearchRoute
   '/_protected/$owner/$repo/settings': typeof ProtectedOwnerRepoSettingsRouteWithChildren
@@ -591,6 +600,7 @@ export interface FileRouteTypes {
     | '/$owner/'
     | '/settings/'
     | '/$owner/$repo/branches'
+    | '/$owner/$repo/map'
     | '/$owner/$repo/pulls'
     | '/$owner/$repo/search'
     | '/$owner/$repo/settings'
@@ -649,6 +659,7 @@ export interface FileRouteTypes {
     | '/$owner'
     | '/settings'
     | '/$owner/$repo/branches'
+    | '/$owner/$repo/map'
     | '/$owner/$repo/pulls'
     | '/$owner/$repo/search'
     | '/$owner/$repo/tags'
@@ -707,6 +718,7 @@ export interface FileRouteTypes {
     | '/_protected/$owner/'
     | '/_protected/settings/'
     | '/_protected/$owner/$repo/branches'
+    | '/_protected/$owner/$repo/map'
     | '/_protected/$owner/$repo/pulls'
     | '/_protected/$owner/$repo/search'
     | '/_protected/$owner/$repo/settings'
@@ -922,6 +934,13 @@ declare module '@tanstack/react-router' {
       path: '/$owner/$repo/branches'
       fullPath: '/$owner/$repo/branches'
       preLoaderRoute: typeof ProtectedOwnerRepoBranchesRouteImport
+      parentRoute: typeof ProtectedRoute
+    }
+    '/_protected/$owner/$repo/map': {
+      id: '/_protected/$owner/$repo/map'
+      path: '/$owner/$repo/map'
+      fullPath: '/$owner/$repo/map'
+      preLoaderRoute: typeof ProtectedOwnerRepoMapRouteImport
       parentRoute: typeof ProtectedRoute
     }
     '/_protected/$owner/$repo/pulls': {
@@ -1242,6 +1261,7 @@ interface ProtectedRouteChildren {
   ProtectedIndexRoute: typeof ProtectedIndexRoute
   ProtectedOwnerIndexRoute: typeof ProtectedOwnerIndexRoute
   ProtectedOwnerRepoBranchesRoute: typeof ProtectedOwnerRepoBranchesRoute
+  ProtectedOwnerRepoMapRoute: typeof ProtectedOwnerRepoMapRoute
   ProtectedOwnerRepoPullsRoute: typeof ProtectedOwnerRepoPullsRoute
   ProtectedOwnerRepoSearchRoute: typeof ProtectedOwnerRepoSearchRoute
   ProtectedOwnerRepoSettingsRoute: typeof ProtectedOwnerRepoSettingsRouteWithChildren
@@ -1279,6 +1299,7 @@ const ProtectedRouteChildren: ProtectedRouteChildren = {
   ProtectedIndexRoute: ProtectedIndexRoute,
   ProtectedOwnerIndexRoute: ProtectedOwnerIndexRoute,
   ProtectedOwnerRepoBranchesRoute: ProtectedOwnerRepoBranchesRoute,
+  ProtectedOwnerRepoMapRoute: ProtectedOwnerRepoMapRoute,
   ProtectedOwnerRepoPullsRoute: ProtectedOwnerRepoPullsRoute,
   ProtectedOwnerRepoSearchRoute: ProtectedOwnerRepoSearchRoute,
   ProtectedOwnerRepoSettingsRoute: ProtectedOwnerRepoSettingsRouteWithChildren,

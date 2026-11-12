@@ -1,0 +1,211 @@
+{
+  "version": 1,
+  "pitch": "DiffKit is a fast, design-first GitHub client.",
+  "description": "GitHub's daily surfaces, redrawn on GitHub's own API. A browser cache and a small change feed make it feel instant.",
+  "bands": [
+    {
+      "id": "screens",
+      "name": "What people use",
+      "caption": "Every screen, in the order someone meets them.",
+      "groups": [
+        {
+          "id": "entry",
+          "name": "Getting in",
+          "areas": ["sign-in"]
+        },
+        {
+          "id": "workspace",
+          "name": "Your workspace",
+          "areas": [
+            "repos-profiles",
+            "inbox",
+            "work-lists",
+            "command-palette",
+            "preferences"
+          ]
+        },
+        {
+          "id": "repository",
+          "name": "In a repository",
+          "areas": [
+            "repo-home",
+            "code-browser",
+            "history-compare",
+            "issues",
+            "actions",
+            "releases",
+            "repo-settings"
+          ]
+        },
+        {
+          "id": "pulls",
+          "name": "Pull requests",
+          "areas": ["pull-request", "review-diff"]
+        }
+      ]
+    },
+    {
+      "id": "shared",
+      "name": "What every screen shares",
+      "caption": "The frame, the conversation parts and the design system.",
+      "groups": [
+        {
+          "id": "blocks",
+          "name": "Every screen shares",
+          "areas": ["shell", "conversation", "ui-kit"]
+        }
+      ]
+    },
+    {
+      "id": "engine",
+      "name": "What makes it fast",
+      "caption": "How GitHub data reaches a screen and stays fresh.",
+      "groups": [
+        {
+          "id": "data",
+          "name": "The data path",
+          "areas": ["github-data", "instant-cache", "live-updates", "storage"]
+        }
+      ]
+    },
+    {
+      "id": "around",
+      "name": "What surrounds it",
+      "caption": "Running it without GitHub, shipping it, and leading people to it.",
+      "groups": [
+        {
+          "id": "tooling",
+          "name": "Around the product",
+          "areas": ["emulator", "platform-ops", "extension"]
+        }
+      ]
+    }
+  ],
+  "ignore": [
+    ".diffkit/**",
+    "pnpm-lock.yaml",
+    "**routeTree.gen.ts",
+    "**/package.json",
+    "docs/experiments/**"
+  ],
+  "outside": [
+    {
+      "id": "github-oauth",
+      "name": "OAuth and App install",
+      "owner": "GitHub",
+      "role": "Sign-in and the GitHub App installation flow"
+    },
+    {
+      "id": "github-rest",
+      "name": "REST API",
+      "owner": "GitHub",
+      "role": "Most reads and every write"
+    },
+    {
+      "id": "github-graphql",
+      "name": "GraphQL API",
+      "owner": "GitHub",
+      "role": "Page bundles, my-work search and timelines"
+    },
+    {
+      "id": "github-webhooks",
+      "name": "Webhooks",
+      "owner": "GitHub",
+      "role": "Tell DiffKit when something changed, for repos with the GitHub App"
+    },
+    {
+      "id": "cf-workers",
+      "name": "Workers",
+      "owner": "Cloudflare",
+      "role": "One Worker serves the whole app, deployed with Void"
+    },
+    {
+      "id": "cf-d1",
+      "name": "D1 database",
+      "owner": "Cloudflare",
+      "role": "Sign-in tables and the short-lived change table"
+    },
+    {
+      "id": "cf-kv",
+      "name": "KV",
+      "owner": "Cloudflare",
+      "role": "Expiring keys: installation tokens, readable-repo lists, cron heartbeat"
+    },
+    {
+      "id": "cf-r2",
+      "name": "R2 bucket",
+      "owner": "Cloudflare",
+      "role": "Images and videos uploaded into comments"
+    },
+    {
+      "id": "browser-idb",
+      "name": "IndexedDB",
+      "owner": "The browser",
+      "role": "The per-user query cache and the raw diff cache"
+    },
+    {
+      "id": "browser-storage",
+      "name": "Cookies and localStorage",
+      "owner": "The browser",
+      "role": "Session and viewer hint cookies, themes, pinned repos, saved filters"
+    }
+  ],
+  "tour": [
+    {
+      "title": "Sign in with GitHub",
+      "text": "You sign in with GitHub and pick the repos DiffKit may read. GitHub stays the source of truth.",
+      "areas": ["sign-in"],
+      "outside": ["github-oauth", "github-rest", "github-graphql"]
+    },
+    {
+      "title": "Your work, across repos",
+      "text": "A home summary, a keyboard inbox, and lists of the pull requests, reviews and issues that involve you.",
+      "areas": ["repos-profiles", "inbox", "work-lists", "command-palette"],
+      "outside": []
+    },
+    {
+      "title": "Inside a repository",
+      "text": "Every GitHub tab, redrawn: code, history, issues, Actions, releases and settings.",
+      "areas": [
+        "repo-home",
+        "code-browser",
+        "history-compare",
+        "issues",
+        "actions",
+        "releases",
+        "repo-settings"
+      ],
+      "outside": []
+    },
+    {
+      "title": "Pull requests are the centre",
+      "text": "The PR page loads in one call. The review page streams the diff as it downloads.",
+      "areas": ["pull-request", "review-diff"],
+      "outside": []
+    },
+    {
+      "title": "Shared by every screen",
+      "text": "One frame, one comments-and-timeline kit, and a 59-component design system.",
+      "areas": ["shell", "conversation", "ui-kit"],
+      "outside": []
+    },
+    {
+      "title": "One road to GitHub",
+      "text": "Every screen asks through one layer of server functions that picks the right token.",
+      "areas": ["github-data"],
+      "outside": ["github-rest", "github-graphql"]
+    },
+    {
+      "title": "Why it feels instant",
+      "text": "Seen pages paint from a browser cache. Webhooks feed a change list that tabs poll every 15 s.",
+      "areas": ["instant-cache", "live-updates", "storage"],
+      "outside": ["browser-idb", "github-webhooks", "cf-d1"]
+    },
+    {
+      "title": "Around the product",
+      "text": "A local fake GitHub for demos and tests. One Cloudflare Worker, with rollback.",
+      "areas": ["emulator", "platform-ops", "extension"],
+      "outside": ["cf-workers"]
+    }
+  ]
+}

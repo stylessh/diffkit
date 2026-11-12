@@ -1,0 +1,97 @@
+{
+  "name": "Home, repos & profiles",
+  "icon": "repo",
+  "tagline": "Home summary, your repos and profile pages",
+  "summary": "A home page that sums up what needs you, a Repositories hub listing every repository you can reach, and profile pages with contributions, pinned repositories and activity.",
+  "paths": [
+    "apps/dashboard/src/routes/_protected/{index,repos,-repository-rows-skeleton}.**",
+    "apps/dashboard/src/routes/_protected/$owner/index.**",
+    "apps/dashboard/src/components/{overview,profile}/**",
+    "apps/dashboard/src/components/repo/{repository-row,repo-commit-sparkline}**",
+    "apps/dashboard/src/lib/{repos-hub-filter,contribution-grid,user-activity-feed}**",
+    "apps/dashboard/src/lib/github/{account-query-options,repos.}**"
+  ],
+  "screen": {
+    "light": ".diffkit/screens/repos-profiles-light.jpg",
+    "dark": ".diffkit/screens/repos-profiles-dark.jpg"
+  },
+  "flow": [
+    {
+      "kind": "page",
+      "label": "Overview page",
+      "note": "/ greets the viewer with one sentence that links into Reviews, Pull requests and Issues.",
+      "path": "apps/dashboard/src/routes/_protected/index.tsx"
+    },
+    {
+      "kind": "page",
+      "label": "Repositories page",
+      "note": "/repos keeps search, visibility, sort and page in the URL and asks the server for that slice.",
+      "path": "apps/dashboard/src/routes/_protected/repos.tsx"
+    },
+    {
+      "kind": "server",
+      "label": "getReposHub",
+      "note": "Lists every repository, applies the access filter, search, visibility and sort, returns the top N.",
+      "path": "apps/dashboard/src/lib/github/repos.ts"
+    },
+    {
+      "kind": "github",
+      "label": "GitHub REST",
+      "note": "Repositories of the signed-in user, 100 per page, read until the list ends."
+    },
+    {
+      "kind": "component",
+      "label": "RepositoryRow",
+      "note": "Name, description, language, stars, forks and a commit sparkline loaded near the viewport.",
+      "path": "apps/dashboard/src/components/repo/repository-row.tsx"
+    },
+    {
+      "kind": "page",
+      "label": "Profile page",
+      "note": "/$owner shows a contribution banner, profile details, pinned repos, activity or a repositories tab.",
+      "path": "apps/dashboard/src/routes/_protected/$owner/index.tsx"
+    }
+  ],
+  "features": [
+    {
+      "name": "Overview summary",
+      "summary": "'Welcome back' plus one sentence counting reviews waiting, your open pull requests, drafts and assigned issues, then your 10 latest pull requests.",
+      "path": "apps/dashboard/src/components/overview/overview-content.tsx"
+    },
+    {
+      "name": "Repositories hub",
+      "summary": "Every repository you can access, with search, a public/private filter, four sort orders and 'Load more' in steps of 30.",
+      "path": "apps/dashboard/src/routes/_protected/repos.tsx"
+    },
+    {
+      "name": "Repository row",
+      "summary": "Language dot, star and fork counts, and a year of weekly commits as a sparkline that only loads when the row scrolls near.",
+      "path": "apps/dashboard/src/components/repo/repository-row.tsx"
+    },
+    {
+      "name": "Contribution banner",
+      "summary": "The contribution calendar fills the profile banner. Cells are sized to fit the area exactly and fade out toward the edges.",
+      "path": "apps/dashboard/src/components/profile/contribution-graph.tsx"
+    },
+    {
+      "name": "Activity feed",
+      "summary": "GitHub events grouped by month: one line per pull request in its latest state, and a month's pushes folded into one expandable commits line.",
+      "path": "apps/dashboard/src/components/profile/user-activity-feed.tsx"
+    },
+    {
+      "name": "Pinned and repositories tab",
+      "summary": "Pinned repositories as cards, and a Repositories tab (?tab=repositories). Your own profile lists what the App can see; others list public repos.",
+      "path": "apps/dashboard/src/components/profile/pinned-repo-card.tsx"
+    }
+  ],
+  "dependsOn": ["work-lists", "repo-home", "github-data", "instant-cache"],
+  "outside": ["github-rest"],
+  "issues": [
+    {
+      "number": 154
+    },
+    {
+      "number": 188
+    }
+  ]
+}

@@ -1,0 +1,99 @@
+# Once a week, a coding agent brings the product map up to date with the
+# week's changes and a pull request is opened when anything moved.
+#
+# Needs: an ANTHROPIC_API_KEY repository secret, and "Allow GitHub Actions to
+# create and approve pull requests" under Settings > Actions > General.
+#
+# The agent runs in a job that can only read the repository. A second job
+# takes its changes as a patch, keeps only what is under .diffkit/, checks the
+# result and opens the pull request. The agent never holds a write token.
+name: Product map refresh
+
+on:
+  schedule:
+    - cron: "0 6 * * 1" # Mondays, 06:00 UTC
+  workflow_dispatch:
+
+concurrency:
+  group: product-map-refresh
+  cancel-in-progress: true
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/checkout@v4
+        with:
+          repository: stylessh/diffkit
+          sparse-checkout: skills/product-map
+          path: .product-map-skill
+      - uses: anthropics/claude-code-action@v1
+        with:
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          # The job's own read-only token. Without it the action asks for an
+          # app token that can write, and the read-only boundary is gone.
+          github_token: ${{ github.token }}
+          prompt: |
+            Bring this repository's product map up to date with the last week of changes.
+
+            1. Read `.product-map-skill/skills/product-map/SKILL.md` and follow its "Keep it current" steps.
+            2. Find what changed with `node .product-map-skill/skills/product-map/scripts/changed.mjs --since "8 days ago"`. If it says no update is needed, stop there and change nothing.
+            3. Edit only files under `.diffkit/`. Do not touch any other file, and do not commit or push.
+            4. Finish with `node .product-map-skill/skills/product-map/scripts/check.mjs --fix` and fix what it reports until it passes.
+          claude_args: |
+            --max-turns 80
+            --allowedTools "Read,Edit,Write,Glob,Grep,Bash(node:*),Bash(git:*)"
+      - name: Collect the map changes
+        run: |
+          git add -A .diffkit
+          git diff --cached --binary -- .diffkit > "$RUNNER_TEMP/product-map.patch"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: product-map-patch
+          path: ${{ runner.temp }}/product-map.patch
+
+  open-pull-request:
+    needs: update
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: product-map-patch
+          path: ${{ runner.temp }}
+      - name: Apply the map changes
+        id: apply
+        run: |
+          if [ ! -s "$RUNNER_TEMP/product-map.patch" ]; then
+            echo "The map is already up to date."
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          git apply --index --include='.diffkit/*' "$RUNNER_TEMP/product-map.patch"
+          echo "changed=true" >> "$GITHUB_OUTPUT"
+      - if: steps.apply.outputs.changed == 'true'
+        uses: stylessh/diffkit/skills/product-map/action@main
+      - name: Open the pull request
+        if: steps.apply.outputs.changed == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          branch="product-map/refresh-${GITHUB_RUN_ID}"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git switch -c "$branch"
+          git commit -m "Bring the product map up to date"
+          git push origin "$branch"
+          gh pr create --head "$branch" \
+            --title "Bring the product map up to date" \
+            --body "The weekly refresh re-read the areas whose code changed in the last week and updated their files under \`.diffkit/\`. The product map check passed on the result."

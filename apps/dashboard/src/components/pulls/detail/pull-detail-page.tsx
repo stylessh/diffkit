@@ -215,6 +215,7 @@ export function PullDetailContent({
 							repo={repo}
 							pullNumber={pullNumber}
 							scope={scope}
+							hasProductMap={page?.hasProductMap === true}
 						/>
 					)}
 				</Skeleton>
