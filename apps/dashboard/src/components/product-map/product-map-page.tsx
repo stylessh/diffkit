@@ -15,6 +15,7 @@ import {
 	PageHeaderTitle,
 	PageIconButton,
 } from "@diffkit/ui/components/page-header";
+import { Spinner } from "@diffkit/ui/components/spinner";
 import {
 	ViewTab,
 	ViewTabCount,
@@ -34,17 +35,17 @@ import {
 	useRef,
 	useState,
 } from "react";
+import { MAP_FILE_PATH } from "#/lib/product-map/map-file";
 import { AreaPanel } from "./area-panel";
 import { AREA_SECTIONS, type AreaSection, AreaSheet } from "./area-sheet";
 import { MapCanvas } from "./map-canvas";
-import { lensDescriptions } from "./map-format";
+import { lensDescriptions, openWorkCount } from "./map-format";
 import { MapPanel } from "./map-panel";
 import { MapSearch } from "./map-search";
 import { TOUR_IDLE, TourBar, tourReducer } from "./map-tour";
-import { type LoadedProductMap, loadProductMap } from "./product-map-data";
+import { type LoadedProductMap, useProductMap } from "./product-map-data";
 import type { MapLens, ProductArea } from "./product-map-types";
 import { NO_SPOTLIGHT, type Spotlight } from "./spotlight";
-import { openWorkCount } from "./work/work-data";
 
 const LENSES = ["structure", "activity", "size", "open"] as const;
 
@@ -436,7 +437,7 @@ function ProductMapView({
 							>
 								<header className="flex flex-col gap-2">
 									<h1 className="text-pretty font-semibold text-[23px] text-foreground leading-8 tracking-[-0.01em]">
-										{map.repo.pitch}
+										{map.pitch}
 									</h1>
 									<p
 										aria-live="polite"
@@ -483,6 +484,28 @@ function ProductMapView({
 	);
 }
 
+function MapNotice({
+	title,
+	description,
+	children,
+}: {
+	title: string;
+	description: string;
+	children?: ReactNode;
+}) {
+	return (
+		<div className="flex h-full items-center justify-center p-6">
+			<EmptyState
+				illustration={<LayersIcon size={28} />}
+				title={title}
+				description={description}
+			>
+				{children}
+			</EmptyState>
+		</div>
+	);
+}
+
 export function ProductMapPage({
 	owner,
 	repo,
@@ -490,25 +513,47 @@ export function ProductMapPage({
 	owner: string;
 	repo: string;
 }) {
-	const map = loadProductMap(owner, repo);
-	if (!map)
+	const state = useProductMap(owner, repo);
+	if (state.status === "loading")
 		return (
-			<div className="flex h-full items-center justify-center p-6">
-				<EmptyState
-					illustration={<LayersIcon size={28} />}
-					title="No product map for this repository yet"
-					description={`The experiment ships one hand-analysed map, for stylessh/diffkit. ${owner}/${repo} has not been analysed.`}
-				>
-					<Button asChild size="sm" variant="outline">
-						<Link
-							to="/$owner/$repo/map"
-							params={{ owner: "stylessh", repo: "diffkit" }}
-						>
-							Open the DiffKit map
-						</Link>
-					</Button>
-				</EmptyState>
+			<div className="flex h-full items-center justify-center">
+				<Spinner className="size-4 text-muted-foreground" />
 			</div>
 		);
-	return <ProductMapView map={map} owner={owner} repo={repo} />;
+	if (state.status === "missing")
+		return (
+			<MapNotice
+				title="No product map yet"
+				description={`${owner}/${repo} has no ${MAP_FILE_PATH} on its default branch. The file names the product's areas and which code belongs to each; DiffKit counts the rest.`}
+			>
+				<Button asChild size="sm" variant="outline">
+					<Link
+						to="/$owner/$repo/blob/$"
+						params={{
+							owner: "stylessh",
+							repo: "diffkit",
+							_splat: "main/docs/product-map.md",
+						}}
+					>
+						How to add one
+					</Link>
+				</Button>
+			</MapNotice>
+		);
+	if (state.status === "invalid")
+		return (
+			<MapNotice
+				title="The map file needs fixing"
+				description={`${MAP_FILE_PATH} could not be read:`}
+			>
+				<ul className="flex max-w-md flex-col gap-1.5 text-left text-[13px] text-muted-foreground">
+					{state.problems.slice(0, 6).map((problem) => (
+						<li key={problem} className="text-pretty">
+							{problem}
+						</li>
+					))}
+				</ul>
+			</MapNotice>
+		);
+	return <ProductMapView map={state.map} owner={owner} repo={repo} />;
 }

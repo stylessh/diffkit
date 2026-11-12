@@ -9,7 +9,7 @@ import { cn } from "@diffkit/ui/lib/utils";
 import { useState } from "react";
 
 import { AreaHoverCard, relationTo } from "./area-hover-card";
-import { formatCount, formatShortDate, plural } from "./map-format";
+import { formatBytes, formatShortDate, noun, plural } from "./map-format";
 import { areaIcon } from "./map-icons";
 import { StatRow } from "./map-panel";
 import type { LoadedProductMap } from "./product-map-data";
@@ -48,6 +48,7 @@ function MiniMap({
 								<AreaHoverCard
 									key={id}
 									area={area}
+									live={map.activity?.areas[area.id]}
 									relation={relationTo(area, current)}
 								>
 									<button
@@ -102,6 +103,7 @@ function AreaLinks({
 					<AreaHoverCard
 						key={id}
 						area={area}
+						live={map.activity?.areas[area.id]}
 						relation={relationTo(area, current)}
 					>
 						<PanelPill asChild icon={<Icon size={14} strokeWidth={2} />}>
@@ -132,7 +134,7 @@ export function AreaPanel({
 	map: LoadedProductMap;
 	onNavigate: (id: string) => void;
 }) {
-	const { stats } = area;
+	const live = map.activity?.areas[area.id];
 	return (
 		<>
 			<MiniMap map={map} current={area} onNavigate={onNavigate} />
@@ -152,50 +154,60 @@ export function AreaPanel({
 				map={map}
 				onNavigate={onNavigate}
 			/>
-			<PanelSection label="Stats">
-				<StatRow
-					icon={<CodeIcon size={14} strokeWidth={2} />}
-					value={formatCount(stats.loc)}
-					label="lines"
-				/>
-				<StatRow
-					icon={<FileIcon size={14} strokeWidth={2} />}
-					value={stats.files}
-					label="files"
-				/>
-				<StatRow
-					icon={<CircleCheckIcon size={14} strokeWidth={2} />}
-					value={stats.testFiles}
-					label="test files"
-				/>
-				<StatRow
-					icon={<ClockIcon size={14} strokeWidth={2} />}
-					value={formatShortDate(stats.lastTouched)}
-					label="last change"
-				/>
-			</PanelSection>
-			<PanelSection label="People">
-				<div className="flex min-h-7 flex-wrap items-center gap-y-1 pl-1.5">
-					{area.people.map(({ login, commits }) => (
-						<Tooltip key={login}>
-							<TooltipTrigger asChild>
-								<span className="-ml-1.5 flex rounded-full bg-main p-[1.5px]">
-									<PersonAvatar
-										login={login}
-										bot={map.people[login]?.bot ?? false}
-									/>
-								</span>
-							</TooltipTrigger>
-							<TooltipContent className="flex-col items-start gap-0.5">
-								<span>{map.people[login]?.name ?? login}</span>
-								<span className="font-[450] text-muted-foreground">
-									{plural(commits, "commit")} here
-								</span>
-							</TooltipContent>
-						</Tooltip>
-					))}
-				</div>
-			</PanelSection>
+			{live ? (
+				<>
+					<PanelSection label="Stats">
+						<StatRow
+							icon={<CodeIcon size={14} strokeWidth={2} />}
+							value={formatBytes(live.bytes)}
+							label="of code"
+						/>
+						<StatRow
+							icon={<FileIcon size={14} strokeWidth={2} />}
+							value={live.files}
+							label={noun(live.files, "file")}
+						/>
+						<StatRow
+							icon={<CircleCheckIcon size={14} strokeWidth={2} />}
+							value={live.testFiles}
+							label={noun(live.testFiles, "test file")}
+						/>
+						{live.lastMerged ? (
+							<StatRow
+								icon={<ClockIcon size={14} strokeWidth={2} />}
+								value={formatShortDate(live.lastMerged)}
+								label="last merge"
+							/>
+						) : null}
+					</PanelSection>
+					{live.people.length > 0 ? (
+						<PanelSection label="People">
+							<div className="flex min-h-7 flex-wrap items-center gap-y-1 pl-1.5">
+								{live.people.map(({ login, pulls }) => (
+									<Tooltip key={login}>
+										<TooltipTrigger asChild>
+											<span className="-ml-1.5 flex rounded-full bg-main p-[1.5px]">
+												<PersonAvatar
+													login={login}
+													avatarUrl={
+														map.activity?.people[login]?.avatarUrl ?? null
+													}
+												/>
+											</span>
+										</TooltipTrigger>
+										<TooltipContent className="flex-col items-start gap-0.5">
+											<span>{login}</span>
+											<span className="font-[450] text-muted-foreground">
+												{plural(pulls, "pull request")} here
+											</span>
+										</TooltipContent>
+									</Tooltip>
+								))}
+							</div>
+						</PanelSection>
+					) : null}
+				</>
+			) : null}
 		</>
 	);
 }

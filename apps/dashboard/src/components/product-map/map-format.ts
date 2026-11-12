@@ -1,6 +1,5 @@
 import type { LoadedProductMap } from "./product-map-data";
 import type { MapLens, ProductArea } from "./product-map-types";
-import { openWorkCount } from "./work/work-data";
 
 const shortDate = new Intl.DateTimeFormat("en", {
 	month: "short",
@@ -40,8 +39,25 @@ export function formatCount(value: number) {
 	return compact.format(value).toLowerCase();
 }
 
+export function formatBytes(bytes: number) {
+	if (bytes < 1000) return `${bytes} B`;
+	const units = ["KB", "MB", "GB"];
+	let value = bytes / 1000;
+	let unit = 0;
+	while (value >= 1000 && unit < units.length - 1) {
+		value /= 1000;
+		unit += 1;
+	}
+	return `${value >= 100 ? Math.round(value) : value.toFixed(1)} ${units[unit]}`;
+}
+
 export function formatShare(share: number) {
 	return share < 0.01 ? "<1%" : `${Math.round(share * 100)}%`;
+}
+
+/** The noun alone, in the number that goes with `count`. */
+export function noun(count: number, singular: string) {
+	return count === 1 ? singular : `${singular}s`;
 }
 
 export function plural(count: number, noun: string) {
@@ -53,13 +69,21 @@ export function shortPath(path: string) {
 	return parts.length <= 2 ? path : parts.slice(-2).join("/");
 }
 
+/** Open pull requests with lines in the area, plus its open hinted issues. */
+export function openWorkCount(map: LoadedProductMap, area: ProductArea) {
+	const live = map.activity?.areas[area.id];
+	return live ? live.openPulls + live.openIssues.length : 0;
+}
+
 export function lensValue(
 	area: ProductArea,
 	lens: MapLens,
 	map: LoadedProductMap,
 ) {
-	if (lens === "activity") return area.stats.commitsLast30;
-	if (lens === "size") return area.stats.loc;
+	const live = map.activity?.areas[area.id];
+	if (!live) return 0;
+	if (lens === "activity") return live.mergedLast30;
+	if (lens === "size") return live.bytes;
 	if (lens === "open") return openWorkCount(map, area);
 	return 0;
 }
@@ -69,13 +93,14 @@ export function lensLabel(
 	lens: MapLens,
 	map: LoadedProductMap,
 ) {
-	if (lens === "structure") return null;
-	return formatCount(lensValue(area, lens, map));
+	if (lens === "structure" || !map.activity) return null;
+	const value = lensValue(area, lens, map);
+	return lens === "size" ? formatBytes(value) : formatCount(value);
 }
 
 export const lensDescriptions: Record<MapLens, string> = {
 	structure: "How the product is put together",
-	activity: "Commits in the 30 days before the snapshot",
-	size: "Lines of source, tests excluded",
+	activity: "Pull requests merged in the last 30 days",
+	size: "Size of each area's files",
 	open: "Open pull requests and issues",
 };

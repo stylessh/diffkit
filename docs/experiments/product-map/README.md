@@ -1,5 +1,13 @@
 # Experiment: product map
 
+> **This experiment became a feature.** The static snapshot described below was
+> replaced by a map file each repository owns plus numbers counted live from
+> GitHub; see [docs/product-map.md](../../product-map.md). The pipeline scripts
+> and the bundled data files are gone, and the analysis they held now lives in
+> [`.diffkit/map.json`](../../../.diffkit/map.json). What follows is the record
+> of the experiment as it was run: the open command, URLs and file names in it
+> describe that version, not the current one.
+
 One of five overnight takes on "a repo should be understandable as a product,
 not as a file tree". This one replaces the file list with a map of the
 product's areas in plain language.

@@ -11,20 +11,18 @@ import type { MapIcon } from "./map-icons";
 
 export function PersonAvatar({
 	login,
-	bot,
+	avatarUrl,
 	title,
 	className,
 }: {
 	login: string;
-	bot: boolean;
+	avatarUrl: string | null;
 	title?: string;
 	className?: string;
 }) {
 	return (
 		<Avatar className={cn("size-5", className)} title={title}>
-			{bot ? null : (
-				<AvatarImage src={`https://github.com/${login}.png?size=40`} alt="" />
-			)}
+			{avatarUrl ? <AvatarImage src={avatarUrl} alt="" /> : null}
 			<AvatarFallback className="text-[8px]">
 				{login.slice(0, 2).toUpperCase()}
 			</AvatarFallback>
@@ -44,7 +42,7 @@ export function WorkRow({
 	number,
 	title,
 	author,
-	bot,
+	avatarUrl,
 	date,
 	note,
 }: {
@@ -55,7 +53,7 @@ export function WorkRow({
 	number: number;
 	title: string;
 	author: string;
-	bot: boolean;
+	avatarUrl: string | null;
 	date: string;
 	note?: string;
 }) {
@@ -74,7 +72,7 @@ export function WorkRow({
 			</span>
 			<PersonAvatar
 				login={author}
-				bot={bot}
+				avatarUrl={avatarUrl}
 				title={author}
 				className="size-4 shrink-0"
 			/>

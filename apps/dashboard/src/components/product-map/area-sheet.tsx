@@ -7,7 +7,7 @@ import { FileTypeIcon } from "#/components/shared/file-type-icon";
 import { AreaActivity } from "./area-activity";
 import { AreaFlow } from "./area-flow";
 import { blobLink, CodeLink, type RepoLinks } from "./code-link";
-import { formatShortDate, plural, shortPath } from "./map-format";
+import { plural, shortPath } from "./map-format";
 import { featureIcon } from "./map-icons";
 import type { LoadedProductMap } from "./product-map-data";
 import type {
@@ -53,24 +53,41 @@ function Section({
 	);
 }
 
-function ScreenPreview({ area }: { area: ProductArea }) {
-	const label = `${area.name}, as it looks in demo mode`;
+type ScreenState = "showing" | "unavailable";
+
+/** The area's own screenshots, served from the repository like README images. */
+function ScreenPreview({
+	area,
+	screen,
+	repo,
+}: {
+	area: ProductArea;
+	screen: NonNullable<ProductArea["screen"]>;
+	repo: RepoLinks;
+}) {
+	const [state, setState] = useState<ScreenState>("showing");
+	if (state === "unavailable") return null;
+	const label = `${area.name}, as it looks in the product`;
+	const raw = (path: string) =>
+		`https://github.com/${repo.owner}/${repo.repo}/raw/${repo.branch}/${path}`;
 	return (
 		<figure className="overflow-hidden rounded-lg bg-card shadow-card">
 			<img
-				src={`/product-map/${area.id}-light.jpg`}
+				src={raw(screen.light)}
 				alt={label}
 				width={1280}
 				height={800}
 				loading="lazy"
+				onError={() => setState("unavailable")}
 				className="block h-auto w-full dark:hidden"
 			/>
 			<img
-				src={`/product-map/${area.id}-dark.jpg`}
+				src={raw(screen.dark)}
 				alt={label}
 				width={1280}
 				height={800}
 				loading="lazy"
+				onError={() => setState("unavailable")}
 				className="hidden h-auto w-full dark:block"
 			/>
 		</figure>
@@ -230,7 +247,7 @@ export function AreaSheet({
 	const repo: RepoLinks = {
 		owner: map.repo.owner,
 		repo: map.repo.name,
-		branch: map.repo.defaultBranch,
+		branch: map.repo.branch,
 	};
 	const group = map.bands
 		.flatMap((band) => band.groups)
@@ -249,7 +266,14 @@ export function AreaSheet({
 			<p className="text-pretty text-[15px] text-foreground leading-6">
 				{area.summary}
 			</p>
-			{area.screen ? <ScreenPreview area={area} /> : null}
+			{area.screen ? (
+				<ScreenPreview
+					key={area.id}
+					area={area}
+					screen={area.screen}
+					repo={repo}
+				/>
+			) : null}
 
 			<Section
 				id="how"
@@ -286,7 +310,7 @@ export function AreaSheet({
 			<Section
 				id="activity"
 				title="What is happening"
-				description={`Commits per week since ${formatShortDate(map.repo.firstCommit)}, then every pull request that changed this area.`}
+				description="Pull requests merged per week, then every pull request that changed this area."
 			>
 				<AreaActivity key={area.id} area={area} map={map} repo={repo} />
 			</Section>

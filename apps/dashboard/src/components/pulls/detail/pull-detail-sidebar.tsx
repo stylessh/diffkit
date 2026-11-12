@@ -46,12 +46,14 @@ export function PullDetailSidebar({
 	repo,
 	pullNumber,
 	scope,
+	hasProductMap = false,
 }: {
 	pr: PullDetail;
 	owner: string;
 	repo: string;
 	pullNumber: number;
 	scope: GitHubQueryScope;
+	hasProductMap?: boolean;
 }) {
 	return (
 		<DetailSidebar>
@@ -78,7 +80,14 @@ export function PullDetailSidebar({
 				scope={scope}
 			/>
 
-			<PullProductAreas owner={owner} repo={repo} pullNumber={pullNumber} />
+			{hasProductMap ? (
+				<PullProductAreas
+					owner={owner}
+					repo={repo}
+					pullNumber={pullNumber}
+					scope={scope}
+				/>
+			) : null}
 		</DetailSidebar>
 	);
 }

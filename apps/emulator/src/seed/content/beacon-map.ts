@@ -1,0 +1,311 @@
+/**
+ * The demo repository's `.diffkit/map.json`, so demo mode shows a product map
+ * computed from the seeded files, pull requests and issues.
+ */
+const map = {
+	version: 1,
+	pitch: "beacon is a typed event client for the browser.",
+	description:
+		"One createClient call, a transport you can swap, and reconnects that back off instead of hammering the server.",
+	bands: [
+		{
+			id: "library",
+			name: "What you import",
+			caption: "The public surface of the package.",
+			groups: [
+				{ id: "api", name: "The client", areas: ["client"] },
+				{
+					id: "wire",
+					name: "On the wire",
+					areas: ["transports", "reconnect"],
+				},
+			],
+		},
+		{
+			id: "project",
+			name: "Around the code",
+			caption: "What keeps the package shippable.",
+			groups: [{ id: "shipping", name: "Shipping", areas: ["release"] }],
+		},
+	],
+	areas: [
+		{
+			id: "client",
+			name: "Event client",
+			icon: "code",
+			tagline: "createClient, typed emit and subscribe",
+			summary:
+				"What an app imports. createClient returns an object that sends typed events and calls your listeners when one arrives, whatever transport is underneath.",
+			flow: [
+				{
+					kind: "client",
+					label: "createClient",
+					note: "Takes the options, picks a transport and returns the client object.",
+					path: "src/client.ts",
+				},
+				{
+					kind: "client",
+					label: "EventMap types",
+					note: "Your event names and payloads, so emit and on are checked at compile time.",
+					path: "src/types.ts",
+				},
+				{
+					kind: "client",
+					label: "createTransport",
+					note: "Looks up the transport registered for the kind you asked for.",
+					path: "src/transport/registry.ts",
+				},
+				{
+					kind: "external",
+					label: "Your event server",
+					note: "The other end of the connection. beacon only assumes it speaks the chosen transport.",
+				},
+			],
+			features: [
+				{
+					name: "Typed events",
+					summary:
+						"An EventMap type names every event and its payload; listeners get the right payload type.",
+					entry: [{ path: "src/types.ts", symbol: "EventMap" }],
+				},
+				{
+					name: "Connection status",
+					summary:
+						"The client reports connecting, open or closed so a UI can show it.",
+					entry: [{ path: "src/client.ts", symbol: "ConnectionStatus" }],
+				},
+				{
+					name: "Package entry",
+					summary: "The one module the package exports from.",
+					entry: [{ path: "src/index.ts" }],
+				},
+			],
+			entryPoints: [
+				{ path: "src/client.ts", symbol: "createClient", role: "The client" },
+				{ path: "src/types.ts", symbol: "ClientOptions", role: "Its options" },
+				{ path: "src/index.ts", role: "What the package exports" },
+			],
+			dependsOn: ["transports", "reconnect"],
+			outside: ["server"],
+			goodParts: [
+				"The public types live in one file (src/types.ts) and index.ts re-exports only those.",
+			],
+			watch: [
+				"The client has been rewritten in place four times; the state-machine rewrite is still an open pull request.",
+			],
+		},
+		{
+			id: "transports",
+			name: "Transports",
+			icon: "refresh",
+			tagline: "WebSocket, server-sent events, WebTransport",
+			summary:
+				"How events travel. Each transport implements one small interface, and a registry lets an app add its own.",
+			flow: [
+				{
+					kind: "client",
+					label: "Transport interface",
+					note: "connect, send, onMessage and onClose: the whole contract.",
+					path: "src/transport/transport.ts",
+				},
+				{
+					kind: "client",
+					label: "registerTransport",
+					note: "Maps a kind such as 'ws' or 'sse' to a factory.",
+					path: "src/transport/registry.ts",
+				},
+				{
+					kind: "client",
+					label: "WebSocketTransport",
+					note: "The default: one socket, JSON frames.",
+					path: "src/transport/websocket.ts",
+				},
+				{
+					kind: "external",
+					label: "Your event server",
+					note: "Receives the frames the transport sends.",
+				},
+			],
+			features: [
+				{
+					name: "WebSocket",
+					summary: "The default transport, two-way over one socket.",
+					entry: [{ path: "src/transport/websocket.ts" }],
+				},
+				{
+					name: "Server-sent events",
+					summary: "Receive-only streaming over plain HTTP.",
+					entry: [{ path: "src/transport/sse.ts" }],
+				},
+				{
+					name: "Transport registry",
+					summary: "Register a custom transport under your own kind.",
+					entry: [{ path: "src/transport/registry.ts" }],
+				},
+			],
+			entryPoints: [
+				{
+					path: "src/transport/transport.ts",
+					symbol: "Transport",
+					role: "The contract every transport implements",
+				},
+				{
+					path: "src/transport/registry.ts",
+					symbol: "createTransport",
+					role: "How a kind becomes a transport",
+				},
+			],
+			dependsOn: [],
+			outside: ["server"],
+			goodParts: [
+				"A new transport is one file plus one registerTransport call.",
+			],
+			watch: [
+				"The SSE transport has had the most fixes; custom headers were the latest.",
+			],
+		},
+		{
+			id: "reconnect",
+			name: "Reconnect & backoff",
+			icon: "refresh",
+			tagline: "Waits longer after each failed attempt",
+			summary:
+				"When the connection drops, the client waits before trying again, and waits longer each time, so a server coming back is not flooded.",
+			flow: [
+				{
+					kind: "client",
+					label: "Connection closes",
+					note: "The transport reports a close; the client schedules a retry.",
+					path: "src/client.ts",
+				},
+				{
+					kind: "client",
+					label: "nextDelay",
+					note: "Turns the attempt number into a delay, doubling from 250 ms.",
+					path: "src/backoff.ts",
+				},
+				{
+					kind: "tool",
+					label: "Backoff tests",
+					note: "Pin the delays so a change to the curve is deliberate.",
+					path: "src/__tests__/backoff.test.ts",
+				},
+			],
+			features: [
+				{
+					name: "Exponential delay",
+					summary: "Each failed attempt doubles the wait, up to a cap.",
+					entry: [{ path: "src/backoff.ts", symbol: "nextDelay" }],
+				},
+			],
+			entryPoints: [
+				{
+					path: "src/backoff.ts",
+					symbol: "nextDelay",
+					role: "The delay curve",
+				},
+			],
+			dependsOn: [],
+			outside: [],
+			goodParts: ["nextDelay is a pure function with its own tests."],
+			watch: ["Without jitter, many clients retry at the same instant."],
+		},
+		{
+			id: "release",
+			name: "CI & releases",
+			icon: "actions",
+			tagline: "Workflows, changelog and package settings",
+			summary:
+				"What runs on every pull request and what publishes a version: two workflows, the changelog and the package manifest.",
+			flow: [
+				{
+					kind: "tool",
+					label: "CI workflow",
+					note: "Type-checks and tests every pull request.",
+					path: ".github/workflows/ci.yml",
+				},
+				{
+					kind: "tool",
+					label: "Release workflow",
+					note: "Publishes the package when a version tag is pushed.",
+					path: ".github/workflows/release.yml",
+				},
+				{
+					kind: "external",
+					label: "npm",
+					note: "Where the published package lands.",
+				},
+			],
+			features: [
+				{
+					name: "Changelog",
+					summary: "One entry per released version.",
+					entry: [{ path: "CHANGELOG.md" }],
+				},
+			],
+			entryPoints: [
+				{
+					path: ".github/workflows/ci.yml",
+					role: "What a pull request must pass",
+				},
+				{ path: "package.json", role: "Version, exports and scripts" },
+			],
+			dependsOn: [],
+			outside: ["npm"],
+			goodParts: [],
+			watch: [],
+		},
+	],
+	rules: [
+		{ path: "src/transport/**", area: "transports" },
+		{ path: "src/backoff.ts", area: "reconnect" },
+		{ path: "src/__tests__/backoff**", area: "reconnect" },
+		{ path: "src/**", area: "client" },
+		{ path: ".github/**", area: "release" },
+		{ path: "{CHANGELOG.md,package.json,tsconfig.json}", area: "release" },
+	],
+	ignore: ["LICENSE", ".diffkit/**", "**/*.sbom.json"],
+	outside: [
+		{
+			id: "server",
+			name: "Event server",
+			owner: "Your backend",
+			role: "The other end of every transport",
+		},
+		{ id: "npm", name: "Registry", owner: "npm", role: "Published versions" },
+	],
+	tour: [
+		{
+			title: "One call",
+			text: "An app calls createClient with its event types and gets typed emit and subscribe.",
+			areas: ["client"],
+			outside: [],
+		},
+		{
+			title: "Pick how events travel",
+			text: "A transport carries the frames. WebSocket is the default; others register themselves.",
+			areas: ["transports"],
+			outside: ["server"],
+		},
+		{
+			title: "Stay connected politely",
+			text: "After a drop the client retries, waiting longer each time.",
+			areas: ["reconnect", "client"],
+			outside: [],
+		},
+	],
+	// Issue numbers follow the seed's timeline; see `issues` in beacon.ts.
+	issues: [
+		{
+			number: 13,
+			areas: ["client"],
+			note: "A leak in close() would outlive the state-machine rewrite.",
+		},
+		{ number: 12, areas: ["transports"] },
+		{ number: 7, areas: ["transports"] },
+		{ number: 9, areas: ["reconnect"] },
+		{ number: 17, areas: ["reconnect"] },
+	],
+};
+
+export const beaconProductMap = `${JSON.stringify(map, null, "\t")}\n`;

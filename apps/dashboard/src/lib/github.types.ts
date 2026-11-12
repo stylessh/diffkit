@@ -427,6 +427,8 @@ export type PullPageData = {
 	commentPagination: CommentPagination;
 	eventPagination: EventPagination;
 	headRefDeleted: boolean;
+	/** Whether the repository's default branch has a `.diffkit/map.json` */
+	hasProductMap: boolean;
 };
 
 export type PullFile = {
@@ -662,6 +664,8 @@ export type RepoOverview = {
 	openPullCount: number;
 	openIssueCount: number;
 	hasDiscussions: boolean;
+	/** Whether the default branch has a `.diffkit/map.json` */
+	hasProductMap: boolean;
 	/** Present when `isFork`; upstream `owner/name` */
 	forkParentFullName: string | null;
 	/** Upstream owner avatar from the same overview query (no extra request) */

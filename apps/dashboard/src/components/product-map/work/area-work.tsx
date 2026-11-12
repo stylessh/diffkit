@@ -8,12 +8,12 @@ import {
 } from "@diffkit/ui/components/tooltip";
 import { Link } from "@tanstack/react-router";
 import { memo, type ReactNode, useMemo, useState } from "react";
+import type { MapActivity, PullWork } from "#/lib/product-map/activity";
+import type { WorkPart } from "#/lib/product-map/work";
 import type { RepoLinks } from "../code-link";
 import { formatShare } from "../map-format";
-import type { LoadedProductMap } from "../product-map-data";
-import type { ProductArea, PullReference } from "../product-map-types";
+import type { ProductArea } from "../product-map-types";
 import { WorkRow } from "../work-row";
-import { type AreaTouch, loadProductWork } from "./work-data";
 
 const LIST_PREVIEW = 5;
 const MAIN_SHARE = 0.1;
@@ -27,14 +27,15 @@ function cellLevel(lines: number) {
 	return 1;
 }
 
-function cellColor(touch: AreaTouch) {
+function cellColor({ touch, pull }: Row) {
 	const level = cellLevel(touch.lines);
-	return touch.fix
+	return pull.fix
 		? `color-mix(in oklab, var(--color-removed) ${FIX_STRENGTH[level]}%, transparent)`
 		: `var(--contrib-level-${level})`;
 }
 
-type Row = { touch: AreaTouch; pull: PullReference };
+/** One pull request as seen from a single area. */
+type Row = { touch: WorkPart; pull: PullWork };
 
 /** Whether the area is a real part of the pull request, not a line or two. */
 function isMain({ touch }: Row) {
@@ -51,35 +52,39 @@ const WorkCells = memo(function WorkCells({
 	return (
 		<TooltipProvider delayDuration={0} skipDelayDuration={0}>
 			<ul aria-label="Merged pull requests" className="-m-0.5 flex flex-wrap">
-				{rows.map(({ touch, pull }) => (
-					<li key={touch.number} className="flex">
-						<Tooltip>
-							<TooltipTrigger asChild>
-								<Link
-									to="/$owner/$repo/pull/$pullId"
-									params={{
-										owner: repo.owner,
-										repo: repo.repo,
-										pullId: String(touch.number),
-									}}
-									aria-label={`#${touch.number} ${pull.title}`}
-									className="group/cell flex size-3.5 items-center justify-center"
-								>
-									<span
-										style={{ backgroundColor: cellColor(touch) }}
-										className="size-2.5 rounded-[3px] opacity-90 transition-shadow duration-150 group-hover/cell:shadow-[0_0_0_1.5px_var(--color-foreground)]"
-									/>
-								</Link>
-							</TooltipTrigger>
-							<TooltipContent className="max-w-72 flex-col items-start gap-0.5">
-								<span className="line-clamp-2">{pull.title}</span>
-								<span className="font-[450] text-muted-foreground">
-									{formatShare(touch.share)} of #{touch.number} lands here
-								</span>
-							</TooltipContent>
-						</Tooltip>
-					</li>
-				))}
+				{rows.map((row) => {
+					const { touch, pull } = row;
+					return (
+						<li key={pull.number} className="flex">
+							<Tooltip>
+								<TooltipTrigger asChild>
+									<Link
+										to="/$owner/$repo/pull/$pullId"
+										params={{
+											owner: repo.owner,
+											repo: repo.repo,
+											pullId: String(pull.number),
+										}}
+										aria-label={`#${pull.number} ${pull.title}`}
+										className="group/cell flex size-3.5 items-center justify-center"
+									>
+										<span
+											style={{ backgroundColor: cellColor(row) }}
+											className="size-2.5 rounded-[3px] opacity-90 transition-shadow duration-150 group-hover/cell:shadow-[0_0_0_1.5px_var(--color-foreground)]"
+										/>
+									</Link>
+								</TooltipTrigger>
+								<TooltipContent className="max-w-72 flex-col items-start gap-0.5">
+									<span className="line-clamp-2">{pull.title}</span>
+									<span className="font-[450] text-muted-foreground">
+										{pull.approximate ? "About " : ""}
+										{formatShare(touch.share)} of #{pull.number} lands here
+									</span>
+								</TooltipContent>
+							</Tooltip>
+						</li>
+					);
+				})}
 			</ul>
 		</TooltipProvider>
 	);
@@ -140,21 +145,21 @@ function MoreButton({
  */
 export function AreaWork({
 	area,
-	map,
+	activity,
 	repo,
 }: {
 	area: ProductArea;
-	map: LoadedProductMap;
+	activity: MapActivity;
 	repo: RepoLinks;
 }) {
 	const [listState, setListState] = useState<ListState>("preview");
-	const work = loadProductWork(map.repo.owner, map.repo.name);
 
 	const { merged, main, minor } = useMemo(() => {
 		const rows: Row[] = [];
-		for (const touch of work?.byArea.get(area.id) ?? []) {
-			const pull = map.pulls[touch.number];
-			if (pull) rows.push({ touch, pull });
+		for (const number of activity.areas[area.id].pulls) {
+			const pull = activity.pulls[number];
+			const touch = pull.parts.find((part) => part.area === area.id);
+			if (touch) rows.push({ touch, pull });
 		}
 		const open = rows.filter((row) => row.pull.state === "open").reverse();
 		const done = rows.filter((row) => row.pull.state === "merged");
@@ -164,7 +169,7 @@ export function AreaWork({
 			main: newestFirst.filter(isMain),
 			minor: newestFirst.filter((row) => !isMain(row)),
 		};
-	}, [work, area.id, map]);
+	}, [activity, area.id]);
 
 	if (main.length + minor.length === 0) return null;
 
@@ -176,10 +181,12 @@ export function AreaWork({
 
 	return (
 		<div className="flex flex-col gap-6">
-			<div className="flex flex-col gap-3">
-				<WorkCells rows={merged} repo={repo} />
-				<CellLegend />
-			</div>
+			{merged.length > 0 ? (
+				<div className="flex flex-col gap-3">
+					<WorkCells rows={merged} repo={repo} />
+					<CellLegend />
+				</div>
+			) : null}
 			<SectionCard className="[&>div:last-child]:pb-0">
 				{shown.map(({ pull }) => {
 					const isMerged = pull.state === "merged";
@@ -193,7 +200,7 @@ export function AreaWork({
 							number={pull.number}
 							title={pull.title}
 							author={pull.author}
-							bot={map.people[pull.author]?.bot ?? false}
+							avatarUrl={activity.people[pull.author]?.avatarUrl ?? null}
 							date={pull.date}
 						/>
 					);

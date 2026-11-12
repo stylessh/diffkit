@@ -200,6 +200,8 @@ export const githubQueryKeys = {
 			["github", scope.userId, "pulls", "detail", input] as const,
 		fileSummaries: (scope: GitHubQueryScope, input: PullFromRepoQueryInput) =>
 			["github", scope.userId, "pulls", "fileSummaries", input] as const,
+		productAreas: (scope: GitHubQueryScope, input: PullFromRepoQueryInput) =>
+			["github", scope.userId, "pulls", "productAreas", input] as const,
 		comments: (scope: GitHubQueryScope, input: PullFromRepoQueryInput) =>
 			["github", scope.userId, "pulls", "comments", input] as const,
 		status: (scope: GitHubQueryScope, input: PullFromRepoQueryInput) =>
@@ -303,6 +305,14 @@ export const githubQueryKeys = {
 			scope: GitHubQueryScope,
 			input: { owner: string; repo: string },
 		) => ["github", scope.userId, "repo", "discussions", input] as const,
+		productMapFile: (
+			scope: GitHubQueryScope,
+			input: { owner: string; repo: string },
+		) => ["github", scope.userId, "repo", "productMapFile", input] as const,
+		productMapActivity: (
+			scope: GitHubQueryScope,
+			input: { owner: string; repo: string },
+		) => ["github", scope.userId, "repo", "productMapActivity", input] as const,
 	},
 	code: codeBrowsingQueryKeys,
 	issues: {

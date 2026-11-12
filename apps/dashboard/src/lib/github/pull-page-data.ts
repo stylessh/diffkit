@@ -52,6 +52,7 @@ type GitHubGraphQLReviewRequestNode = {
 };
 type GitHubGraphQLPullPageResponse = {
 	repository: {
+		productMap: { oid: string } | null;
 		pullRequest: {
 			id: string;
 			databaseId: number | null;
@@ -119,6 +120,9 @@ type GitHubGraphQLPullPageResponse = {
 
 const PULL_PAGE_QUERY = `query($owner: String!, $repo: String!, $number: Int!) {
 	repository(owner: $owner, name: $repo) {
+		productMap: object(expression: "HEAD:.diffkit/map.json") {
+			oid
+		}
 		pullRequest(number: $number) {
 			id
 			databaseId
@@ -394,6 +398,7 @@ async function getPullPageDataViaGraphQL(
 					hasMore: timelineResult.hasMore,
 				},
 				headRefDeleted: deriveHeadRefDeleted(events),
+				hasProductMap: response.repository?.productMap != null,
 			};
 		},
 	});
@@ -442,6 +447,8 @@ async function getPullPageDataViaRest(
 			hasMore: timelineResult.hasMore,
 		},
 		headRefDeleted: deriveHeadRefDeleted(timelineResult.events),
+		// The REST fallback does not look for the map file.
+		hasProductMap: false,
 	};
 }
 

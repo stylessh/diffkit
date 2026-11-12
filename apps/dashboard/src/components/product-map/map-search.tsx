@@ -61,13 +61,19 @@ export function MapSearch({
 	const code = useMemo(() => collectCode(map), [map]);
 	const pulls = useMemo(
 		() =>
-			Object.values(map.pulls)
-				.filter((pull) => pull.areas.length > 0)
-				.sort((a, b) => b.number - a.number),
+			Object.values(map.activity?.pulls ?? {}).sort(
+				(a, b) => b.number - a.number,
+			),
 		[map],
 	);
 	const issues = useMemo(
-		() => Object.values(map.issues).sort((a, b) => b.number - a.number),
+		() =>
+			map.areas.flatMap((area) =>
+				(map.activity?.areas[area.id].openIssues ?? []).flatMap((number) => {
+					const issue = map.activity?.issues[number];
+					return issue ? [{ ...issue, areaId: area.id }] : [];
+				}),
+			),
 		[map],
 	);
 	const select = (areaId: string) => {
@@ -146,7 +152,7 @@ export function MapSearch({
 							<CommandItem
 								key={pull.number}
 								value={`#${pull.number} ${pull.title} ${pull.author}`}
-								onSelect={() => select(pull.areas[0])}
+								onSelect={() => select(pull.parts[0].area)}
 							>
 								<Icon
 									size={14}
@@ -158,7 +164,7 @@ export function MapSearch({
 								/>
 								<span className="truncate">{pull.title}</span>
 								<span className="ml-auto shrink-0 text-muted-foreground text-xs">
-									#{pull.number} · {areaName(pull.areas[0])}
+									#{pull.number} · {areaName(pull.parts[0].area)}
 								</span>
 							</CommandItem>
 						);
@@ -167,21 +173,14 @@ export function MapSearch({
 				<CommandGroup heading="Issues">
 					{issues.map((issue) => (
 						<CommandItem
-							key={issue.number}
-							value={`#${issue.number} ${issue.title} ${issue.author}`}
-							onSelect={() => select(issue.areas[0])}
+							key={`${issue.number}:${issue.areaId}`}
+							value={`#${issue.number} ${issue.title} ${issue.author} ${issue.areaId}`}
+							onSelect={() => select(issue.areaId)}
 						>
-							<IssuesIcon
-								size={14}
-								className={
-									issue.state === "open"
-										? "size-3.5 text-state-open"
-										: "size-3.5 text-state-merged"
-								}
-							/>
+							<IssuesIcon size={14} className="size-3.5 text-state-open" />
 							<span className="truncate">{issue.title}</span>
 							<span className="ml-auto shrink-0 text-muted-foreground text-xs">
-								#{issue.number} · {areaName(issue.areas[0])}
+								#{issue.number} · {areaName(issue.areaId)}
 							</span>
 						</CommandItem>
 					))}

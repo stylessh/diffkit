@@ -1,5 +1,6 @@
 import { IssuesIcon } from "@diffkit/icons";
 import { SectionCard } from "@diffkit/ui/components/section-card";
+import { Spinner } from "@diffkit/ui/components/spinner";
 import {
 	Tooltip,
 	TooltipContent,
@@ -12,12 +13,13 @@ import {
 	formatMonth,
 	formatShortDate,
 	formatWeekRange,
+	noun,
+	openWorkCount,
 	plural,
 } from "./map-format";
 import type { LoadedProductMap } from "./product-map-data";
 import type { ProductArea } from "./product-map-types";
 import { AreaWork } from "./work/area-work";
-import { areaPullCounts, openWorkCount } from "./work/work-data";
 import { WorkRow } from "./work-row";
 
 function WeeklyBars({
@@ -36,7 +38,7 @@ function WeeklyBars({
 			<TooltipProvider delayDuration={0} skipDelayDuration={0}>
 				<div
 					role="img"
-					aria-label={`${plural(total, "commit")} per week since ${formatShortDate(weekStart)}`}
+					aria-label={`${plural(total, "pull request")} merged per week since ${formatShortDate(weekStart)}`}
 					className="-mx-[1.5px] flex h-16 items-end"
 				>
 					{weekly.map((value, week) => (
@@ -61,7 +63,7 @@ function WeeklyBars({
 								</span>
 							</TooltipTrigger>
 							<TooltipContent className="flex-col items-start gap-0.5">
-								<span>{plural(value, "commit")}</span>
+								<span>{value} merged</span>
 								<span className="font-[450] text-muted-foreground">
 									{formatWeekRange(weekStart, week)}
 								</span>
@@ -98,32 +100,42 @@ export function AreaActivity({
 	map: LoadedProductMap;
 	repo: RepoLinks;
 }) {
-	const isBot = (login: string) => map.people[login]?.bot ?? false;
-	const { stats } = area;
-	const pulls = areaPullCounts(map, area.id);
+	const { activity } = map;
+	if (!activity)
+		return (
+			<p className="flex items-center gap-2 text-[13px] text-muted-foreground">
+				<Spinner className="size-3.5" />
+				Counting pull requests on GitHub
+			</p>
+		);
+	const live = activity.areas[area.id];
 
 	return (
 		<div className="flex flex-col gap-10">
 			<dl className="flex flex-wrap gap-x-10 gap-y-3">
-				<Figure value={stats.commits} label="commits" />
-				<Figure value={stats.commitsLast30} label="in the last 30 days" />
-				<Figure value={pulls.merged} label="merged pull requests" />
+				<Figure
+					value={live.mergedPulls}
+					label={noun(live.mergedPulls, "merged pull request")}
+				/>
+				<Figure value={live.mergedLast30} label="in the last 30 days" />
 				<Figure value={openWorkCount(map, area)} label="open" />
 			</dl>
-			<WeeklyBars
-				weekly={stats.weekly}
-				weekStart={map.repo.weekStart}
-				analysedAt={map.repo.analysedAt}
-			/>
-			<AreaWork area={area} map={map} repo={repo} />
-			{area.issues.open.length > 0 ? (
+			{live.mergedPulls > 0 ? (
+				<WeeklyBars
+					weekly={live.weekly}
+					weekStart={activity.weekStart}
+					analysedAt={activity.analysedAt}
+				/>
+			) : null}
+			<AreaWork area={area} activity={activity} repo={repo} />
+			{live.openIssues.length > 0 ? (
 				<div className="flex flex-col gap-2.5">
 					<h3 className="font-[450] text-muted-foreground text-xs">
 						Open issues
 					</h3>
 					<SectionCard className="[&>div:last-child]:pb-0">
-						{area.issues.open.map((number) => {
-							const issue = map.issues[number];
+						{live.openIssues.map((number) => {
+							const issue = activity.issues[number];
 							return (
 								<WorkRow
 									key={number}
@@ -137,7 +149,7 @@ export function AreaActivity({
 									title={issue.title}
 									note={issue.note}
 									author={issue.author}
-									bot={isBot(issue.author)}
+									avatarUrl={activity.people[issue.author]?.avatarUrl ?? null}
 									date={issue.date}
 								/>
 							);

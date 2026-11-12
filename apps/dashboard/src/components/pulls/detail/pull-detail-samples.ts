@@ -101,6 +101,7 @@ export const SAMPLE_PULL_PAGE: PullPageData = {
 	commentPagination: { totalCount: 2, perPage: 30, loadedPages: [1] },
 	eventPagination: { loadedPages: [1], hasMore: false },
 	headRefDeleted: false,
+	hasProductMap: false,
 };
 
 export const SAMPLE_PULL_STATUS: PullStatus = {

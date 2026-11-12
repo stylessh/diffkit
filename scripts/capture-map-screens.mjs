@@ -1,24 +1,44 @@
 #!/usr/bin/env node
-// Captures one screenshot per user-facing area from demo mode, in both themes.
-// Needs `pnpm dev:demo` running. Run from the repo root:
-//   node docs/experiments/product-map/pipeline/capture-screens.mjs
+// Refreshes the screenshots DiffKit's own product map shows at the top of each
+// user-facing area (.diffkit/screens, referenced from .diffkit/map.json), from
+// demo mode and in both themes. Needs `pnpm dev:demo` running. Run from the
+// repo root:
+//   node scripts/capture-map-screens.mjs
 // DASHBOARD_URL overrides the default http://localhost:3000.
 
-import { readFileSync } from "node:fs";
 import { createRequire } from "node:module";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
-const root = path.resolve(here, "../../../..");
+const root = path.resolve(here, "..");
 const require = createRequire(path.join(root, "apps/e2e/package.json"));
 const { chromium } = require("@playwright/test");
 
 const base = process.env.DASHBOARD_URL ?? "http://localhost:3000";
-const outDir = path.join(root, "apps/dashboard/public/product-map");
-const areas = JSON.parse(readFileSync(path.join(here, "areas.json"), "utf8")).areas.filter(
-  (area) => area.screen
-);
+const outDir = path.join(root, ".diffkit/screens");
+/** The demo page that best shows each area, by area id. */
+const screens = {
+  "sign-in": "/login",
+  "repos-profiles": "/",
+  inbox: "/inbox",
+  "work-lists": "/pulls",
+  "command-palette": "/?palette",
+  preferences: "/settings",
+  "repo-home": "/lumen-labs/beacon",
+  "code-browser": "/lumen-labs/beacon/tree/main/src",
+  "history-compare": "/lumen-labs/beacon/commits",
+  issues: "/lumen-labs/beacon/issues",
+  actions: "/lumen-labs/beacon/actions",
+  releases: "/lumen-labs/beacon/releases",
+  "repo-settings": "/lumen-labs/beacon/settings",
+  "pull-request": "/lumen-labs/beacon/pull/16",
+  "review-diff": "/lumen-labs/beacon/review/16",
+};
+const areas = Object.entries(screens).map(([id, screenPath]) => ({
+  id,
+  screen: { path: screenPath },
+}));
 
 async function signIn(page) {
   await page.goto(`${base}/login`);

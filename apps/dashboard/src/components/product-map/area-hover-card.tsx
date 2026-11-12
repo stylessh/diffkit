@@ -1,11 +1,12 @@
-import { CodeIcon, GitCommitIcon } from "@diffkit/icons";
+import { CodeIcon, GitMergeIcon } from "@diffkit/icons";
 import {
 	HoverCard,
 	HoverCardContent,
 	HoverCardTrigger,
 } from "@diffkit/ui/components/hover-card";
 import type { ReactNode } from "react";
-import { formatCount, plural } from "./map-format";
+import type { AreaActivity } from "#/lib/product-map/activity";
+import { formatBytes } from "./map-format";
 import { areaIcon } from "./map-icons";
 import type { ProductArea } from "./product-map-types";
 
@@ -20,11 +21,13 @@ export function relationTo(area: ProductArea, current: ProductArea) {
 
 export function AreaHoverCard({
 	area,
+	live,
 	relation,
 	side = "left",
 	children,
 }: {
 	area: ProductArea;
+	live: AreaActivity | undefined;
 	relation: string | null;
 	side?: "left" | "bottom";
 	children: ReactNode;
@@ -56,16 +59,18 @@ export function AreaHoverCard({
 				<p className="text-pretty text-muted-foreground text-xs leading-[1.5]">
 					{area.tagline}
 				</p>
-				<div className="flex items-center gap-4 whitespace-nowrap font-[450] text-muted-foreground text-xs tabular-nums">
-					<span className="flex items-center gap-1.5">
-						<CodeIcon size={12} strokeWidth={2} />
-						{formatCount(area.stats.loc)} lines
-					</span>
-					<span className="flex items-center gap-1.5">
-						<GitCommitIcon size={12} strokeWidth={2} />
-						{plural(area.stats.commitsLast30, "commit")} in 30 days
-					</span>
-				</div>
+				{live ? (
+					<div className="flex items-center gap-4 whitespace-nowrap font-[450] text-muted-foreground text-xs tabular-nums">
+						<span className="flex items-center gap-1.5">
+							<CodeIcon size={12} strokeWidth={2} />
+							{formatBytes(live.bytes)}
+						</span>
+						<span className="flex items-center gap-1.5">
+							<GitMergeIcon size={12} strokeWidth={2} />
+							{live.mergedLast30} merged in 30 days
+						</span>
+					</div>
+				) : null}
 			</HoverCardContent>
 		</HoverCard>
 	);

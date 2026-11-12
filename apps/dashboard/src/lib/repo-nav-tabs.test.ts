@@ -24,6 +24,7 @@ describe("repo tab preferences", () => {
 		const withCommits = withTabToggled(DEFAULT_REPO_TABS, "commits");
 		expect(withCommits).toEqual([
 			"code",
+			"map",
 			"commits",
 			"pulls",
 			"issues",
