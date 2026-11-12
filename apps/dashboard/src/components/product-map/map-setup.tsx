@@ -4,26 +4,17 @@ import {
 	ChatGPTLogo,
 	CheckIcon,
 	ClaudeLogo,
-	CodeIcon,
 	CopyIcon,
 	CursorLogo,
-	GitMergeIcon,
-	GitPullRequestIcon,
 	LayersIcon,
-	RefreshCwIcon,
-	UserMultiple02Icon,
 } from "@diffkit/icons";
 import { Button } from "@diffkit/ui/components/button";
-import {
-	DetailLayout,
-	PanelRow,
-	PanelSection,
-} from "@diffkit/ui/components/detail-layout";
 import {
 	PageHeader,
 	PageHeaderCrumb,
 	PageHeaderTitle,
 } from "@diffkit/ui/components/page-header";
+import { ScrollFade } from "@diffkit/ui/components/scroll-fade";
 import { Spinner } from "@diffkit/ui/components/spinner";
 import {
 	Tooltip,
@@ -96,11 +87,20 @@ function CopyPromptButton({ prompt }: { prompt: string }) {
 	);
 }
 
-function PromptCard({ prompt }: { prompt: string }) {
+function PromptCard({
+	prompt,
+	className,
+}: {
+	prompt: string;
+	className?: string;
+}) {
 	return (
 		<section
 			aria-label="Prompt for a coding agent"
-			className="overflow-hidden rounded-xl bg-card shadow-card"
+			className={cn(
+				"overflow-hidden rounded-xl bg-card shadow-card",
+				className,
+			)}
 		>
 			<div className="flex items-center gap-3 border-rule border-b-[0.5px] bg-group/60 py-2.5 pr-2.5 pl-4">
 				<span className="font-[450] text-muted-foreground text-xs max-sm:hidden">
@@ -153,104 +153,87 @@ const EXAMPLE: { group: string; areas: [icon: string, name: string][] }[] = [
 		],
 	},
 	{
+		group: "Working together",
+		areas: [
+			["pull", "Reviews"],
+			["issues", "Tasks"],
+			["tag", "Releases"],
+		],
+	},
+	{
 		group: "Behind the screens",
 		areas: [
 			["layers", "Storage"],
 			["refresh", "Sync"],
 			["globe", "Public API"],
+			["cache", "Cache"],
+		],
+	},
+	{
+		group: "Around the product",
+		areas: [
+			["actions", "CI"],
+			["package", "Packaging"],
 		],
 	},
 ];
 
-/** A still of the page a map file produces, so the empty page shows where this leads. */
+/** A still of the page a map produces: what the overlay's prompt leads to. */
 function ExampleMap() {
 	return (
-		<figure className="flex flex-col gap-4">
-			<figcaption className="font-[450] text-muted-foreground text-xs">
-				What appears here once it is merged
-			</figcaption>
-			<div
-				aria-hidden
-				className="flex select-none flex-col opacity-70 [mask-image:linear-gradient(to_bottom,black_35%,transparent)]"
-			>
-				{EXAMPLE.map(({ group, areas }) => (
-					<div
-						key={group}
-						className="grid gap-x-6 gap-y-2 border-header-rule border-t-[0.5px] py-5 sm:grid-cols-[9rem_minmax(0,1fr)]"
-					>
-						<span className="font-[450] text-[13px] text-muted-foreground sm:leading-8">
-							{group}
-						</span>
-						<div className="flex flex-wrap gap-2">
-							{areas.map(([icon, name]) => {
-								const Icon = areaIcon(icon);
-								return (
-									<span
-										key={name}
-										className="inline-flex h-8 items-center gap-2 rounded-lg bg-button px-2.5 font-medium text-[13px] text-text-header shadow-button"
-									>
-										<Icon
-											size={14}
-											strokeWidth={2}
-											className="shrink-0 text-muted-foreground"
-										/>
-										{name}
-									</span>
-								);
-							})}
-						</div>
-					</div>
-				))}
+		<div
+			aria-hidden
+			className="flex select-none flex-col opacity-70 [mask-image:linear-gradient(to_bottom,black_70%,transparent)]"
+		>
+			<div className="flex flex-col gap-2.5 pb-8">
+				<span className="h-6 w-80 max-w-full rounded-md bg-foreground/10" />
+				<span className="h-3.5 w-56 rounded-md bg-foreground/[0.06]" />
 			</div>
-		</figure>
-	);
-}
-
-function SetupPanel() {
-	return (
-		<>
-			<p className="mb-7 text-pretty text-[13px] text-foreground leading-5">
-				A product map shows a repository as its areas, in plain language,
-				instead of a file tree.
-			</p>
-			<PanelSection label="Three steps">
-				<PanelRow icon={<CopyIcon size={14} strokeWidth={2} />}>
-					Copy the prompt
-				</PanelRow>
-				<PanelRow icon={<CodeIcon size={14} strokeWidth={2} />}>
-					Run it in your checkout
-				</PanelRow>
-				<PanelRow icon={<GitMergeIcon size={14} strokeWidth={2} />}>
-					Merge its pull request
-				</PanelRow>
-			</PanelSection>
-			<PanelSection label="After that">
-				<PanelRow muted icon={<RefreshCwIcon size={14} strokeWidth={2} />}>
-					Agents update it with each change
-				</PanelRow>
-				<PanelRow muted icon={<GitPullRequestIcon size={14} strokeWidth={2} />}>
-					DiffKit counts pull requests per area
-				</PanelRow>
-				<PanelRow muted icon={<UserMultiple02Icon size={14} strokeWidth={2} />}>
-					And who works where
-				</PanelRow>
-			</PanelSection>
-		</>
+			{EXAMPLE.map(({ group, areas }) => (
+				<div
+					key={group}
+					className="grid gap-x-6 gap-y-2 border-header-rule border-t-[0.5px] py-6 sm:grid-cols-[9rem_minmax(0,1fr)]"
+				>
+					<span className="font-[450] text-[13px] text-muted-foreground sm:leading-8">
+						{group}
+					</span>
+					<div className="flex flex-wrap gap-2">
+						{areas.map(([icon, name]) => {
+							const Icon = areaIcon(icon);
+							return (
+								<span
+									key={name}
+									className="inline-flex h-8 items-center gap-2 rounded-lg bg-button px-2.5 font-medium text-[13px] text-text-header shadow-button"
+								>
+									<Icon
+										size={14}
+										strokeWidth={2}
+										className="shrink-0 text-muted-foreground"
+									/>
+									{name}
+								</span>
+							);
+						})}
+					</div>
+				</div>
+			))}
+		</div>
 	);
 }
 
 const LENS_LABELS = ["Structure", "Activity", "Size", "Open work"];
 
-/** The map page's own frame, for the states that have no map to draw in it. */
+/**
+ * The map page's own frame, for the states that have no map to draw in it:
+ * the same header, toolbar and reading column, without the side panel.
+ */
 function MapFrame({
 	owner,
 	repo,
-	panel,
 	children,
 }: {
 	owner: string;
 	repo: string;
-	panel?: ReactNode;
 	children: ReactNode;
 }) {
 	return (
@@ -268,55 +251,36 @@ function MapFrame({
 					</span>
 				</PageHeaderTitle>
 			</PageHeader>
-			<div className="relative min-h-0 flex-1 overflow-hidden">
-				<div className="absolute inset-0 flex flex-col bg-main">
-					<DetailLayout
-						panelLabel="About product maps"
-						panel={panel ?? <SetupPanel />}
-						toolbar={
-							<ViewTabs label="Map views">
-								{LENS_LABELS.map((label) => (
-									<ViewTab
-										key={label}
-										disabled
-										className="disabled:pointer-events-none disabled:opacity-50"
-									>
-										{label}
-									</ViewTab>
-								))}
-							</ViewTabs>
-						}
-					>
-						{children}
-					</DetailLayout>
+			<div className="flex min-h-0 flex-1 flex-col bg-main">
+				<div className="z-10 shrink-0 bg-main">
+					<ViewTabs label="Map views">
+						{LENS_LABELS.map((label) => (
+							<ViewTab
+								key={label}
+								disabled
+								className="disabled:pointer-events-none disabled:opacity-50"
+							>
+								{label}
+							</ViewTab>
+						))}
+					</ViewTabs>
 				</div>
+				<ScrollFade orientation="vertical" fade={32} className="min-h-0 flex-1">
+					<div className="mx-auto flex w-full min-w-0 max-w-[780px] flex-col gap-8 px-4 pt-14 pb-24 sm:px-[46px] md:px-8 md:pb-16 lg:px-[46px]">
+						{children}
+					</div>
+				</ScrollFade>
 			</div>
 		</div>
 	);
 }
 
-function FrameHeading({
-	title,
-	children,
-}: {
-	title: string;
-	children: ReactNode;
-}) {
-	return (
-		<header className="flex flex-col gap-2">
-			<h1 className="text-pretty font-semibold text-[23px] text-foreground leading-8 tracking-[-0.01em]">
-				{title}
-			</h1>
-			<p className="text-pretty font-[450] text-[13px] text-muted-foreground leading-5">
-				{children}
-			</p>
-		</header>
-	);
-}
+const headingClassName =
+	"text-pretty font-semibold text-[23px] text-foreground leading-8 tracking-[-0.01em]";
 
 export function MapLoading({ owner, repo }: { owner: string; repo: string }) {
 	return (
-		<MapFrame owner={owner} repo={repo} panel={<span />}>
+		<MapFrame owner={owner} repo={repo}>
 			<div className="flex h-40 items-center justify-center">
 				<Spinner className="size-4 text-muted-foreground" />
 			</div>
@@ -324,26 +288,36 @@ export function MapLoading({ owner, repo }: { owner: string; repo: string }) {
 	);
 }
 
-/** No map file yet: the prompt that produces one, and what it leads to. */
+/**
+ * No map yet: a still of what the page becomes, with the prompt that gets
+ * there laid over it.
+ */
 export function MapSetup({ owner, repo }: { owner: string; repo: string }) {
-	const prompt = mapSetupPrompt(owner, repo);
 	return (
 		<MapFrame owner={owner} repo={repo}>
-			<FrameHeading title={`Give ${repo} a product map`}>
-				Paste this into a coding agent in your checkout. It installs a skill,
-				reads the code, writes the{" "}
-				<code className="rounded-[5px] bg-inline-code px-1 py-0.5 font-mono text-[12px] text-text-header">
-					.diffkit
-				</code>{" "}
-				folder and opens a pull request. Merge it and the map appears here.
-			</FrameHeading>
-			<PromptCard prompt={prompt} />
-			<ExampleMap />
+			<div className="relative">
+				<ExampleMap />
+				<div className="absolute inset-0 flex items-center justify-center">
+					<div className="relative flex w-full max-w-[36rem] flex-col items-center gap-6">
+						<div
+							aria-hidden
+							className="-inset-x-8 -inset-y-10 pointer-events-none absolute rounded-[3rem] bg-main/90 blur-2xl"
+						/>
+						<h1 className={cn(headingClassName, "relative text-center")}>
+							Give {repo} a product map
+						</h1>
+						<PromptCard
+							prompt={mapSetupPrompt(owner, repo)}
+							className="relative w-full"
+						/>
+					</div>
+				</div>
+			</div>
 		</MapFrame>
 	);
 }
 
-/** A map file that was rejected: what is wrong, and a prompt that fixes it. */
+/** A map that was rejected: what is wrong, and a prompt that fixes it. */
 export function MapInvalid({
 	owner,
 	repo,
@@ -353,16 +327,18 @@ export function MapInvalid({
 	repo: string;
 	problems: string[];
 }) {
-	const prompt = mapFixPrompt(problems);
 	return (
 		<MapFrame owner={owner} repo={repo}>
-			<FrameHeading title="The map file needs fixing">
-				DiffKit could not read the{" "}
-				<code className="rounded-[5px] bg-inline-code px-1 py-0.5 font-mono text-[12px] text-text-header">
-					.diffkit
-				</code>{" "}
-				folder. Fix these and the map appears here.
-			</FrameHeading>
+			<header className="flex flex-col gap-2">
+				<h1 className={headingClassName}>The map needs fixing</h1>
+				<p className="text-pretty font-[450] text-[13px] text-muted-foreground leading-5">
+					DiffKit could not read the{" "}
+					<code className="rounded-[5px] bg-inline-code px-1 py-0.5 font-mono text-[12px] text-text-header">
+						.diffkit
+					</code>{" "}
+					folder. Fix these and the map appears here.
+				</p>
+			</header>
 			<ul className="flex flex-col gap-3">
 				{problems.map((problem) => (
 					<li key={problem} className="flex gap-3">
@@ -377,7 +353,7 @@ export function MapInvalid({
 					</li>
 				))}
 			</ul>
-			<PromptCard prompt={prompt} />
+			<PromptCard prompt={mapFixPrompt(problems)} />
 		</MapFrame>
 	);
 }
