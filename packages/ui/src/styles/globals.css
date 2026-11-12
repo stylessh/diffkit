@@ -847,6 +847,80 @@
 	}
 }
 
+button:not(:disabled):not([aria-disabled="true"]):not([data-disabled]):not(
+		[data-disabled="true"]
+	),
+a[href]:not([disabled]):not([aria-disabled="true"]):not([data-disabled]):not(
+		[data-disabled="true"]
+	),
+input[type="button"]:not(:disabled):not([aria-disabled="true"]):not(
+		[data-disabled]
+	):not([data-disabled="true"]),
+input[type="checkbox"]:not(:disabled):not([aria-disabled="true"]):not(
+		[data-disabled]
+	):not([data-disabled="true"]),
+input[type="radio"]:not(:disabled):not([aria-disabled="true"]):not(
+		[data-disabled]
+	):not([data-disabled="true"]),
+input[type="reset"]:not(:disabled):not([aria-disabled="true"]):not(
+		[data-disabled]
+	):not([data-disabled="true"]),
+input[type="submit"]:not(:disabled):not([aria-disabled="true"]):not(
+		[data-disabled]
+	):not([data-disabled="true"]),
+label[for]:not([disabled]):not([aria-disabled="true"]):not([data-disabled]):not(
+		[data-disabled="true"]
+	),
+summary:not([disabled]):not([aria-disabled="true"]):not([data-disabled]):not(
+		[data-disabled="true"]
+	),
+[role="button"]:not([aria-disabled="true"]):not([data-disabled]):not(
+		[data-disabled="true"]
+	),
+[role="checkbox"]:not([aria-disabled="true"]):not([data-disabled]):not(
+		[data-disabled="true"]
+	),
+[role="menuitem"]:not([aria-disabled="true"]):not([data-disabled]):not(
+		[data-disabled="true"]
+	),
+[role="menuitemcheckbox"]:not([aria-disabled="true"]):not([data-disabled]):not(
+		[data-disabled="true"]
+	),
+[role="menuitemradio"]:not([aria-disabled="true"]):not([data-disabled]):not(
+		[data-disabled="true"]
+	),
+[role="option"]:not([aria-disabled="true"]):not([data-disabled]):not(
+		[data-disabled="true"]
+	),
+[role="radio"]:not([aria-disabled="true"]):not([data-disabled]):not(
+		[data-disabled="true"]
+	),
+[role="switch"]:not([aria-disabled="true"]):not([data-disabled]):not(
+		[data-disabled="true"]
+	),
+[role="tab"]:not([aria-disabled="true"]):not([data-disabled]):not(
+		[data-disabled="true"]
+	),
+[data-slot$="-trigger"]:not(:disabled):not([aria-disabled="true"]):not(
+		[data-disabled]
+	):not([data-disabled="true"]),
+[data-slot="checkbox"]:not(:disabled):not([aria-disabled="true"]):not(
+		[data-disabled]
+	):not([data-disabled="true"]),
+[data-slot="command-item"]:not([aria-disabled="true"]):not([data-disabled]):not(
+		[data-disabled="true"]
+	) {
+	cursor: pointer;
+}
+
+button:disabled,
+[disabled],
+[aria-disabled="true"],
+[data-disabled],
+[data-disabled="true"] {
+	cursor: not-allowed;
+}
+
 /* Custom scrollbar — thumb only, no track, overlays content */
 * {
 	scrollbar-color: var(--scrollbar-thumb) transparent;
