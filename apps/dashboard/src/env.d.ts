@@ -24,3 +24,8 @@ declare namespace Cloudflare {
 		GITHUB_EMULATOR_URL?: string;
 	}
 }
+
+interface ImportMetaEnv {
+	/** `off` keeps react-scan, Agentation and TanStack Devtools out of dev pages. */
+	readonly VITE_DEV_OVERLAYS?: string;
+}
