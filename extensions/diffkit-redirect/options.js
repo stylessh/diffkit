@@ -54,16 +54,29 @@
   }
 
   // The switch applies at once and writes only itself, so pausing never depends
-  // on the editor holding valid JSON and never touches the stored rules.
-  async function saveEnabled() {
+  // on the editor holding valid JSON and never touches the stored rules. Writes
+  // run one at a time, and a failed one puts the switch back to what storage
+  // holds, so quick changes cannot leave it showing a value that was not kept.
+  const SWITCH_NOT_SAVED = "Could not save";
+  let lastMasterSave = Promise.resolve();
+  function saveEnabled() {
     const enabled = enabledToggle.checked;
     renderMaster(enabled);
-    try {
-      await shared.saveEnabled(enabled);
-    } catch {
-      setStatus("Could not save", "error");
-      renderMaster(!enabled);
-    }
+    lastMasterSave = lastMasterSave.then(async () => {
+      try {
+        await shared.saveEnabled(enabled);
+        renderMaster(enabled);
+        if (saveStatus.textContent === SWITCH_NOT_SAVED) {
+          setStatus("", "");
+        }
+      } catch {
+        setStatus(SWITCH_NOT_SAVED, "error");
+        const stored = await shared.getConfig().catch(() => null);
+        if (stored) {
+          renderMaster(stored.enabled);
+        }
+      }
+    });
   }
 
   enabledToggle.addEventListener("change", saveEnabled);
