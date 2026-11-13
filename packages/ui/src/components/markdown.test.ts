@@ -5,7 +5,11 @@ import type {
 	MarkdownTextReference,
 	ResourceReference,
 } from "../lib/markdown-resource-reference";
-import { Markdown, type MarkdownReferenceProps } from "./markdown";
+import {
+	Markdown,
+	type MarkdownReferenceProps,
+	resolveHighlightLang,
+} from "./markdown";
 
 type MarkdownProps = Omit<Parameters<typeof Markdown>[0], "children">;
 
@@ -218,6 +222,48 @@ describe("Markdown documents", () => {
 			resolveAssetUrl: (url: string) => `https://cdn.test/${url}`,
 		});
 		expect(html).toContain('src="https://cdn.test/a.png"');
+	});
+});
+
+describe("Markdown embedded content", () => {
+	it("does not load images a comment points at the app itself", () => {
+		const html = renderComment(
+			'![x](/_serverFn/abc?payload=1)\n\n<picture><source srcset="/_serverFn/abc 1x, https://cdn.test/a.png 2x"><img src="a.png"></picture>',
+		);
+		expect(html).not.toContain("_serverFn");
+		expect(html).not.toContain('src="a.png"');
+		expect(html).toContain('srcSet="https://cdn.test/a.png 2x"');
+	});
+
+	it("still loads images hosted elsewhere", () => {
+		const html = renderComment("![x](https://cdn.test/a.png)");
+		expect(html).toContain('src="https://cdn.test/a.png"');
+	});
+
+	it("sandboxes an embedded frame so it cannot navigate the reader's tab", () => {
+		const html = renderComment(
+			'<iframe src="https://player.test/embed/1" title="demo"></iframe>',
+		);
+		const frame = html.match(/<iframe[^>]*>/)?.[0] ?? "";
+		expect(frame).toContain('src="https://player.test/embed/1"');
+		expect(frame).toMatch(/sandbox="[^"]+"/);
+		expect(frame).not.toContain("allow-top-navigation");
+		expect(frame).toContain('referrerPolicy="no-referrer"');
+	});
+
+	it("does not render a frame that points at the app itself", () => {
+		const html = renderComment(
+			'<iframe src="/_serverFn/abc?payload=1"></iframe><video src="/api/changes"></video>',
+		);
+		expect(html).not.toMatch(/<iframe/i);
+		expect(html).not.toContain("/api/changes");
+	});
+
+	it("treats a fence tag as a plain name, not a property of the alias table", () => {
+		expect(resolveHighlightLang("ts")).toBe("typescript");
+		expect(resolveHighlightLang("constructor")).toBe("text");
+		expect(resolveHighlightLang("toString")).toBe("text");
+		expect(resolveHighlightLang("__proto__")).toBe("text");
 	});
 });
 

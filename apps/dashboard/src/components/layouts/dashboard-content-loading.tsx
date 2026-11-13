@@ -1,5 +1,6 @@
 import {
 	type RegisteredRouter,
+	useHydrated,
 	useMatch,
 	useRouter,
 } from "@tanstack/react-router";
@@ -126,21 +127,35 @@ export function discardServerRenderedPending() {
 /**
  * Remembered on first read: the pending element can be created again before
  * the page takes over, after React has already removed the server's copy.
+ *
+ * A hydrating render gets the server's markup back even after the first
+ * navigation has resolved. React hydrates this slot last and at its lowest
+ * priority, so on a slow device the router is done before React arrives. Any
+ * other answer fails hydration, and React then rebuilds the page inside that
+ * interruptible render, starting over each time something else updates.
  */
-function readServerColdRoute(routeId: string) {
-	if (serverMarkup.phase === "settled") return null;
+function readServerColdRoute(routeId: string, hydrating: boolean) {
+	if (serverMarkup.phase === "settled") {
+		return hydrating ? coldRouteInDocument(routeId) : null;
+	}
 	const remembered = serverMarkup.byRouteId.get(routeId);
 	if (remembered !== undefined) return remembered;
-	const markup = document.querySelector(
-		`[${COLD_ROUTE_ATTRIBUTE}="${CSS.escape(routeId)}"]`,
-	)?.innerHTML;
-	if (markup === undefined) return null;
+	const markup = coldRouteInDocument(routeId);
+	if (markup === null) return null;
 	serverMarkup.byRouteId.set(routeId, markup);
 	return markup;
 }
 
+function coldRouteInDocument(routeId: string) {
+	return (
+		document.querySelector(`[${COLD_ROUTE_ATTRIBUTE}="${CSS.escape(routeId)}"]`)
+			?.innerHTML ?? null
+	);
+}
+
 function AdoptedColdRoute({ routeId }: { routeId: RouteId }) {
-	const [markup] = useState(() => readServerColdRoute(routeId));
+	const hydrating = !useHydrated();
+	const [markup] = useState(() => readServerColdRoute(routeId, hydrating));
 	const [reveal] = useState(revealOnDocumentClock);
 	if (markup === null) return <GenericRoutePending />;
 	return (

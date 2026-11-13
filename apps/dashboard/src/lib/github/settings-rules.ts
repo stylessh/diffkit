@@ -7,14 +7,12 @@ import {
 	type RepoRuleset,
 } from "../settings/rules";
 import { readSettings } from "./settings-server";
-import { identityValidator } from "./validators";
-
-type RepoInput = { owner: string; repo: string };
+import { repoInputValidator } from "./validators";
 
 const DETAIL_LIMIT = 20;
 
 export const getRepoRulesets = createServerFn({ method: "GET" })
-	.validator(identityValidator<RepoInput>)
+	.validator(repoInputValidator)
 	.handler(
 		({ data }): Promise<SettingsRead<RepoRuleset[]>> =>
 			readSettings("rulesets", async (octokit) => {
@@ -35,7 +33,7 @@ export const getRepoRulesets = createServerFn({ method: "GET" })
 	);
 
 export const getRepoBranchProtections = createServerFn({ method: "GET" })
-	.validator(identityValidator<RepoInput>)
+	.validator(repoInputValidator)
 	.handler(
 		({ data }): Promise<SettingsRead<BranchProtection[]>> =>
 			readSettings("branch protections", async (octokit) => {

@@ -1,3 +1,5 @@
+import { isRepositoryName } from "./github/validators";
+
 export type PullDiffParams = { owner: string; repo: string; number: number };
 
 export type PullDiffRefusal =
@@ -22,7 +24,6 @@ export type PullDiffRequestDeps = {
 		| null;
 };
 
-const NAME_PATTERN = /^(?!\.{1,2}$)[A-Za-z0-9_.-]{1,100}$/u;
 const NUMBER_PATTERN = /^[1-9][0-9]{0,9}$/u;
 
 export function parsePullDiffParams(url: URL): PullDiffParams | null {
@@ -30,8 +31,8 @@ export function parsePullDiffParams(url: URL): PullDiffParams | null {
 	const repo = url.searchParams.get("repo") ?? "";
 	const number = url.searchParams.get("number") ?? "";
 	if (
-		!NAME_PATTERN.test(owner) ||
-		!NAME_PATTERN.test(repo) ||
+		!isRepositoryName(owner) ||
+		!isRepositoryName(repo) ||
 		!NUMBER_PATTERN.test(number)
 	) {
 		return null;
