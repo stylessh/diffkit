@@ -6,24 +6,15 @@ import {
 	ClaudeLogo,
 	CopyIcon,
 	CursorLogo,
-	LayersIcon,
 } from "@diffkit/icons";
 import { Button } from "@diffkit/ui/components/button";
-import {
-	PageHeader,
-	PageHeaderCrumb,
-	PageHeaderTitle,
-} from "@diffkit/ui/components/page-header";
 import { ScrollFade } from "@diffkit/ui/components/scroll-fade";
-import { Spinner } from "@diffkit/ui/components/spinner";
 import {
 	Tooltip,
 	TooltipContent,
 	TooltipTrigger,
 } from "@diffkit/ui/components/tooltip";
-import { ViewTab, ViewTabs } from "@diffkit/ui/components/view-tabs";
 import { cn } from "@diffkit/ui/lib/utils";
-import { Link } from "@tanstack/react-router";
 import {
 	type ComponentType,
 	type ReactNode,
@@ -31,8 +22,11 @@ import {
 	useRef,
 	useState,
 } from "react";
+import { RepoHeader } from "#/components/repo/repo-header";
+import { useGitHubQueryScope } from "#/lib/use-github-query-scope";
 import { areaIcon } from "./map-icons";
 import { mapFixPrompt, mapSetupPrompt } from "./map-prompt";
+import type { MapWriteAccess } from "./product-map-data";
 
 /** Each agent's own mark in its own colours, light and dark. */
 const AGENTS: {
@@ -197,7 +191,7 @@ function ExampleMap() {
 					A shared inbox for everything your team ships.
 				</span>
 				<span className="font-[450] text-[13px] text-muted-foreground">
-					Hover an area to see what it builds on. Click to open it.
+					Click an area to see how it works.
 				</span>
 			</div>
 			{EXAMPLE.map(({ group, areas }) => (
@@ -232,11 +226,9 @@ function ExampleMap() {
 	);
 }
 
-const LENS_LABELS = ["Structure", "Activity", "Size", "Open work"];
-
 /**
- * The map page's own frame, for the states that have no map to draw in it:
- * the same header, toolbar and reading column, without the side panel.
+ * The repository's own header and tabs around the states that have no map to
+ * draw: the reading column, without the map's side panel.
  */
 function MapFrame({
 	owner,
@@ -247,93 +239,93 @@ function MapFrame({
 	repo: string;
 	children: ReactNode;
 }) {
+	const scope = useGitHubQueryScope();
 	return (
 		<div className="flex h-full min-h-0 flex-col">
-			<PageHeader>
-				<PageHeaderCrumb asChild className="max-sm:hidden">
-					<Link to="/$owner/$repo" params={{ owner, repo }}>
-						{owner}/{repo}
-					</Link>
-				</PageHeaderCrumb>
-				<PageHeaderTitle asChild>
-					<span>
-						<LayersIcon size={14} />
-						Product map
-					</span>
-				</PageHeaderTitle>
-			</PageHeader>
-			<div className="flex min-h-0 flex-1 flex-col bg-main">
-				<div className="z-10 shrink-0 bg-main">
-					<ViewTabs label="Map views">
-						{LENS_LABELS.map((label) => (
-							<ViewTab
-								key={label}
-								disabled
-								className="disabled:pointer-events-none disabled:opacity-50"
-							>
-								{label}
-							</ViewTab>
-						))}
-					</ViewTabs>
+			<RepoHeader owner={owner} repo={repo} scope={scope} active="map" />
+			<ScrollFade
+				orientation="vertical"
+				fade={32}
+				className="min-h-0 flex-1 bg-main"
+			>
+				<div className="mx-auto flex w-full min-w-0 max-w-[780px] flex-col gap-8 px-4 pt-14 pb-24 sm:px-[46px] md:px-8 md:pb-16 lg:px-[46px]">
+					{children}
 				</div>
-				<ScrollFade orientation="vertical" fade={32} className="min-h-0 flex-1">
-					<div className="mx-auto flex w-full min-w-0 max-w-[780px] flex-col gap-8 px-4 pt-14 pb-24 sm:px-[46px] md:px-8 md:pb-16 lg:px-[46px]">
-						{children}
-					</div>
-				</ScrollFade>
-			</div>
+			</ScrollFade>
 		</div>
 	);
 }
 
-export function MapLoading({ owner, repo }: { owner: string; repo: string }) {
+/**
+ * No map yet. Over a still of what the page becomes, someone who can push
+ * gets the prompt that gets there; anyone else is only told there is none.
+ * Until GitHub says which, the still stands alone: the prompt is fixed text,
+ * so there is nothing of it to draw a skeleton for.
+ */
+export function MapMissing({
+	owner,
+	repo,
+	access,
+}: {
+	owner: string;
+	repo: string;
+	access: MapWriteAccess;
+}) {
 	return (
 		<MapFrame owner={owner} repo={repo}>
-			<div className="flex h-40 items-center justify-center">
-				<Spinner className="size-4 text-muted-foreground" />
+			<div className="relative">
+				<ExampleMap />
+				{access === "loading" ? null : (
+					<div className="absolute inset-0 flex items-center justify-center">
+						{access === "can-push" ? (
+							<div className="relative flex w-full max-w-[31rem] flex-col gap-2.5">
+								<div
+									aria-hidden
+									className="-inset-x-24 -top-20 -bottom-14 pointer-events-none absolute rounded-[4rem] bg-main blur-2xl max-sm:-inset-x-6"
+								/>
+								<h1 className="relative text-pretty px-4 font-medium text-[14px] text-foreground leading-5">
+									Give {repo} a product map
+								</h1>
+								<PromptCard
+									prompt={mapSetupPrompt(owner, repo)}
+									className="relative w-full"
+								/>
+							</div>
+						) : (
+							<div className="relative flex flex-col items-center gap-1 text-center">
+								<div
+									aria-hidden
+									className="-inset-x-24 -inset-y-14 pointer-events-none absolute rounded-[4rem] bg-main blur-2xl max-sm:-inset-x-6"
+								/>
+								<h1 className="relative text-pretty font-medium text-[14px] text-foreground leading-5">
+									{repo} has no product map yet
+								</h1>
+								<p className="relative text-pretty font-[450] text-[13px] text-muted-foreground leading-5">
+									Someone who can push to it can add one.
+								</p>
+							</div>
+						)}
+					</div>
+				)}
 			</div>
 		</MapFrame>
 	);
 }
 
 /**
- * No map yet: a still of what the page becomes, with the prompt that gets
- * there laid over it.
+ * A map that was rejected: what is wrong and, for someone who can push the
+ * fix, a prompt that makes it.
  */
-export function MapSetup({ owner, repo }: { owner: string; repo: string }) {
-	return (
-		<MapFrame owner={owner} repo={repo}>
-			<div className="relative">
-				<ExampleMap />
-				<div className="absolute inset-0 flex items-center justify-center">
-					<div className="relative flex w-full max-w-[31rem] flex-col gap-2.5">
-						<div
-							aria-hidden
-							className="-inset-x-24 -top-20 -bottom-14 pointer-events-none absolute rounded-[4rem] bg-main blur-2xl max-sm:-inset-x-6"
-						/>
-						<h1 className="relative text-pretty px-4 font-medium text-[14px] text-foreground leading-5">
-							Give {repo} a product map
-						</h1>
-						<PromptCard
-							prompt={mapSetupPrompt(owner, repo)}
-							className="relative w-full"
-						/>
-					</div>
-				</div>
-			</div>
-		</MapFrame>
-	);
-}
-
-/** A map that was rejected: what is wrong, and a prompt that fixes it. */
 export function MapInvalid({
 	owner,
 	repo,
 	problems,
+	canFix,
 }: {
 	owner: string;
 	repo: string;
 	problems: string[];
+	canFix: boolean;
 }) {
 	return (
 		<MapFrame owner={owner} repo={repo}>
@@ -344,7 +336,7 @@ export function MapInvalid({
 					<code className="rounded-[5px] bg-inline-code px-1 py-0.5 font-mono text-[12px] text-text-header">
 						.diffkit
 					</code>{" "}
-					folder. Fix these and the map appears here.
+					folder.{canFix ? " Fix these and the map appears here." : null}
 				</p>
 			</header>
 			<ul className="flex flex-col gap-3">
@@ -361,7 +353,7 @@ export function MapInvalid({
 					</li>
 				))}
 			</ul>
-			<PromptCard prompt={mapFixPrompt(problems)} />
+			{canFix ? <PromptCard prompt={mapFixPrompt(problems)} /> : null}
 		</MapFrame>
 	);
 }

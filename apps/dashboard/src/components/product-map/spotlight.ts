@@ -1,4 +1,3 @@
-import type { WireLink } from "./map-wires";
 import type { LoadedProductMap } from "./product-map-data";
 
 export type Spotlight =
@@ -39,13 +38,4 @@ export function litOutsideOwners(
 			.filter((system) => ids.includes(system.id))
 			.map((system) => system.owner),
 	);
-}
-
-export function spotlightLinks(
-	spotlight: Spotlight,
-	map: LoadedProductMap,
-): WireLink[] {
-	if (spotlight.kind !== "area") return [];
-	const area = map.areaById.get(spotlight.id);
-	return (area?.dependsOn ?? []).map((id) => ({ from: spotlight.id, to: id }));
 }

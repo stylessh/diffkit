@@ -76,7 +76,7 @@
     },
     {
       "name": "Repo tabs",
-      "summary": "Nine repo sections; each user picks which show as tabs and the rest sit in a menu. Settings shows only with triage access or higher.",
+      "summary": "Ten repo sections; each user picks which show as tabs and the rest sit in a menu. Settings shows only with triage access or higher. Map shows when the repository has a product map, or marked New for people who can push one.",
       "path": "apps/dashboard/src/components/repo/repo-nav.tsx"
     },
     {

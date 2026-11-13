@@ -137,6 +137,40 @@ function emulatorGitHubProvider(
 	});
 }
 
+/**
+ * Better Auth mounts its whole default API under /api/auth. DiffKit only
+ * signs in with GitHub, reads the session and signs out, so every endpoint
+ * that manages accounts, provider tokens, passwords or other sessions is
+ * switched off. `auth.server.test.ts` fails when an upgrade adds an endpoint
+ * that is neither used nor listed here.
+ */
+export const DISABLED_AUTH_PATHS = [
+	"/get-access-token",
+	"/refresh-token",
+	"/account-info",
+	"/list-accounts",
+	"/link-social",
+	"/oauth2/link",
+	"/unlink-account",
+	"/update-user",
+	"/delete-user",
+	"/delete-user/callback",
+	"/change-email",
+	"/verify-email",
+	"/send-verification-email",
+	"/sign-up/email",
+	"/sign-in/email",
+	"/change-password",
+	"/verify-password",
+	"/request-password-reset",
+	"/reset-password",
+	"/update-session",
+	"/list-sessions",
+	"/revoke-session",
+	"/revoke-sessions",
+	"/revoke-other-sessions",
+];
+
 export function getAuth() {
 	const github = getGitHubOAuthConfig();
 	const emulatorUrl = getGitHubEmulatorUrl();
@@ -147,6 +181,10 @@ export function getAuth() {
 		database: drizzleAdapter(getDb(), {
 			provider: "sqlite",
 		}),
+		// A DiffKit user is exactly one GitHub identity, found by GitHub account
+		// id. Never attach a second GitHub account to a user by matching email.
+		account: { accountLinking: { enabled: false } },
+		disabledPaths: DISABLED_AUTH_PATHS,
 		...(emulatorUrl
 			? {}
 			: {

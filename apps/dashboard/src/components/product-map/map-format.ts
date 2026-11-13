@@ -39,18 +39,6 @@ export function formatCount(value: number) {
 	return compact.format(value).toLowerCase();
 }
 
-export function formatBytes(bytes: number) {
-	if (bytes < 1000) return `${bytes} B`;
-	const units = ["KB", "MB", "GB"];
-	let value = bytes / 1000;
-	let unit = 0;
-	while (value >= 1000 && unit < units.length - 1) {
-		value /= 1000;
-		unit += 1;
-	}
-	return `${value >= 100 ? Math.round(value) : value.toFixed(1)} ${units[unit]}`;
-}
-
 export function formatShare(share: number) {
 	return share < 0.01 ? "<1%" : `${Math.round(share * 100)}%`;
 }
@@ -83,7 +71,7 @@ export function lensValue(
 	const live = map.activity?.areas[area.id];
 	if (!live) return 0;
 	if (lens === "activity") return live.mergedLast30;
-	if (lens === "size") return live.bytes;
+	if (lens === "size") return live.files;
 	if (lens === "open") return openWorkCount(map, area);
 	return 0;
 }
@@ -94,13 +82,12 @@ export function lensLabel(
 	map: LoadedProductMap,
 ) {
 	if (lens === "structure" || !map.activity) return null;
-	const value = lensValue(area, lens, map);
-	return lens === "size" ? formatBytes(value) : formatCount(value);
+	return formatCount(lensValue(area, lens, map));
 }
 
 export const lensDescriptions: Record<MapLens, string> = {
 	structure: "How the product is put together",
 	activity: "Pull requests merged in the last 30 days",
-	size: "Size of each area's files",
+	size: "Files in each area",
 	open: "Open pull requests and issues",
 };

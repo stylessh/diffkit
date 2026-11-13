@@ -1,27 +1,31 @@
 import {
+	ChevronDownIcon,
 	ChevronLeftIcon,
 	ChevronRightIcon,
+	DisplayOptionsIcon,
 	LayersIcon,
 	PlayIcon,
 	SearchIcon,
 } from "@diffkit/icons";
 import { Button } from "@diffkit/ui/components/button";
 import { DetailLayout } from "@diffkit/ui/components/detail-layout";
+import {
+	DropdownMenu,
+	DropdownMenuContent,
+	DropdownMenuLabel,
+	DropdownMenuRadioGroup,
+	DropdownMenuRadioItem,
+	DropdownMenuTrigger,
+} from "@diffkit/ui/components/dropdown-menu";
 import { KeyboardShortcutKeys } from "@diffkit/ui/components/keyboard-shortcut-keys";
 import {
-	PageHeader,
 	PageHeaderCrumb,
 	PageHeaderTitle,
 	PageIconButton,
 } from "@diffkit/ui/components/page-header";
-import {
-	ViewTab,
-	ViewTabCount,
-	ViewTabs,
-} from "@diffkit/ui/components/view-tabs";
 import { isEditableKeyboardEvent } from "@diffkit/ui/lib/editable-keyboard-target";
-import { Link } from "@tanstack/react-router";
-import { AnimatePresence, motion, useReducedMotion } from "motion/react";
+import { cn } from "@diffkit/ui/lib/utils";
+import { useQuery } from "@tanstack/react-query";
 import { parseAsString, parseAsStringLiteral, useQueryState } from "nuqs";
 import {
 	type ReactNode,
@@ -34,15 +38,24 @@ import {
 	useRef,
 	useState,
 } from "react";
+import { Skeleton, SkeletonBox } from "skullet/react";
+import { RepoHeader, RepoHeaderNav } from "#/components/repo/repo-header";
+import { githubRepoOverviewQueryOptions } from "#/lib/github.query";
+import { useGitHubQueryScope } from "#/lib/use-github-query-scope";
 import { AreaPanel } from "./area-panel";
 import { AREA_SECTIONS, type AreaSection, AreaSheet } from "./area-sheet";
 import { MapCanvas } from "./map-canvas";
 import { lensDescriptions, openWorkCount } from "./map-format";
 import { MapPanel } from "./map-panel";
 import { MapSearch } from "./map-search";
-import { MapInvalid, MapLoading, MapSetup } from "./map-setup";
+import { MapInvalid, MapMissing } from "./map-setup";
 import { TOUR_IDLE, TourBar, tourReducer } from "./map-tour";
-import { type LoadedProductMap, useProductMap } from "./product-map-data";
+import {
+	type LoadedProductMap,
+	useMapWriteAccess,
+	useProductMap,
+} from "./product-map-data";
+import { sampleArea, sampleProductMap } from "./product-map-samples";
 import type { MapLens, ProductArea } from "./product-map-types";
 import { NO_SPOTLIGHT, type Spotlight } from "./spotlight";
 
@@ -55,20 +68,89 @@ const lensLabels: Record<MapLens, string> = {
 	open: "Open work",
 };
 
-const DEFAULT_CAPTION =
-	"Hover an area to see what it builds on. Click to open it.";
+const MAP_CAPTION = "Click an area to see how it works.";
 
-type ZoomOrigin = { x: number; y: number };
+/**
+ * Beside the repo tabs there is room for a label on phones, where the tabs fold
+ * into one menu, and on wide screens; in between the buttons keep their icon.
+ */
+const ROOMY_ONLY = "md:max-xl:hidden";
 
-const CENTER: ZoomOrigin = { x: 40, y: 40 };
-
-function JumpButton({ onSearch }: { onSearch: () => void }) {
+function JumpButton({
+	onSearch,
+	labelled,
+}: {
+	onSearch: () => void;
+	/** Where the label has room: `roomy` also shows it on phones. */
+	labelled: "roomy" | "wide";
+}) {
 	return (
-		<Button size="xs" variant="outline" onClick={onSearch}>
+		<Button
+			size="xs"
+			variant="outline"
+			aria-label="Jump to"
+			title="Jump to"
+			onClick={onSearch}
+		>
 			<SearchIcon className="size-3.5 text-muted-foreground" />
-			Jump to
-			<KeyboardShortcutKeys keys={["/"]} className="max-md:hidden" />
+			<span className={labelled === "roomy" ? ROOMY_ONLY : "max-xl:hidden"}>
+				Jump to
+			</span>
+			<KeyboardShortcutKeys keys={["/"]} className="max-xl:hidden" />
 		</Button>
+	);
+}
+
+function isLens(value: string): value is MapLens {
+	return LENSES.includes(value as MapLens);
+}
+
+/**
+ * How the areas are drawn. It changes what the same map shows, so it sits with
+ * the page's other controls instead of looking like somewhere to go.
+ */
+function LensMenu({
+	lens,
+	onChange,
+}: {
+	lens: MapLens;
+	onChange: (lens: MapLens) => void;
+}) {
+	return (
+		<DropdownMenu modal={false}>
+			<DropdownMenuTrigger asChild>
+				<Button
+					size="xs"
+					variant="outline"
+					aria-label={`Map view: ${lensLabels[lens]}`}
+				>
+					<DisplayOptionsIcon
+						className={cn("size-3.5 text-muted-foreground", ROOMY_ONLY)}
+					/>
+					{lensLabels[lens]}
+					<ChevronDownIcon className="size-3.5 text-muted-foreground" />
+				</Button>
+			</DropdownMenuTrigger>
+			<DropdownMenuContent align="end" className="w-44">
+				<DropdownMenuLabel>Show areas by</DropdownMenuLabel>
+				<DropdownMenuRadioGroup
+					value={lens}
+					onValueChange={(value) => {
+						if (isLens(value)) onChange(value);
+					}}
+				>
+					{LENSES.map((value) => (
+						<DropdownMenuRadioItem
+							key={value}
+							value={value}
+							title={lensDescriptions[value]}
+						>
+							{lensLabels[value]}
+						</DropdownMenuRadioItem>
+					))}
+				</DropdownMenuRadioGroup>
+			</DropdownMenuContent>
+		</DropdownMenu>
 	);
 }
 
@@ -103,6 +185,60 @@ function areaSections(
 
 function isAreaSection(value: string | undefined): value is AreaSection {
 	return AREA_SECTIONS.includes(value as AreaSection);
+}
+
+type AreaSectionEntry = ReturnType<typeof areaSections>[number];
+
+/**
+ * An area's chapters: the one on screen, and a menu that scrolls to another.
+ * They are places on this page, so they stay out of the repo's row of tabs.
+ */
+function SectionMenu({
+	sections,
+	current,
+	onSelect,
+}: {
+	sections: AreaSectionEntry[];
+	current: AreaSection;
+	onSelect: (section: AreaSection) => void;
+}) {
+	const currentLabel =
+		sections.find((entry) => entry.section === current)?.label ??
+		sections[0].label;
+	return (
+		<DropdownMenu modal={false}>
+			<DropdownMenuTrigger asChild>
+				<Button
+					size="xs"
+					variant="outline"
+					aria-label={`Section: ${currentLabel}`}
+				>
+					{currentLabel}
+					<ChevronDownIcon className="size-3.5 text-muted-foreground" />
+				</Button>
+			</DropdownMenuTrigger>
+			<DropdownMenuContent align="end" className="w-44">
+				<DropdownMenuLabel>On this page</DropdownMenuLabel>
+				<DropdownMenuRadioGroup
+					value={current}
+					onValueChange={(value) => {
+						if (isAreaSection(value)) onSelect(value);
+					}}
+				>
+					{sections.map((entry) => (
+						<DropdownMenuRadioItem key={entry.section} value={entry.section}>
+							<span className="flex-1">{entry.label}</span>
+							{entry.count ? (
+								<span className="text-muted-foreground text-xs tabular-nums">
+									{entry.count}
+								</span>
+							) : null}
+						</DropdownMenuRadioItem>
+					))}
+				</DropdownMenuRadioGroup>
+			</DropdownMenuContent>
+		</DropdownMenu>
+	);
 }
 
 type SectionView = { band: AreaSection; atEnd: boolean };
@@ -144,34 +280,6 @@ function useVisibleSection(
 	return view.atEnd && scrollable ? "activity" : view.band;
 }
 
-function Stage({
-	stageKey,
-	transformOrigin,
-	from,
-	children,
-}: {
-	stageKey: string;
-	transformOrigin: string;
-	from: number;
-	children: ReactNode;
-}) {
-	const reduceMotion = useReducedMotion();
-	const scale = reduceMotion ? 1 : from;
-	return (
-		<motion.div
-			key={stageKey}
-			className="absolute inset-0 flex flex-col bg-main"
-			style={{ transformOrigin }}
-			initial={{ opacity: 0, scale }}
-			animate={{ opacity: 1, scale: 1 }}
-			exit={{ opacity: 0, scale }}
-			transition={{ duration: 0.26, ease: [0.2, 0.8, 0.2, 1] }}
-		>
-			{children}
-		</motion.div>
-	);
-}
-
 function useMapKeys(handlers: {
 	search: () => void;
 	back: () => void;
@@ -204,12 +312,19 @@ function useMapKeys(handlers: {
 	}, []);
 }
 
+/**
+ * The map, or one of its areas. While the map file is still being read it is
+ * given the sample map and `loading`: the same frame then draws skeletons, and
+ * because they stay mounted, the real map fades in over them.
+ */
 function ProductMapView({
 	map,
+	loading,
 	owner,
 	repo,
 }: {
 	map: LoadedProductMap;
+	loading: boolean;
 	owner: string;
 	repo: string;
 }) {
@@ -221,42 +336,36 @@ function ProductMapView({
 		"lens",
 		parseAsStringLiteral(LENSES).withDefault("structure"),
 	);
-	const [hovered, setHovered] = useState<string | null>(null);
 	const [searchOpen, setSearchOpen] = useState(false);
 	const [tour, dispatchTour] = useReducer(tourReducer, TOUR_IDLE);
-	const [origin, setOrigin] = useState<ZoomOrigin>(CENTER);
 	const stageRef = useRef<HTMLDivElement>(null);
+	const scope = useGitHubQueryScope();
 
-	const area = areaParam ? (map.areaById.get(areaParam) ?? null) : null;
+	// A link to an area cannot be looked up in the sample, so it draws the sample's.
+	const area = areaParam
+		? loading
+			? sampleArea(map)
+			: (map.areaById.get(areaParam) ?? null)
+		: null;
 	const tourStop = tour.status === "idle" ? null : map.tour[tour.stop];
 
-	const spotlight = useMemo<Spotlight>(() => {
-		if (tourStop)
-			return {
-				kind: "stop",
-				areas: tourStop.areas,
-				outside: tourStop.outside ?? [],
-			};
-		return hovered ? { kind: "area", id: hovered } : NO_SPOTLIGHT;
-	}, [tourStop, hovered]);
+	// Only the tour lights areas up. Pointing at a tile shows nothing: what an
+	// area is linked to is on its own page.
+	const spotlight = useMemo<Spotlight>(
+		() =>
+			tourStop
+				? {
+						kind: "stop",
+						areas: tourStop.areas,
+						outside: tourStop.outside ?? [],
+					}
+				: NO_SPOTLIGHT,
+		[tourStop],
+	);
 
 	const openArea = useCallback(
-		(id: string, from?: HTMLElement) => {
-			const stage = stageRef.current;
-			if (stage && from) {
-				const stageBox = stage.getBoundingClientRect();
-				const tile = from.getBoundingClientRect();
-				setOrigin({
-					x:
-						((tile.left + tile.width / 2 - stageBox.left) / stageBox.width) *
-						100,
-					y:
-						((tile.top + tile.height / 2 - stageBox.top) / stageBox.height) *
-						100,
-				});
-			}
+		(id: string) => {
 			dispatchTour({ type: "stop" });
-			setHovered(null);
 			void setAreaParam(id);
 		},
 		[setAreaParam],
@@ -285,7 +394,7 @@ function ProductMapView({
 	}, [setAreaParam, hasTour]);
 
 	useMapKeys({
-		enabled: !searchOpen,
+		enabled: !(searchOpen || loading),
 		search: () => setSearchOpen(true),
 		back: () => {
 			if (tour.status !== "idle") dispatchTour({ type: "stop" });
@@ -318,184 +427,191 @@ function ProductMapView({
 			?.scrollIntoView({ block: "start", behavior: "smooth" });
 	};
 
-	const hoveredArea = hovered ? map.areaById.get(hovered) : null;
-	const transformOrigin = `${origin.x}% ${origin.y}%`;
-
 	return (
 		<div className="flex h-full min-h-0 flex-col">
-			<PageHeader
-				actions={
+			<RepoHeader
+				owner={owner}
+				repo={repo}
+				scope={scope}
+				active="map"
+				withNav={false}
+				trail={
 					area ? (
 						<>
-							<PageIconButton
-								aria-label="Previous area"
-								onClick={() => stepArea(-1)}
-							>
-								<ChevronLeftIcon size={14} />
-							</PageIconButton>
-							<PageIconButton
-								aria-label="Next area"
-								onClick={() => stepArea(1)}
-							>
-								<ChevronRightIcon size={14} />
-							</PageIconButton>
+							<PageHeaderCrumb asChild>
+								<button type="button" onClick={showOverview}>
+									<LayersIcon size={14} />
+									Product map
+								</button>
+							</PageHeaderCrumb>
+							<PageHeaderTitle asChild>
+								<span>
+									{loading ? (
+										<SkeletonBox width={88} height={14} radius={4} />
+									) : (
+										area.name
+									)}
+								</span>
+							</PageHeaderTitle>
 						</>
 					) : undefined
 				}
-			>
-				<PageHeaderCrumb asChild className="max-sm:hidden">
-					<Link to="/$owner/$repo" params={{ owner, repo }}>
-						{owner}/{repo}
-					</Link>
-				</PageHeaderCrumb>
-				{area ? (
-					<>
-						<PageHeaderCrumb asChild>
-							<button type="button" onClick={showOverview}>
-								<LayersIcon size={14} />
-								Product map
-							</button>
-						</PageHeaderCrumb>
-						<PageHeaderTitle asChild>
-							<span>{area.name}</span>
-						</PageHeaderTitle>
-					</>
-				) : (
-					<PageHeaderTitle asChild>
-						<span>
-							<LayersIcon size={14} />
-							Product map
-						</span>
-					</PageHeaderTitle>
-				)}
-			</PageHeader>
+			/>
 
-			<div ref={stageRef} className="relative min-h-0 flex-1 overflow-hidden">
-				<AnimatePresence initial={false}>
-					{area ? (
-						<Stage
-							stageKey="area"
-							transformOrigin={transformOrigin}
-							from={0.94}
-						>
-							<DetailLayout
-								key={area.id}
-								panelLabel="Area details"
-								panel={
-									<AreaPanel area={area} map={map} onNavigate={openArea} />
+			<div ref={stageRef} className="relative flex min-h-0 flex-1 flex-col">
+				{area ? (
+					<DetailLayout
+						// The link's own id, so the layout and its skeletons stay mounted
+						// when the sample area gives way to the real one.
+						key={areaParam}
+						panelLabel="Area details"
+						panel={
+							<Skeleton loading={loading}>
+								<AreaPanel area={area} map={map} onNavigate={openArea} />
+							</Skeleton>
+						}
+						toolbar={
+							<RepoHeaderNav
+								owner={owner}
+								repo={repo}
+								scope={scope}
+								active="map"
+								tabActions={
+									<MapActions loading={loading}>
+										<SectionMenu
+											sections={areaSections(area, map)}
+											current={visibleSection}
+											onSelect={showSection}
+										/>
+										<PageIconButton
+											raised
+											aria-label="Previous area"
+											onClick={() => stepArea(-1)}
+										>
+											<ChevronLeftIcon size={14} />
+										</PageIconButton>
+										<PageIconButton
+											raised
+											aria-label="Next area"
+											onClick={() => stepArea(1)}
+										>
+											<ChevronRightIcon size={14} />
+										</PageIconButton>
+										<JumpButton
+											labelled="wide"
+											onSearch={() => setSearchOpen(true)}
+										/>
+									</MapActions>
 								}
-								toolbar={
-									<ViewTabs
-										label="Sections"
-										actions={
-											<JumpButton onSearch={() => setSearchOpen(true)} />
-										}
-									>
-										{areaSections(area, map).map((entry) => (
-											<ViewTab
-												key={entry.section}
-												active={entry.section === visibleSection}
-												onClick={() => showSection(entry.section)}
-											>
-												{entry.label}
-												{entry.count ? (
-													<ViewTabCount>{entry.count}</ViewTabCount>
-												) : null}
-											</ViewTab>
-										))}
-									</ViewTabs>
-								}
-							>
+							/>
+						}
+					>
+						<Skeleton loading={loading} label="Loading product map">
+							<div className="flex flex-col gap-8">
 								<AreaSheet area={area} map={map} />
-							</DetailLayout>
-						</Stage>
-					) : (
-						<Stage
-							stageKey="overview"
-							transformOrigin={transformOrigin}
-							from={1.06}
-						>
-							<DetailLayout
-								panelLabel="About this product"
-								panel={<MapPanel map={map} spotlight={spotlight} />}
-								toolbar={
-									<ViewTabs
-										label="Map views"
-										actions={
-											<>
-												{hasTour ? (
-													<Button
-														size="xs"
-														variant="outline"
-														onClick={startTour}
-														iconLeft={<PlayIcon className="size-3.5" />}
-													>
-														Tour
-													</Button>
-												) : null}
-												<JumpButton onSearch={() => setSearchOpen(true)} />
-											</>
-										}
-									>
-										{LENSES.map((value) => (
-											<ViewTab
-												key={value}
-												active={value === lens}
-												title={lensDescriptions[value]}
-												onClick={() => void setLens(value)}
+							</div>
+						</Skeleton>
+					</DetailLayout>
+				) : (
+					<DetailLayout
+						key="overview"
+						panelLabel="About this product"
+						panel={
+							<Skeleton loading={loading}>
+								<MapPanel map={map} spotlight={spotlight} />
+							</Skeleton>
+						}
+						toolbar={
+							<RepoHeaderNav
+								owner={owner}
+								repo={repo}
+								scope={scope}
+								active="map"
+								tabActions={
+									<MapActions loading={loading}>
+										<LensMenu
+											lens={lens}
+											onChange={(next) => void setLens(next)}
+										/>
+										{hasTour ? (
+											<Button
+												size="xs"
+												variant="outline"
+												aria-label="Tour"
+												title="Tour"
+												onClick={startTour}
+												iconLeft={<PlayIcon className="size-3.5" />}
 											>
-												{lensLabels[value]}
-											</ViewTab>
-										))}
-									</ViewTabs>
+												<span className={ROOMY_ONLY}>Tour</span>
+											</Button>
+										) : null}
+										<JumpButton
+											labelled="roomy"
+											onSearch={() => setSearchOpen(true)}
+										/>
+									</MapActions>
 								}
-							>
-								<header className="flex flex-col gap-2">
-									<h1 className="text-pretty font-semibold text-[23px] text-foreground leading-8 tracking-[-0.01em]">
-										{map.pitch}
-									</h1>
-									<p
-										aria-live="polite"
-										className="min-h-5 font-[450] text-[13px] text-muted-foreground"
-									>
-										{hoveredArea ? (
-											<>
-												<span className="text-foreground">
-													{hoveredArea.name}
-												</span>{" "}
-												{hoveredArea.tagline}
-											</>
-										) : (
-											DEFAULT_CAPTION
-										)}
-									</p>
-								</header>
+							/>
+						}
+					>
+						<Skeleton loading={loading} label="Loading product map">
+							<div className="flex flex-col gap-8">
+								<MapPitch pitch={map.pitch} />
 								<MapCanvas
 									map={map}
 									lens={lens}
 									spotlight={spotlight}
-									onSpotlight={setHovered}
-									onClearSpotlight={() => setHovered(null)}
 									onOpen={openArea}
 								/>
 								<div
 									aria-hidden
 									className={tourStop ? "h-40" : "h-16 md:hidden"}
 								/>
-							</DetailLayout>
-						</Stage>
-					)}
-				</AnimatePresence>
+							</div>
+						</Skeleton>
+					</DetailLayout>
+				)}
 				<TourBar state={tour} stops={map.tour} dispatch={dispatchTour} />
 			</div>
 
-			<MapSearch
-				map={map}
-				open={searchOpen}
-				onOpenChange={setSearchOpen}
-				onSelectArea={openArea}
-			/>
+			{loading ? null : (
+				<MapSearch
+					map={map}
+					open={searchOpen}
+					onOpenChange={setSearchOpen}
+					onSelectArea={openArea}
+				/>
+			)}
 		</div>
+	);
+}
+
+/** The map's own buttons beside the repo tabs, drawn as blocks while it loads. */
+function MapActions({
+	loading,
+	children,
+}: {
+	loading: boolean;
+	children: ReactNode;
+}) {
+	return (
+		<Skeleton loading={loading}>
+			<span className="flex items-center gap-1.5">{children}</span>
+		</Skeleton>
+	);
+}
+
+/** The map's one-line pitch, and under it how to go further. */
+function MapPitch({ pitch }: { pitch: string }) {
+	return (
+		<header className="flex flex-col gap-2">
+			<h1 className="text-pretty font-semibold text-[23px] text-foreground leading-8 tracking-[-0.01em]">
+				{pitch}
+			</h1>
+			<p className="font-[450] text-[13px] text-muted-foreground">
+				{MAP_CAPTION}
+			</p>
+		</header>
 	);
 }
 
@@ -506,11 +622,40 @@ export function ProductMapPage({
 	owner: string;
 	repo: string;
 }) {
+	const scope = useGitHubQueryScope();
 	const state = useProductMap(owner, repo);
-	if (state.status === "loading")
-		return <MapLoading owner={owner} repo={repo} />;
-	if (state.status === "missing") return <MapSetup owner={owner} repo={repo} />;
-	if (state.status === "invalid")
-		return <MapInvalid owner={owner} repo={repo} problems={state.problems} />;
-	return <ProductMapView map={state.map} owner={owner} repo={repo} />;
+	const access = useMapWriteAccess(
+		owner,
+		repo,
+		state.status === "missing" || state.status === "invalid",
+	);
+	// The repo's tabs have usually read this already; it says which page to expect.
+	const overview = useQuery(
+		githubRepoOverviewQueryOptions(scope, { owner, repo }),
+	);
+	const sample = useMemo(() => sampleProductMap(owner, repo), [owner, repo]);
+
+	if (state.status === "ready")
+		return (
+			<ProductMapView
+				map={state.map}
+				loading={false}
+				owner={owner}
+				repo={repo}
+			/>
+		);
+	if (state.status === "missing")
+		return <MapMissing owner={owner} repo={repo} access={access} />;
+	if (state.status === "loading" && overview.data?.hasProductMap === false)
+		return <MapMissing owner={owner} repo={repo} access="loading" />;
+	if (state.status === "loading" || access === "loading")
+		return <ProductMapView map={sample} loading owner={owner} repo={repo} />;
+	return (
+		<MapInvalid
+			owner={owner}
+			repo={repo}
+			problems={state.problems}
+			canFix={access === "can-push"}
+		/>
+	);
 }
