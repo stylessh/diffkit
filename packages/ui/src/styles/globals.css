@@ -836,12 +836,14 @@
 
 	/* Inside the app shell only its own panes scroll. iOS sizes `100vh` to the
 	   toolbar-less viewport, so an unlocked document is taller than the shell and
-	   a drag on a fixed bar scrolls or bounces the page under it. */
+	   a drag on a fixed bar scrolls or bounces the page under it. Only the
+	   vertical bounce is stopped: the browser reads the root's horizontal
+	   overscroll to decide whether a sideways swipe goes back or forward. */
 	html:has([data-app-shell]),
 	html:has([data-app-shell]) body {
 		height: 100%;
 		overflow: hidden;
-		overscroll-behavior: none;
+		overscroll-behavior-y: none;
 	}
 
 	code,

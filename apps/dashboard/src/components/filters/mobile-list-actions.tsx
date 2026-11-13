@@ -354,7 +354,7 @@ function FilterValues({
 					className="h-10 w-full rounded-lg bg-surface-0 px-3 text-[15px] font-[450] text-foreground shadow-field outline-none placeholder:text-muted-foreground [&::-webkit-search-cancel-button]:hidden"
 				/>
 			</div>
-			<div className="max-h-[50dvh] overflow-y-auto overscroll-contain px-2 pb-4">
+			<div className="max-h-[50dvh] overflow-y-auto overscroll-y-contain px-2 pb-4">
 				{shown.map((option) => {
 					const checked = selected.has(option.value);
 					return (
