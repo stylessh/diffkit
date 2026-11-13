@@ -1,10 +1,11 @@
 import { createServerFn } from "@tanstack/react-start";
 import type { GitHubSignInMode } from "./auth-actions";
+import { type ClientSession, toClientSession } from "./auth-session";
 
 export const getSession = createServerFn({ method: "GET" }).handler(
-	async () => {
+	async (): Promise<ClientSession | null> => {
 		const { getRequestSession } = await import("./auth-runtime");
-		return getRequestSession();
+		return toClientSession(await getRequestSession());
 	},
 );
 

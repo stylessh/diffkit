@@ -57,3 +57,55 @@ test("the repository tabs, and the pages tucked behind them, show history, branc
 			.getByText("Pre-release"),
 	).toBeVisible();
 });
+
+test("the map lives under the repository tabs: new and leading to the setup prompt where there is none, and the map itself where there is", async ({
+	page,
+}) => {
+	await page.goto("/lumen-labs/orbit");
+	const repositoryTabs = page.getByRole("navigation", { name: "Repository" });
+
+	await repositoryTabs.getByRole("link", { name: "Map New" }).click();
+	await expect(page).toHaveURL(/\/lumen-labs\/orbit\/map$/);
+	await expect(
+		page.getByRole("heading", { level: 1, name: "Give orbit a product map" }),
+	).toBeVisible();
+	await expect(
+		page.getByRole("region", { name: "Prompt for a coding agent" }),
+	).toContainText("lumen-labs/orbit");
+	await expect(
+		repositoryTabs.getByRole("link", { name: "Map New" }),
+	).toHaveAttribute("aria-current", "page");
+
+	await repositoryTabs.getByRole("link", { name: "Code" }).click();
+	await expect(page).toHaveURL(/\/lumen-labs\/orbit$/);
+
+	await page.goto("/lumen-labs/beacon");
+	await repositoryTabs.getByRole("link", { name: "Map", exact: true }).click();
+	await expect(page).toHaveURL(/\/lumen-labs\/beacon\/map$/);
+	await expect(
+		page.getByRole("heading", {
+			level: 1,
+			name: "beacon is a typed event client for the browser.",
+		}),
+	).toBeVisible();
+	await expect(
+		repositoryTabs.getByRole("link", { name: "Map", exact: true }),
+	).toHaveAttribute("aria-current", "page");
+
+	await page.getByRole("button", { name: "Event client" }).click();
+	await expect(
+		page.getByRole("heading", { level: 1, name: "Event client" }),
+	).toBeVisible();
+	await expect(
+		repositoryTabs.getByRole("link", { name: "Pull requests 7" }),
+	).toBeVisible();
+	await page.getByRole("button", { name: "Section: How it works" }).click();
+	await page.getByRole("menuitemradio", { name: "Activity 2" }).click();
+	await expect(
+		page.getByRole("button", { name: "Section: Activity" }),
+	).toBeVisible();
+	await page.getByRole("button", { name: "Product map" }).click();
+	await expect(
+		page.getByRole("button", { name: "Map view: Structure" }),
+	).toBeVisible();
+});

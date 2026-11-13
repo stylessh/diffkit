@@ -1,4 +1,4 @@
-import { CodeIcon, GitMergeIcon } from "@diffkit/icons";
+import { FileIcon, GitMergeIcon } from "@diffkit/icons";
 import {
 	HoverCard,
 	HoverCardContent,
@@ -6,7 +6,7 @@ import {
 } from "@diffkit/ui/components/hover-card";
 import type { ReactNode } from "react";
 import type { AreaActivity } from "#/lib/product-map/activity";
-import { formatBytes } from "./map-format";
+import { plural } from "./map-format";
 import { areaIcon } from "./map-icons";
 import type { ProductArea } from "./product-map-types";
 
@@ -62,8 +62,8 @@ export function AreaHoverCard({
 				{live ? (
 					<div className="flex items-center gap-4 whitespace-nowrap font-[450] text-muted-foreground text-xs tabular-nums">
 						<span className="flex items-center gap-1.5">
-							<CodeIcon size={12} strokeWidth={2} />
-							{formatBytes(live.bytes)}
+							<FileIcon size={12} strokeWidth={2} />
+							{plural(live.files, "file")}
 						</span>
 						<span className="flex items-center gap-1.5">
 							<GitMergeIcon size={12} strokeWidth={2} />

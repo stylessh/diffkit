@@ -10,7 +10,7 @@ import {
 } from "./work";
 
 /** What GitHub says about a repository, reduced to what the map counts. */
-export type TreeFile = { path: string; size: number | null };
+export type TreeFile = { path: string };
 
 export type PullInput = {
 	number: number;
@@ -51,9 +51,13 @@ export type MapPerson = {
 	pulls: number;
 };
 
+export type HotFile = {
+	path: string;
+	changes: { pull: number; lines: number }[];
+};
+
 export type AreaActivity = {
 	files: number;
-	bytes: number;
 	testFiles: number;
 	mergedPulls: number;
 	mergedLast30: number;
@@ -67,9 +71,11 @@ export type AreaActivity = {
 	people: { login: string; pulls: number }[];
 	/**
 	 * The files still in the area that the most pull requests changed: where
-	 * to start reading, worked out rather than written down.
+	 * to start reading, worked out rather than written down. Each carries the
+	 * pull requests that changed it, oldest first, and the lines each changed
+	 * in that file.
 	 */
-	hotFiles: { path: string; pulls: number }[];
+	hotFiles: HotFile[];
 };
 
 export type MapActivity = {
@@ -77,7 +83,6 @@ export type MapActivity = {
 	weekStart: string;
 	totals: {
 		files: number;
-		bytes: number;
 		unmappedFiles: number;
 		mergedPulls: number;
 		openPulls: number;
@@ -101,7 +106,6 @@ const TEST_FILE =
 function emptyArea(): AreaActivity {
 	return {
 		files: 0,
-		bytes: 0,
 		testFiles: 0,
 		mergedPulls: 0,
 		mergedLast30: 0,
@@ -140,7 +144,6 @@ export function buildMapActivity({
 
 	const totals = {
 		files: 0,
-		bytes: 0,
 		unmappedFiles: 0,
 		mergedPulls: 0,
 		openPulls: 0,
@@ -152,14 +155,12 @@ export function buildMapActivity({
 		const found = match(file.path);
 		if (found.kind === "ignored") continue;
 		totals.files += 1;
-		totals.bytes += file.size ?? 0;
 		if (found.kind === "unmapped") {
 			totals.unmappedFiles += 1;
 			continue;
 		}
 		const area = areas[found.area];
 		area.files += 1;
-		area.bytes += file.size ?? 0;
 		if (TEST_FILE.test(file.path)) area.testFiles += 1;
 	}
 
@@ -179,7 +180,7 @@ export function buildMapActivity({
 	const people: Record<string, MapPerson> = {};
 	const mergedDates: Record<string, string[]> = {};
 	const authorsByArea: Record<string, Map<string, number>> = {};
-	const changesByArea: Record<string, Map<string, number>> = {};
+	const changesByArea: Record<string, Map<string, HotFile["changes"]>> = {};
 	for (const area of map.areas) {
 		mergedDates[area.id] = [];
 		authorsByArea[area.id] = new Map();
@@ -202,7 +203,12 @@ export function buildMapActivity({
 			const found = match(file.path);
 			if (found.kind !== "area" || !present.has(file.path)) continue;
 			const changes = changesByArea[found.area];
-			changes.set(file.path, (changes.get(file.path) ?? 0) + 1);
+			const fileChanges = changes.get(file.path) ?? [];
+			fileChanges.push({
+				pull: pull.number,
+				lines: file.additions + file.deletions,
+			});
+			changes.set(file.path, fileChanges);
 		}
 		const merged = pull.state === "merged";
 		if (merged) totals.mergedPulls += 1;
@@ -248,8 +254,11 @@ export function buildMapActivity({
 			.map(([login, count]) => ({ login, pulls: count }))
 			.sort((a, b) => b.pulls - a.pulls);
 		area.hotFiles = [...changesByArea[id]]
-			.map(([path, count]) => ({ path, pulls: count }))
-			.sort((a, b) => b.pulls - a.pulls || a.path.localeCompare(b.path))
+			.map(([path, changes]) => ({ path, changes }))
+			.sort(
+				(a, b) =>
+					b.changes.length - a.changes.length || a.path.localeCompare(b.path),
+			)
 			.slice(0, HOT_FILES);
 	}
 

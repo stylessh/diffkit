@@ -12,7 +12,7 @@ The map has two halves:
   the default branch names the areas, says which folders belong to each and
   explains each one in a few sentences. It is ordinary reviewed text, changed
   in pull requests, and deliberately small: about a hundred lines per area.
-- **Worked out when the page opens.** File counts and sizes, merged and open
+- **Worked out when the page opens.** File counts, merged and open
   pull requests per area, each pull request's share, the people involved, and
   the files in each area that change the most. None of this is stored; DiffKit
   reads it from GitHub, and the browser may show the last answer for up to
@@ -27,9 +27,10 @@ code-quality notes are a different feature.
 
 ## Setting one up
 
-A repository without the folder has no Map tab. Opening `/owner/repo/map`
-directly shows a three-line prompt to copy into a coding agent (Claude Code,
-Codex, Cursor, Antigravity or any other). The prompt installs the
+A repository without the folder shows the Map tab only to people who can push
+to it, marked **New**. For them `/owner/repo/map` shows a three-line prompt to
+copy into a coding agent (Claude Code, Codex, Cursor, Antigravity or any other).
+Everyone else has no Map tab, and the page only says there is no map yet. The prompt installs the
 **product-map skill** and asks the agent to follow it:
 
 ```bash
@@ -128,8 +129,7 @@ make.
 - Only the 300 most recently updated open and merged pull requests are
   counted, and only the first 100 changed files of each; the page says when
   that cut applies.
-- Sizes are bytes of the files in an area, not lines of code.
-- GitHub truncates very large file trees (about 100,000 entries); sizes are
-  then partial.
+- GitHub truncates very large file trees (about 100,000 entries); file counts
+  are then partial.
 - Screenshots are served from GitHub like README images, so they show for
   public repositories or a browser signed in to GitHub.
