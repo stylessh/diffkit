@@ -53,13 +53,18 @@
     },
     {
       "name": "Popup toggles",
-      "summary": "The toolbar popup has a master switch and one toggle per rule, so redirects can be paused without losing the per-rule choices.",
+      "summary": "The toolbar popup has a master switch and one switch per rule, so redirects can be paused without losing the per-rule choices. It follows the system light or dark theme with the dashboard's tokens and fonts.",
       "path": "extensions/diffkit-redirect/popup.js"
     },
     {
       "name": "Rule editor",
       "summary": "The options page shows the rules as JSON, validates them on save and can restore the defaults.",
       "path": "extensions/diffkit-redirect/options.js"
+    },
+    {
+      "name": "Store publishing",
+      "summary": "A new version in manifest.json, once on main, is packed and sent to the Chrome Web Store and Firefox Add-ons for review. Each store is asked what it has first, so a version it already has is left alone.",
+      "path": "scripts/publish-extension.mjs"
     },
     {
       "name": "Extension detection",

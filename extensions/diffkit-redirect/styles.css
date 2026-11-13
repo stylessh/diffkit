@@ -1,26 +1,122 @@
+/*
+ * The extension cannot import the dashboard's stylesheet, so this file carries
+ * the subset of its tokens the popup and options page use. Values mirror
+ * packages/ui/src/styles/globals.css (the neutral scale, the `--ln-*` surfaces
+ * and text, the glass rims); change them there first, then here.
+ */
+
+@font-face {
+  font-family: "Inter Variable";
+  font-style: normal;
+  font-weight: 100 900;
+  src: url("fonts/inter-latin.woff2") format("woff2-variations");
+  font-display: block;
+}
+
+@font-face {
+  font-family: "Geist Mono Variable";
+  font-style: normal;
+  font-weight: 100 900;
+  src: url("fonts/geist-mono-latin.woff2") format("woff2-variations");
+  font-display: block;
+}
+
 :root {
-  --background: #ffffff;
-  --foreground: oklch(0.141 0.005 285.823);
-  --card: #ffffff;
-  --card-foreground: oklch(0.141 0.005 285.823);
-  --primary: oklch(0.21 0.006 285.885);
-  --primary-foreground: oklch(0.985 0 0);
-  --secondary: oklch(0.967 0.001 286.375);
-  --secondary-foreground: oklch(0.21 0.006 285.885);
-  --muted: oklch(0.967 0.001 286.375);
-  --muted-foreground: oklch(0.552 0.016 285.938);
-  --border: oklch(0.92 0.004 286.32);
-  --input: oklch(0.92 0.004 286.32);
-  --ring: oklch(0.871 0.006 286.286);
-  --brand: oklch(0.68 0.2 150);
-  --shadow-sm: 0 1px 2px rgba(16, 24, 40, 0.06);
-  --shadow-md: 0 12px 32px rgba(16, 24, 40, 0.08);
-  font-family:
+  --neutral-1: oklch(0.165 0.007 235);
+  --neutral-2: oklch(0.197 0.008 235);
+  --neutral-3: oklch(0.256 0.011 235);
+  --neutral-4: oklch(0.303 0.013 235);
+  --neutral-5: oklch(0.349 0.014 235);
+  --neutral-7: oklch(0.459 0.018 235);
+  --neutral-8: oklch(0.548 0.02 235);
+  --neutral-9: oklch(0.645 0.018 235);
+  --neutral-10: oklch(0.716 0.016 235);
+  --neutral-11: oklch(0.86 0.008 235);
+  --neutral-12: oklch(0.932 0.004 235);
+
+  --main: color-mix(in oklch, var(--neutral-12) 29%, white);
+  --group: color-mix(in oklch, var(--neutral-12) 70%, white);
+  --rule: color-mix(in oklch, var(--neutral-12) 88%, white);
+  --card: lch(100 0 0);
+  --card-border: var(--neutral-12);
+  --card-shadow:
+    0 0 0 0.5px var(--card-border), lch(0 0 0 / 0.02) 0 3px 6px -2px,
+    lch(0 0 0 / 0.04) 0 1px 1px 0;
+  --text: var(--neutral-4);
+  --text-muted: color-mix(in oklch, var(--neutral-7) 26%, var(--neutral-8));
+  --row-hover: lch(0 0 0 / 0.045);
+  --pill-neutral: oklch(0.483 0.012 235 / 0.1);
+  --accent: lch(50.84 48.54 140.93);
+  --focus: lch(50.84 48.54 140.93);
+  --blocked: lch(58 73 29);
+
+  --glass-light: var(--card);
+  --glass-shade: color-mix(in oklch, var(--text), black 60%);
+  --glass-rim: color-mix(in oklch, var(--glass-light) 70%, transparent);
+  --glass-halo:
+    color-mix(in oklch, var(--glass-shade) 15%, transparent) 0 0 1px 0,
+    color-mix(in oklch, var(--glass-shade) 3%, transparent) 0 1px 2px 0;
+  --glass-chip: inset 0 0 0 1px var(--glass-rim), var(--glass-halo);
+  --glass-solid:
+    inset 0 1px 0 0 color-mix(in oklch, var(--glass-light) 22%, transparent),
+    inset 0 0 0 1px color-mix(in oklch, var(--glass-shade) 7%, transparent),
+    var(--glass-halo);
+  --button: var(--main);
+  --button-hover: var(--group);
+
+  --duration: 140ms;
+  --ease: cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  --font-sans:
     "Inter Variable", "Inter", "Avenir Next", ui-sans-serif, system-ui,
     sans-serif;
-  color: var(--foreground);
+  --font-mono:
+    "Geist Mono Variable", "SF Mono", ui-monospace, "Cascadia Code", monospace;
+
   color-scheme: light;
-  background: var(--background);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --main: color-mix(in oklch, var(--neutral-1) 47%, var(--neutral-2));
+    --group: color-mix(in oklch, var(--neutral-2) 64%, var(--neutral-3));
+    --rule: var(--neutral-3);
+    --card: color-mix(in oklch, var(--neutral-2) 64%, var(--neutral-3));
+    --card-border: color-mix(in oklch, var(--neutral-3) 43%, var(--neutral-4));
+    --card-shadow:
+      0 0 0 0.5px var(--card-border), lch(0 0 0 / 0.3) 0 0.5px 1px 1px;
+    --text: lch(100 0 0);
+    --text-muted: color-mix(in oklch, var(--neutral-9) 65%, var(--neutral-10));
+    --row-hover: lch(100 0 0 / 0.078);
+    --pill-neutral: oklch(0.684 0.012 235 / 0.1);
+    --focus: lch(58.95 53 141.63);
+    --blocked: lch(65.2 73 29);
+
+    --glass-light: color-mix(
+      in oklch,
+      var(--neutral-11) 16%,
+      var(--neutral-12)
+    );
+    --glass-shade: color-mix(
+      in oklch,
+      color-mix(in oklch, var(--neutral-1) 85%, black),
+      black 60%
+    );
+    --glass-rim: color-mix(in oklch, var(--glass-light) 1.8%, transparent);
+    --glass-halo:
+      color-mix(in oklch, var(--glass-shade) 60%, transparent) 0 0 1px 0,
+      color-mix(in oklch, var(--glass-shade) 14%, transparent) 0 1px 2px 0;
+    --glass-chip:
+      inset 0 1px 0 0 color-mix(in oklch, var(--glass-light) 2.5%, transparent),
+      inset 0 0 0 1px var(--glass-rim), var(--glass-halo);
+    --glass-solid:
+      inset 0 1px 0 0 color-mix(in oklch, var(--glass-light) 10%, transparent),
+      inset 0 0 0 1px color-mix(in oklch, var(--glass-shade) 12%, transparent),
+      var(--glass-halo);
+    --button: color-mix(in oklch, var(--main), var(--glass-light) 3.5%);
+    --button-hover: color-mix(in oklch, var(--main), var(--glass-light) 6%);
+
+    color-scheme: dark;
+  }
 }
 
 * {
@@ -28,136 +124,13 @@
 }
 
 body {
-  min-width: 360px;
   margin: 0;
+  font-family: var(--font-sans);
   font-size: 13px;
-  font-weight: 450;
-  color: var(--foreground);
-  background:
-    radial-gradient(
-      circle at top right,
-      color-mix(in srgb, var(--brand) 12%, transparent),
-      transparent 30%
-    ),
-    linear-gradient(180deg, #ffffff 0%, #fafafa 100%);
-}
-
-button,
-textarea,
-input {
-  font: inherit;
-}
-
-button {
-  padding: 0.625rem 0.875rem;
-  font-size: 13px;
-  font-weight: 500;
-  color: var(--primary-foreground);
-  letter-spacing: -0.01em;
-  cursor: pointer;
-  background: var(--primary);
-  border: 1px solid transparent;
-  border-radius: 10px;
-  box-shadow: var(--shadow-sm);
-  transition:
-    background-color 120ms ease,
-    border-color 120ms ease,
-    box-shadow 120ms ease;
-}
-
-button.secondary {
-  color: var(--secondary-foreground);
-  background: var(--secondary);
-  border-color: var(--border);
-}
-
-button:hover {
-  background: color-mix(in srgb, var(--primary) 92%, white);
-}
-
-button.secondary:hover {
-  background: color-mix(in srgb, var(--secondary) 88%, white);
-}
-
-button:focus-visible,
-textarea:focus-visible,
-input:focus-visible {
-  outline: none;
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--ring) 55%, transparent);
-}
-
-code,
-pre {
-  font-family:
-    "SFMono-Regular", ui-monospace, "Cascadia Code", "Source Code Pro",
-    monospace;
-}
-
-.popup-body {
-  --background: #141518;
-  --foreground: oklch(0.965 0.003 286);
-  --card: #16171a;
-  --card-foreground: oklch(0.965 0.003 286);
-  --primary: oklch(0.965 0.003 286);
-  --primary-foreground: #121316;
-  --secondary: #202227;
-  --secondary-foreground: oklch(0.86 0.01 286);
-  --muted: #1a1c20;
-  --muted-foreground: oklch(0.7 0.012 286);
-  --border: rgba(255, 255, 255, 0.08);
-  --input: #2b2e34;
-  --ring: rgba(255, 255, 255, 0.22);
-  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.35);
-  --shadow-md: 0 16px 40px rgba(0, 0, 0, 0.42);
-  min-width: 400px;
-  color-scheme: dark;
-  background: #141518;
-}
-
-.popup-shell {
-  padding: 0;
-}
-
-.popup-card,
-.options-panel,
-.help-panel {
-  background: color-mix(in srgb, var(--card) 96%, transparent);
-  border: 1px solid var(--border);
-  border-radius: 18px;
-  box-shadow: var(--shadow-md);
-}
-
-.popup-card {
-  padding: 12px;
-  background: transparent;
-  border: 0;
-  border-radius: 0;
-  box-shadow: none;
-}
-
-.brand-row,
-.options-header,
-.toggle-row,
-.panel-actions,
-.status-row {
-  display: flex;
-  gap: 12px;
-  align-items: center;
-  justify-content: space-between;
-}
-
-.panel-actions {
-  margin-top: 16px;
-}
-
-.eyebrow {
-  margin: 0 0 4px;
-  font-family:
-    "Geist Mono Variable", "SF Mono", ui-monospace, "Cascadia Code", monospace;
-  font-size: 11px;
-  font-weight: 500;
-  color: var(--muted-foreground);
-  letter-spacing: 0.06em;
+  -webkit-font-smoothing: antialiased;
+  line-height: 1.45;
+  color: var(--text);
+  background: var(--main);
 }
 
 h1,
@@ -166,260 +139,291 @@ p {
   margin: 0;
 }
 
-h1 {
-  font-size: 18px;
-  font-weight: 600;
-  letter-spacing: -0.02em;
+button,
+textarea,
+input {
+  font: inherit;
 }
 
-h2 {
-  margin-bottom: 10px;
-  font-size: 15px;
-  font-weight: 600;
-  letter-spacing: -0.02em;
+:focus-visible {
+  outline: 1px solid var(--focus);
+  outline-offset: 2px;
 }
 
-.muted,
-.lede {
-  margin-top: 12px;
-  line-height: 1.55;
-  color: var(--muted-foreground);
-}
+/* Shared pieces ----------------------------------------------------------- */
 
-.lede {
-  max-width: 34ch;
-  text-wrap: pretty;
-}
-
-.rule-list {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 4px;
-  margin-top: 12px;
-}
-
-.empty-state {
-  grid-column: 1 / -1;
-  padding: 12px;
-  margin: 0;
-  line-height: 1.5;
-  color: var(--muted-foreground);
-  border: 1px dashed var(--border);
-  border-radius: 14px;
-}
-
-.rule-toggle {
+/* Heights and line heights below are whole pixels on purpose: a switch that
+   lands on a fractional offset has its track and thumb snap apart. */
+.bar {
   display: flex;
-  gap: 6px;
-  align-items: flex-start;
-  width: 100%;
-  min-height: 44px;
-  padding: 7px 8px;
-  color: var(--muted-foreground);
-  text-align: left;
-  background: var(--secondary);
-  border: 1px solid transparent;
-  border-radius: 12px;
-  box-shadow: none;
-  transition:
-    background-color 120ms ease,
-    color 120ms ease,
-    border-color 120ms ease,
-    transform 120ms ease;
+  gap: 8px;
+  align-items: center;
+  height: 24px;
 }
 
-.rule-toggle:hover {
-  color: var(--foreground);
-  background: color-mix(in srgb, var(--secondary) 92%, white 4%);
-}
-
-.rule-toggle[aria-pressed="true"] {
-  color: #ffffff;
-  background: color-mix(in srgb, var(--foreground) 14%, #0f1012);
-}
-
-.rule-copy {
-  position: relative;
-  display: grid;
-  gap: 1px;
-  width: 100%;
-  min-width: 0;
-  padding-left: 28px;
-}
-
-.rule-copy::before {
-  position: absolute;
-  top: 0.0625rem;
-  left: 0;
+.mark {
+  flex: none;
   width: 20px;
   height: 20px;
-  content: "";
-  background: rgba(255, 255, 255, 0.08);
-  border-radius: 999px;
-  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.06);
 }
 
-.rule-copy::after {
-  position: absolute;
-  top: 0.4375rem;
-  left: 7px;
-  width: 6px;
-  height: 6px;
-  content: "";
-  background: currentColor;
-  border-radius: 999px;
-  opacity: 0.8;
+.title {
+  flex: 1;
+  min-width: 0;
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 20px;
 }
 
-.rule-toggle[aria-pressed="true"] .rule-copy::before {
-  background: rgba(255, 255, 255, 0.12);
-  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.08);
-}
-
-.rule-title {
-  font-size: 12px;
-  font-weight: 600;
-  line-height: 1.2;
-  letter-spacing: -0.01em;
-}
-
-.rule-description {
-  font-family:
-    "Geist Mono Variable", "SF Mono", ui-monospace, "Cascadia Code", monospace;
-  font-size: 10px;
-  letter-spacing: 0.04em;
-  opacity: 0.72;
-}
-
-.rule-toggle[aria-pressed="true"] .rule-description {
-  color: rgba(255, 255, 255, 0.72);
-}
-
-.brand-lockup {
+.master {
   display: flex;
-  gap: 12px;
+  gap: 8px;
   align-items: center;
-}
-
-.brand-logo {
-  flex: none;
-  width: 42px;
-  height: 42px;
-  border-radius: 12px;
-  box-shadow: var(--shadow-sm);
-}
-
-.popup-body button.secondary {
-  color: var(--foreground);
-  background: #1c1e23;
-  border-color: rgba(255, 255, 255, 0.08);
-}
-
-.popup-body button.secondary:hover {
-  background: #24272d;
+  font-size: 12px;
+  line-height: 16px;
+  color: var(--text-muted);
+  cursor: pointer;
 }
 
 .switch {
   position: relative;
-  display: inline-flex;
-}
-
-.switch input {
-  position: absolute;
-  inset: 0;
-  opacity: 0;
-}
-
-.switch-track {
-  position: relative;
-  width: 36px;
-  height: 20px;
-  background: var(--input);
+  flex: none;
+  width: 22px;
+  height: 14px;
+  margin: 0;
+  appearance: none;
+  cursor: pointer;
+  background: var(--pill-neutral);
   border-radius: 999px;
-  box-shadow: inset 0 0 0 1px var(--border);
-  transition: background 120ms ease;
+  box-shadow: var(--glass-chip);
+  transition: background-color var(--duration) var(--ease);
 }
 
-.switch-track::after {
+.switch::before {
   position: absolute;
   top: 2px;
   left: 2px;
-  width: 16px;
-  height: 16px;
+  width: 10px;
+  height: 10px;
   content: "";
-  background: var(--background);
+  background: white;
   border-radius: 50%;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.18);
-  transition: transform 120ms ease;
+  box-shadow:
+    0 1px 3px 0 lch(0 0 0 / 0.1),
+    0 1px 2px -1px lch(0 0 0 / 0.1);
+  transition: transform var(--duration) var(--ease);
 }
 
-.switch input:checked + .switch-track {
-  background: var(--primary);
+.switch:checked {
+  background: var(--accent);
   box-shadow: none;
 }
 
-.switch input:checked + .switch-track::after {
-  transform: translateX(16px);
+.switch:checked::before {
+  transform: translateX(8px);
 }
 
-.status-row {
-  padding-top: 14px;
-  margin-top: 16px;
-  border-top: 1px solid color-mix(in srgb, var(--border) 85%, transparent);
+.status {
+  font-size: 12px;
+  line-height: 16px;
+  color: var(--text-muted);
 }
 
-.options-layout {
+.status:empty {
+  display: none;
+}
+
+.status[data-tone="error"] {
+  color: var(--blocked);
+}
+
+/* Popup ------------------------------------------------------------------- */
+
+.popup {
+  width: 280px;
+  padding: 6px;
+}
+
+.popup .bar {
+  height: 36px;
+  padding: 0 8px;
+}
+
+.group-label {
+  padding: 10px 8px 4px;
+  font-size: 12px;
+  font-weight: 400;
+  line-height: 16px;
+  color: var(--text-muted);
+}
+
+.rules {
+  transition: opacity var(--duration) var(--ease);
+}
+
+.popup[data-paused] .rules {
+  opacity: 0.45;
+}
+
+.rule {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  justify-content: space-between;
+  height: 32px;
+  padding: 0 8px;
+  cursor: pointer;
+  border-radius: 6px;
+  transition: background-color var(--duration) var(--ease);
+}
+
+.rule:hover {
+  background: var(--row-hover);
+}
+
+.rule-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.empty {
+  padding: 6px 8px;
+  color: var(--text-muted);
+}
+
+.popup-foot {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 8px 4px;
+  margin-top: 6px;
+  border-top: 0.5px solid var(--rule);
+}
+
+.text-link {
+  padding: 0;
+  font-size: 12px;
+  line-height: 16px;
+  color: var(--text-muted);
+  cursor: pointer;
+  background: none;
+  border: 0;
+  border-radius: 4px;
+  transition: color var(--duration) var(--ease);
+}
+
+.text-link:hover {
+  color: var(--text);
+}
+
+/* Options page ------------------------------------------------------------ */
+
+.options {
   display: grid;
-  grid-template-columns: minmax(0, 2fr) minmax(280px, 1fr);
-  gap: 18px;
-  align-items: start;
-  padding: 24px;
+  gap: 16px;
+  max-width: 720px;
+  padding: 40px 24px;
+  margin: 0 auto;
 }
 
-.options-panel,
-.help-panel {
-  padding: 20px;
+.options .title {
+  font-size: 15px;
 }
 
-.rules-editor {
+.editor {
+  display: block;
   width: 100%;
   min-height: 420px;
-  padding: 16px;
-  margin-top: 18px;
-  line-height: 1.5;
-  color: #f5f5f5;
+  padding: 14px 16px;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  line-height: 1.6;
+  color: var(--text);
   resize: vertical;
-  background: #101011;
-  border: 1px solid var(--border);
-  border-radius: 16px;
+  background: var(--card);
+  border: 0;
+  border-radius: 8px;
+  box-shadow: var(--card-shadow);
 }
 
-.code-block {
-  padding: 16px;
-  margin: 0;
+.editor:focus-visible {
+  outline-offset: -1px;
+}
+
+.actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.actions .status {
+  margin-left: 4px;
+}
+
+.button {
+  height: 32px;
+  padding: 0 14px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--main);
+  white-space: nowrap;
+  cursor: pointer;
+  background: var(--text);
+  border: 0;
+  border-radius: 6px;
+  box-shadow: var(--glass-solid);
+  transition: background-color var(--duration) var(--ease);
+}
+
+.button:hover {
+  background: color-mix(in oklch, var(--text) 90%, transparent);
+}
+
+.button-outline {
+  color: var(--text);
+  background: var(--button);
+  box-shadow: var(--glass-chip);
+}
+
+.button-outline:hover {
+  background: var(--button-hover);
+}
+
+.help summary {
+  width: fit-content;
+  font-size: 12px;
+  color: var(--text-muted);
+  cursor: pointer;
+  border-radius: 4px;
+  transition: color var(--duration) var(--ease);
+}
+
+.help summary:hover {
+  color: var(--text);
+}
+
+.help pre {
+  padding: 14px 16px;
+  margin: 12px 0 0;
   overflow: auto;
-  line-height: 1.5;
-  color: #f5f5f5;
-  background: #101011;
-  border-radius: 16px;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  line-height: 1.6;
+  background: var(--group);
+  border-radius: 8px;
 }
 
-.status-copy {
-  min-height: 20px;
-  line-height: 1.45;
-  color: var(--muted-foreground);
+.help p {
+  margin-top: 12px;
+  font-size: 12px;
+  color: var(--text-muted);
+  text-wrap: pretty;
 }
 
-.status-copy[data-tone="error"] {
-  color: oklch(0.577 0.245 27.325);
-}
-
-.status-copy[data-tone="success"] {
-  color: color-mix(in srgb, var(--brand) 60%, black);
-}
-
-@media (max-width: 900px) {
-  .options-layout {
-    grid-template-columns: 1fr;
-  }
+.help code {
+  font-family: var(--font-mono);
+  color: var(--text);
 }

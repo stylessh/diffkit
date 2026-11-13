@@ -1,0 +1,106 @@
+# Publishes the browser extension. The version in manifest.json is the release
+# switch: on main, each store is asked what it has and only a version it does
+# not have is uploaded and sent to review, so re-running is always safe.
+# One-time setup of the secrets is in extensions/diffkit-redirect/README.md.
+name: Extension — publish to stores
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "extensions/diffkit-redirect/**"
+      - "scripts/publish-extension*.mjs"
+      - ".node-version"
+      - ".github/workflows/extension-publish.yml"
+  pull_request:
+    paths:
+      - "extensions/diffkit-redirect/**"
+      - "scripts/publish-extension*.mjs"
+      - ".node-version"
+      - ".github/workflows/extension-publish.yml"
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: "publish: upload the manifest version where a store lacks it. check: only read each store, to prove the credentials."
+        type: choice
+        options: [publish, check]
+        default: publish
+
+concurrency:
+  group: extension-publish-${{ github.event.pull_request.number || 'main' }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+permissions:
+  contents: read
+
+jobs:
+  package:
+    name: Package
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .node-version
+
+      - name: Test the publish script
+        run: node --test scripts/publish-extension.test.mjs
+
+      - name: Pack
+        run: node scripts/publish-extension.mjs pack
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: diffkit-extension
+          path: dist/diffkit-extension-*.zip
+          if-no-files-found: error
+
+      # Nothing is published without a new version, so say so on the pull
+      # request instead of letting the change sit on main unreleased.
+      - name: Note an extension change without a version bump
+        if: github.event_name == 'pull_request'
+        env:
+          BASE_REF: ${{ github.base_ref }}
+        run: |
+          git fetch --quiet --depth=1 origin "$BASE_REF"
+          version() { node -p 'JSON.parse(require("node:fs").readFileSync(0, "utf8")).version'; }
+          base=$(git show FETCH_HEAD:extensions/diffkit-redirect/manifest.json | version)
+          head=$(version < extensions/diffkit-redirect/manifest.json)
+          if [ "$base" = "$head" ] && ! git diff --quiet FETCH_HEAD HEAD -- extensions/diffkit-redirect ':!extensions/diffkit-redirect/README.md'; then
+            echo "::warning file=extensions/diffkit-redirect/manifest.json::The extension changed but its version is still $head, so merging this will not publish it. Bump \"version\" to release."
+          fi
+
+  publish:
+    name: Publish (${{ matrix.store }})
+    if: github.event_name != 'pull_request'
+    needs: package
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        store: [chrome, firefox]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .node-version
+
+      - name: Publish
+        env:
+          CHROME_SERVICE_ACCOUNT_KEY: ${{ secrets.CHROME_SERVICE_ACCOUNT_KEY }}
+          CHROME_PUBLISHER_ID: ${{ vars.CHROME_PUBLISHER_ID }}
+          CHROME_EXTENSION_ID: celjddfjncnnkgfgldobcahfiimlebll
+          AMO_JWT_ISSUER: ${{ secrets.AMO_JWT_ISSUER }}
+          AMO_JWT_SECRET: ${{ secrets.AMO_JWT_SECRET }}
+          STORE: ${{ matrix.store }}
+          MODE: ${{ inputs.mode || 'publish' }}
+        run: |
+          if [ "$MODE" = "check" ]; then
+            node scripts/publish-extension.mjs "$STORE" --check
+          else
+            node scripts/publish-extension.mjs "$STORE"
+          fi

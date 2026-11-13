@@ -3,51 +3,46 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>DiffKit Options</title>
+    <title>DiffKit rules</title>
     <link rel="stylesheet" href="styles.css">
   </head>
   <body>
-    <main class="options-layout">
-      <section class="options-panel">
-        <div class="options-header">
-          <div>
-            <p class="eyebrow">DiffKit</p>
-            <h1>Redirect rules</h1>
-          </div>
+    <main class="options">
+      <header class="bar">
+        <img class="mark" src="icons/logo.svg" alt="">
+        <h1 class="title">Redirect rules</h1>
+        <label class="master">
+          <span id="master-state"></span>
+          <input
+            id="enabled-toggle"
+            class="switch"
+            type="checkbox"
+            role="switch"
+            aria-label="Redirect GitHub pages to DiffKit"
+          >
+        </label>
+      </header>
 
-          <label class="toggle-row">
-            <span>Enabled</span>
-            <input id="enabled-toggle" type="checkbox">
-          </label>
-        </div>
+      <textarea
+        id="rules-editor"
+        class="editor"
+        spellcheck="false"
+        aria-label="Rules as JSON"
+      ></textarea>
 
-        <p class="muted">
-          Add only the GitHub routes DiffKit currently supports. A rule can
-          match a single exact URL or a regex pattern over the full URL.
-        </p>
+      <div class="actions">
+        <button id="save-button" class="button" type="button">Save</button>
+        <button id="reset-button" class="button button-outline" type="button">
+          Reset to defaults
+        </button>
+        <p id="save-status" class="status" role="status"></p>
+      </div>
 
-        <textarea
-          id="rules-editor"
-          class="rules-editor"
-          spellcheck="false"
-        ></textarea>
-
-        <div class="panel-actions">
-          <button id="save-button" type="button">Save rules</button>
-          <button id="reset-button" type="button" class="secondary">
-            Reset defaults
-          </button>
-        </div>
-
-        <p id="save-status" class="status-copy"></p>
-      </section>
-
-      <aside class="help-panel">
-        <h2>Rule shape</h2>
-        <pre class="code-block">{
+      <details class="help">
+        <summary>Rule format</summary>
+        <pre>{
   "id": "github-pull-details",
   "label": "Pull request details",
-  "description": "Redirect GitHub pull request detail pages to DiffKit.",
   "enabled": true,
   "match": {
     "urlRegex": "^https://github\\.com/([^/?#]+)/([^/?#]+)/pull/(\\d+)/?$",
@@ -57,15 +52,11 @@
     "replacement": "https://diff-kit.com/$1/$2/pull/$3"
   }
 }</pre>
-
-        <p class="muted">
-          <code>label</code>
-          is optional but recommended so the popup can show a clean toggle name.
-          For one-off routes, use <code>match.exactUrl</code> and
-          <code>redirect.url</code>
-          instead.
+        <p>
+          <code>label</code> is the name shown in the popup. For a single page,
+          use <code>match.exactUrl</code> with <code>redirect.url</code>.
         </p>
-      </aside>
+      </details>
     </main>
 
     <script src="shared.js"></script>
