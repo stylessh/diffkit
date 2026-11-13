@@ -281,7 +281,7 @@ export function CommandPalette() {
 						ref={listRef}
 						onScroll={placePreview}
 						onPointerMove={hoverRow}
-						className="max-h-[min(27rem,56vh)] scroll-py-2 overscroll-contain px-2 pb-2"
+						className="max-h-[min(27rem,56vh)] scroll-py-2 overscroll-y-contain px-2 pb-2"
 					>
 						{shown.length === 0 ? (
 							<Empty search={search} searching={searching} />

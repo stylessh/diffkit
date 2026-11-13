@@ -483,7 +483,7 @@ function DiffCodeViewSurface({
 					renderCodeViewHeader={header ? () => header : undefined}
 					renderCodeViewFooter={footer ? () => footer : undefined}
 					className={cn(
-						"relative h-full min-h-0 min-w-0 overflow-x-clip overflow-y-auto overscroll-contain [contain:strict] [overflow-anchor:none] [will-change:scroll-position]",
+						"relative h-full min-h-0 min-w-0 overflow-x-clip overflow-y-auto overscroll-y-contain [contain:strict] [overflow-anchor:none] [will-change:scroll-position]",
 						"[&_diffs-container]:overflow-clip [&_diffs-container]:bg-main [&_diffs-container]:[--diff-file-end-rule:var(--color-header-rule)] [&_diffs-container]:[contain:layout_paint_style]",
 						className,
 					)}

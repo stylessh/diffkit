@@ -97,7 +97,7 @@ function DetailLayout({
 			<Drawer open={panelOpen} onOpenChange={setPanelOpen}>
 				<DrawerContent aria-describedby={undefined}>
 					<DrawerTitle className="sr-only">{panelLabel}</DrawerTitle>
-					<div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-5 pt-2 pb-6">
+					<div className="min-h-0 flex-1 overflow-y-auto overscroll-y-contain px-5 pt-2 pb-6">
 						{panel}
 					</div>
 				</DrawerContent>
