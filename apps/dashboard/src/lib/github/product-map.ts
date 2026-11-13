@@ -150,9 +150,7 @@ async function readTree(context: GitHubContext, data: RepoProductMapInput) {
 			mapData: (tree) => ({
 				truncated: tree.truncated,
 				files: tree.tree.flatMap((item) =>
-					item.type === "blob" && item.path
-						? [{ path: item.path, size: item.size ?? null }]
-						: [],
+					item.type === "blob" && item.path ? [{ path: item.path }] : [],
 				),
 			}),
 		});

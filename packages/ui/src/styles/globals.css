@@ -542,6 +542,31 @@
 	--contrib-level-4: oklch(0.78 0.22 150);
 }
 
+/* Pull request tiles: a bar of these is mostly small changes, so the ramp
+   starts vivid where the contribution graph's starts faint. Fixes climb the
+   same steps in red. */
+:root {
+	--pull-tile-1: oklch(0.82 0.13 150);
+	--pull-tile-2: oklch(0.72 0.18 150);
+	--pull-tile-3: oklch(0.6 0.2 150);
+	--pull-tile-4: oklch(0.46 0.17 150);
+	--pull-tile-fix-1: oklch(0.82 0.1 25);
+	--pull-tile-fix-2: oklch(0.72 0.16 25);
+	--pull-tile-fix-3: oklch(0.62 0.21 25);
+	--pull-tile-fix-4: oklch(0.5 0.2 25);
+}
+
+.dark {
+	--pull-tile-1: oklch(0.5 0.15 150);
+	--pull-tile-2: oklch(0.62 0.19 150);
+	--pull-tile-3: oklch(0.74 0.22 150);
+	--pull-tile-4: oklch(0.86 0.23 150);
+	--pull-tile-fix-1: oklch(0.55 0.18 25);
+	--pull-tile-fix-2: oklch(0.63 0.2 25);
+	--pull-tile-fix-3: oklch(0.71 0.19 25);
+	--pull-tile-fix-4: oklch(0.79 0.16 25);
+}
+
 /* File type icons: the hues Pierre's trees colours its icon set with. */
 :root {
 	--file-icon-blue: #1a85d4;

@@ -1,14 +1,14 @@
 import { IssuesIcon } from "@diffkit/icons";
 import { Button } from "@diffkit/ui/components/button";
 import { SectionCard } from "@diffkit/ui/components/section-card";
-import { Spinner } from "@diffkit/ui/components/spinner";
 import {
 	Tooltip,
 	TooltipContent,
-	TooltipProvider,
 	TooltipTrigger,
 } from "@diffkit/ui/components/tooltip";
 import { cn } from "@diffkit/ui/lib/utils";
+import { Skeleton } from "skullet/react";
+import { SkeletonSample } from "#/components/shared/skeleton-sample";
 import type { RepoLinks } from "./code-link";
 import {
 	formatMonth,
@@ -18,7 +18,9 @@ import {
 	openWorkCount,
 	plural,
 } from "./map-format";
-import type { LoadedProductMap } from "./product-map-data";
+import { MarkTooltips } from "./mark-tooltips";
+import { isCounting, type LoadedProductMap } from "./product-map-data";
+import { sampleArea, sampleProductMap } from "./product-map-samples";
 import type { ProductArea } from "./product-map-types";
 import { AreaWork } from "./work/area-work";
 import { WorkRow } from "./work-row";
@@ -36,7 +38,7 @@ function WeeklyBars({
 	const total = weekly.reduce((sum, value) => sum + value, 0);
 	return (
 		<figure className="flex flex-col gap-1.5">
-			<TooltipProvider delayDuration={0} skipDelayDuration={0}>
+			<MarkTooltips>
 				<div
 					role="img"
 					aria-label={`${plural(total, "pull request")} merged per week since ${formatShortDate(weekStart)}`}
@@ -72,7 +74,7 @@ function WeeklyBars({
 						</Tooltip>
 					))}
 				</div>
-			</TooltipProvider>
+			</MarkTooltips>
 			<figcaption className="flex justify-between text-muted-foreground text-xs">
 				<span>{formatMonth(new Date(weekStart))}</span>
 				<span>{formatMonth(new Date(analysedAt))}</span>
@@ -101,21 +103,47 @@ export function AreaActivity({
 	map: LoadedProductMap;
 	repo: RepoLinks;
 }) {
-	const { activity, retryActivity } = map;
-	if (!activity)
-		return retryActivity ? (
+	if (map.retryActivity)
+		return (
 			<p className="flex items-center gap-3 text-[13px] text-muted-foreground">
 				GitHub did not answer, so there is nothing to count yet.
-				<Button size="xs" variant="outline" onClick={retryActivity}>
+				<Button size="xs" variant="outline" onClick={map.retryActivity}>
 					Try again
 				</Button>
 			</p>
-		) : (
-			<p className="flex items-center gap-2 text-[13px] text-muted-foreground">
-				<Spinner className="size-3.5" />
-				Counting pull requests on GitHub
-			</p>
 		);
+	const counting = isCounting(map);
+	const sample = counting
+		? sampleProductMap(map.repo.owner, map.repo.name)
+		: null;
+	return (
+		<Skeleton loading={counting} label="Counting pull requests on GitHub">
+			{sample ? (
+				<SkeletonSample>
+					<AreaActivityCounts
+						area={sampleArea(sample)}
+						map={sample}
+						repo={repo}
+					/>
+				</SkeletonSample>
+			) : (
+				<AreaActivityCounts area={area} map={map} repo={repo} />
+			)}
+		</Skeleton>
+	);
+}
+
+function AreaActivityCounts({
+	area,
+	map,
+	repo,
+}: {
+	area: ProductArea;
+	map: LoadedProductMap;
+	repo: RepoLinks;
+}) {
+	const { activity } = map;
+	if (!activity) return null;
 	const live = activity.areas[area.id];
 
 	return (

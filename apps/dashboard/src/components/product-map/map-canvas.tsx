@@ -1,23 +1,10 @@
 import { cn } from "@diffkit/ui/lib/utils";
-import {
-	type CSSProperties,
-	memo,
-	type PointerEvent,
-	useCallback,
-	useMemo,
-	useRef,
-} from "react";
+import { type CSSProperties, memo, useMemo } from "react";
 import { lensLabel, lensValue } from "./map-format";
 import { areaIcon } from "./map-icons";
-import { MapWires } from "./map-wires";
 import type { LoadedProductMap } from "./product-map-data";
 import type { MapLens, ProductArea } from "./product-map-types";
-import {
-	type Spotlight,
-	spotlightLinks,
-	type TileRole,
-	tileRole,
-} from "./spotlight";
+import { type Spotlight, type TileRole, tileRole } from "./spotlight";
 
 const roleClassName: Record<TileRole, string> = {
 	plain: "",
@@ -31,32 +18,22 @@ const MapTile = memo(function MapTile({
 	role,
 	metric,
 	heat,
-	register,
 	onOpen,
-	onSpotlight,
 }: {
 	area: ProductArea;
 	role: TileRole;
 	metric: string | null;
 	heat: number;
-	register: (id: string, element: HTMLElement | null) => void;
-	onOpen: (id: string, origin: HTMLElement) => void;
-	onSpotlight: (id: string) => void;
+	onOpen: (id: string) => void;
 }) {
 	const Icon = areaIcon(area.icon);
-	const handlePointerEnter = (event: PointerEvent<HTMLButtonElement>) => {
-		if (event.pointerType === "mouse") onSpotlight(area.id);
-	};
 
 	return (
 		<button
 			type="button"
-			ref={(element) => register(area.id, element)}
 			data-area={area.id}
 			data-role={role}
-			onClick={(event) => onOpen(area.id, event.currentTarget)}
-			onPointerEnter={handlePointerEnter}
-			onFocus={() => onSpotlight(area.id)}
+			onClick={() => onOpen(area.id)}
 			style={{ "--heat": heat } as CSSProperties}
 			className={cn(
 				"-outline-offset-1 relative z-10 inline-flex h-8 items-center gap-2 rounded-lg bg-[color-mix(in_oklch,var(--ln-accent)_calc(var(--heat)*34%),var(--ln-button))] px-2.5 font-medium text-[13px] text-text-header shadow-button transition-colors duration-150 hover:text-foreground focus-visible:outline-2 focus-visible:outline-focus focus-visible:outline-solid",
@@ -82,41 +59,20 @@ export function MapCanvas({
 	map,
 	lens,
 	spotlight,
-	onSpotlight,
-	onClearSpotlight,
 	onOpen,
 }: {
 	map: LoadedProductMap;
 	lens: MapLens;
 	spotlight: Spotlight;
-	onSpotlight: (id: string) => void;
-	onClearSpotlight: () => void;
-	onOpen: (id: string, origin: HTMLElement) => void;
+	onOpen: (id: string) => void;
 }) {
-	const containerRef = useRef<HTMLDivElement>(null);
-	const nodes = useRef(new Map<string, HTMLElement>());
-	const register = useCallback((id: string, element: HTMLElement | null) => {
-		if (element) nodes.current.set(id, element);
-		else nodes.current.delete(id);
-	}, []);
-	const links = useMemo(() => spotlightLinks(spotlight, map), [spotlight, map]);
 	const peak = useMemo(
 		() => Math.max(1, ...map.areas.map((area) => lensValue(area, lens, map))),
 		[map, lens],
 	);
 
 	return (
-		// biome-ignore lint/a11y/noStaticElementInteractions: the spotlight must survive the gaps between tiles, so the canvas, not each tile, decides when the pointer has left
-		<div
-			ref={containerRef}
-			className="relative"
-			onPointerLeave={onClearSpotlight}
-			onBlur={(event) => {
-				if (!event.currentTarget.contains(event.relatedTarget))
-					onClearSpotlight();
-			}}
-		>
-			<MapWires containerRef={containerRef} nodes={nodes} links={links} />
+		<div>
 			{map.bands.map((band) => (
 				<section
 					key={band.id}
@@ -142,9 +98,7 @@ export function MapCanvas({
 											role={tileRole(spotlight, id, map)}
 											metric={lensLabel(area, lens, map)}
 											heat={lensValue(area, lens, map) / peak}
-											register={register}
 											onOpen={onOpen}
-											onSpotlight={onSpotlight}
 										/>
 									);
 								})}

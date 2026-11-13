@@ -3,7 +3,6 @@ import { SectionCard } from "@diffkit/ui/components/section-card";
 import {
 	Tooltip,
 	TooltipContent,
-	TooltipProvider,
 	TooltipTrigger,
 } from "@diffkit/ui/components/tooltip";
 import { Link } from "@tanstack/react-router";
@@ -12,13 +11,13 @@ import type { MapActivity, PullWork } from "#/lib/product-map/activity";
 import type { WorkPart } from "#/lib/product-map/work";
 import type { RepoLinks } from "../code-link";
 import { formatShare } from "../map-format";
+import { MarkTooltips } from "../mark-tooltips";
 import type { ProductArea } from "../product-map-types";
 import { WorkRow } from "../work-row";
 
 const LIST_PREVIEW = 5;
 const MAIN_SHARE = 0.1;
 const MAIN_LINES = 40;
-const FIX_STRENGTH = [0, 45, 62, 80, 100];
 
 function cellLevel(lines: number) {
 	if (lines > 1500) return 4;
@@ -27,11 +26,54 @@ function cellLevel(lines: number) {
 	return 1;
 }
 
-function cellColor({ touch, pull }: Row) {
-	const level = cellLevel(touch.lines);
-	return pull.fix
-		? `color-mix(in oklab, var(--color-removed) ${FIX_STRENGTH[level]}%, transparent)`
-		: `var(--contrib-level-${level})`;
+/** A cell's fill: stronger for more lines, and red when the pull request is a fix. */
+function cellColor(lines: number, fix: boolean) {
+	return `var(--pull-tile-${fix ? "fix-" : ""}${cellLevel(lines)})`;
+}
+
+/**
+ * One pull request as a tile that opens it: what the area's activity and its
+ * most changed files both count pull requests with. Tiles butt against each
+ * other in a bar, and the bar rounds its own ends.
+ */
+export function PullCell({
+	pull,
+	lines,
+	repo,
+	children,
+}: {
+	pull: PullWork;
+	/** What the cell's strength stands for: lines in the area, or in one file. */
+	lines: number;
+	repo: RepoLinks;
+	/** The tooltip's second line. */
+	children: ReactNode;
+}) {
+	return (
+		<Tooltip>
+			<TooltipTrigger asChild>
+				<Link
+					to="/$owner/$repo/pull/$pullId"
+					params={{
+						owner: repo.owner,
+						repo: repo.repo,
+						pullId: String(pull.number),
+					}}
+					aria-label={`#${pull.number} ${pull.title}`}
+					className="group/cell flex h-3.5 w-3 outline-none"
+				>
+					<span
+						style={{ backgroundColor: cellColor(lines, pull.fix) }}
+						className="size-full transition-shadow duration-150 group-hover/cell:shadow-[inset_0_0_0_1.5px_var(--color-foreground)] group-focus-visible/cell:shadow-[inset_0_0_0_1.5px_var(--color-focus)]"
+					/>
+				</Link>
+			</TooltipTrigger>
+			<TooltipContent className="max-w-72 flex-col items-start gap-0.5">
+				<span className="line-clamp-2">{pull.title}</span>
+				<span className="font-[450] text-muted-foreground">{children}</span>
+			</TooltipContent>
+		</Tooltip>
+	);
 }
 
 /** One pull request as seen from a single area. */
@@ -50,53 +92,30 @@ const WorkCells = memo(function WorkCells({
 	repo: RepoLinks;
 }) {
 	return (
-		<TooltipProvider delayDuration={0} skipDelayDuration={0}>
-			<ul aria-label="Merged pull requests" className="-m-0.5 flex flex-wrap">
-				{rows.map((row) => {
-					const { touch, pull } = row;
-					return (
-						<li key={pull.number} className="flex">
-							<Tooltip>
-								<TooltipTrigger asChild>
-									<Link
-										to="/$owner/$repo/pull/$pullId"
-										params={{
-											owner: repo.owner,
-											repo: repo.repo,
-											pullId: String(pull.number),
-										}}
-										aria-label={`#${pull.number} ${pull.title}`}
-										className="group/cell flex size-3.5 items-center justify-center"
-									>
-										<span
-											style={{ backgroundColor: cellColor(row) }}
-											className="size-2.5 rounded-[3px] opacity-90 transition-shadow duration-150 group-hover/cell:shadow-[0_0_0_1.5px_var(--color-foreground)]"
-										/>
-									</Link>
-								</TooltipTrigger>
-								<TooltipContent className="max-w-72 flex-col items-start gap-0.5">
-									<span className="line-clamp-2">{pull.title}</span>
-									<span className="font-[450] text-muted-foreground">
-										{pull.approximate ? "About " : ""}
-										{formatShare(touch.share)} of #{pull.number} lands here
-									</span>
-								</TooltipContent>
-							</Tooltip>
-						</li>
-					);
-				})}
+		<MarkTooltips>
+			{/* The width is cut to a whole number of tiles, so every full line ends flush with the rounded edge. */}
+			<ul
+				aria-label="Merged pull requests"
+				className="flex w-[calc(round(down,100%_+_1px,13px)_-_1px)] flex-wrap gap-px overflow-hidden rounded-[4px]"
+			>
+				{rows.map(({ touch, pull }) => (
+					<li
+						key={pull.number}
+						className="flex overflow-hidden last:rounded-r-[4px]"
+					>
+						<PullCell pull={pull} lines={touch.lines} repo={repo}>
+							{pull.approximate ? "About " : ""}
+							{formatShare(touch.share)} of #{pull.number} lands here
+						</PullCell>
+					</li>
+				))}
 			</ul>
-		</TooltipProvider>
+		</MarkTooltips>
 	);
 });
 
 function Swatch({ color }: { color: string }) {
-	return (
-		<span
-			style={{ backgroundColor: color }}
-			className="size-2.5 rounded-[3px]"
-		/>
-	);
+	return <span style={{ backgroundColor: color }} className="size-2.5" />;
 }
 
 function CellLegend() {
@@ -106,13 +125,15 @@ function CellLegend() {
 			className="flex items-center gap-1 font-[450] text-muted-foreground text-xs"
 		>
 			<span className="pr-1">Smaller</span>
-			{[1, 2, 3, 4].map((level) => (
-				<Swatch key={level} color={`var(--contrib-level-${level})`} />
-			))}
+			<span className="flex gap-px overflow-hidden rounded-[3px]">
+				{[1, 2, 3, 4].map((level) => (
+					<Swatch key={level} color={`var(--pull-tile-${level})`} />
+				))}
+			</span>
 			<span className="pr-3 pl-1">Bigger</span>
-			<Swatch
-				color={`color-mix(in oklab, var(--color-removed) ${FIX_STRENGTH[3]}%, transparent)`}
-			/>
+			<span className="flex overflow-hidden rounded-[3px]">
+				<Swatch color="var(--pull-tile-fix-3)" />
+			</span>
 			<span className="pl-1">Fix</span>
 		</div>
 	);

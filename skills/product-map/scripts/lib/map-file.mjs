@@ -5,7 +5,7 @@ import { compilePatterns } from "./path-rules.mjs";
  * `map.json` lays out the overview and each file in `areas/` describes one
  * area and says which files belong to it. They hold only what someone has to
  * say: what an area is and how it works. Everything that can be counted or
- * looked up (sizes, pull requests, people, the files that change most, line
+ * looked up (file counts, pull requests, people, the files that change most, line
  * numbers) is computed from GitHub when the map is opened and never stored.
  *
  * The format is closed: a field, icon or step kind that is not listed below
