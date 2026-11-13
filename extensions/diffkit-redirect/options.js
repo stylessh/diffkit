@@ -53,16 +53,16 @@
     setStatus("Saved", "");
   }
 
-  // The switch applies at once, on top of the stored rules, so pausing never
-  // depends on the editor holding valid JSON.
+  // The switch applies at once and writes only itself, so pausing never depends
+  // on the editor holding valid JSON and never touches the stored rules.
   async function saveEnabled() {
     const enabled = enabledToggle.checked;
     renderMaster(enabled);
-    const config = await shared.getConfig();
-    const result = await shared.saveConfig({ enabled, rules: config.rules });
-    if (!result.ok) {
-      setStatus(result.errors.join(" "), "error");
-      renderMaster(config.enabled);
+    try {
+      await shared.saveEnabled(enabled);
+    } catch {
+      setStatus("Could not save", "error");
+      renderMaster(!enabled);
     }
   }
 

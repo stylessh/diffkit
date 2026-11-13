@@ -140,7 +140,15 @@ test("chrome: an older version in review makes way for the new one", async () =>
         const cancelled = calls.some((c) => c.path.endsWith(":cancelSubmission"));
         return cancelled
           ? [200, { uploadState: "SUCCEEDED" }]
-          : [400, { error: { message: "Item is in review." } }];
+          : [
+              400,
+              {
+                error: {
+                  status: "FAILED_PRECONDITION",
+                  message: "Item is in review.",
+                },
+              },
+            ];
       }
       if (call.path === `${ITEM}:publish`)
         return [200, { state: "PENDING_REVIEW" }];
@@ -169,6 +177,36 @@ test("chrome: a refused upload with nothing in review cancels nothing", async ()
     async (api, calls) => {
       await assert.rejects(publishChrome(chromeConfig(api)), /Bad package/);
       assert.ok(!seen(calls).some((line) => line.includes("cancelSubmission")));
+    }
+  );
+});
+
+test("chrome: an outage during upload leaves the version in review alone", async () => {
+  await withStore(
+    (call) => {
+      if (call.path === "/token") return [200, { access_token: "tok" }];
+      if (call.path === `${ITEM}:fetchStatus`)
+        return [200, { ...published("0.1.2"), ...inReview("0.1.3") }];
+      if (call.path === `/upload${ITEM}:upload`)
+        return [503, { error: { status: "UNAVAILABLE" } }];
+    },
+    async (api, calls) => {
+      await assert.rejects(publishChrome(chromeConfig(api)), /HTTP 503/);
+      assert.ok(!seen(calls).some((line) => line.includes("cancelSubmission")));
+    }
+  );
+});
+
+test("chrome: a manifest behind the version in review uploads nothing", async () => {
+  await withStore(
+    (call) => {
+      if (call.path === "/token") return [200, { access_token: "tok" }];
+      if (call.path === `${ITEM}:fetchStatus`)
+        return [200, { ...published("0.1.3"), ...inReview("0.3.0") }];
+    },
+    async (api, calls) => {
+      await assert.rejects(publishChrome(chromeConfig(api)), /0\.3\.0/);
+      assert.deepEqual(seen(calls), ["POST /token", `GET ${ITEM}:fetchStatus`]);
     }
   );
 });

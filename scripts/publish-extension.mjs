@@ -182,6 +182,16 @@ function revisionVersions(revision) {
     .filter(Boolean);
 }
 
+// Google's answer for "the item is not in a state that allows this", which is
+// the only refusal an in-review version can explain. Anything else (a bad
+// package, an outage, a rate limit) must leave that review alone.
+function refusedForItemState(response) {
+  return (
+    response.status === 400 &&
+    response.body?.error?.status === "FAILED_PRECONDITION"
+  );
+}
+
 // What to do with `version`, given the store's fetchStatus answer.
 export function chromePlan(status, version) {
   const published = revisionVersions(status.publishedItemRevisionStatus);
@@ -199,11 +209,13 @@ export function chromePlan(status, version) {
       reason: `${version} is already submitted (${submitted.state})`,
     };
   }
-  const newer = published.find((other) => compareVersions(other, version) > 0);
+  const newer = [...published, ...waiting].find(
+    (other) => compareVersions(other, version) > 0
+  );
   if (newer) {
     return {
       action: "fail",
-      reason: `the store has ${newer}, which is newer than ${version}; bump the version in manifest.json`,
+      reason: `the store has ${newer} published or in review, which is newer than ${version}; bump the version in manifest.json`,
     };
   }
   return {
@@ -253,7 +265,7 @@ export async function publishChrome({
   }
 
   let uploaded = await upload();
-  if (!uploaded.ok && plan.inReview) {
+  if (plan.inReview && refusedForItemState(uploaded)) {
     // The store keeps one submission at a time, so the older one makes way.
     log(
       `Chrome refused the upload while ${plan.inReview} is in review (HTTP ${uploaded.status}). Cancelling that review and trying again.`

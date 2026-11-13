@@ -74,28 +74,36 @@
     renderRules(config.rules);
   }
 
-  // Saves a change made on top of the stored config. On failure the popup is
-  // drawn again from storage, so a switch never shows a state that was not kept.
-  async function save(change) {
-    try {
-      const config = await shared.getConfig();
-      const result = await shared.saveConfig(change(config));
-      if (!result.ok) {
-        showError(result.errors.join(" "));
-        await render();
-        return;
+  // Saves run one at a time: a rule change reads the stored rules and writes
+  // them back, so two at once would lose one. `confirm` puts the control in the
+  // state that was stored. On failure the popup is drawn again from storage, so
+  // a switch never shows a state that was not kept.
+  let lastSave = Promise.resolve();
+  function save(write, confirm) {
+    lastSave = lastSave.then(async () => {
+      try {
+        const result = await write();
+        if (result && !result.ok) {
+          showError(result.errors.join(" "));
+          await render();
+          return;
+        }
+        clearError();
+        confirm();
+      } catch {
+        showError("Could not save");
+        await render().catch(() => undefined);
       }
-      clearError();
-    } catch {
-      showError("Could not save");
-      await render().catch(() => undefined);
-    }
+    });
   }
 
   toggle.addEventListener("change", () => {
     const enabled = toggle.checked;
     renderMaster(enabled);
-    save((config) => ({ enabled, rules: config.rules }));
+    save(
+      () => shared.saveEnabled(enabled),
+      () => renderMaster(enabled)
+    );
   });
 
   ruleList.addEventListener("change", (event) => {
@@ -106,12 +114,24 @@
 
     const { ruleId } = input.dataset;
     const enabled = input.checked;
-    save((config) => ({
-      enabled: config.enabled,
-      rules: config.rules.map((rule) =>
-        rule.id === ruleId ? { ...rule, enabled } : rule
-      ),
-    }));
+    save(
+      async () => {
+        const config = await shared.getConfig();
+        return shared.saveConfig({
+          enabled: config.enabled,
+          rules: config.rules.map((rule) =>
+            rule.id === ruleId ? { ...rule, enabled } : rule
+          ),
+        });
+      },
+      () => {
+        for (const row of ruleList.querySelectorAll("input")) {
+          if (row.dataset.ruleId === ruleId) {
+            row.checked = enabled;
+          }
+        }
+      }
+    );
   });
 
   editRules.addEventListener("click", () => {

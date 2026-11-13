@@ -88,8 +88,9 @@ left alone, so the workflow is safe to re-run after a failure.
 - A pull request that changes the extension without a new version gets a
   warning, because merging it would publish nothing.
 - Every run attaches the packed zip as the `diffkit-extension` artifact.
-- On Chrome, if an older version is still in review and blocks the upload, that
-  review is cancelled so the new version can take its place.
+- On Chrome, if an older version is still in review and the store refuses the
+  upload because of the item's state, that review is cancelled so the new
+  version can take its place. Any other upload failure leaves the review alone.
 - Only the package is updated. Store listing text and screenshots stay as they
   are in each developer dashboard.
 

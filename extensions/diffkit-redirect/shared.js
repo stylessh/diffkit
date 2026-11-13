@@ -351,6 +351,12 @@
     };
   }
 
+  // Writes the master switch alone, so it can never put back rules that another
+  // save is replacing at the same moment.
+  async function saveEnabled(enabled) {
+    await storageSet({ [STORAGE_KEYS.enabled]: enabled !== false });
+  }
+
   function expandReplacement(template, match) {
     return template.replace(
       /\$(\d+)/g,
@@ -426,6 +432,7 @@
     getConfig,
     getDefaultRules,
     saveConfig,
+    saveEnabled,
     validateRules,
     findRedirect,
   };
