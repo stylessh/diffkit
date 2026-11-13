@@ -44,6 +44,30 @@ describe("entry worker fetch", () => {
 		expect(startFetch).toHaveBeenCalledTimes(1);
 	});
 
+	it("refuses a server-function request that a page element could have made", async () => {
+		startFetch.mockResolvedValue(new Response("app"));
+
+		const fromImageOrLink = await worker.fetch(
+			request("/_serverFn/abc?payload=%7B%7D", {
+				headers: { "sec-fetch-site": "same-origin", cookie: "session=1" },
+			}),
+			env,
+			ctx,
+		);
+		const fromAppClient = await worker.fetch(
+			request("/_serverFn/abc?payload=%7B%7D", {
+				headers: { "x-tsr-serverFn": "true" },
+			}),
+			env,
+			ctx,
+		);
+
+		expect(fromImageOrLink.status).toBe(403);
+		expect(fromImageOrLink.headers.get("X-Frame-Options")).toBe("DENY");
+		expect(fromAppClient.status).toBe(200);
+		expect(startFetch).toHaveBeenCalledTimes(1);
+	});
+
 	it("turns an unhandled error into a logged, retryable 503 without leaking it", async () => {
 		startFetch.mockRejectedValue(
 			new Error("Failed query: select\nparams: ghu_SECRETSECRETSECRET1"),
