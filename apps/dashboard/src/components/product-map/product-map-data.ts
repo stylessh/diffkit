@@ -4,6 +4,7 @@ import {
 	githubRepoOverviewQueryOptions,
 	githubRepoProductMapActivityQueryOptions,
 	githubRepoProductMapFileQueryOptions,
+	githubRepoViewerPermissionQueryOptions,
 } from "#/lib/github.query";
 import type { MapActivity } from "#/lib/product-map/activity";
 import type {
@@ -36,6 +37,11 @@ export type LoadedProductMap = {
 	 */
 	retryActivity: (() => void) | null;
 };
+
+/** GitHub is still being counted: neither numbers nor a failure yet. */
+export function isCounting(map: LoadedProductMap) {
+	return !(map.activity || map.retryActivity);
+}
 
 export function loadProductMap(
 	file: MapFile,
@@ -107,4 +113,26 @@ export function useProductMap(owner: string, repo: string): ProductMapState {
 			),
 		};
 	}, [file.data, activity.data, activityFailed, refetch, owner, repo, branch]);
+}
+
+export type MapWriteAccess = "loading" | "can-push" | "read-only";
+
+/**
+ * Whether the viewer could commit a map, which decides if the setup and fix
+ * prompts are worth showing them. Only asked once a map turns out to be
+ * missing or invalid.
+ */
+export function useMapWriteAccess(
+	owner: string,
+	repo: string,
+	enabled: boolean,
+): MapWriteAccess {
+	const scope = useGitHubQueryScope();
+	const permission = useQuery({
+		...githubRepoViewerPermissionQueryOptions(scope, { owner, repo }),
+		enabled,
+	});
+	if (permission.data)
+		return permission.data.canPush ? "can-push" : "read-only";
+	return permission.isError ? "read-only" : "loading";
 }

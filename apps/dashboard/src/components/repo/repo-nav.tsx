@@ -75,6 +75,14 @@ function formatCount(n: number) {
 	return String(n);
 }
 
+function NewBadge() {
+	return (
+		<span className="-mr-1 flex h-[18px] shrink-0 items-center rounded-full bg-pill-ok px-1.5 font-medium text-[11px] text-pill-ok-text">
+			New
+		</span>
+	);
+}
+
 export function RepoNav({
 	owner,
 	repo,
@@ -83,6 +91,7 @@ export function RepoNav({
 	className,
 	actions,
 	showSettings = false,
+	canPush = false,
 }: {
 	owner: string;
 	repo: string;
@@ -91,14 +100,17 @@ export function RepoNav({
 	className?: string;
 	actions?: ReactNode;
 	showSettings?: boolean;
+	canPush?: boolean;
 }) {
 	const { user } = protectedRoute.useRouteContext();
 	const pinned = useRepoTabs(user.id);
-	// Settings needs permission and Map needs a map file; neither is offered otherwise.
+	// A repository without a map still offers Map to the people who could add one.
+	const mapToSetUp = repoData?.hasProductMap === false && canPush;
 	const available: Partial<Record<RepoNavKey, boolean>> = {
 		settings: showSettings,
-		map: repoData?.hasProductMap === true,
+		map: repoData?.hasProductMap === true || mapToSetUp,
 	};
+	const isNew = (item: RepoNavItem) => item.key === "map" && mapToSetUp;
 	const items = ITEMS.filter(
 		(item) => available[item.key] !== false || item.key === active,
 	);
@@ -129,6 +141,7 @@ export function RepoNav({
 							{count != null && count > 0 ? (
 								<ViewTabCount>{formatCount(count)}</ViewTabCount>
 							) : null}
+							{isNew(item) ? <NewBadge /> : null}
 						</Link>
 					</ViewTab>
 				);
@@ -149,6 +162,7 @@ export function RepoNav({
 							<DropdownMenuItem key={item.key} asChild>
 								<Link to={item.to} params={{ owner, repo }}>
 									<span className="flex-1">{item.label}</span>
+									{isNew(item) ? <NewBadge /> : null}
 									{count != null && count > 0 ? (
 										<span className="text-xs tabular-nums text-muted-foreground">
 											{formatCount(count)}
@@ -180,6 +194,7 @@ export function RepoNav({
 				items={items}
 				current={items.find((item) => item.key === active)}
 				countOf={countOf}
+				isNew={isNew}
 			/>
 		</ViewTabs>
 	);
@@ -193,12 +208,14 @@ function RepoSectionSwitcher({
 	items,
 	current,
 	countOf,
+	isNew,
 }: {
 	owner: string;
 	repo: string;
 	items: RepoNavItem[];
 	current?: RepoNavItem;
 	countOf: (item: RepoNavItem) => number | null;
+	isNew: (item: RepoNavItem) => boolean;
 }) {
 	const currentCount = current ? countOf(current) : null;
 	return (
@@ -227,6 +244,7 @@ function RepoSectionSwitcher({
 								aria-current={item.key === current?.key ? "page" : undefined}
 							>
 								<span className="flex-1">{item.label}</span>
+								{isNew(item) ? <NewBadge /> : null}
 								{count != null && count > 0 ? (
 									<span className="text-xs tabular-nums text-muted-foreground">
 										{formatCount(count)}

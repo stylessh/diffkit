@@ -1,15 +1,26 @@
 import { SectionCard } from "@diffkit/ui/components/section-card";
+import {
+	Tooltip,
+	TooltipContent,
+	TooltipTrigger,
+} from "@diffkit/ui/components/tooltip";
 import { cn } from "@diffkit/ui/lib/utils";
 import { Link } from "@tanstack/react-router";
 import { type ReactNode, useState } from "react";
+import { Skeleton } from "skullet/react";
 import { FileTypeIcon } from "#/components/shared/file-type-icon";
+import type { HotFile, MapActivity } from "#/lib/product-map/activity";
 import { AreaActivity } from "./area-activity";
 import { AreaFlow } from "./area-flow";
 import { blobLink, CodeLink, type RepoLinks } from "./code-link";
-import { plural, shortPath } from "./map-format";
+import { formatShortDate, plural, shortPath } from "./map-format";
 import { featureIcon } from "./map-icons";
-import type { LoadedProductMap } from "./product-map-data";
+import { MarkTooltips } from "./mark-tooltips";
+import { isCounting, type LoadedProductMap } from "./product-map-data";
+import { sampleArea, sampleProductMap } from "./product-map-samples";
 import type { AreaFeature, ProductArea } from "./product-map-types";
+import { PullCell } from "./work/area-work";
+import { PersonAvatar } from "./work-row";
 
 export const AREA_SECTIONS = ["how", "inside", "code", "activity"] as const;
 
@@ -79,53 +90,36 @@ function ScreenPreview({
 	);
 }
 
+/**
+ * One part of an area: what it is, in full, and the file it starts in. Nothing
+ * is folded away, so the list can be read straight down.
+ */
 function FeatureItem({
 	feature,
-	open,
-	onToggle,
 	repo,
 }: {
 	feature: AreaFeature;
-	open: boolean;
-	onToggle: () => void;
 	repo: RepoLinks;
 }) {
 	const Icon = featureIcon(feature.name, feature.path ?? "");
 	return (
-		<li
-			className={cn(
-				"-mx-2.5 flex flex-col rounded-lg transition-colors",
-				open ? "bg-item-hover" : "hover:bg-item-hover",
-			)}
-		>
-			<button
-				type="button"
-				aria-expanded={open}
-				onClick={onToggle}
-				className="flex items-start gap-3 rounded-lg p-2.5 text-left"
-			>
-				<span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-button text-muted-foreground shadow-button">
-					<Icon size={14} strokeWidth={2} />
+		<li className="flex items-start gap-3">
+			<span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-button text-muted-foreground shadow-button">
+				<Icon size={14} strokeWidth={2} />
+			</span>
+			<span className="flex min-w-0 flex-col items-start gap-0.5">
+				<span className="font-medium text-[13px] text-foreground">
+					{feature.name}
 				</span>
-				<span className="flex min-w-0 flex-col gap-0.5">
-					<span className="font-medium text-[13px] text-foreground">
-						{feature.name}
+				<span className="text-pretty text-muted-foreground text-xs leading-[1.5]">
+					{feature.summary}
+				</span>
+				{feature.path ? (
+					<span className="mt-2 flex max-w-full">
+						<CodeLink reference={{ path: feature.path }} repo={repo} />
 					</span>
-					<span
-						className={cn(
-							"text-pretty text-muted-foreground text-xs leading-[1.5]",
-							!open && "line-clamp-2",
-						)}
-					>
-						{feature.summary}
-					</span>
-				</span>
-			</button>
-			{open && feature.path ? (
-				<span className="flex pr-2.5 pb-2.5 pl-[3.375rem]">
-					<CodeLink reference={{ path: feature.path }} repo={repo} />
-				</span>
-			) : null}
+				) : null}
+			</span>
 		</li>
 	);
 }
@@ -137,48 +131,113 @@ function FeatureList({
 	features: AreaFeature[];
 	repo: RepoLinks;
 }) {
-	const [openFeature, setOpenFeature] = useState<string | null>(null);
 	return (
-		<ul className="grid items-start gap-x-8 gap-y-1 sm:grid-cols-2">
+		<ul className="grid items-start gap-x-8 gap-y-6 sm:grid-cols-2">
 			{features.map((feature) => (
-				<FeatureItem
-					key={feature.name}
-					feature={feature}
-					open={feature.name === openFeature}
-					onToggle={() =>
-						setOpenFeature((current) =>
-							current === feature.name ? null : feature.name,
-						)
-					}
-					repo={repo}
-				/>
+				<FeatureItem key={feature.name} feature={feature} repo={repo} />
 			))}
 		</ul>
 	);
 }
 
-/** One of the area's most changed files, with how many pull requests changed it. */
+/** How many of a file's pull requests get a cell before the older ones are only counted. */
+const FILE_CELLS = 10;
+const FILE_AUTHORS = 3;
+
+/**
+ * One of the area's most changed files: the pull requests that changed it as
+ * cells (stronger for more lines in this file, red for a fix), who made them
+ * and when it last changed. The path opens the file; a cell opens its pull
+ * request.
+ */
 function HotFileRow({
 	file,
+	activity,
 	repo,
 }: {
-	file: { path: string; pulls: number };
+	file: HotFile;
+	activity: MapActivity;
 	repo: RepoLinks;
 }) {
+	const changes = file.changes.flatMap((change) => {
+		const pull = activity.pulls[change.pull];
+		return pull ? [{ pull, lines: change.lines }] : [];
+	});
+	const shown = changes.slice(-FILE_CELLS);
+	const older = changes.length - shown.length;
+	const latest = changes.at(-1)?.pull;
+	// Most recent author first, each once.
+	const authors = [
+		...new Set(changes.map(({ pull }) => pull.author).reverse()),
+	].slice(0, FILE_AUTHORS);
+	const slash = file.path.lastIndexOf("/");
+	const short = shortPath(file.path);
+	const folder = short.slice(0, short.lastIndexOf("/") + 1);
+
 	return (
-		<Link
-			{...blobLink(repo, file)}
-			title={file.path}
-			className="flex items-center gap-3 px-4 py-2.5 transition-colors hover:bg-row-hover"
-		>
-			<FileTypeIcon path={file.path} size={15} />
-			<span className="min-w-0 flex-1 truncate font-mono text-[12px] text-foreground">
-				{shortPath(file.path)}
+		<div className="flex items-center gap-3 px-4 py-2.5 transition-colors hover:bg-row-hover">
+			<Link
+				{...blobLink(repo, file)}
+				title={file.path}
+				className="flex min-w-0 flex-1 items-center gap-3"
+			>
+				<FileTypeIcon path={file.path} size={15} />
+				<span className="min-w-0 truncate font-mono text-[12px] text-foreground">
+					<span className="text-muted-foreground">{folder}</span>
+					{file.path.slice(slash + 1)}
+				</span>
+			</Link>
+			<MarkTooltips>
+				<ul
+					aria-label={`${plural(changes.length, "pull request")} changed this file`}
+					className="flex shrink-0 gap-px"
+				>
+					{older > 0 ? (
+						<li className="flex overflow-hidden first:rounded-l-[4px]">
+							<Tooltip>
+								<TooltipTrigger asChild>
+									<span className="flex h-3.5 items-center bg-foreground/10 px-1.5 font-medium text-[10px] text-muted-foreground tabular-nums">
+										+{older}
+									</span>
+								</TooltipTrigger>
+								<TooltipContent>
+									{plural(older, "earlier pull request")}
+								</TooltipContent>
+							</Tooltip>
+						</li>
+					) : null}
+					{shown.map(({ pull, lines }) => (
+						<li
+							key={pull.number}
+							className="flex overflow-hidden first:rounded-l-[4px] last:rounded-r-[4px]"
+						>
+							<PullCell pull={pull} lines={lines} repo={repo}>
+								#{pull.number} · {plural(lines, "line")} here
+							</PullCell>
+						</li>
+					))}
+				</ul>
+			</MarkTooltips>
+			<span className="flex w-12 shrink-0 items-center justify-end max-sm:hidden">
+				{authors.map((login, index) => (
+					<PersonAvatar
+						key={login}
+						login={login}
+						avatarUrl={activity.people[login]?.avatarUrl ?? null}
+						title={login}
+						className={cn("size-4 ring-2 ring-card", index > 0 && "-ml-1.5")}
+					/>
+				))}
 			</span>
-			<span className="shrink-0 font-[450] text-muted-foreground text-xs tabular-nums">
-				{plural(file.pulls, "pull request")}
-			</span>
-		</Link>
+			{latest ? (
+				<time
+					dateTime={latest.date}
+					className="min-w-11 shrink-0 text-right font-[450] text-muted-foreground text-xs tabular-nums"
+				>
+					{formatShortDate(latest.date)}
+				</time>
+			) : null}
+		</div>
 	);
 }
 
@@ -194,7 +253,16 @@ export function AreaSheet({
 		repo: map.repo.name,
 		branch: map.repo.branch,
 	};
-	const hotFiles = map.activity?.areas[area.id]?.hotFiles ?? [];
+	// The files most pull requests changed are only known once GitHub is
+	// counted; until then the sample's hold the section's place.
+	const counting = isCounting(map);
+	const counted = counting
+		? sampleProductMap(map.repo.owner, map.repo.name)
+		: map;
+	const { activity } = counted;
+	const hotFiles =
+		activity?.areas[counting ? sampleArea(counted).id : area.id]?.hotFiles ??
+		[];
 	const group = map.bands
 		.flatMap((band) => band.groups)
 		.find((candidate) => candidate.areas.includes(area.id));
@@ -235,24 +303,33 @@ export function AreaSheet({
 				<Section
 					id="inside"
 					title="What is inside"
-					description={`${plural(area.features.length, "part")}. Open one to read more.`}
+					description={`${plural(area.features.length, "part")}, each with the file it starts in.`}
 				>
 					<FeatureList key={area.id} features={area.features} repo={repo} />
 				</Section>
 			) : null}
 
 			{hotFiles.length > 0 ? (
-				<Section
-					id="code"
-					title="Where the work happens"
-					description="The files here that the most pull requests changed. A good place to start reading."
-				>
-					<SectionCard className="[&>div:last-child]:pb-0">
-						{hotFiles.map((file) => (
-							<HotFileRow key={file.path} file={file} repo={repo} />
-						))}
-					</SectionCard>
-				</Section>
+				<Skeleton loading={counting} label="Counting on GitHub">
+					<Section
+						id="code"
+						title="Where the work happens"
+						description="The files here that the most pull requests changed, with each of those pull requests."
+					>
+						<SectionCard className="[&>div:last-child]:pb-0">
+							{activity
+								? hotFiles.map((file) => (
+										<HotFileRow
+											key={file.path}
+											file={file}
+											activity={activity}
+											repo={repo}
+										/>
+									))
+								: null}
+						</SectionCard>
+					</Section>
+				</Skeleton>
 			) : null}
 
 			<Section

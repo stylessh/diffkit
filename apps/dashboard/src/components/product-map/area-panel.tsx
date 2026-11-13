@@ -1,4 +1,4 @@
-import { CircleCheckIcon, ClockIcon, CodeIcon, FileIcon } from "@diffkit/icons";
+import { CircleCheckIcon, ClockIcon, FileIcon } from "@diffkit/icons";
 import { PanelPill, PanelSection } from "@diffkit/ui/components/detail-layout";
 import {
 	Tooltip,
@@ -8,12 +8,14 @@ import {
 import { cn } from "@diffkit/ui/lib/utils";
 import { Link } from "@tanstack/react-router";
 import { useState } from "react";
+import { Skeleton } from "skullet/react";
 
 import { AreaHoverCard, relationTo } from "./area-hover-card";
-import { formatBytes, formatShortDate, noun, plural } from "./map-format";
+import { formatShortDate, noun, plural } from "./map-format";
 import { areaIcon } from "./map-icons";
 import { StatRow } from "./map-panel";
-import type { LoadedProductMap } from "./product-map-data";
+import { isCounting, type LoadedProductMap } from "./product-map-data";
+import { sampleArea, sampleProductMap } from "./product-map-samples";
 import type { ProductArea } from "./product-map-types";
 import { type TileRole, tileRole } from "./spotlight";
 import { PersonAvatar } from "./work-row";
@@ -135,7 +137,13 @@ export function AreaPanel({
 	map: LoadedProductMap;
 	onNavigate: (id: string) => void;
 }) {
-	const live = map.activity?.areas[area.id];
+	// While GitHub is counted, the sample's numbers hold the rows' places.
+	const counting = isCounting(map);
+	const counted = counting
+		? sampleProductMap(map.repo.owner, map.repo.name)
+		: map;
+	const live =
+		counted.activity?.areas[counting ? sampleArea(counted).id : area.id];
 	return (
 		<>
 			<MiniMap map={map} current={area} onNavigate={onNavigate} />
@@ -155,65 +163,62 @@ export function AreaPanel({
 				map={map}
 				onNavigate={onNavigate}
 			/>
-			{live ? (
-				<>
-					<PanelSection label="Stats">
-						<StatRow
-							icon={<CodeIcon size={14} strokeWidth={2} />}
-							value={formatBytes(live.bytes)}
-							label="of code"
-						/>
-						<StatRow
-							icon={<FileIcon size={14} strokeWidth={2} />}
-							value={live.files}
-							label={noun(live.files, "file")}
-						/>
-						<StatRow
-							icon={<CircleCheckIcon size={14} strokeWidth={2} />}
-							value={live.testFiles}
-							label={noun(live.testFiles, "test file")}
-						/>
-						{live.lastMerged ? (
+			<Skeleton loading={counting} label="Counting on GitHub">
+				{live ? (
+					<>
+						<PanelSection label="Stats">
 							<StatRow
-								icon={<ClockIcon size={14} strokeWidth={2} />}
-								value={formatShortDate(live.lastMerged)}
-								label="last merge"
+								icon={<FileIcon size={14} strokeWidth={2} />}
+								value={live.files}
+								label={noun(live.files, "file")}
 							/>
-						) : null}
-					</PanelSection>
-					{live.people.length > 0 ? (
-						<PanelSection label="People">
-							<div className="flex min-h-7 flex-wrap items-center gap-y-1 pl-1.5">
-								{live.people.map(({ login, pulls }) => (
-									<Tooltip key={login}>
-										<TooltipTrigger asChild>
-											<Link
-												to="/$owner"
-												params={{ owner: login }}
-												aria-label={`${login}, ${plural(pulls, "pull request")} here`}
-												className="-ml-1.5 flex rounded-full bg-main p-[1.5px]"
-											>
-												<PersonAvatar
-													login={login}
-													avatarUrl={
-														map.activity?.people[login]?.avatarUrl ?? null
-													}
-												/>
-											</Link>
-										</TooltipTrigger>
-										<TooltipContent className="flex-col items-start gap-0.5">
-											<span>{login}</span>
-											<span className="font-[450] text-muted-foreground">
-												{plural(pulls, "pull request")} here
-											</span>
-										</TooltipContent>
-									</Tooltip>
-								))}
-							</div>
+							<StatRow
+								icon={<CircleCheckIcon size={14} strokeWidth={2} />}
+								value={live.testFiles}
+								label={noun(live.testFiles, "test file")}
+							/>
+							{live.lastMerged ? (
+								<StatRow
+									icon={<ClockIcon size={14} strokeWidth={2} />}
+									value={formatShortDate(live.lastMerged)}
+									label="last merge"
+								/>
+							) : null}
 						</PanelSection>
-					) : null}
-				</>
-			) : null}
+						{live.people.length > 0 ? (
+							<PanelSection label="People">
+								<div className="flex min-h-7 flex-wrap items-center gap-y-1 pl-1.5">
+									{live.people.map(({ login, pulls }) => (
+										<Tooltip key={login}>
+											<TooltipTrigger asChild>
+												<Link
+													to="/$owner"
+													params={{ owner: login }}
+													aria-label={`${login}, ${plural(pulls, "pull request")} here`}
+													className="-ml-1.5 flex rounded-full bg-main p-[1.5px]"
+												>
+													<PersonAvatar
+														login={login}
+														avatarUrl={
+															counted.activity?.people[login]?.avatarUrl ?? null
+														}
+													/>
+												</Link>
+											</TooltipTrigger>
+											<TooltipContent className="flex-col items-start gap-0.5">
+												<span>{login}</span>
+												<span className="font-[450] text-muted-foreground">
+													{plural(pulls, "pull request")} here
+												</span>
+											</TooltipContent>
+										</Tooltip>
+									))}
+								</div>
+							</PanelSection>
+						) : null}
+					</>
+				) : null}
+			</Skeleton>
 		</>
 	);
 }

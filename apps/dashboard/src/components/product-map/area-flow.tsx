@@ -1,12 +1,11 @@
 import { ChevronLeftIcon, ChevronRightIcon } from "@diffkit/icons";
 import { cn } from "@diffkit/ui/lib/utils";
-import { useReducedMotion } from "motion/react";
 import {
 	type CSSProperties,
 	type ReactNode,
 	useEffect,
-	useReducer,
 	useRef,
+	useState,
 } from "react";
 import { CodeLink, type RepoLinks } from "./code-link";
 import { stepKind } from "./map-icons";
@@ -32,24 +31,9 @@ const LANE_GAP = 8;
 const NODE_TOP = 38;
 const NODE_SIZE = 36;
 const NODE_CENTER = NODE_TOP + NODE_SIZE / 2;
-const TRAVEL_MS = 2200;
 /** Opaque, so a lane label can cover a connector that passes behind it. */
 const LANE_SURFACE =
 	"bg-[color-mix(in_oklab,var(--color-foreground)_3%,var(--color-main))]";
-
-type FlowState =
-	| { mode: "travelling"; step: number }
-	| { mode: "held"; step: number };
-
-type FlowAction =
-	| { type: "advance"; steps: number }
-	| { type: "hold"; step: number };
-
-function flowReducer(state: FlowState, action: FlowAction): FlowState {
-	if (action.type === "hold") return { mode: "held", step: action.step };
-	if (state.mode === "held") return state;
-	return { mode: "travelling", step: (state.step + 1) % action.steps };
-}
 
 function laneOf(kind: string) {
 	const lane = LANES.findIndex((candidate) => candidate.kinds.includes(kind));
@@ -81,6 +65,7 @@ function Connector({
 	const toY = toRow * pitch + NODE_CENTER;
 	return (
 		<svg
+			skullet-ignore=""
 			aria-hidden="true"
 			viewBox={`0 0 100 ${height}`}
 			preserveAspectRatio="none"
@@ -133,26 +118,13 @@ export function AreaFlow({
 	steps: FlowStep[];
 	repo: RepoLinks;
 }) {
-	const reduceMotion = useReducedMotion();
-	const [state, dispatch] = useReducer(
-		flowReducer,
-		reduceMotion ? { mode: "held", step: 0 } : { mode: "travelling", step: 0 },
-	);
-
-	useEffect(() => {
-		if (state.mode !== "travelling") return;
-		const timer = window.setInterval(
-			() => dispatch({ type: "advance", steps: steps.length }),
-			TRAVEL_MS,
-		);
-		return () => window.clearInterval(timer);
-	}, [state.mode, steps.length]);
+	const [current, setCurrent] = useState(0);
 
 	const scrollerRef = useRef<HTMLDivElement>(null);
 	useEffect(() => {
 		const scroller = scrollerRef.current;
 		const node = scroller?.querySelector<HTMLElement>(
-			`[data-step="${state.step}"]`,
+			`[data-step="${current}"]`,
 		);
 		if (!(scroller && node)) return;
 		const centre =
@@ -164,7 +136,7 @@ export function AreaFlow({
 			left: centre - scroller.clientWidth / 2,
 			behavior: "smooth",
 		});
-	}, [state.step]);
+	}, [current]);
 
 	const usedLanes = LANES.map((lane, index) => ({ ...lane, index })).filter(
 		(lane) => steps.some((step) => laneOf(step.kind) === lane.index),
@@ -172,12 +144,12 @@ export function AreaFlow({
 	const rowOf = (step: FlowStep) =>
 		usedLanes.findIndex((lane) => lane.index === laneOf(step.kind));
 	const height = usedLanes.length * (LANE_HEIGHT + LANE_GAP) - LANE_GAP;
-	const selected = steps[state.step];
+	const selected = steps[current];
 	// An area may describe no flow at all; there is then nothing to draw.
 	if (!selected) return null;
 	const SelectedIcon = stepKind(selected.kind).icon;
-	const holdAt = (step: number) =>
-		dispatch({ type: "hold", step: (step + steps.length) % steps.length });
+	const show = (step: number) =>
+		setCurrent((step + steps.length) % steps.length);
 
 	return (
 		<div className="flex flex-col gap-4">
@@ -225,24 +197,24 @@ export function AreaFlow({
 								fromRow={rowOf(steps[index])}
 								toRow={rowOf(step)}
 								height={height}
-								reached={index < state.step}
+								reached={index < current}
 							/>
 						))}
 						{steps.map((step, index) => {
 							const Icon = stepKind(step.kind).icon;
-							const active = index === state.step;
-							const reached = index < state.step;
-							const hold = () => dispatch({ type: "hold", step: index });
+							const active = index === current;
+							const reached = index < current;
+							const show = () => setCurrent(index);
 							return (
 								<button
 									key={`${step.kind}:${step.label}`}
 									type="button"
 									data-step={index}
 									aria-pressed={active}
-									onClick={hold}
-									onFocus={hold}
+									onClick={show}
+									onFocus={show}
 									onPointerEnter={(event) => {
-										if (event.pointerType === "mouse") hold();
+										if (event.pointerType === "mouse") show();
 									}}
 									style={
 										{
@@ -295,16 +267,13 @@ export function AreaFlow({
 					) : null}
 				</div>
 				<div className="flex shrink-0 items-center gap-0.5">
-					<StepButton
-						label="Previous step"
-						onClick={() => holdAt(state.step - 1)}
-					>
+					<StepButton label="Previous step" onClick={() => show(current - 1)}>
 						<ChevronLeftIcon size={14} strokeWidth={2} />
 					</StepButton>
 					<span className="min-w-8 text-center font-[450] text-muted-foreground text-xs tabular-nums">
-						{state.step + 1} / {steps.length}
+						{current + 1} / {steps.length}
 					</span>
-					<StepButton label="Next step" onClick={() => holdAt(state.step + 1)}>
+					<StepButton label="Next step" onClick={() => show(current + 1)}>
 						<ChevronRightIcon size={14} strokeWidth={2} />
 					</StepButton>
 				</div>
