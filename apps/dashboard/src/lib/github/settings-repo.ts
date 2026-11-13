@@ -7,12 +7,12 @@ import {
 	toApiPatch,
 } from "../settings/repo-general";
 import { readSettings, runSettingsMutation } from "./settings-server";
-import { identityValidator } from "./validators";
+import { identityValidator, repoInputValidator } from "./validators";
 
 type RepoInput = { owner: string; repo: string };
 
 export const getRepoGeneralSettings = createServerFn({ method: "GET" })
-	.validator(identityValidator<RepoInput>)
+	.validator(repoInputValidator)
 	.handler(
 		({ data }): Promise<SettingsRead<RepoGeneralSettings>> =>
 			readSettings("repository settings", async (octokit) => {

@@ -19,6 +19,10 @@ import { remarkAlert } from "remark-github-blockquote-alert";
 import type { PluggableList } from "unified";
 import { CODE_THEME_NAMES } from "../lib/code-theme-names";
 import {
+	loadableAssetSrcSet,
+	loadableAssetUrl,
+} from "../lib/markdown-asset-url";
+import {
 	MARKDOWN_MENTION_TAG,
 	MARKDOWN_REFERENCE_TAG,
 	type MarkdownReferenceResolver,
@@ -72,6 +76,10 @@ import {
 	shikiBundledLangSet,
 } from "../lib/shiki-bundle";
 import { cn } from "../lib/utils";
+
+// An embedded frame may run its own player, but it cannot navigate the reader's tab.
+const MARKDOWN_IFRAME_SANDBOX =
+	"allow-scripts allow-same-origin allow-popups allow-presentation";
 
 const FENCE_LANG_ALIASES: Record<string, ShikiBundledLang> = {
 	shell: "shellscript",
@@ -202,41 +210,25 @@ const MarkdownReferenceComponentContext =
 
 function useResolvedAssetUrl(url: string | undefined) {
 	const resolveAssetUrl = useContext(MarkdownAssetUrlResolverContext);
-	if (!url || !resolveAssetUrl) return url;
-	return resolveAssetUrl(url);
+	if (!url) return undefined;
+	return loadableAssetUrl(resolveAssetUrl ? resolveAssetUrl(url) : url);
 }
 
-function resolveAssetSrcSet(
-	srcSet: string | undefined,
-	resolveAssetUrl: MarkdownAssetUrlResolver | null,
-) {
-	if (!srcSet || !resolveAssetUrl) return srcSet;
+function useResolvedAssetSrcSet(srcSet: string | undefined) {
+	const resolveAssetUrl = useContext(MarkdownAssetUrlResolverContext);
+	return loadableAssetSrcSet(srcSet, resolveAssetUrl);
+}
 
-	return srcSet
-		.split(",")
-		.map((candidate) => {
-			const trimmed = candidate.trim();
-			if (!trimmed) return candidate;
-
-			const match = trimmed.match(/^(\S+)(\s+.+)?$/u);
-			if (!match) return candidate;
-
-			const url = match[1];
-			if (/^data:/iu.test(url)) return candidate;
-
-			return `${resolveAssetUrl(url)}${match[2] ?? ""}`;
-		})
-		.join(", ");
+/** The fence tag is whatever the author typed, so it is only ever looked up as an own key. */
+export function resolveHighlightLang(lang: string): ShikiBundledLang | "text" {
+	if (Object.hasOwn(FENCE_LANG_ALIASES, lang)) return FENCE_LANG_ALIASES[lang];
+	return shikiBundledLangSet.has(lang) ? (lang as ShikiBundledLang) : "text";
 }
 
 function createHighlightedHtml(code: string, lang: string): Promise<string> {
 	return getHighlighterPromise().then((highlighter) => {
-		const normalized =
-			FENCE_LANG_ALIASES[lang] ??
-			(shikiBundledLangSet.has(lang) ? (lang as ShikiBundledLang) : null);
-		const effectiveLang = normalized ?? "text";
 		return highlighter.codeToHtml(code, {
-			lang: effectiveLang,
+			lang: resolveHighlightLang(lang),
 			themes: CODE_THEME_NAMES,
 			defaultColor: false,
 		});
@@ -499,17 +491,20 @@ export function ShikiCode({
 function MarkdownImageNode({
 	alt,
 	src,
+	srcSet,
 	className,
 	...props
 }: ImgHTMLAttributes<HTMLImageElement>) {
 	const ImageComponent = useContext(MarkdownImageComponentContext);
 	const resolvedSrc = useResolvedAssetUrl(src);
+	const resolvedSrcSet = useResolvedAssetSrcSet(srcSet);
 
 	if (ImageComponent) {
 		return (
 			<ImageComponent
 				alt={alt}
 				src={resolvedSrc}
+				srcSet={resolvedSrcSet}
 				className={className}
 				{...props}
 			/>
@@ -521,6 +516,7 @@ function MarkdownImageNode({
 			className={cn(markdownImageClassName, className)}
 			alt={alt}
 			src={resolvedSrc}
+			srcSet={resolvedSrcSet}
 			{...props}
 		/>
 	);
@@ -734,8 +730,14 @@ const components: Record<string, React.FC<any>> = {
 	hr: ({ node: _, ...props }) => (
 		<hr className={markdownHrClassName} {...props} />
 	),
-	img: ({ node: _, alt, src, className, ...props }) => (
-		<MarkdownImageNode alt={alt} src={src} className={className} {...props} />
+	img: ({ node: _, alt, src, srcSet, srcset, className, ...props }) => (
+		<MarkdownImageNode
+			alt={alt}
+			src={src}
+			srcSet={srcSet ?? srcset}
+			className={className}
+			{...props}
+		/>
 	),
 	video: ({ node: _, src, className, ...props }) => (
 		<video
@@ -746,21 +748,13 @@ const components: Record<string, React.FC<any>> = {
 			src={useResolvedAssetUrl(src)}
 		/>
 	),
-	source: ({ node: _, src, srcSet, srcset, ...props }) => {
-		const resolveAssetUrl = useContext(MarkdownAssetUrlResolverContext);
-		const resolvedSrcSet = resolveAssetSrcSet(
-			srcSet ?? srcset,
-			resolveAssetUrl,
-		);
-
-		return (
-			<source
-				src={useResolvedAssetUrl(src)}
-				srcSet={resolvedSrcSet}
-				{...props}
-			/>
-		);
-	},
+	source: ({ node: _, src, srcSet, srcset, ...props }) => (
+		<source
+			src={useResolvedAssetUrl(src)}
+			srcSet={useResolvedAssetSrcSet(srcSet ?? srcset)}
+			{...props}
+		/>
+	),
 	iframe: ({ node: _, children, ...props }) => {
 		const p = props as React.IframeHTMLAttributes<HTMLIFrameElement> & {
 			srcdoc?: unknown;
@@ -769,8 +763,19 @@ const components: Record<string, React.FC<any>> = {
 		if (p.srcdoc != null || p.srcDoc != null) {
 			return null;
 		}
-		const { srcdoc: _sd, srcDoc: _sD, ...rest } = p;
-		return <iframe {...rest}>{children}</iframe>;
+		const { srcdoc: _sd, srcDoc: _sD, src, ...rest } = p;
+		const frameSrc = loadableAssetUrl(src);
+		if (!frameSrc) return null;
+		return (
+			<iframe
+				{...rest}
+				src={frameSrc}
+				sandbox={MARKDOWN_IFRAME_SANDBOX}
+				referrerPolicy="no-referrer"
+			>
+				{children}
+			</iframe>
+		);
 	},
 	table: ({ node: _, children, ...props }) => (
 		<div className={markdownTableShellClassName}>

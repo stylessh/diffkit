@@ -65,6 +65,7 @@ export default defineConfig({
 			env: {
 				...parseEnv(readFileSync(demoEnvFile, "utf8")),
 				DIFFKIT_DEMO: "1",
+				VITE_DEV_OVERLAYS: "off",
 				CI: "true",
 			},
 			url: `${dashboardUrl}/login`,

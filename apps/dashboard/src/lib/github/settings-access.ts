@@ -11,12 +11,12 @@ import {
 } from "../settings/access";
 import type { SettingsOutcome, SettingsRead } from "../settings/read-result";
 import { readSettings, runSettingsMutation } from "./settings-server";
-import { identityValidator } from "./validators";
+import { identityValidator, repoInputValidator } from "./validators";
 
 type RepoInput = { owner: string; repo: string };
 
 export const getRepoAccess = createServerFn({ method: "GET" })
-	.validator(identityValidator<RepoInput>)
+	.validator(repoInputValidator)
 	.handler(
 		({ data }): Promise<SettingsRead<RepoAccess>> =>
 			readSettings("collaborators", async (octokit) => {

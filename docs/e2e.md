@@ -19,8 +19,8 @@ pnpm --filter @diffkit/e2e test:e2e:ui                        # Playwright UI mo
 1. Starts `apps/emulator/src/e2e.ts`: the demo workspace, in memory, seeded
    once. It exposes `POST /_diffkit/e2e/checkpoint` and `/_diffkit/e2e/reset`.
 2. Wipes `apps/dashboard/.wrangler/demo-state` and starts `vite dev` with
-   `DIFFKIT_DEMO=1` and the values in `apps/emulator/dashboard.env`; the
-   dashboard applies D1 migrations on start.
+   `DIFFKIT_DEMO=1`, `VITE_DEV_OVERLAYS=off` and the values in
+   `apps/emulator/dashboard.env`; the dashboard applies D1 migrations on start.
 3. `support/global-setup.ts` signs in as `nova` through the emulator's account
    picker, saves `apps/e2e/.auth/nova.json`, visits the routes the specs use so
    the dev server compiles them before the specs race, and checkpoints the
@@ -95,6 +95,20 @@ spec posts reach `/api/webhooks/github`.
 - Dates render in the browser's time zone and locale; the config pins both to UTC and en-US.
 - Do not assert relative times ("6d ago"); the seed is anchored at
   2026-11-02, not at today.
+
+## Dev overlays
+
+The suite runs the dashboard without react-scan, Agentation and TanStack
+Devtools (`VITE_DEV_OVERLAYS=off`, read in `routes/__root.tsx`). They are not
+part of the product, react-scan is fetched from a CDN, and two of them cost
+more than they look: react-scan's frame loop and the devtools trigger's
+animation make the browser produce a frame every 16 ms, and each frame
+restyles every bone of the skeleton a loading page shows. With the CPU slowed
+ten times, a hard load shows its content two to three times later with the
+overlays than without, which on a CI runner is the difference between passing
+and the `concurrent` specs timing out on their first assertion with the page
+still on its skeleton. Without the overlays the skeleton's animation costs the
+main thread nothing.
 
 ## Known limits
 

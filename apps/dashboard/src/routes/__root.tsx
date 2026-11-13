@@ -21,7 +21,15 @@ import { siteConfig } from "#/lib/site-config";
 
 import appCss from "../styles.css?url";
 
-const DevAgentation = import.meta.env.DEV
+/* react-scan, Agentation and TanStack Devtools are instruments for a developer
+   looking at the page, so the e2e run leaves them out (`VITE_DEV_OVERLAYS=off`).
+   react-scan and the devtools trigger also keep the browser producing frames,
+   and every frame restyles each bone of the skeleton a loading page shows,
+   which makes a hard load on a CI runner two to three times slower. */
+const devOverlays =
+	import.meta.env.DEV && import.meta.env.VITE_DEV_OVERLAYS !== "off";
+
+const DevAgentation = devOverlays
 	? lazy(() =>
 			import("agentation").then((mod) => ({ default: mod.Agentation })),
 		)
@@ -65,7 +73,7 @@ export const Route = createRootRouteWithContext<{
 						buildWebSiteSchema({ path: match.pathname }),
 					),
 				},
-				...(import.meta.env.DEV
+				...(devOverlays
 					? [
 							{
 								src: "https://unpkg.com/react-scan/dist/auto.global.js",
@@ -94,15 +102,17 @@ function RootDocument({ children }: { children: React.ReactNode }) {
 						<DevAgentation />
 					</Suspense>
 				) : null}
-				<TanStackDevtools
-					config={{ position: "bottom-right" }}
-					plugins={[
-						{
-							name: "Tanstack Router",
-							render: <TanStackRouterDevtoolsPanel />,
-						},
-					]}
-				/>
+				{devOverlays ? (
+					<TanStackDevtools
+						config={{ position: "bottom-right" }}
+						plugins={[
+							{
+								name: "Tanstack Router",
+								render: <TanStackRouterDevtoolsPanel />,
+							},
+						]}
+					/>
+				) : null}
 				<Scripts />
 			</body>
 		</html>
