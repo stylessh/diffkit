@@ -216,7 +216,9 @@ To receive GitHub webhooks locally, you need a public tunnel. With a tunnel URL 
 5. Generate a **Webhook secret** and set the same value in both GitHub and your `.env`
 6. Restart the dev server
 
-The dev server uses `DEV_TUNNEL_URL` to allow the tunnel host and configure HMR correctly.
+With `DEV_TUNNEL_URL` set, the dev server answers one request through the tunnel: `POST /api/webhooks/github`. Everything else gets a 404 there, including the app's pages, and stays available on `http://localhost:3000`, so keep opening the app on localhost.
+
+The tunnel hostname is not a secret: it is stored in the GitHub App's settings and travels in every request, and `ngrok http 3000` puts the whole port on the internet. The dev server is what narrows that down ([`apps/dashboard/vite/dev-tunnel-guard.ts`](apps/dashboard/vite/dev-tunnel-guard.ts)). It treats any request that is not addressed to localhost or an IP address, or that a proxy relayed, as tunnel traffic. The restriction is on only while `DEV_TUNNEL_URL` is set, so set it whenever a tunnel points at the dev server, including one that rewrites the Host header.
 
 ## Scripts
 

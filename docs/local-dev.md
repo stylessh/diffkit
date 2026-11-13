@@ -56,7 +56,11 @@ and how: [local-demo-mode.md](local-demo-mode.md).
    running first.
 
 Webhooks need a public tunnel that is up before GitHub delivers. See
-[Local webhook testing](../README.md#local-webhook-testing).
+[Local webhook testing](../README.md#local-webhook-testing). The tunnel only
+carries `POST /api/webhooks/github`; the dev server refuses everything else
+that arrives through it, so open the app on <http://localhost:3000>. Treat the
+tunnel hostname as public, and always set `DEV_TUNNEL_URL` when a tunnel points
+at the dev server, because that setting is what turns the restriction on.
 
 ## When something is off
 

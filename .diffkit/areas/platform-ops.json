@@ -6,6 +6,7 @@
   "paths": [
     "apps/dashboard/src/entry-worker**",
     "apps/dashboard/{vite.config,void.config,wrangler,worker-configuration,env.,.dev.vars,.gitignore,README,public/,tsconfig,biome}**",
+    "apps/dashboard/vite/**",
     "apps/dashboard/src/env.d.ts",
     "apps/dashboard/src/lib/{security-headers,route-safety,health,seo,site-config,debug}**",
     "apps/dashboard/src/routes/{api/health,-private-page-seo}**",
