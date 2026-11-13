@@ -179,6 +179,7 @@ export function previewPullPage(
 		mergeable: true,
 		requestedReviewers: reviewRequested ? [nova] : [],
 		requestedTeams: [],
+		reviewedBy: [],
 	};
 
 	return {

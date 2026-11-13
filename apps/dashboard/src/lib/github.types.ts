@@ -104,7 +104,17 @@ export type PullDetail = PullSummary & {
 	mergeableState?: string | null;
 	requestedReviewers: GitHubActor[];
 	requestedTeams: RequestedTeam[];
+	/** Everyone whose latest review is submitted, requested or not. */
+	reviewedBy: PullReviewer[];
 };
+
+export type PullReviewState =
+	| "approved"
+	| "changes_requested"
+	| "commented"
+	| "dismissed";
+
+export type PullReviewer = GitHubActor & { reviewState: PullReviewState };
 
 export type IssueSummary = {
 	id: number;

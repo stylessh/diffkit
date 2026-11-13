@@ -889,6 +889,12 @@ export const typeDefs = /* GraphQL */ `
 			states: [PullRequestReviewState!]
 			author: String
 		): PullRequestReviewConnection
+		latestReviews(
+			first: Int
+			after: String
+			last: Int
+			before: String
+		): PullRequestReviewConnection
 		commits(
 			first: Int
 			after: String

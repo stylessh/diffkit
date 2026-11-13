@@ -1,4 +1,9 @@
-import { GitCommitIcon } from "@diffkit/icons";
+import {
+	CheckIcon,
+	CloseIcon,
+	CommentIcon,
+	GitCommitIcon,
+} from "@diffkit/icons";
 import {
 	PanelAddButton,
 	PanelGoButton,
@@ -36,7 +41,12 @@ import {
 	githubQueryKeys,
 	githubRepoCollaboratorsQueryOptions,
 } from "#/lib/github.query";
-import type { PullDetail, PullPageData } from "#/lib/github.types";
+import type {
+	GitHubActor,
+	PullDetail,
+	PullPageData,
+	PullReviewState,
+} from "#/lib/github.types";
 import { getPrStateConfig } from "#/lib/pr-state";
 import { useOptimisticMutation } from "#/lib/use-optimistic-mutation";
 
@@ -293,8 +303,14 @@ function ReviewersSection({
 		});
 	};
 
+	// A re-requested reviewer shows once, as a pending request.
+	const pastReviewers = pr.reviewedBy.filter(
+		(reviewer) => !requestedLogins.has(reviewer.login),
+	);
 	const hasReviewers =
-		pr.requestedReviewers.length > 0 || pr.requestedTeams.length > 0;
+		pr.requestedReviewers.length > 0 ||
+		pr.requestedTeams.length > 0 ||
+		pastReviewers.length > 0;
 
 	type ReviewerItem =
 		| { kind: "team"; slug: string }
@@ -409,30 +425,23 @@ function ReviewersSection({
 				</PanelRow>
 			))}
 			{pr.requestedReviewers.map((reviewer) => (
-				<div
+				<ReviewerRow
 					key={reviewer.login}
-					className="group/row flex w-fit max-w-full items-center gap-2.5"
-				>
-					{isOpen ? (
-						<PanelPill asChild icon={<PanelAvatar src={reviewer.avatarUrl} />}>
-							<button
-								type="button"
-								aria-haspopup="listbox"
-								aria-expanded={pickerOpen}
-								onClick={openPicker}
-							>
-								{reviewer.login}
-							</button>
-						</PanelPill>
-					) : (
-						<PanelPill icon={<PanelAvatar src={reviewer.avatarUrl} />}>
-							{reviewer.login}
-						</PanelPill>
-					)}
-					<PanelGoButton asChild aria-label={`Open ${reviewer.login}`}>
-						<Link to="/$owner" params={{ owner: reviewer.login }} />
-					</PanelGoButton>
-				</div>
+					reviewer={reviewer}
+					isOpen={isOpen}
+					pickerOpen={pickerOpen}
+					onOpenPicker={openPicker}
+				/>
+			))}
+			{pastReviewers.map((reviewer) => (
+				<ReviewerRow
+					key={reviewer.login}
+					reviewer={reviewer}
+					reviewState={reviewer.reviewState}
+					isOpen={isOpen}
+					pickerOpen={pickerOpen}
+					onOpenPicker={openPicker}
+				/>
 			))}
 			{isOpen ? (
 				<PanelAddButton
@@ -537,6 +546,81 @@ function PanelAvatar({ src, size = 14 }: { src: string; size?: number }) {
 			className="shrink-0 rounded-full ring-[0.5px] ring-chip-border"
 			style={{ width: size, height: size }}
 		/>
+	);
+}
+
+function ReviewerRow({
+	reviewer,
+	reviewState,
+	isOpen,
+	pickerOpen,
+	onOpenPicker,
+}: {
+	reviewer: GitHubActor;
+	reviewState?: PullReviewState;
+	isOpen: boolean;
+	pickerOpen: boolean;
+	onOpenPicker: () => void;
+}) {
+	const label = (
+		<>
+			{reviewer.login}
+			{reviewState ? <ReviewStateMark state={reviewState} /> : null}
+		</>
+	);
+	const avatar = <PanelAvatar src={reviewer.avatarUrl} />;
+
+	return (
+		<div className="group/row flex w-fit max-w-full items-center gap-2.5">
+			{isOpen ? (
+				<PanelPill asChild icon={avatar}>
+					<button
+						type="button"
+						aria-haspopup="listbox"
+						aria-expanded={pickerOpen}
+						onClick={onOpenPicker}
+					>
+						{label}
+					</button>
+				</PanelPill>
+			) : (
+				<PanelPill icon={avatar}>{label}</PanelPill>
+			)}
+			{/* Apps have no profile page in DiffKit. */}
+			{reviewer.type === "Bot" ? null : (
+				<PanelGoButton asChild aria-label={`Open ${reviewer.login}`}>
+					<Link to="/$owner" params={{ owner: reviewer.login }} />
+				</PanelGoButton>
+			)}
+		</div>
+	);
+}
+
+const REVIEW_STATE_MARK = {
+	approved: { Icon: CheckIcon, label: "Approved", className: "text-success" },
+	changes_requested: {
+		Icon: CloseIcon,
+		label: "Requested changes",
+		className: "text-danger",
+	},
+	commented: {
+		Icon: CommentIcon,
+		label: "Commented",
+		className: "text-muted-foreground",
+	},
+	dismissed: {
+		Icon: CommentIcon,
+		label: "Review dismissed",
+		className: "text-muted-foreground/60",
+	},
+} satisfies Record<PullReviewState, unknown>;
+
+function ReviewStateMark({ state }: { state: PullReviewState }) {
+	const { Icon, label, className } = REVIEW_STATE_MARK[state];
+	return (
+		<span role="img" aria-label={label} title={label} className={className}>
+			<Icon size={12} strokeWidth={2} />
+		</span>
 	);
 }
 
