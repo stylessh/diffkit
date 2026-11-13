@@ -1,8 +1,11 @@
 (async function initPopup() {
   const shared = globalThis.DiffKitRedirect;
+  const extensionApi = globalThis.chrome ?? globalThis.browser;
   const toggle = document.getElementById("enabled-toggle");
+  const masterState = document.getElementById("master-state");
   const ruleList = document.getElementById("rule-list");
-  const statusCopy = document.getElementById("status-copy");
+  const editRules = document.getElementById("edit-rules");
+  const status = document.getElementById("status");
 
   function getRuleLabel(rule) {
     if (rule.label) {
@@ -18,120 +21,106 @@
       .replace(/\b\w/g, (character) => character.toUpperCase());
   }
 
-  function getRuleDescription(rule) {
-    if (rule.enabled) {
-      return "Enabled";
-    }
-
-    return "Disabled";
+  function showError(message) {
+    status.textContent = message;
+    status.dataset.tone = "error";
   }
 
-  function renderRuleList(config) {
+  function clearError() {
+    status.textContent = "";
+    delete status.dataset.tone;
+  }
+
+  function renderMaster(enabled) {
+    toggle.checked = enabled;
+    masterState.textContent = enabled ? "On" : "Paused";
+    document.body.toggleAttribute("data-paused", !enabled);
+  }
+
+  function renderRules(rules) {
     ruleList.textContent = "";
 
-    if (config.rules.length === 0) {
-      const emptyState = document.createElement("p");
-      emptyState.className = "empty-state";
-      emptyState.textContent = "No redirect rules available yet.";
-      ruleList.append(emptyState);
+    if (rules.length === 0) {
+      const empty = document.createElement("p");
+      empty.className = "empty";
+      empty.textContent = "No rules yet";
+      ruleList.append(empty);
       return;
     }
 
-    for (const rule of config.rules) {
-      const button = document.createElement("button");
-      button.type = "button";
-      button.className = "rule-toggle";
-      button.dataset.ruleId = rule.id;
-      button.setAttribute("aria-pressed", String(rule.enabled));
+    for (const rule of rules) {
+      const row = document.createElement("label");
+      row.className = "rule";
 
-      const label = document.createElement("span");
-      label.className = "rule-copy";
+      const name = document.createElement("span");
+      name.className = "rule-name";
+      name.textContent = getRuleLabel(rule);
 
-      const title = document.createElement("span");
-      title.className = "rule-title";
-      title.textContent = getRuleLabel(rule);
+      const input = document.createElement("input");
+      input.className = "switch";
+      input.type = "checkbox";
+      input.setAttribute("role", "switch");
+      input.checked = rule.enabled;
+      input.dataset.ruleId = rule.id;
 
-      const description = document.createElement("span");
-      description.className = "rule-description";
-      description.textContent = getRuleDescription(rule);
-
-      label.append(title, description);
-      button.append(label);
-      ruleList.append(button);
+      row.append(name, input);
+      ruleList.append(row);
     }
-  }
-
-  function renderStatus(config) {
-    const activeRules = config.rules.filter((rule) => rule.enabled).length;
-    const totalRules = config.rules.length;
-
-    if (!config.enabled) {
-      statusCopy.textContent = `Master off. ${activeRules} of ${totalRules} rules selected.`;
-      return;
-    }
-
-    statusCopy.textContent = `${activeRules} of ${totalRules} redirects active.`;
   }
 
   async function render() {
     const config = await shared.getConfig();
-    toggle.checked = config.enabled;
-    renderRuleList(config);
-    renderStatus(config);
+    renderMaster(config.enabled);
+    renderRules(config.rules);
   }
+
+  // Saves a change made on top of the stored config. On failure the popup is
+  // drawn again from storage, so a switch never shows a state that was not kept.
+  async function save(change) {
+    try {
+      const config = await shared.getConfig();
+      const result = await shared.saveConfig(change(config));
+      if (!result.ok) {
+        showError(result.errors.join(" "));
+        await render();
+        return;
+      }
+      clearError();
+    } catch {
+      showError("Could not save");
+      await render().catch(() => undefined);
+    }
+  }
+
+  toggle.addEventListener("change", () => {
+    const enabled = toggle.checked;
+    renderMaster(enabled);
+    save((config) => ({ enabled, rules: config.rules }));
+  });
+
+  ruleList.addEventListener("change", (event) => {
+    const input = event.target;
+    if (!(input instanceof HTMLInputElement && input.dataset.ruleId)) {
+      return;
+    }
+
+    const { ruleId } = input.dataset;
+    const enabled = input.checked;
+    save((config) => ({
+      enabled: config.enabled,
+      rules: config.rules.map((rule) =>
+        rule.id === ruleId ? { ...rule, enabled } : rule
+      ),
+    }));
+  });
+
+  editRules.addEventListener("click", () => {
+    extensionApi.runtime.openOptionsPage();
+  });
 
   try {
     await render();
   } catch {
-    statusCopy.textContent = "Failed to load extension state";
+    showError("Could not load rules");
   }
-
-  toggle.addEventListener("change", async () => {
-    const config = await shared.getConfig();
-    const nextConfig = {
-      enabled: toggle.checked,
-      rules: config.rules,
-    };
-
-    const result = await shared.saveConfig(nextConfig);
-    if (!result.ok) {
-      statusCopy.textContent = result.errors.join(" ");
-      return;
-    }
-
-    await render();
-  });
-
-  ruleList.addEventListener("click", async (event) => {
-    if (!(event.target instanceof Element)) {
-      return;
-    }
-
-    const button = event.target.closest(".rule-toggle");
-    if (!button) {
-      return;
-    }
-
-    const config = await shared.getConfig();
-    const nextRules = config.rules.map((rule) =>
-      rule.id === button.dataset.ruleId
-        ? {
-            ...rule,
-            enabled: !rule.enabled,
-          }
-        : rule
-    );
-
-    const result = await shared.saveConfig({
-      enabled: config.enabled,
-      rules: nextRules,
-    });
-
-    if (!result.ok) {
-      statusCopy.textContent = result.errors.join(" ");
-      return;
-    }
-
-    await render();
-  });
 })();

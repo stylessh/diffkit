@@ -6,34 +6,30 @@
     <title>DiffKit</title>
     <link rel="stylesheet" href="styles.css">
   </head>
-  <body class="popup-body">
-    <main class="popup-shell">
-      <section class="popup-card">
-        <div class="brand-row">
-          <div class="brand-lockup">
-            <img class="brand-logo" src="icons/logo.svg" alt="DiffKit">
-            <div>
-              <p class="eyebrow">DiffKit</p>
-              <h1>GitHub redirects</h1>
-            </div>
-          </div>
-          <label class="switch" aria-label="Toggle redirects">
-            <input id="enabled-toggle" type="checkbox">
-            <span class="switch-track"></span>
-          </label>
-        </div>
+  <body class="popup">
+    <header class="bar">
+      <img class="mark" src="icons/logo.svg" alt="">
+      <h1 class="title">DiffKit</h1>
+      <label class="master">
+        <span id="master-state"></span>
+        <input
+          id="enabled-toggle"
+          class="switch"
+          type="checkbox"
+          role="switch"
+          aria-label="Redirect GitHub pages to DiffKit"
+        >
+      </label>
+    </header>
 
-        <p class="lede">
-          Choose which GitHub routes should jump into DiffKit automatically.
-        </p>
+    <h2 id="rules-label" class="group-label">Open in DiffKit</h2>
+    <div id="rule-list" class="rules" role="group" aria-labelledby="rules-label">
+    </div>
 
-        <div id="rule-list" class="rule-list" role="list"></div>
-
-        <div class="status-row">
-          <p id="status-copy" class="status-copy">Loading…</p>
-        </div>
-      </section>
-    </main>
+    <footer class="popup-foot">
+      <button id="edit-rules" class="text-link" type="button">Edit rules</button>
+      <p id="status" class="status" role="status"></p>
+    </footer>
 
     <script src="shared.js"></script>
     <script src="popup.js"></script>

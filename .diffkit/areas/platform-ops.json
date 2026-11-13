@@ -65,7 +65,7 @@
     },
     {
       "name": "CI workflows",
-      "summary": "Six workflows: PR Checks, E2E, Dev Smoke, D1 migration check, production deploy and production alerts.",
+      "summary": "Eight workflows: PR Checks, E2E, Dev Smoke, D1 migration check, product map check, production deploy, production alerts and extension publish.",
       "path": ".github/workflows/pr-checks.yml"
     },
     {
