@@ -514,32 +514,46 @@ async function askGitHubWhetherViewerCanRead(
 /**
  * Whether this viewer can read a repository of an installation they see.
  * The answer is kept per viewer and repository for `IDENTITY_MEMORY_TTL_MS`,
- * so the reads that follow reuse it; a check that fails or times out counts
- * as "no" for this read and is asked again on the next.
+ * so the reads that follow reuse it. Rejects when GitHub gave no answer (the
+ * check failed or timed out); nothing is kept then, and the next read asks
+ * again.
  */
-export async function viewerCanReadInstallationRepository(
+export function checkViewerCanReadInstallationRepository(
 	context: GitHubContext,
 	installation: GitHubAppInstallation,
 	params: RepositoryInput,
 ): Promise<boolean> {
 	const userId = context.session.user.id;
 	const repository = `${params.owner}/${params.repo}`.toLowerCase();
+	return readIdentityThroughMemory<boolean>({
+		userId,
+		resource: `repositoryRead:${installation.id}:${repository}`,
+		load: () =>
+			withGitHubOperationTimeout(
+				`github repository access check ${repository}`,
+				REPOSITORY_ACCESS_CHECK_TIMEOUT_MS,
+				(signal) =>
+					askGitHubWhetherViewerCanRead(userId, installation, params, signal),
+			),
+	});
+}
+
+/** For choosing a token: no answer counts as "no", so the viewer's is used. */
+async function viewerCanReadInstallationRepository(
+	context: GitHubContext,
+	installation: GitHubAppInstallation,
+	params: RepositoryInput,
+): Promise<boolean> {
 	try {
-		return await readIdentityThroughMemory<boolean>({
-			userId,
-			resource: `repositoryRead:${installation.id}:${repository}`,
-			load: () =>
-				withGitHubOperationTimeout(
-					`github repository access check ${repository}`,
-					REPOSITORY_ACCESS_CHECK_TIMEOUT_MS,
-					(signal) =>
-						askGitHubWhetherViewerCanRead(userId, installation, params, signal),
-				),
-		});
+		return await checkViewerCanReadInstallationRepository(
+			context,
+			installation,
+			params,
+		);
 	} catch (error) {
 		console.error(
 			"[github-access] repository access check failed, using OAuth token",
-			repository,
+			`${params.owner}/${params.repo}`,
 			error,
 		);
 		return false;

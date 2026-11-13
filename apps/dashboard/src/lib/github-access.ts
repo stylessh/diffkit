@@ -112,7 +112,7 @@ export function getAccessHrefForOwner(
  * It narrows results GitHub already authorized for the viewer's own token, so
  * it may fail open. It is not an access check: results read with an
  * installation token are checked per viewer where they are fetched
- * (`viewerCanReadInstallationRepository`).
+ * (`checkViewerCanReadInstallationRepository`).
  */
 export type GitHubInstallationAccessIndex = {
 	/** `false` when the app-user token isn't available (no app auth yet). */

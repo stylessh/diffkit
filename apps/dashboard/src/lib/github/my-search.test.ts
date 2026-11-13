@@ -10,18 +10,24 @@ const sources = vi.hoisted(() => ({
 	persistForbiddenOrgs: vi.fn(async () => {}),
 	/** Repositories GitHub confirms the viewer can read. */
 	viewerReadable: [] as string[],
+	/** Repositories whose access check gets no answer from GitHub. */
+	viewerCheckErrors: {} as Record<string, Error>,
 	viewerChecks: [] as string[],
 }));
 
 vi.mock("./installations", async (importOriginal) => ({
 	...(await importOriginal<typeof import("./installations")>()),
-	viewerCanReadInstallationRepository: async (
+	checkViewerCanReadInstallationRepository: async (
 		_context: GitHubContext,
 		_installation: GitHubAppInstallation,
 		{ owner, repo }: { owner: string; repo: string },
 	) => {
-		sources.viewerChecks.push(`${owner}/${repo}`);
-		return sources.viewerReadable.includes(`${owner}/${repo}`);
+		const repository = `${owner}/${repo}`;
+		sources.viewerChecks.push(repository);
+		if (sources.viewerCheckErrors[repository]) {
+			throw sources.viewerCheckErrors[repository];
+		}
+		return sources.viewerReadable.includes(repository);
 	},
 }));
 
@@ -118,6 +124,7 @@ describe("getMyPullsResult", () => {
 	beforeEach(() => {
 		sources.persistForbiddenOrgs.mockClear();
 		sources.viewerReadable = [];
+		sources.viewerCheckErrors = {};
 		sources.viewerChecks = [];
 	});
 
@@ -235,5 +242,44 @@ describe("getMyPullsResult", () => {
 			"acme/billing",
 			"acme/payroll",
 		]);
+		// GitHub said no, so nothing is missing from the list.
+		expect(result.partial).toBeUndefined();
+	});
+
+	it("drops a repository whose access check gets no answer and says the list is incomplete", async () => {
+		const privatePulls = () => ({
+			...emptyBuckets,
+			assigned: {
+				nodes: [
+					pullNode(1, "2026-11-03T00:00:00Z"),
+					pullNode(2, "2026-11-02T00:00:00Z", {
+						name: "billing",
+						isPrivate: true,
+					}),
+				],
+			},
+		});
+		sources.list = [
+			source("installation:1:acme", privatePulls, acmeInstallation),
+		];
+
+		sources.viewerCheckErrors = { "acme/billing": new Error("bad gateway") };
+		const failed = await getMyPullsResult({ context, username: "nova" });
+
+		expect(failed.assigned.map((pull) => pull.repository.fullName)).toEqual([
+			"acme/api",
+		]);
+		expect(failed.partial).toBe(true);
+		expect(failed.timedOut).toBeUndefined();
+
+		sources.viewerCheckErrors = {
+			"acme/billing": new GitHubOperationTimeoutError("access check", 5_000),
+		};
+		const timedOut = await getMyPullsResult({ context, username: "nova" });
+
+		expect(timedOut.assigned.map((pull) => pull.repository.fullName)).toEqual([
+			"acme/api",
+		]);
+		expect(timedOut).toMatchObject({ partial: true, timedOut: true });
 	});
 });

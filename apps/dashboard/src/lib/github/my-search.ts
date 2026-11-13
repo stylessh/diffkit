@@ -10,7 +10,7 @@ import {
 	getRemainingSearchTimeoutMs,
 	withGitHubOperationTimeout,
 } from "./client";
-import { viewerCanReadInstallationRepository } from "./installations";
+import { checkViewerCanReadInstallationRepository } from "./installations";
 import {
 	type GraphQLMyIssuesResponse,
 	type GraphQLMyPullsResponse,
@@ -109,10 +109,13 @@ type MySearch<
 	merge: (results: TResult[]) => TResult;
 };
 
+type RepositoryRead = "confirmed" | "denied" | "unanswered" | "timedOut";
+
 /**
  * An installation's search answers for the app, not for the viewer, so its
  * private repositories are shown only once GitHub has confirmed this viewer
- * can read them. Unconfirmed repositories are dropped.
+ * can read them. Every other repository is dropped; `unanswered` says whether
+ * any was dropped because the check gave no answer, as opposed to a "no".
  */
 async function keepRepositoriesViewerCanRead<
 	TBucket extends string,
@@ -127,7 +130,10 @@ async function keepRepositoriesViewerCanRead<
 	installation: GitHubAppInstallation;
 	buckets: TBucket[];
 	result: TResult;
-}): Promise<TResult> {
+}): Promise<{
+	result: TResult;
+	unanswered: { timedOut: boolean } | null;
+}> {
 	const privateRepositories = new Map<string, RepositoryRef>();
 	for (const bucket of buckets) {
 		for (const { repository } of result[bucket]) {
@@ -139,46 +145,66 @@ async function keepRepositoriesViewerCanRead<
 			}
 		}
 	}
-	if (privateRepositories.size === 0) {
-		return result;
-	}
 
-	const readable = new Set<string>();
-	await Promise.all(
-		[...privateRepositories].map(async ([fullName, repository]) => {
-			const canRead = await viewerCanReadInstallationRepository(
-				context,
-				installation,
-				{ owner: repository.owner, repo: repository.name },
-			);
-			if (canRead) {
-				readable.add(fullName);
-			}
-		}),
-	);
-	if (readable.size === privateRepositories.size) {
-		return result;
-	}
-
-	debug("github-search", "dropped repositories the viewer cannot read", {
-		installationId: installation.id,
-		dropped: [...privateRepositories.keys()].filter(
-			(fullName) => !readable.has(fullName),
+	const reads = new Map<string, RepositoryRead>(
+		await Promise.all(
+			[...privateRepositories].map(
+				async ([fullName, repository]): Promise<[string, RepositoryRead]> => {
+					try {
+						const canRead = await checkViewerCanReadInstallationRepository(
+							context,
+							installation,
+							{ owner: repository.owner, repo: repository.name },
+						);
+						return [fullName, canRead ? "confirmed" : "denied"];
+					} catch (error) {
+						console.error(
+							"[github-search] repository access check failed, dropping its results",
+							fullName,
+							error,
+						);
+						return [
+							fullName,
+							error instanceof GitHubOperationTimeoutError
+								? "timedOut"
+								: "unanswered",
+						];
+					}
+				},
+			),
 		),
+	);
+	const dropped = [...reads].filter(([, read]) => read !== "confirmed");
+	if (dropped.length === 0) {
+		return { result, unanswered: null };
+	}
+
+	debug("github-search", "dropped repositories not confirmed for the viewer", {
+		installationId: installation.id,
+		dropped: Object.fromEntries(dropped),
 	});
 	const filtered = { ...result };
 	for (const bucket of buckets) {
 		filtered[bucket] = result[bucket].filter(
 			({ repository }) =>
 				repository.isPrivate === false ||
-				readable.has(normalizeLogin(repository.fullName)),
+				reads.get(normalizeLogin(repository.fullName)) === "confirmed",
 		) as TResult[TBucket];
 	}
-	return filtered;
+	const noAnswer = dropped.filter(([, read]) => read !== "denied");
+	return {
+		result: filtered,
+		unanswered:
+			noAnswer.length > 0
+				? { timedOut: noAnswer.some(([, read]) => read === "timedOut") }
+				: null,
+	};
 }
 
 type SourceSearch<TResult> =
 	| { status: "loaded"; result: TResult }
+	/** Loaded, minus repositories whose access check GitHub did not answer. */
+	| { status: "incomplete"; result: TResult; timedOut: boolean }
 	| { status: "skipped" }
 	| { status: "failed"; timedOut: boolean; forbiddenOrg: string | null };
 
@@ -237,17 +263,22 @@ async function searchSource<
 				}),
 		);
 		const result = search.mapResponse(response);
-		return {
-			status: "loaded",
-			result: source.installation
-				? await keepRepositoriesViewerCanRead({
-						context: source.context,
-						installation: source.installation,
-						buckets,
-						result,
-					})
-				: result,
-		};
+		if (!source.installation) {
+			return { status: "loaded", result };
+		}
+		const kept = await keepRepositoriesViewerCanRead({
+			context: source.context,
+			installation: source.installation,
+			buckets,
+			result,
+		});
+		return kept.unanswered
+			? {
+					status: "incomplete",
+					result: kept.result,
+					timedOut: kept.unanswered.timedOut,
+				}
+			: { status: "loaded", result: kept.result };
 	} catch (error) {
 		console.error(
 			`[github-search] ${search.resource} failed`,
@@ -295,7 +326,9 @@ async function searchEverySource<
 
 			const data = search.merge(
 				searches.flatMap((outcome) =>
-					outcome.status === "loaded" ? [outcome.result] : [],
+					outcome.status === "loaded" || outcome.status === "incomplete"
+						? [outcome.result]
+						: [],
 				),
 			);
 			const forbiddenOrgs = [
@@ -316,7 +349,9 @@ async function searchEverySource<
 			}
 			if (
 				searches.some(
-					(outcome) => outcome.status === "failed" && outcome.timedOut,
+					(outcome) =>
+						(outcome.status === "failed" || outcome.status === "incomplete") &&
+						outcome.timedOut,
 				)
 			) {
 				data.timedOut = true;
