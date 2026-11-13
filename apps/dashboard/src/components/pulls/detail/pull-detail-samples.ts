@@ -57,6 +57,7 @@ export const SAMPLE_PULL: PullDetail = {
 	mergeable: null,
 	requestedReviewers: [],
 	requestedTeams: [],
+	reviewedBy: [],
 };
 
 export const SAMPLE_PULL_PAGE: PullPageData = {

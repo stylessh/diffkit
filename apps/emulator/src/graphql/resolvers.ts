@@ -1715,6 +1715,24 @@ export const resolvers: Record<string, Record<string, unknown>> = {
 				}));
 			return connection(reviews, args);
 		},
+		latestReviews: (model: PullModel, args: Args, ctx: GraphQLContext) => {
+			const latestByAuthor = new Map<number, GitHubReview>();
+			for (const review of ctx.gh.reviews
+				.findBy("repo_id", model.repo.id)
+				.filter((review) => review.pull_number === model.pull.number)
+				.filter((review) => review.state !== "PENDING")
+				.sort(byCreated)) {
+				latestByAuthor.set(review.user_id, review);
+			}
+			return connection(
+				[...latestByAuthor.values()].map((review) => ({
+					__typename: "PullRequestReview",
+					review,
+					repo: model.repo,
+				})),
+				args,
+			);
+		},
 		commits: (model: PullModel, args: Args, ctx: GraphQLContext) => {
 			const commits = commitsBetween(
 				ctx.gh,

@@ -1,10 +1,4 @@
-import type {
-	GitHubActor,
-	PullCommit,
-	PullDetail,
-	PullPageData,
-	RequestedTeam,
-} from "../github.types";
+import type { PullCommit, PullDetail, PullPageData } from "../github.types";
 import { executeGitHubGraphQL, getViewer } from "./client";
 import { getGitHubUserContextForRepository } from "./installations";
 import {
@@ -16,6 +10,11 @@ import {
 	mapGraphQLRepositoryRef,
 } from "./mappers";
 import { getPullCommitsResult, getRawPull, mapPullDetail } from "./pull-reads";
+import {
+	type GraphQLLatestReviewNode,
+	type GraphQLReviewRequestNode,
+	mapPullReviewers,
+} from "./pull-reviewers";
 import { dedupeGitHubRead } from "./request-dedup";
 import type {
 	GitHubContext,
@@ -34,22 +33,6 @@ import {
 	getTimelineEventsResult,
 } from "./timeline";
 
-type GitHubGraphQLReviewRequestNode = {
-	requestedReviewer:
-		| ({
-				__typename: "User";
-				login: string;
-				avatarUrl: string;
-				url: string;
-		  } & Record<string, unknown>)
-		| {
-				__typename: "Team";
-				name: string;
-				slug: string;
-				url: string;
-		  }
-		| null;
-};
 type GitHubGraphQLPullPageResponse = {
 	repository: {
 		productMap: { oid: string } | null;
@@ -92,7 +75,10 @@ type GitHubGraphQLPullPageResponse = {
 			repository: GitHubGraphQLRepositoryRef;
 			reviewThreads: { totalCount: number };
 			reviewRequests: {
-				nodes: Array<GitHubGraphQLReviewRequestNode | null> | null;
+				nodes: Array<GraphQLReviewRequestNode | null> | null;
+			} | null;
+			latestReviews: {
+				nodes: Array<GraphQLLatestReviewNode | null> | null;
 			} | null;
 			commits: {
 				totalCount: number;
@@ -168,17 +154,17 @@ const PULL_PAGE_QUERY = `query($owner: String!, $repo: String!, $number: Int!) {
 				nodes {
 					requestedReviewer {
 						__typename
-						... on User {
-							login
-							avatarUrl
-							url
-						}
-						... on Team {
-							name
-							slug
-							url
-						}
+						... on User { login avatarUrl url }
+						... on Bot { login avatarUrl url }
+						... on Mannequin { login avatarUrl url }
+						... on Team { name slug url }
 					}
+				}
+			}
+			latestReviews(first: 100) {
+				nodes {
+					state
+					author { __typename login avatarUrl url }
 				}
 			}
 			commits(first: 100) {
@@ -239,29 +225,10 @@ function mapGraphQLPullDetail(
 	pull: NonNullable<GitHubGraphQLPullPageResponse["repository"]["pullRequest"]>,
 	viewerLogin: string | undefined,
 ): PullDetail {
-	const requestedReviewers: GitHubActor[] = [];
-	const requestedTeams: RequestedTeam[] = [];
-
-	for (const node of pull.reviewRequests?.nodes ?? []) {
-		const reviewer = node?.requestedReviewer;
-		if (!reviewer) {
-			continue;
-		}
-
-		if (reviewer.__typename === "Team") {
-			requestedTeams.push({
-				slug: reviewer.slug,
-				name: reviewer.name,
-				url: reviewer.url,
-			});
-			continue;
-		}
-
-		const actor = mapGraphQLActor(reviewer);
-		if (actor) {
-			requestedReviewers.push(actor);
-		}
-	}
+	const reviewers = mapPullReviewers(
+		pull.reviewRequests?.nodes ?? [],
+		pull.latestReviews?.nodes ?? [],
+	);
 
 	return {
 		id: pull.databaseId ?? 0,
@@ -303,8 +270,7 @@ function mapGraphQLPullDetail(
 					? false
 					: null,
 		mergeableState: pull.mergeStateStatus?.toLowerCase() ?? null,
-		requestedReviewers,
-		requestedTeams,
+		...reviewers,
 	};
 }
 

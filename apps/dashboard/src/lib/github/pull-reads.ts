@@ -52,6 +52,8 @@ export function mapPullDetail(
 			name: team.name,
 			url: team.html_url,
 		})),
+		// The REST pull carries no reviews; only the GraphQL page read fills this.
+		reviewedBy: [],
 	};
 }
 

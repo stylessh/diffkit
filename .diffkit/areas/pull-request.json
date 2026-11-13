@@ -78,7 +78,7 @@
     },
     {
       "name": "Reviewers picker",
-      "summary": "Request or remove people, teams and known review bots (Copilot, CodeRabbit, Cursor and others). The sidebar updates at once; number keys pick the first nine.",
+      "summary": "Request or remove people, teams and known review bots (Copilot, CodeRabbit, Cursor and others). The sidebar updates at once; number keys pick the first nine. It also lists everyone who already reviewed, apps included, with their latest verdict.",
       "path": "apps/dashboard/src/components/pulls/detail/pull-detail-sidebar.tsx"
     },
     {
