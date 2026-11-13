@@ -1,3 +1,4 @@
+import { RequestError } from "octokit";
 import { debug } from "../debug";
 import type { MyPullsResult, RepositoryRef } from "../github.types";
 import {
@@ -12,6 +13,7 @@ import {
 	getGitHubContext,
 	getOrCreateCachedContext,
 	listPaginatedGitHubItems,
+	withGitHubOperationTimeout,
 } from "./client";
 import {
 	forgetIdentityRead,
@@ -254,6 +256,20 @@ export async function listInstallationRepositories(
 	});
 }
 
+/** One listing per installation while serving a request, however many ask. */
+function listViewerInstallationRepositories(
+	userId: string,
+	appUserOctokit: GitHubClient,
+	installationId: number,
+) {
+	return dedupeGitHubRead<InstallationRepositoryPayload[]>({
+		userId,
+		resource: "installationRepositories",
+		params: { installationId },
+		fetcher: () => listInstallationRepositories(appUserOctokit, installationId),
+	});
+}
+
 async function buildInstallationAccessIndex(
 	userId: string,
 ): Promise<SerializableInstallationAccessIndex> {
@@ -278,7 +294,8 @@ async function buildInstallationAccessIndex(
 			.filter((installation) => installation.repositorySelection === "selected")
 			.map(async (installation) => {
 				try {
-					const repositories = await listInstallationRepositories(
+					const repositories = await listViewerInstallationRepositories(
+						userId,
 						appUserOctokit,
 						installation.id,
 					);
@@ -379,40 +396,12 @@ export async function getGitHubContextForInstallation(
 	);
 }
 
-export async function getGitHubContextForOwner(owner: string) {
-	return getOrCreateCachedContext(`owner:${owner}`, async () => {
-		const context = await getGitHubContext();
-		if (!context) {
-			return null;
-		}
-
-		const installation = findGitHubAppInstallationForOwner(
-			await getRoutingInstallations(context.session.user.id),
-			owner,
-		);
-		if (!installation) {
-			debug("github-access", "no installation for owner, using OAuth token", {
-				owner,
-			});
-			return context;
-		}
-
-		const installationContext = await getGitHubContextForInstallation(
-			context,
-			installation,
-		);
-		if (!installationContext) {
-			console.error(
-				"[github-access] installation client failed, falling back to OAuth token",
-				owner,
-			);
-			return context;
-		}
-
-		return installationContext;
-	});
-}
-
+/**
+ * The installation token belongs to the app, not to the viewer, so it reads
+ * a repository only after `viewerCanReadInstallationRepository` has said this
+ * viewer can read it. Every other outcome keeps the viewer's own token, where
+ * GitHub decides.
+ */
 export async function getGitHubContextForRepository(input: {
 	owner: string;
 	repo: string;
@@ -438,8 +427,7 @@ export async function getGitHubContextForRepository(input: {
 			}
 
 			if (
-				installation.repositorySelection === "selected" &&
-				!(await appInstallationHasRepositoryAccess(
+				!(await viewerCanReadInstallationRepository(
 					context,
 					installation,
 					input,
@@ -447,7 +435,7 @@ export async function getGitHubContextForRepository(input: {
 			) {
 				debug(
 					"github-access",
-					"installation does not include repo, using OAuth",
+					"viewer access to repo not confirmed, using OAuth",
 					{
 						owner: input.owner,
 						repo: input.repo,
@@ -474,36 +462,100 @@ export async function getGitHubContextForRepository(input: {
 	);
 }
 
-async function appInstallationHasRepositoryAccess(
-	context: GitHubContext,
+const REPOSITORY_ACCESS_CHECK_TIMEOUT_MS = 5_000;
+
+/**
+ * Asks GitHub with the viewer's app-user token, which reaches only what both
+ * the viewer and the app can read. An installation on all repositories covers
+ * whatever its account owns, so reading the one repository settles it; any
+ * other selection has to list the repository for this viewer.
+ *
+ * Throws when GitHub gave no answer, so that only answers are remembered.
+ */
+async function askGitHubWhetherViewerCanRead(
+	userId: string,
 	installation: GitHubAppInstallation,
 	params: RepositoryInput,
-) {
-	if (installation.repositorySelection === "all") {
-		return true;
-	}
-
-	if (installation.repositorySelection !== "selected") {
+	signal: AbortSignal,
+): Promise<boolean> {
+	const { getGitHubAppUserClientByUserId } = await import("../auth-runtime");
+	const appUserOctokit = await getGitHubAppUserClientByUserId(userId);
+	if (!appUserOctokit) {
 		return false;
 	}
 
-	try {
-		const { getGitHubAppUserClientByUserId } = await import("../auth-runtime");
-		const appUserOctokit = await getGitHubAppUserClientByUserId(
-			context.session.user.id,
-		);
-		if (!appUserOctokit) {
-			return false;
-		}
-
-		const repositories = await listInstallationRepositories(
+	if (installation.repositorySelection !== "all") {
+		const repositories = await listViewerInstallationRepositories(
+			userId,
 			appUserOctokit,
 			installation.id,
 		);
 		return repositories.some((repository) =>
 			repositoryMatchesInstallationRepository(repository, params),
 		);
-	} catch {
+	}
+
+	try {
+		const response = await appUserOctokit.rest.repos.get({
+			owner: params.owner,
+			repo: params.repo,
+			request: { signal },
+		});
+		// A renamed or transferred repository answers under its new name.
+		return repositoryMatchesInstallationRepository(response.data, params);
+	} catch (error) {
+		if (error instanceof RequestError && error.status === 404) {
+			return false;
+		}
+		throw error;
+	}
+}
+
+/**
+ * Whether this viewer can read a repository of an installation they see.
+ * The answer is kept per viewer and repository for `IDENTITY_MEMORY_TTL_MS`,
+ * so the reads that follow reuse it. Rejects when GitHub gave no answer (the
+ * check failed or timed out); nothing is kept then, and the next read asks
+ * again.
+ */
+export function checkViewerCanReadInstallationRepository(
+	context: GitHubContext,
+	installation: GitHubAppInstallation,
+	params: RepositoryInput,
+): Promise<boolean> {
+	const userId = context.session.user.id;
+	const repository = `${params.owner}/${params.repo}`.toLowerCase();
+	return readIdentityThroughMemory<boolean>({
+		userId,
+		resource: `repositoryRead:${installation.id}:${repository}`,
+		load: () =>
+			withGitHubOperationTimeout(
+				`github repository access check ${repository}`,
+				REPOSITORY_ACCESS_CHECK_TIMEOUT_MS,
+				(signal) =>
+					askGitHubWhetherViewerCanRead(userId, installation, params, signal),
+			),
+	});
+}
+
+/** For choosing a token: no answer counts as "no", so the viewer's is used. */
+async function viewerCanReadInstallationRepository(
+	context: GitHubContext,
+	installation: GitHubAppInstallation,
+	params: RepositoryInput,
+): Promise<boolean> {
+	try {
+		return await checkViewerCanReadInstallationRepository(
+			context,
+			installation,
+			params,
+		);
+	} catch (error) {
+		console.error(
+			"[github-access] repository access check failed, using OAuth token",
+			`${params.owner}/${params.repo}`,
+			error,
+		);
 		return false;
 	}
 }

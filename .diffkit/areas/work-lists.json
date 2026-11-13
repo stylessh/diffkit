@@ -62,7 +62,7 @@
     },
     {
       "name": "Multi-source search",
-      "summary": "Each installation and the OAuth token search with their own rate limit. A blocked or slow source gives a partial result and a warning.",
+      "summary": "Each installation and the OAuth token search with their own rate limit. An installation's private repositories are kept only once GitHub confirms the viewer can read them. A blocked or slow source, or an access check GitHub did not answer, gives a partial result and a warning.",
       "path": "apps/dashboard/src/lib/github/my-search.ts"
     },
     {

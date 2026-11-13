@@ -1,10 +1,11 @@
 import { dedupeGitHubRead } from "./request-dedup";
 
 /**
- * Who the viewer is and which installations they have is asked by every
- * server function before it can pick a token, so one page load repeated the
- * same two GitHub calls a dozen times. This keeps the answers in the isolate
- * for a few seconds.
+ * Who the viewer is, which installations they have and whether they can read
+ * the repository is asked by every server function before it can pick a
+ * token, so one page load repeated the same GitHub calls a dozen times. This
+ * keeps the answers in the isolate for a few seconds, each under the user it
+ * was given for.
  *
  * It holds values, never promises: the worker runs with
  * `no_handle_cross_request_promise_resolution`, so a promise created by one

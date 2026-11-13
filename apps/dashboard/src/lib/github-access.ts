@@ -108,6 +108,11 @@ export function getAccessHrefForOwner(
  * A pre-computed index of which repos/owners are accessible via the GitHub App
  * installations. Used to filter private repos so the OAuth token doesn't leak
  * access beyond what the user configured in their App installation.
+ *
+ * It narrows results GitHub already authorized for the viewer's own token, so
+ * it may fail open. It is not an access check: results read with an
+ * installation token are checked per viewer where they are fetched
+ * (`checkViewerCanReadInstallationRepository`).
  */
 export type GitHubInstallationAccessIndex = {
 	/** `false` when the app-user token isn't available (no app auth yet). */

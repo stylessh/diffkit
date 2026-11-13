@@ -4,11 +4,13 @@ import type {
 	MyPullsResult,
 	RepositoryRef,
 } from "../github.types";
+import type { GitHubAppInstallation } from "../github-access";
 import {
 	GitHubOperationTimeoutError,
 	getRemainingSearchTimeoutMs,
 	withGitHubOperationTimeout,
 } from "./client";
+import { checkViewerCanReadInstallationRepository } from "./installations";
 import {
 	type GraphQLMyIssuesResponse,
 	type GraphQLMyPullsResponse,
@@ -37,13 +39,13 @@ import {
 const MY_SEARCH_BUCKET_LIMIT = 30;
 const MY_SEARCH_TOTAL_TIMEOUT_MS = 18_000;
 
-function mergeSearchBuckets<
-	TItem extends {
-		number: number;
-		updatedAt: string;
-		repository: RepositoryRef;
-	},
->(buckets: TItem[][]) {
+type SearchItem = {
+	number: number;
+	updatedAt: string;
+	repository: RepositoryRef;
+};
+
+function mergeSearchBuckets<TItem extends SearchItem>(buckets: TItem[][]) {
 	const byKey = new Map<string, TItem>();
 
 	for (const bucket of buckets) {
@@ -90,28 +92,133 @@ type MySearchOutcome = {
 	timedOut?: boolean;
 };
 
-type MySearch<TResponse, TResult> = {
+type MySearch<
+	TResponse,
+	TBucket extends string,
+	TResult extends Record<TBucket, SearchItem[]>,
+> = {
 	resource: string;
 	itemType: "issue" | "pr";
 	document: string;
-	/** GraphQL alias to the role it searches; the variable is `<alias>Query`. */
-	roles: Record<string, IssueSearchRole | PullSearchRole>;
+	/**
+	 * GraphQL alias to the role it searches; the variable is `<alias>Query`
+	 * and the result keeps the items under the same name.
+	 */
+	roles: Record<TBucket, IssueSearchRole | PullSearchRole>;
 	mapResponse: (response: TResponse) => TResult;
 	merge: (results: TResult[]) => TResult;
 };
 
+type RepositoryRead = "confirmed" | "denied" | "unanswered" | "timedOut";
+
+/**
+ * An installation's search answers for the app, not for the viewer, so its
+ * private repositories are shown only once GitHub has confirmed this viewer
+ * can read them. Every other repository is dropped; `unanswered` says whether
+ * any was dropped because the check gave no answer, as opposed to a "no".
+ */
+async function keepRepositoriesViewerCanRead<
+	TBucket extends string,
+	TResult extends Record<TBucket, SearchItem[]>,
+>({
+	context,
+	installation,
+	buckets,
+	result,
+}: {
+	context: GitHubContext;
+	installation: GitHubAppInstallation;
+	buckets: TBucket[];
+	result: TResult;
+}): Promise<{
+	result: TResult;
+	unanswered: { timedOut: boolean } | null;
+}> {
+	const privateRepositories = new Map<string, RepositoryRef>();
+	for (const bucket of buckets) {
+		for (const { repository } of result[bucket]) {
+			if (repository.isPrivate !== false) {
+				privateRepositories.set(
+					normalizeLogin(repository.fullName),
+					repository,
+				);
+			}
+		}
+	}
+
+	const reads = new Map<string, RepositoryRead>(
+		await Promise.all(
+			[...privateRepositories].map(
+				async ([fullName, repository]): Promise<[string, RepositoryRead]> => {
+					try {
+						const canRead = await checkViewerCanReadInstallationRepository(
+							context,
+							installation,
+							{ owner: repository.owner, repo: repository.name },
+						);
+						return [fullName, canRead ? "confirmed" : "denied"];
+					} catch (error) {
+						console.error(
+							"[github-search] repository access check failed, dropping its results",
+							fullName,
+							error,
+						);
+						return [
+							fullName,
+							error instanceof GitHubOperationTimeoutError
+								? "timedOut"
+								: "unanswered",
+						];
+					}
+				},
+			),
+		),
+	);
+	const dropped = [...reads].filter(([, read]) => read !== "confirmed");
+	if (dropped.length === 0) {
+		return { result, unanswered: null };
+	}
+
+	debug("github-search", "dropped repositories not confirmed for the viewer", {
+		installationId: installation.id,
+		dropped: Object.fromEntries(dropped),
+	});
+	const filtered = { ...result };
+	for (const bucket of buckets) {
+		filtered[bucket] = result[bucket].filter(
+			({ repository }) =>
+				repository.isPrivate === false ||
+				reads.get(normalizeLogin(repository.fullName)) === "confirmed",
+		) as TResult[TBucket];
+	}
+	const noAnswer = dropped.filter(([, read]) => read !== "denied");
+	return {
+		result: filtered,
+		unanswered:
+			noAnswer.length > 0
+				? { timedOut: noAnswer.some(([, read]) => read === "timedOut") }
+				: null,
+	};
+}
+
 type SourceSearch<TResult> =
 	| { status: "loaded"; result: TResult }
+	/** Loaded, minus repositories whose access check GitHub did not answer. */
+	| { status: "incomplete"; result: TResult; timedOut: boolean }
 	| { status: "skipped" }
 	| { status: "failed"; timedOut: boolean; forbiddenOrg: string | null };
 
-async function searchSource<TResponse, TResult>({
+async function searchSource<
+	TResponse,
+	TBucket extends string,
+	TResult extends Record<TBucket, SearchItem[]>,
+>({
 	search,
 	source,
 	username,
 	deadlineAt,
 }: {
-	search: MySearch<TResponse, TResult>;
+	search: MySearch<TResponse, TBucket, TResult>;
 	source: GitHubGraphQLSearchSource;
 	username: string;
 	deadlineAt: number;
@@ -129,12 +236,13 @@ async function searchSource<TResponse, TResult>({
 		return { status: "skipped" };
 	}
 
+	const buckets = Object.keys(search.roles) as TBucket[];
 	const queries = Object.fromEntries(
-		Object.entries(search.roles).map(([alias, role]) => [
+		buckets.map((alias) => [
 			`${alias}Query`,
 			buildUserSearchQuery({
 				itemType: search.itemType,
-				role,
+				role: search.roles[alias],
 				state: "open",
 				username,
 				owner: source.owner?.login,
@@ -154,7 +262,23 @@ async function searchSource<TResponse, TResult>({
 					request: { signal },
 				}),
 		);
-		return { status: "loaded", result: search.mapResponse(response) };
+		const result = search.mapResponse(response);
+		if (!source.installation) {
+			return { status: "loaded", result };
+		}
+		const kept = await keepRepositoriesViewerCanRead({
+			context: source.context,
+			installation: source.installation,
+			buckets,
+			result,
+		});
+		return kept.unanswered
+			? {
+					status: "incomplete",
+					result: kept.result,
+					timedOut: kept.unanswered.timedOut,
+				}
+			: { status: "loaded", result: kept.result };
 	} catch (error) {
 		console.error(
 			`[github-search] ${search.resource} failed`,
@@ -173,14 +297,18 @@ async function searchSource<TResponse, TResult>({
  * One search per installation plus the OAuth fallback, all at once: each
  * source uses its own token, so they do not share a rate limit.
  */
-async function searchEverySource<TResponse, TResult extends MySearchOutcome>({
+async function searchEverySource<
+	TResponse,
+	TBucket extends string,
+	TResult extends MySearchOutcome & Record<TBucket, SearchItem[]>,
+>({
 	context,
 	username,
 	search,
 }: {
 	context: GitHubContext;
 	username: string;
-	search: MySearch<TResponse, TResult>;
+	search: MySearch<TResponse, TBucket, TResult>;
 }): Promise<TResult> {
 	const userId = context.session.user.id;
 	return dedupeGitHubRead<TResult>({
@@ -198,7 +326,9 @@ async function searchEverySource<TResponse, TResult extends MySearchOutcome>({
 
 			const data = search.merge(
 				searches.flatMap((outcome) =>
-					outcome.status === "loaded" ? [outcome.result] : [],
+					outcome.status === "loaded" || outcome.status === "incomplete"
+						? [outcome.result]
+						: [],
 				),
 			);
 			const forbiddenOrgs = [
@@ -219,7 +349,9 @@ async function searchEverySource<TResponse, TResult extends MySearchOutcome>({
 			}
 			if (
 				searches.some(
-					(outcome) => outcome.status === "failed" && outcome.timedOut,
+					(outcome) =>
+						(outcome.status === "failed" || outcome.status === "incomplete") &&
+						outcome.timedOut,
 				)
 			) {
 				data.timedOut = true;
@@ -229,7 +361,11 @@ async function searchEverySource<TResponse, TResult extends MySearchOutcome>({
 	});
 }
 
-const myPullsSearch: MySearch<GraphQLMyPullsResponse, MyPullsResult> = {
+const myPullsSearch: MySearch<
+	GraphQLMyPullsResponse,
+	"reviewRequested" | "assigned" | "authored" | "mentioned" | "involved",
+	MyPullsResult
+> = {
 	resource: "pulls.mine.graphql.v2",
 	itemType: "pr",
 	document: MY_PULLS_SEARCH_QUERY,
@@ -250,7 +386,11 @@ const myPullsSearch: MySearch<GraphQLMyPullsResponse, MyPullsResult> = {
 	merge: mergeMyPullsResults,
 };
 
-const myIssuesSearch: MySearch<GraphQLMyIssuesResponse, MyIssuesResult> = {
+const myIssuesSearch: MySearch<
+	GraphQLMyIssuesResponse,
+	"assigned" | "authored" | "mentioned",
+	MyIssuesResult
+> = {
 	resource: "issues.mine.graphql.v2",
 	itemType: "issue",
 	document: MY_ISSUES_SEARCH_QUERY,

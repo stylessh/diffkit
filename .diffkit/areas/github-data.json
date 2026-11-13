@@ -29,7 +29,7 @@
     {
       "kind": "server",
       "label": "Token routing",
-      "note": "Repo reads use the GitHub App installation token when it covers the repo, else the OAuth token.",
+      "note": "Repo reads use the GitHub App installation token once GitHub confirms the viewer can read the repo, else the OAuth token.",
       "path": "apps/dashboard/src/lib/github/installations.ts"
     },
     {
@@ -57,7 +57,7 @@
     },
     {
       "name": "Token routing",
-      "summary": "Reads use the GitHub App installation token when the app covers the repo, else the OAuth token. Writes use the viewer's own token so GitHub credits them.",
+      "summary": "Reads use the GitHub App installation token only after GitHub confirms this viewer can read the repo; otherwise, or when the check fails, the OAuth token. Writes use the viewer's own token so GitHub credits them.",
       "path": "apps/dashboard/src/lib/github/installations.ts"
     },
     {
@@ -67,7 +67,7 @@
     },
     {
       "name": "Request dedup",
-      "summary": "Identical reads within one server request share a single GitHub call. Viewer and installation lookups are also remembered in memory for 30 seconds.",
+      "summary": "Identical reads within one server request share a single GitHub call. Viewer, installation and repository-access lookups are also remembered per user in memory for 30 seconds.",
       "path": "apps/dashboard/src/lib/github/request-dedup.ts"
     },
     {

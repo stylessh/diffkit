@@ -15,6 +15,8 @@ export type GitHubGraphQLSearchSource = {
 	context: GitHubContext;
 	owner?: GitHubSearchOwnerScope;
 	excludeOwners?: GitHubSearchOwnerScope[];
+	/** Set when `context` reads with this installation's token, not the viewer's. */
+	installation?: GitHubAppInstallation;
 };
 
 type InstallationSearchSource = {
@@ -199,7 +201,7 @@ export async function getMySearchSources(
 	}
 
 	return [
-		...sources.map(({ label, context, owner }) => ({ label, context, owner })),
+		...sources,
 		{
 			label: "oauth:fallback",
 			context,
