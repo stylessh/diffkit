@@ -10,8 +10,10 @@ import { Chip } from "@diffkit/ui/components/chip";
 import { PanelRow, PanelSection } from "@diffkit/ui/components/detail-layout";
 import { cn } from "@diffkit/ui/lib/utils";
 import type { ReactNode } from "react";
+import { Skeleton } from "skullet/react";
 import { formatCount, noun } from "./map-format";
-import type { LoadedProductMap } from "./product-map-data";
+import { isCounting, type LoadedProductMap } from "./product-map-data";
+import { sampleProductMap } from "./product-map-samples";
 import { litOutsideOwners, type Spotlight } from "./spotlight";
 
 export function StatRow({
@@ -40,7 +42,10 @@ export function MapPanel({
 }) {
 	const owners = [...new Set(map.outside.map((system) => system.owner))];
 	const lit = litOutsideOwners(spotlight, map);
-	const totals = map.activity?.totals;
+	const counting = isCounting(map);
+	const totals = counting
+		? sampleProductMap(map.repo.owner, map.repo.name).activity?.totals
+		: map.activity?.totals;
 
 	return (
 		<>
@@ -55,32 +60,34 @@ export function MapPanel({
 					value={map.areas.length}
 					label="areas"
 				/>
-				{totals ? (
-					<>
-						<StatRow
-							icon={<FileIcon size={14} strokeWidth={2} />}
-							value={formatCount(totals.files)}
-							label={noun(totals.files, "file")}
-						/>
-						<StatRow
-							icon={<GitMergeIcon size={14} strokeWidth={2} />}
-							value={totals.mergedPulls}
-							label={noun(totals.mergedPulls, "merged pull request")}
-						/>
-						<StatRow
-							icon={<UserMultiple02Icon size={14} strokeWidth={2} />}
-							value={totals.people}
-							label={totals.people === 1 ? "person" : "people"}
-						/>
-						{totals.unmappedFiles > 0 ? (
+				<Skeleton loading={counting} label="Counting on GitHub">
+					{totals ? (
+						<div className="flex flex-col gap-1">
 							<StatRow
-								icon={<AlertCircleIcon size={14} strokeWidth={2} />}
-								value={totals.unmappedFiles}
-								label={`${noun(totals.unmappedFiles, "file")} outside the map`}
+								icon={<FileIcon size={14} strokeWidth={2} />}
+								value={formatCount(totals.files)}
+								label={noun(totals.files, "file")}
 							/>
-						) : null}
-					</>
-				) : null}
+							<StatRow
+								icon={<GitMergeIcon size={14} strokeWidth={2} />}
+								value={totals.mergedPulls}
+								label={noun(totals.mergedPulls, "merged pull request")}
+							/>
+							<StatRow
+								icon={<UserMultiple02Icon size={14} strokeWidth={2} />}
+								value={totals.people}
+								label={totals.people === 1 ? "person" : "people"}
+							/>
+							{totals.unmappedFiles > 0 ? (
+								<StatRow
+									icon={<AlertCircleIcon size={14} strokeWidth={2} />}
+									value={totals.unmappedFiles}
+									label={`${noun(totals.unmappedFiles, "file")} outside the map`}
+								/>
+							) : null}
+						</div>
+					) : null}
+				</Skeleton>
 			</PanelSection>
 			{owners.length > 0 ? (
 				<PanelSection label="Talks to">
@@ -112,7 +119,7 @@ export function MapPanel({
 			{map.activity?.limits.treeTruncated ? (
 				<p className="text-pretty text-muted-foreground text-xs leading-[1.5]">
 					This repository has more files than GitHub lists at once, so file
-					counts and sizes are partial.
+					counts are partial.
 				</p>
 			) : null}
 			{map.retryActivity ? (

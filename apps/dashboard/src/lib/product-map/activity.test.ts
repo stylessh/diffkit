@@ -62,11 +62,11 @@ function pull(
 const activity = buildMapActivity({
 	map,
 	tree: [
-		{ path: "src/client.ts", size: 4000 },
-		{ path: "src/client.test.ts", size: 1000 },
-		{ path: "src/transport/ws.ts", size: 2500 },
-		{ path: "pnpm.lock", size: 900_000 },
-		{ path: "README.md", size: 300 },
+		{ path: "src/client.ts" },
+		{ path: "src/client.test.ts" },
+		{ path: "src/transport/ws.ts" },
+		{ path: "pnpm.lock" },
+		{ path: "README.md" },
 	],
 	pulls: [
 		pull(3, "open", "2026-11-11T09:00:00Z", [["src/client.ts", 10]]),
@@ -99,16 +99,14 @@ const activity = buildMapActivity({
 });
 
 describe("buildMapActivity", () => {
-	it("sizes each area from the tree and counts what no rule covers", () => {
+	it("counts each area's files from the tree, and what no rule covers", () => {
 		expect(activity.areas.client).toMatchObject({
 			files: 2,
-			bytes: 5000,
 			testFiles: 1,
 		});
-		expect(activity.areas.transport).toMatchObject({ files: 1, bytes: 2500 });
+		expect(activity.areas.transport).toMatchObject({ files: 1 });
 		expect(activity.totals).toMatchObject({
 			files: 4,
-			bytes: 7800,
 			unmappedFiles: 1,
 		});
 	});
@@ -148,10 +146,22 @@ describe("buildMapActivity", () => {
 
 	it("names the files most pull requests changed, skipping ones since deleted", () => {
 		expect(activity.areas.transport.hotFiles).toEqual([
-			{ path: "src/transport/ws.ts", pulls: 2 },
+			{
+				path: "src/transport/ws.ts",
+				changes: [
+					{ pull: 1, lines: 30 },
+					{ pull: 2, lines: 5 },
+				],
+			},
 		]);
 		expect(activity.areas.client.hotFiles).toEqual([
-			{ path: "src/client.ts", pulls: 2 },
+			{
+				path: "src/client.ts",
+				changes: [
+					{ pull: 1, lines: 10 },
+					{ pull: 3, lines: 10 },
+				],
+			},
 		]);
 	});
 

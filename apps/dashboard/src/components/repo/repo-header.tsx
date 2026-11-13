@@ -40,7 +40,11 @@ function useRepoHeaderData(
 	const showSettings = repoSettingsCapabilities(
 		permissionQuery.data?.permission ?? null,
 	).openSettings;
-	return { repoData: overviewQuery.data, showSettings };
+	return {
+		repoData: overviewQuery.data,
+		showSettings,
+		canPush: permissionQuery.data?.canPush === true,
+	};
 }
 
 type RepoNavProps = {
@@ -58,7 +62,11 @@ export function RepoHeaderNav({
 	active,
 	tabActions,
 }: RepoNavProps) {
-	const { repoData, showSettings } = useRepoHeaderData(owner, repo, scope);
+	const { repoData, showSettings, canPush } = useRepoHeaderData(
+		owner,
+		repo,
+		scope,
+	);
 	return (
 		<RepoNav
 			owner={owner}
@@ -67,6 +75,7 @@ export function RepoHeaderNav({
 			repoData={repoData}
 			actions={tabActions}
 			showSettings={showSettings}
+			canPush={canPush}
 		/>
 	);
 }
@@ -83,7 +92,11 @@ export function RepoHeader({
 	trail?: ReactNode;
 	withNav?: boolean;
 }) {
-	const { repoData, showSettings } = useRepoHeaderData(owner, repo, scope);
+	const { repoData, showSettings, canPush } = useRepoHeaderData(
+		owner,
+		repo,
+		scope,
+	);
 	const name = repoData?.name ?? repo;
 	const section = active && active !== "code" ? active : null;
 
@@ -130,9 +143,15 @@ export function RepoHeader({
 					<>
 						<PageHeaderCrumb asChild className="max-md:hidden">
 							<Link to="/$owner/$repo" params={{ owner, repo }}>
-								{repoIcon}
-								<span className="truncate">
-									{owner}/{name}
+								{/* Spaced and coloured like the title below, so the name
+								    holds still between a section and a page inside it. */}
+								<span className="flex min-w-0 items-center gap-2">
+									{repoIcon}
+									<span className="truncate">
+										{owner}
+										<span className="text-muted-foreground">/</span>
+										{name}
+									</span>
 								</span>
 							</Link>
 						</PageHeaderCrumb>
@@ -167,6 +186,7 @@ export function RepoHeader({
 					repoData={repoData}
 					actions={tabActions}
 					showSettings={showSettings}
+					canPush={canPush}
 				/>
 			) : null}
 		</>

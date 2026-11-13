@@ -133,7 +133,7 @@ export type WorkflowRunLogsBundleQueryInput = {
  * head/base refs to pull summaries and had to version `pulls.repo` as `v2`).
  * Format: an integer, incremented by one.
  */
-export const QUERY_SCHEMA_VERSION = 1;
+export const QUERY_SCHEMA_VERSION = 2;
 
 /**
  * Query groups that are never written to the persisted client cache. Every
